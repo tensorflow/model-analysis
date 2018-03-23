@@ -1,0 +1,107 @@
+<!doctype html>
+<!--
+Copyright 2018 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="../web-component-tester/browser.js"></script>
+  <script src="../js-lib-bin.js"></script>
+  <script src="../d3.min.js"></script>
+  <script src="../test-util.js"></script>
+  <link rel="import" href="../tfma-metrics-table/tfma-metrics-table.html">
+</head>
+<body>
+  <test-fixture id="test-table">
+    <template>
+      <tfma-metrics-table></tfma-metrics-table>
+    </template>
+  </test-fixture>
+  <script>
+suite('tests', () => {
+  /** @const {number} */
+  const INITIALIZATION_TIMEOUT_MS = 2000;
+
+  /** @const {number} */
+  const TIMEOUT_MS = 200;
+
+  /**
+   * Test component element.
+   * @private {Element}
+   */
+  let element;
+
+  /**
+   * The GViz table under the test component.
+   * @private {Element}
+   */
+  let table;
+
+  function next(step) {
+    setTimeout(step, TIMEOUT_MS);
+  }
+
+  /**
+   * Sets up the test fixture and run the test.
+   * @param {!lantern.Data} testData
+   * @param {function()} cb
+   */
+  function run(testData, cb) {
+    element = fixture('test-table');
+    element.metrics = testData.getMetrics();
+    element.data = testData;
+    table = element.$$('google-chart');
+    setTimeout(cb, INITIALIZATION_TIMEOUT_MS);
+  }
+
+  test('ComponentSetup', done => {
+    run(createDefaultTestData(), () => {
+      assert.equal(getElementsWithText(table, 'th', 'feature').length, 1);
+      assert.equal(getElementsWithText(table, 'td', 'col:1').length, 1);
+      assert.equal(getElementsWithText(table, 'td', '4.00000').length, 1);
+      assert.equal(getElementsWithText(table, 'td', '0.00200').length, 1);
+      assert.equal(getElementsWithText(table, 'td', '0.33200').length, 1);
+      done();
+    });
+  });
+
+  test('TableSelection', done => {
+    const highlightFeature1 = () => {
+      element.highlight({feature: 1});
+      next(clearSelection);
+    };
+
+    const clearSelection = () => {
+      const row = table.$$('tr.google-visualization-table-tr-sel');
+      assert.isNotNull(row);
+      assert.equal(getElementsWithText(row, 'td', 'col:1').length, 1);
+      const selected = element.$.table.selection;
+      assert.equal(selected.length, 1);
+      assert.deepEqual(selected, [{row: 0}]);
+      element.highlight(null);
+      next(selectionCleared);
+    };
+
+    const selectionCleared = () => {
+      assert.isNull(table.$$('tr.google-visualization-table-tr-sel'));
+      assert.deepEqual(element.$.table.selection, [])
+      done();
+    };
+    run(createDefaultTestData(), highlightFeature1);
+  });
+});
+  </script>
+</body>
+</html>

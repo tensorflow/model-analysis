@@ -1,0 +1,107 @@
+<!doctype html>
+<!--
+Copyright 2018 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="../web-component-tester/browser.js"></script>
+  <script src="../js-lib-bin.js"></script>
+  <link rel="import" href="../tfma-multi-values-metric-at-k/tfma-multi-values-metric-at-k.html">
+</head>
+<body>
+  <test-fixture id="plain-fixture">
+    <template>
+      <tfma-multi-values-metric-at-k></tfma-multi-values-metric-at-k>
+    </template>
+  </test-fixture>
+  <script>
+suite('tests', () => {
+  /**
+   * Test component element.
+   * @type {Element}
+   */
+  let element;
+
+  test('parseDataCorrectly', done => {
+    const count = 5;
+    const expectedRows = count + 1;
+    const expectedColumns = 4;
+    start(createDataString(count), () => {
+      assert.equal(element.querySelectorAll('div.table').length, 1);
+      assert.equal(element.querySelectorAll('div.tr').length, expectedRows);
+      assert.equal(element.querySelectorAll('div.td').length, expectedRows * expectedColumns);
+      done();
+    });
+  });
+
+  test('parseCorruptedDataWithoutException', done => {
+    const count = 5;
+    const dataString = createDataString(count);
+    // Corrupt the data string by taking its substring.
+    start(dataString.substring(5), () => {
+      assert.equal(element.querySelectorAll('.tr').length, 1);
+      done();
+    });
+  });
+
+  test('KIs0RepresentsAll', done => {
+    const data = JSON.stringify(
+      [{'k': 0, 'macroValue': 1, 'microValue': 0.75, 'weightedValue': 0.5}]);
+    start(data, () => {
+      assert.equal(element.querySelector('.tr:nth-child(2) div.td').textContent.trim(), 'All');
+      done();
+    });
+  });
+
+  test('absentMacroShowsDash', done => {
+    const data = JSON.stringify(
+      [{'k': 0, 'microValue': 0.75, 'weightedValue': 0.5}]);
+    start(data, () => {
+      assert.equal(
+          element.querySelector('.tr:nth-child(2) div.td:nth-child(2)').textContent.trim(), '-');
+      done();
+    });
+  });
+
+  /**
+   * @param {number} count
+   * @return {string} Stringified array containing json representation of
+   *     precision at k data.
+   */
+  function createDataString(count) {
+    const precision = [];
+    for (let i = 1; i <= count; i++) {
+      precision.push(
+          {'k': i, 'macroValue': 1 - 0.1 * i, 'microValue': 1 - 0.11 * i});
+    }
+    return JSON.stringify(precision);
+  }
+
+  /**
+   * Instantiates a precision-at-k element using provided data and calls the
+   * call back asynchronously.
+   * @param {string} data
+   * @param {function()} cb
+   */
+  function start(data, cb) {
+    element = fixture('plain-fixture');
+    element.data = data;
+    flush(cb, 0);
+  }
+});
+    </script>
+</body>
+</html>
