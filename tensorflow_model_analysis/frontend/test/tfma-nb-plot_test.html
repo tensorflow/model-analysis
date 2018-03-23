@@ -1,0 +1,155 @@
+<!doctype html>
+<!--
+Copyright 2018 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="../web-component-tester/browser.js"></script>
+  <script src="../js-lib-bin.js"></script>
+  <link rel="import" href="../tfma-nb-plot/tfma-nb-plot.html">
+</head>
+<body>
+  <test-fixture id="plot">
+    <template>
+      <tfma-nb-plot></tfma-nb-plot>
+    </template>
+  </test-fixture>
+  <script>
+suite('tests', () => {
+  const CALIBRATION_PLOT_MATRICES_KEY = 'matrices';
+  const CALIBRATION_PLOT_BOUNDARIES_KEY = 'boundaries';
+  const AUC_MATRICES_KEY = 'auc_matrices';
+  const AUC_THRESHOLDS_KEY = 'thresholds';
+  const DEFAULT_DATA = {
+    [CALIBRATION_PLOT_MATRICES_KEY]:
+        [[0.5, 0.75, 1], [1.75, 3, 2], [0.5, 0.125, 8], [384, 512, 512]],
+    [CALIBRATION_PLOT_BOUNDARIES_KEY]: [0.25, 0.5, 0.75],
+    [AUC_MATRICES_KEY]: [[10, 20, 30, 40, 2/3, 0.8]],
+    [AUC_THRESHOLDS_KEY]: [0.5],
+  };
+  const DEFAULT_KEYS = {
+    'calibrationPlot': {
+      'matrices': CALIBRATION_PLOT_MATRICES_KEY,
+      'boundaries': CALIBRATION_PLOT_BOUNDARIES_KEY,
+    },
+    'aucPlot':{
+      'matrices': AUC_MATRICES_KEY,
+      'thresholds': AUC_THRESHOLDS_KEY,
+    }
+  };
+
+  /**
+   * Sets up the test fixture with the given data and metric keys and runs the
+   * test by calling the provided callback.
+   * @param {!Object} data
+   * @param {!Object} keys
+   * @param {function()} cb
+   */
+  function runWith(data, keys, cb) {
+    element = fixture('plot');
+    element.data = data
+    element.config = {'sliceName': 'Test', 'metricKeys': keys};
+    element.async(cb);
+  }
+
+  /**
+   * Sets up the test fixture with the default data and metric keys and runs the
+   * test by calling the provided callback.
+   * @param {function()} cb
+   */
+  function run(cb) {
+    runWith(DEFAULT_DATA, DEFAULT_KEYS, cb);
+  }
+
+  test('ParseData', done => {
+    const checkDataParsed = () => {
+      assert.deepEqual(element.plotData_, {
+        'plotData': {
+          [tfma.PlotDataFieldNames.CALIBRATION_DATA]: [
+            {
+              'lowerThresholdInclusive': -Infinity,
+              'upperThresholdExclusive': 0.25,
+              'totalWeightedRefinedPrediction': 0.5,
+              'totalWeightedLabel': 0.75,
+              'numWeightedExamples': 1,
+            },
+            {
+              'lowerThresholdInclusive': 0.25,
+              'upperThresholdExclusive': 0.5,
+              'totalWeightedRefinedPrediction': 1.75,
+              'totalWeightedLabel': 3,
+              'numWeightedExamples': 2,
+            },
+            {
+              'lowerThresholdInclusive': 0.5,
+              'upperThresholdExclusive': 0.75,
+              'totalWeightedRefinedPrediction': 0.5,
+              'totalWeightedLabel': 0.125,
+              'numWeightedExamples': 8,
+            },
+            {
+              'lowerThresholdInclusive': 0.75,
+              'upperThresholdExclusive': Infinity,
+              'totalWeightedRefinedPrediction': 384,
+              'totalWeightedLabel': 512,
+              'numWeightedExamples': 512,
+            }
+          ],
+          [tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA]: [{
+            'binaryClassificationThreshold': {'predictionThreshold': 0.5},
+            'matrix': {
+              'falseNegatives': 10,
+              'trueNegatives': 20,
+              'falsePositives': 30,
+              'truePositives': 40,
+              'precision': 2/3,
+              'recall': 0.8,
+          }}]
+        }
+      });
+      assert.deepEqual(element.availableTypes_, [
+        tfma.PlotTypes.CALIBRATION_PLOT, tfma.PlotTypes.PREDICTION_DISTRIBUTION,
+        tfma.PlotTypes.PRECISION_RECALL_CURVE, tfma.PlotTypes.ROC_CURVE,
+      ]);
+      done();
+    };
+    run(checkDataParsed);
+  });
+
+  test('ParseHeading', done => {
+    const checkHeading = () => {
+      assert.deepEqual(element.heading_, 'Plot for Test');
+      done();
+    };
+    run(checkHeading);
+  });
+
+  test('KeyMismatch', done => {
+    const checkNoCalibrationPlot = () => {
+      assert.isUndefined(
+          element.plotData_.plotData[tfma.PlotDataFieldNames.CALIBRATION_DATA])
+      assert.equal(element.availableTypes_.length, 0);
+      assert.equal(element.heading_, 'Plot data not available');
+      done();
+    };
+    runWith(
+        DEFAULT_DATA, {'no keys': {'for': 'calibration plot'}},
+        checkNoCalibrationPlot);
+  });
+});
+  </script>
+  </body>
+</html>
