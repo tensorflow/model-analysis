@@ -3,7 +3,7 @@
 The Chicago Taxi example demonstrates the end-to-end workflow and steps of how
 to transform data, train a model, analyze and serve it, using:
 
-* [TensorFlow Transform] (https://github.com/tensorflow/transform) for
+* [TensorFlow Transform](https://github.com/tensorflow/transform) for
 feature preprocessing
 * TensorFlow [Estimators](https://www.tensorflow.org/programmers_guide/estimators)
 for training
@@ -109,7 +109,7 @@ tf.Transform (`preprocess.py`) allows us to do preprocessing using results of
 full-pass operations over the dataset. To run this step locally, simply call:
 
 ```
-./preprocess_local.sh
+bash ./preprocess_local.sh
 ```
 
 We first ask tf.Transform to compute global statistics (mean, standard dev,
@@ -159,7 +159,7 @@ In the next step we train our model using TensorFlow. To run this step locally,
 simply call:
 
 ```
-./train_local.sh
+bash ./train_local.sh
 ```
 
 Our model leverages TensorFlow’s
@@ -204,7 +204,7 @@ Next we run a batch job to evaluate our model against the entire data set. To
 run the batch evaluator:
 
 ```
-./process_tfma_local.sh
+bash ./process_tfma_local.sh
 ```
 
 As a reminder, we are running this step locally with a small CSV dataset.
@@ -260,7 +260,7 @@ https://docs.docker.com/install.
 To start the server, open a separate terminal and run the serving script:
 
 ```
-./start_model_server_local.sh
+bash ./start_model_server_local.sh
 ```
 
 The script will build a Docker image and then start the TensorFlow Model Server
@@ -270,7 +270,7 @@ The Model server will load the model exported from our Trainer step above.
 To send a request to the server and run model inference, run:
 
 ```
-./classify_local.sh
+bash ./classify_local.sh
 ```
 
 More information about serving can be found in the
@@ -416,11 +416,11 @@ Finally, we serve the model we created in the training step in the cloud. To
 start serving your model from the cloud, you can run:
 
 ```
-./start_model_server_mlengine.sh
+bash ./start_model_server_mlengine.sh
 ```
 
 To send a request to the cloud:
 
 ```
-./classify_mlengine.sh
+bash ./classify_mlengine.sh
 ```
