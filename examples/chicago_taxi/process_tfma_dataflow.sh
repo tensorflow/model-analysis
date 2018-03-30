@@ -34,6 +34,7 @@ echo Eval model dir: $EVAL_MODEL_DIR
 python process_tfma.py \
   --big_query_table=bigquery-public-data.chicago_taxi_trips.taxi_trips \
   --eval_model_dir=$LAST_EVAL_MODEL_DIR \
+  --max_eval_rows 3000000 \
   --eval_result_dir=$EVAL_RESULT_DIR \
   --project $MYPROJECT \
   --temp_location $MYBUCKET/$JOB_ID/tmp/ \
