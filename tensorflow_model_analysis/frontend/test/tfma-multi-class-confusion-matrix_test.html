@@ -44,15 +44,16 @@ suite('tests', () => {
    */
   let element;
 
-  const run = (cb) => {
+  const run = (cb, data) => {
     element = fixture('matrix');
     element.expanded = true;
-    element.jsonData = DEFAULT_DATA;
+    element.jsonData = data;
     element.async(cb, 1);
   };
 
   test('parseData', done => {
     const checkMatrixContent = () => {
+      debugger;
       const headerRow = element.$$('.matrix-row:nth-child(1)');
       assert.deepEqual(
           headerRow.textContent.trim().split(/[\s\n]+/), ['A', 'B']);
@@ -68,7 +69,7 @@ suite('tests', () => {
       done();
     };
 
-    run(checkMatrixContent);
+    run(checkMatrixContent, DEFAULT_DATA);
   });
 
   test('sortByColumn', done => {
@@ -95,7 +96,7 @@ suite('tests', () => {
       done();
     };
 
-    run(sortByColumnA);
+    run(sortByColumnA, DEFAULT_DATA);
   });
 
   test('sortByRow', done => {
@@ -122,7 +123,7 @@ suite('tests', () => {
       done();
     };
 
-    run(sortByRowA);
+    run(sortByRowA, DEFAULT_DATA);
   });
 
   test('showCellDetail', done => {
@@ -153,7 +154,32 @@ suite('tests', () => {
       done();
     };
 
-    run(clickCellAA);
+    run(clickCellAA, DEFAULT_DATA);
+  });
+
+  test('omitVisualizationIfTooManyClasses', done => {
+    const makeData = (count) => {
+      const entries = [];
+      for (let i = 0; i < count; i++) {
+        for (let j = 0; j < count; j++) {
+          entries.push({
+            'actualClass': 'class' + i,
+            'predictedClass': 'class' + j,
+            'weight': Math.round(Math.random() * 128)
+          });
+        }
+      }
+      return {
+        'entries': entries
+      }
+    };
+
+    const checkText = () => {
+      assert.equal(element.textContent.trim(), 'Omitted');
+      done();
+    };
+
+    run(checkText, makeData(128));
   });
 });
   </script>

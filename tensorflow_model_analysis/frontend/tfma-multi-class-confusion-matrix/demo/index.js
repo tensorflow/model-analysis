@@ -56,4 +56,8 @@ const matrix4 = document.getElementById('scale');
 matrix4.jsonData = {
   'entries': makeData(3)
 };
+const matrix5 = document.getElementById('omit');
+matrix5.jsonData = {
+  'entries': makeData(1024)
+};
 })();

@@ -17,7 +17,7 @@ Polymer({
 
   /**
    * A visualization of multi-class confusion matrix. It is designed to support
-   * up to 64 classes.
+   * up to 32 classes.
    */
   is: 'tfma-multi-class-confusion-matrix',
 
@@ -251,6 +251,10 @@ Polymer({
    */
   computeMatrix_: function(
       summary, predictedClasses, actualClasses, classColors, expanded) {
+    if (this.tooMany_(predictedClasses) || this.tooMany_(actualClasses)) {
+      // If too many classes to visualize, return empty array isntead.
+      return [];
+    }
     const makeHeader = (className, cssClasses) => {
       return {
         'header': true,
@@ -362,5 +366,15 @@ Polymer({
     } else {
       this.actualClasses_ = classNames;
     }
+  },
+
+  /**
+   * @param {!Array<string>} classes
+   * @return {boolean} Whether the given list of classes are too many for the
+   *     component to render efficidently.
+   */
+  tooMany_: function(classes) {
+    // We currently support up to 32 classes.
+    return classes.length > 32;
   },
 });

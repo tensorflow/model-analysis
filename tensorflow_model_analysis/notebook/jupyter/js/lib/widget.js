@@ -32,6 +32,15 @@ function loadVulcanizedTemplate() {
   }
 }
 
+/**
+ * HACK: Calls the render callback in a setTimeout. This delay avoids some
+ * rendering artifacts.
+ * @param {!Function} cb
+ */
+function delayedRender(cb) {
+  setTimeout(cb, 0);
+}
+
 const MODULE_NAME = 'tfma_widget_js';
 const MODEL_VERSION = '0.1.0';
 const VIEW_VERSION = '0.1.0';
@@ -65,10 +74,12 @@ const SlicingMetricsView = widgets.DOMWidgetView.extend({
     this.view_ = document.createElement(SLICING_METRICS_ELEMENT_NAME);
     this.el.appendChild(this.view_);
 
-    this.configChanged_();
-    this.dataChanged_();
-    this.model.on('change:config', this.configChanged_, this);
-    this.model.on('change:data', this.dataChanged_, this);
+    delayedRender(() => {
+      this.configChanged_();
+      this.dataChanged_();
+      this.model.on('change:config', this.configChanged_, this);
+      this.model.on('change:data', this.dataChanged_, this);
+    });
   },
   dataChanged_: function() {
     this.view_.data = this.model.get('data');
@@ -98,10 +109,12 @@ const TimeSeriesView = widgets.DOMWidgetView.extend({
     this.view_ = document.createElement(TIME_SERIES_ELEMENT_NAME);
     this.el.appendChild(this.view_);
 
-    this.configChanged_();
-    this.dataChanged_();
-    this.model.on('change:config', this.configChanged_, this);
-    this.model.on('change:data', this.dataChanged_, this);
+    delayedRender(() => {
+      this.configChanged_();
+      this.dataChanged_();
+      this.model.on('change:config', this.configChanged_, this);
+      this.model.on('change:data', this.dataChanged_, this);
+    });
   },
   dataChanged_: function() {
     this.view_.data = this.model.get('data');
@@ -131,10 +144,12 @@ const PlotView = widgets.DOMWidgetView.extend({
     this.view_ = document.createElement(PLOT_ELEMENT_NAME);
     this.el.appendChild(this.view_);
 
-    this.configChanged_();
-    this.dataChanged_();
-    this.model.on('change:config', this.configChanged_, this);
-    this.model.on('change:data', this.dataChanged_, this);
+    delayedRender(() => {
+      this.configChanged_();
+      this.dataChanged_();
+      this.model.on('change:config', this.configChanged_, this);
+      this.model.on('change:data', this.dataChanged_, this);
+    });
   },
   dataChanged_: function() {
     this.view_.data = this.model.get('data');
