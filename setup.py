@@ -30,7 +30,7 @@ from setuptools.command.egg_info import egg_info
 from setuptools.command.sdist import sdist
 
 # Tensorflow Model Analysis version.
-__version__ = '0.6.0'
+__version__ = '0.7.0dev'
 
 here = os.path.dirname(os.path.abspath(__file__))
 node_root = os.path.join(here, 'tensorflow_model_analysis', 'notebook',
@@ -48,9 +48,6 @@ build_js = False
 log.set_verbosity(log.DEBUG)
 log.info('setup.py entered')
 log.info('$PATH=%s' % os.environ['PATH'])
-
-LONG_DESCRIPTION = ('A library for Tensorflow model analysis with Jupyter'
-                    'widget to visualize analysis results.')
 
 
 def js_prerelease(command, strict=False):
@@ -176,9 +173,7 @@ setup_args = {
     'version':
         __version__,
     'description':
-        'A library for TensorFlow model analysis',
-    'long_description':
-        LONG_DESCRIPTION,
+        'A library for analyzing TensorFlow models',
     'include_package_data':
         True,
     'data_files': [('share/jupyter/nbextensions/tfma_widget_js', [

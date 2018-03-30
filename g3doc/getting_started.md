@@ -16,7 +16,7 @@ manner over a large amount of data, and user-defined slices.
 
 To use your an existing model with TFMA, you must first instrument the model to
 export the *EvalSavedModel*. You can do this by adding a call to
-`tfma.export_eval_savedmodel`, which is analogous to
+`tfma.export.export_eval_savedmodel`, which is analogous to
 `estimator.export_savedmodel`.
 
 The following code snippet illustrates this:
@@ -112,7 +112,7 @@ using `add_metrics_callbacks`. You can learn more by viewing the docstring for
 
 To perform distributed evaluation, you will have to construct a Beam pipeline
 with a distributed runner. This requires you to have some familiarity with
-[Apache Beam][(http://beam.apache.org).
+[Apache Beam](http://beam.apache.org).
 
 In your Beam pipeline, you can use the `tfma.EvaluateAndWriteResults` to
 perform the evaluation and write the results out. The results can later be

@@ -41,11 +41,12 @@ our testing framework. Other combinations may also work, but are untested.
 |tensorflow-model-analysis  |tensorflow    |apache-beam[gcp]|
 |---------------------------|--------------|----------------|
 |GitHub master              |1.6           |2.4.0           |
+|0.6.0                      |1.6           |2.4.0           |
 
 ## Getting Started
 
 For instructions on using TFMA, see the [getting started
-guide](docs/getting_started.md).
+guide](g3doc/getting_started.md).
 
 <sup>1</sup> If Jupyter is installed in your home directory, add `--user` for
     all commands; if Jupyter is installed in root or virtualenv is used,

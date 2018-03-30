@@ -273,3 +273,39 @@ def export_eval_savedmodel(
 
       gfile.Rename(temp_export_dir, export_dir)
       return export_dir
+
+
+def make_export_strategy(
+    eval_input_receiver_fn,
+    exports_to_keep = 5):
+  """Create an ExportStrategy for EvalSavedModel.
+
+  Note: The strip_default_attrs is not used for EvalSavedModel export. And
+  writing the EvalSavedModel proto in text format is not supported for now.
+
+  Args:
+    eval_input_receiver_fn: Eval input receiver function.
+    exports_to_keep: Number of exports to keep.  Older exports will be
+      garbage-collected.  Defaults to 5.  Set to None to disable garbage
+      collection.
+
+  Returns:
+    An ExportStrategy for EvalSavedModel that can be passed to the
+    tf.contrib.learn.Experiment constructor.
+  """
+
+  def export_fn(estimator,
+                export_dir_base,
+                checkpoint_path=None,
+                strip_default_attrs=False):
+    del strip_default_attrs
+    export_dir = export_eval_savedmodel(
+        estimator=estimator,
+        export_dir_base=export_dir_base,
+        eval_input_receiver_fn=eval_input_receiver_fn,
+        checkpoint_path=checkpoint_path)
+    tf.contrib.learn.utils.saved_model_export_utils.garbage_collect_exports(
+        export_dir_base, exports_to_keep)
+    return export_dir
+
+  return tf.contrib.export_strategy.ExportStrategy('TFMA', export_fn)

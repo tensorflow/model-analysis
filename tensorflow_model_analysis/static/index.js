@@ -151,6 +151,15 @@ function loadVulcanizedTemplate() {
   }
 }
 
+/**
+ * HACK: Calls the render callback in a setTimeout. This delay avoids some
+ * rendering artifacts.
+ * @param {!Function} cb
+ */
+function delayedRender(cb) {
+  setTimeout(cb, 0);
+}
+
 const MODULE_NAME = 'tfma_widget_js';
 const MODEL_VERSION = '0.1.0';
 const VIEW_VERSION = '0.1.0';
@@ -184,10 +193,12 @@ const SlicingMetricsView = widgets.DOMWidgetView.extend({
     this.view_ = document.createElement(SLICING_METRICS_ELEMENT_NAME);
     this.el.appendChild(this.view_);
 
-    this.configChanged_();
-    this.dataChanged_();
-    this.model.on('change:config', this.configChanged_, this);
-    this.model.on('change:data', this.dataChanged_, this);
+    delayedRender(() => {
+      this.configChanged_();
+      this.dataChanged_();
+      this.model.on('change:config', this.configChanged_, this);
+      this.model.on('change:data', this.dataChanged_, this);
+    });
   },
   dataChanged_: function() {
     this.view_.data = this.model.get('data');
@@ -217,10 +228,12 @@ const TimeSeriesView = widgets.DOMWidgetView.extend({
     this.view_ = document.createElement(TIME_SERIES_ELEMENT_NAME);
     this.el.appendChild(this.view_);
 
-    this.configChanged_();
-    this.dataChanged_();
-    this.model.on('change:config', this.configChanged_, this);
-    this.model.on('change:data', this.dataChanged_, this);
+    delayedRender(() => {
+      this.configChanged_();
+      this.dataChanged_();
+      this.model.on('change:config', this.configChanged_, this);
+      this.model.on('change:data', this.dataChanged_, this);
+    });
   },
   dataChanged_: function() {
     this.view_.data = this.model.get('data');
@@ -250,10 +263,12 @@ const PlotView = widgets.DOMWidgetView.extend({
     this.view_ = document.createElement(PLOT_ELEMENT_NAME);
     this.el.appendChild(this.view_);
 
-    this.configChanged_();
-    this.dataChanged_();
-    this.model.on('change:config', this.configChanged_, this);
-    this.model.on('change:data', this.dataChanged_, this);
+    delayedRender(() => {
+      this.configChanged_();
+      this.dataChanged_();
+      this.model.on('change:config', this.configChanged_, this);
+      this.model.on('change:data', this.dataChanged_, this);
+    });
   },
   dataChanged_: function() {
     this.view_.data = this.model.get('data');
@@ -17443,8 +17458,8 @@ module.exports = function(module) {
 /* 6 */
 /***/ (function(module, exports) {
 
-module.exports = {"name":"tfma_widget_js","version":"0.1.0","description":"A Custom Jupyter Widget Library","author":"","main":"lib/index.js","repository":{"type":"git","url":"https://github.com//tfma_nb_widget.git"},"keywords":["jupyter","widgets","ipython","ipywidgets"],"files":["lib/**/*.js","dist/*.js"],"scripts":{"clean":"rimraf dist/","prepublish":"webpack","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"webpack":"^3.5.5","rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.0.0","lodash":"^4.17.4"}}
+module.exports = {"main":"lib/index.js","files":["lib/**/*.js","dist/*.js"],"scripts":{"clean":"rimraf dist/","prepublish":"webpack","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"webpack":"^3.5.5","rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.0.0","lodash":"^4.17.4"}};
 
 /***/ })
-/******/ ])});;
+/******/ ])});
 //# sourceMappingURL=index.js.map

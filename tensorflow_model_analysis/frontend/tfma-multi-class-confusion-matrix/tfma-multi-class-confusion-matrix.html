@@ -166,11 +166,9 @@ limitations under the License.
     </style>
     <div id="root" class$="s[[classNames_.length]]">
       <div>
-        <template is="dom-repeat" items="[[matrix_]]" as="row"
-                  inital-count="[[classNames_.length]]">
+        <template is="dom-repeat" items="[[matrix_]]" as="row" inital-count="10">
           <div class="matrix-row">
-            <template is="dom-repeat" items="[[row]]" as="cell"
-                      inital-count="[[classNames_.length]]">
+            <template is="dom-repeat" items="[[row]]" as="cell" inital-count="10">
               <template is="dom-if" if="[[cell.widget]]">
                 <div class="widget"></div>
               </template>
@@ -196,6 +194,9 @@ limitations under the License.
               </template>
             </template>
           </div>
+        </template>
+        <template is="dom-if" if="[[tooMany_(classNames_)]]">
+          <a title="Too many classes for visualization.">Omitted</a>
         </template>
       </div>
     </div>
