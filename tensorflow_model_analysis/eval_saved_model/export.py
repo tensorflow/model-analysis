@@ -25,6 +25,8 @@ import time
 
 import tensorflow as tf
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis import version
+from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.types_compat import Callable, Optional, NamedTuple  # pytype: disable=not-supported-yet
@@ -183,6 +185,10 @@ def export_eval_savedmodel(
       estimator_spec.eval_metric_ops = model_fn_ops.eval_metric_ops
       estimator_spec.scaffold = model_fn_ops.scaffold
 
+    # Write out exporter version.
+    tf.add_to_collection(encoding.TFMA_VERSION_COLLECTION,
+                         version.VERSION_STRING)
+
     # Save metric using eval_metric_ops.
     for user_metric_key, (value_op, update_op) in (
         estimator_spec.eval_metric_ops.items()):
@@ -263,7 +269,7 @@ def export_eval_savedmodel(
       builder = tf.saved_model.builder.SavedModelBuilder(temp_export_dir)
       builder.add_meta_graph_and_variables(
           session,
-          [tf.saved_model.tag_constants.SERVING],
+          [constants.EVAL_SAVED_MODEL_TAG],
           # Don't export any signatures, since this graph is not actually
           # meant for serving.
           signature_def_map=None,
@@ -308,4 +314,4 @@ def make_export_strategy(
         export_dir_base, exports_to_keep)
     return export_dir
 
-  return tf.contrib.export_strategy.ExportStrategy('TFMA', export_fn)
+  return tf.contrib.learn.ExportStrategy('TFMA', export_fn)

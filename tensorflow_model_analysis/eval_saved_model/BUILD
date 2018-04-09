@@ -1,13 +1,30 @@
 licenses(["notice"])  # Apache 2.0
 
 py_library(
+    name = "constants",
+    srcs = ["constants.py"],
+    deps = [],
+)
+
+py_library(
     name = "export",
     srcs = ["export.py"],
     deps = [
+        ":constants",
         ":encoding",
         ":util",
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis:types",
+        "//tensorflow_model_analysis:version",
+    ],
+)
+
+py_library(
+    name = "exporter",
+    srcs = ["exporter.py"],
+    deps = [
+        ":export",
+        "//tensorflow_model_analysis:expect_tensorflow_installed",
     ],
 )
 
@@ -35,6 +52,7 @@ py_library(
     name = "load",
     srcs = ["load.py"],
     deps = [
+        ":constants",
         ":encoding",
         ":graph_ref",
         "//tensorflow_model_analysis:expect_tensorflow_installed",

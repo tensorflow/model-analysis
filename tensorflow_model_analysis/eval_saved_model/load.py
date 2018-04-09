@@ -22,9 +22,12 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import graph_ref
 from tensorflow_model_analysis.types_compat import Any, Dict, List, NamedTuple, Optional, Tuple  # pytype: disable=not-supported-yet
+
+from tensorflow.core.protobuf import meta_graph_pb2
 
 FeaturesPredictionsLabels = NamedTuple(  # pylint: disable=invalid-name
     'FeaturesPredictionsLabels',
@@ -42,6 +45,15 @@ class EvalSavedModel(object):
     self._session = tf.Session(graph=self._graph)
     self._load_and_parse_graph()
 
+  def _check_version(self, meta_graph_def):
+    version = meta_graph_def.collection_def.get(
+        encoding.TFMA_VERSION_COLLECTION)
+    if version is None:
+      raise ValueError(
+          'could not find TFMA version in graph (at path %s)' % self._path)
+    # We don't actually do any checking for now, since we don't have any
+    # compatibility issues.
+
   def _load_and_parse_graph(self):
     """Actually load and parse the graph.
 
@@ -49,8 +61,9 @@ class EvalSavedModel(object):
     in the future.
     """
     meta_graph_def = tf.saved_model.loader.load(
-        self._session, [tf.saved_model.tag_constants.SERVING], self._path)
+        self._session, [constants.EVAL_SAVED_MODEL_TAG], self._path)
 
+    self._check_version(meta_graph_def)
     with self._graph.as_default():
       # Get references to "named" nodes.
       self._input_example_node = graph_ref.get_node_in_graph(

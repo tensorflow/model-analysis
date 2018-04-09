@@ -40,7 +40,7 @@ our testing framework. Other combinations may also work, but are untested.
 
 |tensorflow-model-analysis  |tensorflow    |apache-beam[gcp]|
 |---------------------------|--------------|----------------|
-|GitHub master              |1.6           |2.4.0           |
+|GitHub master              |1.7           |2.4.0           |
 |0.6.0                      |1.6           |2.4.0           |
 
 ## Getting Started
@@ -51,3 +51,8 @@ guide](g3doc/getting_started.md).
 <sup>1</sup> If Jupyter is installed in your home directory, add `--user` for
     all commands; if Jupyter is installed in root or virtualenv is used,
     `--sys-prefix` might be needed.
+
+## Questions
+
+Please direct any questions about working with TFMA to [Stack Overflow](https://stackoverflow.com) using
+the [tensorflow-model-analysis](https://stackoverflow.com/questions/tagged/tensorflow-model-analysis) tag.

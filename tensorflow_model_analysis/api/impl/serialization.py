@@ -24,6 +24,7 @@ import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_model_analysis import version as tfma_version
 from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_model_analysis.types_compat import Any, Callable, Dict, List, Tuple, TypeVar
@@ -35,7 +36,7 @@ _EVAL_CONFIG_FILE = 'eval_config'
 
 # Keys for the serialized final dictionary.
 _SLICE_METRICS_LIST_KEY = 'slice_metrics_list'
-_VERSION_KEY = 'version'
+_VERSION_KEY = 'tfma_version'
 _METRICS_TYPE_KEY = 'metrics_type'
 _EVAL_CONFIG_KEY = 'eval_config'
 
@@ -46,7 +47,7 @@ _METRICS_METRICS_TYPE = 'metrics'
 
 def _serialize_eval_config(eval_config):
   final_dict = {}
-  final_dict[_VERSION_KEY] = '0.0.1'
+  final_dict[_VERSION_KEY] = tfma_version.VERSION_STRING
   final_dict[_EVAL_CONFIG_KEY] = eval_config
   return pickle.dumps(final_dict)
 
@@ -77,11 +78,22 @@ def _deserialize_metrics_raw(serialized):
   return pickle.loads(serialized)
 
 
+def _check_version(raw_final_dict, path):
+  version = raw_final_dict.get(_VERSION_KEY)
+  if version is None:
+    raise ValueError(
+        'could not find TFMA version in raw deserialized dictionary for '
+        'file at %s' % path)
+  # We don't actually do any checking for now, since we don't have any
+  # compatibility issues.
+
+
 def _load_and_deserialize_metrics(
     path,
     metrics_type):
   serialized_record = tf.python_io.tf_record_iterator(path).next()
   final_dict = _deserialize_metrics_raw(serialized_record)
+  _check_version(final_dict, path)
   if final_dict[_METRICS_TYPE_KEY] != metrics_type:
     raise ValueError('when deserializing file %s, metrics type mismatch: '
                      'expecting %s, got %s' % (path, metrics_type,
@@ -156,7 +168,7 @@ def _serialize_metrics(
     formatted_slice_metrics_list.append((slice_key, formatted_slice_metrics))
 
   final_dict = {
-      _VERSION_KEY: '0.0.1',
+      _VERSION_KEY: tfma_version.VERSION_STRING,
       _SLICE_METRICS_LIST_KEY: formatted_slice_metrics_list,
       _METRICS_TYPE_KEY: metrics_type,
   }

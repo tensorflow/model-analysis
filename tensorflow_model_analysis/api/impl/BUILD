@@ -40,6 +40,7 @@ py_library(
         ":api_types",
         "//tensorflow_model_analysis:expect_apache_beam_installed",  # b/73825929
         "//tensorflow_model_analysis:expect_tensorflow_installed",
+        "//tensorflow_model_analysis:version",
         "//tensorflow_model_analysis/slicer",
         "//third_party/py/numpy",
     ],
