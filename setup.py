@@ -29,8 +29,11 @@ from setuptools.command.build_py import build_py
 from setuptools.command.egg_info import egg_info
 from setuptools.command.sdist import sdist
 
-# Tensorflow Model Analysis version.
-__version__ = '0.7.0dev'
+# Get version from version module.
+with open('tensorflow_model_analysis/version.py') as fp:
+  globals_dict = {}
+  exec (fp.read(), globals_dict)  # pylint: disable=exec-used
+__version__ = globals_dict['VERSION_STRING']
 
 here = os.path.dirname(os.path.abspath(__file__))
 node_root = os.path.join(here, 'tensorflow_model_analysis', 'notebook',

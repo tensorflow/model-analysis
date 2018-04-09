@@ -23,7 +23,7 @@ feel free to check back in periodically!
 
 # Table Of Contents
 1. [Dataset](#dataset)
-1. [LocalPrerequisites](#local-prerequisites)
+1. [Local Prerequisites](#local-prerequisites)
 1. [Running the Local Example](#running-the-local-example)
 1. [Cloud Prerequisites](#cloud-prerequisites)
 1. [Running the Cloud Example](#running-the-cloud-example)
@@ -407,7 +407,7 @@ gsutil ls -l $TFT_OUTPUT_PATH/eval_result_dir
 ## Rendering TensorFlow Model Analysis Results in Local Jupyter Notebook
 
 The steps for looking at your results in a notebook are identical to the ones from
-the local job. Simply go to `chicago_taxi_tfma.ipynb#` notebook,
+the local job. Simply go to `chicago_taxi_tfma.ipynb` notebook,
 and set up the output directory to see the results.
 
 ## Model Serving on Google Cloud Machine Learning Engine

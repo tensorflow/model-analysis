@@ -26,6 +26,7 @@ from google.protobuf import any_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
 
 # Names for the various collections
+TFMA_VERSION_COLLECTION = 'evaluation_only/metadata/tfma_version'
 METRICS_COLLECTION = 'evaluation_only/metrics'
 PREDICTIONS_COLLECTION = 'evaluation_only/predictions'
 INPUT_EXAMPLE_COLLECTION = 'evaluation_only/label_graph/input_example'

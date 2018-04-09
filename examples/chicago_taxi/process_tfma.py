@@ -103,8 +103,7 @@ def main():
                 post_export_metrics.calibration_plot_and_prediction_histogram(),
                 post_export_metrics.auc_plots()
             ],
-            output_path=eval_result_dir,
-            desired_batch_size=100))
+            output_path=eval_result_dir))
 
 
 if __name__ == '__main__':

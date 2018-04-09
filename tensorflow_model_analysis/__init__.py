@@ -19,6 +19,7 @@ from tensorflow_model_analysis.api.model_eval_lib import *  # pylint: disable=wi
 from tensorflow_model_analysis.constants import DATA_CENTRIC_MODE
 from tensorflow_model_analysis.constants import MODEL_CENTRIC_MODE
 from tensorflow_model_analysis.eval_saved_model import export
+from tensorflow_model_analysis.eval_saved_model import exporter
 from tensorflow_model_analysis.eval_saved_model import post_export_metrics
 from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
 

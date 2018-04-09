@@ -303,7 +303,7 @@ class _AggregateCombineFn(beam.CombineFn):
     if self._eval_saved_model is None:
       self._start_bundle()
     batch_size = len(accumulator.fpls)
-    if force or batch_size > self._desired_batch_size:
+    if force or batch_size >= self._desired_batch_size:
       self._combine_batch_size.update(batch_size)
       if accumulator.fpls:  # Might be empty if force is True
         accumulator.add_metrics_variables(
@@ -326,7 +326,15 @@ class _AggregateCombineFn(beam.CombineFn):
     result = _AggState()
     for acc in accumulators:
       result += acc
-    self._maybe_do_batch(result)
+      # Compact within the loop to avoid accumulating too much data.
+      #
+      # During the "map" side of combining combining happens per bundle,
+      # but on the "reduce" side it's across all bundles (for a given key).
+      #
+      # So we could potentially accumulate get num_bundles * batch_size
+      # elements if we don't process the batches within the loop, which
+      # could cause OOM errors (b/77293756).
+      self._maybe_do_batch(result)
     return result
 
   def extract_output(self,
