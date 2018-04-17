@@ -22,6 +22,7 @@ from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model import exporter
 from tensorflow_model_analysis.eval_saved_model import post_export_metrics
 from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
+from tensorflow_model_analysis.version import VERSION_STRING
 
 
 def _jupyter_nbextension_paths():

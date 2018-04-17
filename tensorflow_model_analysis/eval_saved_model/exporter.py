@@ -24,7 +24,7 @@ import os
 import tensorflow as tf
 
 from tensorflow_model_analysis.eval_saved_model import export
-from tensorflow_model_analysis.types_compat import Callable
+from tensorflow_model_analysis.types_compat import Callable, Optional
 from tensorflow.python.estimator import gc
 from tensorflow.python.framework import errors_impl
 from tensorflow.python.platform import gfile
@@ -35,8 +35,8 @@ from tensorflow.python.platform import tf_logging
 class _EvalSavedModelExporter(tf.estimator.Exporter):
   """This class exports the EvalSavedModel.
 
-     This class provides a basic exporting functionality and serves as a
-     foundation for specialized `Exporter`s.
+  This class provides a basic exporting functionality and serves as a
+  foundation for specialized `Exporter`s.
   """
 
   def __init__(self, name,

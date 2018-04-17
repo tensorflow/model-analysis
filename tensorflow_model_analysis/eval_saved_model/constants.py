@@ -13,4 +13,5 @@
 # limitations under the License.
 """Constants for the EvalSavedModel."""
 
+EVAL_SAVED_MODEL_EXPORT_NAME = 'TFMA'
 EVAL_SAVED_MODEL_TAG = 'eval_saved_model'

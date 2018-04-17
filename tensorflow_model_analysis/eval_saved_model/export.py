@@ -281,6 +281,37 @@ def export_eval_savedmodel(
       return export_dir
 
 
+def build_parsing_eval_input_receiver_fn(
+    feature_spec, label_key):
+  """Build a eval_input_receiver_fn expecting fed tf.Examples.
+
+  Creates a eval_input_receiver_fn that expects a serialized tf.Example fed
+  into a string placeholder.  The function parses the tf.Example according to
+  the provided feature_spec, and returns all parsed Tensors as features.
+
+  Args:
+    feature_spec: A dict of string to `VarLenFeature`/`FixedLenFeature`.
+    label_key: The key for the label column in the feature_spec. Note that
+      the label must be part of the feature_spec.
+
+  Returns:
+    A eval_input_receiver_fn suitable for use with TensorFlow model analysis.
+  """
+
+  def eval_input_receiver_fn():
+    """An input_fn that expects a serialized tf.Example."""
+    # Note it's *required* that the batch size should be variable for TFMA.
+    serialized_tf_example = tf.placeholder(
+        dtype=tf.string, shape=[None], name='input_example_tensor')
+    features = tf.parse_example(serialized_tf_example, feature_spec)
+    return EvalInputReceiver(
+        features=features,
+        receiver_tensors={'examples': serialized_tf_example},
+        labels=features[label_key])
+
+  return eval_input_receiver_fn
+
+
 def make_export_strategy(
     eval_input_receiver_fn,
     exports_to_keep = 5):
@@ -314,4 +345,5 @@ def make_export_strategy(
         export_dir_base, exports_to_keep)
     return export_dir
 
-  return tf.contrib.learn.ExportStrategy('TFMA', export_fn)
+  return tf.contrib.learn.ExportStrategy(constants.EVAL_SAVED_MODEL_EXPORT_NAME,
+                                         export_fn)
