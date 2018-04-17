@@ -186,7 +186,7 @@ class WriteMetricsPlotsAndConfig(beam.PTransform):
   """Writes metrics, plots and config to the given path.
 
   This is the internal implementation. Users should call
-  model_eval_lib.WriteMetricsAndPlots instead of this.
+  tfma.EvaluateAndWriteResults() instead, which calls this.
   """
 
   def __init__(self, output_path,

@@ -33,7 +33,12 @@ distributed mode using
 [Google Cloud Dataflow](https://cloud.google.com/dataflow/). TFMA is designed to
 be extensible to other Apache Beam runners.
 
-### Compatible Versions
+## Getting Started
+
+For instructions on using TFMA, see the [getting started
+guide](g3doc/getting_started.md).
+
+## Compatible Versions
 
 This is a table of versions known to be compatible with each other, based on
 our testing framework. Other combinations may also work, but are untested.
@@ -42,11 +47,6 @@ our testing framework. Other combinations may also work, but are untested.
 |---------------------------|--------------|----------------|
 |GitHub master              |1.7           |2.4.0           |
 |0.6.0                      |1.6           |2.4.0           |
-
-## Getting Started
-
-For instructions on using TFMA, see the [getting started
-guide](g3doc/getting_started.md).
 
 <sup>1</sup> If Jupyter is installed in your home directory, add `--user` for
     all commands; if Jupyter is installed in root or virtualenv is used,

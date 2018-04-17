@@ -21,7 +21,7 @@ export the *EvalSavedModel*. You can do this by adding a call to
 
 The following code snippet illustrates this:
 
-```
+```python
 # Define, train and export your estimator as usual
 estimator = tf.estimator.DNNClassifier(...)
 estimator.train(...)
@@ -42,7 +42,7 @@ features. It should additionally parse and return the label.
 The following code snippet illustrates how you might define an
 `eval_input_receiver_fn`:
 
-```
+```python
 country = tf.contrib.layers.sparse_column_with_hash_buckets('country', 100)
 language = tf.contrib.layers.sparse_column_with_hash_buckets(language, 100)
 age = tf.contrib.layers.real_valued_column('age')
@@ -91,7 +91,7 @@ The quickest way to try it out is to use `tfma.run_model_analysis` to perform
 the evaluation. Note that this uses Beam's local runner, so it's mainly for
 quick small-scale experimentation locally. The following code snippet shows how:
 
-```
+```python
 # Note that this code should be run in a Jupyter Notebook.
 
 # This assumes your data is a TFRecords file containing records in the format
@@ -119,7 +119,7 @@ perform the evaluation and write the results out. The results can later be
 loaded for visualization using `tfma.load_eval_result`. The following snippet
 illustrates this:
 
-```
+```python
 # To run the pipeline.
 with beam.Pipeline(runner=...) as p:
   _ = (p
