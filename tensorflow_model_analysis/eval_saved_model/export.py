@@ -20,8 +20,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import time
-
 
 import tensorflow as tf
 from tensorflow_model_analysis import types
@@ -32,6 +30,7 @@ from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.types_compat import Callable, Optional, NamedTuple  # pytype: disable=not-supported-yet
 
 from tensorflow.core.protobuf import config_pb2
+from tensorflow.python.estimator import util as estimator_util
 from tensorflow.python.platform import gfile
 from tensorflow.python.util import compat
 
@@ -56,56 +55,8 @@ class EvalInputReceiver(
   # When we create a timestamped directory, there is a small chance that the
 
 
-# directory already exists because another worker is also writing exports.
-# In this case we just wait one second to get a new timestamp and try again.
-# If this fails several times in a row, then something is seriously wrong.
-MAX_DIRECTORY_CREATION_ATTEMPTS = 10
-
-
-def _get_timestamped_export_dir(export_dir_base):
-  """Builds a path to a new subdirectory within the base directory.
-
-  Each export is written into a new subdirectory named using the
-  current time.  This guarantees monotonically increasing version
-  numbers even across multiple runs of the pipeline.
-  The timestamp used is the number of seconds since epoch UTC.
-
-  Args:
-    export_dir_base: A string containing a directory to write the exported
-        graph and checkpoints.
-  Returns:
-    The full path of the new subdirectory (which is not actually created yet).
-
-  Raises:
-    RuntimeError: if repeated attempts fail to obtain a unique timestamped
-      directory name.
-  """
-  attempts = 0
-  while attempts < MAX_DIRECTORY_CREATION_ATTEMPTS:
-    export_timestamp = int(time.time())
-
-    export_dir = os.path.join(
-        compat.as_bytes(export_dir_base), compat.as_bytes(
-            str(export_timestamp)))
-    if not gfile.Exists(export_dir):
-      # Collisions are still possible (though extremely unlikely): this
-      # directory is not actually created yet, but it will be almost
-      # instantly on return from this function.
-      return export_dir
-    time.sleep(1)
-    attempts += 1
-    tf.logging.warn(
-        'Export directory {} already exists; retrying (attempt {}/{})'.format(
-            export_dir, attempts, MAX_DIRECTORY_CREATION_ATTEMPTS))
-  raise RuntimeError('Failed to obtain a unique export directory name after '
-                     '{} attempts.'.format(MAX_DIRECTORY_CREATION_ATTEMPTS))
-
-
 def _get_temp_export_dir(timestamped_export_dir):
   """Builds a directory name based on the argument but starting with 'temp-'.
-
-  This relies on the fact that TensorFlow Serving ignores subdirectories of
-  the base directory that can't be parsed as integers.
 
   Args:
     timestamped_export_dir: the name of the eventual export directory, e.g.
@@ -168,22 +119,28 @@ def export_eval_savedmodel(
         eval_input_receiver.labels)
 
     if isinstance(estimator, tf.estimator.Estimator):
-      # This is a core estimator
+      # This is a core Estimator.
       estimator_spec = estimator.model_fn(
           features=wrapped_features,
           labels=wrapped_labels,
           mode=tf.estimator.ModeKeys.EVAL,
           config=estimator.config)
     else:
-      # This is a contrib estimator
-      model_fn_ops = estimator._call_model_fn(  # pylint: disable=protected-access
+      # This is a contrib Estimator. Note that contrib Estimators are
+      # deprecated.
+      model_fn_ops = estimator.model_fn(
           features=wrapped_features,
           labels=wrapped_labels,
-          mode=tf.estimator.ModeKeys.EVAL)
-      estimator_spec = lambda x: None
-      estimator_spec.predictions = model_fn_ops.predictions
-      estimator_spec.eval_metric_ops = model_fn_ops.eval_metric_ops
-      estimator_spec.scaffold = model_fn_ops.scaffold
+          mode=tf.estimator.ModeKeys.EVAL,
+          config=estimator.config)
+      # "Convert" model_fn_ops into EstimatorSpec,
+      # populating only the fields we need.
+      estimator_spec = tf.estimator.EstimatorSpec(
+          loss=tf.constant(0.0),
+          mode=tf.estimator.ModeKeys.EVAL,
+          predictions=model_fn_ops.predictions,
+          eval_metric_ops=model_fn_ops.eval_metric_ops,
+          scaffold=model_fn_ops.scaffold)
 
     # Write out exporter version.
     tf.add_to_collection(encoding.TFMA_VERSION_COLLECTION,
@@ -244,7 +201,7 @@ def export_eval_savedmodel(
         raise ValueError(
             'Could not find trained model at %s.' % estimator.model_dir)
 
-    export_dir = _get_timestamped_export_dir(export_dir_base)
+    export_dir = estimator_util.get_timestamped_dir(export_dir_base)
     temp_export_dir = _get_temp_export_dir(export_dir)
 
     if estimator.config.session_config is None:
@@ -262,8 +219,10 @@ def export_eval_savedmodel(
       if estimator_spec.scaffold and estimator_spec.scaffold.local_init_op:
         local_init_op = estimator_spec.scaffold.local_init_op
       else:
-        local_init_op = tf.train.Scaffold._default_local_init_op()
-      # pylint: enable=protected-access
+        if hasattr(tf.train.Scaffold, 'default_local_init_op'):
+          local_init_op = tf.train.Scaffold.default_local_init_op()
+        else:
+          local_init_op = tf.train.Scaffold._default_local_init_op()  # pylint: disable=protected-access
 
       # Perform the export
       builder = tf.saved_model.builder.SavedModelBuilder(temp_export_dir)

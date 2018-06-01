@@ -1,0 +1,65 @@
+// Copyright 2018 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "google/protobuf/wrappers.proto";
+
+package tensorflow_model_analysis;
+
+// The value will be converted into an error message if we do not know its type.
+message UnknownType {
+  string error = 1;
+}
+
+message BoundedValue {
+  // The lower bound of the range.
+  google.protobuf.DoubleValue lower_bound = 1;
+  // The upper bound of the range.
+  google.protobuf.DoubleValue upper_bound = 2;
+  // Represents an exact value if the lower_bound and upper_bound are unset,
+  // else it's an approximate value. For the approximate value, it should be
+  // within the range [lower_bound, uppper_bound].
+  google.protobuf.DoubleValue value = 3;
+}
+
+// It stores metrics values in different types, so that the frontend will know
+// how to visualize the values based on the types.
+message MetricValue {
+  oneof type {
+    google.protobuf.DoubleValue double_value = 1;
+    BoundedValue bounded_value = 2;
+    UnknownType unknown_type = 3;
+  }
+}
+
+// A single slice key.
+message SingleSliceKey {
+  string column = 1;
+  string value = 2;
+}
+
+// A slice key, which may consist of multiple single slice keys.
+message SliceKey {
+  repeated SingleSliceKey single_slice_keys = 1;
+}
+
+message MetricsForSlice {
+  // The slice key for the metrics.
+  repeated SingleSliceKey slice_key = 1;
+  // A map to store metrics. Currently we convert the post_export_metric
+  // provided by TFMA to its appropriate type for better visualization, and map
+  // all other metrics to DoubleValue type.
+  map<string, MetricValue> metrics = 2;
+}

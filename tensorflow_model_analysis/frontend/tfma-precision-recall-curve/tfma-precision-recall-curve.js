@@ -63,8 +63,13 @@ Polymer({
                 entry['binaryClassificationThreshold']['predictionThreshold'] ||
                     0));
         const matrix = entry['matrix'];
-        const recall = matrix['recall'] || 0;
-        const precision = matrix['precision'] || 0;
+        // Due to potential division by zero, precision and recall can be NaN or
+        // Infinity. These values are cannot be serialized as valid json. To
+        // handle these cases, assume NaN and Infinity are converted to strings,
+        // "NaN"  and "Infinity") and use parseFloat to get back to NaN and
+        // Infinity.
+        const recall = parseFloat(matrix['recall'] || 0);
+        const precision = parseFloat(matrix['precision'] || 0);
         const tooltip = 'Prediction threshold: ' + threshold.toFixed(5) +
             '\nRecall: ' + recall.toFixed(5) +
             '\nPrecision: ' + precision.toFixed(5);

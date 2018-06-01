@@ -36,7 +36,7 @@ def tensorflow_model_analysis_polymer_workspace():
       licenses = ["notice"],  # BSD-3-Clause
       sha256 = "e4a959deb8ad9660ea4ee5552e87e1e064f4b76008bf0fe37b4f4ce51817d480",
       urls = [
-          "https://mirror.bazel.build/github.com/GoogleWebComponents/google-charts/archive/v1.1.1.tar.gz",
+          "https://mirror.bazel.build/github.com/GoogleWebComponents/google-chart/archive/v1.1.1.tar.gz",
           "https://github.com/GoogleWebComponents/google-chart/archive/v1.1.1.tar.gz",
       ],
       strip_prefix = "google-chart-1.1.1",

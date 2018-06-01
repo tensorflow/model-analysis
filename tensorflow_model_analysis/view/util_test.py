@@ -84,6 +84,13 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
   }
   plots_b2 = ([(column_1, slice_b)], plots_data_b)
 
+  plots_data_c = {
+      metric_keys.CALIBRATION_PLOT_BOUNDARIES: [0.5, float('nan')],
+      metric_keys.CALIBRATION_PLOT_MATRICES: [[1, 2], [2, float('nan'), 3],
+                                              [3, 4]]
+  }
+  plots_c = ([(column_1, slice_c)], plots_data_c)
+
   def _makeTestData(self):
     return [
         self.result_a, self.result_b, self.result_c, self.result_d,
@@ -95,6 +102,7 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         self.plots_a,
         self.plots_b,
         self.plots_b2,
+        self.plots_c,
     ]
 
   def _makeEvalResults(self):
@@ -256,6 +264,18 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
       util.get_plot_data_and_config(
           self._makeTestPlotsData(),
           SingleSliceSpec(features=[(self.column_1, self.slice_b)]))
+
+  def testReplaceNaNInPlotWithNone(self):
+    data, _ = util.get_plot_data_and_config(
+        self._makeTestPlotsData(),
+        SingleSliceSpec(features=[(self.column_1, self.slice_c)]))
+
+    self.assertEquals(
+        data, {
+            metric_keys.CALIBRATION_PLOT_BOUNDARIES: [0.5, None],
+            metric_keys.CALIBRATION_PLOT_MATRICES: [[1, 2], [2, None, 3],
+                                                    [3, 4]]
+        })
 
 
 if __name__ == '__main__':

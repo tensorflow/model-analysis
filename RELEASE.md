@@ -9,6 +9,8 @@
     `tf.estimator.LastExporter`.
 *   Add `tfma.export.build_parsing_eval_input_receiver_fn` which is analogous to
     `tf.estimator.export.build_parsing_serving_input_receiver_fn`.
+*   Add a new post export metric
+    `tfma.post_export_metrics.post_export_metrics.auc()`.
 
 ## Bug fixes and other changes
 
@@ -19,15 +21,15 @@
 
 ## Breaking changes
 
- * EvalSavedModels produced by TFMA 0.6.0 will not be compatible with TFMA 0.7.0
-   due to the following changes:
-   * EvalSavedModels are now written out with a custom "eval_saved_model" tag,
-     as opposed to the "serving" tag before.
-   * EvalSavedModels now include version metadata about the TFMA version that
-     they were exported with.
- * Metrics and plot outputs now include version metadata about the TFMA version
-   that they were exported with. Metrics and plots produced by TFMA 0.6.0 will
-   not be compatible with TFMA 0.7.0.
+*   EvalSavedModels produced by TFMA 0.6.0 will not be compatible with later
+    versions due to the following changes:
+    *   EvalSavedModels are now written out with a custom "eval_saved_model"
+        tag, as opposed to the "serving" tag before.
+    *   EvalSavedModels now include version metadata about the TFMA version that
+        they were exported with.
+*   Metrics and plot outputs now include version metadata about the TFMA version
+    that they were exported with. Metrics and plots produced by TFMA 0.6.0 will
+    not be compatible with later versions.
 
 ## Deprecations
 

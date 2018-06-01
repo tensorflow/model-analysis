@@ -32,16 +32,10 @@ Polymer({
     lowerBound: {type: Number},
 
     /**
-     * The computed value.
+     * The value.
      * @type {string}
      */
-    value_: {type: String, computed: 'computeValue_(lowerBound, upperBound)'},
-
-    /**
-     * The range of values.
-     * @type {string}
-     */
-    range_: {type: String, computed: 'computeRange_(lowerBound, upperBound)'},
+    value: {type: Number},
 
     /**
      * The serialized form of the data.
@@ -61,29 +55,18 @@ Polymer({
         const parsedData = JSON.parse(serializedData);
         this.upperBound = parsedData['upperBound'];
         this.lowerBound = parsedData['lowerBound'];
+        this.value = parsedData['value'];
       } catch (e) {
       }
     }
   },
 
   /**
-   * @param {number} lowerBound
-   * @param {number} upperBound
-   * @return {string} The value range.
+   * @param {number} value
+   * @return {string} The given value formatted as a string.
+   * @private
    */
-  computeRange_: function(lowerBound, upperBound) {
-    return ((upperBound - lowerBound) / 2)
-        .toFixed(tfma.FLOATING_POINT_PRECISION);
+  formatValue_: function(value) {
+    return value.toFixed(tfma.FLOATING_POINT_PRECISION);
   },
-
-  /**
-   * @param {number} lowerBound
-   * @param {number} upperBound
-   * @return {string} The value.
-   */
-  computeValue_: function(lowerBound, upperBound) {
-    return ((upperBound + lowerBound) / 2)
-        .toFixed(tfma.FLOATING_POINT_PRECISION);
-  },
-
 });

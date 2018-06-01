@@ -24,3 +24,6 @@ from __future__ import print_function
 UNKNOWN_EVAL_MODE = 'unknown_eval_mode'
 MODEL_CENTRIC_MODE = 'model_centric_mode'
 DATA_CENTRIC_MODE = 'data_centric_mode'
+
+# Keys to ExampleAndExtract extraction dictionary.
+FEATURES_PREDICTIONS_LABELS_KEY = 'fpl'

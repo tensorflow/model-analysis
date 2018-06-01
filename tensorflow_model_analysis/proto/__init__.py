@@ -11,8 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Contains the version string for this release of TFMA."""
-
-# Version string for this release of TFMA.
-# Note that setup.py reads and uses this version.
-VERSION_STRING = '0.8.0dev'

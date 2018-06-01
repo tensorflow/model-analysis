@@ -27,12 +27,22 @@ def _add_metric_prefix(name):
   return '%s/%s' % (_NAME_PREFIX, name)
 
 
+def upper_bound(name):
+  return name + '/upper_bound'
+
+
+def lower_bound(name):
+  return name + '/lower_bound'
+
+
 EXAMPLE_WEIGHT = _add_metric_prefix('example_weight')
 EXAMPLE_COUNT = _add_metric_prefix('example_count')
 CALIBRATION_PLOT_MATRICES = _add_metric_prefix('calibration_plot/matrices')
 CALIBRATION_PLOT_BOUNDARIES = _add_metric_prefix('calibration_plot/boundaries')
 AUC_PLOTS_MATRICES = _add_metric_prefix('auc_plots/matrices')
 AUC_PLOTS_THRESHOLDS = _add_metric_prefix('auc_plots/thresholds')
+AUC = _add_metric_prefix('auc')
+AUPRC = _add_metric_prefix('auprc')
 
 # keys where the corresponding values are results for plots
 PLOT_KEYS = [

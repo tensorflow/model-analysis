@@ -33,15 +33,19 @@ class SliceAccessorTest(tf.test.TestCase):
         dense_shape=[2, 2])
     dense = tf.constant([1.0, 2.0])
     bad_dense = tf.constant([[1.0, 2.0], [3.0, 4.0]])
+    squeeze_needed = tf.constant([[2.0]])
     sess = tf.Session()
-    sparse_value, dense_value, bad_dense_value = sess.run(
-        fetches=[sparse, dense, bad_dense])
+    sparse_value, dense_value, bad_dense_value, squeeze_needed_value = sess.run(
+        fetches=[sparse, dense, bad_dense, squeeze_needed])
     features_dict = {
         'sparse': {
             encoding.NODE_SUFFIX: sparse_value
         },
         'dense': {
             encoding.NODE_SUFFIX: dense_value
+        },
+        'squeeze_needed': {
+            encoding.NODE_SUFFIX: squeeze_needed_value
         },
         'bad_dense': {
             encoding.NODE_SUFFIX: bad_dense_value
@@ -50,6 +54,7 @@ class SliceAccessorTest(tf.test.TestCase):
     accessor = slice_accessor.SliceAccessor(features_dict)
     self.assertEqual(['apple', 'banana'], list(accessor.get('sparse')))
     self.assertEqual([1.0, 2.0], list(accessor.get('dense')))
+    self.assertEqual([2.0], list(accessor.get('squeeze_needed')))
     with self.assertRaises(ValueError):
       accessor.get('bad_dense')
     with self.assertRaises(KeyError):

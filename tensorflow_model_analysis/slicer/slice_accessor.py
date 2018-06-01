@@ -57,11 +57,19 @@ class SliceAccessor(object):
     value = feature['node']
     if isinstance(value, tf.SparseTensorValue):
       return value.values
-    elif isinstance(value, np.ndarray):
-      if value.ndim != 1:
-        raise ValueError('all dense features must be 1D arrays, but %s was '
-                         'not. value was %s' % (key, value))
-      return value
-    else:
-      raise ValueError('feature had unknown type: key: %s, value: %s' % (key,
-                                                                         value))
+    if not isinstance(value, np.ndarray):
+      raise ValueError(
+          'feature had unsupported type: key: %s, value: %s, type: %s' %
+          (key, value, type(value)))
+    squeezed_value = np.squeeze(value)
+    if squeezed_value.ndim > 1:
+      raise ValueError(
+          'all feature values must be convertible to 1D arrays, but %s was '
+          'not. value was %s' % (key, value))
+    if squeezed_value.ndim == 1:
+      # For the multivalent columns, the squeezed values are in 1D arrays.
+      return squeezed_value
+    else:  # squeezed_value.ndim == 0
+      # For the univalent columns, we get a scalar after squeezing, which we
+      # wrap in an np.array to form a 1D array.
+      return np.array([squeezed_value])

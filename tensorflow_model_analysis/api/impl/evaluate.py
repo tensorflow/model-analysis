@@ -22,10 +22,13 @@ import datetime
 
 
 import apache_beam as beam
+
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metric_keys
+from tensorflow_model_analysis.extractors import feature_extractor
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_transform.beam import shared
 from tensorflow_model_analysis.types_compat import Any, Callable, Dict, Generator, List, Optional, Tuple
@@ -101,7 +104,7 @@ class _EvalSavedModelDoFn(beam.DoFn):
     raise NotImplementedError('not implemented')
 
 
-@beam.typehints.with_input_types(beam.typehints.List[bytes])
+@beam.typehints.with_input_types(beam.typehints.List[types.ExampleAndExtracts])
 @beam.typehints.with_output_types(beam.typehints.Any)
 class _PredictionDoFn(_EvalSavedModelDoFn):
   """A DoFn that loads the model and predicts."""
@@ -116,12 +119,21 @@ class _PredictionDoFn(_EvalSavedModelDoFn):
     self._num_instances = beam.metrics.Metrics.counter(_METRICS_NAMESPACE,
                                                        'num_instances')
 
-  def process(self,
-              element):
+  def process(self, element
+             ):
     batch_size = len(element)
     self._predict_batch_size.update(batch_size)
     self._num_instances.inc(batch_size)
-    return self._eval_saved_model.predict_list(element)
+    serialized_examples = [x.example for x in element]
+
+    # Compute FeaturesPredictionsLabels for each serialized_example
+    for example_and_extracts, fpl in zip(
+        element,
+        self._eval_saved_model.predict_list(serialized_examples)):
+      example_and_extracts.extracts[
+          constants.FEATURES_PREDICTIONS_LABELS_KEY] = fpl
+
+    return element
 
 
 @beam.typehints.with_input_types(bytes)
@@ -367,8 +379,8 @@ def _Aggregate(  # pylint: disable=invalid-name
 
 @beam.typehints.with_input_types(beam.typehints.Tuple[
     _BeamSliceKeyType, beam.typehints.List[beam.typehints.Any]])
-@beam.typehints.with_output_types(beam.typehints.Tuple[
-    _BeamSliceKeyType, beam.typehints.Dict[bytes, beam.typehints.Any]])
+# No typehint for output type, since it's a multi-output DoFn result that
+# Beam doesn't support typehints for yet (BEAM-3280).
 class _ExtractOutputDoFn(_EvalSavedModelDoFn):
   """A DoFn that extracts the metrics output."""
 
@@ -395,8 +407,8 @@ class _ExtractOutputDoFn(_EvalSavedModelDoFn):
 
 @beam.typehints.with_input_types(beam.typehints.Tuple[
     _BeamSliceKeyType, beam.typehints.List[beam.typehints.Any]])
-@beam.typehints.with_output_types(beam.typehints.Tuple[
-    _BeamSliceKeyType, beam.typehints.Dict[bytes, beam.typehints.Any]])
+# No typehint for output type, since it's a multi-output DoFn result that
+# Beam doesn't support typehints for yet (BEAM-3280).
 @beam.ptransform_fn
 def _ExtractOutput(  # pylint: disable=invalid-name
     aggregate_result, eval_saved_model_path,
@@ -412,8 +424,8 @@ def _ExtractOutput(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_output_types(
-    beam.typehints.Dict[bytes, beam.typehints.Dict[bytes, beam.typehints.Any]])
+# No typehint for output type, since it's a multi-output DoFn result that
+# Beam doesn't support typehints for yet (BEAM-3280).
 def Evaluate(
     # pylint: disable=invalid-name
     examples,
@@ -472,13 +484,64 @@ def Evaluate(
 
   # pylint: disable=no-value-for-parameter
   return (examples
+          # Our diagnostic outputs, pass types.ExampleAndExtracts throughout,
+          # however our aggregating functions do not use this interface.
+          | beam.Map(lambda x: types.ExampleAndExtracts(example=x, extracts={}))
+
+          # Map function which loads and runs the eval_saved_model against every
+          # example, yielding an types.ExampleAndExtracts containing a
+          # FeaturesPredictionsLabels value (where key is 'fpl').
           | 'Predict' >> _Predict(
               eval_saved_model_path=eval_saved_model_path,
               desired_batch_size=desired_batch_size)
+
+          # Unwrap the types.ExampleAndExtracts.
+          # The rest of this pipeline expects FeaturesPredictionsLabels
+          | beam.Map(lambda x:  # pylint: disable=g-long-lambda
+                     x.extracts[constants.FEATURES_PREDICTIONS_LABELS_KEY])
+
+          # Input: one example fpl at a time
+          # Output: one fpl example per slice key (notice that the example turns
+          #         into n, replicated once per applicable slice key)
           | 'Slice' >> _Slice(slice_spec)
+
+          # Each slice key lands on one shard where metrics are computed for all
+          # examples in that shard -- the "map" and "reduce" parts of the
+          # computation happen within this shard.
+          # Output: Tuple[slicer.SliceKeyType, MetricVariablesType]
           | 'Aggregate' >> _Aggregate(
               eval_saved_model_path=eval_saved_model_path,
               add_metrics_callbacks=add_metrics_callbacks,
               desired_batch_size=desired_batch_size)
+
+          # Different metrics for a given slice key are brought together.
           | 'ExtractOutput' >> _ExtractOutput(eval_saved_model_path,
                                               add_metrics_callbacks))
+
+
+@beam.typehints.with_input_types(bytes)
+@beam.typehints.with_output_types(beam.typehints.Any)
+@beam.ptransform_fn
+def BuildDiagnosticTable(
+    # pylint: disable=invalid-name
+    examples,
+    eval_saved_model_path,
+    desired_batch_size = None):
+  """Build diagnostics for the spacified EvalSavedModel and example collection.
+
+  Args:
+    examples: PCollection of input examples. Can be any format the model accepts
+      (e.g. string containing CSV row, TensorFlow.Example, etc).
+    eval_saved_model_path: Path to EvalSavedModel. This directory should contain
+      the saved_model.pb file.
+    desired_batch_size: Optional batch size for batching in Predict and
+      Aggregate.
+
+  Returns:
+    PCollection of ExampleAndExtracts
+  """
+  return (examples
+          | 'ToExampleAndExtracts' >> beam.Map(
+              lambda x: types.ExampleAndExtracts(example=x, extracts={}))
+          | 'Predict' >> _Predict(eval_saved_model_path, desired_batch_size)
+          | 'ExtractFeatures' >> feature_extractor.ExtractFeatures())

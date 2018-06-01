@@ -13,6 +13,7 @@ py_library(
         "//tensorflow_model_analysis/eval_saved_model:load",
         "//tensorflow_model_analysis/eval_saved_model:util",
         "//tensorflow_model_analysis/eval_saved_model/post_export_metrics:metric_keys",
+        "//tensorflow_model_analysis/extractors:feature_extractor",
         "//tensorflow_model_analysis/slicer",
     ],
 )

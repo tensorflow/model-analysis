@@ -1,426 +1,407 @@
 # Chicago Taxi Example
 
 The Chicago Taxi example demonstrates the end-to-end workflow and steps of how
-to transform data, train a model, analyze and serve it, using:
+to transform data, train a model, analyze and serve it. It uses:
 
-* [TensorFlow Transform](https://github.com/tensorflow/transform) for
-feature preprocessing
+* [TensorFlow Transform](https://www.tensorflow.org/tfx/transform) for feature preprocessing,
 * TensorFlow [Estimators](https://www.tensorflow.org/programmers_guide/estimators)
-for training
-* [TensorFlow Model Analysis](https://github.com/tensorflow/model-analysis) and
-Jupyter for evaluation
-* [TensorFlow Serving](https://github.com/tensorflow/serving) for serving
+for training,
+* [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/model_analysis) and Jupyter for evaluation, and
+* [TensorFlow Serving](https://www.tensorflow.org/serving) for serving.
 
-The example shows two modes of deployment.
+The example shows two modes of deployment:
 
-* The first is a “local mode” with all necessary dependencies and components
-deployed locally.
-* The second is a “cloud mode”, where all components will be deployed on Google
-Cloud.
+1. *Local mode* with all necessary dependencies and components deployed locally.
+2. *Cloud mode* where all components are deployed on Google Cloud.
 
-In the future we will be showing additional deployment modes, so dear reader,
-feel free to check back in periodically!
+## The dataset
 
-# Table Of Contents
-1. [Dataset](#dataset)
-1. [Local Prerequisites](#local-prerequisites)
-1. [Running the Local Example](#running-the-local-example)
-1. [Cloud Prerequisites](#cloud-prerequisites)
-1. [Running the Cloud Example](#running-the-cloud-example)
-
-# Dataset
-
-In this example you will use the Taxi Trips [dataset](https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew)
+This example uses the [Taxi Trips dataset](https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew)
 released by the City of Chicago.
 
-*Disclaimer: This site provides applications using data that has been modified
+Note: This site provides applications using data that has been modified
 for use from its original source, www.cityofchicago.org, the official website of
-the City of Chicago.  The City of Chicago makes no claims as to the content,
+the City of Chicago. The City of Chicago makes no claims as to the content,
 accuracy, timeliness, or completeness of any of the data provided at this site.
-The data provided at this site is subject to change at any time.  It is
-understood that the data provided at this site is being used at one’s own risk.*
+The data provided at this site is subject to change at any time. It is understood
+that the data provided at this site is being used at one’s own risk.
 
-You can [read more](https://cloud.google.com/bigquery/public-data/chicago-taxi)
-about the dataset in [Google BigQuery](https://cloud.google.com/bigquery/), and
-explore the full dataset in its
-[UI](https://bigquery.cloud.google.com/dataset/bigquery-public-data:chicago_taxi_trips).
+[Read more](https://cloud.google.com/bigquery/public-data/chicago-taxi) about the
+dataset in [Google BigQuery](https://cloud.google.com/bigquery/). Explore the
+full dataset in the
+[BigQuery UI](https://bigquery.cloud.google.com/dataset/bigquery-public-data:chicago_taxi_trips).
 
-# Local Prerequisites
+## Local prerequisites
 
-This example relies on [Apache Beam](https://beam.apache.org/) for its
-distributed processing. The Apache Beam SDK ([BEAM-1373](https://issues.apache.org/jira/browse/BEAM-1373))
-and TensorFlow Serving API ([Issue-700](https://github.com/tensorflow/serving/issues/700))
-are not yet available for Python 3, and as such the example requires Python 2.7
-.
+[Apache Beam](https://beam.apache.org/) is used for its distributed processing.
+This example requires Python 2.7 since the Apache Beam SDK
+([BEAM-1373](https://issues.apache.org/jira/browse/BEAM-1373)) and TensorFlow
+Serving API ([Issue-700](https://github.com/tensorflow/serving/issues/700))
+are not yet available for Python 3.
 
-## Install Dependencies
+### Install dependencies
 
-We will be doing all development within an isolated Python Virtual Environment.
-This allows us to isolate your environment as you experiment with different
-versions of dependencies.
+Development for this example will be isolated in a Python virtual environment.
+This allows us to experiment with different versions of dependencies.
 
-There are many ways to install virtualenv on different platforms, we show two
-versions here:
+There are many ways to install `virtualenv`, see the
+[TensorFlow install guides](/install) for different platforms, but here are a
+couple:
 
-* On Linux:
-```
-sudo apt-get install python-pip python-dev build-essential
-```
-* On Mac:
-```
-sudo easy_install pip
-```
+* For Linux:
 
-Next we enforce Python 2.7 (which this example requires), ensure we have the
-latest versions of pip and virtualenv, create a virtualenv called “taxi” and
-switch into it:
+<pre class="devsite-terminal devsite-click-to-copy">
+sudo apt-get install python-pip python-virtualenv python-dev build-essential
+</pre>
 
-```
-alias python=python2.7
-sudo pip install --upgrade pip
-sudo pip install --upgrade virtualenv
-python -m virtualenv taxi
-source ./taxi/bin/activate
-```
+* For Mac:
 
-Next we install dependencies required by the Chicago Taxi example.
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">sudo easy_install pip</code>
+<code class="devsite-terminal">pip install --upgrade virtualenv</code>
+</pre>
 
-```
+Create a Python 2.7 virtual environment for this example and activate the
+`virtualenv`:
+
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">virtualenv -p python2.7 taxi</code>
+<code class="devsite-terminal">source ./taxi/bin/activate</code>
+</pre>
+
+Next, install the dependencies required by the Chicago Taxi example:
+
+<pre class="devsite-terminal devsite-click-to-copy">
 pip install -r requirements.txt
-```
+</pre>
 
-Next we register our TensorFlow Model Analysis rendering components with
-Jupyter Notebook:
+Register the TensorFlow Model Analysis rendering components with Jupyter Notebook:
 
-```
-jupyter nbextension install --py --symlink --sys-prefix tensorflow_model_analysis
-jupyter nbextension enable --py --sys-prefix tensorflow_model_analysis
-```
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">jupyter nbextension install --py --symlink --sys-prefix tensorflow_model_analysis</code>
+<code class="devsite-terminal">jupyter nbextension enable --py --sys-prefix tensorflow_model_analysis</code>
+</pre>
 
-# Running the Local Example
+## Run the local example
 
 The benefit of the local example is that you can edit any part of the pipeline
 and experiment very quickly with various components. The example comes with a
 small subset of the Taxi Trips dataset as CSV files.
 
-## Preprocessing with TensorFlow Transform
+### Preprocessing with TensorFlow Transform
 
-tf.Transform (`preprocess.py`) allows us to do preprocessing using results of
-full-pass operations over the dataset. To run this step locally, simply call:
+`tf.Transform` (`preprocess.py`) allows preprocessing the results with
+full-pass operations over the dataset. To run this step locally:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 bash ./preprocess_local.sh
-```
+</pre>
 
-We first ask tf.Transform to compute global statistics (mean, standard dev,
-bucket cutoffs, etc) in our `preprocessing_fn()`:
+Have `tf.Transform` compute the global statistics (mean, standard deviation,
+bucket cutoffs, etc.) in the `preprocessing_fn`:
 
-* We take dense float features such as trip distance and time, compute the
-global mean and standard deviations, and scale features to their z scores.
-This allows the SGD optimizer to treat steps in different directions more
-uniformly.
-* We create a finite vocabulary for string features, which will allow us to
-treat them as categoricals in our model.
-* We bucket our longitude/latitude features, which allows the model to fit
-multiple weights to different parts of the lat/long grid.
-* We include time-of-day and day-of-week features, which will allow the model to
-more easily pick up on seasonality.
-* Our label is binary; 1 if the tip is more than 20% of the fare, 0 if it is
-lower.
+* Take dense float features such as trip distance and time, compute the global
+  mean and standard deviations, and scale features to their z scores. This allows
+  the SGD optimizer to treat steps in different directions more uniformly.
+* Create a finite vocabulary for string features. This allow us to treat them as
+  categoricals in our model.
+* Bucket our longitude and latitude features. This allows the model to fit
+  multiple weights to different parts of the lat/long grid.
+* Include time-of-day and day-of-week features. This allows the model to more
+  easily pick up on seasonality.
+* Our label is binary: `1` if the tip is more than 20% of the fare, `0` if it is
+  lower.
 
-Preprocess creates TensorFlow Operations for applying the transforms and leaves
-TensorFlow **Placeholders** in the graph for the mean, bucket cutoffs, etc.
+Preprocessing creates TensorFlow operations to apply the transforms and leaves
+TensorFlow placeholders in the graph for the mean, bucket cutoffs, etc.
 
-We call tf.Transform’s `Analyze()` function, which builds the MapReduce-style
-callbacks to compute these statistics across the entire data set.
-**Apache Beam** allows applications to write such data-transforming code once,
-and handles the job of placing the code onto workers, whether they are in the
-cloud, across an enterprise cluster or on the local machine.  In this part of
-our example, we use `DirectRunner` (see `preprocess_local.sh`), to request that
-our code all runs on the local machine.  At the end of the Analyze job, the
-**Placeholders** are replaced with their respective statistics (mean, standard
-deviation, etc).
+Call the `Analyze` function in `tf.Transform` to build the MapReduce-style
+callbacks to compute the statistics across the entire data set. Apache Beam
+allows applications to write such data-transforming code once and handles the job
+of placing the code onto workers—whether they are in the cloud, across an
+enterprise cluster or on the local machine. In this part of the example, use
+`DirectRunner` (see `preprocess_local.sh`) to request that our code runs
+on the local machine.  At the end of the Analyze job, the placeholders are
+replaced with their respective statistics (mean, standard deviation, etc).
 
-Notice that tf.Transform is also used to shuffle the examples
-(`beam.transforms.Reshuffle`) -- this is very important for the efficiency of
-non-convex stochastic learners such as SGD with Deep Neural Networks.
+Notice that `tf.Transform` is also used to shuffle the examples
+(`beam.transforms.Reshuffle`). This is very important for the efficiency of
+non-convex stochastic learners such as SGD with deep neural networks.
 
-Finally, we call `WriteTransformFn()` to save our transform and `TransformDataset()`
-to materialize our examples for training. There are two key outputs of the
-Preprocessing step:
+Finally, call `WriteTransformFn` to save the transform and
+`TransformDataset` to create the examples for training. There are two key
+outputs of the preprocessing step:
 
-* SavedModel containing the transform graph
-* Materialized, transformed examples in compressed TFRecord files (these will be
-inputs to the TensorFlow trainer)
+* The `SavedModel` containing the transform graph;
+* Materialized, transformed examples in compressed `TFRecord` files (these are
+  inputs to the TensorFlow trainer).
 
-## Model Training
+### Train the model
 
-In the next step we train our model using TensorFlow. To run this step locally,
-simply call:
+The next step trains the model using TensorFlow. To run this step locally, call:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 bash ./train_local.sh
-```
+</pre>
 
-Our model leverages TensorFlow’s
-[Estimators](https://www.tensorflow.org/programmers_guide/estimators), which is
-built inside of `build_estimator()` in `model.py`. The trainer takes as input
-materialized, transformed examples from the previous step. Notice our pattern of
+The model leverages TensorFlow’s
+[Estimators](/programmers_guide/estimators) and is created in the
+`build_estimator` function in `model.py`. The trainer's input takes the
+materialized, transformed examples from the previous step. Notice the pattern of
 sharing schema information between preprocessing and training using `taxi.py`
 to avoid redundant code.
 
-The `input_fn()` builds a parser that takes in tf.Example protos from the
-materialized TFRecord file emitted in our previous Preprocessing step.
-It also applies the tf.Transform preprocessing operations built in the
-preprocessing step. Also, we must not forget to remove our label, as we wouldn’t
-want our model to treat it as a feature!
+The `input_fn` function builds a parser that takes `tf.Example` protos from
+the materialized `TFRecord` file emitted in our previous preprocessing step. It
+also applies the `tf.Transform` operations built in the preprocessing step.
+Also, do not forget to remove the label since we don't want the model to treat it
+as a feature.
 
-During training, `feature_columns` also come into play, which tell the model how
-to use features: for example, vocabulary features are fed into the model with
-`categorical_column_with_identity()`, which tells our model to logically treat
-this feature as a one-hot encoded feature.
+During training, `feature_columns` also come into play and tell the model how
+to use features. For example, vocabulary features are fed into the model with
+`categorical_column_with_identity` and tell the model to logically treat
+this feature as one-hot encoded.
 
-Inside the `eval_input_receiver_fn()` callback we emit a TensorFlow graph which
-parses raw examples, identifies the features and label and applies the
-tf.Transform graph that will be used in the TensorFlow Model Analysis batch job.
+Inside the `eval_input_receiver_fn` callback, emit a TensorFlow graph that
+parses raw examples, identifies the features and label, and applies the
+`tf.Transform` graph used in the TensorFlow Model Analysis batch job.
 
-Finally, our model emits a graph suitable for serving -- we will show how to
-serve this model below.
+Finally, the model emits a graph suitable for serving.
 
-Notice also that the trainer runs a quick evaluation at the end of the batch
-job. This limited evaluation can run only on a single machine -- we will use
-TensorFlow Model Analysis, which leverages Apache Beam, for distributed
-evaluation below.
+The trainer runs a quick evaluation at the end of the batch job. This limited
+evaluation can run only on a single machine. Later in this guide, we will use
+TensorFlow Model Analysis—which leverages Apache Beam—for distributed
+evaluation.
 
-To recap, our trainer outputs the following:
+To recap, the trainer outputs the following:
 
-* SavedModel containing the serving graph (for use with TensorFlow Serving)
-* SavedModel containing the evaluation graph (for use with TensorFlow Model
-Analysis)
+* A `SavedModel` containing the serving graph to use with
+  [TensorFlow Serving](https://www.tensorflow.org/serving).
+* A `SavedModel` containing the evaluation graph to use with
+  [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/model_analysis).
 
-## TensorFlow Model Analysis Evaluation Batch Job
+### TensorFlow Model Analysis evaluation batch job
 
-Next we run a batch job to evaluate our model against the entire data set. To
-run the batch evaluator:
+Now run a batch job to evaluate the model against the entire data set. To run the
+batch evaluator:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 bash ./process_tfma_local.sh
-```
+</pre>
 
-As a reminder, we are running this step locally with a small CSV dataset.
-TensorFlow Model Analysis will do a full pass over this dataset and compute
-metrics. We will demonstrate running this step as a distributed job over a much
-larger data set in the cloud section below.
+This step is executed locally with a small CSV dataset. TensorFlow Model Analysis
+runs a full pass over the dataset and computes the metrics. In the Cloud section
+below, this step is run as a distributed job over a large data set.
 
-Like tf.Transform, tf.ModelAnalysis leverages Apache Beam to run the distributed
-computation.  Also, our evaluation takes in raw examples *not* transformed
-examples -- this means that our (local) input here is a CSV file and that we are
-using the SavedModel from the previous step to parse, apply the tf.Transform
-graph and run the model.  For completeness, it is worth noting that it is also
-possible to analyze our models in terms of transformed features rather than raw
-features -- we leave this as a user exercise for this example.
+Like TensorFlow Transform, `tf.ModelAnalysis` uses Apache Beam to run the
+distributed computation. The evaluation uses raw examples as input and *not*
+transformed examples. The input is a local CSV file and uses the `SavedModel`
+from the previous step, applies the `tf.Transform` graph, then runs the model.
 
-Also notice in `process_tfma.py`, we specified a `slice_spec`. This tells the
-tf.ModelAnalysis job which slices we are interested in visualizing (in the next
-step). Slices are subsets of our data based on feature values. tf.ModelAnalysis
-computes metrics for each of those slices.
+It *is* possible to analyze models in terms of transformed features instead of
+raw features, but that process is not described in this guide.
+
+In `process_tfma.py` we specified a `slice_spec` that tells the
+`tf.ModelAnalysis` job the slices to visualize. Slices are subsets of the
+data based on feature values. `tf.ModelAnalysis` computes metrics for each of
+those slices.
 
 This job outputs a file that can be visualized in Jupyter in the
-`tf.model_analysis` renderer in our next stage.
+`tf.model_analysis` renderer in the next stage.
 
-## Looking at TensorFlow Model Analysis Rendered Metrics
+### TensorFlow Model Analysis rendered metrics
 
-We will look at our sliced results using a Jupyter notebook. To run the Jupyter
-notebook locally:
+Run the Jupyter notebook locally to view the sliced results:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser
-```
+</pre>
 
-The above will give you an URL of the form `http://0.0.0.0:8888/?token=...`
-The first time you go that page, you might need to enter a username and password
-(you can enter anything e.g. ‘test’ for both).
+This prints a URL like `http://0.0.0.0:8888/?token=...`. You may need to
+enter a username and password the first time you visit the page (these prompts
+accept anything, so you can use "test" for both).
 
-From the files tab, open `chicago_taxi_tfma.ipynb`. Follow the instructions in
-the notebook until you can visualize the slicing metrics browser with
-`tfma.view.render_slicing_metrics` and the time series graph with
-`tfma.view.render_time_series`.
-TODO:screenshots in images/ directory
+From the *File* tab, open the `chicago_taxi_tfma.ipynb` notebook file.
+Follow the instructions in the notebook until you visualize the slicing metrics
+browser with `tfma.view.render_slicing_metrics` and the time series graph
+with `tfma.view.render_time_series`.
 
-Note that this notebook is completely self-contained and does not rely on the
-prior scripts having been already run.
+Note: This notebook is self-contained and does not rely on running the prior
+scripts.
 
-## Serving Your TensorFlow Model
+### Serve the TensorFlow model
 
-Next we will serve the model we just created using TensorFlow Serving.  In our
-example, we run our server in a Docker container that we will run locally.
-Information for installing Docker locally can be found at
-https://docs.docker.com/install.
+Now serve the created model with
+[TensorFlow Serving](https://www.tensorflow.org/serving). For this example, run
+the server in a Docker container that is run locally. Instructions for installing
+Docker locally are found in the
+[Docker install documentation](https://docs.docker.com/install).
 
-To start the server, open a separate terminal and run the serving script:
+In the terminal, run the following script to start a server:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 bash ./start_model_server_local.sh
-```
+</pre>
 
-The script will build a Docker image and then start the TensorFlow Model Server
-within a running container listening on localhost port 9000 for gRPC requests.
-The Model server will load the model exported from our Trainer step above.
+This script builds a Docker image and starts the TensorFlow model server within a
+container listening for gRPC requests on `localhost` port 9000. The model
+server loads the model exported from the trainer.
 
-To send a request to the server and run model inference, run:
+To send a request to the server for model inference, run:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 bash ./classify_local.sh
-```
+</pre>
 
-More information about serving can be found in the
-[TensorFlow Serving Documentation](https://www.tensorflow.org/serving/).
+For more information, see [TensorFlow Serving](/serving/).
 
-## Playground Notebook
+### Playground notebook
 
-We also offer `chicago_taxi_tfma_local_playground.ipynb`, a notebook that calls
-the same scripts above. It contains a more detailed description of the APIs,
-like custom metrics and plots, and the UI components.
+The notebook,
+[`chicago_taxi_tfma_local_playground.ipynb`](./chicago_taxi_tfma_local_playground.ipynb),
+is available which calls the same scripts above. It has a more detailed
+description of the APIs—like custom metrics and plots—and the UI components.
 
-Note that this notebook is completely self-contained and does not rely on the
-prior scripts having been already run.
+Note: This notebook is self-contained and does not rely on running the prior
+scripts.
 
-# Cloud Prerequisites
 
-We rely heavily upon the local prerequisites [above](#local-prerequisites) and
-add a few more requirements for [Gooogle Cloud Platform](https://cloud.google.com/).
+## Cloud prerequisites
 
-Make sure you follow the [Google Cloud Machine Learning Engine](https://cloud.google.com/ml-engine/)
-setup [here](https://cloud.google.com/ml-engine/docs/how-tos/getting-set-up) and
-the [Google Cloud Dataflow](https://cloud.google.com/dataflow/) setup
-[here](https://cloud.google.com/dataflow/docs/quickstarts/quickstart-python)
+This section requires the [local prerequisites](#local_prerequisites) and adds a
+few more for the [Gooogle Cloud Platform](https://cloud.google.com/).
+
+Follow the Google Cloud Machine Learning Engine
+[setup guide](https://cloud.google.com/ml-engine/docs/how-tos/getting-set-up) and
+the Google Cloud Dataflow [setup guide](https://cloud.google.com/dataflow/docs/quickstarts/quickstart-python)
 before trying the example.
 
-The speed of execution of the example might be limited by default
-[Google Compute Engine](https://cloud.google.com/compute) quota.
-We recommend sufficient quota for approximately 250 Dataflow VMs which amounts
-to: **250 CPUs, 250 IP Addresses and 62500 GB of Persistent Disk**. For more
-details please see [GCE Quota](https://cloud.google.com/compute/quotas) and
+The example's execution speed may be limited by default
+[Google Compute Engine](https://cloud.google.com/compute) quota. We recommend
+setting a sufficient quota for approximately 250 Dataflow VMs: *250 CPUs, 250 IP
+Addresses, and 62500 GB of Persistent Disk*. For more details, please see the
+[GCE Quota](https://cloud.google.com/compute/quotas) and
 [Dataflow Quota](https://cloud.google.com/dataflow/quotas) documentation.
 
-Our example will use [Google Cloud Storage](https://cloud.google.com/storage/)
-Buckets to store data and local environment variables to pass paths from job to
-job -- as such the jobs should be run from a single command-line shell.
+This example uses [Google Cloud Storage](https://cloud.google.com/storage/)
+Buckets to store data, and uses local environment variables to pass paths from
+job to job.
 
 Authenticate and switch to your project:
 
-```
-gcloud auth application-default login
-gcloud config set project $PROJECT_NAME
-```
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">gcloud auth application-default login</code>
+<code class="devsite-terminal">gcloud config set project $PROJECT_NAME</code>
+</pre>
 
-To create our gs:// bucket:
+Create the `gs://` bucket:
 
-```
-export MYBUCKET=gs://$(gcloud config list --format 'value(core.project)')-chicago-taxi
-gsutil mb $MYBUCKET
-```
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">export MYBUCKET=gs://$(gcloud config list --format 'value(core.project)')-chicago-taxi</code>
+<code class="devsite-terminal">gsutil mb $MYBUCKET</code>
+</pre>
 
-Make sure you are inside the virtualenv we created above (you will need to do
-these steps whenever re-enter your shell):
+Activate the `virtualenv` (created above) to setup the shell environment:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 source ./bin/taxi/activate
-```
+</pre>
 
-# Running the Cloud Example
+## Run the Cloud example
 
-Next we will run in the Taxi Trips example in the cloud.  Unlike our local
-example, our input will be a much larger dataset, hosted on Google BigQuery.
+This Taxi Trips example is run in the cloud. Unlike the local example, the input
+is a much larger dataset hosted on Google BigQuery.
 
-## Preprocessing with TensorFlow Transform on Google Cloud Dataflow
+### Preprocessing with TensorFlow Transform on Google Cloud Dataflow
 
-We will now use the same code from our local tf.Transform (in `preprocess.py`)
-to do our distributed transform. To start the job:
+Use the same code from the local `tf.Transform` (in `preprocess.py`) to do
+the distributed transform. To start the job, run:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 source ./preprocess_dataflow.sh
-```
+</pre>
 
-You can watch the status of your running job at
-https://console.cloud.google.com/dataflow
+You can see the status of the running job on the
+[Google Cloud Console](https://console.cloud.google.com/dataflow).
 
-In this case we are reading data from Google BigQuery rather than from a small,
-local CSV. Also unlike our local example above, we are using the
-`DataflowRunner`, which starts distributed processing over several workers in
-the cloud.
+In this case, the data is read from Google BigQuery instead of a small, local CSV
+file. Also, unlike our local example above, we are using the `DataflowRunner`
+to start distributed processing over several workers in the cloud.
 
-Our outputs will be the same as in the local job, but stored on Google Cloud
-Storage:
+The outputs are the same as the local job, but stored in Google Cloud Storage:
 
-* SavedModel containing the transform graph:
-```
+* `SavedModel` containing the transform graph:
+
+<pre class="devsite-terminal devsite-click-to-copy">
 gsutil ls $TFT_OUTPUT_PATH/transform_fn
-```
+</pre>
+
 * Materialized, transformed examples (train_transformed-\*):
-```
+
+<pre class="devsite-terminal devsite-click-to-copy">
 gsutil ls $TFT_OUTPUT_PATH
-```
+</pre>
 
-## Model Training on Google Cloud Machine Learning Engine
+### Model training on the Google Cloud Machine Learning Engine
 
-We next run the distributed TensorFlow trainer in the cloud:
+Run the distributed TensorFlow trainer in the cloud:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 source ./train_mlengine.sh
-```
+</pre>
 
-You can find your running job and its status here:
-https://console.cloud.google.com/mlengine
+See the status of the running job in the
+[Google Cloud Console](https://console.cloud.google.com/mlengine).
 
-Notice that while our trainer is running in the cloud, it is using ML Engine,
-not Dataflow, to the distributed computation. Again, our outputs are identical
-to the local run:
+The trainer is running in the cloud using ML Engine and *not* Dataflow for the
+distributed computation. Again, our outputs are identical to the local run:
 
-* SavedModel containing the serving graph (for use with TensorFlow Serving):
-```
+* `SavedModel` containing the serving graph for TensorFlow Serving:
+
+<pre class="devsite-terminal devsite-click-to-copy">
 gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi
-```
-* SavedModel containing the evaluation graph (for use with TensorFlow Model
-Analysis):
-```
+</pre>
+
+* `SavedModel` containing the evaluation graph for TensorFlow Model Analysis:
+
+<pre class="devsite-terminal devsite-click-to-copy">
 gsutil ls $WORKING_DIR/eval_model_dir
-```
+</pre>
 
-## Model Evaluation with TensorFlow Model Analysis on Google Cloud Dataflow
+### Model Evaluation with TensorFlow Model Analysis on Google Cloud Dataflow
 
-We next run a distributed batch job to compute sliced metrics across the large
-Google BigQuery data set. In this step, tf.ModelAnalysis takes advantage of the
-`DataflowRunner` to control its workers. You can run this job as follows:
+Run a distributed batch job to compute sliced metrics across the large Google
+BigQuery dataset. In this step, `tf.ModelAnalysis` takes advantage of the
+`DataflowRunner` to control its workers.
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 source ./process_tfma_dataflow.sh
-```
+</pre>
 
-Our output will be the `eval_result` file that will be rendered by our notebook
-in the next step:
+The output is the `eval_result` file rendered by the notebook in the next
+step:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 gsutil ls -l $TFT_OUTPUT_PATH/eval_result_dir
-```
+</pre>
 
-## Rendering TensorFlow Model Analysis Results in Local Jupyter Notebook
+### Render TensorFlow Model Analysis results in a local Jupyter notebook
 
-The steps for looking at your results in a notebook are identical to the ones from
-the local job. Simply go to `chicago_taxi_tfma.ipynb` notebook,
-and set up the output directory to see the results.
+The steps for looking at your results in a notebook are identical to the ones
+from running the local job. Go to the
+[`chicago_taxi_tfma.ipynb`](./chicago_taxi_tfma.ipynb)
+notebook and set up the output directory to see the results.
 
-## Model Serving on Google Cloud Machine Learning Engine
+### Model serving on the Google Cloud Machine Learning Engine
 
-Finally, we serve the model we created in the training step in the cloud. To
-start serving your model from the cloud, you can run:
+To serve the model from the cloud, run:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 bash ./start_model_server_mlengine.sh
-```
+</pre>
 
 To send a request to the cloud:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 bash ./classify_mlengine.sh
-```
+</pre>

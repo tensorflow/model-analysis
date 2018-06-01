@@ -456,12 +456,17 @@ function renderNotAvailable() {
 }
 
 /**
- * Trims a float to a predefined number of decimal places.
+ * Trims a float to a predefined number of decimal places. If the absolute value
+ * is too small, use scientific notation to avoid loss of information.
  * @param {number} value
  * @return {string}
  */
 function trimFloat(value) {
-  return value.toFixed(Constants.FLOATING_POINT_PRECISION);
+  // If we are losing two or more digits of information, use scientific notation
+  // instead.
+  return value && Math.abs(value) < 0.01 ?
+      value.toExponential(Constants.FLOATING_POINT_PRECISION - 1) :
+      value.toFixed(Constants.FLOATING_POINT_PRECISION);
 }
 
 /**

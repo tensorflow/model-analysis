@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 
 from __future__ import print_function
+import math
 import os
 
 from tensorflow_model_analysis.api.impl import api_types
@@ -170,6 +171,39 @@ _SUPPORTED_PLOT_KEYS = {
 }
 
 
+def _replace_nan_with_none(
+    plot_data,
+    plot_keys):
+  """Replaces all instances of nan with None in plot data.
+
+
+  Args:
+    plot_data: The original plot data
+    plot_keys: A dictionary containing field names of plot data.
+
+  Returns:
+    Transformed plot data where all nan has been replaced with None.
+  """
+  metrics = {}
+  for plot_type in plot_keys:
+    plot_fields = plot_keys[plot_type]
+    for field in plot_fields:
+      actual_field_name = plot_fields[field]
+      if actual_field_name in plot_data:
+        input_field_value = plot_data[actual_field_name]
+        output_field_value = []
+        for row in input_field_value:
+          if isinstance(row, (int, float)):
+            output_field_value.append(row if not math.isnan(row) else None)
+          else:
+            output_row = []
+            for entry in row:
+              output_row.append(entry if not math.isnan(entry) else None)
+            output_field_value.append(output_row)
+        metrics[actual_field_name] = output_field_value
+  return metrics
+
+
 def get_plot_data_and_config(
     results,
     slicing_spec,
@@ -200,9 +234,12 @@ def get_plot_data_and_config(
 
   target_slice = matching_slices[0]
 
-  plot_data = target_slice['metrics']
   plot_config = {
       'sliceName': target_slice['slice'],
       'metricKeys': _SUPPORTED_PLOT_KEYS,
   }
+
+  plot_data = _replace_nan_with_none(target_slice['metrics'],
+                                     _SUPPORTED_PLOT_KEYS)
+
   return plot_data, plot_config

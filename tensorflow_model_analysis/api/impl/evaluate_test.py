@@ -24,6 +24,7 @@ import os
 
 import apache_beam as beam
 from apache_beam.testing import util
+import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis.api.impl import evaluate
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -41,6 +42,30 @@ def _addExampleCountMetricCallback(  # pylint: disable=invalid-name
   metric_ops = {}
   value_op, update_op = tf.contrib.metrics.count(predictions_dict['logits'])
   metric_ops['added_example_count'] = (value_op, update_op)
+  return metric_ops
+
+
+def _addPyFuncMetricCallback(  # pylint: disable=invalid-name
+    features_dict, predictions_dict, labels_dict):
+  del features_dict
+  del predictions_dict
+
+  total_value = tf.Variable(
+      initial_value=0.0,
+      dtype=tf.float64,
+      trainable=False,
+      collections=[tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES],
+      validate_shape=True,
+      name='total')
+
+  def my_func(x):
+    return np.sum(x, dtype=np.float64)
+
+  update_op = tf.assign_add(total_value,
+                            tf.py_func(my_func, [labels_dict], tf.float64))
+  value_op = tf.identity(total_value)
+  metric_ops = {}
+  metric_ops['py_func_label_sum'] = (value_op, update_op)
   return metric_ops
 
 
@@ -195,6 +220,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
               eval_saved_model_path=eval_export_dir,
               add_metrics_callbacks=[
                   _addExampleCountMetricCallback,
+                  # Note that since everything runs in-process this doesn't
+                  # actually test that the py_func can be correctly recreated
+                  # on workers in a distributed context.
+                  _addPyFuncMetricCallback,
                   post_export_metrics.example_count(),
                   post_export_metrics.example_weight(example_weight_key='age')
               ]))
@@ -212,6 +241,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                   'my_mean_age': 3.75,
                   'my_mean_age_times_label': 1.75,
                   'added_example_count': 4.0,
+                  'py_func_label_sum': 2.0,
                   metric_keys.EXAMPLE_COUNT: 4.0,
                   metric_keys.EXAMPLE_WEIGHT: 15.0
               })

@@ -22,7 +22,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_model_analysis.types_compat import Dict, List, Text, Tuple, Union
+from tensorflow_model_analysis.types_compat import Any, Dict, List, Text, Tuple, Union, NamedTuple
 
 # pylint: disable=invalid-name
 TensorType = Union[tf.Tensor, tf.SparseTensor]
@@ -50,3 +50,20 @@ ListOfFetchedTensorValues = List[FetchedTensorValue]
 
 def is_tensor(obj):
   return isinstance(obj, tf.Tensor) or isinstance(obj, tf.SparseTensor)
+
+
+# Used in building the model diagnostics table, a MatrializedColumn is a value
+# inside of ExampleAndExtract that will be emitted to file.
+MaterializedColumn = NamedTuple(
+    'MaterializedColumn',
+    [('name', str), ('value',
+                     Union[List[str], List[int], List[float]])])
+
+# Used in building model diagnostics table, the ExampleAndExtracts holds an
+# example and all its "extractions." Extractions that should be emitted to file.
+# Each Extract has a name, stored as the key of the DictOfExtractedValues.
+DictOfExtractedValues = Dict[Text, Any]
+ExampleAndExtracts = NamedTuple(  # pylint: disable=invalid-name
+    'ExampleAndExtracts',
+    [('example', bytes),
+     ('extracts', DictOfExtractedValues)])
