@@ -63,6 +63,20 @@ suite('tests', () => {
       'Prediction threshold: 0.00000\nRecall: 0.37500\nPrecision: 0.50000'
     ]);
   });
+  test('handleNaNAndInfinity', () => {
+    const element = fixture('pr-curve-fixture');
+    element.data = [
+      {
+        matrix: {precision: 'NaN', recall: 'Infinity'},
+        binaryClassificationThreshold: {predictionThreshold: 1}
+      },
+    ];
+    const chartData = element.$$('google-chart').data;
+    assert.equal(chartData.length, 2);
+    assert.deepEqual(chartData[1], [
+      Infinity, NaN, 'Prediction threshold: 1.00000\nRecall: Infinity\nPrecision: NaN'
+    ]);
+  });
 });
 
   </script>

@@ -71,7 +71,7 @@ suite('tests', () => {
       assert.equal(getElementsWithText(table, 'th', 'feature').length, 1);
       assert.equal(getElementsWithText(table, 'td', 'col:1').length, 1);
       assert.equal(getElementsWithText(table, 'td', '4.00000').length, 1);
-      assert.equal(getElementsWithText(table, 'td', '0.00200').length, 1);
+      assert.equal(getElementsWithText(table, 'td', '2.0000e-3').length, 1);
       assert.equal(getElementsWithText(table, 'td', '0.33200').length, 1);
       done();
     });

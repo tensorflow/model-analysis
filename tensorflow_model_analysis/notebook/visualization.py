@@ -11,8 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Contains the version string for this release of TFMA."""
+"""Visualization API."""
+import sys
 
-# Version string for this release of TFMA.
-# Note that setup.py reads and uses this version.
-VERSION_STRING = '0.8.0dev'
+
+def _is_colab():
+  return "google.colab" in sys.modules
+
+
+if _is_colab():
+  from tensorflow_model_analysis.notebook.colab.renderer import *  # pylint: disable=wildcard-import,g-import-not-at-top
+else:
+  from tensorflow_model_analysis.notebook.jupyter.renderer import *  # pylint: disable=wildcard-import,g-import-not-at-top

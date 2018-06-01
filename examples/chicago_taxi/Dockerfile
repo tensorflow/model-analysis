@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-FROM ubuntu:17.10
+FROM ubuntu:18.04
 
 MAINTAINER TFX <tensorflow-extended-dev@googlegroups.com>
 
 RUN apt-get update && apt-get install -y \
-        curl
+        curl \
+        gnupg
 
 # Add TensorFlow Serving repo
 

@@ -38,6 +38,13 @@ testSuite({
     assertEquals(float.toString(), cell.f);
   },
 
+  testRenderValueWithSmallFloatUsesScientificNotation: function() {
+    const float = -0.0012345;
+    const cell = CellRenderer.renderValue(float);
+    assertEquals(float, cell.v);
+    assertEquals('-1.2345e-3', cell.f);
+  },
+
   testRenderValueWithBoundedValue: function() {
     const value = 1;
     const boundedValue = makeBoundedValueObject(value, 2, 3);

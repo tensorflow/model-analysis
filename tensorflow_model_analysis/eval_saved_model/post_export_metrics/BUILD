@@ -9,6 +9,7 @@ py_library(
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis:types",
         "//tensorflow_model_analysis/eval_saved_model:encoding",
+        "//tensorflow_model_analysis/proto:metrics_for_slice_py_pb2",
     ],
 )
 

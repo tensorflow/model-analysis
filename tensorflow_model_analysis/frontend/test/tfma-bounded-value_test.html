@@ -29,7 +29,7 @@ limitations under the License.
   </test-fixture>
   <test-fixture id="attributes-inlined-fixture">
     <template>
-      <tfma-bounded-value lower-bound=1 upper-bound=2>
+      <tfma-bounded-value lower-bound=1 upper-bound=2 value=1.5>
       </tfma-bounded-value>
     </template>
   </test-fixture>
@@ -44,15 +44,12 @@ suite('tests', () => {
   test('setData', () => {
     element = fixture('plain-fixture');
     element.data = '{"lowerBound": 1, "upperBound": 2, "value": 1.5}';
-    assert.equal(
-        flatten(element.outerHTML), '<tfma-bounded-value>1.50000±0.50000</tfma-bounded-value>');
+    assert.equal(flatten(element.textContent), '1.50000 (1.00000, 2.00000)');
   });
 
   test('createBoundedValueWithAttributes', () => {
     element = fixture('attributes-inlined-fixture');
-    assert.equal(
-        flatten(element.outerHTML),
-        '<tfma-bounded-value lower-bound="1" upper-bound="2">1.50000±0.50000</tfma-bounded-value>');
+    assert.equal(flatten(element.textContent), '1.50000 (1.00000, 2.00000)');
   });
 });
 
@@ -65,8 +62,7 @@ suite('tests', () => {
 function flatten(html) {
   return html.replace(/(\n)/gm, '')
       .replace(/(\s+)/gm, ' ')
-      .replace(/(>\s)/gm, '>')
-      .replace(/(\s<)/gm, '<');
+      .trim();
 }
   </script>
 </body>

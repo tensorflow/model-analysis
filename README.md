@@ -1,58 +1,61 @@
+<!-- See: www.tensorflow.org/tfx/model_analysis/ -->
+
 # TensorFlow Model Analysis
 
-**TensorFlow Model Analysis (TFMA)** is a library for evaluating TensorFlow
-models. It allows users to evaluate their models on large amounts of data in a
-distributed fashion, using the same metrics defined in their trainer. These
-metrics can also be computed over different slices of data, and the results can
-be visualised in Jupyter Notebooks.
+*TensorFlow Model Analysis* (TFMA) is a library for evaluating TensorFlow models.
+It allows users to evaluate their models on large amounts of data in a
+distributed manner, using the same metrics defined in their trainer. These
+metrics can be computed over different slices of data and visualized in Jupyter
+notebooks.
 
-**TFMA may introduce backwards incompatible changes before version 1.0**.
+Caution: TFMA may introduce backwards incompatible changes before version 1.0.
 
-## Installation and Dependencies
+## Installation
 
-The easiest and recommended way to install TFMA is with the PyPI package.
+The recommended way to install TFMA is using the
+[PyPI package](https://pypi.org/project/tensorflow-model-analysis/):
 
-`pip install tensorflow-model-analysis`
+<pre class="devsite-terminal devsite-click-to-copy">
+pip install tensorflow-model-analysis
+</pre>
 
-Currently TFMA requires that TensorFlow be installed but does not have an
-explicit dependency on TensorFlow as a package. See [TensorFlow
-documentation](https://www.tensorflow.org/install/) for more information on
-installing TensorFlow.
+Currently, TFMA requires that TensorFlow is installed but does not have an
+explicit dependency on the TensorFlow PyPI package. See the
+[TensorFlow install guides](/install) for instructions.
 
-To enable TFMA visualization in Jupyter Notebook, run<sup>1</sup>:
+To enable TFMA visualization in Jupyter Notebook:
 
-```
-jupyter nbextension enable --py widgetsnbextension
-jupyter nbextension install --py --symlink tensorflow_model_analysis
-jupyter nbextension enable --py tensorflow_model_analysis
-```
+<pre class="prettyprint">
+  <code class="devsite-terminal">jupyter nbextension enable --py widgetsnbextension</code>
+  <code class="devsite-terminal">jupyter nbextension install --py --symlink tensorflow_model_analysis</code>
+  <code class="devsite-terminal">jupyter nbextension enable --py tensorflow_model_analysis</code>
+</pre>
 
-TFMA requires [Apache Beam](https://beam.apache.org/) to run distributed
-pipelines. Apache Beam runs in local mode by default, and can also run in
-distributed mode using
-[Google Cloud Dataflow](https://cloud.google.com/dataflow/). TFMA is designed to
-be extensible to other Apache Beam runners.
+Note: If Jupyter notebook is already installed in your home directory, add
+`--user` to these commands. If Jupyter is installed as root, or using a virtual
+environment, the parameter `--sys-prefix` might be required.
 
-## Getting Started
+### Dependencies
 
-For instructions on using TFMA, see the [getting started
-guide](g3doc/getting_started.md).
+[Apache Beam](https://beam.apache.org/) is required to run distributed analysis.
+By default, Apache Beam runs in local mode but can also run in distributed mode
+using [Google Cloud Dataflow](https://cloud.google.com/dataflow/). TFMA is
+designed to be extensible for other Apache Beam runners.
 
 ## Compatible Versions
 
-This is a table of versions known to be compatible with each other, based on
-our testing framework. Other combinations may also work, but are untested.
+The following table is the TFMA package versions that are compatible with each
+other. This is determined by our testing framework, but other *untested*
+combinations may also work.
 
 |tensorflow-model-analysis  |tensorflow    |apache-beam[gcp]|
 |---------------------------|--------------|----------------|
 |GitHub master              |1.7           |2.4.0           |
 |0.6.0                      |1.6           |2.4.0           |
 
-<sup>1</sup> If Jupyter is installed in your home directory, add `--user` for
-    all commands; if Jupyter is installed in root or virtualenv is used,
-    `--sys-prefix` might be needed.
-
 ## Questions
 
-Please direct any questions about working with TFMA to [Stack Overflow](https://stackoverflow.com) using
-the [tensorflow-model-analysis](https://stackoverflow.com/questions/tagged/tensorflow-model-analysis) tag.
+Please direct any questions about working with TFMA to
+[Stack Overflow](https://stackoverflow.com) using the
+[tensorflow-model-analysis](https://stackoverflow.com/questions/tagged/tensorflow-model-analysis)
+tag.

@@ -35,10 +35,10 @@ testSuite({
   testGetLineChartData: function() {
     assertArrayEquals(
         [
-          [{'v': 2, 'f': 'Model 2 at Data 1'}, 2, 'Model: 2', 6],
+          [{'v': 2, 'f': 'Model 2 at Data 1'}, 2, 'Model: 2', {'f': 6, 'v': 6}],
 
-          [{'v': 1, 'f': 'Model 1 at Data 0'}, 1, 'Model: 1', 3],
-          [{'v': 0, 'f': 'Model 0 at Data 0'}, 0, 'Model: 0', 0],
+          [{'v': 1, 'f': 'Model 1 at Data 0'}, 1, 'Model: 1', {'f': 3, 'v': 3}],
+          [{'v': 0, 'f': 'Model 0 at Data 0'}, 0, 'Model: 0', {'f': 0, 'v': 0}],
         ],
         series.getLineChartData('b'));
   },
@@ -132,9 +132,18 @@ testSuite({
         MODEL_CENTRIC);
     assertArrayEquals(
         [
-          [{'v': 3, 'f': 'Model f at Data e'}, 'f', 'Model: f', 6],
-          [{'v': 2, 'f': 'Model d at Data c'}, 'd', 'Model: d', 3],
-          [{'v': 1, 'f': 'Model b at Data a'}, 'b', 'Model: b', 0],
+          [
+            {'v': 3, 'f': 'Model f at Data e'}, 'f', 'Model: f',
+            {'f': 6, 'v': 6}
+          ],
+          [
+            {'v': 2, 'f': 'Model d at Data c'}, 'd', 'Model: d',
+            {'f': 3, 'v': 3}
+          ],
+          [
+            {'v': 1, 'f': 'Model b at Data a'}, 'b', 'Model: b',
+            {'f': 0, 'v': 0}
+          ],
         ],
         series.getLineChartData('b'));
   },

@@ -308,7 +308,7 @@ class EvalSavedModel(object):
       TypeError: tensor_value had unknown type.
     """
     if not tensor_values:
-      return tensor_values
+      return None
 
     if isinstance(tensor_values[0], tf.SparseTensorValue):
       indices = []

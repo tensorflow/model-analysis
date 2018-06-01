@@ -19,16 +19,16 @@ from __future__ import print_function
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
-import tensorflow_model_analysis.notebook.jupyter.tfma_widget as tfma_widget
+import tensorflow_model_analysis.notebook.visualization as visualization
 from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
 from tensorflow_model_analysis.view import util
 from tensorflow_model_analysis.types_compat import Optional
 
 
-def render_slicing_metrics(
-    result,
-    slicing_column = None,
-    slicing_spec = None):
+def render_slicing_metrics(result,
+                           slicing_column = None,
+                           slicing_spec = None
+                          ):
   """Renders the slicing metrics view as widget.
 
   Args:
@@ -38,21 +38,19 @@ def render_slicing_metrics(
     is set, show overall.
 
   Returns:
-    A SlicingMetricsViewer object.
+    A SlicingMetricsViewer object if in Jupyter notebook; None if in Colab.
   """
-  view = tfma_widget.SlicingMetricsViewer()
+  data = util.get_slicing_metrics(result.slicing_metrics, slicing_column,
+                                  slicing_spec)
+  config = {'weightedExamplesColumn': result.config.example_weight_metric_key}
 
-  view.data = util.get_slicing_metrics(result.slicing_metrics, slicing_column,
-                                       slicing_spec)
-  view.config = {
-      'weightedExamplesColumn': result.config.example_weight_metric_key
-  }
-  return view
+  return visualization.render_slicing_metrics(data, config)
 
 
-def render_time_series(results,
-                       slice_spec = None,
-                       display_full_path = False):
+def render_time_series(
+    results,
+    slice_spec = None,
+    display_full_path = False):
   """Renders the time series view as widget.
 
   Args:
@@ -63,20 +61,20 @@ def render_time_series(results,
     visualization or just show file name.
 
   Returns:
-    A TimeSeriesViewer object
+    A TimeSeriesViewer object if in Jupyter notebook; None if in Colab.
   """
   slice_spec_to_use = slice_spec if slice_spec else SingleSliceSpec()
-  view = tfma_widget.TimeSeriesViewer()
-  view.data = util.get_time_series(results, slice_spec_to_use,
-                                   display_full_path)
-  view.config = {
+  data = util.get_time_series(results, slice_spec_to_use, display_full_path)
+  config = {
       'isModelCentric': results.get_mode() == constants.MODEL_CENTRIC_MODE
   }
-  return view
+
+  return visualization.render_time_series(data, config)
 
 
-def render_plot(result,
-                slicing_spec = None):
+def render_plot(
+    result,
+    slicing_spec = None):
   """Renders the plot view as widget.
 
   Args:
@@ -84,11 +82,8 @@ def render_plot(result,
     slicing_spec: The slicing spec to identify the slice. Show overall if unset.
 
   Returns:
-    A PlotViewer object.
+    A PlotViewer object if in Jupyter notebook; None if in Colab.
   """
   slice_spec_to_use = slicing_spec if slicing_spec else SingleSliceSpec()
-  view = tfma_widget.PlotViewer()
-  view.data, view.config = util.get_plot_data_and_config(
-      result.plots, slice_spec_to_use)
-
-  return view
+  data, config = util.get_plot_data_and_config(result.plots, slice_spec_to_use)
+  return visualization.render_plot(data, config)

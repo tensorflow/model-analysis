@@ -17,7 +17,17 @@ limitations under the License.
 
 <dom-module id="tfma-bounded-value">
   <template>
-    [[value_]]&plusmn;[[range_]]
+    <style>
+    :host div {
+      text-align: center;
+    }
+    .range {
+      font-weight: lighter;
+      font-size: 85%;
+    }
+    </style>
+    <div>[[formatValue_(value)]]</div>
+    <div class="range">([[formatValue_(lowerBound)]], [[formatValue_(upperBound)]])</div>
   </template>
   <script src="tfma-bounded-value.js"></script>
 </dom-module>

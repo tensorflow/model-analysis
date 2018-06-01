@@ -63,12 +63,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
       if custom_plots_check is not None:
         util.assert_that(plots, custom_plots_check, label='plot')
 
-  def _runTest(self, examples, eval_export_dir, metrics_to_check):
-    metrics = [metric for (_, metric, _) in metrics_to_check]
-    expected_values_dict = {
-        name: expected
-        for (name, _, expected) in metrics_to_check
-    }
+  def _runTest(self, examples, eval_export_dir, metrics, expected_values_dict):
 
     def check_result(got):  # pylint: disable=invalid-name
       try:
@@ -92,12 +87,14 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=4.0, language='english', label=1.0),
         self._makeExample(age=5.0, language='chinese', label=0.0)
     ]
-    metrics_to_check = [
-        (metric_keys.EXAMPLE_COUNT, post_export_metrics.example_count(), 4.0),
-        (metric_keys.EXAMPLE_WEIGHT, post_export_metrics.example_weight('age'),
-         15.0),
-    ]
-    self._runTest(examples, eval_export_dir, metrics_to_check)
+    expected_values_dict = {
+        metric_keys.EXAMPLE_COUNT: 4.0,
+        metric_keys.EXAMPLE_WEIGHT: 15.0,
+    }
+    self._runTest(examples, eval_export_dir, [
+        post_export_metrics.example_count(),
+        post_export_metrics.example_weight('age')
+    ], expected_values_dict)
 
   def testPostExportMetricsLinearRegressor(self):
     temp_eval_export_dir = self._getEvalExportDir()
@@ -109,12 +106,14 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=4.0, language='english', label=1.0),
         self._makeExample(age=5.0, language='chinese', label=0.0)
     ]
-    metrics_to_check = [
-        (metric_keys.EXAMPLE_COUNT, post_export_metrics.example_count(), 4.0),
-        (metric_keys.EXAMPLE_WEIGHT, post_export_metrics.example_weight('age'),
-         15.0),
-    ]
-    self._runTest(examples, eval_export_dir, metrics_to_check)
+    expected_values_dict = {
+        metric_keys.EXAMPLE_COUNT: 4.0,
+        metric_keys.EXAMPLE_WEIGHT: 15.0,
+    }
+    self._runTest(examples, eval_export_dir, [
+        post_export_metrics.example_count(),
+        post_export_metrics.example_weight('age')
+    ], expected_values_dict)
 
   def testCalibrationPlotAndPredictionHistogramUnweighted(self):
     temp_eval_export_dir = self._getEvalExportDir()
@@ -314,6 +313,35 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         eval_export_dir,
         [post_export_metrics.calibration_plot_and_prediction_histogram()],
         custom_plots_check=check_result)
+
+  def testAucUnweighted(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator.simple_fixed_prediction_estimator(
+            None, temp_eval_export_dir))
+    examples = [
+        self._makeExample(prediction=0.0000, label=0.0000),
+        self._makeExample(prediction=0.0000, label=1.0000),
+        self._makeExample(prediction=0.7000, label=1.0000),
+        self._makeExample(prediction=0.8000, label=0.0000),
+        self._makeExample(prediction=1.0000, label=1.0000),
+    ]
+
+    expected_values_dict = {
+        metric_keys.AUC: 0.58333,
+        metric_keys.lower_bound(metric_keys.AUC): 0.5,
+        metric_keys.upper_bound(metric_keys.AUC): 0.66667,
+        metric_keys.lower_bound(metric_keys.AUPRC): 0.74075,
+        metric_keys.lower_bound(metric_keys.AUPRC): 0.70000,
+        metric_keys.upper_bound(metric_keys.AUPRC): 0.77778,
+    }
+
+    self._runTest(
+        examples,
+        eval_export_dir,
+        [post_export_metrics.auc(),
+         post_export_metrics.auc(curve='PR')],
+        expected_values_dict)
 
 
 if __name__ == '__main__':

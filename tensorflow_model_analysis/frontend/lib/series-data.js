@@ -60,6 +60,7 @@ class SeriesData {
     const totalEntries = this.evalRuns_.length;
     return this.evalRuns_.map((evalRun, index) => {
       const config = /** @type {!Object} */ (evalRun.config);
+      const metricValue = evalRun.data.getMetricValue('', metric);
       return [
         {
           // In the case the eval runs are sorted lexically, the runs at the
@@ -75,7 +76,9 @@ class SeriesData {
         this.helper_.getModelId(config),
         this.helper_.getModelHeader() + ': ' +
             this.helper_.getModelDisplayText(config),
-        evalRun.data.getMetricValue('', metric)
+        // GViz automatically rounds the values displayed in tooltip. Force it
+        // to show the raw value.
+        {'v': metricValue, 'f': metricValue}
       ];
     });
   }
