@@ -24,7 +24,7 @@ if __name__ == '__main__':
       install_requires=[
           'apache-beam[gcp]==2.8.0',
           'jupyter==1.0',
-          'numpy==1.13.3',
+          'numpy==1.15.4',
           'protobuf==3.6.0',
           'tensorflow==' + TF_VERSION,
           'tensorflow-data-validation==0.11.0',
@@ -32,4 +32,5 @@ if __name__ == '__main__':
           'tensorflow-model-analysis==0.11.0',
           'tensorflow-serving-api==1.11.0',
           'tensorflow-transform==0.11.0',
+          'grpcio==1.17.1',
       ])
