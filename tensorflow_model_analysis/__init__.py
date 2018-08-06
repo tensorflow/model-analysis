@@ -15,6 +15,7 @@
 
 
 from tensorflow_model_analysis import view
+from tensorflow_model_analysis.api import tfma_unit as test
 from tensorflow_model_analysis.api.model_eval_lib import *  # pylint: disable=wildcard-import
 from tensorflow_model_analysis.constants import DATA_CENTRIC_MODE
 from tensorflow_model_analysis.constants import MODEL_CENTRIC_MODE

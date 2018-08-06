@@ -16,11 +16,9 @@ from __future__ import absolute_import
 from __future__ import division
 
 from __future__ import print_function
-import math
 import os
 
 from tensorflow_model_analysis.api.impl import api_types
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Tuple, Union
 
@@ -161,12 +159,12 @@ def _get_identifier(path, use_full_path):
 # with other data by overwriting the config on python side.
 _SUPPORTED_PLOT_KEYS = {
     'calibrationPlot': {
-        'matrices': metric_keys.CALIBRATION_PLOT_MATRICES,
-        'boundaries': metric_keys.CALIBRATION_PLOT_BOUNDARIES
+        'metricName': 'calibrationHistogramBuckets',
+        'dataSeries': 'buckets',
     },
     'aucPlot': {
-        'matrices': metric_keys.AUC_PLOTS_MATRICES,
-        'thresholds': metric_keys.AUC_PLOTS_THRESHOLDS
+        'metricName': 'confusionMatrixAtThresholds',
+        'dataSeries': 'matrices',
     }
 }
 
@@ -184,24 +182,25 @@ def _replace_nan_with_none(
   Returns:
     Transformed plot data where all nan has been replaced with None.
   """
-  metrics = {}
+  output_metrics = {}
   for plot_type in plot_keys:
-    plot_fields = plot_keys[plot_type]
-    for field in plot_fields:
-      actual_field_name = plot_fields[field]
-      if actual_field_name in plot_data:
-        input_field_value = plot_data[actual_field_name]
-        output_field_value = []
-        for row in input_field_value:
-          if isinstance(row, (int, float)):
-            output_field_value.append(row if not math.isnan(row) else None)
-          else:
-            output_row = []
-            for entry in row:
-              output_row.append(entry if not math.isnan(entry) else None)
-            output_field_value.append(output_row)
-        metrics[actual_field_name] = output_field_value
-  return metrics
+    metric_name = plot_keys[plot_type]['metricName']
+    if metric_name in plot_data:
+      data_series_name = plot_keys[plot_type]['dataSeries']
+      if data_series_name in plot_data[metric_name]:
+        data_series = plot_data[metric_name][data_series_name]
+        outputs = []
+        for entry in data_series:
+          output = {}
+          for key in entry:
+            value = entry[key]
+            # When converting protocol buffer into dict, float value nan is
+            # automatically converted into the string 'NaN'.
+            output[key] = None if value == 'NaN' else value
+          outputs.append(output)
+        output_metrics[metric_name] = {data_series_name: outputs}
+
+  return output_metrics
 
 
 def get_plot_data_and_config(

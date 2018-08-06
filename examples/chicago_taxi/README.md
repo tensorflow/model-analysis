@@ -4,7 +4,7 @@ The Chicago Taxi example demonstrates the end-to-end workflow and steps of how
 to transform data, train a model, analyze and serve it. It uses:
 
 * [TensorFlow Transform](https://www.tensorflow.org/tfx/transform) for feature preprocessing,
-* TensorFlow [Estimators](https://www.tensorflow.org/programmers_guide/estimators)
+* TensorFlow [Estimators](https://www.tensorflow.org/guide/estimators)
 for training,
 * [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/model_analysis) and Jupyter for evaluation, and
 * [TensorFlow Serving](https://www.tensorflow.org/serving) for serving.
@@ -145,7 +145,7 @@ bash ./train_local.sh
 </pre>
 
 The model leverages TensorFlow’s
-[Estimators](/programmers_guide/estimators) and is created in the
+[Estimators](/guide/estimators) and is created in the
 `build_estimator` function in `model.py`. The trainer's input takes the
 materialized, transformed examples from the previous step. Notice the pattern of
 sharing schema information between preprocessing and training using `taxi.py`
@@ -397,7 +397,7 @@ notebook and set up the output directory to see the results.
 To serve the model from the cloud, run:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-bash ./start_model_server_mlengine.sh
+bash ./start_model_server_cloud.sh
 </pre>
 
 To send a request to the cloud:

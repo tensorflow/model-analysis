@@ -174,7 +174,11 @@ suite('tests', () => {
     ];
     const calibrationPlotData = [];
     element.data = {
-      'plotData': {'bucketByRefinedPrediction': calibrationPlotData}
+      'plotData': {
+        'bucketByRefinedPrediction': {
+          'buckets': calibrationPlotData
+        }
+      }
     };
     element.loading = false;
 
@@ -191,8 +195,11 @@ suite('tests', () => {
     ];
     const precisionRecallCurveData = [];
     element.data = {
-      'plotData':
-          {'binaryClassificationByThreshold': precisionRecallCurveData}
+      'plotData': {
+        'binaryClassificationByThreshold': {
+          'matrices': precisionRecallCurveData
+        }
+      }
     };
     element.loading = false;
 

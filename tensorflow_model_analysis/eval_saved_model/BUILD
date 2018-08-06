@@ -55,9 +55,10 @@ py_library(
         ":constants",
         ":encoding",
         ":graph_ref",
+        ":util",
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis:types",
-        "//third_party/py/numpy",
+        "//tensorflow_model_analysis:util",
     ],
 )
 
@@ -85,7 +86,7 @@ py_test(
 py_test(
     name = "integration_test",
     srcs = ["integration_test.py"],
-    shard_count = 4,
+    shard_count = 6,
     deps = [
         ":encoding",
         "//tensorflow_model_analysis:expect_tensorflow_installed",
@@ -93,9 +94,13 @@ py_test(
         "//tensorflow_model_analysis/eval_saved_model:testutil",
         "//tensorflow_model_analysis/eval_saved_model/example_trainers:csv_linear_classifier",
         "//tensorflow_model_analysis/eval_saved_model/example_trainers:custom_estimator",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:dnn_classifier",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:fake_sequence_to_prediction",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:fixed_prediction_classifier",
         "//tensorflow_model_analysis/eval_saved_model/example_trainers:linear_classifier",
         "//tensorflow_model_analysis/eval_saved_model/example_trainers:linear_classifier_multivalent",
         "//tensorflow_model_analysis/eval_saved_model/example_trainers:multi_head",
+        "//tensorflow_model_analysis/eval_saved_model/post_export_metrics:metrics",
         "//third_party/tensorflow/core:protos_all_py_pb2",
     ],
 )
@@ -103,18 +108,15 @@ py_test(
 py_library(
     name = "testutil",
     testonly = 1,
-    srcs = ["testutil.py"],
-    deps = [
-        "//tensorflow_model_analysis:expect_tensorflow_installed",
-    ],
+    deps = [":testutil_non_testonly"],
 )
 
-py_test(
-    name = "testutil_test",
-    srcs = ["testutil_test.py"],
+py_library(
+    name = "testutil_non_testonly",
+    srcs = ["testutil.py"],
     deps = [
-        ":testutil",
-        "//third_party/tensorflow/core:protos_all_py_pb2",
+        ":util",
+        "//tensorflow_model_analysis:expect_tensorflow_installed",
     ],
 )
 
@@ -124,5 +126,16 @@ py_library(
     deps = [
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis:types",
+        "//third_party/py/numpy",
+    ],
+)
+
+py_test(
+    name = "util_test",
+    srcs = ["util_test.py"],
+    deps = [
+        ":testutil",
+        ":util",
+        "//third_party/tensorflow/core:protos_all_py_pb2",
     ],
 )

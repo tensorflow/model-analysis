@@ -42,9 +42,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     return tempfile.mkdtemp()
 
   def _exportEvalSavedModel(self, classifier):
-    temp_model_location = os.path.join(self._getTempDir(), 'eval_export_dir')
-    _, model_location = classifier(None, temp_model_location)
-    return model_location
+    temp_eval_export_dir = os.path.join(self._getTempDir(), 'eval_export_dir')
+    _, eval_export_dir = classifier(None, temp_eval_export_dir)
+    return eval_export_dir
 
   def _writeTFExamplesToTFRecords(self, examples):
     data_location = os.path.join(self._getTempDir(), 'input_data.rio')
@@ -63,12 +63,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
   def assertMetricsAlmostEqual(self, got_value, expected_value):
     for (s, m) in got_value:
       self.assertIn(s, expected_value)
-      self.assertDictElementsAlmostEqual(m, expected_value[s])
-
-  def assertPlotsAlmostEqual(self, got_value, expected_value):
-    for (s, m) in got_value:
-      self.assertIn(s, expected_value)
-      self.assertDictMatrixRowsAlmostEqual(m, expected_value[s])
+      for k in expected_value[s]:
+        self.assertIn(k, m)
+        self.assertDictElementsAlmostEqual(m[k], expected_value[s][k])
 
   def testRunModelAnalysis(self):
     model_location = self._exportEvalSavedModel(
@@ -90,16 +87,32 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # pipeline works.
     expected = {
         (('language', 'chinese'),): {
-            'accuracy': 0.5,
-            'my_mean_label': 0.5,
-            metric_keys.EXAMPLE_WEIGHT: 8.0,
-            metric_keys.EXAMPLE_COUNT: 2.0,
+            'accuracy': {
+                'doubleValue': 0.5
+            },
+            'my_mean_label': {
+                'doubleValue': 0.5
+            },
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 8.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
         },
         (('language', 'english'),): {
-            'accuracy': 1.0,
-            'my_mean_label': 1.0,
-            metric_keys.EXAMPLE_WEIGHT: 7.0,
-            metric_keys.EXAMPLE_COUNT: 2.0,
+            'accuracy': {
+                'doubleValue': 1.0
+            },
+            'my_mean_label': {
+                'doubleValue': 1.0
+            },
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 7.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
         }
     }
     self.assertEqual(eval_result.config.model_location, model_location)
@@ -112,9 +125,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     model_location = self._exportEvalSavedModel(
         fixed_prediction_estimator.simple_fixed_prediction_estimator)
     examples = [
-        self._makeExample(prediction=0, label=1.0),
+        self._makeExample(prediction=0.0, label=1.0),
         self._makeExample(prediction=0.7, label=0.0),
         self._makeExample(prediction=0.8, label=1.0),
+        self._makeExample(prediction=1.0, label=1.0),
         self._makeExample(prediction=1.0, label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
@@ -124,16 +138,21 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         add_metrics_callbacks=[post_export_metrics.auc_plots()])
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
-    expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: 4.0,}}
-    expected_plots = {
-        (): {
-            metric_keys.AUC_PLOTS_MATRICES: [(8001, [
-                2, 1, 0, 1, 1.0 / 1.0, 1.0 / 3.0
-            ])],
-        }
+    expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
+    expected_matrix = {
+        'threshold': 0.8,
+        'falseNegatives': 2.0,
+        'trueNegatives': 1.0,
+        'truePositives': 2.0,
+        'precision': 1.0,
+        'recall': 0.5
     }
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected_metrics)
-    self.assertPlotsAlmostEqual(eval_result.plots, expected_plots)
+    self.assertEqual(len(eval_result.plots), 1)
+    slice_key, plots = eval_result.plots[0]
+    self.assertEqual((), slice_key)
+    self.assertDictElementsAlmostEqual(
+        plots['confusionMatrixAtThresholds']['matrices'][8001], expected_matrix)
 
   def testRunModelAnalysisForCSVText(self):
     model_location = self._exportEvalSavedModel(
@@ -147,7 +166,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         model_location, data_location, file_format='text')
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
-    expected = {(): {'accuracy': 0.75, metric_keys.EXAMPLE_COUNT: 4.0}}
+    expected = {
+        (): {
+            'accuracy': {
+                'doubleValue': 0.75
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 4.0
+            }
+        }
+    }
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
   def testMultipleModelAnalysis(self):
@@ -171,14 +199,22 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertEqual(2, len(eval_results._results))
     expected_result_1 = {
         (('language', 'english'),): {
-            'my_mean_label': 1.0,
-            metric_keys.EXAMPLE_COUNT: 2.0
+            'my_mean_label': {
+                'doubleValue': 1.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
         }
     }
     expected_result_2 = {
         (('language', 'english'),): {
-            'mean_label': 1.0,
-            metric_keys.EXAMPLE_COUNT: 2.0
+            'mean_label': {
+                'doubleValue': 1.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
         }
     }
     self.assertMetricsAlmostEqual(eval_results._results[0].slicing_metrics,
@@ -204,12 +240,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # pipeline works.
     expected_result_1 = {
         (('language', 'english'),): {
-            metric_keys.EXAMPLE_COUNT: 2.0,
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
         }
     }
     expected_result_2 = {
         (('language', 'english'),): {
-            metric_keys.EXAMPLE_COUNT: 1.0,
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 1.0
+            },
         }
     }
     self.assertMetricsAlmostEqual(eval_results._results[0].slicing_metrics,

@@ -55,96 +55,35 @@ Polymer({
   computePlotData_: function(data, config) {
     const plotData = {};
     const metricKeys = config['metricKeys'];
-
-    if (metricKeys['calibrationPlot']) {
-      const calibrationPlot =
-          this.extractCalibrationPlotData_(data, metricKeys['calibrationPlot']);
-      if (calibrationPlot.length) {
-        plotData[tfma.PlotDataFieldNames.CALIBRATION_DATA] = calibrationPlot;
-      }
-    }
-
-    if (metricKeys['aucPlot']) {
-      const aucPlot = this.extractAucPlotData_(data, metricKeys['aucPlot']);
-      if (aucPlot.length) {
-        plotData[tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA] = aucPlot;
-      }
-    }
-
+    this.maybeSetPlotData_(
+        data, metricKeys['calibrationPlot'], plotData,
+        tfma.PlotDataFieldNames.CALIBRATION_DATA);
+    this.maybeSetPlotData_(
+        data, metricKeys['aucPlot'], plotData,
+        tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA);
     return {'plotData': plotData};
   },
 
   /**
-   * Extracts the calibration data and transforms it into expected format.
+   * Finds plot data as specified in plotConfig and if available, adds it to the
+   * output at the specified key.
    * @param {!Object} data
-   * @param {!Object} metricKeys
-   * @return {!Array<!Object>}
+   * @param {!Object|undefined} plotConfig
+   * @param {!Object} output
+   * @param {string} outputKey
+   * @private
    */
-  extractCalibrationPlotData_: function(data, metricKeys) {
-    const matricesKey = metricKeys['matrices'];
-    const boundariesKey = metricKeys['boundaries'];
-    const calibrationPlot = [];
-    const matricesData = matricesKey && data[matricesKey];
-    const boundariesData = boundariesKey && data[boundariesKey];
-
-    if (matricesData && boundariesData) {
-      let i = 0;
-      let lowerBound = -Infinity;
-      let upperBound;
-      do {
-        upperBound =
-            boundariesData[i] !== undefined ? boundariesData[i] : Infinity;
-
-        if (matricesData[i]) {
-          calibrationPlot.push({
-            'lowerThresholdInclusive': lowerBound,
-            'upperThresholdExclusive': upperBound,
-            'totalWeightedRefinedPrediction': matricesData[i][0],
-            'totalWeightedLabel': matricesData[i][1],
-            'numWeightedExamples': matricesData[i][2],
-          });
-        }
-        lowerBound = upperBound;
-        i++;
-      } while (i <= boundariesData.length);
+  maybeSetPlotData_: function(data, plotConfig, output, outputKey) {
+    const plotDataName = plotConfig && plotConfig['metricName'];
+    if (plotDataName) {
+      const dataSeriesName = plotConfig['dataSeries'];
+      const dataSeries =
+          data[plotDataName] && data[plotDataName][dataSeriesName];
+      if (dataSeries) {
+        output[outputKey] = data[plotDataName];
+      }
     }
-
-    return calibrationPlot;
   },
-
-  /**
-   * Extracts the AUC plot data and transforms it into expected format.
-   * @param {!Object} data
-   * @param {!Object} metricKeys
-   * @return {!Array<!Object>}
-   */
-  extractAucPlotData_: function(data, metricKeys) {
-    const matricesKey = metricKeys['matrices'];
-    const thresholdsKey = metricKeys['thresholds'];
-    const aucData = [];
-    const matrices = matricesKey && data[matricesKey];
-    const thresholds = thresholdsKey && data[thresholdsKey];
-
-    if (matrices && thresholds) {
-      matrices.forEach((matrix, i) => {
-        aucData.push({
-          'binaryClassificationThreshold':
-              {'predictionThreshold': thresholds[i]},
-          'matrix': {
-            'falseNegatives': matrix[0],
-            'trueNegatives': matrix[1],
-            'falsePositives': matrix[2],
-            'truePositives': matrix[3],
-            'precision': this.getValue_(matrix[4]),
-            'recall': this.getValue_(matrix[5]),
-          }
-        });
-      });
-    }
-
-    return aucData;
-  },
-
   /**
    * @param {string|number} value
    * @return {number} value or NaN.

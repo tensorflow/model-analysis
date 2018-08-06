@@ -313,18 +313,6 @@ class Data {
  */
 let SeriesList;
 
-
-/**
- * The custom metrics type.
- * @enum {string}
- */
-const CustomMetricsType = {
-  FLOAT: 'customMetricsDouble',
-  STRING: 'customMetricsString',
-  INT64: 'customMetricsInt',
-};
-
-
 /**
  * @param {!Array<string>} metrics
  * @param {!Object} values A key value pair of metric names and their values.
@@ -388,56 +376,6 @@ function getAvailableMetrics(dataArrays, metricsFieldKey) {
 
 
 /**
- * Extracts custom metrics. This functions copies custom metrics from their
- * respective field into top level. It also determines the necessary format
- * override.
- * @param {!Array<!Array<!Object>>} dataArrays
- * @param {string} metricsFieldKey
- * @return {!Constants.MetricValueFormatSpec} The format override to display
- *     the custom metrics properly.
- */
-function flattenCustomMetrics(dataArrays, metricsFieldKey) {
-  const int64Metrics = {};
-  dataArrays.forEach((data) => {
-    data.forEach((evaluation) => {
-      const statistics = evaluation[metricsFieldKey] || {};
-      extractCustomMetrics(statistics, CustomMetricsType.FLOAT);
-      extractCustomMetrics(statistics, CustomMetricsType.STRING);
-      extractCustomMetrics(
-          statistics, CustomMetricsType.INT64, int64Metrics,
-          Constants.MetricValueFormat.INT64);
-    });
-  });
-
-  return /** @type {Constants.MetricValueFormatSpec} */ (int64Metrics);
-}
-
-/**
- * Extracts custom metrics under the given key from the given statistics and
- * make them available at the top level. If the optional tracker is provided,
- * track all custom metric names extracted.
- * @param {!Object} statistics
- * @param {string} customMetricKey
- * @param {!Object=} opt_tracker
- * @param {Constants.MetricValueFormat=} opt_format
- */
-function extractCustomMetrics(
-    statistics, customMetricKey, opt_tracker, opt_format) {
-  const customMetrics = statistics[customMetricKey];
-  if (customMetrics) {
-    for (let key in customMetrics) {
-      statistics[key] = customMetrics[key];
-      if (opt_tracker && goog.isDef(opt_format)) {
-        opt_tracker[key] = {'type': opt_format};
-      }
-    }
-    // Remove the custom metric at the top level.
-    delete statistics[customMetricKey];
-  }
-}
-
-
-/**
  * @param {!Array<!Object>} data
  * @param {string} metricsFieldKey
  * @param {function(!Object):!Object} plotDataGetter
@@ -479,6 +417,36 @@ function preprocessMaybeAddPlotData(data, metricsFieldKey, plotDataGetter) {
         evaluation[metricsFieldKey]['plots'] = plotData;
       }
     }
+  });
+}
+
+
+/**
+ * Extracts the metric values from a map of
+ * tensorflow_model_analysis.MetricValue.
+ * @param {!Object<!Object>} metricsMap The metrics map.
+ * @return {!Object<!Object>}
+ */
+function flattenMetricsMap(metricsMap) {
+  return Object.keys(metricsMap).reduce((acc, metricName) => {
+    const metricValue = metricsMap[metricName];
+    const metricFields = Object.keys(metricValue);
+    // Since tensorflow_model_analysis.MetricValue is a oneof, there can only be
+    // one field defined. Use it to extract the actual metric value.
+    acc[metricName] = metricValue[metricFields[0]];
+    return acc;
+  }, {});
+}
+
+
+/**
+ * Flattens all metrics in the given array of runs.
+ * @param {!Array<!Object>} runs The runs.
+ * @param {string} metricsKey The key for metrics in a run object.
+ */
+function flattenMetrics(runs, metricsKey) {
+  runs.forEach(run => {
+    run[metricsKey] = flattenMetricsMap(run[metricsKey]);
   });
 }
 
@@ -561,7 +529,7 @@ class Series {
 let SeriesValue;
 
 goog.exportSymbol('tfma.Data.build', build);
-goog.exportSymbol('tfma.Data.flattenCustomMetrics', flattenCustomMetrics);
+goog.exportSymbol('tfma.Data.flattenMetrics', flattenMetrics);
 goog.exportSymbol('tfma.Data.getAvailableMetrics', getAvailableMetrics);
 goog.exportSymbol(
     'tfma.Data.preprocessMaybeAddPlotData', preprocessMaybeAddPlotData);
@@ -570,7 +538,7 @@ exports = {
   build,
   util: {
     getAvailableMetrics,
-    flattenCustomMetrics,
+    flattenMetrics,
     preprocessMaybeAddPlotData,
   },
   Data,

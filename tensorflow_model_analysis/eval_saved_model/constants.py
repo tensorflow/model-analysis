@@ -15,3 +15,9 @@
 
 EVAL_SAVED_MODEL_EXPORT_NAME = 'TFMA'
 EVAL_SAVED_MODEL_TAG = 'eval_saved_model'
+
+EVAL_TAG = 'eval'
+PREDICTIONS_NAME = 'predictions'
+METRICS_NAME = 'metrics'
+METRIC_VALUE_SUFFIX = 'value'
+METRIC_UPDATE_SUFFIX = 'update_op'

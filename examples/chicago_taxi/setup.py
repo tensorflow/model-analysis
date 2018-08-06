@@ -15,11 +15,12 @@
 import setuptools
 
 if __name__ == '__main__':
-  setuptools.setup(name='chicago_taxi_setup', version='1.0',
-                   packages=setuptools.find_packages(),
-                   install_requires=[
-                       'jupyter==1.0',
-                       'tensorflow==1.6.0',
-                       'tensorflow-model-analysis==0.6.0',
-                       'tensorflow-serving-api==1.6.0',
-                       'tensorflow-transform==0.6.0'])
+  setuptools.setup(
+      name='chicago_taxi_setup',
+      version='1.0',
+      packages=setuptools.find_packages(),
+      install_requires=[
+          'jupyter==1.0', 'tensorflow==1.9.0',
+          'tensorflow-model-analysis==0.9.0', 'tensorflow-serving-api==1.9.0',
+          'tensorflow-transform==0.8.0'
+      ])

@@ -39,9 +39,9 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
     return tempfile.mkdtemp()
 
   def _exportEvalSavedModel(self, classifier):
-    temp_model_location = os.path.join(self._getTempDir(), 'eval_export_dir')
-    _, model_location = classifier(None, temp_model_location)
-    return model_location
+    temp_eval_export_dir = os.path.join(self._getTempDir(), 'eval_export_dir')
+    _, eval_export_dir = classifier(None, temp_eval_export_dir)
+    return eval_export_dir
 
   def _assertMaterializedColumnsExist(self, got_values_dict,
                                       expected_column_names):

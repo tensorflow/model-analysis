@@ -61,7 +61,7 @@ tfma.CellRenderer.registerRenderer = function(type, renderer, typeChecker) {};
 
 /**
  * @param {number|string|?Object} value
- * @param {!Object<!tfma.TableProvider>=} opt_tableProvider
+ * @param {!Object<!tfma.TableProviderExt>=} opt_tableProvider
  * @param {!tfma.MetricValueFormatSpec=} opt_override
  */
 tfma.CellRenderer.renderValueWithFormatOverride = function(
@@ -144,11 +144,10 @@ tfma.Data.prototype.getAllMetricValues = function(feature) {};
 tfma.Data.build = function(metricNames, results) {};
 
 /**
- * @param {!Array<!Array<!Object>>} dataArrays
- * @param {string} metricsFieldKey
- * @return {!tfma.MetricValueFormatSpec}
+ * @param {!Array<!Object>} runs
+     @param {string} metricsKey
  */
-tfma.Data.flattenCustomMetrics = function(dataArrays, metricsFieldKey) {};
+tfma.Data.flattenMetrics = function(runs, metricsKey) {};
 
 /**
  * @param {!Array<!Array<!Object>>} dataArrays
@@ -213,7 +212,7 @@ tfma.LineChartProvider = function() {};
 
 /**
  * @param {string} metric
- * @return {!Array<!Array<string|number|!tfma.TableProvider.GVizCell>>}
+ * @return {!Array<!Array<string|number|!tfma.GVizCell>>}
  */
 tfma.LineChartProvider.prototype.getLineChartData = function(metric) {};
 
@@ -248,7 +247,6 @@ tfma.MetricValueFormat = {
   INT: '',
   INT64: '',
   FLOAT: '',
-  METRIC_AT_K: '',
   ROW_ID: '',
 };
 
@@ -271,7 +269,9 @@ tfma.MetricValueFormatSpec.prototype.transform;
  * @enum {string}
  */
 tfma.PlotDataFieldNames = {
+  CALIBRATION_BUCKETS: '',
   CALIBRATION_DATA: '',
+  CONFUSION_MATRICES: '',
   MACRO_PRECISION_RECALL_CURVE_DATA: '',
   MICRO_PRECISION_RECALL_CURVE_DATA: '',
   PRECISION_RECALL_CURVE_DATA: '',
@@ -325,54 +325,54 @@ tfma.PlotDataDisplay = {
 /**
  * @constructor
  */
-tfma.TableProvider = function() {};
+tfma.TableProviderExt = function() {};
 
 /**
  * @return {!Array<!Array<(string|number)>>}
  */
-tfma.TableProvider.prototype.getDataTable = function() {};
+tfma.TableProviderExt.prototype.getDataTable = function() {};
 
 /**
  * @param {!Array<string>} requiredColumns
  * @return {!Array<string>}
  * @export
  */
-tfma.TableProvider.prototype.getHeader = function(requiredColumns) {};
+tfma.TableProviderExt.prototype.getHeader = function(requiredColumns) {};
 
 /**
  * @param {!Object<!Object>} specifiedFormats
  * @return {!Object<!tfma.MetricValueFormatSpec>}
  * @export
  */
-tfma.TableProvider.prototype.getFormats = function(specifiedFormats) {};
+tfma.TableProviderExt.prototype.getFormats = function(specifiedFormats) {};
 
 /**
  * @return {boolean}
  * @export
  */
-tfma.TableProvider.prototype.readyToRender = function() {};
+tfma.TableProviderExt.prototype.readyToRender = function() {};
 
 /**
  * @param {number|string|!Object} value
  * @param {!Object} override
  * @return {number|string|!Object}
  */
-tfma.TableProvider.prototype.applyOverride = function(value, override) {};
+tfma.TableProviderExt.prototype.applyOverride = function(value, override) {};
 
 /**
  * @constructor
  */
-tfma.TableProvider.GVizCell = function() {};
+tfma.GVizCell = function() {};
 
 /**
  * @type {number|string}
  */
-tfma.TableProvider.GVizCell.prototype.v;
+tfma.GVizCell.prototype.v;
 
 /**
  * @type {number|string}
  */
-tfma.TableProvider.GVizCell.prototype.f;
+tfma.GVizCell.prototype.f;
 
 /**
  * @constructor
@@ -404,7 +404,7 @@ tfma.GraphData.prototype.getColumnSteppingInfo = function(
 tfma.GraphData.prototype.getFeatures = function() {};
 
 /**
- * @return {!tfma.TableProvider} A reference to the data in table format.
+ * @return {!tfma.TableProviderExt} A reference to the data in table format.
  */
 tfma.GraphData.prototype.getTableDataFromDataset = function(data) {};
 

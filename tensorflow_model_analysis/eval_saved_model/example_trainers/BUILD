@@ -8,6 +8,7 @@ py_library(
     deps = [
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
     ],
 )
 
@@ -19,6 +20,19 @@ py_library(
     deps = [
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
+    ],
+)
+
+py_library(
+    name = "fixed_prediction_classifier",
+    srcs = [
+        "fixed_prediction_classifier.py",
+    ],
+    deps = [
+        "//tensorflow_model_analysis:expect_tensorflow_installed",
+        "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
     ],
 )
 
@@ -30,6 +44,19 @@ py_library(
     deps = [
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
+    ],
+)
+
+py_library(
+    name = "fixed_prediction_classifier_extra_fields",
+    srcs = [
+        "fixed_prediction_classifier_extra_fields.py",
+    ],
+    deps = [
+        "//tensorflow_model_analysis:expect_tensorflow_installed",
+        "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
     ],
 )
 
@@ -41,6 +68,19 @@ py_library(
     deps = [
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
+    ],
+)
+
+py_library(
+    name = "dnn_classifier",
+    srcs = [
+        "dnn_classifier.py",
+    ],
+    deps = [
+        "//tensorflow_model_analysis:expect_tensorflow_installed",
+        "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
     ],
 )
 
@@ -52,6 +92,7 @@ py_library(
     deps = [
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
     ],
 )
 
@@ -63,6 +104,43 @@ py_library(
     deps = [
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
+    ],
+)
+
+py_library(
+    name = "dnn_regressor",
+    srcs = [
+        "dnn_regressor.py",
+    ],
+    deps = [
+        "//tensorflow_model_analysis:expect_tensorflow_installed",
+        "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
+    ],
+)
+
+py_library(
+    name = "fake_sequence_to_prediction",
+    srcs = [
+        "fake_sequence_to_prediction.py",
+    ],
+    deps = [
+        "//tensorflow_model_analysis:expect_tensorflow_installed",
+        "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model:util",
+    ],
+)
+
+py_library(
+    name = "util",
+    srcs = [
+        "util.py",
+    ],
+    deps = [
+        "//tensorflow_model_analysis:expect_tensorflow_installed",
+        "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model:util",
     ],
 )
 
@@ -74,6 +152,7 @@ py_library(
     deps = [
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
     ],
 )
 
@@ -85,5 +164,6 @@ py_library(
     deps = [
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:util",
     ],
 )

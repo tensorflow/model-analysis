@@ -41,15 +41,17 @@
   ];
   calibrationPlot.initialType = tfma.PlotTypes.CALIBRATION_PLOT;
   calibrationPlot.loading = false;
-  calibrationPlot.data = {'plotData': {'bucketByRefinedPrediction': input}};
+  calibrationPlot.data = {
+    'plotData': {'bucketByRefinedPrediction': {'buckets': input}}
+  };
 
   const precisionRecallCurveInput = [];
   let precision = 1;
   for (let i = 0; i <= 128; i++) {
     precisionRecallCurveInput.push({
-      'matrix': {'precision': precision, 'recall': i / 128},
-      'binaryClassificationThreshold':
-          {'predictionThreshold': (128 - i) / 128}
+      'precision': precision,
+      'recall': i / 128,
+      'threshold': (128 - i) / 128,
     });
     precision -= Math.random() / 128;
   }
@@ -61,7 +63,9 @@
   precisionRecallCurve.initialType = tfma.PlotTypes.PRECISION_RECALL_CURVE;
   precisionRecallCurve.loading = false;
   precisionRecallCurve.data = {
-    'plotData': {'binaryClassificationByThreshold': precisionRecallCurveInput}
+    'plotData': {
+      'binaryClassificationByThreshold': {'matrices': precisionRecallCurveInput}
+    }
   };
 
   const loading = document.getElementById('loading');

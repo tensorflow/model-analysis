@@ -14,42 +14,42 @@
  * limitations under the License.
  */
 (() => {
-  const MATRICES_KEY = 'matrices';
-  const BOUNDARIES_KEY = 'boundaries';
-  const BUCKET_COUNT = 512;
+  const METRIC_NAME = 'confusionMatrixAtThresholds';
+  const DATA_SERIES_NAME = 'matrices';
+  const COUNT = 512;
   const view = document.getElementById('plot');
 
-  function makeMatrices(count) {
-    const buckets = [];
+  function makeDataSeries(count) {
+    const series = [];
     for (let i = 0; i < count; i++) {
-      const weight = Math.random() * 64;
-      buckets.push([Math.random() * weight, Math.random() * weight, weight]);
-    }
-    return buckets;
-  }
+      let val = 1 - (i - count) * (i - count) / count / count;
+      const tp = Math.round(count * val);
+      const fn = count - tp;
+      const fp = i;
+      const tn = count - i;
 
-  function makeBoundaries(count) {
-    const increment = 1 / count;
-    let currentBoundary = increment;
-    const boundaries = [];
-    for (let i = 1; i < count; i++) {
-      boundaries.push(currentBoundary);
-      currentBoundary += increment;
+      series.push({
+        'truePositives': tp,
+        'trueNegatives': tn,
+        'falsePositives': fp,
+        'falseNegatives': fn,
+        'precision': tp / (tp + fp),
+        'recall': tp / (tp + fn),
+        'threshold': (128 - i) / 128,
+      });
     }
-    return boundaries;
+
+    return series;
   }
 
   view.config = {
     'sliceName': 'Demo',
-    'metricKeys': {
-      'calibrationPlot': {
-        'matrices': MATRICES_KEY,
-        'boundaries': BOUNDARIES_KEY,
-      }
-    }
+    'metricKeys':
+        {'aucPlot': {'metricName': METRIC_NAME, 'dataSeries': DATA_SERIES_NAME}}
   };
   view.data = {
-    [MATRICES_KEY]: makeMatrices(BUCKET_COUNT),
-    [BOUNDARIES_KEY]: makeBoundaries(BUCKET_COUNT)
+    [METRIC_NAME]: {
+      [DATA_SERIES_NAME]: makeDataSeries(COUNT),
+    }
   };
 })();

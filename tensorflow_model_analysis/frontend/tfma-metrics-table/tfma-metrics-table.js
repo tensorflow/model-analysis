@@ -44,7 +44,7 @@ Polymer({
 
     /**
      * Metrics table data.
-     * @type {!tfma.TableProvider}
+     * @type {!tfma.TableProviderExt}
      */
     data: Object,
 
@@ -198,7 +198,7 @@ Polymer({
 
   /**
    * Computes the data table.
-   * @param {!tfma.TableProvider} data
+   * @param {!tfma.TableProviderExt} data
    * @param {!Array<string>} metrics
    * @param {!Object<!tfma.MetricValueFormatSpec>} metricFormats
    * @param {boolean} tableReady

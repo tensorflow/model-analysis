@@ -43,10 +43,15 @@ suite('tests', () => {
           'modelIdentifier': 'a.model',
         },
         'metrics': {
-          'averageRefinedPrediction': 0.51,
-          'averageLabel': 0.61,
-          'customMetricsString': {'myString': 'a'},
-          'weightedExamples': 10,
+          'averageRefinedPrediction': {
+            'doubleValue': 0.51
+          },
+          'averageLabel': {
+            'doubleValue': 0.61
+          },
+          'weightedExamples': {
+            'doubleValue': 10
+          },
         }
       },
       {
@@ -55,10 +60,15 @@ suite('tests', () => {
           'modelIdentifier': 'b.model',
         },
         'metrics': {
-          'averageRefinedPrediction': 0.52,
-          'averageLabel': 0.62,
-          'customMetricsString': {'myString': 'b'},
-          'weightedExamples': 20,
+          'averageRefinedPrediction': {
+            'doubleValue': 0.52
+          },
+          'averageLabel': {
+            'doubleValue': 0.62
+          },
+          'weightedExamples':{
+            'doubleValue': 20
+          },
         }
       },
       {
@@ -67,10 +77,15 @@ suite('tests', () => {
           'modelIdentifier': 'c.model',
         },
         'metrics': {
-          'averageRefinedPrediction': 0.53,
-          'averageLabel': 0.63,
-          'customMetricsString': {'myString': 'c'},
-          'weightedExamples': 30,
+          'averageRefinedPrediction': {
+            'doubleValue': 0.53
+          },
+          'averageLabel': {
+            'doubleValue': 0.63
+          },
+          'weightedExamples': {
+            'doubleValue': 30
+          },
         },
       }
     ];
@@ -82,15 +97,14 @@ suite('tests', () => {
     const checkDataParsed = () => {
       const seriesData = element.$$('tfma-time-series-browser').seriesData;
       assert.deepEqual(seriesData.getMetrics(), [
-        'averageLabel', 'averageRefinedPrediction', 'calibration', 'myString',
-        'weightedExamples'
+        'averageLabel', 'averageRefinedPrediction', 'calibration', 'weightedExamples'
       ]);
       assert.deepEqual(seriesData.getModelIds(), ['c.model', 'b.model', 'a.model']);
       const dt = seriesData.getDataTable();
       assert.deepEqual(seriesData.getDataTable(), [
-          ["c.model", "c.data", 0.63, 0.53, 0.8412698412698413, "c", 30],
-          ["b.model", "b.data", 0.62, 0.52, 0.8387096774193549, "b", 20],
-          ["a.model", "a.data", 0.61, 0.51, 0.8360655737704918, "a", 10]]);
+          ["c.model", "c.data", 0.63, 0.53, 0.8412698412698413, 30],
+          ["b.model", "b.data", 0.62, 0.52, 0.8387096774193549, 20],
+          ["a.model", "a.data", 0.61, 0.51, 0.8360655737704918, 10]]);
       done();
     };
     run(checkDataParsed);

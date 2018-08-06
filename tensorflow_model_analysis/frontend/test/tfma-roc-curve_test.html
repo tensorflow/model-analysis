@@ -31,35 +31,25 @@ limitations under the License.
 suite('tests', () => {
   test('ExtractsData', () => {
     const element = fixture('roc-curve-fixture');
-    element.data = [
-      {
-        matrix: {
-          truePositives: 0,
-          falseNegatives: 64,
-          falsePositives: 0,
-          trueNegatives: 128
-        },
-        binaryClassificationThreshold: {predictionThreshold: Infinity}
-      },
-      {
-        matrix: {
-          truePositives: 75,
-          falseNegatives: 25,
-          falsePositives: 128,
-          trueNegatives: 128
-        },
-        binaryClassificationThreshold: {predictionThreshold: 0.5}
-      },
-      {
-        matrix: {
-          truePositives: 112,
-          falseNegatives: 16,
-          falsePositives: 224,
-          trueNegatives: 32
-        },
-        binaryClassificationThreshold: {predictionThreshold: -Infinity}
-      }
-    ];
+    element.data = [{
+      truePositives: 0,
+      falseNegatives: 64,
+      falsePositives: 0,
+      trueNegatives: 128,
+      threshold: Infinity
+    }, {
+      truePositives: 75,
+      falseNegatives: 25,
+      falsePositives: 128,
+      trueNegatives: 128,
+      threshold: 0.5
+    }, {
+      truePositives: 112,
+      falseNegatives: 16,
+      falsePositives: 224,
+      trueNegatives: 32,
+      threshold: -Infinity
+    }];
     const chartData = element.$$('google-chart').data;
     assert.equal(4, chartData.length);
     assert.deepEqual(

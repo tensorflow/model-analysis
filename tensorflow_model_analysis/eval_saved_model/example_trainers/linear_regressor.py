@@ -30,84 +30,33 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export
+from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
 
 def simple_linear_regressor(export_path, eval_export_path):
   """Trains and exports a simple linear regressor."""
 
-  def eval_input_receiver_fn():
-    """Eval input receiver function."""
-    serialized_tf_example = tf.placeholder(
-        dtype=tf.string, shape=[None], name='input_example_tensor')
+  feature_spec = tf.feature_column.make_parse_example_spec(
+      util.linear_columns(False))
+  eval_feature_spec = tf.feature_column.make_parse_example_spec(
+      util.linear_columns(True) +
+      [tf.feature_column.categorical_column_with_hash_bucket('slice_key', 100)])
 
-    language = tf.contrib.layers.sparse_column_with_keys(
-        'language', ['english', 'chinese'])
-    slice_key = tf.contrib.layers.sparse_column_with_hash_bucket(
-        'slice_key', 100)
-    age = tf.contrib.layers.real_valued_column('age')
-    label = tf.contrib.layers.real_valued_column('label')
-    all_features = [age, language, label, slice_key]
-    feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(
-        all_features)
-    receiver_tensors = {'examples': serialized_tf_example}
-    features = tf.parse_example(serialized_tf_example, feature_spec)
+  regressor = tf.estimator.LinearRegressor(
+      feature_columns=util.linear_columns())
+  regressor = tf.contrib.estimator.add_metrics(regressor,
+                                               util.regressor_extra_metrics)
+  regressor.train(
+      input_fn=util.make_regressor_input_fn(
+          tf.feature_column.make_parse_example_spec(util.linear_columns(True))),
+      steps=3000)
 
-    return export.EvalInputReceiver(
-        features=features,
-        receiver_tensors=receiver_tensors,
-        labels=features['label'])
-
-  def input_fn():
-    """Train input function."""
-    return {
-        'age':
-            tf.constant([[1], [2], [3], [4], [1], [2], [3], [4], [10], [20],
-                         [30], [40], [10], [20], [30], [40]]),
-        'language':
-            tf.SparseTensor(
-                values=[
-                    'english', 'english', 'english', 'english', 'chinese',
-                    'chinese', 'chinese', 'chinese', 'english', 'english',
-                    'english', 'english', 'chinese', 'chinese', 'chinese',
-                    'chinese'
-                ],
-                indices=[[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0],
-                         [7, 0], [8, 0], [9, 0], [10, 0], [11, 0], [12, 0],
-                         [13, 0], [14, 0], [15, 0]],
-                dense_shape=[16, 1])
-    }, tf.constant([[4], [7], [10], [13], [3], [6], [9], [12], [31], [61], [91],
-                    [121], [30], [60], [90], [120]])
-
-  language = tf.contrib.layers.sparse_column_with_keys('language',
-                                                       ['english', 'chinese'])
-  age = tf.contrib.layers.real_valued_column('age')
-  all_features = [age, language]  # slice_key not used in training.
-  feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(all_features)
-
-  def my_metrics(features, labels, predictions):
-    return {
-        'my_mean_prediction': tf.metrics.mean(predictions['predictions']),
-        'my_mean_age': tf.metrics.mean(features['age']),
-        'my_mean_label': tf.metrics.mean(labels),
-        'my_mean_age_times_label': tf.metrics.mean(labels * features['age']),
-    }
-
-  regressor = tf.estimator.LinearRegressor(feature_columns=all_features)
-  regressor = tf.contrib.estimator.add_metrics(regressor, my_metrics)
-  regressor.train(input_fn=input_fn, steps=3000)
-
-  export_dir = None
-  eval_export_dir = None
-  if export_path:
-    export_dir = regressor.export_savedmodel(
-        export_dir_base=export_path,
-        serving_input_receiver_fn=tf.estimator.export.
-        build_parsing_serving_input_receiver_fn(feature_spec))
-
-  if eval_export_path:
-    eval_export_dir = export.export_eval_savedmodel(
-        estimator=regressor,
-        export_dir_base=eval_export_path,
-        eval_input_receiver_fn=eval_input_receiver_fn)
-
-  return export_dir, eval_export_dir
+  return util.export_model_and_eval_model(
+      estimator=regressor,
+      serving_input_receiver_fn=(
+          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+              feature_spec)),
+      eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(
+          eval_feature_spec, label_key='label'),
+      export_path=export_path,
+      eval_export_path=eval_export_path)
