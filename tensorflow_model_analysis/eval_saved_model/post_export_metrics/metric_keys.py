@@ -39,10 +39,19 @@ EXAMPLE_WEIGHT = _add_metric_prefix('example_weight')
 EXAMPLE_COUNT = _add_metric_prefix('example_count')
 CALIBRATION_PLOT_MATRICES = _add_metric_prefix('calibration_plot/matrices')
 CALIBRATION_PLOT_BOUNDARIES = _add_metric_prefix('calibration_plot/boundaries')
+CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES = _add_metric_prefix(
+    'confusion_matrix_at_thresholds/matrices')
+CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS = _add_metric_prefix(
+    'confusion_matrix_at_thresholds/thresholds')
+CONFUSION_MATRIX_AT_THRESHOLDS = _add_metric_prefix(
+    'confusion_matrix_at_thresholds')  # Output-only
 AUC_PLOTS_MATRICES = _add_metric_prefix('auc_plots/matrices')
 AUC_PLOTS_THRESHOLDS = _add_metric_prefix('auc_plots/thresholds')
 AUC = _add_metric_prefix('auc')
 AUPRC = _add_metric_prefix('auprc')
+PRECISION_RECALL_AT_K = _add_metric_prefix('precision_recall_at_k')
+PRECISION_AT_K = _add_metric_prefix('precision_at_k')  # Output-only
+RECALL_AT_K = _add_metric_prefix('recall_at_k')  # Output-only
 
 # keys where the corresponding values are results for plots
 PLOT_KEYS = [

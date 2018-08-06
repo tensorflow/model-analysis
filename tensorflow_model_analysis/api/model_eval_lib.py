@@ -30,12 +30,91 @@ from tensorflow_model_analysis.api.impl import serialization
 from tensorflow_model_analysis.eval_saved_model.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.eval_saved_model.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.slicer import slicer
-from tensorflow_model_analysis.types_compat import List, Optional
+from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional
+from google.protobuf import json_format
+
+
+# The input type is a MessageMap where the keys are strings and the values are
+# some protocol buffer field. Note that MessageMap is not a protobuf message,
+# none of the exising utility methods work on it. We must iterate over its
+# values and call the utility function individually.
+def _convert_metric_map_to_dict(
+    metric_map):
+  """Converts a metric map (metrics in MetricsForSlice protobuf) into a dict.
+
+  Args:
+    metric_map: A protocol buffer MessageMap that has behaviors like dict. The
+      keys are strings while the values are protocol buffers. However, it is not
+      a protobuf message and cannot be passed into json_format.MessageToDict
+      directly. Instead, we must iterate over its values.
+
+  Returns:
+    A dict representing the metric_map. For example:
+    Assume myProto contains
+    {
+      metrics: {
+        key: 'double'
+        value: {
+          double_value: {
+            value: 1.0
+          }
+        }
+      }
+      metrics: {
+        key: 'bounded'
+        value: {
+          bounded_value: {
+            lower_bound: {
+              double_value: {
+                value: 0.8
+              }
+            }
+            upper_bound: {
+              double_value: {
+                value: 0.9
+              }
+            }
+            value: {
+              double_value: {
+                value: 0.86
+              }
+            }
+          }
+        }
+      }
+    }
+
+    The output of _convert_metric_map_to_dict(myProto.metrics) would be
+
+    {
+      'double': {
+        'doubleValue': 1.0,
+      },
+      'bounded': {
+        'boundedValue': {
+          'lowerBound': 0.8,
+          'upperBound': 0.9,
+          'value': 0.86,
+        },
+      },
+    }
+
+    Note that field names are converted to lowerCamelCase and the field value in
+    google.protobuf.DoubleValue is collapsed automatically.
+  """
+  return {k: json_format.MessageToDict(metric_map[k]) for k in metric_map}
 
 
 def load_eval_result(output_path):
   """Creates an EvalResult object for use with the visualization functions."""
-  slicing_metrics, plots = serialization.load_plots_and_metrics(output_path)
+  metrics_proto_list, plots_proto_list = serialization.load_plots_and_metrics(
+      output_path)
+
+  slicing_metrics = [(key, _convert_metric_map_to_dict(metrics_data))
+                     for key, metrics_data in metrics_proto_list]
+  plots = [(key, json_format.MessageToDict(plot_data))
+           for key, plot_data in plots_proto_list]
+
   eval_config = serialization.load_eval_config(output_path)
   return api_types.EvalResult(
       slicing_metrics=slicing_metrics, plots=plots, config=eval_config)
@@ -44,9 +123,9 @@ def load_eval_result(output_path):
 def _assert_tensorflow_version():
   # Fail with a clear error in case we are not using a compatible TF version.
   major, minor, _ = tf.__version__.split('.')
-  if int(major) != 1 or int(minor) < 6:
+  if int(major) != 1 or int(minor) < 9:
     raise RuntimeError(
-        'Tensorflow version >= 1.6, < 2 is required. Found (%s). Please '
+        'Tensorflow version >= 1.9, < 2 is required. Found (%s). Please '
         'install the latest 1.x version from '
         'https://github.com/tensorflow/tensorflow. ' % tf.__version__)
 
@@ -143,6 +222,8 @@ def EvaluateAndWriteResults(  # pylint: disable=invalid-name
       example_weight_metric_key=example_weight_metric_key)
 
   _ = ((metrics, plots)
+       | 'SerializeMetricsAndPlots' >> serialization.SerializeMetricsAndPlots(
+           post_export_metrics=add_metrics_callbacks)
        |
        'WriteMetricsPlotsAndConfig' >> serialization.WriteMetricsPlotsAndConfig(
            output_path=output_path, eval_config=eval_config))

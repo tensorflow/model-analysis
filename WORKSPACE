@@ -2,11 +2,11 @@ workspace(name = "org_tensorflow_model_analysis")
 
 http_archive(
     name = "io_bazel_rules_closure",
-    sha256 = "6691c58a2cd30a86776dd9bb34898b041e37136f2dc7e24cadaeaf599c95c657",
-    strip_prefix = "rules_closure-08039ba8ca59f64248bb3b6ae016460fe9c9914f",
+    sha256 = "424dce95fddfea8dcf8012a4749fd7166a3009d8d7c32942f19dff12d0bbc2e8",
+    strip_prefix = "rules_closure-35ffe0eec59ce21ea6b04a8e3345cfcfcf20f5ed",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_closure/archive/08039ba8ca59f64248bb3b6ae016460fe9c9914f.tar.gz",
-        "https://github.com/bazelbuild/rules_closure/archive/08039ba8ca59f64248bb3b6ae016460fe9c9914f.tar.gz",  # 2018-01-16
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_closure/archive/35ffe0eec59ce21ea6b04a8e3345cfcfcf20f5ed.tar.gz",
+        "https://github.com/bazelbuild/rules_closure/archive/35ffe0eec59ce21ea6b04a8e3345cfcfcf20f5ed.tar.gz",  # 2018-04-12
     ],
 )
 
@@ -15,9 +15,9 @@ closure_repositories()
 
 http_archive(
     name = "org_tensorflow_tensorboard",
-    sha256 = "a943c0242a07da4d445135ffc9a7c7cb987d9bd948ae733695bc16095dceec20",
-    strip_prefix = "tensorboard-2fdb2199553729a6c5b42b7eb0305a101b454add",
-    urls = ["https://github.com/tensorflow/tensorboard/archive/2fdb2199553729a6c5b42b7eb0305a101b454add.zip"],
+    sha256 = "bd5ce4676158c8e00de43e763e1e6e699b97cade0ce841d5e4b896e3e733dbec",
+    strip_prefix = "tensorboard-270d34d1e2b0fc9401db0549004e4a0f0f1ffd2d",
+    urls = ["https://github.com/tensorflow/tensorboard/archive/270d34d1e2b0fc9401db0549004e4a0f0f1ffd2d.zip"],  # 2018-04-17
 )
 
 load("@org_tensorflow_tensorboard//third_party:workspace.bzl", "tensorboard_workspace")

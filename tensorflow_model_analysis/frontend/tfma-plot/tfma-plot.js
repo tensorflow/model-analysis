@@ -181,7 +181,11 @@
      */
     computeCalibrationData_: function(data) {
       const plotData = data && data['plotData'] || {};
-      return plotData[tfma.PlotDataFieldNames.CALIBRATION_DATA] || [];
+      return plotData[tfma.PlotDataFieldNames.CALIBRATION_DATA] &&
+          plotData[tfma.PlotDataFieldNames
+                       .CALIBRATION_DATA][tfma.PlotDataFieldNames
+                                              .CALIBRATION_BUCKETS] ||
+          [];
     },
 
     /**
@@ -191,7 +195,10 @@
      */
     computePrecisionRecallCurveData_: function(data) {
       const plotData = data && data['plotData'] || {};
-      return plotData[tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA] ||
+      return plotData[tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA] &&
+          plotData[tfma.PlotDataFieldNames
+                       .PRECISION_RECALL_CURVE_DATA][tfma.PlotDataFieldNames
+                                                         .CONFUSION_MATRICES] ||
           [];
     },
 

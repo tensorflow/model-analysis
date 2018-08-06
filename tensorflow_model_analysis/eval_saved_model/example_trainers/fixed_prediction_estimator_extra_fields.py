@@ -15,8 +15,8 @@
 
 This model always predicts the value of the "prediction" feature.
 
-The eval_input_receiver_fn also parses the "fixed_float", "fixed_string" and
-"var_float", "var_string" features.
+The eval_input_receiver_fn also parses the "fixed_float", "fixed_string",
+"fixed_int", and "var_float", "var_string", "var_int" features.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -27,6 +27,10 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export
+from tensorflow_model_analysis.eval_saved_model.example_trainers import util
+
+from tensorflow.python.estimator.canned import metric_keys
+from tensorflow.python.estimator.canned import prediction_keys
 
 
 def simple_fixed_prediction_estimator_extra_fields(export_path,
@@ -37,20 +41,32 @@ def simple_fixed_prediction_estimator_extra_fields(export_path,
     """Model function for custom estimator."""
     del params
     predictions = features['prediction']
+    predictions_dict = {
+        prediction_keys.PredictionKeys.PREDICTIONS: predictions,
+    }
 
     if mode == tf.estimator.ModeKeys.PREDICT:
       return tf.estimator.EstimatorSpec(
           mode=mode,
-          predictions={'score': predictions},
+          predictions=predictions_dict,
           export_outputs={
-              'score': tf.estimator.export.RegressionOutput(predictions)
+              tf.saved_model.signature_constants.
+              DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+                  tf.estimator.export.RegressionOutput(predictions)
           })
 
     loss = tf.losses.mean_squared_error(predictions, labels)
     train_op = tf.assign_add(tf.train.get_global_step(), 1)
+    eval_metric_ops = {
+        metric_keys.MetricKeys.LOSS_MEAN: tf.metrics.mean(loss),
+    }
 
     return tf.estimator.EstimatorSpec(
-        mode=mode, loss=loss, train_op=train_op, predictions=predictions)
+        mode=mode,
+        loss=loss,
+        train_op=train_op,
+        predictions=predictions_dict,
+        eval_metric_ops=eval_metric_ops)
 
   def train_input_fn():
     """Train input function."""
@@ -58,49 +74,27 @@ def simple_fixed_prediction_estimator_extra_fields(export_path,
         'prediction': tf.constant([[1.0], [2.0], [3.0], [4.0]]),
     }, tf.constant([[1.0], [2.0], [3.0], [4.0]]),
 
-  def serving_input_receiver_fn():
-    """Serving input receiver function."""
-    serialized_tf_example = tf.placeholder(
-        dtype=tf.string, shape=[None], name='input_example_tensor')
-    feature_spec = {'prediction': tf.FixedLenFeature([1], dtype=tf.float32)}
-    receiver_tensors = {'examples': serialized_tf_example}
-    features = tf.parse_example(serialized_tf_example, feature_spec)
-    return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
-
-  def eval_input_receiver_fn():
-    """Eval input receiver function."""
-    serialized_tf_example = tf.placeholder(
-        dtype=tf.string, shape=[None], name='input_example_tensor')
-    feature_spec = {
-        'prediction': tf.FixedLenFeature([1], dtype=tf.float32),
-        'label': tf.FixedLenFeature([1], dtype=tf.float32),
-        'fixed_float': tf.FixedLenFeature([1], dtype=tf.float32),
-        'fixed_string': tf.FixedLenFeature([1], dtype=tf.string),
-        'var_float': tf.VarLenFeature(dtype=tf.float32),
-        'var_string': tf.VarLenFeature(dtype=tf.string)
-    }
-    receiver_tensors = {'examples': serialized_tf_example}
-    features = tf.parse_example(serialized_tf_example, feature_spec)
-
-    return export.EvalInputReceiver(
-        features=features,
-        receiver_tensors=receiver_tensors,
-        labels=features['label'])
+  feature_spec = {'prediction': tf.FixedLenFeature([1], dtype=tf.float32)}
+  eval_feature_spec = {
+      'prediction': tf.FixedLenFeature([1], dtype=tf.float32),
+      'label': tf.FixedLenFeature([1], dtype=tf.float32),
+      'fixed_float': tf.FixedLenFeature([1], dtype=tf.float32),
+      'fixed_string': tf.FixedLenFeature([1], dtype=tf.string),
+      'fixed_int': tf.FixedLenFeature([1], dtype=tf.int64),
+      'var_float': tf.VarLenFeature(dtype=tf.float32),
+      'var_string': tf.VarLenFeature(dtype=tf.string),
+      'var_int': tf.VarLenFeature(dtype=tf.int64),
+  }
 
   estimator = tf.estimator.Estimator(model_fn=model_fn)
   estimator.train(input_fn=train_input_fn, steps=1)
 
-  export_dir = None
-  eval_export_dir = None
-  if export_path:
-    export_dir = estimator.export_savedmodel(
-        export_dir_base=export_path,
-        serving_input_receiver_fn=serving_input_receiver_fn)
-
-  if eval_export_path:
-    eval_export_dir = export.export_eval_savedmodel(
-        estimator=estimator,
-        export_dir_base=eval_export_path,
-        eval_input_receiver_fn=eval_input_receiver_fn)
-
-  return export_dir, eval_export_dir
+  return util.export_model_and_eval_model(
+      estimator=estimator,
+      serving_input_receiver_fn=(
+          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+              feature_spec)),
+      eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(
+          eval_feature_spec, label_key='label'),
+      export_path=export_path,
+      eval_export_path=eval_export_path)

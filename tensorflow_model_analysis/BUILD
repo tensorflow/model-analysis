@@ -28,6 +28,12 @@ py_library(
 )
 
 py_library(
+    name = "util",
+    srcs = ["util.py"],
+    deps = ["//tensorflow_model_analysis:expect_six_installed"],
+)
+
+py_library(
     name = "version",
     srcs = ["version.py"],
     deps = [],

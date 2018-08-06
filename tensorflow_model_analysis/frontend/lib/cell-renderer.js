@@ -38,178 +38,12 @@ let BoundedValue;
 let Int32ValueProto;
 
 /**
- * Json representation of the PrecisionAtK.
- * @typedef {{
- *   k: !Int32ValueProto,
- *   value: number,
- *   totalPositives: number,
- * }}
- */
-let PrecisionAtKProto;
-
-/**
- * Json representation of the recall at k metric.
- * @typedef {{
- *   k: !Int32ValueProto,
- *   value: number,
- *   totalActualPositives: number,
- * }}
- */
-let RecallAtKProto;
-
-/**
- * @typedef {!Array<PrecisionAtKProto>|!Array<RecallAtKProto>}
- */
-let MetricAtK;
-
-/**
- * Json representation of the multi value precision or recall at k metric.
- * @typedef {{
- *   k: !Int32ValueProto,
- *   macroValue: number,
- *   microValue: number,
- * }}
- */
-let MultiValuesMetricAtKProto;
-
-/**
- * @typedef {!Array<!MultiValuesMetricAtKProto>}
- */
-let MultiValuesMetricAtK;
-
-/**
- * @enum {string}
- */
-const PrecisionAtKFieldNames = {
-  K: 'k',
-  TOTAL_POSITIVES: 'totalPositives',
-  VALUE: 'value',
-};
-
-/**
- * @enum {string}
- */
-const RecallAtKFieldNames = {
-  K: 'k',
-  TOTAL_ACTUAL_POSITIVES: 'totalActualPositives',
-  VALUE: 'value'
-};
-
-/**
- * @enum {string}
- */
-const MetricAtKFieldNames = {
-  K: 'k',
-  VALUE: 'value',
-};
-
-/**
- * @enum {string}
- */
-const MultiValuesMetricAtKFieldNames = {
-  K: 'k',
-  MACRO_VALUE: 'macroValue',
-  MICRO_VALUE: 'microValue',
-  WEIGHTED_VALUE: 'weightedValue',
-};
-
-/**
  * Json representation of the BinaryClassificationThreshold.
  * @typedef {{
  *    predictionThreshold: number,
  * }}
  */
 let BinaryClassificationThresholdProto;
-
-/**
- * Json representation of the BinaryConfusionMatrix.
- * @typedef {{
- *   f1Score: number,
- *   precision: number,
- *   recall: number,
- *   accuracy: number,
- * }}
- */
-let BinaryConfusionMatrixProto;
-
-/**
- * Json representation of the BinaryConfusionMatricesFromRegression.
- * @typedef {{
- *   binaryClassificationThreshold : !BinaryClassificationThresholdProto,
- *   matrix: !BinaryConfusionMatrixProto
- * }}
- */
-let BinaryConfusionMatricesFromRegressionProto;
-
-/**
- * @typedef {!Array<!BinaryConfusionMatricesFromRegressionProto>}
- */
-let BinaryConfusionMatricesFromRegression;
-
-
-/**
- * @enum {string}
- */
-const BinaryConfusionMatricesFromRegressionFieldNames = {
-  ACCURACY: 'accuracy',
-  BINARY_CLASSIFICATION_THRESHOLD: 'binaryClassificationThreshold',
-  F1_SCORE: 'f1Score',
-  MATRIX: 'matrix',
-  PRECISION: 'precision',
-  PREDICTION_THRESHOLD: 'predictionThreshold',
-  RECALL: 'recall',
-};
-
-/**
- * @typedef {{
- *   availableTypes: !Array<string>,
- *   slice: (string|undefined),
- *   span: (string|undefined)
- * }}
- */
-let PlotTrigger;
-
-/**
- * @enum {string}
- */
-const PlotTriggerFieldNames = {
-  TYPES: 'types',
-  SLICE: 'slice',
-  SPAN: 'span',
-};
-
-/**
- * Json representation of the BinaryConfusionMatricesFromRegression.
- * @typedef {{
- *   binaryClassificationThreshold : !BinaryClassificationThresholdProto,
- *   macroPrecision: number,
- *   macroRecall: (number|undefined),
- *   macroF1Score: (number|undefined),
- *   macroAccuracy: (number|undefined),
- *   microPrecision: (number|undefined),
- *   microRecall: (number|undefined),
- *   microF1Score: (number|undefined),
- *   microAccuracy: (number|undefined),
- *   weightedPrecision: (number|undefined),
- *   weighteRecall: (number|undefined),
- *   weighteF1Score: (number|undefined),
- *   weighteAccuracy: (number|undefined),
- * }}
- */
-let MultiValuesThresholdBasedBinaryClassificationMetricsProto;
-
-/**
- * @enum {string}
- */
-const MultiValuesThresholdBasedBinaryClassificationMetricsFieldNames = {
-  BINARY_CLASSIFICATION_THRESHOLD: 'binaryClassificationThreshold',
-  PREDICTION_THRESHOLD: 'predictionThreshold',
-};
-
-/**
- * @typedef {!Array<!MultiValuesThresholdBasedBinaryClassificationMetricsProto>}
- */
-let MultiValuesThresholdBasedBinaryClassificationMetrics;
 
 /**
  * Json representation of the MultiClassConfusionMatrix.
@@ -239,21 +73,74 @@ const MultiClassConfusionMatrixFieldNames = {
 };
 
 /**
+ * Json representation of the value cutoff pair.
+ * @typedef {{
+ *   cutoff: number,
+ *   value: number,
+ * }}
+ */
+let ValueCutoffPair;
+
+/**
+ * @typedef {{
+ *   values: !Array<!ValueCutoffPair>
+ * }}
+ */
+let ValueAtCutoffs;
+
+/**
+ * @enum {string}
+ */
+const ValueAtCutoffsFieldNames = {
+  CUTOFF: 'cutoff',
+  VALUE: 'value',
+  VALUES: 'values',
+};
+
+/**
+ * @typedef {{
+ *   threshold: number,
+ *   falseNegatives: number,
+ *   trueNegatives: number,
+ *   falsePositives: number,
+ *   truePositives: number,
+ *   precision: number,
+ *   recall: number,
+ * }}
+ */
+let ConfusionMatrixAtThreshold;
+
+/**
+ * @typedef {{
+ *   matrices: !Array<!ConfusionMatrixAtThreshold>
+ * }}
+ */
+let ConfusionMatrixAtThresholds;
+
+/**
+ * @enum {string}
+ */
+const ConfusionMatrixAtThresholdsFieldNames = {
+  FALSE_NEGATIVES: 'falseNegatives',
+  FALSE_POSITIVES: 'falsePositives',
+  MATRICES: 'matrices',
+  PRECISION: 'precision',
+  RECALL: 'recall',
+  THRESHOLD: 'threshold',
+  TRUE_NEGATIVES: 'trueNegatives',
+  TRUE_POSITIVES: 'truePositives',
+};
+
+/**
  * @enum {string}
  */
 const ValueType = {
-  BINARY_CONFUSION_MATRICES_FROM_REGRESSION:
-      'binaryConfusionMatricesFromRegression',
   BOUNDED_VALUE: 'boundedValue',
+  CONFUSION_MATRIX_AT_THRESHOLDS: 'confusionMatrixAtThresholds',
   FLOAT: 'float',
   MULTI_CLASS_CONFUSION_MATRIX: 'MultiClassConfusionMatrix',
-  MULTI_VALUES_METRIC_AT_K: 'MultiValuesMetricAtK',
-  MULTI_VALUES_THRESHOLD_BASED_BINARY_CLASSIFICATION_METRICS:
-      'MultiValuesThresholdBasedBinaryClassificationMetrics',
-  PRECISION_AT_K: 'precisionAtK',
-  RECALL_AT_K: 'recallatK',
-  PLOT_TRIGGER: 'plotTrigger',
   STRING: 'string',
+  VALUE_AT_CUTOFFS: 'valueAtCutoffs',
   UNKNOWN: 'unknown',
 };
 
@@ -265,17 +152,6 @@ const BoundedValueFieldNames = {
   UPPER_BOUND: 'upperBound',
   VALUE: 'value',
 };
-
-/**
- * @param {?BinaryConfusionMatricesFromRegression}
- *     value
- * @return {number} The f1 score, if available, or NaN, otherwise.
- */
-function getF1Score(value) {
-  const fieldNames = BinaryConfusionMatricesFromRegressionFieldNames;
-  const matrix = value && value[0] && value[0][fieldNames.MATRIX];
-  return matrix ? matrix[fieldNames.F1_SCORE] || 0 : NaN;
-}
 
 /**
  * JS represents numbers using 64-bit floating point representation. To avoid
@@ -298,33 +174,12 @@ function padInt64ForSort(value) {
 }
 
 /**
- * @param {string} value
- * @return{!TableProvider.GvizCell} A gviz cell for a data span
- *     range.
- */
-function renderDataSpanRange(value) {
-  const range = value.split(' - ');
-  const lastDataSpan = parseInt(range[range.length - 1], 10);
-  return {f: value, v: lastDataSpan};
-}
-
-/**
- * @param {!MetricAtK} value
+ * @param {!ValueAtCutoffs} value
  * @param {number} position Note that position is 0-based while k is 1-based.
  * @return {number} Returns the precision value at the given position.
  */
 function getValueAt(value, position) {
-  return value[position][MetricAtKFieldNames.VALUE];
-}
-
-/**
- * @param {!MultiValuesMetricAtK} value
- * @param {number} position Note that position is 0-based while k is 1-based.
- * @return {number} Returns the macro value at the given position or zero if not
- *     defined.
- */
-function getMacroValueAt(value, position) {
-  return value[position][MultiValuesMetricAtKFieldNames.MACRO_VALUE] || 0;
+  return value[position][ValueAtCutoffsFieldNames.VALUE];
 }
 
 /**
@@ -470,89 +325,46 @@ function trimFloat(value) {
 }
 
 /**
- * @param {PrecisionAtKProto|RecallAtKProto|MultiValuesMetricAtKProto} a
- * @param {PrecisionAtKProto|RecallAtKProto|MultiValuesMetricAtKProto} b
+ * @param {!ValueCutoffPair} a
+ * @param {!ValueCutoffPair} b
  * @return {number}
  */
-function sortByK(a, b) {
-  const ka = a[MetricAtKFieldNames.K] || 0;
-  const kb = b[MetricAtKFieldNames.K] || 0;
+function sortByCutoff(a, b) {
+  const ka = a[ValueAtCutoffsFieldNames.CUTOFF] || 0;
+  const kb = b[ValueAtCutoffsFieldNames.CUTOFF] || 0;
   return ka - kb;
 }
 
 /**
- * @param {!MetricAtK} value
+ * @param {!ValueAtCutoffs} value
  * @return {!TableProvider.GvizCell} A gviz cell for a series of
  *     precision at k.
  */
-function renderMetricAtK(value) {
-  value.sort(sortByK);
+function renderValueAtCutoffs(value) {
+  const values = value[ValueAtCutoffsFieldNames.VALUES];
+  values.sort(sortByCutoff);
   return {
-    'f': '<tfma-metric-at-k ' +
+    'f': '<tfma-value-at-cutoffs ' +
         createAttributeHtml('data', JSON.stringify(value)) +
-        '></tfma-metric-at-k>',
+        '></tfma-value-at-cutoffs>',
     // Use the precision at the first position for sorting.
-    'v': getValueAt(value, 0),
+    'v': getValueAt(values, 0),
   };
 }
 
 /**
- * @param {!MultiValuesMetricAtK} value
- * @return {!TableProvider.GvizCell} A gviz cell for a series of
- *     precision at k.
+ * @param {!ConfusionMatrixAtThresholds} value
+ * @return {!TableProvider.GvizCell} A gviz cell for a series of confusion
+ *     matrix at thresholds.
  */
-function renderMultiValuesMetricAtK(value) {
-  value.sort(sortByK);
+function renderConfusionMatrixAtThresholds(value) {
   return {
-    'f': '<tfma-multi-values-metric-at-k ' +
+    'f': '<tfma-confusion-matrix-at-thresholds ' +
         createAttributeHtml('data', JSON.stringify(value)) +
-        '></tfma-multi-values-metric-at-k>',
-    // Use the macro value at the first position for sorting.
-    'v': getMacroValueAt(value, 0),
-  };
-}
-
-/**
- * @param {!BinaryConfusionMatricesFromRegression} value
- * @return {!TableProvider.GvizCell} A gviz cell for a series of
- *     binary confusion matrices from regression.
- */
-function renderBinaryConfusionMatricesFromRegression(value) {
-  return {
-    'f': '<tfma-binary-confusion-matrices-from-regression ' +
-        createAttributeHtml('data', JSON.stringify(value)) +
-        '></tfma-binary-confusion-matrices-from-regression>',
-    // Use the f1 score for sorting.
-    'v': getF1Score(value)
-  };
-}
-
-/**
- * @param {!PlotTrigger} value
- * @return {!TableProvider.GvizCell} A gviz cell for a plot
- *     trigger.
- */
-function renderPlotTrigger(value) {
-  return {
-    'f': '<tfma-plot-trigger ' +
-        createAttributeHtml('data', JSON.stringify(value)) +
-        '></tfma-plot-trigger>',
-    'v': 0
-  };
-}
-
-/**
- * @param {!MultiValuesThresholdBasedBinaryClassificationMetrics} value
- * @return {!TableProvider.GvizCell} A gviz cell for a series of
- *     multi values threshold based binary classification metrics.
- */
-function renderMultiValuesThresholdBasedBinaryClassificationMetrics(value) {
-  return {
-    'f': '<tfma-multi-values-threshold-based-binary-classification-metrics ' +
-        createAttributeHtml('data', JSON.stringify(value)) +
-        '></tfma-multi-values-threshold-based-binary-classification-metrics>',
-    // Use the macro f1 score for sorting.
-    'v': value[0]['macroF1Score'] || 0
+        '></tfma-confusion-matrix-at-thresholds>',
+    // Use the precision at the first position for sorting.
+    'v': value[ConfusionMatrixAtThresholdsFieldNames.MATRICES][0]
+              [ConfusionMatrixAtThresholdsFieldNames.PRECISION],
   };
 }
 
@@ -674,99 +486,6 @@ function checkRepeatedMetric(value, checkCallback) {
 
 /**
  * @param {(string|number|?Object)} value
- * @return {boolean} Returns true if the given value is an array of json
- *     representation of PrecisionAtK.
- */
-function isPrecisionAtK(value) {
-  return checkRepeatedMetric(
-      value,
-      item => goog.isDefAndNotNull(item[PrecisionAtKFieldNames.K]) &&
-          item[PrecisionAtKFieldNames.TOTAL_POSITIVES]);
-}
-
-/**
- * @param {(string|number|?Object)} value
- * @return {boolean} Returns true if the given value is an array of json
- *     representation of RecallAtK.
- */
-function isRecallAtK(value) {
-  return checkRepeatedMetric(
-      value,
-      item => goog.isDefAndNotNull(item[RecallAtKFieldNames.K]) &&
-          item[RecallAtKFieldNames.TOTAL_ACTUAL_POSITIVES]);
-}
-
-/**
- * @param {(string|number|?Object)} value
- * @return {boolean} Returns true if the given value is an array of json
- *     representation of RecallAtK.
- */
-function isMultiValuesMetricAtK(value) {
-  return checkRepeatedMetric(
-      value,
-      item => goog.isDefAndNotNull(item[MultiValuesMetricAtKFieldNames.K]) &&
-          (goog.isDefAndNotNull(
-               item[MultiValuesMetricAtKFieldNames.MACRO_VALUE]) ||
-           goog.isDefAndNotNull(
-               item[MultiValuesMetricAtKFieldNames.MICRO_VALUE]) ||
-           goog.isDefAndNotNull(
-               item[MultiValuesMetricAtKFieldNames.WEIGHTED_VALUE])));
-}
-
-/**
- * @param {(string|number|?Object)} value
- * @return {boolean} Returns true if the given value is an array of json
- *     representation of
- *     intelligence.lantern.BinaryConfusionMatricesFromRegression proto.
- */
-function isBinaryConfusionMatricesFromRegression(value) {
-  return checkRepeatedMetric(
-      value,
-      item =>
-          goog.isDef(
-              item[BinaryConfusionMatricesFromRegressionFieldNames.MATRIX]) &&
-          goog.isDef(item[BinaryConfusionMatricesFromRegressionFieldNames
-                              .BINARY_CLASSIFICATION_THRESHOLD]));
-}
-
-/**
- * @param {(string|number|?Object)} value
- * @return {boolean} True if the given value has expected fields to construct a
- *     plot-trigger widget.
- */
-function isPlotTrigger(value) {
-  return !!value && goog.isDef(value[PlotTriggerFieldNames.TYPES]) &&
-      (goog.isDef(value[PlotTriggerFieldNames.SPAN]) ||
-       goog.isDef(value[PlotTriggerFieldNames.SLICE]));
-}
-
-/**
- * @param {(string|number|?Object)} value
- * @return {boolean} Returns true if the given value is an array of json
- *     representation of MultiValuesThresholdBasedBinaryClassificationMetrics.
- */
-function isMultiValuesThresholdBasedBinaryClassificationMetrics(value) {
-  return checkRepeatedMetric(value, item => {
-    const types = ['macro', 'micro', 'weighted'];
-    const metrics = ['Precision', 'Recall', 'Accuracy', 'F1Score'];
-    const threshold =
-        MultiValuesThresholdBasedBinaryClassificationMetricsFieldNames
-            .BINARY_CLASSIFICATION_THRESHOLD;
-    return goog.isDef(item[threshold]) &&
-        types.reduce(
-            // We expect that when one type is configured, all four metrics will
-            // be computed.
-            (acc, type) => {
-              return acc || metrics.reduce((acc, metric) => {
-                return acc && goog.isDef(item[type + metric]);
-              }, true);
-            },
-            false);
-  });
-}
-
-/**
- * @param {(string|number|?Object)} value
  * @return {boolean} Returns true if the given value is json representation of
  *     MultiClassConfusionMatrix.
  */
@@ -779,27 +498,58 @@ function isMultiClassConfusionMatrix(value) {
           item[MultiClassConfusionMatrixFieldNames.PREDICTED_CLASS]);
 }
 
+/**
+ * @param {(string|number|?Object)} value
+ * @return {boolean} Returns true if the given value is an array of json
+ *     representation of ValueAtCutoffs.
+ */
+function isValueAtCutoffs(value) {
+  return value && value[ValueAtCutoffsFieldNames.VALUES] &&
+      checkRepeatedMetric(
+             value[ValueAtCutoffsFieldNames.VALUES],
+             item =>
+                 goog.isDefAndNotNull(item[ValueAtCutoffsFieldNames.CUTOFF]));
+}
+
+
+/**
+ * @param {(string|number|?Object)} value
+ * @return {boolean} Returns true if the given value is an array of json
+ *     representation of ValueAtCutoffs.
+ */
+function isConfusionMatrixAtThresholds(value) {
+  return value && value[ConfusionMatrixAtThresholdsFieldNames.MATRICES] &&
+      checkRepeatedMetric(
+             value[ConfusionMatrixAtThresholdsFieldNames.MATRICES],
+             item =>
+                 goog.isDefAndNotNull(item[ConfusionMatrixAtThresholdsFieldNames
+                                               .FALSE_NEGATIVES]) &&
+                 goog.isDefAndNotNull(item[ConfusionMatrixAtThresholdsFieldNames
+                                               .FALSE_POSITIVES]) &&
+                 goog.isDefAndNotNull(
+                     item[ConfusionMatrixAtThresholdsFieldNames.PRECISION]) &&
+                 goog.isDefAndNotNull(
+                     item[ConfusionMatrixAtThresholdsFieldNames.RECALL]) &&
+                 goog.isDefAndNotNull(
+                     item[ConfusionMatrixAtThresholdsFieldNames.THRESHOLD]) &&
+                 goog.isDefAndNotNull(item[ConfusionMatrixAtThresholdsFieldNames
+                                               .TRUE_NEGATIVES]) &&
+                 goog.isDefAndNotNull(item[ConfusionMatrixAtThresholdsFieldNames
+                                               .TRUE_POSITIVES]));
+}
+
 // Registers all built-in renderers.
 registerRenderer(ValueType.FLOAT, renderFloat, goog.isNumber);
 registerRenderer(ValueType.BOUNDED_VALUE, renderBoundedValue, isBoundedValue);
 registerRenderer(ValueType.STRING, renderString, goog.isString);
-registerRenderer(ValueType.PRECISION_AT_K, renderMetricAtK, isPrecisionAtK);
-registerRenderer(ValueType.RECALL_AT_K, renderMetricAtK, isRecallAtK);
-registerRenderer(
-    ValueType.MULTI_VALUES_METRIC_AT_K, renderMultiValuesMetricAtK,
-    isMultiValuesMetricAtK);
-registerRenderer(
-    ValueType.BINARY_CONFUSION_MATRICES_FROM_REGRESSION,
-    renderBinaryConfusionMatricesFromRegression,
-    isBinaryConfusionMatricesFromRegression);
-registerRenderer(ValueType.PLOT_TRIGGER, renderPlotTrigger, isPlotTrigger);
-registerRenderer(
-    ValueType.MULTI_VALUES_THRESHOLD_BASED_BINARY_CLASSIFICATION_METRICS,
-    renderMultiValuesThresholdBasedBinaryClassificationMetrics,
-    isMultiValuesThresholdBasedBinaryClassificationMetrics);
 registerRenderer(
     ValueType.MULTI_CLASS_CONFUSION_MATRIX, renderMultiClassConfusionMatrix,
     isMultiClassConfusionMatrix);
+registerRenderer(
+    ValueType.VALUE_AT_CUTOFFS, renderValueAtCutoffs, isValueAtCutoffs);
+registerRenderer(
+    ValueType.CONFUSION_MATRIX_AT_THRESHOLDS, renderConfusionMatrixAtThresholds,
+    isConfusionMatrixAtThresholds);
 
 /**
  * A map containing all format override renderers.
@@ -850,11 +600,6 @@ registerOverrideRenderer(Constants.MetricValueFormat.FLOAT, renderFloat);
 registerOverrideRenderer(Constants.MetricValueFormat.INT64, renderInt64);
 registerOverrideRenderer(Constants.MetricValueFormat.HTML, renderString);
 registerOverrideRenderer(Constants.MetricValueFormat.STRING, renderString);
-registerOverrideRenderer(
-    Constants.MetricValueFormat.METRIC_AT_K, renderMetricAtK);
-registerOverrideRenderer(
-    Constants.MetricValueFormat.MULTI_VALUES_METRIC_AT_K,
-    renderMultiValuesMetricAtK);
 
 goog.exportSymbol(
     'tfma.CellRenderer.renderValueWithFormatOverride',
@@ -866,8 +611,6 @@ goog.exportSymbol(
 
 exports = {
   BoundedValue,
-  MetricAtK,
-  MultiValuesMetricAtK,
   renderValue,
   parseRowId,
   renderValueWithFormatOverride,

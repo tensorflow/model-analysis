@@ -30,14 +30,11 @@
     tn = 128 - i;
 
     input.push({
-      'matrix': {
-        'truePositives': tp,
-        'trueNegatives': tn,
-        'falsePositives': fp,
-        'falseNegatives': fn
-      },
-      'binaryClassificationThreshold':
-          {'predictionThreshold': (128 - i) / 128}
+      'truePositives': tp,
+      'trueNegatives': tn,
+      'falsePositives': fp,
+      'falseNegatives': fn,
+      'threshold': (128 - i) / 128,
     });
   }
   plot.data = input;

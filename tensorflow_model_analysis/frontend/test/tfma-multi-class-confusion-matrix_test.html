@@ -53,7 +53,6 @@ suite('tests', () => {
 
   test('parseData', done => {
     const checkMatrixContent = () => {
-      debugger;
       const headerRow = element.$$('.matrix-row:nth-child(1)');
       assert.deepEqual(
           headerRow.textContent.trim().split(/[\s\n]+/), ['A', 'B']);

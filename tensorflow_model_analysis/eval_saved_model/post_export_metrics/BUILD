@@ -30,15 +30,21 @@ py_library(
 py_test(
     name = "post_export_metrics_test",
     srcs = ["post_export_metrics_test.py"],
+    shard_count = 5,
     deps = [
         ":post_export_metrics",
         "//tensorflow_model_analysis:expect_apache_beam_installed",  # b/73825929
         "//tensorflow_model_analysis:expect_tensorflow_installed",
         "//tensorflow_model_analysis/api/impl:evaluate",
         "//tensorflow_model_analysis/eval_saved_model:testutil",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:dnn_classifier",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:dnn_regressor",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:fixed_prediction_classifier",
+        "//tensorflow_model_analysis/eval_saved_model/example_trainers:fixed_prediction_classifier_extra_fields",
         "//tensorflow_model_analysis/eval_saved_model/example_trainers:fixed_prediction_estimator",
         "//tensorflow_model_analysis/eval_saved_model/example_trainers:fixed_prediction_estimator_extra_fields",
         "//tensorflow_model_analysis/eval_saved_model/example_trainers:linear_classifier",
         "//tensorflow_model_analysis/eval_saved_model/example_trainers:linear_regressor",
+        "//tensorflow_model_analysis/proto:metrics_for_slice_py_pb2",
     ],
 )

@@ -368,13 +368,15 @@ def _Aggregate(  # pylint: disable=invalid-name
     add_metrics_callbacks,
     desired_batch_size = None,
 ):
-  return (slice_result
-          | 'CombinePerKey' >> beam.CombinePerKey(
-              _AggregateCombineFn(
-                  eval_saved_model_path=eval_saved_model_path,
-                  add_metrics_callbacks=add_metrics_callbacks,
-                  shared_handle=shared.Shared(),
-                  desired_batch_size=desired_batch_size)))
+  return (
+      slice_result
+      | 'CombinePerKey' >> beam.CombinePerKey(
+          _AggregateCombineFn(
+              eval_saved_model_path=eval_saved_model_path,
+              add_metrics_callbacks=add_metrics_callbacks,
+              shared_handle=shared.Shared(),
+              desired_batch_size=desired_batch_size))
+  )
 
 
 @beam.typehints.with_input_types(beam.typehints.Tuple[

@@ -56,8 +56,8 @@ def is_tensor(obj):
 # inside of ExampleAndExtract that will be emitted to file.
 MaterializedColumn = NamedTuple(
     'MaterializedColumn',
-    [('name', str), ('value',
-                     Union[List[str], List[int], List[float]])])
+    [('name', bytes),
+     ('value', Union[List[bytes], List[int], List[float], bytes, int, float])])
 
 # Used in building model diagnostics table, the ExampleAndExtracts holds an
 # example and all its "extractions." Extractions that should be emitted to file.

@@ -28,6 +28,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export
+from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
 
 def simple_custom_estimator(export_path, eval_export_path):
@@ -98,23 +99,15 @@ def simple_custom_estimator(export_path, eval_export_path):
 
     return export.EvalInputReceiver(
         features=features,
-        receiver_tensors=receiver_tensors,
-        labels=features['label'])
+        labels=features['label'],
+        receiver_tensors=receiver_tensors)
 
   estimator = tf.estimator.Estimator(model_fn=model_fn)
   estimator.train(input_fn=train_input_fn, steps=1000)
 
-  export_dir = None
-  eval_export_dir = None
-  if export_path:
-    export_dir = estimator.export_savedmodel(
-        export_dir_base=export_path,
-        serving_input_receiver_fn=serving_input_receiver_fn)
-
-  if eval_export_path:
-    eval_export_dir = export.export_eval_savedmodel(
-        estimator=estimator,
-        export_dir_base=eval_export_path,
-        eval_input_receiver_fn=eval_input_receiver_fn)
-
-  return export_dir, eval_export_dir
+  return util.export_model_and_eval_model(
+      estimator=estimator,
+      serving_input_receiver_fn=serving_input_receiver_fn,
+      eval_input_receiver_fn=eval_input_receiver_fn,
+      export_path=export_path,
+      eval_export_path=eval_export_path)
