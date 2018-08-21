@@ -53,8 +53,7 @@ def wrap_tensor_or_dict_of_tensors_in_identity(
           values=tensor.values,
           dense_shape=tensor.dense_shape)
     else:
-      raise ValueError('could not wrap Tensor %s in identity' %
-                       str(tensor_or_dict_of_tensors))
+      raise ValueError('could not wrap Tensor %s in identity' % str(tensor))
 
   if isinstance(tensor_or_dict_of_tensors, dict):
     result = {}
