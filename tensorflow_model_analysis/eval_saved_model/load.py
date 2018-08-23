@@ -134,7 +134,11 @@ class EvalSavedModel(object):
         else:
           raise ValueError('unrecognised suffix for metric. key was: %s' % k)
 
-      metric_ops = {}
+      metric_ops = {
+        'loss': tf.metrics.mean(
+          tf.saved_model.utils.get_tensor_from_tensor_info(
+            signature_def.outputs['loss'], self._graph))
+      }
       for metric_name, ops in metrics_map.items():
         metric_ops[metric_name] = (ops[encoding.VALUE_OP_SUFFIX],
                                    ops[encoding.UPDATE_OP_SUFFIX])
