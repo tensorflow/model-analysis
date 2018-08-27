@@ -174,7 +174,11 @@ suite('tests', () => {
     ];
     const calibrationPlotData = [];
     element.data = {
-      'plotData': {'bucketByRefinedPrediction': calibrationPlotData}
+      'plotData': {
+        'bucketByRefinedPrediction': {
+          'buckets': calibrationPlotData
+        }
+      }
     };
     element.loading = false;
 
@@ -191,8 +195,11 @@ suite('tests', () => {
     ];
     const precisionRecallCurveData = [];
     element.data = {
-      'plotData':
-          {'binaryClassificationByThreshold': precisionRecallCurveData}
+      'plotData': {
+        'binaryClassificationByThreshold': {
+          'matrices': precisionRecallCurveData
+        }
+      }
     };
     element.loading = false;
 
@@ -209,7 +216,7 @@ suite('tests', () => {
     ];
     const macroPrecisionRecallCurveData = [];
     element.data = {
-      'plotData': {'macroValuesByThreshold': macroPrecisionRecallCurveData}
+      'plotData': {'macroValuesByThreshold': {'matrices': macroPrecisionRecallCurveData}}
     };
     element.loading = false;
 
@@ -226,7 +233,7 @@ suite('tests', () => {
     ];
     const microPrecisionRecallCurveData = [];
     element.data = {
-      'plotData': {'microValuesByThreshold': microPrecisionRecallCurveData}
+      'plotData': {'microValuesByThreshold': {'matrices': microPrecisionRecallCurveData}}
     };
     element.loading = false;
 
@@ -243,7 +250,7 @@ suite('tests', () => {
     ];
     const weightedPrecisionRecallCurveData = [];
     element.data = {
-      'plotData': {'weightedValuesByThreshold': weightedPrecisionRecallCurveData}
+      'plotData': {'weightedValuesByThreshold': {'matrices': weightedPrecisionRecallCurveData}}
     };
     element.loading = false;
 

@@ -28,6 +28,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export
+from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
 
 def simple_multi_head(export_path, eval_export_path):
@@ -85,35 +86,29 @@ def simple_multi_head(export_path, eval_export_path):
   all_features = [age, language]
   feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(all_features)
 
-  english_head = tf.contrib.learn.multi_class_head(
-      n_classes=2, label_name='english_head', head_name='english_head')
-  chinese_head = tf.contrib.learn.multi_class_head(
-      n_classes=2, label_name='chinese_head', head_name='chinese_head')
-  other_head = tf.contrib.learn.multi_class_head(
-      n_classes=2, label_name='other_head', head_name='other_head')
-  estimator = tf.contrib.learn.DNNLinearCombinedEstimator(
-      head=tf.contrib.learn.multi_head(
-          heads=[english_head, chinese_head, other_head]),
+  english_head = tf.contrib.estimator.binary_classification_head(
+      name='english_head')
+  chinese_head = tf.contrib.estimator.binary_classification_head(
+      name='chinese_head')
+  other_head = tf.contrib.estimator.binary_classification_head(
+      name='other_head')
+  combined_head = tf.contrib.estimator.multi_head(
+      [english_head, chinese_head, other_head])
+
+  estimator = tf.contrib.estimator.DNNLinearCombinedEstimator(
+      head=combined_head,
       dnn_feature_columns=[],
       dnn_optimizer=tf.train.AdagradOptimizer(learning_rate=0.01),
       dnn_hidden_units=[],
       linear_feature_columns=[language, age],
       linear_optimizer=tf.train.FtrlOptimizer(learning_rate=0.05))
-  estimator.fit(input_fn=input_fn, steps=1000)
+  estimator.train(input_fn=input_fn, steps=1000)
 
-  export_dir = None
-  eval_export_dir = None
-  if export_path:
-    export_dir = estimator.export_savedmodel(
-        export_dir_base=export_path,
-        serving_input_fn=tf.contrib.learn.build_parsing_serving_input_fn(
-            feature_spec),
-        default_output_alternative_key='english_head')
-
-  if eval_export_path:
-    eval_export_dir = export.export_eval_savedmodel(
-        estimator=estimator,
-        export_dir_base=eval_export_path,
-        eval_input_receiver_fn=eval_input_receiver_fn)
-
-  return export_dir, eval_export_dir
+  return util.export_model_and_eval_model(
+      estimator=estimator,
+      serving_input_receiver_fn=(
+          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+              feature_spec)),
+      eval_input_receiver_fn=eval_input_receiver_fn,
+      export_path=export_path,
+      eval_export_path=eval_export_path)

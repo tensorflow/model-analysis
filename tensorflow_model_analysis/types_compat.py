@@ -24,7 +24,6 @@ Generic = None
 Sequence = None
 Type = None
 Text = Any
-TypeVar = None
 
 # pylint: enable=invalid-name
 

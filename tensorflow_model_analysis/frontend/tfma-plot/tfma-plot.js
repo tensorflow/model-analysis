@@ -181,7 +181,11 @@
      */
     computeCalibrationData_: function(data) {
       const plotData = data && data['plotData'] || {};
-      return plotData[tfma.PlotDataFieldNames.CALIBRATION_DATA] || [];
+      return plotData[tfma.PlotDataFieldNames.CALIBRATION_DATA] &&
+          plotData[tfma.PlotDataFieldNames
+                       .CALIBRATION_DATA][tfma.PlotDataFieldNames
+                                              .CALIBRATION_BUCKETS] ||
+          [];
     },
 
     /**
@@ -190,8 +194,22 @@
      * @return {!Array<!Object>}
      */
     computePrecisionRecallCurveData_: function(data) {
+      return this.getMatricesForPRCurve_(
+          data, tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA);
+    },
+
+    /**
+     * Extracts the matrices data from the curve plot data with the given key.
+     * @param {?Object} data
+     * @param {string} curveKey
+     * @return {!Array<!Object>}
+     * @private
+     */
+    getMatricesForPRCurve_: function(data, curveKey) {
       const plotData = data && data['plotData'] || {};
-      return plotData[tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA] ||
+      const curveData = plotData[curveKey];
+      return curveData &&
+          curveData[tfma.PlotDataFieldNames.CONFUSION_MATRICES] ||
           [];
     },
 
@@ -202,10 +220,8 @@
      * @return {!Array<!Object>}
      */
     computeMacroPrecisionRecallCurveData_: function(data) {
-      const plotData = data && data['plotData'] || {};
-      return plotData[tfma.PlotDataFieldNames
-                          .MACRO_PRECISION_RECALL_CURVE_DATA] ||
-          [];
+      return this.getMatricesForPRCurve_(
+          data, tfma.PlotDataFieldNames.MACRO_PRECISION_RECALL_CURVE_DATA);
     },
 
     /**
@@ -215,10 +231,8 @@
      * @return {!Array<!Object>}
      */
     computeMicroPrecisionRecallCurveData_: function(data) {
-      const plotData = data && data['plotData'] || {};
-      return plotData[tfma.PlotDataFieldNames
-                          .MICRO_PRECISION_RECALL_CURVE_DATA] ||
-          [];
+      return this.getMatricesForPRCurve_(
+          data, tfma.PlotDataFieldNames.MICRO_PRECISION_RECALL_CURVE_DATA);
     },
 
     /**
@@ -228,10 +242,8 @@
      * @return {!Array<!Object>}
      */
     computeWeightedPrecisionRecallCurveData_: function(data) {
-      const plotData = data && data['plotData'] || {};
-      return plotData[tfma.PlotDataFieldNames
-                          .WEIGHTED_PRECISION_RECALL_CURVE_DATA] ||
-          [];
+      return this.getMatricesForPRCurve_(
+          data, tfma.PlotDataFieldNames.WEIGHTED_PRECISION_RECALL_CURVE_DATA);
     },
 
     /**

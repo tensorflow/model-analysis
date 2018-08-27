@@ -18,13 +18,15 @@ from __future__ import division
 
 from __future__ import print_function
 
+import collections
 
-import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis import util as general_util
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import graph_ref
+from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.types_compat import Any, Dict, List, NamedTuple, Optional, Tuple  # pytype: disable=not-supported-yet
 
 from tensorflow.core.protobuf import meta_graph_pb2
@@ -43,7 +45,11 @@ class EvalSavedModel(object):
     self._path = path
     self._graph = tf.Graph()
     self._session = tf.Session(graph=self._graph)
-    self._load_and_parse_graph()
+    try:
+      self._load_and_parse_graph()
+    except (RuntimeError, ValueError) as exception:
+      general_util.reraise_augmented(exception,
+                                     'for saved_model at path %s' % self._path)
 
   def _check_version(self, meta_graph_def):
     version = meta_graph_def.collection_def.get(
@@ -59,30 +65,77 @@ class EvalSavedModel(object):
 
     This is factored out from __init__ in case we want to support delayed-loads
     in the future.
+
+    Raises:
+      ValueError: Could not find signature keyed with EVAL_TAG; or
+        signature_def did not have exactly one input; or there was a signature
+        output with the metric prefix but an unrecognised suffix.
     """
     meta_graph_def = tf.saved_model.loader.load(
-        self._session, [constants.EVAL_SAVED_MODEL_TAG], self._path)
+        self._session, [constants.EVAL_TAG], self._path)
 
     self._check_version(meta_graph_def)
     with self._graph.as_default():
-      # Get references to "named" nodes.
-      self._input_example_node = graph_ref.get_node_in_graph(
-          meta_graph_def, encoding.INPUT_EXAMPLE_COLLECTION, self._graph)
-      self._labels_map = graph_ref.get_node_map_in_graph(
-          meta_graph_def, encoding.LABELS_COLLECTION, [encoding.NODE_SUFFIX],
-          self._graph)
-      self._predictions_map = graph_ref.get_node_map_in_graph(
-          meta_graph_def, encoding.PREDICTIONS_COLLECTION,
-          [encoding.NODE_SUFFIX], self._graph)
+      signature_def = meta_graph_def.signature_def.get(constants.EVAL_TAG)
+      if signature_def is None:
+        raise ValueError('could not find signature with name %s. signature_def '
+                         'was %s' % (constants.EVAL_TAG, signature_def))
+
+      # Note that there are two different encoding schemes in use here:
+      #
+      # 1. The scheme used by TFMA for the TFMA-specific extra collections
+      #    for the features and labels.
+      # 2. The scheme used by TensorFlow Estimators in the SignatureDefs for the
+      #    input example node, predictions, metrics and so on.
+
+      # Features and labels are in TFMA-specific extra collections.
       self._features_map = graph_ref.get_node_map_in_graph(
           meta_graph_def, encoding.FEATURES_COLLECTION, [encoding.NODE_SUFFIX],
           self._graph)
+      self._labels_map = graph_ref.get_node_map_in_graph(
+          meta_graph_def, encoding.LABELS_COLLECTION, [encoding.NODE_SUFFIX],
+          self._graph)
 
-      metrics = graph_ref.get_node_map_in_graph(
-          meta_graph_def, encoding.METRICS_COLLECTION,
-          [encoding.VALUE_OP_SUFFIX, encoding.UPDATE_OP_SUFFIX], self._graph)
+      if len(signature_def.inputs) != 1:
+        raise ValueError('there should be exactly one input. signature_def '
+                         'was: %s' % signature_def)
+
+      # The input node, predictions and metrics are in the signature.
+      input_node = list(signature_def.inputs.values())[0]
+      self._input_example_node = (
+          tf.saved_model.utils.get_tensor_from_tensor_info(
+              input_node, self._graph))
+
+      predictions = graph_ref.extract_signature_outputs_with_prefix(
+          constants.PREDICTIONS_NAME, signature_def.outputs)
+      predictions_map = {}
+      for k, v in predictions.items():
+        # Extract to dictionary with a single key for consistency with
+        # how features and labels are extracted.
+        predictions_map[k] = {
+            encoding.NODE_SUFFIX:
+                tf.saved_model.utils.get_tensor_from_tensor_info(
+                    v, self._graph)
+        }
+      self._predictions_map = predictions_map
+
+      metrics = graph_ref.extract_signature_outputs_with_prefix(
+          constants.METRICS_NAME, signature_def.outputs)
+      metrics_map = collections.defaultdict(dict)
+      for k, v in metrics.items():
+        node = tf.saved_model.utils.get_tensor_from_tensor_info(v, self._graph)
+
+        if k.endswith('/' + constants.METRIC_VALUE_SUFFIX):
+          key = k[:-len(constants.METRIC_VALUE_SUFFIX) - 1]
+          metrics_map[key][encoding.VALUE_OP_SUFFIX] = node
+        elif k.endswith('/' + constants.METRIC_UPDATE_SUFFIX):
+          key = k[:-len(constants.METRIC_UPDATE_SUFFIX) - 1]
+          metrics_map[key][encoding.UPDATE_OP_SUFFIX] = node
+        else:
+          raise ValueError('unrecognised suffix for metric. key was: %s' % k)
+
       metric_ops = {}
-      for metric_name, ops in metrics.items():
+      for metric_name, ops in metrics_map.items():
         metric_ops[metric_name] = (ops[encoding.VALUE_OP_SUFFIX],
                                    ops[encoding.UPDATE_OP_SUFFIX])
 
@@ -199,30 +252,30 @@ class EvalSavedModel(object):
         })
 
     split_labels = {}
-    for label_key in self._labels_map.keys():
-      split_labels[label_key] = self._split_tensor_value(
+    for label_key in self._labels_map:
+      split_labels[label_key] = util.split_tensor_value(
           labels[label_key][encoding.NODE_SUFFIX])
     split_features = {}
-    for feature_key in self._features_map.keys():
-      split_features[feature_key] = self._split_tensor_value(
+    for feature_key in self._features_map:
+      split_features[feature_key] = util.split_tensor_value(
           features[feature_key][encoding.NODE_SUFFIX])
     split_predictions = {}
-    for prediction_key in self._predictions_map.keys():
-      split_predictions[prediction_key] = self._split_tensor_value(
+    for prediction_key in self._predictions_map:
+      split_predictions[prediction_key] = util.split_tensor_value(
           predictions[prediction_key][encoding.NODE_SUFFIX])
 
     result = []
     for i in range(len(input_example_bytes_list)):
       labels = {}
-      for label_key in self._labels_map.keys():
+      for label_key in self._labels_map:
         labels[label_key] = {encoding.NODE_SUFFIX: split_labels[label_key][i]}
       features = {}
-      for feature_key in self._features_map.keys():
+      for feature_key in self._features_map:
         features[feature_key] = {
             encoding.NODE_SUFFIX: split_features[feature_key][i]
         }
       predictions = {}
-      for prediction_key in self._predictions_map.keys():
+      for prediction_key in self._predictions_map:
         predictions[prediction_key] = {
             encoding.NODE_SUFFIX: split_predictions[prediction_key][i]
         }
@@ -250,119 +303,24 @@ class EvalSavedModel(object):
               encoding.NODE_SUFFIX])
     return feed_dict
 
-  def _split_tensor_value(
-      self, tensor_value):
-    """Split a single batch of Tensor values into a list of Tensor values.
-
-    Args:
-      tensor_value: A single Tensor value that represents a batch of Tensor
-        values. The zeroth dimension should be batch size.
-
-    Returns:
-      A list of Tensor values, one per element of the zeroth dimension.
-
-    Raises:
-      TypeError: tensor_value had unknown type.
-    """
-    if isinstance(tensor_value, tf.SparseTensorValue):
-      result = []
-      offset = 0
-      for batch_num in range(tensor_value.dense_shape[0]):
-        indices = []
-        values = []
-        while (offset < len(tensor_value.indices) and
-               tensor_value.indices[offset][0] == batch_num):
-          indices.append([0, tensor_value.indices[offset][1]])
-          values.append(tensor_value.values[offset])
-          offset += 1
-        if not indices:
-          # Empty indices array still needs the correct type and shape.
-          indices = np.array([], dtype=np.int64)
-          indices.shape = (0, 2)
-        result.append(
-            tf.SparseTensorValue(
-                indices=indices, values=values, dense_shape=[1, len(values)]))
-      return result
-    elif isinstance(tensor_value, np.ndarray):
-      return np.split(
-          tensor_value, indices_or_sections=tensor_value.shape[0], axis=0)
-    else:
-      raise TypeError('tensor_value had unknown type: %s, value was: %s' %
-                      (type(tensor_value), tensor_value))
-
-  def _merge_tensor_values(self, tensor_values
-                          ):
-    """Merge a list of Tensor values into a single batch of Tensor values.
-
-    Args:
-      tensor_values: A list of Tensor values, all fetched from the same node
-        in the same graph. Each Tensor value should be for a single example.
-
-    Returns:
-      A single Tensor value that represents a batch of all the Tensor values
-      in the given list.
-
-    Raises:
-      ValueError: Got a SparseTensor with more than 1 row (i.e. that is likely
-        to be for more than one example).
-      TypeError: tensor_value had unknown type.
-    """
-    if not tensor_values:
-      return None
-
-    if isinstance(tensor_values[0], tf.SparseTensorValue):
-      indices = []
-      values = []
-      dense_shape = []
-      for i, tensor_value in enumerate(tensor_values):
-        if tensor_value.dense_shape[1] == 0:
-          continue
-        index = np.array(tensor_value.indices)
-        index[:, 0] += i
-        indices.append(index)
-        values.extend(tensor_value.values)
-        if tensor_value.dense_shape[0] != 1:
-          raise ValueError(
-              'expecting SparseTensor to be for only 1 example. '
-              'but got dense_shape %s instead' % tensor_value.dense_shape)
-      dense_shape = tensor_values[0].dense_shape[:]
-      dense_shape[0] = len(tensor_values)
-
-      concatenated_indices = []
-      if not indices:
-        # indices can be [] if all the SparseTensors are "empty".
-        # Empty indices array still needs the correct type and shape.
-        concatenated_indices = np.array([], dtype=np.int64)
-        concatenated_indices.shape = (0, 2)
-      else:
-        concatenated_indices = np.concatenate(indices, axis=0)
-
-      return tf.SparseTensorValue(
-          indices=concatenated_indices, values=values, dense_shape=dense_shape)
-    elif isinstance(tensor_values[0], np.ndarray):
-      return np.concatenate(tensor_values, axis=0)
-    else:
-      raise TypeError('tensor_values[0] had unknown type: %s, value was: %s' %
-                      (type(tensor_values[0]), tensor_values[0]))
-
   def _create_feed_for_features_predictions_labels_list(
       self, features_predictions_labels_list
   ):
     """Create feed dict for feeding a list of features, predictions, labels."""
     result = {}
     for label_key, label_dict in self._labels_map.items():
-      result[label_dict[encoding.NODE_SUFFIX]] = self._merge_tensor_values([
+      result[label_dict[encoding.NODE_SUFFIX]] = util.merge_tensor_values([
           fpl.labels[label_key][encoding.NODE_SUFFIX]
           for fpl in features_predictions_labels_list
       ])
     for feature_key, feature_dict in self._features_map.items():
-      result[feature_dict[encoding.NODE_SUFFIX]] = self._merge_tensor_values([
+      result[feature_dict[encoding.NODE_SUFFIX]] = util.merge_tensor_values([
           fpl.features[feature_key][encoding.NODE_SUFFIX]
           for fpl in features_predictions_labels_list
       ])
     for prediction_key, prediction_dict in self._predictions_map.items():
       result[prediction_dict[encoding.NODE_SUFFIX]] = (
-          self._merge_tensor_values([
+          util.merge_tensor_values([
               fpl.predictions[prediction_key][encoding.NODE_SUFFIX]
               for fpl in features_predictions_labels_list
           ]))
@@ -371,20 +329,31 @@ class EvalSavedModel(object):
   def perform_metrics_update(
       self, features_predictions_labels):
     """Run a single metrics update step on a single FPL."""
-    self._session.run(
-        fetches=self._all_metric_update_ops,
-        feed_dict=self._create_feed_for_features_predictions_labels(
-            features_predictions_labels))
+    feed_dict = self._create_feed_for_features_predictions_labels(
+        features_predictions_labels)
+    try:
+      self._session.run(
+          fetches=self._all_metric_update_ops, feed_dict=feed_dict)
+    except (RuntimeError, TypeError, ValueError) as exception:
+      general_util.reraise_augmented(
+          exception, 'features_predictions_labels = %s, feed_dict = %s' %
+          (features_predictions_labels, feed_dict))
 
   def metrics_reset_update_get(
       self,
       features_predictions_labels):
     """Run the metrics reset, update, get operations on a single FPL."""
     self.reset_metric_variables()
-    [_, result] = self._session.run(
-        fetches=[self._all_metric_update_ops, self._metric_variable_nodes],
-        feed_dict=self._create_feed_for_features_predictions_labels(
-            features_predictions_labels))
+    feed_dict = self._create_feed_for_features_predictions_labels(
+        features_predictions_labels)
+    try:
+      [_, result] = self._session.run(
+          fetches=[self._all_metric_update_ops, self._metric_variable_nodes],
+          feed_dict=feed_dict)
+    except (RuntimeError, TypeError, ValueError) as exception:
+      general_util.reraise_augmented(
+          exception, 'features_predictions_labels = %s, feed_dict = %s' %
+          (features_predictions_labels, feed_dict))
     return result
 
   def metrics_reset_update_get_list(
@@ -392,10 +361,18 @@ class EvalSavedModel(object):
   ):
     """Run the metrics reset, update, get operations on a list of FPLs."""
     self.reset_metric_variables()
-    [_, result] = self._session.run(
-        fetches=[self._all_metric_update_ops, self._metric_variable_nodes],
-        feed_dict=self._create_feed_for_features_predictions_labels_list(
-            features_predictions_labels_list))
+
+    feed_dict = self._create_feed_for_features_predictions_labels_list(
+        features_predictions_labels_list)
+    try:
+      [_, result] = self._session.run(
+          fetches=[self._all_metric_update_ops, self._metric_variable_nodes],
+          feed_dict=feed_dict)
+    except (RuntimeError, TypeError, ValueError) as exception:
+      general_util.reraise_augmented(
+          exception, 'features_predictions_labels_list = %s, feed_dict = %s' %
+          (features_predictions_labels_list, feed_dict))
+
     return result
 
   def get_metric_variables(self):

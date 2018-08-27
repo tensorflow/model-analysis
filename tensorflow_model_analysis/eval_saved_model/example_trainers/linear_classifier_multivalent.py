@@ -24,29 +24,11 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export
+from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
 
 def simple_linear_classifier_multivalent(export_path, eval_export_path):
   """Trains and exports a simple linear classifier with multivalent features."""
-
-  def eval_input_receiver_fn():
-    """Eval input receiver function."""
-    serialized_tf_example = tf.placeholder(
-        dtype=tf.string, shape=[None], name='input_example_tensor')
-
-    animals = tf.contrib.layers.sparse_column_with_keys('animals',
-                                                        ['bird', 'cat', 'dog'])
-    label = tf.contrib.layers.real_valued_column('label')
-    all_features = [animals, label]
-    feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(
-        all_features)
-    receiver_tensors = {'examples': serialized_tf_example}
-    features = tf.parse_example(serialized_tf_example, feature_spec)
-
-    return export.EvalInputReceiver(
-        features=features,
-        receiver_tensors=receiver_tensors,
-        labels=features['label'])
 
   def input_fn():
     """Train input function."""
@@ -64,24 +46,22 @@ def simple_linear_classifier_multivalent(export_path, eval_export_path):
 
   animals = tf.contrib.layers.sparse_column_with_keys('animals',
                                                       ['bird', 'cat', 'dog'])
+  label = tf.contrib.layers.real_valued_column('label')
+
   all_features = [animals]
   feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(all_features)
+  eval_feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(
+      all_features + [label])
 
   classifier = tf.estimator.LinearClassifier(feature_columns=all_features)
   classifier.train(input_fn=input_fn, steps=5000)
 
-  export_dir = None
-  eval_export_dir = None
-  if export_path:
-    export_dir = classifier.export_savedmodel(
-        export_dir_base=export_path,
-        serving_input_receiver_fn=tf.estimator.export.
-        build_parsing_serving_input_receiver_fn(feature_spec))
-
-  if eval_export_path:
-    eval_export_dir = export.export_eval_savedmodel(
-        estimator=classifier,
-        export_dir_base=eval_export_path,
-        eval_input_receiver_fn=eval_input_receiver_fn)
-
-  return export_dir, eval_export_dir
+  return util.export_model_and_eval_model(
+      estimator=classifier,
+      serving_input_receiver_fn=(
+          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+              feature_spec)),
+      eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(
+          eval_feature_spec, label_key='label'),
+      export_path=export_path,
+      eval_export_path=eval_export_path)

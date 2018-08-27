@@ -18,7 +18,7 @@ limitations under the License.
 
 <dom-module id="tfma-nb-time-series">
   <template>
-    <tfma-time-series-browser series-data="[[seriesData_]]" formats="[[formats_]]">
+    <tfma-time-series-browser series-data="[[seriesData_]]">
     </tfma-time-series-browser>
   </template>
   <script>
@@ -44,12 +44,6 @@ Polymer({
      * @private {!tfma.SeriesData}
      */
     seriesData_: {type: Object},
-
-    /**
-     * The format overrides.
-     * @private {!Object}
-     */
-    formats_: {type: Object},
   },
 
   observers: ['refresh_(data, config)'],
@@ -61,10 +55,10 @@ Polymer({
    * @private
    */
   refresh_: function(data, config) {
-    // Note that tfma.Data.flattenCustomMetrics modifies its input in place so we compute the
-    // following in an observer instead of making them computed properties.
+    // Note that tfma.Data.flattenMetrics modifies its input in place so we compute the following in
+    // an observer instead of making them computed properties.
+    tfma.Data.flattenMetrics(data, 'metrics');
     const evalRuns = data.map(run => [{'metrics': run.metrics}]);
-    this.formats_ = tfma.Data.flattenCustomMetrics(evalRuns, 'metrics');
     const metricNames = tfma.Data.getAvailableMetrics(evalRuns, 'metrics');
     this.seriesData_ = new tfma.SeriesData(data.map(run => {
       return {

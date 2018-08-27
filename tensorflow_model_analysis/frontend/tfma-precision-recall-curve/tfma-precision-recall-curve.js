@@ -55,26 +55,18 @@ Polymer({
     const plotData =
         [['Recall', 'Precision', {'type': 'string', 'role': 'tooltip'}]];
     data.forEach((entry) => {
-      if (entry['matrix'] && entry['binaryClassificationThreshold']) {
-        const threshold = Math.max(
-            0,
-            Math.min(
-                1,
-                entry['binaryClassificationThreshold']['predictionThreshold'] ||
-                    0));
-        const matrix = entry['matrix'];
-        // Due to potential division by zero, precision and recall can be NaN or
-        // Infinity. These values are cannot be serialized as valid json. To
-        // handle these cases, assume NaN and Infinity are converted to strings,
-        // "NaN"  and "Infinity") and use parseFloat to get back to NaN and
-        // Infinity.
-        const recall = parseFloat(matrix['recall'] || 0);
-        const precision = parseFloat(matrix['precision'] || 0);
-        const tooltip = 'Prediction threshold: ' + threshold.toFixed(5) +
-            '\nRecall: ' + recall.toFixed(5) +
-            '\nPrecision: ' + precision.toFixed(5);
-        plotData.push([recall, precision, tooltip]);
-      }
+      const threshold = Math.max(0, Math.min(1, entry['threshold'] || 0));
+      // Due to potential division by zero, precision and recall can be NaN or
+      // Infinity. These values are cannot be serialized as valid json. To
+      // handle these cases, assume NaN and Infinity are converted to strings,
+      // "NaN" and "Infinity" and use parseFloat to get back to NaN and
+      // Infinity.
+      const recall = parseFloat(entry['recall'] || 0);
+      const precision = parseFloat(entry['precision'] || 0);
+      const tooltip = 'Prediction threshold: ' + threshold.toFixed(5) +
+          '\nRecall: ' + recall.toFixed(5) +
+          '\nPrecision: ' + precision.toFixed(5);
+      plotData.push([recall, precision, tooltip]);
     });
     return plotData;
   },

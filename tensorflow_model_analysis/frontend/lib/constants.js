@@ -58,7 +58,6 @@ const MetricValueFormat = {
   HTML: 'html',
   ROW_ID: 'rowId',
   INT64: 'int64',
-  METRIC_AT_K: 'metricAtK',
   MULTI_VALUES_METRIC_AT_K: 'multiValueMetricAtK',
 };
 
@@ -75,7 +74,9 @@ const PlotTypes = {
 
 /** @enum {string} */
 const PlotDataFieldNames = {
+  CALIBRATION_BUCKETS: 'buckets',
   CALIBRATION_DATA: 'bucketByRefinedPrediction',
+  CONFUSION_MATRICES: 'matrices',
   MACRO_PRECISION_RECALL_CURVE_DATA: 'macroValuesByThreshold',
   MICRO_PRECISION_RECALL_CURVE_DATA: 'microValuesByThreshold',
   PRECISION_RECALL_CURVE_DATA: 'binaryClassificationByThreshold',
@@ -158,13 +159,17 @@ goog.exportSymbol('tfma.FLOATING_POINT_PRECISION', FLOATING_POINT_PRECISION);
 goog.exportSymbol('tfma.MetricValueFormat.INT', MetricValueFormat.INT);
 goog.exportSymbol('tfma.MetricValueFormat.INT64', MetricValueFormat.INT64);
 goog.exportSymbol('tfma.MetricValueFormat.FLOAT', MetricValueFormat.FLOAT);
-goog.exportSymbol(
-    'tfma.MetricValueFormat.METRIC_AT_K', MetricValueFormat.METRIC_AT_K);
 goog.exportSymbol('tfma.MetricValueFormat.ROW_ID', MetricValueFormat.ROW_ID);
 
 goog.exportSymbol(
+    'tfma.PlotDataFieldNames.CALIBRATION_BUCKETS',
+    PlotDataFieldNames.CALIBRATION_BUCKETS);
+goog.exportSymbol(
     'tfma.PlotDataFieldNames.CALIBRATION_DATA',
     PlotDataFieldNames.CALIBRATION_DATA);
+goog.exportSymbol(
+    'tfma.PlotDataFieldNames.CONFUSION_MATRICES',
+    PlotDataFieldNames.CONFUSION_MATRICES);
 goog.exportSymbol(
     'tfma.PlotDataFieldNames.MACRO_PRECISION_RECALL_CURVE_DATA',
     PlotDataFieldNames.MACRO_PRECISION_RECALL_CURVE_DATA);

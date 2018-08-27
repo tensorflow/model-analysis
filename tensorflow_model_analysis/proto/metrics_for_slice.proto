@@ -18,8 +18,10 @@ import "google/protobuf/wrappers.proto";
 
 package tensorflow_model_analysis;
 
+
 // The value will be converted into an error message if we do not know its type.
 message UnknownType {
+  string value = 2;
   string error = 1;
 }
 
@@ -34,12 +36,37 @@ message BoundedValue {
   google.protobuf.DoubleValue value = 3;
 }
 
+// Value at cutoffs, e.g. for precision@K, recall@K
+message ValueAtCutoffs {
+  message ValueCutoffPair {
+    int32 cutoff = 1;
+    double value = 2;
+  }
+  repeated ValueCutoffPair values = 1;
+}
+
+// Confusion matrix at thresholds.
+message ConfusionMatrixAtThresholds {
+  message ConfusionMatrixAtThreshold {
+    double threshold = 1;
+    double false_negatives = 2;
+    double true_negatives = 3;
+    double false_positives = 4;
+    double true_positives = 5;
+    double precision = 6;
+    double recall = 7;
+  }
+  repeated ConfusionMatrixAtThreshold matrices = 1;
+}
+
 // It stores metrics values in different types, so that the frontend will know
 // how to visualize the values based on the types.
 message MetricValue {
   oneof type {
     google.protobuf.DoubleValue double_value = 1;
     BoundedValue bounded_value = 2;
+    ValueAtCutoffs value_at_cutoffs = 4;
+    ConfusionMatrixAtThresholds confusion_matrix_at_thresholds = 5;
     UnknownType unknown_type = 3;
   }
 }
@@ -47,7 +74,11 @@ message MetricValue {
 // A single slice key.
 message SingleSliceKey {
   string column = 1;
-  string value = 2;
+  oneof kind {
+    bytes bytes_value = 2;
+    float float_value = 3;
+    int64 int64_value = 4;
+  }
 }
 
 // A slice key, which may consist of multiple single slice keys.
@@ -57,9 +88,35 @@ message SliceKey {
 
 message MetricsForSlice {
   // The slice key for the metrics.
-  repeated SingleSliceKey slice_key = 1;
+  SliceKey slice_key = 1;
   // A map to store metrics. Currently we convert the post_export_metric
   // provided by TFMA to its appropriate type for better visualization, and map
   // all other metrics to DoubleValue type.
   map<string, MetricValue> metrics = 2;
 }
+
+message CalibrationHistogramBuckets {
+  message Bucket {
+    double lower_threshold_inclusive = 1;
+    double upper_threshold_exclusive = 2;
+    google.protobuf.DoubleValue num_weighted_examples = 3;
+    google.protobuf.DoubleValue total_weighted_label = 4;
+    google.protobuf.DoubleValue total_weighted_refined_prediction = 5;
+  }
+  repeated Bucket buckets = 1;
+}
+
+message PlotData {
+  // For calibration plot and prediction distribution.
+  CalibrationHistogramBuckets calibration_histogram_buckets = 1;
+  // For auc curve and auprc curve.
+  ConfusionMatrixAtThresholds confusion_matrix_at_thresholds = 2;
+}
+
+message PlotsForSlice {
+  // The slice key for the metrics.
+  SliceKey slice_key = 1;
+  // The plot data
+  PlotData plot_data = 2;
+}
+

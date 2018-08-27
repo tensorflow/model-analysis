@@ -33,6 +33,60 @@ from tensorflow.core.protobuf import meta_graph_pb2
 CollectionDefValueType = Union[float, int, bytes, any_pb2.Any]  # pylint: disable=invalid-name
 
 
+def extract_signature_outputs_with_prefix(
+    prefix,
+    # signature_outputs is not actually a Dict, but behaves like one
+    signature_outputs
+):
+  """Extracts signature outputs with the given prefix.
+
+  This is the reverse of _wrap_and_check_metrics / _wrap_and_check_outputs and
+  _prefix_output_keys in tf.estimator.export.ExportOutput.
+
+  This is designed to extract structures from the  SignatureDef outputs map.
+
+   Structures of the following form:
+      <prefix>/key1
+      <prefix>/key2
+  will map to dictionary elements like so:
+      {key1: value1, key2: value2}
+
+  Structures of the following form:
+      <prefix>
+      <prefix>_extrastuff
+      <prefix>morestuff
+  will map to dictionary elements like so:
+      {<prefix: value1, <prefix>_extrastuff: value2, <prefix>morestuff: value3}
+
+  Args:
+    prefix: Prefix to extract
+    signature_outputs: Signature outputs to extract from
+
+  Returns:
+    Dictionary extracted as described above. The values will be the TensorInfo
+    associated with the keys.
+
+  Raises:
+    ValueError: There were duplicate keys.
+  """
+  result = {}
+  for k, v in signature_outputs.items():
+    if k.startswith(prefix + '/'):
+      key = k[len(prefix) + 1:]
+    elif k.startswith(prefix):
+      key = k
+    else:
+      continue
+
+    if key in result:
+      raise ValueError(
+          'key "%s" already in dictionary. you might have repeated keys. '
+          'prefix was "%s", signature_outputs were: %s' % (prefix, key,
+                                                           signature_outputs))
+    result[key] = v
+  return result
+
+
 def get_node_map(meta_graph_def, prefix,
                  node_suffixes
                 ):

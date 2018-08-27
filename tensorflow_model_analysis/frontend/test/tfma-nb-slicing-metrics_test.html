@@ -42,28 +42,43 @@ suite('tests', () => {
       {
         'slice': 'col:1',
         'metrics': {
-          'averageRefinedPrediction': 0.51,
-          'averageLabel': 0.61,
-          'customMetricsString': {'myString': 'a'},
-          'weightedExamples': 10,
-        }
+          'averageRefinedPrediction': {
+            'doubleValue': 0.51
+          },
+          'averageLabel': {
+            'doubleValue': 0.61
+          },
+          'weightedExamples': {
+            'doubleValue': 10
+          },
+        },
       },
       {
         'slice': 'col:2',
         'metrics': {
-          'averageRefinedPrediction': 0.52,
-          'averageLabel': 0.62,
-          'customMetricsString': {'myString': 'b'},
-          'weightedExamples': 20,
+          'averageRefinedPrediction': {
+            'doubleValue': 0.52
+          },
+          'averageLabel':  {
+            'doubleValue': 0.62
+          },
+          'weightedExamples':  {
+            'doubleValue': 20
+          },
         }
       },
       {
         'slice': 'col:3',
         'metrics': {
-          'averageRefinedPrediction': 0.53,
-          'averageLabel': 0.63,
-          'customMetricsString': {'myString': 'c'},
-          'weightedExamples': 30,
+          'averageRefinedPrediction': {
+            'doubleValue': 0.53
+          },
+          'averageLabel': {
+            'doubleValue': 0.63
+          },
+          'weightedExamples': {
+            'doubleValue': 30
+          },
         },
       }
     ];
@@ -75,8 +90,7 @@ suite('tests', () => {
     const checkDataParsed = () => {
       const browser = element.$$('tfma-slicing-metrics-browser');
       assert.deepEqual(browser.metrics, [
-        'averageLabel', 'averageRefinedPrediction', 'calibration', 'myString',
-        'weightedExamples'
+        'averageLabel', 'averageRefinedPrediction', 'calibration', 'weightedExamples'
       ]);
 
       assert.deepEqual(browser.data, [
@@ -85,8 +99,7 @@ suite('tests', () => {
           'metrics': {
             'averageRefinedPrediction': 0.51,
             'averageLabel': 0.61,
-            'myString': 'a',
-            'weightedExamples': 10,
+            'weightedExamples': 10
           }
         },
         {
@@ -94,7 +107,6 @@ suite('tests', () => {
           'metrics': {
             'averageRefinedPrediction': 0.52,
             'averageLabel': 0.62,
-            'myString': 'b',
             'weightedExamples': 20,
           }
         },
@@ -103,7 +115,6 @@ suite('tests', () => {
           'metrics': {
             'averageRefinedPrediction': 0.53,
             'averageLabel': 0.63,
-            'myString': 'c',
             'weightedExamples': 30,
           }
         }

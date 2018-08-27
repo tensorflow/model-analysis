@@ -57,7 +57,7 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
     example_and_extracts = types.ExampleAndExtracts(
         example=example1.SerializeToString(),
         extracts={'fpl': 123})
-    self.assertRaises(RuntimeError, feature_extractor._MaterializeFeatures,
+    self.assertRaises(TypeError, feature_extractor._MaterializeFeatures,
                       example_and_extracts)
 
   def testMaterializeFeaturesNoMaterializedColumns(self):

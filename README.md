@@ -8,6 +8,8 @@ distributed manner, using the same metrics defined in their trainer. These
 metrics can be computed over different slices of data and visualized in Jupyter
 notebooks.
 
+![TFMA Slicing Metrics Browser](g3doc/images/tfma-slicing-metrics-browser.gif)
+
 Caution: TFMA may introduce backwards incompatible changes before version 1.0.
 
 ## Installation
@@ -42,6 +44,11 @@ By default, Apache Beam runs in local mode but can also run in distributed mode
 using [Google Cloud Dataflow](https://cloud.google.com/dataflow/). TFMA is
 designed to be extensible for other Apache Beam runners.
 
+## Getting Started
+
+For instructions on using TFMA, see the [get started
+guide](g3doc/get_started.md) and try out the extensive [end-to-end example](examples/chicago_taxi/README.md).
+
 ## Compatible Versions
 
 The following table is the TFMA package versions that are compatible with each
@@ -50,7 +57,9 @@ combinations may also work.
 
 |tensorflow-model-analysis  |tensorflow    |apache-beam[gcp]|
 |---------------------------|--------------|----------------|
-|GitHub master              |1.7           |2.4.0           |
+|GitHub master              |1.9           |2.6.0           |
+|0.9.1                      |1.9           |2.6.0           |
+|0.9.0                      |1.9           |2.5.0           |
 |0.6.0                      |1.6           |2.4.0           |
 
 ## Questions

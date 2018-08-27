@@ -23,14 +23,21 @@
         'dataIdentifier': 'a.data',
       },
       'metrics': {
-        'logisticLoss': 0.7,
-        'averageRefinedPrediction': 0.6,
-        'averageLabel': 0.5,
-        'totalWeightedExamples': 2000000,
-        'auprc': 0.7,
-        'boundedAuc': {'value': 0.61, 'lowerBound': 0.60, 'upperBound': 0.62},
-        'precisionAtK': [{'k': 2, 'value': 0.25, 'totalPositives': 100}],
-        'weightedExamples': 123
+        'logisticLoss': {'doubleValue': 0.7},
+        'averageRefinedPrediction': {'doubleValue': 0.6},
+        'averageLabel': {'doubleValue': 0.5},
+        'totalWeightedExamples': {'doubleValue': 2000000},
+        'auprc': {'doubleValue': 0.7},
+        'boundedAuc': {
+          'boundedValue':
+              {'value': 0.61, 'lowerBound': 0.60, 'upperBound': 0.62}
+        },
+        'precisionAtK': {
+          'valueAtCutoffs': {
+            'values': [{'cutoff': 2, 'value': 0.25}],
+          }
+        },
+        'weightedExamples': {'doubleValue': 123},
       }
     },
     {
@@ -39,24 +46,34 @@
         'dataIdentifier': 'b.data',
       },
       'metrics': {
-        'logisticLoss': 0.72,
-        'averageRefinedPrediction': 0.62,
-        'averageLabel': 0.52,
-        'totalWeightedExamples': 2000002,
-        'auprc': 0.72,
-        'boundedAuc':
-            {'value': 0.612, 'lowerBound': 0.602, 'upperBound': 0.622},
-        'precisionAtK': [{'k': 2, 'value': 0.252, 'totalPositives': 100}],
-        'binaryConfusionMatrixFromRegression': [{
-          'binaryClassificationThreshold': {'predictionThreshold': 0.5},
-          'matrix': {
-            'f1Score': 0.8,
-            'accuracy': 0.7,
-            'precision': 0.6,
-            'recall': 0.9,
+        'logisticLoss': {'doubleValue': 0.72},
+        'averageRefinedPrediction': {'doubleValue': 0.62},
+        'averageLabel': {'doubleValue': 0.52},
+        'totalWeightedExamples': {'doubleValue': 2000002},
+        'auprc': {'doubleValue': 0.72},
+        'boundedAuc': {
+          'boundedValue':
+              {'value': 0.612, 'lowerBound': 0.602, 'upperBound': 0.622},
+        },
+        'precisionAtK': {
+          'valueAtCutoffs': {
+            'values': [{'cutoff': 2, 'value': 0.252}],
           }
-        }],
-        'weightedExamples': 123
+        },
+        'confusionMatrix': {
+          'confusionMatrixAtThresholds': {
+            'matrices': [{
+              'threshold': 0.5,
+              'precision': 0.6,
+              'recall': 0.7,
+              'truePositives': 0.8,
+              'trueNegatives': 0.9,
+              'falsePositives': 0.81,
+              'falseNegatives': 0.91,
+            }],
+          }
+        },
+        'weightedExamples': {'doubleValue': 123},
       }
     },
     {
@@ -65,15 +82,21 @@
         'dataIdentifier': 'c.data',
       },
       'metrics': {
-        'logisticLoss': 0.73,
-        'averageRefinedPrediction': 0.63,
-        'averageLabel': 0.53,
-        'totalWeightedExamples': 2000003,
-        'auprc': 0.73,
-        'boundedAuc':
-            {'value': 0.613, 'lowerBound': 0.603, 'upperBound': 0.623},
-        'precisionAtK': [{'k': 2, 'value': 0.253, 'totalPositives': 100}],
-        'weightedExamples': 123
+        'logisticLoss': {'doubleValue': 0.73},
+        'averageRefinedPrediction': {'doubleValue': 0.63},
+        'averageLabel': {'doubleValue': 0.53},
+        'totalWeightedExamples': {'doubleValue': 2000003},
+        'auprc': {'doubleValue': 0.73},
+        'boundedAuc': {
+          'doubleValue':
+              {'value': 0.613, 'lowerBound': 0.603, 'upperBound': 0.623}
+        },
+        'precisionAtK': {
+          'valueAtCutoffs': {
+            'values': [{'cutoff': 2, 'value': 0.253}],
+          }
+        },
+        'weightedExamples': {'doubleValue': 123},
       }
     }
   ];

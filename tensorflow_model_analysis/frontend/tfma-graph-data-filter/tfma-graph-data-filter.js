@@ -90,7 +90,7 @@
        * with a table view. This data is updated every time the user changes
        * the type of graph being displayed and every time the filtered data
        * is updated.
-       * @type {!tfma.TableProvider}
+       * @type {!tfma.TableProviderExt}
        */
       tableData: {
         type: Object,
@@ -233,13 +233,13 @@
      * @param {number} chartType The value is defined in enum ChartType.
      * @param {!tfma.Data} filteredData
      * @param {!tfma.Data} focusedData
-     * @return {!tfma.TableProvider} The tfma.TableProvider to use for
+     * @return {!tfma.TableProviderExt} The tfma.TableProviderExt to use for
      *     backing the metrics-table.
      */
     computeTableData_: function(chartType, filteredData, focusedData) {
       const displayedData = (chartType == ChartType.SLICE_OVERVIEW ?
           filteredData : focusedData);
-      return /** @type {!tfma.TableProvider} */ (this.data
+      return /** @type {!tfma.TableProviderExt} */ (this.data
           .getTableDataFromDataset(displayedData));
     },
   });

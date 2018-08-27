@@ -21,6 +21,7 @@ from __future__ import print_function
 import math
 import tempfile
 import tensorflow as tf
+from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.types_compat import Dict, Iterable, Union, Sequence, Tuple
 
 from tensorflow.core.example import example_pb2
@@ -36,47 +37,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     return tempfile.mkdtemp()
 
   def _makeExample(self, **kwargs):
-    """Make a TensorFlow Example with the given fields.
-
-    The arguments can be singleton values, or a list of values, e.g.
-    _makeExample(age=3.0, fruits=['apples', 'pears', 'oranges']).
-    Empty lists are not allowed, since we won't be able to deduce the type.
-
-    Args:
-     **kwargs: Each key=value pair defines a field in the example to be
-       constructed. The name of the field will be key, and the value will be
-       value. The type will be deduced from the type of the value.
-
-    Returns:
-      TensorFlow.Example with the corresponding fields set to the corresponding
-      values.
-
-    Raises:
-      ValueError: One of the arguments was an empty list.
-      TypeError: One of the elements (or one of the elements in a list) had an
-        unsupported type.
-    """
-    result = example_pb2.Example()
-    for key, value in kwargs.items():
-      if isinstance(value, float) or isinstance(value, int):
-        result.features.feature[key].float_list.value[:] = [value]
-      elif isinstance(value, str):
-        result.features.feature[key].bytes_list.value[:] = [value]
-      elif isinstance(value, list):
-        if len(value) == 0:  # pylint: disable=g-explicit-length-test
-          raise ValueError('empty lists not allowed, but field %s was an empty '
-                           'list' % key)
-        if isinstance(value[0], float) or isinstance(value[0], int):
-          result.features.feature[key].float_list.value[:] = value
-        elif isinstance(value[0], str):
-          result.features.feature[key].bytes_list.value[:] = value
-        else:
-          raise TypeError('field %s was a list, but the first element had '
-                          'unknown type %s' % key, type(value[0]))
-      else:
-        raise TypeError('unrecognised type for field %s: type %s' %
-                        (key, type(value)))
-    return result
+    return util.make_example(**kwargs)
 
   def assertHasKeyWithValueAlmostEqual(self,
                                        d,
@@ -142,3 +103,13 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
         self.assertEqual(math.isnan(a), math.isnan(b), msg=msg)
       else:
         self.assertAlmostEqual(a, b, msg=msg, places=places)
+
+  def assertSparseTensorValueEqual(
+      self, expected_sparse_tensor_value,
+      got_sparse_tensor_value):
+    self.assertAllEqual(expected_sparse_tensor_value.indices,
+                        got_sparse_tensor_value.indices)
+    self.assertAllEqual(expected_sparse_tensor_value.values,
+                        got_sparse_tensor_value.values)
+    self.assertAllEqual(expected_sparse_tensor_value.dense_shape,
+                        got_sparse_tensor_value.dense_shape)

@@ -19,12 +19,12 @@ limitations under the License.
   <meta charset="utf-8">
   <script src="../web-component-tester/browser.js"></script>
   <script src="../js-lib-bin.js"></script>
-  <link rel="import" href="../tfma-multi-values-metric-at-k/tfma-multi-values-metric-at-k.html">
+  <link rel="import" href="../tfma-value-at-cutoffs/tfma-value-at-cutoffs.html">
 </head>
 <body>
   <test-fixture id="plain-fixture">
     <template>
-      <tfma-multi-values-metric-at-k></tfma-multi-values-metric-at-k>
+      <tfma-value-at-cutoffs></tfma-value-at-cutoffs>
     </template>
   </test-fixture>
   <script>
@@ -37,12 +37,10 @@ suite('tests', () => {
 
   test('parseDataCorrectly', done => {
     const count = 5;
-    const expectedRows = count + 1;
-    const expectedColumns = 4;
-    start(createDataString(count), () => {
+    insertValueAtCutoffs(createDataString(count), () => {
       assert.equal(element.querySelectorAll('div.table').length, 1);
-      assert.equal(element.querySelectorAll('div.tr').length, expectedRows);
-      assert.equal(element.querySelectorAll('div.td').length, expectedRows * expectedColumns);
+      assert.equal(element.querySelectorAll('div.tr').length, count);
+      assert.equal(element.querySelectorAll('div.td').length, count * 2);
       done();
     });
   });
@@ -51,52 +49,40 @@ suite('tests', () => {
     const count = 5;
     const dataString = createDataString(count);
     // Corrupt the data string by taking its substring.
-    start(dataString.substring(5), () => {
-      assert.equal(element.querySelectorAll('.tr').length, 1);
+    insertValueAtCutoffs(dataString.substring(5), () => {
+      assert.equal(element.querySelectorAll('.tr').length, 0);
       done();
     });
   });
 
   test('KIs0RepresentsAll', done => {
-    const data = JSON.stringify(
-      [{'k': 0, 'macroValue': 1, 'microValue': 0.75, 'weightedValue': 0.5}]);
-    start(data, () => {
-      assert.equal(element.querySelector('.tr:nth-child(2) div.td').textContent.trim(), 'All');
-      done();
-    });
-  });
-
-  test('absentMacroShowsDash', done => {
-    const data = JSON.stringify(
-      [{'k': 0, 'microValue': 0.75, 'weightedValue': 0.5}]);
-    start(data, () => {
-      assert.equal(
-          element.querySelector('.tr:nth-child(2) div.td:nth-child(2)').textContent.trim(), '-');
+    const data = JSON.stringify([{'cutoff': 0, 'value': 1}]);
+    insertValueAtCutoffs(data, () => {
+      assert.equal(element.querySelector('div.td').textContent.trim(), 'All');
       done();
     });
   });
 
   /**
    * @param {number} count
-   * @return {string} Stringified array containing json representation of
-   *     precision at k data.
+   * @return {string} Stringified array containing json representation of value at cutoffs data.
    */
   function createDataString(count) {
     const precision = [];
     for (let i = 1; i <= count; i++) {
       precision.push(
-          {'k': i, 'macroValue': 1 - 0.1 * i, 'microValue': 1 - 0.11 * i});
+          {'cutoff': i, 'value': 1 - 0.1 * i});
     }
     return JSON.stringify(precision);
   }
 
   /**
-   * Instantiates a precision-at-k element using provided data and calls the
-   * call back asynchronously.
+   * Instantiates a tfma-value-at-cutoffs element using provided data and calls the call back
+   * asynchronously.
    * @param {string} data
    * @param {function()} cb
    */
-  function start(data, cb) {
+  function insertValueAtCutoffs(data, cb) {
     element = fixture('plain-fixture');
     element.data = data;
     flush(cb, 0);

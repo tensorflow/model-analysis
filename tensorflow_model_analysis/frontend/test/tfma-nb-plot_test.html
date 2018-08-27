@@ -29,25 +29,28 @@ limitations under the License.
   </test-fixture>
   <script>
 suite('tests', () => {
-  const CALIBRATION_PLOT_MATRICES_KEY = 'matrices';
-  const CALIBRATION_PLOT_BOUNDARIES_KEY = 'boundaries';
-  const AUC_MATRICES_KEY = 'auc_matrices';
-  const AUC_THRESHOLDS_KEY = 'thresholds';
+  const CALIBRATION_PLOT = 'matrices';
+  const CALIBRATION_PLOT_BUCKETS = 'boundaries';
+  const AUC_PLOT = 'auc_matrices';
+  const AUC_MATRICES = 'thresholds';
+  const BUCKETS= [{'v': 1}, {'v': 2}];
+  const MATRICES = [{'a': 1}, {'b': 2}, {'c': 3}]
   const DEFAULT_DATA = {
-    [CALIBRATION_PLOT_MATRICES_KEY]:
-        [[0.5, 0.75, 1], [1.75, 3, 2], [0.5, 0.125, 8], [384, 512, 512]],
-    [CALIBRATION_PLOT_BOUNDARIES_KEY]: [0.25, 0.5, 0.75],
-    [AUC_MATRICES_KEY]: [[10, 20, 30, 40, 2/3, 0.8]],
-    [AUC_THRESHOLDS_KEY]: [0.5],
+    [CALIBRATION_PLOT]: {
+      [CALIBRATION_PLOT_BUCKETS]: BUCKETS,
+    },
+    [AUC_PLOT]: {
+      [AUC_MATRICES]: MATRICES,
+    }
   };
   const DEFAULT_KEYS = {
     'calibrationPlot': {
-      'matrices': CALIBRATION_PLOT_MATRICES_KEY,
-      'boundaries': CALIBRATION_PLOT_BOUNDARIES_KEY,
+      'metricName': CALIBRATION_PLOT,
+      'dataSeries': CALIBRATION_PLOT_BUCKETS,
     },
     'aucPlot':{
-      'matrices': AUC_MATRICES_KEY,
-      'thresholds': AUC_THRESHOLDS_KEY,
+      'metricName': AUC_PLOT,
+      'dataSeries': AUC_MATRICES,
     }
   };
 
@@ -78,46 +81,8 @@ suite('tests', () => {
     const checkDataParsed = () => {
       assert.deepEqual(element.plotData_, {
         'plotData': {
-          [tfma.PlotDataFieldNames.CALIBRATION_DATA]: [
-            {
-              'lowerThresholdInclusive': -Infinity,
-              'upperThresholdExclusive': 0.25,
-              'totalWeightedRefinedPrediction': 0.5,
-              'totalWeightedLabel': 0.75,
-              'numWeightedExamples': 1,
-            },
-            {
-              'lowerThresholdInclusive': 0.25,
-              'upperThresholdExclusive': 0.5,
-              'totalWeightedRefinedPrediction': 1.75,
-              'totalWeightedLabel': 3,
-              'numWeightedExamples': 2,
-            },
-            {
-              'lowerThresholdInclusive': 0.5,
-              'upperThresholdExclusive': 0.75,
-              'totalWeightedRefinedPrediction': 0.5,
-              'totalWeightedLabel': 0.125,
-              'numWeightedExamples': 8,
-            },
-            {
-              'lowerThresholdInclusive': 0.75,
-              'upperThresholdExclusive': Infinity,
-              'totalWeightedRefinedPrediction': 384,
-              'totalWeightedLabel': 512,
-              'numWeightedExamples': 512,
-            }
-          ],
-          [tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA]: [{
-            'binaryClassificationThreshold': {'predictionThreshold': 0.5},
-            'matrix': {
-              'falseNegatives': 10,
-              'trueNegatives': 20,
-              'falsePositives': 30,
-              'truePositives': 40,
-              'precision': 2/3,
-              'recall': 0.8,
-          }}]
+          [tfma.PlotDataFieldNames.CALIBRATION_DATA]: {[CALIBRATION_PLOT_BUCKETS]: BUCKETS},
+          [tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA]: {[AUC_MATRICES]: MATRICES}
         }
       });
       assert.deepEqual(element.availableTypes_, [

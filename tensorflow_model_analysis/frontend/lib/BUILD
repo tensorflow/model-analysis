@@ -172,7 +172,6 @@ JS_LIB_EXTERNS = [
 
 ALL_EXTERNS = [
     "d3-externs.js",
-    "google-chart-externs.js",
     "gviz-externs.js",
 ] + JS_LIB_EXTERNS
 

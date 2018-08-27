@@ -57,146 +57,6 @@ testSuite({
         cell.f);
   },
 
-  testRenderValueWithPrecisionAtK: function() {
-    const value = 0.95;
-    const precisionAtK = makePrecisionAtKData(3, 100, value);
-    const cell = CellRenderer.renderValue(precisionAtK);
-    assertEquals(value, cell.v);
-    assertEquals(
-        '<tfma-metric-at-k data="' +
-            googString.htmlEscape(JSON.stringify(precisionAtK)) +
-            '"></tfma-metric-at-k>',
-        cell.f);
-  },
-
-  testSortPrecisionAtKDataByK: function() {
-    const unsorted = [
-      {k: 2, value: 0.5, totalPositives: 10},
-      {k: 0, value: 0.2, totalPositives: 5},
-      {k: 12, value: 0.7, totalPositives: 20},
-    ];
-    const sorted = [
-      {k: 0, value: 0.2, totalPositives: 5},
-      {k: 2, value: 0.5, totalPositives: 10},
-      {k: 12, value: 0.7, totalPositives: 20},
-    ];
-    const cell = CellRenderer.renderValue(unsorted);
-    assertEquals(sorted[0].value, cell.v);
-    assertEquals(
-        '<tfma-metric-at-k data="' +
-            googString.htmlEscape(JSON.stringify(sorted)) +
-            '"></tfma-metric-at-k>',
-        cell.f);
-  },
-
-  testRenderValueWithBinaryConfusionMatricesFromRegression: function() {
-    const f1Score = 0.8;
-    const data = makeBinaryConfusionMatricesFromRegressionData(
-        1, 0.75, f1Score, 0.7, 0.5, 0.6);
-    const cell = CellRenderer.renderValue(data);
-    assertEquals(f1Score, cell.v);
-    assertEquals(
-        '<tfma-binary-confusion-matrices-from-regression data="' +
-            googString.htmlEscape(JSON.stringify(data)) +
-            '"></tfma-binary-confusion-matrices-from-regression>',
-        cell.f);
-  },
-
-  testRenderValueWithPlotTrigger: function() {
-    const value = makePlotTriggerData(null, 3);
-
-    const cell = CellRenderer.renderValue(value);
-    assertEquals(0, cell.v);
-    assertEquals(
-        '<tfma-plot-trigger data="' +
-            googString.htmlEscape(JSON.stringify(value)) +
-            '"></tfma-plot-trigger>',
-        cell.f);
-  },
-
-  testRenderValueWithRecallAtK: function() {
-    const value = 0.95;
-    const recallAtK = makeRecallAtKData(3, 100, value);
-    const cell = CellRenderer.renderValue(recallAtK);
-    assertEquals(value, cell.v);
-    assertEquals(
-        '<tfma-metric-at-k data="' +
-            googString.htmlEscape(JSON.stringify(recallAtK)) +
-            '"></tfma-metric-at-k>',
-        cell.f);
-  },
-
-  testSortRecallAtKDataByK: function() {
-    const unsorted = [
-      {k: 2, value: 0.5, totalActualPositives: 10},
-      {k: 0, value: 0., totalActualPositives: 5},
-      {k: 21, value: 0.7, totalActualPositives: 20},
-    ];
-    const sorted = [
-      {k: 0, value: 0., totalActualPositives: 5},
-      {k: 2, value: 0.5, totalActualPositives: 10},
-      {k: 21, value: 0.7, totalActualPositives: 20},
-    ];
-    const cell = CellRenderer.renderValue(unsorted);
-    assertEquals(sorted[0].value, cell.v);
-    assertEquals(
-        '<tfma-metric-at-k data="' +
-            googString.htmlEscape(JSON.stringify(sorted)) +
-            '"></tfma-metric-at-k>',
-        cell.f);
-  },
-
-  testRenderValueWithMultiValuesMetricAtK: function() {
-    const value = 0.95;
-    const multiValuesMetricAtK = makeMultiValuesMetricAtKData(3, value);
-    const cell = CellRenderer.renderValue(multiValuesMetricAtK);
-    assertEquals(value, cell.v);
-    assertEquals(
-        '<tfma-multi-values-metric-at-k data="' +
-            googString.htmlEscape(JSON.stringify(multiValuesMetricAtK)) +
-            '"></tfma-multi-values-metric-at-k>',
-        cell.f);
-  },
-
-  testRenderValueWithMultiValuesThresholdBasedBinaryClassificationMetrics:
-      function() {
-        const macroF1Score = 0.999;
-        const data = [{
-          'binaryClassificationThreshold': {'predictionThreshold': 0.5},
-          'macroPrecision': 0.91,
-          'macroRecall': 0.81,
-          'macroF1Score': macroF1Score,
-          'macroAccuracy': 0.61,
-        }];
-        const cell = CellRenderer.renderValue(data);
-        assertEquals(macroF1Score, cell.v);
-        assertEquals(
-            '<tfma-multi-values-threshold-based-binary-classification-metrics' +
-            ' data="' + googString.htmlEscape(JSON.stringify(data)) + '"></' +
-            'tfma-multi-values-threshold-based-binary-classification-metrics>',
-            cell.f);
-      },
-
-  testSortMultiValuesMetricAtKDataByK: function() {
-    const unsorted = [
-      {k: 2, microValue: 0},
-      {k: 0, macroValue: 0.3, microValue: 0.5, weightedValue: 10},
-      {k: 21, macroValue: 0.7, microValue: 0.8},
-    ];
-    const sorted = [
-      {k: 0, macroValue: 0.3, microValue: 0.5, weightedValue: 10},
-      {k: 2, microValue: 0},
-      {k: 21, macroValue: 0.7, microValue: 0.8},
-    ];
-    const cell = CellRenderer.renderValue(unsorted);
-    assertEquals(sorted[0].macroValue, cell.v);
-    assertEquals(
-        '<tfma-multi-values-metric-at-k data="' +
-            googString.htmlEscape(JSON.stringify(sorted)) +
-            '"></tfma-multi-values-metric-at-k>',
-        cell.f);
-  },
-
   testRenderValueWithMultiClassConfusionMatrix: function() {
     const matrix = {
       'entries': [
@@ -212,6 +72,70 @@ testSuite({
         '<tfma-multi-class-confusion-matrix data="' +
             googString.htmlEscape(JSON.stringify(matrix)) +
             '"></tfma-multi-class-confusion-matrix>',
+        cell.f);
+  },
+
+  testRenderValueWithValueAtCutoffs: function() {
+    const value = 0.2;
+    const valueAtCutoffsData = {
+      'values': [
+        {'cutoff': 0, 'value': value},
+        {'cutoff': 2, 'value': 0.5},
+        {'cutoff': 12, 'value': 0.7},
+      ]
+    };
+    const cell = CellRenderer.renderValue(valueAtCutoffsData);
+    assertEquals(value, cell.v);
+    assertEquals(
+        '<tfma-value-at-cutoffs data="' +
+            googString.htmlEscape(JSON.stringify(valueAtCutoffsData)) +
+            '"></tfma-value-at-cutoffs>',
+        cell.f);
+  },
+
+  testSortValueAtCutoffsDataByCutoff: function() {
+    const unsorted = {
+      'values': [
+        {'cutoff': 2, 'value': 0.5},
+        {'cutoff': 0, 'value': 0.2},
+        {'cutoff': 12, 'value': 0.7},
+      ]
+    };
+    const sorted = {
+      'values': [
+        {'cutoff': 0, 'value': 0.2},
+        {'cutoff': 2, 'value': 0.5},
+        {'cutoff': 12, 'value': 0.7},
+      ]
+    };
+    const cell = CellRenderer.renderValue(unsorted);
+    assertEquals(sorted['values'][0].value, cell.v);
+    assertEquals(
+        '<tfma-value-at-cutoffs data="' +
+            googString.htmlEscape(JSON.stringify(sorted)) +
+            '"></tfma-value-at-cutoffs>',
+        cell.f);
+  },
+
+  testRenderValueWithConfusionMatrixAtThresholds: function() {
+    const precision = 0.81;
+    const confusionMatrixAtThresholds = {
+      'matrices': [{
+        'threshold': 0.8,
+        'precision': precision,
+        'recall': 0.82,
+        'truePositives': 0.83,
+        'trueNegatives': 0.84,
+        'falsePositives': 0.85,
+        'falseNegatives': 0.86
+      }],
+    };
+    const cell = CellRenderer.renderValue(confusionMatrixAtThresholds);
+    assertEquals(precision, cell.v);
+    assertEquals(
+        '<tfma-confusion-matrix-at-thresholds data="' +
+            googString.htmlEscape(JSON.stringify(confusionMatrixAtThresholds)) +
+            '"></tfma-confusion-matrix-at-thresholds>',
         cell.f);
   },
 
@@ -385,113 +309,4 @@ testSuite({
  */
 function makeBoundedValueObject(value, lowerBound, upperBound) {
   return {value: value, lowerBound: lowerBound, upperBound: upperBound};
-}
-
-
-/**
- * Creates an array of binary confusion matrices from regression data. At each
- * point, the values will be scaled by 0.75.
- * @param {number} count
- * @param {number} threshold
- * @param {number} f1Score
- * @param {number} precision
- * @param {number} recall
- * @param {number} accuracy
- * @return {!Object}
- */
-function makeBinaryConfusionMatricesFromRegressionData(
-    count, threshold, f1Score, precision, recall, accuracy) {
-  const matrices = [];
-  const scale = 0.75;
-  for (let i = 0; i < count; i++) {
-    const classificationThreshold = {'predictionThreshold': threshold};
-    const matrix = {
-      'f1Score': f1Score,
-      'precision': precision,
-      'recall': recall,
-      'accuracy': accuracy
-    };
-    matrices.push({
-      'binaryClassificationThreshold': classificationThreshold,
-      'matrix': matrix
-    });
-    threshold *= scale;
-    f1Score *= scale;
-    precision *= scale;
-    recall *= scale;
-    accuracy *= scale;
-  }
-  return matrices;
-}
-
-
-/**
- * Creates an array of precision at k data. At each position, the precision will
- * decrease by 25%.
- * @param {number} count
- * @param {number} positiveCount
- * @param {number} startingPrecision
- * @return {!Object}
- */
-function makePrecisionAtKData(count, positiveCount, startingPrecision) {
-  const data = [];
-  let precision = startingPrecision;
-  for (let i = 1; i <= count; i++) {
-    data.push({k: i, value: precision, totalPositives: positiveCount * i});
-    precision *= 0.75;
-  }
-  return data;
-}
-
-
-/**
- * Creates a plot-trigger object with given input.
- * @param {?string} slice
- * @param {?number} span
- * @return {!Object}
- */
-function makePlotTriggerData(slice, span) {
-  const data = {'types': [Constants.PlotTypes.CALIBRATION_PLOT]};
-  if (slice !== null) {
-    data['slice'] = slice;
-  } else {
-    data['span'] = span;
-  }
-  return data;
-}
-
-/**
- * Creates an array of precision at k data. At each position, the precision will
- * decrease by 25%.
- * @param {number} count
- * @param {number} positiveCount
- * @param {number} startingPrecision
- * @return {!Object}
- */
-function makeRecallAtKData(count, positiveCount, startingPrecision) {
-  const data = [];
-  let precision = startingPrecision;
-  for (let i = 1; i <= count; i++) {
-    data.push(
-        {k: i, value: precision, totalActualPositives: positiveCount * i});
-    precision *= 0.75;
-  }
-  return data;
-}
-
-/**
- * Creates an array of multi values metric at k data. At each position, the
- * macro value will decrease by 25% and micro value is 90% of macro value.
- * @param {number} count
- * @param {number} startingValue
- * @return {!Object}
- */
-function makeMultiValuesMetricAtKData(count, startingValue) {
-  const data = [];
-  let macroValue = startingValue;
-  for (let i = 1; i <= count; i++) {
-    data.push({k: i, macroValue: macroValue, microValue: macroValue * 0.9});
-    macroValue *= 0.75;
-  }
-  return data;
 }

@@ -19,56 +19,87 @@ from __future__ import division
 
 from __future__ import print_function
 
-import os
+import types as python_types
+
 
 import tensorflow as tf
+
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import version
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
-from tensorflow_model_analysis.types_compat import Callable, Optional, NamedTuple  # pytype: disable=not-supported-yet
+from tensorflow_model_analysis.types_compat import Callable, Optional
 
-from tensorflow.core.protobuf import config_pb2
-from tensorflow.python.estimator import util as estimator_util
-from tensorflow.python.platform import gfile
-from tensorflow.python.util import compat
+from tensorflow.python.estimator.export import export as export_lib
 
 
-class EvalInputReceiver(
-    NamedTuple('EvalInputReceiver',
-               [('features', types.TensorTypeMaybeDict),
-                ('receiver_tensors', types.TensorTypeMaybeDict),
-                ('labels', types.TensorTypeMaybeDict)])):
+
+
+
+class EvalInputReceiver(export_lib.SupervisedInputReceiver):
   """A return type for eval_input_receiver_fn.
 
   The expected return values are:
     features: A `Tensor`, `SparseTensor`, or dict of string to `Tensor` or
       `SparseTensor`, specifying the features to be passed to the model.
+    labels: A `Tensor`, `SparseTensor`, or dict of string to `Tensor` or
+      `SparseTensor`, specifying the labels to be passed to the model.
     receiver_tensors: A `Tensor`, or dict of string to `Tensor`, specifying
       input nodes where this receiver expects to be fed by default. Typically
       this is a single placeholder expecting serialized `tf.Example` protos.
-    labels: A `Tensor`, `SparseTensor`, or dict of string to `Tensor` or
-      `SparseTensor`, specifying the labels to be passed to the model.
+
+  This is a wrapper around TensorFlow InputReceiver that explicitly adds
+  collections needed by TFMA, and also wraps the features and labels Tensors
+  in identity to workaround TensorFlow issue #17568.
   """
 
-  # When we create a timestamped directory, there is a small chance that the
+  def __new__(cls, features, labels, receiver_tensors):
+    # Workaround for TensorFlow issue #17568. Note that we pass the
+    # identity-wrapped features and labels to model_fn, but we have to feed
+    # the non-identity wrapped Tensors during evaluation.
+    #
+    # Also note that we can't wrap predictions, so metrics that have control
+    # dependencies on predictions will cause the predictions to be recomputed
+    # during their evaluation.
+    wrapped_features = util.wrap_tensor_or_dict_of_tensors_in_identity(features)
+    wrapped_labels = util.wrap_tensor_or_dict_of_tensors_in_identity(labels)
+    receiver = super(EvalInputReceiver, cls).__new__(
+        cls,
+        features=wrapped_features,
+        labels=wrapped_labels,
+        receiver_tensors=receiver_tensors)
+    # Note that in the collection we store the unwrapped versions, because
+    # we want to feed the unwrapped versions.
+    _add_features_labels_version_collections(features, labels)
+    return receiver
 
 
-def _get_temp_export_dir(timestamped_export_dir):
-  """Builds a directory name based on the argument but starting with 'temp-'.
+def _add_features_labels_version_collections(features, labels):
+  """Add extra collections for features, labels, version.
+
+  This should be called within the Graph that will be saved. Typical usage
+  would be when features and labels have been parsed, i.e. in the
+  input_receiver_fn.
 
   Args:
-    timestamped_export_dir: the name of the eventual export directory, e.g.
-      /foo/bar/<timestamp>
-
-  Returns:
-    A sister directory prefixed with 'temp-', e.g. /foo/bar/temp-<timestamp>.
+    features: dict of strings to tensors representing features
+    labels: dict of strings to tensors or a single tensor
   """
-  (dirname, basename) = os.path.split(timestamped_export_dir)
-  temp_export_dir = os.path.join(
-      compat.as_bytes(dirname), compat.as_bytes('temp-{}'.format(basename)))
-  return temp_export_dir
+  # Labels can either be a Tensor, or a dict of Tensors.
+  if not isinstance(labels, dict):
+    labels = {encoding.DEFAULT_LABELS_DICT_KEY: labels}
+
+  for label_key, label_node in labels.items():
+    _encode_and_add_to_node_collection(encoding.LABELS_COLLECTION, label_key,
+                                       label_node)
+
+  # Save features.
+  for feature_name, feature_node in features.items():
+    _encode_and_add_to_node_collection(encoding.FEATURES_COLLECTION,
+                                       feature_name, feature_node)
+
+  tf.add_to_collection(encoding.TFMA_VERSION_COLLECTION, version.VERSION_STRING)
 
 
 def _encode_and_add_to_node_collection(collection_prefix,
@@ -78,166 +109,6 @@ def _encode_and_add_to_node_collection(collection_prefix,
                        encoding.encode_key(key))
   tf.add_to_collection('%s/%s' % (collection_prefix, encoding.NODE_SUFFIX),
                        encoding.encode_tensor_node(node))
-
-
-def export_eval_savedmodel(
-    estimator,
-    export_dir_base,
-    eval_input_receiver_fn,
-    checkpoint_path = None):
-  """Export a EvalSavedModel for the given estimator.
-
-  Args:
-    estimator: Estimator to export the graph for.
-    export_dir_base: Base path for export. Graph will be exported into a
-      subdirectory of this base path.
-    eval_input_receiver_fn: Eval input receiver function.
-    checkpoint_path: Path to a specific checkpoint to export. If set to None,
-      exports the latest checkpoint.
-
-  Returns:
-    Path to the directory where the eval graph was exported.
-
-  Raises:
-    ValueError: Could not find a checkpoint to export.
-  """
-  with tf.Graph().as_default() as g:
-    eval_input_receiver = eval_input_receiver_fn()
-    tf.train.create_global_step(g)
-    tf.set_random_seed(estimator.config.tf_random_seed)
-
-    # Workaround for TensorFlow issue #17568. Note that we pass the
-    # identity-wrapped features and labels to model_fn, but we have to feed
-    # the non-identity wrapped Tensors during evaluation.
-    #
-    # Also note that we can't wrap predictions, so metrics that have control
-    # dependencies on predictions will cause the predictions to be recomputed
-    # during their evaluation.
-    wrapped_features = util.wrap_tensor_or_dict_of_tensors_in_identity(
-        eval_input_receiver.features)
-    wrapped_labels = util.wrap_tensor_or_dict_of_tensors_in_identity(
-        eval_input_receiver.labels)
-
-    if isinstance(estimator, tf.estimator.Estimator):
-      # This is a core Estimator.
-      estimator_spec = estimator.model_fn(
-          features=wrapped_features,
-          labels=wrapped_labels,
-          mode=tf.estimator.ModeKeys.EVAL,
-          config=estimator.config)
-    else:
-      # This is a contrib Estimator. Note that contrib Estimators are
-      # deprecated.
-      model_fn_ops = estimator.model_fn(
-          features=wrapped_features,
-          labels=wrapped_labels,
-          mode=tf.estimator.ModeKeys.EVAL,
-          config=estimator.config)
-      # "Convert" model_fn_ops into EstimatorSpec,
-      # populating only the fields we need.
-      estimator_spec = tf.estimator.EstimatorSpec(
-          loss=tf.constant(0.0),
-          mode=tf.estimator.ModeKeys.EVAL,
-          predictions=model_fn_ops.predictions,
-          eval_metric_ops=model_fn_ops.eval_metric_ops,
-          scaffold=model_fn_ops.scaffold)
-
-    # Write out exporter version.
-    tf.add_to_collection(encoding.TFMA_VERSION_COLLECTION,
-                         version.VERSION_STRING)
-
-    # Save metric using eval_metric_ops.
-    for user_metric_key, (value_op, update_op) in (
-        estimator_spec.eval_metric_ops.items()):
-      tf.add_to_collection('%s/%s' % (encoding.METRICS_COLLECTION,
-                                      encoding.KEY_SUFFIX),
-                           encoding.encode_key(user_metric_key))
-      tf.add_to_collection('%s/%s' % (encoding.METRICS_COLLECTION,
-                                      encoding.VALUE_OP_SUFFIX),
-                           encoding.encode_tensor_node(value_op))
-      tf.add_to_collection('%s/%s' % (encoding.METRICS_COLLECTION,
-                                      encoding.UPDATE_OP_SUFFIX),
-                           encoding.encode_tensor_node(update_op))
-
-    # Save all prediction nodes.
-    # Predictions can either be a Tensor, or a dict of Tensors.
-    predictions = estimator_spec.predictions
-    if not isinstance(predictions, dict):
-      predictions = {encoding.DEFAULT_PREDICTIONS_DICT_KEY: predictions}
-
-    for prediction_key, prediction_node in predictions.items():
-      _encode_and_add_to_node_collection(encoding.PREDICTIONS_COLLECTION,
-                                         prediction_key, prediction_node)
-
-    ############################################################
-    ## Features, label (and weight) graph
-
-    # Placeholder for input example to label graph.
-    tf.add_to_collection(encoding.INPUT_EXAMPLE_COLLECTION,
-                         encoding.encode_tensor_node(
-                             eval_input_receiver.receiver_tensors['examples']))
-
-    # Save all label nodes.
-    # Labels can either be a Tensor, or a dict of Tensors.
-    labels = eval_input_receiver.labels
-    if not isinstance(labels, dict):
-      labels = {encoding.DEFAULT_LABELS_DICT_KEY: labels}
-
-    for label_key, label_node in labels.items():
-      _encode_and_add_to_node_collection(encoding.LABELS_COLLECTION, label_key,
-                                         label_node)
-
-    # Save features.
-    for feature_name, feature_node in eval_input_receiver.features.items():
-      _encode_and_add_to_node_collection(encoding.FEATURES_COLLECTION,
-                                         feature_name, feature_node)
-
-    ############################################################
-    ## Export as normal
-
-    if not checkpoint_path:
-      checkpoint_path = tf.train.latest_checkpoint(estimator.model_dir)
-      if not checkpoint_path:
-        raise ValueError(
-            'Could not find trained model at %s.' % estimator.model_dir)
-
-    export_dir = estimator_util.get_timestamped_dir(export_dir_base)
-    temp_export_dir = _get_temp_export_dir(export_dir)
-
-    if estimator.config.session_config is None:
-      session_config = config_pb2.ConfigProto(allow_soft_placement=True)
-    else:
-      session_config = estimator.config.session_config
-
-    with tf.Session(config=session_config) as session:
-      if estimator_spec.scaffold and estimator_spec.scaffold.saver:
-        saver_for_restore = estimator_spec.scaffold.saver
-      else:
-        saver_for_restore = tf.train.Saver(sharded=True)
-      saver_for_restore.restore(session, checkpoint_path)
-
-      if estimator_spec.scaffold and estimator_spec.scaffold.local_init_op:
-        local_init_op = estimator_spec.scaffold.local_init_op
-      else:
-        if hasattr(tf.train.Scaffold, 'default_local_init_op'):
-          local_init_op = tf.train.Scaffold.default_local_init_op()
-        else:
-          local_init_op = tf.train.Scaffold._default_local_init_op()  # pylint: disable=protected-access
-
-      # Perform the export
-      builder = tf.saved_model.builder.SavedModelBuilder(temp_export_dir)
-      builder.add_meta_graph_and_variables(
-          session,
-          [constants.EVAL_SAVED_MODEL_TAG],
-          # Don't export any signatures, since this graph is not actually
-          # meant for serving.
-          signature_def_map=None,
-          assets_collection=tf.get_collection(tf.GraphKeys.ASSET_FILEPATHS),
-          legacy_init_op=local_init_op)
-      builder.save(False)
-
-      gfile.Rename(temp_export_dir, export_dir)
-      return export_dir
 
 
 def build_parsing_eval_input_receiver_fn(
@@ -269,6 +140,39 @@ def build_parsing_eval_input_receiver_fn(
         labels=features[label_key])
 
   return eval_input_receiver_fn
+
+
+
+
+def export_eval_savedmodel(
+    estimator,
+    export_dir_base,
+    eval_input_receiver_fn,
+    checkpoint_path = None):
+  """Export a EvalSavedModel for the given estimator.
+
+  Args:
+    estimator: Estimator to export the graph for.
+    export_dir_base: Base path for export. Graph will be exported into a
+      subdirectory of this base path.
+    eval_input_receiver_fn: Eval input receiver function.
+    checkpoint_path: Path to a specific checkpoint to export. If set to None,
+      exports the latest checkpoint.
+
+  Returns:
+    Path to the directory where the eval graph was exported.
+
+  Raises:
+    ValueError: Could not find a checkpoint to export.
+  """
+
+  return tf.contrib.estimator.export_all_saved_models(
+      estimator,
+      export_dir_base=export_dir_base,
+      input_receiver_fn_map={
+          tf.estimator.ModeKeys.EVAL: eval_input_receiver_fn
+      },
+      checkpoint_path=checkpoint_path)
 
 
 def make_export_strategy(

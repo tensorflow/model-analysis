@@ -26,6 +26,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
 
+from tensorflow_model_analysis.types_compat import List, Union
+
 
 class SliceAccessor(object):
   """Wrapper around features dict for accessing keys and values for slicing."""
@@ -56,7 +58,7 @@ class SliceAccessor(object):
 
     value = feature['node']
     if isinstance(value, tf.SparseTensorValue):
-      return value.values
+      return value.values.tolist()
     if not isinstance(value, np.ndarray):
       raise ValueError(
           'feature had unsupported type: key: %s, value: %s, type: %s' %
@@ -68,8 +70,9 @@ class SliceAccessor(object):
           'not. value was %s' % (key, value))
     if squeezed_value.ndim == 1:
       # For the multivalent columns, the squeezed values are in 1D arrays.
-      return squeezed_value
+      # Convert the array to a list.
+      return squeezed_value.tolist()
     else:  # squeezed_value.ndim == 0
       # For the univalent columns, we get a scalar after squeezing, which we
-      # wrap in an np.array to form a 1D array.
-      return np.array([squeezed_value])
+      # wrap in an list.
+      return [np.asscalar(squeezed_value)]

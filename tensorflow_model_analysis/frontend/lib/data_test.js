@@ -173,44 +173,6 @@ testSuite({
     assertEquals(parseFloat(c), data.getMetricValue(SLICE, 'c'));
   },
 
-  testFlattenCustomMetrics: function() {
-    const stats1 = {
-      customMetricsDouble: {double1: 1, double2: 2},
-      customMetricsString: {string1: 'abc', string2: 'efg'},
-      customMetricsInt: {int1: '1', int2: '2'}
-    };
-    const stats2 = {
-      customMetricsDouble: {double1: 11, double2: 22},
-      customMetricsString: {string1: 'hij', string2: 'klm'},
-      customMetricsInt: {int2: '22', int3: '33'}
-    };
-
-    const overrides = Data.util.flattenCustomMetrics(
-        [[{test: stats1}], [{test: stats2}]], 'test');
-    const keys = Object.keys(overrides);
-    assertEquals(3, keys.length);
-    assertTrue(keys.indexOf('int1') >= 0);
-    assertTrue(keys.indexOf('int2') >= 0);
-    assertTrue(keys.indexOf('int3') >= 0);
-    assertEquals(Constants.MetricValueFormat.INT64, overrides.int1.type);
-    assertEquals(Constants.MetricValueFormat.INT64, overrides.int2.type);
-    assertEquals(Constants.MetricValueFormat.INT64, overrides.int3.type);
-
-    assertEquals(1, stats1.double1);
-    assertEquals(2, stats1.double2);
-    assertEquals('abc', stats1.string1);
-    assertEquals('efg', stats1.string2);
-    assertEquals('1', stats1.int1);
-    assertEquals('2', stats1.int2);
-
-    assertEquals(11, stats2.double1);
-    assertEquals(22, stats2.double2);
-    assertEquals('hij', stats2.string1);
-    assertEquals('klm', stats2.string2);
-    assertEquals('22', stats2.int2);
-    assertEquals('33', stats2.int3);
-  },
-
   testDoNotAddPlotDataIfNotSet: function() {
     const data = [{test: {prediction: 0.75, label: 1}}];
     Data.util.preprocessMaybeAddPlotData(data, 'test', fail);
@@ -313,7 +275,51 @@ testSuite({
     });
 
     assertUndefined(data[0].test.plots);
-  }
+  },
+
+  testFlattenMetrics: function() {
+    const run1 = {
+      toFlatten: {
+        metric1: {
+          redirectionLayer1: {subfield1: 'preserved'},
+        },
+        metric2: {
+          redirectionLayer2:
+              {subfield2: 'preserved, too', subfield3: 'also preserved'},
+        },
+      },
+      otherInfo: 'unchanged',
+    };
+    const run2 = {
+      toFlatten: {
+        metric3: {
+          redirectionLayer3: {subfield4: 'preserved'},
+        },
+      },
+      otherInfo: 'unchanged',
+    };
+
+    const flattenedRun1 = {
+      toFlatten: {
+        metric1: {subfield1: 'preserved'},
+        metric2: {subfield2: 'preserved, too', subfield3: 'also preserved'}
+      },
+      otherInfo: 'unchanged'
+    };
+
+    const flattenedRun2 = {
+      toFlatten: {
+        metric3: {subfield4: 'preserved'},
+      },
+      otherInfo: 'unchanged'
+    };
+
+    const runs = [run1, run2];
+    Data.util.flattenMetrics(runs, 'toFlatten');
+
+    assertEquals(JSON.stringify(run1), JSON.stringify(flattenedRun1));
+    assertEquals(JSON.stringify(run2), JSON.stringify(flattenedRun2));
+  },
 });
 
 /**

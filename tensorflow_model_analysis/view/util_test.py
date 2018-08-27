@@ -21,7 +21,6 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer.slicer import OVERALL_SLICE_NAME
 from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
 from tensorflow_model_analysis.view import util
@@ -67,27 +66,40 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
                                        base_model_location_2)
 
   plots_data_a = {
-      metric_keys.CALIBRATION_PLOT_BOUNDARIES: [0, 1],
-      metric_keys.CALIBRATION_PLOT_MATRICES: [[1], [2], [3]]
+      'calibrationHistogramBuckets': {
+          'buckets': [{
+              'v': 0
+          }, {
+              'v': 1
+          }],
+      }
   }
   plots_a = ([(column_1, slice_a)], plots_data_a)
 
   plots_data_b = {
-      metric_keys.CALIBRATION_PLOT_BOUNDARIES: [0.25, 0.5, 0.75],
-      metric_keys.CALIBRATION_PLOT_MATRICES: [[1], [2], [3], [4]]
+      'calibrationHistogramBuckets': {
+          'buckets': [{
+              'v': 0.25
+          }, {
+              'v': 0.5
+          }, {
+              'v': 0.75
+          }],
+      }
   }
   plots_b = ([(column_1, slice_b)], plots_data_b)
 
-  plots_data_b2 = {
-      metric_keys.CALIBRATION_PLOT_BOUNDARIES: [0.5],
-      metric_keys.CALIBRATION_PLOT_MATRICES: [[1], [2]]
-  }
+  plots_data_b2 = {'calibrationHistogramBuckets': {'buckets': [{'v': 0.5}],}}
   plots_b2 = ([(column_1, slice_b)], plots_data_b)
 
   plots_data_c = {
-      metric_keys.CALIBRATION_PLOT_BOUNDARIES: [0.5, float('nan')],
-      metric_keys.CALIBRATION_PLOT_MATRICES: [[1, 2], [2, float('nan'), 3],
-                                              [3, 4]]
+      'calibrationHistogramBuckets': {
+          'buckets': [{
+              'v': 0.5
+          }, {
+              'v': 'NaN'
+          }],
+      }
   }
   plots_c = ([(column_1, slice_c)], plots_data_c)
 
@@ -270,12 +282,15 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         self._makeTestPlotsData(),
         SingleSliceSpec(features=[(self.column_1, self.slice_c)]))
 
-    self.assertEquals(
-        data, {
-            metric_keys.CALIBRATION_PLOT_BOUNDARIES: [0.5, None],
-            metric_keys.CALIBRATION_PLOT_MATRICES: [[1, 2], [2, None, 3],
-                                                    [3, 4]]
-        })
+    self.assertEquals(data, {
+        'calibrationHistogramBuckets': {
+            'buckets': [{
+                'v': 0.5
+            }, {
+                'v': None
+            }],
+        }
+    })
 
 
 if __name__ == '__main__':

@@ -19,8 +19,7 @@ limitations under the License.
 <dom-module id="tfma-nb-slicing-metrics">
   <template>
     <tfma-slicing-metrics-browser data="[[browserData_]]" metrics="[[metrics_]]"
-                                  weighted-examples-column="[[getWeightedExampleColumn_(config)]]"
-                                  formats="[[formats_]]">
+                                  weighted-examples-column="[[getWeightedExampleColumn_(config)]]">
     </tfma-slicing-metrics-browser>
   </template>
   <script>
@@ -48,12 +47,6 @@ Polymer({
     browserData_: {type: Array},
 
     /**
-     * A key value pair of format overrides.
-     * @private {!Object}
-     */
-    formats_: {type: Object},
-
-    /**
      * @private {!Array<string>}
      */
     metrics_: {type: Array},
@@ -63,9 +56,9 @@ Polymer({
    * @param {!Array<{slice: string, metrics:!Object}>} data
    */
   dataChanged_: function(data) {
-    // Note that tfma.Data.flattenCustomMetrics modifies its input in place so we compute the
-    // following in an observer instead of making them computed properties.
-    this.formats_ = tfma.Data.flattenCustomMetrics([data], 'metrics');
+    // Note that tfma.Data.flattenMetrics modifies its input in place so we compute the following
+    // in an observer instead of making them computed properties.
+    tfma.Data.flattenMetrics(data, 'metrics');
     this.metrics_ =  tfma.Data.getAvailableMetrics([data], 'metrics');
     this.browserData_ = data;
   },
