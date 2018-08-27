@@ -1,9 +1,29 @@
 # Description:
 #   Python SDK for the TensorFlow Model Analysis API.
 
+package(default_visibility = ["//tensorflow_model_analysis:__subpackages__"])
+
 licenses(["notice"])  # Apache 2.0
 
 exports_files(["LICENSE"])
+
+py_library(
+    name = "tensorflow_model_analysis",
+    srcs = [
+        "__init__.py",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":constants",
+        ":version",
+        "//tensorflow_model_analysis/api:model_eval_lib",
+        "//tensorflow_model_analysis/api:tfma_unit_non_testonly",
+        "//tensorflow_model_analysis/eval_saved_model:export",
+        "//tensorflow_model_analysis/eval_saved_model:exporter",
+        "//tensorflow_model_analysis/eval_saved_model/post_export_metrics",
+        "//tensorflow_model_analysis/slicer",
+    ],
+)
 
 py_library(
     name = "constants",

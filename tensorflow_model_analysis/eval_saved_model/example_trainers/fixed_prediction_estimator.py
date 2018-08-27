@@ -30,16 +30,25 @@ from tensorflow.python.estimator.canned import metric_keys
 from tensorflow.python.estimator.canned import prediction_keys
 
 
-def simple_fixed_prediction_estimator(export_path, eval_export_path):
+def simple_fixed_prediction_estimator(
+    export_path,
+    eval_export_path,
+    output_prediction_key=prediction_keys.PredictionKeys.PREDICTIONS):
   """Exports a simple fixed prediction estimator."""
 
   def model_fn(features, labels, mode, params):
     """Model function for custom estimator."""
     del params
     predictions = features['prediction']
-    predictions_dict = {
-        prediction_keys.PredictionKeys.PREDICTIONS: predictions,
-    }
+
+    if output_prediction_key is not None:
+      predictions_dict = {
+          output_prediction_key: predictions,
+      }
+    else:
+      # For simulating Estimators which don't return a predictions dict in
+      # EVAL mode.
+      predictions_dict = {}
 
     if mode == tf.estimator.ModeKeys.PREDICT:
       return tf.estimator.EstimatorSpec(

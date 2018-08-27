@@ -82,6 +82,46 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     self._runTestWithCustomCheck(
         examples, eval_export_dir, metrics, custom_metrics_check=check_result)
 
+  def testExampleCountNoStandardKeys(self):
+    # Test ExampleCount with a custom Estimator that doesn't have any of the
+    # standard PredictionKeys.
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator.simple_fixed_prediction_estimator(
+            None, temp_eval_export_dir, output_prediction_key='non_standard'))
+    examples = [
+        self._makeExample(prediction=5.0, label=5.0),
+        self._makeExample(prediction=6.0, label=6.0),
+        self._makeExample(prediction=7.0, label=7.0),
+    ]
+    expected_values_dict = {
+        metric_keys.EXAMPLE_COUNT: 3.0,
+    }
+    self._runTest(examples, eval_export_dir, [
+        post_export_metrics.example_count(),
+    ], expected_values_dict)
+
+  def testExampleCountEmptyPredictionsDict(self):
+    # Test ExampleCount with a custom Estimator that has empty predictions dict.
+    # This is possible if the Estimator doesn't return the predictions dict
+    # in EVAL mode, but computes predictions and feeds them into the metrics
+    # internally.
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator.simple_fixed_prediction_estimator(
+            None, temp_eval_export_dir, output_prediction_key=None))
+    examples = [
+        self._makeExample(prediction=5.0, label=5.0),
+        self._makeExample(prediction=6.0, label=6.0),
+        self._makeExample(prediction=7.0, label=7.0),
+    ]
+    expected_values_dict = {
+        metric_keys.EXAMPLE_COUNT: 3.0,
+    }
+    self._runTest(examples, eval_export_dir, [
+        post_export_metrics.example_count(),
+    ], expected_values_dict)
+
   def testPostExportMetricsLinearClassifier(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(

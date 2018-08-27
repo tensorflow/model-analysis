@@ -25,9 +25,9 @@ from tensorflow_model_analysis.api.impl import evaluate
 from tensorflow_model_analysis.types_compat import Optional
 
 
+@beam.ptransform_fn
 @beam.typehints.with_input_types(bytes)
 @beam.typehints.with_output_types(beam.typehints.Any)
-@beam.ptransform_fn
 def BuildDiagnosticTable(  # pylint: disable=invalid-name
     examples,
     eval_saved_model_path,
