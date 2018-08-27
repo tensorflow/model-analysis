@@ -18,6 +18,7 @@ from __future__ import division
 
 from __future__ import print_function
 
+import copy
 
 import numpy as np
 import tensorflow as tf
@@ -63,7 +64,35 @@ MaterializedColumn = NamedTuple(
 # example and all its "extractions." Extractions that should be emitted to file.
 # Each Extract has a name, stored as the key of the DictOfExtractedValues.
 DictOfExtractedValues = Dict[Text, Any]
-ExampleAndExtracts = NamedTuple(  # pylint: disable=invalid-name
-    'ExampleAndExtracts',
-    [('example', bytes),
-     ('extracts', DictOfExtractedValues)])
+
+
+class ExampleAndExtracts(
+    NamedTuple('ExampleAndExtracts', [('example', bytes),
+                                      ('extracts', DictOfExtractedValues)])):
+  """Example and extracts."""
+
+  def create_copy_with_shallow_copy_of_extracts(self):
+    """Returns a new copy of this with a shallow copy of extracts.
+
+    This is NOT equivalent to making a shallow copy with copy.copy(this).
+    That does NOT make a shallow copy of the dictionary. An illustration of
+    the differences:
+      a = ExampleAndExtracts(example='content', extracts=dict(apple=[1, 2]))
+
+      # The dictionary is shared (and hence the elements are also shared)
+      b = copy.copy(a)
+      b.extracts['banana'] = 10
+      assert a.extracts['banana'] == 10
+
+      # The dictionary is not shared (but the elements are)
+      c = a.create_copy_with_shallow_copy_of_extracts()
+      c.extracts['cherry'] = 10
+      assert 'cherry' not in a.extracts  # The dictionary is not shared
+      c.extracts['apple'][0] = 100
+      assert a.extracts['apple'][0] == 100  # But the elements are
+
+    Returns:
+      A shallow copy of this object.
+    """
+    return ExampleAndExtracts(
+        example=self.example, extracts=copy.copy(self.extracts))

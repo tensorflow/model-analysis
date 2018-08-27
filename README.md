@@ -57,7 +57,8 @@ combinations may also work.
 
 |tensorflow-model-analysis  |tensorflow    |apache-beam[gcp]|
 |---------------------------|--------------|----------------|
-|GitHub master              |1.9           |2.5.0           |
+|GitHub master              |1.9           |2.6.0           |
+|0.9.1                      |1.9           |2.6.0           |
 |0.9.0                      |1.9           |2.5.0           |
 |0.6.0                      |1.6           |2.4.0           |
 

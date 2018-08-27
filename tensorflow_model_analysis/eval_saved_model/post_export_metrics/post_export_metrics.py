@@ -110,10 +110,8 @@ def _get_prediction_tensor(
     predictions_dict: Predictions dictionary.
 
   Returns:
-    Predictions tensor.
-
-  Raises:
-    KeyError: No expected keys are found in predictions_dict.
+    Predictions tensor, or None if none of the expected keys are found in
+    the predictions_dict.
   """
   if types.is_tensor(predictions_dict):
     return predictions_dict
@@ -126,8 +124,8 @@ def _get_prediction_tensor(
     ref_tensor = predictions_dict.get(key)
     if ref_tensor is not None:
       return ref_tensor
-  raise KeyError('cannot find any keys %s in predictions_dict %s.' %
-                 (key_precedence, predictions_dict))
+
+  return None
 
 
 def _check_labels(labels_dict):
@@ -138,7 +136,9 @@ def _check_labels(labels_dict):
 
 def _check_predictions(predictions_dict):
   """Raise KeyError if the predictions cannot be understood."""
-  _get_prediction_tensor(predictions_dict)
+  if _get_prediction_tensor(predictions_dict) is None:
+    raise KeyError('cannot find any of the standard keysin predictions_dict %s.'
+                   % (predictions_dict))
 
 
 def _check_labels_and_predictions(
@@ -274,19 +274,62 @@ class _PostExportMetric(object):
 
 @_export('example_count')
 class _ExampleCount(_PostExportMetric):
-  """Metric that counts the number of examples processed."""
+  """Metric that counts the number of examples processed.
+
+  We get the example count by looking at the predictions dictionary and picking
+  a reference Tensor. If we can find a standard key (e.g.
+  PredictionKeys.LOGISTIC, etc), we use that as the reference Tensor. Otherwise,
+  we just use the first key in sorted order from one of the dictionaries
+  (predictions, labels) as the reference Tensor.
+
+  We assume the first dimension is the batch size, and take that to be the
+  number of examples in the batch.
+  """
 
   def check_compatibility(self, features_dict,
                           predictions_dict,
                           labels_dict):
-    _check_predictions(predictions_dict)
+    pass
 
   def get_metric_ops(self, features_dict,
                      predictions_dict,
                      labels_dict
                     ):
     ref_tensor = _get_prediction_tensor(predictions_dict)
-    return {metric_keys.EXAMPLE_COUNT: tf.contrib.metrics.count(ref_tensor)}
+    if ref_tensor is None:
+      # Note that if predictions_dict is a Tensor and not a dict,
+      # get_predictions_tensor will return predictions_dict, so if we get
+      # here, if means that predictions_dict is a dict without any of the
+      # standard keys.
+      #
+      # If we can't get any of standard keys, then pick the first key
+      # in alphabetical order if the predictions dict is non-empty.
+      # If the predictions dict is empty, try the labels dict.
+      # If that is empty too, default to the empty Tensor.
+      tf.logging.info(
+          'ExampleCount post export metric: could not find any of '
+          'the standard keys in predictions_dict (keys were: %s)',
+          predictions_dict.keys())
+      if predictions_dict is not None and predictions_dict.keys():
+        first_key = sorted(predictions_dict.keys())[0]
+        ref_tensor = predictions_dict[first_key]
+        tf.logging.info('Using the first key from predictions_dict: %s',
+                        first_key)
+      elif labels_dict is not None:
+        if types.is_tensor(labels_dict):
+          ref_tensor = labels_dict
+          tf.logging.info('Using the labels Tensor')
+        elif labels_dict.keys():
+          first_key = sorted(labels_dict.keys())[0]
+          ref_tensor = labels_dict[first_key]
+          tf.logging.info('Using the first key from labels_dict: %s', first_key)
+
+      if ref_tensor is None:
+        tf.logging.info('Could not find a reference Tensor for example count. '
+                        'Defaulting to the empty Tensor.')
+        ref_tensor = tf.constant([])
+
+    return {metric_keys.EXAMPLE_COUNT: metrics.total(tf.shape(ref_tensor)[0])}
 
 
 @_export('example_weight')

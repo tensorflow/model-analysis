@@ -1,3 +1,22 @@
+# Release 0.9.1
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+*   Requires pre-installed TensorFlow >=1.10,<2.
+*   Updated ExampleCount to use the batch dimension as the example count. It
+    also now tries a few fallbacks if none of the standard keys are found in the
+    predictions dictionary: the first key in sorted order in the predictions
+    dictionary, or failing that, the first key in sorted order in the labels
+    dictionary, or failing that, it defaults to zero.
+*   Fix bug where we were mutating an element in a DoFn - this is prohibited in
+    the Beam model and can cause subtle bugs.
+
+## Breaking changes
+
+## Deprecations
+
 # Release 0.9.0
 
 ## Major Features and Improvements

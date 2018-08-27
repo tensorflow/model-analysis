@@ -123,9 +123,9 @@ def load_eval_result(output_path):
 def _assert_tensorflow_version():
   # Fail with a clear error in case we are not using a compatible TF version.
   major, minor, _ = tf.__version__.split('.')
-  if int(major) != 1 or int(minor) < 9:
+  if int(major) != 1 or int(minor) < 10:
     raise RuntimeError(
-        'Tensorflow version >= 1.9, < 2 is required. Found (%s). Please '
+        'Tensorflow version >= 1.10, < 2 is required. Found (%s). Please '
         'install the latest 1.x version from '
         'https://github.com/tensorflow/tensorflow. ' % tf.__version__)
 

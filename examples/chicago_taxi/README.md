@@ -45,8 +45,8 @@ Development for this example will be isolated in a Python virtual environment.
 This allows us to experiment with different versions of dependencies.
 
 There are many ways to install `virtualenv`, see the
-[TensorFlow install guides](/install) for different platforms, but here are a
-couple:
+[TensorFlow install guides](https://www.tensorflow.org/install) for different
+platforms, but here are a couple:
 
 * For Linux:
 

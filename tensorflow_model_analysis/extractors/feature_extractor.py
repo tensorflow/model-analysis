@@ -37,16 +37,17 @@ _MAX_SPARSE_FEATURES_PER_COLUMN = 10
 def _AugmentExtracts(
     fpl_dict,
     example_and_extracts):
-  """Augments The ExampleAndExtracts with FeaturesPredictionsLabels.
+  """Augments the ExampleAndExtracts with FeaturesPredictionsLabels.
 
   Args:
     fpl_dict: The dictionary returned by evaluate._Predict()
-    example_and_extracts: The ExampleAndExtracts to be augmented -- note that
-      this variable modified (ie both an input and output)
+    example_and_extracts: The ExampleAndExtracts to be augmented. This is
+      mutated in-place.
+
   Raises:
-    TypeError: if the FeaturesPredictionsLabels is corrupt.
+    TypeError: If the FeaturesPredictionsLabels is corrupt.
   """
-  for name, val in fpl_dict.iteritems():
+  for name, val in fpl_dict.items():
     val = val.get(encoding.NODE_SUFFIX)
 
     if isinstance(val, tf.SparseTensorValue):
@@ -62,7 +63,9 @@ def _AugmentExtracts(
           name=name, value=val)
 
     else:
-      raise TypeError('Unexpected fpl type: %s' % str(val))
+      raise TypeError(
+          'Dictionary item with key %s, value %s had unexpected type %s' %
+          (name, val, type(val)))
 
 
 def _MaterializeFeatures(
@@ -76,35 +79,37 @@ def _MaterializeFeatures(
     example_and_extracts: The ExampleAndExtracts to be augmented
 
   Returns:
-    Reference to augmented ExampleAndExtracts.
+    Returns an augmented ExampleAndExtracts (which is a shallow copy of
+    the original ExampleAndExtracts, so the original isn't mutated)
 
   Raises:
     RuntimeError: When _Predict() didn't populate the 'fpl' key.
   """
-  fpl = example_and_extracts.extracts.get(
-      constants.FEATURES_PREDICTIONS_LABELS_KEY)
+  # Make a a shallow copy, so we don't mutate the original.
+  result = example_and_extracts.create_copy_with_shallow_copy_of_extracts()
+
+  fpl = result.extracts.get(constants.FEATURES_PREDICTIONS_LABELS_KEY)
   if not fpl:
-    raise RuntimeError(
-        'fpl missing, Please ensure _Predict() was called.')
+    raise RuntimeError('FPL missing, Please ensure _Predict() was called.')
 
   if not isinstance(fpl, load.FeaturesPredictionsLabels):
-    raise RuntimeError(
-        'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: %s'
-        % str(fpl))
+    raise TypeError(
+        'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: %s '
+        'of type %s' % (str(fpl), type(fpl)))
 
   # We disable pytyping here because we know that 'fpl' key corresponds to a
   # non-materialized column.
   # pytype: disable=attribute-error
-  _AugmentExtracts(fpl.features, example_and_extracts)
-  _AugmentExtracts(fpl.predictions, example_and_extracts)
-  _AugmentExtracts(fpl.labels, example_and_extracts)
-  return example_and_extracts
+  _AugmentExtracts(fpl.features, result)
+  _AugmentExtracts(fpl.predictions, result)
+  _AugmentExtracts(fpl.labels, result)
+  return result
   # pytype: enable=attribute-error
 
 
+@beam.ptransform_fn
 @beam.typehints.with_input_types(beam.typehints.Any)
 @beam.typehints.with_output_types(beam.typehints.Any)
-@beam.ptransform_fn
 def ExtractFeatures(
     examples_and_extracts):
   """Builds MaterializedColumn extracts from FPL created in evaluate.Predict().

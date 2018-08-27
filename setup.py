@@ -243,7 +243,7 @@ setup_args = {
         'tensorflow_model_analysis/static/vulcanized_template.html',
     ]),],
     'install_requires': [
-        'apache-beam[gcp]>=2.5,<3',
+        'apache-beam[gcp]>=2.6,<3',
         'grpc-google-iam-v1==0.11.1',
         'numpy>=1.10,<2',
         'jupyter>=1.0,<2',

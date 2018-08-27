@@ -44,14 +44,35 @@ suite('tests', () => {
   test('setData', () => {
     element = fixture('plain-fixture');
     element.data = '{"lowerBound": 1, "upperBound": 2, "value": 1.5}';
-    assert.equal(flatten(element.textContent), '1.50000 (1.00000, 2.00000)');
+    checkText(element, '1.50000 (1.00000, 2.00000)');
   });
 
   test('createBoundedValueWithAttributes', () => {
     element = fixture('attributes-inlined-fixture');
-    assert.equal(flatten(element.textContent), '1.50000 (1.00000, 2.00000)');
+    debugger;
+    checkText(element, '1.50000 (1.00000, 2.00000)');
   });
 });
+
+/**
+ * Checks the given element contains the provided text.
+ * @param {!Element} element
+ * @param {string} expectedText
+ */
+function checkText(element, expectedText) {
+  // Use indexOf instead of full string match since Polymer 2.x will also contain the css inlined in
+  // the template.
+  assert.isTrue(flatten(getTextContent(element)).indexOf(expectedText) >= 0);
+}
+
+/**
+ * Extracts the text content of the element. For polymer 2.X, get the text from the shadow root.
+ * @param {!Element} element
+ * @return {string}
+ */
+function getTextContent(element) {
+  return element.textContent.trim() || element.root.textContent.trim();
+}
 
 /**
  * For string comparison purpose, "flattens" the given html by removing all
