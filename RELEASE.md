@@ -1,9 +1,23 @@
+# Release 0.9.2
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+*   Depends on `tensorflow-transform>=0.9,<1`.
+*   Requires pre-installed TensorFlow >=1.9,<2.
+
+## Breaking changes
+
+## Deprecations
+
 # Release 0.9.1
 
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
 
+*   Depends on `apache-beam[gcp]>=2.6,<3`.
 *   Requires pre-installed TensorFlow >=1.10,<2.
 *   Updated ExampleCount to use the batch dimension as the example count. It
     also now tries a few fallbacks if none of the standard keys are found in the
@@ -12,6 +26,8 @@
     dictionary, or failing that, it defaults to zero.
 *   Fix bug where we were mutating an element in a DoFn - this is prohibited in
     the Beam model and can cause subtle bugs.
+*   Fix bug where we were creating a separate Shared handle for each stage in
+    Evaluate, resulting in no sharing of the model across stages.
 
 ## Breaking changes
 

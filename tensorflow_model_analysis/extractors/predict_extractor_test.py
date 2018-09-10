@@ -33,6 +33,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_transform.beam import shared
 
 
 class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
@@ -63,7 +64,10 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           # however our aggregating functions do not use this interface.
           | beam.Map(lambda x: types.ExampleAndExtracts(example=x, extracts={}))
           | 'Predict' >> predict_extractor.TFMAPredict(
-              eval_saved_model_path=eval_export_dir, desired_batch_size=3))
+              eval_saved_model_path=eval_export_dir,
+              add_metrics_callbacks=None,
+              shared_handle=shared.Shared(),
+              desired_batch_size=3))
 
       def check_result(got):
         try:

@@ -19,9 +19,12 @@ from __future__ import print_function
 import argparse
 import os
 
-import apache_beam as beam
 
+import apache_beam as beam
 import tensorflow as tf
+
+from trainer import taxi
+
 import tensorflow_transform as transform
 
 from tensorflow_transform.beam import impl as beam_impl
@@ -30,22 +33,46 @@ from tensorflow_transform.coders import example_proto_coder
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
 
-from trainer import taxi
+
+def _fill_in_missing(x):
+  """Replace missing values in a SparseTensor.
+
+  Fills in missing values of `x` with '' or 0, and converts to a dense tensor.
+
+  Args:
+    x: A `SparseTensor` of rank 2.  Its dense shape should have size at most 1
+      in the second dimension.
+
+  Returns:
+    A rank 1 tensor where missing values of `x` have been filled in.
+  """
+  default_value = '' if x.dtype == tf.string else 0
+  return tf.squeeze(
+      tf.sparse_to_dense(x.indices, [x.dense_shape[0], 1], x.values,
+                         default_value),
+      axis=1)
 
 
 def transform_data(input_handle,
                    outfile_prefix,
                    working_dir,
+                   schema_file,
+                   transform_dir=None,
                    max_rows=None,
                    pipeline_args=None):
   """The main tf.transform method which analyzes and transforms data.
 
   Args:
-    input_handle: BigQuery table name to process specified as
-      DATASET.TABLE or path to csv file with input data.
+    input_handle: BigQuery table name to process specified as DATASET.TABLE or
+      path to csv file with input data.
     outfile_prefix: Filename prefix for emitted transformed examples
-    working_dir: Directory in which transformed examples and transform
-      function will be emitted.
+    working_dir: Directory in which transformed examples and transform function
+      will be emitted.
+    schema_file: An file path that contains a text-serialized TensorFlow
+      metadata schema of the input data.
+    transform_dir: Directory in which the transform output is located. If
+      provided, this will load the transform_fn from disk instead of computing
+      it over the data. Hint: this is useful for transforming eval data.
     max_rows: Number of rows to query from BigQuery
     pipeline_args: additional DataflowRunner or DirectRunner args passed to the
       beam pipeline.
@@ -63,43 +90,45 @@ def transform_data(input_handle,
     outputs = {}
     for key in taxi.DENSE_FLOAT_FEATURE_KEYS:
       # Preserve this feature as a dense float, setting nan's to the mean.
-      outputs[key] = transform.scale_to_z_score(inputs[key])
+      outputs[taxi.transformed_name(key)] = transform.scale_to_z_score(
+          _fill_in_missing(inputs[key]))
 
     for key in taxi.VOCAB_FEATURE_KEYS:
       # Build a vocabulary for this feature.
-      outputs[key] = transform.string_to_int(
-          inputs[key], top_k=taxi.VOCAB_SIZE, num_oov_buckets=taxi.OOV_SIZE)
+      outputs[taxi.transformed_name(key)] = transform.string_to_int(
+          _fill_in_missing(inputs[key]),
+          top_k=taxi.VOCAB_SIZE,
+          num_oov_buckets=taxi.OOV_SIZE)
 
     for key in taxi.BUCKET_FEATURE_KEYS:
-      outputs[key] = transform.bucketize(inputs[key], taxi.FEATURE_BUCKET_COUNT)
+      outputs[taxi.transformed_name(key)] = transform.bucketize(
+          _fill_in_missing(inputs[key]), taxi.FEATURE_BUCKET_COUNT)
 
     for key in taxi.CATEGORICAL_FEATURE_KEYS:
-      outputs[key] = inputs[key]
+      outputs[taxi.transformed_name(key)] = _fill_in_missing(inputs[key])
 
     # Was this passenger a big tipper?
-    def convert_label(label):
-      taxi_fare = inputs[taxi.FARE_KEY]
-      return tf.where(
-          tf.is_nan(taxi_fare),
-          tf.cast(tf.zeros_like(taxi_fare), tf.int64),
-          # Test if the tip was > 20% of the fare.
-          tf.cast(
-              tf.greater(label, tf.multiply(taxi_fare, tf.constant(0.2))),
-              tf.int64))
-
-    outputs[taxi.LABEL_KEY] = transform.apply_function(convert_label,
-                                                       inputs[taxi.LABEL_KEY])
+    taxi_fare = _fill_in_missing(inputs[taxi.FARE_KEY])
+    tips = _fill_in_missing(inputs[taxi.LABEL_KEY])
+    outputs[taxi.transformed_name(taxi.LABEL_KEY)] = tf.where(
+        tf.is_nan(taxi_fare),
+        tf.cast(tf.zeros_like(taxi_fare), tf.int64),
+        # Test if the tip was > 20% of the fare.
+        tf.cast(
+            tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))),
+            tf.int64))
 
     return outputs
 
-  raw_feature_spec = taxi.get_raw_feature_spec()
+  schema = taxi.read_schema(schema_file)
+  raw_feature_spec = taxi.get_raw_feature_spec(schema)
   raw_schema = dataset_schema.from_feature_spec(raw_feature_spec)
   raw_data_metadata = dataset_metadata.DatasetMetadata(raw_schema)
 
   with beam.Pipeline(argv=pipeline_args) as pipeline:
     with beam_impl.Context(temp_dir=working_dir):
       if input_handle.lower().endswith('csv'):
-        csv_coder = taxi.make_csv_coder()
+        csv_coder = taxi.make_csv_coder(schema)
         raw_data = (
             pipeline
             | 'ReadFromText' >> beam.io.ReadFromText(
@@ -110,16 +139,21 @@ def transform_data(input_handle,
         raw_data = (
             pipeline
             | 'ReadBigQuery' >> beam.io.Read(
-                beam.io.BigQuerySource(query=query, use_standard_sql=True)))
+                beam.io.BigQuerySource(query=query, use_standard_sql=True))
+            | 'CleanData' >> beam.Map(
+                taxi.clean_raw_data_dict, raw_feature_spec=raw_feature_spec))
 
-      raw_data |= 'CleanData' >> beam.Map(taxi.clean_raw_data_dict)
+      if transform_dir is None:
+        transform_fn = (
+            (raw_data, raw_data_metadata)
+            | ('Analyze' >> beam_impl.AnalyzeDataset(preprocessing_fn)))
 
-      transform_fn = ((raw_data, raw_data_metadata)
-                      | 'Analyze' >> beam_impl.AnalyzeDataset(preprocessing_fn))
-
-      _ = (
-          transform_fn
-          | 'WriteTransformFn' >> transform_fn_io.WriteTransformFn(working_dir))
+        _ = (
+            transform_fn
+            | ('WriteTransformFn' >>
+               transform_fn_io.WriteTransformFn(working_dir)))
+      else:
+        transform_fn = pipeline | transform_fn_io.ReadTransformFn(transform_dir)
 
       # Shuffling the data before materialization will improve Training
       # effectiveness downstream.
@@ -134,8 +168,8 @@ def transform_data(input_handle,
           transformed_data
           | 'SerializeExamples' >> beam.Map(coder.encode)
           | 'WriteExamples' >> beam.io.WriteToTFRecord(
-              os.path.join(working_dir, outfile_prefix),
-              compression_type=beam.io.filesystem.CompressionTypes.GZIP))
+              os.path.join(working_dir, outfile_prefix), file_name_suffix='.gz')
+      )
 
 
 def main():
@@ -147,7 +181,9 @@ def main():
       help=('Input BigQuery table to process specified as: '
             'DATASET.TABLE or path to csv file with input data.'))
 
-  # for preprocessing
+  parser.add_argument(
+      '--schema_file', help='File holding the schema for the input data')
+
   parser.add_argument(
       '--output_dir',
       help=('Directory in which transformed examples and function '
@@ -168,6 +204,7 @@ def main():
       input_handle=known_args.input,
       outfile_prefix=known_args.outfile_prefix,
       working_dir=known_args.output_dir,
+      schema_file=known_args.schema_file,
       max_rows=known_args.max_rows,
       pipeline_args=pipeline_args)
 

@@ -15,7 +15,7 @@
 set -u
 
 # Input: trained model to be evaluated
-WORKING_DIR=$(pwd)/data/train/local_chicago_taxi_output
+WORKING_DIR=./data/train/local_chicago_taxi_output
 EVAL_MODEL_DIR=$WORKING_DIR/eval_model_dir/$(ls $WORKING_DIR/eval_model_dir | tail -n1)
 
 # Output: evaluation result
@@ -28,9 +28,10 @@ echo Eval result dir: $EVAL_RESULT_DIR
 rm -R -f $EVAL_RESULT_DIR > /dev/null
 
 python process_tfma.py \
-  --eval_model_dir=$EVAL_MODEL_DIR \
-  --eval_result_dir=$EVAL_RESULT_DIR \
-  --input_csv=data/eval/data.csv
+  --eval_model_dir $EVAL_MODEL_DIR \
+  --eval_result_dir $EVAL_RESULT_DIR \
+  --schema_file ./data/local_tfdv_output/schema.pbtxt \
+  --input_csv ./data/eval/data.csv
 
 echo Done
 echo Eval results written to $EVAL_RESULT_DIR

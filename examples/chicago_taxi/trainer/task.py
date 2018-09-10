@@ -16,9 +16,9 @@ import argparse
 import os
 
 import model
+import taxi
 
 import tensorflow as tf
-from tensorflow.contrib.training.python.training import hparam
 
 import tensorflow_model_analysis as tfma
 
@@ -43,6 +43,8 @@ def train_and_maybe_evaluate(hparams):
   Returns:
     The estimator that was used for training (and maybe eval)
   """
+  schema = taxi.read_schema(hparams.schema_file)
+
   train_input = lambda: model.input_fn(
       hparams.train_files,
       hparams.tf_transform_dir,
@@ -56,10 +58,10 @@ def train_and_maybe_evaluate(hparams):
   )
 
   train_spec = tf.estimator.TrainSpec(
-     train_input, max_steps=hparams.train_steps)
+      train_input, max_steps=hparams.train_steps)
 
   serving_receiver_fn = lambda: model.example_serving_receiver_fn(
-      hparams.tf_transform_dir)
+      hparams.tf_transform_dir, schema)
 
   exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
   eval_spec = tf.estimator.EvalSpec(
@@ -97,9 +99,13 @@ def run_experiment(hparams):
   """
   estimator = train_and_maybe_evaluate(hparams)
 
+  schema = taxi.read_schema(hparams.schema_file)
+
   # Save a model for tfma eval
   eval_model_dir = os.path.join(hparams.output_dir, EVAL_MODEL_DIR)
-  receiver_fn = lambda: model.eval_input_receiver_fn(hparams.tf_transform_dir)
+
+  receiver_fn = lambda: model.eval_input_receiver_fn(  # pylint: disable=g-long-lambda
+      hparams.tf_transform_dir, schema)
 
   tfma.export.export_eval_savedmodel(
       estimator=estimator,
@@ -107,7 +113,7 @@ def run_experiment(hparams):
       eval_input_receiver_fn=receiver_fn)
 
 
-if __name__ == '__main__':
+def main():
   parser = argparse.ArgumentParser()
   # Input Arguments
   parser.add_argument(
@@ -133,8 +139,7 @@ if __name__ == '__main__':
       '--eval-files',
       help='GCS or local paths to evaluation data',
       nargs='+',
-      required=True
-  )
+      required=True)
   # Training arguments
   parser.add_argument(
       '--job-dir',
@@ -158,6 +163,10 @@ if __name__ == '__main__':
       help='Number of steps to run evalution for at each checkpoint',
       default=100,
       type=int)
+  parser.add_argument(
+      '--schema-file',
+      help='File holding the schema for the input data')
+
   args = parser.parse_args()
 
   # Set python level verbosity
@@ -167,5 +176,9 @@ if __name__ == '__main__':
       tf.logging.__dict__[args.verbosity] / 10)
 
   # Run the training job
-  hparams = hparam.HParams(**args.__dict__)
+  hparams = tf.contrib.training.HParams(**args.__dict__)
   run_experiment(hparams)
+
+
+if __name__ == '__main__':
+  main()

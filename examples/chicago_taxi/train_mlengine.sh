@@ -32,6 +32,12 @@ if [ -z "$TFT_OUTPUT_PATH" ]; then
   exit 1
 fi
 
+if [ -z "$SCHEMA_PATH" ]; then
+  echo SCHEMA_PATH was not set. Please set SCHEMA_PATH to schema produced
+  echo by tfdv_analyze_and_validate_local.sh using: export SCHEMA_PATH=...
+  exit 1
+fi
+
 TRAIN_OUTPUT_PATH=$JOB_OUTPUT_PATH/trainer_output
 
 # Outputs
@@ -58,7 +64,7 @@ EVAL_STEPS=1000
 gcloud ml-engine jobs submit training $JOB_ID \
                                     --stream-logs \
                                     --job-dir $MODEL_DIR \
-                                    --runtime-version 1.6 \
+                                    --runtime-version 1.9 \
                                     --module-name trainer.task \
                                     --package-path trainer/ \
                                     --region us-central1 \
@@ -68,4 +74,12 @@ gcloud ml-engine jobs submit training $JOB_ID \
                                     --eval-files $EVAL_FILE \
                                     --eval-steps $EVAL_STEPS \
                                     --output-dir $WORKING_DIR \
+                                    --schema-file $SCHEMA_PATH \
                                     --tf-transform-dir $TFT_OUTPUT_PATH
+
+echo
+echo
+echo "  " export WORKING_DIR=$WORKING_DIR
+echo
+echo "NOTE: The export path is a pre-requisite for subsequent steps."
+echo

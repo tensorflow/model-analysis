@@ -34,6 +34,7 @@ def build_estimator(tf_transform_dir, config, hidden_units=None):
     config: tf.contrib.learn.RunConfig defining the runtime environment for the
       estimator (including model_dir).
     hidden_units: [int], the layer sizes of the DNN (input layer first)
+
   Returns:
     Resulting DNNLinearCombinedClassifier.
   """
@@ -42,27 +43,28 @@ def build_estimator(tf_transform_dir, config, hidden_units=None):
   transformed_metadata = metadata_io.read_metadata(metadata_dir)
   transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
 
-  transformed_feature_spec.pop(taxi.LABEL_KEY)
+  transformed_feature_spec.pop(taxi.transformed_name(taxi.LABEL_KEY))
 
   real_valued_columns = [
       tf.feature_column.numeric_column(key, shape=())
-      for key in taxi.DENSE_FLOAT_FEATURE_KEYS
+      for key in taxi.transformed_names(taxi.DENSE_FLOAT_FEATURE_KEYS)
   ]
   categorical_columns = [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=taxi.VOCAB_SIZE + taxi.OOV_SIZE, default_value=0)
-      for key in taxi.VOCAB_FEATURE_KEYS
+      for key in taxi.transformed_names(taxi.VOCAB_FEATURE_KEYS)
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=taxi.FEATURE_BUCKET_COUNT, default_value=0)
-      for key in taxi.BUCKET_FEATURE_KEYS
+      for key in taxi.transformed_names(taxi.BUCKET_FEATURE_KEYS)
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=num_buckets, default_value=0)
-      for key, num_buckets in zip(taxi.CATEGORICAL_FEATURE_KEYS,
-                                  taxi.MAX_CATEGORICAL_FEATURE_VALUES)
+      for key, num_buckets in zip(
+          taxi.transformed_names(taxi.CATEGORICAL_FEATURE_KEYS),  #
+          taxi.MAX_CATEGORICAL_FEATURE_VALUES)
   ]
   return tf.estimator.DNNLinearCombinedClassifier(
       config=config,
@@ -71,16 +73,18 @@ def build_estimator(tf_transform_dir, config, hidden_units=None):
       dnn_hidden_units=hidden_units or [100, 70, 50, 25])
 
 
-def example_serving_receiver_fn(tf_transform_dir):
+def example_serving_receiver_fn(tf_transform_dir, schema):
   """Build the serving in inputs.
 
   Args:
     tf_transform_dir: directory in which the tf-transform model was written
       during the preprocessing step.
+    schema: the schema of the input data.
+
   Returns:
     Tensorflow graph which parses examples, applying tf-transform to them.
   """
-  raw_feature_spec = taxi.get_raw_feature_spec()
+  raw_feature_spec = taxi.get_raw_feature_spec(schema)
   raw_feature_spec.pop(taxi.LABEL_KEY)
 
   raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
@@ -93,15 +97,17 @@ def example_serving_receiver_fn(tf_transform_dir):
           serving_input_receiver.features))
 
   return tf.estimator.export.ServingInputReceiver(
-      transformed_features, serving_input_receiver.features)
+      transformed_features, serving_input_receiver.receiver_tensors)
 
 
-def eval_input_receiver_fn(tf_transform_dir):
+def eval_input_receiver_fn(tf_transform_dir, schema):
   """Build everything needed for the tf-model-analysis to run the model.
 
   Args:
     tf_transform_dir: directory in which the tf-transform model was written
       during the preprocessing step.
+    schema: the schema of the input data.
+
   Returns:
     EvalInputReceiver function, which contains:
       - Tensorflow graph which parses raw untranformed features, applies the
@@ -110,7 +116,7 @@ def eval_input_receiver_fn(tf_transform_dir):
       - Label against which predictions will be compared.
   """
   # Notice that the inputs are raw features, not transformed features here.
-  raw_feature_spec = taxi.get_raw_feature_spec()
+  raw_feature_spec = taxi.get_raw_feature_spec(schema)
 
   serialized_tf_example = tf.placeholder(
       dtype=tf.string, shape=[None], name='input_example_tensor')
@@ -129,16 +135,21 @@ def eval_input_receiver_fn(tf_transform_dir):
   # The key name MUST be 'examples'.
   receiver_tensors = {'examples': serialized_tf_example}
 
+  # NOTE: Model is driven by transformed features (since training works on the
+  # materialized output of TFT, but slicing will happen on raw features.
+  features.update(transformed_features)
+
   return tfma.export.EvalInputReceiver(
-      features=transformed_features,
+      features=features,
       receiver_tensors=receiver_tensors,
-      labels=transformed_features[taxi.LABEL_KEY])
+      labels=transformed_features[taxi.transformed_name(taxi.LABEL_KEY)])
 
 
 def _gzip_reader_fn():
   """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.TFRecordReader(options=tf.python_io.TFRecordOptions(
-      compression_type=tf.python_io.TFRecordCompressionType.GZIP))
+  return tf.TFRecordReader(
+      options=tf.python_io.TFRecordOptions(
+          compression_type=tf.python_io.TFRecordCompressionType.GZIP))
 
 
 def input_fn(filenames, tf_transform_dir, batch_size=200):
@@ -149,6 +160,7 @@ def input_fn(filenames, tf_transform_dir, batch_size=200):
     tf_transform_dir: directory in which the tf-transform model was written
       during the preprocessing step.
     batch_size: int First dimension size of the Tensors returned by input_fn
+
   Returns:
     A (features, indices) tuple where features is a dictionary of
       Tensors, and indices is a single Tensor of label indices.
@@ -163,4 +175,5 @@ def input_fn(filenames, tf_transform_dir, batch_size=200):
 
   # We pop the label because we do not want to use it as a feature while we're
   # training.
-  return transformed_features, transformed_features.pop(taxi.LABEL_KEY)
+  return transformed_features, transformed_features.pop(
+      taxi.transformed_name(taxi.LABEL_KEY))

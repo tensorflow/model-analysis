@@ -1,6 +1,6 @@
 <!-- See: www.tensorflow.org/tfx/model_analysis/ -->
 
-# TensorFlow Model Analysis
+# TensorFlow Model Analysis [![PyPI](https://img.shields.io/pypi/pyversions/tensorflow-model-analysis.svg?style=plastic)](https://github.com/tensorflow/model-analysis)
 
 *TensorFlow Model Analysis* (TFMA) is a library for evaluating TensorFlow models.
 It allows users to evaluate their models on large amounts of data in a
@@ -58,7 +58,8 @@ combinations may also work.
 |tensorflow-model-analysis  |tensorflow    |apache-beam[gcp]|
 |---------------------------|--------------|----------------|
 |GitHub master              |1.9           |2.6.0           |
-|0.9.1                      |1.9           |2.6.0           |
+|0.9.2                      |1.9           |2.6.0           |
+|0.9.1                      |1.10          |2.6.0           |
 |0.9.0                      |1.9           |2.5.0           |
 |0.6.0                      |1.6           |2.4.0           |
 

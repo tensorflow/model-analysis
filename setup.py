@@ -252,7 +252,7 @@ setup_args = {
         'protobuf>=3.6.0,<4',
         # For apitools.
         'six>=1.9,<2',
-        'tensorflow-transform>=0.8,<1',
+        'tensorflow-transform>=0.9,<1',
     ],
     'python_requires':
         '>=2.7,<3',

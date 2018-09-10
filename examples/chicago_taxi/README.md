@@ -1,12 +1,17 @@
 # Chicago Taxi Example
 
 The Chicago Taxi example demonstrates the end-to-end workflow and steps of how
-to transform data, train a model, analyze and serve it. It uses:
+to analyze, validate and transform data, train a model, analyze and serve it. It
+uses:
 
-* [TensorFlow Transform](https://www.tensorflow.org/tfx/transform) for feature preprocessing,
+* [TensorFlow Data Validation](https://www.tensorflow.org/tfx/data_validation)
+  for analyzing and validating data.
+* [TensorFlow Transform](https://www.tensorflow.org/tfx/transform) for feature
+  preprocessing,
 * TensorFlow [Estimators](https://www.tensorflow.org/guide/estimators)
-for training,
-* [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/model_analysis) and Jupyter for evaluation, and
+  for training,
+* [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/model_analysis) and
+  Jupyter for evaluation, and
 * [TensorFlow Serving](https://www.tensorflow.org/serving) for serving.
 
 The example shows two modes of deployment:
@@ -23,21 +28,20 @@ Note: This site provides applications using data that has been modified
 for use from its original source, www.cityofchicago.org, the official website of
 the City of Chicago. The City of Chicago makes no claims as to the content,
 accuracy, timeliness, or completeness of any of the data provided at this site.
-The data provided at this site is subject to change at any time. It is understood
-that the data provided at this site is being used at one’s own risk.
+The data provided at this site is subject to change at any time. It is
+understood that the data provided at this site is being used at one’s own risk.
 
-[Read more](https://cloud.google.com/bigquery/public-data/chicago-taxi) about the
-dataset in [Google BigQuery](https://cloud.google.com/bigquery/). Explore the
-full dataset in the
+[Read more](https://cloud.google.com/bigquery/public-data/chicago-taxi) about
+the dataset in [Google BigQuery](https://cloud.google.com/bigquery/). Explore
+the full dataset in the
 [BigQuery UI](https://bigquery.cloud.google.com/dataset/bigquery-public-data:chicago_taxi_trips).
 
 ## Local prerequisites
 
 [Apache Beam](https://beam.apache.org/) is used for its distributed processing.
 This example requires Python 2.7 since the Apache Beam SDK
-([BEAM-1373](https://issues.apache.org/jira/browse/BEAM-1373)) and TensorFlow
-Serving API ([Issue-700](https://github.com/tensorflow/serving/issues/700))
-are not yet available for Python 3.
+([BEAM-1373](https://issues.apache.org/jira/browse/BEAM-1373)) is not yet
+available for Python 3.
 
 ### Install dependencies
 
@@ -75,7 +79,8 @@ Next, install the dependencies required by the Chicago Taxi example:
 pip install -r requirements.txt
 </pre>
 
-Register the TensorFlow Model Analysis rendering components with Jupyter Notebook:
+Register the TensorFlow Model Analysis rendering components with Jupyter
+Notebook:
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">jupyter nbextension install --py --symlink --sys-prefix tensorflow_model_analysis</code>
@@ -87,6 +92,57 @@ Register the TensorFlow Model Analysis rendering components with Jupyter Noteboo
 The benefit of the local example is that you can edit any part of the pipeline
 and experiment very quickly with various components. The example comes with a
 small subset of the Taxi Trips dataset as CSV files.
+
+### Analyzing and validating data with TensorFlow Data Validation
+
+`tf.DataValidation` (`tfdv_analyze_and_validate.py`) allows you to analyze and
+validate the input dataset. To run this step locally:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+bash ./tfdv_analyze_and_validate_local.sh
+</pre>
+
+We first compute descriptive [statistics](https://github.com/tensorflow/metadata/tree/master/tensorflow_metadata/proto/v0/statistics.proto)
+over the training data. The statistics provide a quick overview of the data in
+terms of the features that are present and the shapes of their value
+distributions. `tf.DataValidation` uses [Apache Beam](https://beam.apache.org)'s
+data-parallel processing framework to scale the computation of statistics over
+large datasets. To compute statistics, we use the `GenerateStatistics` Beam
+transform which outputs a `DatasetFeatureStatisticsList` protocol buffer.
+
+Next, we infer a [schema](https://github.com/tensorflow/metadata/tree/master/tensorflow_metadata/proto/v0/schema.proto)
+for the data using the computed statistics. The schema describes the expected
+properties of the data such as which features are expected to be present,
+their type, or the expected domains of features, to name a few. In short, the
+schema describes the expectations for "correct" data and can thus be used to
+detect errors in the data. To infer the schema, we use the `infer_schema`
+function which takes as input the `DatasetFeatureStatisticsList` protocol buffer
+produced in the above step and outputs a `Schema` protocol buffer.
+
+In general, `tf.DataValidation` uses conservative heuristics to infer stable
+data properties from the statistics in order to avoid overfitting the schema to
+the specific dataset. It is strongly advised to **review the inferred schema and
+refine it as needed** (the schema is stored in the file
+`./data/local_tfdv_output/schema.pbtxt`), to
+capture any domain knowledge about the data that `tf.DataValidation`'s
+heuristics might have missed.
+
+Notice that the `Schema` generated by `tf.DataValidation` is used by the
+subsequent steps (`preprocess_local.sh`, `train_local.sh`,
+`process_tfma_local.sh`, and `classify_local.sh`) to parse the input examples.
+
+Finally, we check whether the eval dataset conforms to the expectations set in
+the schema or whether there exist any data [anomalies](https://github.com/tensorflow/metadata/tree/master/tensorflow_metadata/proto/v0/anomalies.proto).
+`tf.DataValidation` performs this check by computing statistics over the eval
+dataset and matching the computed statistics against the schema and marking any
+discrepancies. To validate the statistics against the schema, we use the
+`validate_statistics` function which takes as input the statistics and the
+schema, and outputs a `Anomalies` protocol buffer.
+
+`tf.DataValidation` also provides functions to visualize the statistics, schema
+and the anomalies in Jupyter. The notebook,
+[`chicago_taxi_tfma_local_playground.ipynb`](./chicago_taxi_tfma_local_playground.ipynb)
+describes the above steps as well as the visualization functions in detail.
 
 ### Preprocessing with TensorFlow Transform
 
@@ -101,8 +157,9 @@ Have `tf.Transform` compute the global statistics (mean, standard deviation,
 bucket cutoffs, etc.) in the `preprocessing_fn`:
 
 * Take dense float features such as trip distance and time, compute the global
-  mean and standard deviations, and scale features to their z scores. This allows
-  the SGD optimizer to treat steps in different directions more uniformly.
+  mean and standard deviations, and scale features to their z scores. This
+  allows the SGD optimizer to treat steps in different directions more
+  uniformly.
 * Create a finite vocabulary for string features. This allow us to treat them as
   categoricals in our model.
 * Bucket our longitude and latitude features. This allows the model to fit
@@ -117,8 +174,8 @@ TensorFlow placeholders in the graph for the mean, bucket cutoffs, etc.
 
 Call the `Analyze` function in `tf.Transform` to build the MapReduce-style
 callbacks to compute the statistics across the entire data set. Apache Beam
-allows applications to write such data-transforming code once and handles the job
-of placing the code onto workers—whether they are in the cloud, across an
+allows applications to write such data-transforming code once and handles the
+job of placing the code onto workers—whether they are in the cloud, across an
 enterprise cluster or on the local machine. In this part of the example, use
 `DirectRunner` (see `preprocess_local.sh`) to request that our code runs
 on the local machine.  At the end of the Analyze job, the placeholders are
@@ -154,8 +211,8 @@ to avoid redundant code.
 The `input_fn` function builds a parser that takes `tf.Example` protos from
 the materialized `TFRecord` file emitted in our previous preprocessing step. It
 also applies the `tf.Transform` operations built in the preprocessing step.
-Also, do not forget to remove the label since we don't want the model to treat it
-as a feature.
+Also, do not forget to remove the label since we don't want the model to treat
+it as a feature.
 
 During training, `feature_columns` also come into play and tell the model how
 to use features. For example, vocabulary features are fed into the model with
@@ -182,16 +239,17 @@ To recap, the trainer outputs the following:
 
 ### TensorFlow Model Analysis evaluation batch job
 
-Now run a batch job to evaluate the model against the entire data set. To run the
-batch evaluator:
+Now run a batch job to evaluate the model against the entire data set. To run
+the batch evaluator:
 
 <pre class="devsite-terminal devsite-click-to-copy">
 bash ./process_tfma_local.sh
 </pre>
 
-This step is executed locally with a small CSV dataset. TensorFlow Model Analysis
-runs a full pass over the dataset and computes the metrics. In the Cloud section
-below, this step is run as a distributed job over a large data set.
+This step is executed locally with a small CSV dataset. TensorFlow Model
+Analysis runs a full pass over the dataset and computes the metrics. In the
+Cloud section below, this step is run as a distributed job over a large data
+set.
 
 Like TensorFlow Transform, `tf.ModelAnalysis` uses Apache Beam to run the
 distributed computation. The evaluation uses raw examples as input and *not*
@@ -233,8 +291,8 @@ scripts.
 
 Now serve the created model with
 [TensorFlow Serving](https://www.tensorflow.org/serving). For this example, run
-the server in a Docker container that is run locally. Instructions for installing
-Docker locally are found in the
+the server in a Docker container that is run locally. Instructions for
+installing Docker locally are found in the
 [Docker install documentation](https://docs.docker.com/install).
 
 In the terminal, run the following script to start a server:
@@ -243,9 +301,9 @@ In the terminal, run the following script to start a server:
 bash ./start_model_server_local.sh
 </pre>
 
-This script builds a Docker image and starts the TensorFlow model server within a
-container listening for gRPC requests on `localhost` port 9000. The model
-server loads the model exported from the trainer.
+This script pulls a TensorFlow Serving serving image and listens for for gRPC
+requests on `localhost` port 9000. The model server loads the model exported
+from the trainer.
 
 To send a request to the server for model inference, run:
 
@@ -272,8 +330,9 @@ This section requires the [local prerequisites](#local_prerequisites) and adds a
 few more for the [Gooogle Cloud Platform](https://cloud.google.com/).
 
 Follow the Google Cloud Machine Learning Engine
-[setup guide](https://cloud.google.com/ml-engine/docs/how-tos/getting-set-up) and
-the Google Cloud Dataflow [setup guide](https://cloud.google.com/dataflow/docs/quickstarts/quickstart-python)
+[setup guide](https://cloud.google.com/ml-engine/docs/how-tos/getting-set-up)
+and the Google Cloud Dataflow
+[setup guide](https://cloud.google.com/dataflow/docs/quickstarts/quickstart-python)
 before trying the example.
 
 The example's execution speed may be limited by default
@@ -312,6 +371,58 @@ source ./bin/taxi/activate
 This Taxi Trips example is run in the cloud. Unlike the local example, the input
 is a much larger dataset hosted on Google BigQuery.
 
+### Analyzing and validating data with TensorFlow Data Validation on Google Cloud Dataflow
+
+Use the same code from the local `tf.DataValidation`
+(in `tfdv_analyze_and_validate.py`) to do the distributed analysis and
+validation. To start the job, run:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+source ./tfdv_analyze_and_validate_dataflow.sh
+</pre>
+
+You can see the status of the running job on the
+[Google Cloud Console](https://console.cloud.google.com/dataflow).
+
+In this case, the data is read from Google BigQuery instead of a small, local
+CSV file. Also, unlike our local example above, we are using the
+`DataflowRunner` to start distributed processing over several workers in the
+cloud.
+
+Note: Make sure to export the `SCHEMA_PATH` and `TFDV_OUTPUT_PATH` variables as
+displayed by the above script.
+
+The outputs are the same as the local job, but stored in Google Cloud Storage:
+
+* Training data statistics:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+gsutil ls $TFDV_OUTPUT_PATH/train_stats.tfrecord
+</pre>
+
+* Schema:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+gsutil ls $TFDV_OUTPUT_PATH/schema.pbtxt
+</pre>
+
+* Eval data statistics:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+gsutil ls $TFDV_OUTPUT_PATH/eval_stats.tfrecord
+</pre>
+
+* Anomalies:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+gsutil ls $TFDV_OUTPUT_PATH/anomalies.pbtxt
+</pre>
+
+Notice that the `Schema` generated by `tf.DataValidation` is used by the
+subsequent steps (`preprocess_dataflow.sh`, `train_mlengine.sh`,
+`process_tfma_dataflow.sh`, and `classify_mlengine.sh`) to parse the input
+examples.
+
 ### Preprocessing with TensorFlow Transform on Google Cloud Dataflow
 
 Use the same code from the local `tf.Transform` (in `preprocess.py`) to do
@@ -324,9 +435,11 @@ source ./preprocess_dataflow.sh
 You can see the status of the running job on the
 [Google Cloud Console](https://console.cloud.google.com/dataflow).
 
-In this case, the data is read from Google BigQuery instead of a small, local CSV
-file. Also, unlike our local example above, we are using the `DataflowRunner`
+Unlike our local example above, we are using the `DataflowRunner`
 to start distributed processing over several workers in the cloud.
+
+Note: Make sure to export the `TFT_OUTPUT_PATH` variable as displayed by the
+above script.
 
 The outputs are the same as the local job, but stored in Google Cloud Storage:
 
@@ -354,7 +467,12 @@ See the status of the running job in the
 [Google Cloud Console](https://console.cloud.google.com/mlengine).
 
 The trainer is running in the cloud using ML Engine and *not* Dataflow for the
-distributed computation. Again, our outputs are identical to the local run:
+distributed computation.
+
+Note: Make sure to export the `WORKING_DIR` variable as displayed by the above
+script.
+
+Again, our outputs are identical to the local run:
 
 * `SavedModel` containing the serving graph for TensorFlow Serving:
 
@@ -397,7 +515,7 @@ notebook and set up the output directory to see the results.
 To serve the model from the cloud, run:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-bash ./start_model_server_cloud.sh
+bash ./start_model_server_mlengine.sh
 </pre>
 
 To send a request to the cloud:

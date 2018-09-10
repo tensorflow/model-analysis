@@ -17,7 +17,7 @@ set -u
 echo Starting local training...
 
 # Output: dir for our raw=>transform function
-WORKING_DIR=$(pwd)/data/train/local_chicago_taxi_output
+WORKING_DIR=./data/train/local_chicago_taxi_output
 
 # Output: dir for both the serving model and eval_model which will go into tfma
 # evaluation
@@ -33,20 +33,15 @@ echo Working directory: $WORKING_DIR
 echo Serving model directory: $OUTPUT_DIR/serving_model_dir
 echo Eval model directory: $OUTPUT_DIR/eval_model_dir
 
-# Inputs: are tf-transformed materialized features
-TRAIN_FILE=$(pwd)/data/train/local_chicago_taxi_output/train_transformed-*
-EVAL_FILE=$(pwd)/data/eval/local_chicago_taxi_output/eval_transformed-*
 
-# Parameters for tf training and evaluation (not tfma)
-TRAIN_STEPS=10000
-EVAL_STEPS=5000
 
 python trainer/task.py \
-    --train-files $TRAIN_FILE \
-    --verbosity=INFO \
+    --train-files ./data/train/local_chicago_taxi_output/train_transformed-* \
+    --verbosity INFO \
     --job-dir $MODEL_DIR \
-    --train-steps $TRAIN_STEPS \
-    --eval-steps $EVAL_STEPS \
+    --train-steps 10000 \
+    --eval-steps 5000 \
     --tf-transform-dir $WORKING_DIR \
     --output-dir $OUTPUT_DIR \
-    --eval-files $EVAL_FILE
+    --schema-file ./data/local_tfdv_output/schema.pbtxt \
+    --eval-files ./data/eval/local_chicago_taxi_output/eval_transformed-*
