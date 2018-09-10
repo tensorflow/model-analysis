@@ -24,8 +24,7 @@ if [ -z "$SCHEMA_PATH" ]; then
 fi
 
 python chicago_taxi_client.py \
-  --schema_file $SCHEMA_PATH \
-  --server mlengine:chicago_taxi:v1 \
+  --num_examples 3 \
   --examples_file ./data/train/data.csv \
-  --num_examples 1
-
+  --schema_file $SCHEMA_PATH \
+  --server mlengine:chicago_taxi:v1

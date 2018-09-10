@@ -43,10 +43,11 @@ python process_tfma.py \
   --big_query_table bigquery-public-data.chicago_taxi_trips.taxi_trips \
   --schema_file $SCHEMA_PATH \
   --eval_model_dir $LAST_EVAL_MODEL_DIR \
-  --max_eval_rows 3000000 \
   --eval_result_dir $EVAL_RESULT_DIR \
+  --max_eval_rows 3000000 \
   --project $MYPROJECT \
   --temp_location $MYBUCKET/$JOB_ID/tmp/ \
   --job_name $JOB_ID \
   --setup_file ./setup.py \
+  --save_main_session True \
   --runner DataflowRunner

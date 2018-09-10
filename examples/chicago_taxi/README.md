@@ -389,9 +389,6 @@ CSV file. Also, unlike our local example above, we are using the
 `DataflowRunner` to start distributed processing over several workers in the
 cloud.
 
-Note: Make sure to export the `SCHEMA_PATH` and `TFDV_OUTPUT_PATH` variables as
-displayed by the above script.
-
 The outputs are the same as the local job, but stored in Google Cloud Storage:
 
 * Training data statistics:
@@ -438,9 +435,6 @@ You can see the status of the running job on the
 Unlike our local example above, we are using the `DataflowRunner`
 to start distributed processing over several workers in the cloud.
 
-Note: Make sure to export the `TFT_OUTPUT_PATH` variable as displayed by the
-above script.
-
 The outputs are the same as the local job, but stored in Google Cloud Storage:
 
 * `SavedModel` containing the transform graph:
@@ -468,9 +462,6 @@ See the status of the running job in the
 
 The trainer is running in the cloud using ML Engine and *not* Dataflow for the
 distributed computation.
-
-Note: Make sure to export the `WORKING_DIR` variable as displayed by the above
-script.
 
 Again, our outputs are identical to the local run:
 

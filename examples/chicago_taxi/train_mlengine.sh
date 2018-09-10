@@ -38,10 +38,10 @@ if [ -z "$SCHEMA_PATH" ]; then
   exit 1
 fi
 
-TRAIN_OUTPUT_PATH=$JOB_OUTPUT_PATH/trainer_output
+# Variables needed for subsequent stages.
+export TRAIN_OUTPUT_PATH=$JOB_OUTPUT_PATH/trainer_output
+export WORKING_DIR=$TRAIN_OUTPUT_PATH/working_dir
 
-# Outputs
-WORKING_DIR=$TRAIN_OUTPUT_PATH/working_dir
 MODEL_DIR=$TRAIN_OUTPUT_PATH/model_dir
 
 echo Working directory: $WORKING_DIR
@@ -77,9 +77,9 @@ gcloud ml-engine jobs submit training $JOB_ID \
                                     --schema-file $SCHEMA_PATH \
                                     --tf-transform-dir $TFT_OUTPUT_PATH
 
+
 echo
 echo
-echo "  " export WORKING_DIR=$WORKING_DIR
-echo
-echo "NOTE: The export path is a pre-requisite for subsequent steps."
+echo "  TRAIN_OUTPUT_PATH=$TRAIN_OUTPUT_PATH"
+echo "  WORKING_DIR=$WORKING_DIR"
 echo
