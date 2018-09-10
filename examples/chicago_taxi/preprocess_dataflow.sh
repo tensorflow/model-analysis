@@ -18,7 +18,15 @@ echo Starting distributed TFT preprocessing...
 
 if [ -z "$MYBUCKET" ]; then
   echo MYBUCKET was not set
-  echo Please set MYBUCKET to your GCP bucket using: export MYBUCKET=gs://bucket
+  echo Please set MYBUCKET to your GCP bucket using:
+  echo export MYBUCKET=gs://bucket
+  exit 1
+fi
+
+if [ -z "$SCHEMA_PATH" ]; then
+  echo SCHEMA_PATH was not set. Please set SCHEMA_PATH to schema produced
+  echo by tfdv_analyze_and_validate_dataflow.sh using:
+  echo export SCHEMA_PATH=gs://...
   exit 1
 fi
 
@@ -37,12 +45,19 @@ echo Preprocessing train data...
 python preprocess.py \
   --output_dir $TFT_OUTPUT_PATH \
   --outfile_prefix train_transformed \
-  --input=bigquery-public-data.chicago_taxi_trips.taxi_trips \
+  --input bigquery-public-data.chicago_taxi_trips.taxi_trips \
+  --schema_file $SCHEMA_PATH \
   --project $MYPROJECT \
   --temp_location $TEMP_PATH \
   --job_name $JOB_ID \
   --setup_file ./setup.py \
   --runner DataflowRunner
 
-# We will evaluate performance using tfma, and therefore
-# do not create tf-transform-materialized eval output here.
+
+echo
+echo
+echo "  " export TFT_OUTPUT_PATH=$TFT_OUTPUT_PATH
+echo "  " export JOB_OUTPUT_PATH=$JOB_OUTPUT_PATH
+echo
+echo "NOTE: The export paths are a pre-requisite for subsequent steps."
+echo

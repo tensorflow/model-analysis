@@ -21,7 +21,7 @@ const _ = require('lodash');
  */
 function loadVulcanizedTemplate() {
   const templateLocation =
-      __webpack_public_path__ + '/vulcanized_template.html';
+      __webpack_public_path__ + 'vulcanized_template.html';
 
   // If the vulcanizes tempalets are not loaded yet, load it now.
   if (!document.querySelector('link[href="' + templateLocation + '"]')) {

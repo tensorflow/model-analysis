@@ -26,7 +26,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_transform.beam import shared
-from tensorflow_model_analysis.types_compat import Any, Callable, Dict, List, Optional, Tuple
+from tensorflow_model_analysis.types_compat import Any, Callable, Dict, Generator, List, Optional, Tuple
 
 MetricVariablesType = List[Any]  # pylint: disable=invalid-name
 
@@ -55,7 +55,6 @@ class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
 
   def process(self, element
              ):
-    result = []
     batch_size = len(element)
     self._predict_batch_size.update(batch_size)
     self._num_instances.inc(batch_size)
@@ -69,28 +68,47 @@ class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
       element_copy = (
           example_and_extracts.create_copy_with_shallow_copy_of_extracts())
       element_copy.extracts[constants.FEATURES_PREDICTIONS_LABELS_KEY] = fpl
-
-      result.append(element_copy)
-
-    return result
+      yield element_copy
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.typehints.List[types.ExampleAndExtracts])
+@beam.typehints.with_input_types(beam.typehints.Any)
 @beam.typehints.with_output_types(beam.typehints.Any)
 def TFMAPredict(  # pylint: disable=invalid-name
     examples,
     eval_saved_model_path,
+    add_metrics_callbacks,
+    shared_handle,
     desired_batch_size = None):
-  """A PTransform that adds predictions to ExamplesAndExtracts."""
+  """A PTransform that adds predictions to ExamplesAndExtracts.
+
+  Args:
+    examples: PCollection of serialized examples to be fed to the model
+    eval_saved_model_path: Path to the EvalSavedModle
+    add_metrics_callbacks: Optional list of add_metrics_callbacks. See docstring
+      for Evaluate in api/impl/evaluate.py for more details.
+    shared_handle: Handle to a shared.Shared object for sharing the in-memory
+      model within / between stages.
+    desired_batch_size: Optional. Desired batch size for prediction.
+
+  Returns:
+    PCollection of ExamplesAndExtracts, where the extracts contains the
+    features, predictions, labels retrieved.
+  """
   batch_args = {}
   if desired_batch_size:
     batch_args = dict(
         min_batch_size=desired_batch_size, max_batch_size=desired_batch_size)
+
+  # We don't actually need to add the add_metrics_callbacks to do Predict,
+  # but because if we want to share the model between Predict and subsequent
+  # stages (i.e. we use same shared handle for this and subsequent stages),
+  # then if we don't add the metrics callbacks here, they won't be present
+  # in the model in the later stages if we reuse the model from this stage.
   return (examples
           | 'Batch' >> beam.BatchElements(**batch_args)
-          | beam.ParDo(
+          | 'Predict' >> beam.ParDo(
               _TFMAPredictionDoFn(
                   eval_saved_model_path=eval_saved_model_path,
-                  add_metrics_callbacks=None,
-                  shared_handle=shared.Shared())))
+                  add_metrics_callbacks=add_metrics_callbacks,
+                  shared_handle=shared_handle)))

@@ -18,8 +18,9 @@ echo Running cloud serving...
 
 if [ -z "$WORKING_DIR" ]; then
   echo WORKING_DIR was not set.  Typically this is set by the model trainer.
-  echo You can run 'source train_distributed.sh' to set it.
-  echo Otherwise please set WORKING_DIR using: export WORKING_DIR=gs://bucket/output
+  echo You can run 'source train_mlengine.sh' to set it.
+  echo Otherwise please set WORKING_DIR using:
+  echo export WORKING_DIR=gs://bucket/output
   exit 1
 fi
 

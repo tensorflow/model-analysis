@@ -16,7 +16,16 @@ set -u
 
 echo Running cloud inference...
 
-gcloud ml-engine predict \
-  --model chicago_taxi \
-  --version v1 \
-  --json-instances test.json
+if [ -z "$SCHEMA_PATH" ]; then
+  echo SCHEMA_PATH was not set. Please set SCHEMA_PATH to schema produced
+  echo by tfdv_analyze_and_validate_dataflow.sh using:
+  echo export SCHEMA_PATH=gs://...
+  exit 1
+fi
+
+python chicago_taxi_client.py \
+  --schema_file $SCHEMA_PATH \
+  --server mlengine:chicago_taxi:v1 \
+  --examples_file ./data/train/data.csv \
+  --num_examples 1
+

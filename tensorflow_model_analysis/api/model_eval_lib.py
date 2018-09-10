@@ -123,9 +123,9 @@ def load_eval_result(output_path):
 def _assert_tensorflow_version():
   # Fail with a clear error in case we are not using a compatible TF version.
   major, minor, _ = tf.__version__.split('.')
-  if int(major) != 1 or int(minor) < 10:
+  if int(major) != 1 or int(minor) < 9:
     raise RuntimeError(
-        'Tensorflow version >= 1.10, < 2 is required. Found (%s). Please '
+        'Tensorflow version >= 1.9, < 2 is required. Found (%s). Please '
         'install the latest 1.x version from '
         'https://github.com/tensorflow/tensorflow. ' % tf.__version__)
 
@@ -182,7 +182,8 @@ def EvaluateAndWriteResults(  # pylint: disable=invalid-name
     add_metrics_callbacks: Optional list of callbacks for adding additional
       metrics to the graph. The names of the metrics added by the callbacks
       should not conflict with existing metrics, or metrics added by other
-      callbacks. See below for more details about what each callback should do.
+      callbacks. See docstring for Evaluate in api/impl/evaluate.py for more
+      details.
     desired_batch_size: Optional batch size for batching in Predict and
       Aggregate.
 
@@ -268,8 +269,8 @@ def run_model_analysis(
     add_metrics_callbacks: Optional list of callbacks for adding additional
       metrics to the graph. The names of the metrics added by the callbacks
       should not conflict with existing metrics, or metrics added by other
-      callbacks. See docstring for tensorflow_model_analysis.evaluate.Evaluate
-      for more details.
+      callbacks. See docstring for Evaluate in api/impl/evaluate.py for more
+      details.
     output_path: The directory to output metrics and results to. If None, we use
       a temporary directory.
 

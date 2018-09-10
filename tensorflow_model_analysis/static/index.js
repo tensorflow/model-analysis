@@ -140,7 +140,7 @@ const _ = __webpack_require__(3);
  */
 function loadVulcanizedTemplate() {
   const templateLocation =
-      __webpack_require__.p + '/vulcanized_template.html';
+      __webpack_require__.p + 'vulcanized_template.html';
 
   // If the vulcanizes tempalets are not loaded yet, load it now.
   if (!document.querySelector('link[href="' + templateLocation + '"]')) {

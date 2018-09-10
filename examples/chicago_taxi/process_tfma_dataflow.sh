@@ -18,7 +18,15 @@ JOB_ID="chicago-taxi-tfma-eval-$(date +%Y%m%d-%H%M%S)"
 
 if [ -z "$TFT_OUTPUT_PATH" ]; then
   echo TFT_OUTPUT_PATH was not set
-  echo Please set TFT_OUTPUT_PATH using: export TFT_OUTPUT_PATH=gs://bucket/output
+  echo Please set TFT_OUTPUT_PATH using:
+  echo export TFT_OUTPUT_PATH=gs://bucket/output
+  exit 1
+fi
+
+if [ -z "$SCHEMA_PATH" ]; then
+  echo SCHEMA_PATH was not set. Please set SCHEMA_PATH to schema produced
+  echo by tfdv_analyze_and_validate_dataflow.sh using:
+  echo export SCHEMA_PATH=gs://...
   exit 1
 fi
 
@@ -32,10 +40,11 @@ LAST_EVAL_MODEL_DIR=$(gsutil ls $EVAL_MODEL_DIR | tail -n1)
 echo Eval model dir: $EVAL_MODEL_DIR
 
 python process_tfma.py \
-  --big_query_table=bigquery-public-data.chicago_taxi_trips.taxi_trips \
-  --eval_model_dir=$LAST_EVAL_MODEL_DIR \
+  --big_query_table bigquery-public-data.chicago_taxi_trips.taxi_trips \
+  --schema_file $SCHEMA_PATH \
+  --eval_model_dir $LAST_EVAL_MODEL_DIR \
   --max_eval_rows 3000000 \
-  --eval_result_dir=$EVAL_RESULT_DIR \
+  --eval_result_dir $EVAL_RESULT_DIR \
   --project $MYPROJECT \
   --temp_location $MYBUCKET/$JOB_ID/tmp/ \
   --job_name $JOB_ID \

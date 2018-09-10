@@ -23,8 +23,8 @@ from __future__ import print_function
 
 import apache_beam as beam
 
-from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api.impl import slice as slice_api
 from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metric_keys
@@ -42,42 +42,6 @@ _BeamSliceKeyType = beam.typehints.Tuple[  # pylint: disable=invalid-name
     beam.typehints.Tuple[bytes, beam.typehints.Union[bytes, int, float]], Ellipsis]
 
 _METRICS_NAMESPACE = 'tensorflow_model_analysis'
-
-
-@beam.typehints.with_input_types(beam.typehints.Any)
-@beam.typehints.with_output_types(
-    beam.typehints.Tuple[_BeamSliceKeyType, beam.typehints.Any])
-class _SliceDoFn(beam.DoFn):
-  """A DoFn that performs slicing."""
-
-  def __init__(self, slice_spec):
-    self._slice_spec = slice_spec
-    self._num_slices_generated_per_instance = beam.metrics.Metrics.distribution(
-        _METRICS_NAMESPACE, 'num_slices_generated_per_instance')
-    self._post_slice_num_instances = beam.metrics.Metrics.counter(
-        _METRICS_NAMESPACE, 'post_slice_num_instances')
-
-  def process(self, element):
-    features = element.features
-    slice_count = 0
-    for slice_key in slicer.get_slices_for_features_dict(
-        features, self._slice_spec):
-      slice_count += 1
-      yield (slice_key, element)
-
-    self._num_slices_generated_per_instance.update(slice_count)
-    self._post_slice_num_instances.inc(slice_count)
-
-
-@beam.ptransform_fn
-@beam.typehints.with_input_types(
-    beam.typehints.Tuple[types.DictOfTensorType, beam.typehints.Any]
-)
-@beam.typehints.with_output_types(
-    beam.typehints.Tuple[_BeamSliceKeyType, beam.typehints.Any])  # pylint: disable=invalid-name
-def _Slice(intro_result,
-           slice_spec):
-  return intro_result | beam.ParDo(_SliceDoFn(slice_spec))
 
 
 def _add_metric_variables(  # pylint: disable=invalid-name
@@ -157,7 +121,7 @@ class _AggregateCombineFn(beam.CombineFn):
   BEAM-3737: Key-aware batching function.
   """
 
-  _DEFAULT_BATCH_SIZE = 1000
+  _DEFAULT_DESIRED_BATCH_SIZE = 1000
 
   def __init__(self,
                eval_saved_model_path,
@@ -178,7 +142,7 @@ class _AggregateCombineFn(beam.CombineFn):
     if desired_batch_size > 0:
       self._desired_batch_size = desired_batch_size
     else:
-      self._desired_batch_size = self._DEFAULT_BATCH_SIZE
+      self._desired_batch_size = self._DEFAULT_DESIRED_BATCH_SIZE
 
   def _start_bundle(self):
     # There's no initialisation method for CombineFns.
@@ -200,24 +164,25 @@ class _AggregateCombineFn(beam.CombineFn):
       force: Force intro metrics even if accumulator has less FPLs than the
         batch size.
     """
+    # Note that we're mutating the accumulator in-place. Beam guarantees that
+    # this is safe.
+
     if self._eval_saved_model is None:
       self._start_bundle()
     batch_size = len(accumulator.fpls)
     if force or batch_size >= self._desired_batch_size:
-      self._combine_batch_size.update(batch_size)
-      if accumulator.fpls:  # Might be empty if force is True
+      if accumulator.fpls:
+        self._combine_batch_size.update(batch_size)
         accumulator.add_metrics_variables(
             self._eval_saved_model.metrics_reset_update_get_list(
                 accumulator.fpls))
-      accumulator.fpls = []
+        del accumulator.fpls[:]
 
   def create_accumulator(self):
     return _AggState()
 
   def add_input(self, accumulator,
                 elem):
-    # Note that we're mutating the accumulator in-place. Beam guarantees that
-    # this is safe.
     accumulator.add_fpl(elem)
     self._maybe_do_batch(accumulator)
     return accumulator
@@ -235,13 +200,18 @@ class _AggregateCombineFn(beam.CombineFn):
       # elements if we don't process the batches within the loop, which
       # could cause OOM errors (b/77293756).
       self._maybe_do_batch(result)
+
+    # Ensure (via 'force=True') that all "merged" accumulators that are produced
+    # are compact and "fully" merged (ie ready for use for extract_output). Any
+    # overhead that might be induced by this due to possibly small batches is
+    # likely dwarfed by the overhead that materializing large accumulators
+    # induces.
+    self._maybe_do_batch(result, force=True)
+
     return result
 
   def extract_output(self,
                      accumulator):
-    # Note that we're mutating the accumulator in-place. Beam guarantees that
-    # this is safe.
-    self._maybe_do_batch(accumulator, force=True)
     return accumulator.metric_variables
 
 
@@ -254,15 +224,17 @@ def _Aggregate(  # pylint: disable=invalid-name
     slice_result,
     eval_saved_model_path,
     add_metrics_callbacks,
+    shared_handle,
     desired_batch_size = None,
 ):
+  """PTransform for computing, aggregating and combining metrics."""
   return (
       slice_result
-      | 'CombinePerKey' >> beam.CombinePerKey(
+      | 'CombinePerSlice' >> beam.CombinePerKey(
           _AggregateCombineFn(
               eval_saved_model_path=eval_saved_model_path,
               add_metrics_callbacks=add_metrics_callbacks,
-              shared_handle=shared.Shared(),
+              shared_handle=shared_handle,
               desired_batch_size=desired_batch_size))
   )
 
@@ -301,14 +273,17 @@ class _ExtractOutputDoFn(dofn.EvalSavedModelDoFn):
 # No typehint for output type, since it's a multi-output DoFn result that
 # Beam doesn't support typehints for yet (BEAM-3280).
 def _ExtractOutput(  # pylint: disable=invalid-name
-    aggregate_result, eval_saved_model_path,
-    add_metrics_callbacks
+    aggregate_result,
+    eval_saved_model_path,
+    add_metrics_callbacks,
+    shared_handle,
 ):
+  """PTransform for extracting metrics output."""
   return aggregate_result | beam.ParDo(
       _ExtractOutputDoFn(
           eval_saved_model_path=eval_saved_model_path,
           add_metrics_callbacks=add_metrics_callbacks,
-          shared_handle=shared.Shared())).with_outputs(
+          shared_handle=shared_handle)).with_outputs(
               _ExtractOutputDoFn.OUTPUT_TAG_PLOTS,
               main=_ExtractOutputDoFn.OUTPUT_TAG_METRICS)
 
@@ -372,29 +347,29 @@ def Evaluate(
   if slice_spec is None:
     slice_spec = [slicer.SingleSliceSpec()]
 
+  shared_handle = shared.Shared()
+
   # pylint: disable=no-value-for-parameter
   return (
       examples
       # Our diagnostic outputs, pass types.ExampleAndExtracts throughout,
       # however our aggregating functions do not use this interface.
-      | beam.Map(lambda x: types.ExampleAndExtracts(example=x, extracts={}))
+      | 'ToExampleAndExtracts' >>
+      beam.Map(lambda x: types.ExampleAndExtracts(example=x, extracts={}))
 
       # Map function which loads and runs the eval_saved_model against every
       # example, yielding an types.ExampleAndExtracts containing a
       # FeaturesPredictionsLabels value (where key is 'fpl').
       | 'Predict' >> predict_extractor.TFMAPredict(
           eval_saved_model_path=eval_saved_model_path,
+          add_metrics_callbacks=add_metrics_callbacks,
+          shared_handle=shared_handle,
           desired_batch_size=desired_batch_size)
-
-      # Unwrap the types.ExampleAndExtracts.
-      # The rest of this pipeline expects FeaturesPredictionsLabels
-      | beam.Map(lambda x:  # pylint: disable=g-long-lambda
-                 x.extracts[constants.FEATURES_PREDICTIONS_LABELS_KEY])
 
       # Input: one example fpl at a time
       # Output: one fpl example per slice key (notice that the example turns
       #         into n, replicated once per applicable slice key)
-      | 'Slice' >> _Slice(slice_spec)
+      | 'Slice' >> slice_api.Slice(slice_spec)
 
       # Each slice key lands on one shard where metrics are computed for all
       # examples in that shard -- the "map" and "reduce" parts of the
@@ -403,11 +378,14 @@ def Evaluate(
       | 'Aggregate' >> _Aggregate(
           eval_saved_model_path=eval_saved_model_path,
           add_metrics_callbacks=add_metrics_callbacks,
+          shared_handle=shared_handle,
           desired_batch_size=desired_batch_size)
 
       # Different metrics for a given slice key are brought together.
-      | 'ExtractOutput' >> _ExtractOutput(eval_saved_model_path,
-                                          add_metrics_callbacks))
+      | 'ExtractOutput' >> _ExtractOutput(
+          eval_saved_model_path=eval_saved_model_path,
+          add_metrics_callbacks=add_metrics_callbacks,
+          shared_handle=shared_handle))
 
 
 @beam.ptransform_fn
@@ -434,6 +412,9 @@ def BuildDiagnosticTable(
   return (examples
           | 'ToExampleAndExtracts' >>
           beam.Map(lambda x: types.ExampleAndExtracts(example=x, extracts={}))
-          | 'Predict' >> predict_extractor.TFMAPredict(eval_saved_model_path,
-                                                       desired_batch_size)
+          | 'Predict' >> predict_extractor.TFMAPredict(
+              eval_saved_model_path,
+              add_metrics_callbacks=None,
+              shared_handle=shared.Shared(),
+              desired_batch_size=desired_batch_size)
           | 'ExtractFeatures' >> feature_extractor.ExtractFeatures())

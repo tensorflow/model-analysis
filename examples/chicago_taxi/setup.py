@@ -14,13 +14,22 @@
 """Setup dependencies for cloud deployment."""
 import setuptools
 
+TF_VERSION = '1.9.0'
+
 if __name__ == '__main__':
   setuptools.setup(
       name='chicago_taxi_setup',
-      version='1.0',
+      version='0.9.0',
       packages=setuptools.find_packages(),
       install_requires=[
-          'jupyter==1.0', 'tensorflow==1.9.0',
-          'tensorflow-model-analysis==0.9.0', 'tensorflow-serving-api==1.9.0',
-          'tensorflow-transform==0.8.0'
+          'apache-beam[gcp]==2.6.0',
+          'jupyter==1.0',
+          'numpy==1.13.3',
+          'protobuf==3.6.0',
+          'tensorflow=='+TF_VERSION,
+          'tensorflow-data-validation==0.9.0',
+          'tensorflow-metadata==0.9.0',
+          'tensorflow-model-analysis==0.9.1',
+          'tensorflow-serving-api==1.9.0',
+          'tensorflow-transform==0.9.0',
       ])

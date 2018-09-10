@@ -20,17 +20,91 @@ from __future__ import print_function
 import argparse
 import tempfile
 
+
 import apache_beam as beam
-
 import tensorflow as tf
-import tensorflow_model_analysis as tfma
 
+import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis.eval_saved_model.post_export_metrics import post_export_metrics
-from tensorflow_model_analysis.slicer import slicer
-from tensorflow_transform.coders import example_proto_coder
-from tensorflow_transform.tf_metadata import dataset_schema
 
 from trainer import taxi
+
+from tensorflow_model_analysis.slicer import slicer
+
+
+def process_tfma(eval_result_dir,
+                 schema_file,
+                 input_csv=None,
+                 big_query_table=None,
+                 eval_model_dir=None,
+                 max_eval_rows=None,
+                 pipeline_args=None):
+  """Runs a batch job to evaluate the eval_model against the given input.
+
+  Args:
+    eval_result_dir: A directory where the evaluation result should be written
+      to.
+    schema_file: A file containing a text-serialized Schema that describes the
+      eval data.
+    input_csv: A path to a csv file which should be the input for evaluation.
+      This can only be set if big_query_table is None.
+    big_query_table: A BigQuery table name specified as DATASET.TABLE which
+      should be the input for evaluation. This can only be set if input_csv is
+      None.
+    eval_model_dir: A directory where the eval model is located.
+    max_eval_rows: Number of rows to query from BigQuery.
+
+    pipeline_args: additional DataflowRunner or DirectRunner args passed to the
+      beam pipeline.
+
+  Raises:
+    ValueError: if input_csv and big_query_table are not specified correctly.
+  """
+
+  if input_csv == big_query_table and input_csv is None:
+    raise ValueError(
+        'one of --input_csv or --big_query_table should be provided.')
+
+  slice_spec = [
+      slicer.SingleSliceSpec(),
+      slicer.SingleSliceSpec(columns=['trip_start_hour'])
+  ]
+
+  schema = taxi.read_schema(schema_file)
+
+  with beam.Pipeline(argv=pipeline_args) as pipeline:
+    if input_csv:
+      csv_coder = taxi.make_csv_coder(schema)
+      raw_data = (
+          pipeline
+          | 'ReadFromText' >> beam.io.ReadFromText(
+              input_csv, skip_header_lines=1)
+          | 'ParseCSV' >> beam.Map(csv_coder.decode))
+    else:
+      assert big_query_table
+      query = taxi.make_sql(big_query_table, max_eval_rows, for_eval=True)
+      raw_feature_spec = taxi.get_raw_feature_spec(schema)
+      raw_data = (
+          pipeline
+          | 'ReadBigQuery' >> beam.io.Read(
+              beam.io.BigQuerySource(query=query, use_standard_sql=True))
+          | 'CleanData' >>
+          beam.Map(lambda x: (taxi.clean_raw_data_dict(x, raw_feature_spec))))
+
+    # Examples must be in clean tf-example format.
+    coder = taxi.make_proto_coder(schema)
+
+    _ = (
+        raw_data
+        | 'ToSerializedTFExample' >> beam.Map(coder.encode)
+        | 'EvaluateAndWriteResults' >> tfma.EvaluateAndWriteResults(
+            eval_saved_model_path=eval_model_dir,
+            slice_spec=slice_spec,
+            add_metrics_callbacks=[
+                post_export_metrics.calibration_plot_and_prediction_histogram(),
+                post_export_metrics.auc_plots()
+            ],
+            output_path=eval_result_dir))
 
 
 def main():
@@ -55,6 +129,9 @@ def main():
       help='Maximum number of rows to evaluate on.',
       default=None,
       type=int)
+  parser.add_argument(
+      '--schema_file',
+      help='File holding the schema for the input data')
 
   known_args, pipeline_args = parser.parse_known_args()
 
@@ -63,47 +140,14 @@ def main():
   else:
     eval_result_dir = tempfile.mkdtemp()
 
-  slice_spec = [
-      slicer.SingleSliceSpec(),
-      slicer.SingleSliceSpec(columns=['trip_start_hour'])
-  ]
-
-  with beam.Pipeline(argv=pipeline_args) as pipeline:
-    if known_args.input_csv:
-      csv_coder = taxi.make_csv_coder()
-      raw_data = (
-          pipeline
-          | 'ReadFromText' >> beam.io.ReadFromText(
-              known_args.input_csv, skip_header_lines=1)
-          | 'ParseCSV' >> beam.Map(csv_coder.decode))
-    elif known_args.big_query_table:
-      query = taxi.make_sql(
-          known_args.big_query_table, known_args.max_eval_rows, for_eval=True)
-      raw_data = (
-          pipeline
-          | 'ReadBigQuery' >> beam.io.Read(
-              beam.io.BigQuerySource(query=query, use_standard_sql=True)))
-    else:
-      raise ValueError('one of --input_csv or --big_query_table should be '
-                       'provided.')
-
-    # Examples must be in clean tf-example format.
-    raw_feature_spec = taxi.get_raw_feature_spec()
-    raw_schema = dataset_schema.from_feature_spec(raw_feature_spec)
-    coder = example_proto_coder.ExampleProtoCoder(raw_schema)
-
-    _ = (
-        raw_data
-        | 'CleanData' >> beam.Map(taxi.clean_raw_data_dict)
-        | 'ToSerializedTFExample' >> beam.Map(coder.encode)
-        | 'EvaluateAndWriteResults' >> tfma.EvaluateAndWriteResults(
-            eval_saved_model_path=known_args.eval_model_dir,
-            slice_spec=slice_spec,
-            add_metrics_callbacks=[
-                post_export_metrics.calibration_plot_and_prediction_histogram(),
-                post_export_metrics.auc_plots()
-            ],
-            output_path=eval_result_dir))
+  process_tfma(
+      eval_result_dir,
+      input_csv=known_args.input_csv,
+      big_query_table=known_args.big_query_table,
+      eval_model_dir=known_args.eval_model_dir,
+      max_eval_rows=known_args.max_eval_rows,
+      schema_file=known_args.schema_file,
+      pipeline_args=pipeline_args)
 
 
 if __name__ == '__main__':
