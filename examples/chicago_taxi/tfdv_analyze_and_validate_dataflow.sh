@@ -24,10 +24,12 @@ fi
 
 JOB_ID="chicago-taxi-tfdv-$(date +%Y%m%d-%H%M%S)"
 JOB_OUTPUT_PATH=$MYBUCKET/$JOB_ID/chicago_taxi_output
-TFDV_OUTPUT_PATH=$JOB_OUTPUT_PATH/tfdv_output
-export SCHEMA_PATH=$TFDV_OUTPUT_PATH/schema.pbtxt
 TEMP_PATH=$MYBUCKET/$JOB_ID/tmp/
 MYPROJECT=$(gcloud config list --format 'value(core.project)' 2>/dev/null)
+
+# Variables needed for subsequent stages.
+export TFDV_OUTPUT_PATH=$JOB_OUTPUT_PATH/tfdv_output
+export SCHEMA_PATH=$TFDV_OUTPUT_PATH/schema.pbtxt
 
 echo Using GCP project: $MYPROJECT
 echo Job output path: $JOB_OUTPUT_PATH
@@ -63,10 +65,9 @@ python tfdv_analyze_and_validate.py \
   --save_main_session True \
   --runner DataflowRunner
 
+
 echo
 echo
-echo "  " export SCHEMA_PATH=$SCHEMA_PATH
-echo "  " export TFDV_OUTPUT_PATH=$TFDV_OUTPUT_PATH
-echo
-echo "NOTE: The export paths are pre-requisites for subsequent steps."
+echo "  TFDV_OUTPUT_PATH=$TFDV_OUTPUT_PATH"
+echo "  SCHEMA_PATH=$SCHEMA_PATH"
 echo

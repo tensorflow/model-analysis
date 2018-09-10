@@ -31,10 +31,12 @@ if [ -z "$SCHEMA_PATH" ]; then
 fi
 
 JOB_ID="chicago-taxi-preprocess-$(date +%Y%m%d-%H%M%S)"
-JOB_OUTPUT_PATH=$MYBUCKET/$JOB_ID/chicago_taxi_output
-export TFT_OUTPUT_PATH=$JOB_OUTPUT_PATH/tft_output
 TEMP_PATH=$MYBUCKET/$JOB_ID/tmp/
 MYPROJECT=$(gcloud config list --format 'value(core.project)' 2>/dev/null)
+
+# Variables needed for subsequent stages.
+export JOB_OUTPUT_PATH=$MYBUCKET/$JOB_ID/chicago_taxi_output
+export TFT_OUTPUT_PATH=$JOB_OUTPUT_PATH/tft_output
 
 echo Using GCP project: $MYPROJECT
 echo Job output path: $JOB_OUTPUT_PATH
@@ -56,8 +58,6 @@ python preprocess.py \
 
 echo
 echo
-echo "  " export TFT_OUTPUT_PATH=$TFT_OUTPUT_PATH
-echo "  " export JOB_OUTPUT_PATH=$JOB_OUTPUT_PATH
-echo
-echo "NOTE: The export paths are a pre-requisite for subsequent steps."
+echo "  JOB_OUTPUT_PATH=$JOB_OUTPUT_PATH"
+echo "  TFT_OUTPUT_PATH=$TFT_OUTPUT_PATH"
 echo
