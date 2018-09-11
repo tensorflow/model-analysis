@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import copy
 
+import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 
@@ -64,6 +65,10 @@ MaterializedColumn = NamedTuple(
 # example and all its "extractions." Extractions that should be emitted to file.
 # Each Extract has a name, stored as the key of the DictOfExtractedValues.
 DictOfExtractedValues = Dict[Text, Any]
+
+
+Extractor = NamedTuple('Extractor', [('stage_name', bytes),
+                                     ('ptransform', beam.PTransform)])
 
 
 class ExampleAndExtracts(
