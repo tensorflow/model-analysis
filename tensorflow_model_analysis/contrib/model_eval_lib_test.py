@@ -31,6 +31,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.contrib import model_eval_lib as contrib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
+from tensorflow_model_analysis.slicer import slicer
 
 
 class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
@@ -77,12 +78,12 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
 
     with beam.Pipeline() as pipeline:
       result = (pipeline
-                | beam.Create([example1.SerializeToString()])
-                | contrib.BuildDiagnosticTable(model_location))
+                | 'CreateInput' >> beam.Create([example1.SerializeToString()])
+                | 'BuildTable' >> contrib.BuildDiagnosticTable(model_location))
 
       def check_result(got):
         self.assertEqual(1, len(got), 'got: %s' % got)
-        (_, extracts) = got[0]
+        _, extracts = got[0]
 
         # Values of type MaterializedColumn are emitted to signal to
         # downstream sink components to output the data to file.
@@ -106,6 +107,51 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
                     name=u'label', value=np.array([1.], dtype=np.float32)),
                 '__labels': types.MaterializedColumn(
                     name=u'__labels', value=np.array([1.], dtype=np.float32)),
+            })
+        self._assertMaterializedColumnsExist(
+            materialized_dict,
+            ['logits', 'probabilities', 'classes', 'logistic', 'class_ids',
+             'tfma_slice_keys'])
+
+      util.assert_that(result, check_result)
+
+  def testBuildDiagnosticsTableWithSlices(self):
+    model_location = self._exportEvalSavedModel(
+        linear_classifier.simple_linear_classifier)
+
+    example1 = self._makeExample(
+        age=3.0, language='english', label=1.0, slice_key='first_slice')
+    slice_spec = [
+        slicer.SingleSliceSpec(columns=['age']),
+        slicer.SingleSliceSpec(features=[('age', 3)]),
+        slicer.SingleSliceSpec(
+            columns=['age'], features=[('language', 'english')])
+    ]
+
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline
+          | 'CreateInput' >> beam.Create([example1.SerializeToString()])
+          | 'BuildTable' >> contrib.BuildDiagnosticTable(model_location,
+                                                         slice_spec))
+
+      def check_result(got):
+        self.assertEqual(1, len(got), 'got: %s' % got)
+        _, extracts = got[0]
+
+        # Values of type MaterializedColumn are emitted to signal to
+        # downstream sink components to output the data to file.
+        materialized_dict = dict((k, v)
+                                 for k, v in extracts.iteritems()
+                                 if isinstance(v, types.MaterializedColumn))
+        self._assertMaterializedColumns(
+            materialized_dict, {
+                'tfma_slice_keys':
+                    types.MaterializedColumn(
+                        name='tfma_slice_keys',
+                        value=[
+                            'age:3.0', 'age:3', 'age_X_language:3.0_X_english'
+                        ])
             })
         self._assertMaterializedColumnsExist(
             materialized_dict,

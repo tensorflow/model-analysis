@@ -11,15 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Setup dependencies for cloud deployment."""
+"""Setup dependencies for local and cloud deployment."""
 import setuptools
 
 TF_VERSION = '1.9.0'
 
 if __name__ == '__main__':
   setuptools.setup(
-      name='chicago_taxi_setup',
-      version='0.9.0',
+      name='tfx_chicago_taxi',
+      version='0.9.2',
       packages=setuptools.find_packages(),
       install_requires=[
           'apache-beam[gcp]==2.6.0',
@@ -29,7 +29,7 @@ if __name__ == '__main__':
           'tensorflow=='+TF_VERSION,
           'tensorflow-data-validation==0.9.0',
           'tensorflow-metadata==0.9.0',
-          'tensorflow-model-analysis==0.9.1',
+          'tensorflow-model-analysis==0.9.2',
           'tensorflow-serving-api==1.9.0',
           'tensorflow-transform==0.9.0',
       ])

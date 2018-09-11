@@ -84,7 +84,9 @@ class SliceTest(testutil.TensorflowModelAnalysisTest):
           pipeline
           | 'CreateTestInput' >> beam.Create(fpls)
           | 'WrapFpls' >> beam.Map(wrap_fpl)
-          | 'Slice' >> slice_api.Slice([slicer.SingleSliceSpec()]))
+          | 'ExtractSlices' >> slice_api.ExtractSliceKeys(
+              [slicer.SingleSliceSpec()])
+          | 'FanoutSlices' >> slice_api.FanoutSlices())
 
       def check_result(got):
         try:
@@ -106,10 +108,11 @@ class SliceTest(testutil.TensorflowModelAnalysisTest):
           pipeline
           | 'CreateTestInput' >> beam.Create(fpls)
           | 'WrapFpls' >> beam.Map(wrap_fpl)
-          | 'Slice' >> slice_api.Slice([
+          | 'ExtractSlices' >> slice_api.ExtractSliceKeys([
               slicer.SingleSliceSpec(),
               slicer.SingleSliceSpec(columns=['gender'])
-          ]))
+          ])
+          | 'FanoutSlices' >> slice_api.FanoutSlices())
 
       def check_result(got):
         try:

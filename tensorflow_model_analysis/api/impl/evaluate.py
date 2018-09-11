@@ -381,6 +381,10 @@ def Evaluate(
     extractors = [
         PredictExtractor(eval_saved_model_path, add_metrics_callbacks,
                          shared_handle, desired_batch_size),
+        # For each example, determine the slice keys that apply to that example
+        # and append them to extracts.
+        types.Extractor(stage_name='ExtractSliceKeys',
+                        ptransform=slice_api.ExtractSliceKeys(slice_spec))
     ]
 
   # pylint: disable=no-value-for-parameter
@@ -392,10 +396,10 @@ def Evaluate(
       beam.Map(lambda x: types.ExampleAndExtracts(example=x, extracts={}))
       | Extract(extractors=extractors)
 
-      # Input: one example at a time
+      # Input: one example at a time, with slice keys in extracts.
       # Output: one fpl example per slice key (notice that the example turns
       #         into n, replicated once per applicable slice key)
-      | 'Slice' >> slice_api.Slice(slice_spec)
+      | 'FanoutSlices' >> slice_api.FanoutSlices()
 
       # Each slice key lands on one shard where metrics are computed for all
       # examples in that shard -- the "map" and "reduce" parts of the
@@ -421,8 +425,9 @@ def BuildDiagnosticTable(
     # pylint: disable=invalid-name
     examples,
     eval_saved_model_path,
-    extractors = None,
-    desired_batch_size = None):
+    slice_spec = None,
+    desired_batch_size = None,
+    extractors = None):
   """Build diagnostics for the spacified EvalSavedModel and example collection.
 
   Args:
@@ -430,10 +435,12 @@ def BuildDiagnosticTable(
       (e.g. string containing CSV row, TensorFlow.Example, etc).
     eval_saved_model_path: Path to EvalSavedModel. This directory should contain
       the saved_model.pb file.
-    extractors: Optional list of Extractors to execute prior to slicing and
-      aggregating the metrics. If not provided, a default set will be run.
+    slice_spec: Optional list of SingleSliceSpec specifying the slices to slice
+      the data into. If None, defaults to the overall slice.
     desired_batch_size: Optional batch size for batching in Predict and
       Aggregate.
+    extractors: Optional list of Extractors to execute prior to slicing and
+      aggregating the metrics. If not provided, a default set will be run.
 
   Returns:
     PCollection of ExampleAndExtracts
@@ -446,8 +453,11 @@ def BuildDiagnosticTable(
         types.Extractor(
             stage_name='ExtractFeatures',
             ptransform=feature_extractor.ExtractFeatures()),
+        types.Extractor(stage_name='ExtractSliceKeys',
+                        ptransform=slice_api.ExtractSliceKeys(slice_spec))
     ]
   return (examples
           | 'ToExampleAndExtracts' >>
           beam.Map(lambda x: types.ExampleAndExtracts(example=x, extracts={}))
           | Extract(extractors=extractors))
+

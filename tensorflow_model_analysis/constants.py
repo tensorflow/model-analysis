@@ -27,3 +27,9 @@ DATA_CENTRIC_MODE = 'data_centric_mode'
 
 # Keys to ExampleAndExtract extraction dictionary.
 FEATURES_PREDICTIONS_LABELS_KEY = 'fpl'
+# Contains SliceKeyTypes that are used to fanout and aggregate.
+SLICE_KEYS = 'tfma_slice_keys_internal'
+# Human-readable slice strings that are written to the diagnostic table for
+# analysis.
+SLICE_KEYS_MATERIALIZED = 'tfma_slice_keys'
+
