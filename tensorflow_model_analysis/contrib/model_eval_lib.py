@@ -22,7 +22,8 @@ import apache_beam as beam
 
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api.impl import evaluate
-from tensorflow_model_analysis.types_compat import Optional
+from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.types_compat import List, Optional
 
 
 @beam.ptransform_fn
@@ -31,8 +32,8 @@ from tensorflow_model_analysis.types_compat import Optional
 def BuildDiagnosticTable(  # pylint: disable=invalid-name
     examples,
     eval_saved_model_path,
-    desired_batch_size = None
-):
+    slice_spec = None,
+    desired_batch_size = None):
   """Public API version of evaluate.BuildDiagnosticTable.
 
   Use this function to build an example-oriented PCollection containing, for
@@ -43,6 +44,8 @@ def BuildDiagnosticTable(  # pylint: disable=invalid-name
       (e.g. string containing CSV row, TensorFlow.Example, etc).
     eval_saved_model_path: Path to EvalSavedModel. This directory should contain
       the saved_model.pb file.
+    slice_spec: Optional list of SingleSliceSpec specifying the slices to slice
+      the data into. If None, defaults to the overall slice.
     desired_batch_size: Optional batch size for batching in Predict and
       Aggregate.
 
@@ -50,7 +53,8 @@ def BuildDiagnosticTable(  # pylint: disable=invalid-name
     beam.PCollection of ExampleAndExtracts. The caller is responsible for
     committing to file for now.
   """
+  if slice_spec is None:
+    slice_spec = [slicer.SingleSliceSpec()]
   return (examples
           | 'BuildDiagnosticTable' >> evaluate.BuildDiagnosticTable(
-              eval_saved_model_path,
-              desired_batch_size))
+              eval_saved_model_path, slice_spec, desired_batch_size))

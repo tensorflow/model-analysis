@@ -44,7 +44,6 @@ python process_tfma.py \
   --schema_file $SCHEMA_PATH \
   --eval_model_dir $LAST_EVAL_MODEL_DIR \
   --eval_result_dir $EVAL_RESULT_DIR \
-  --max_eval_rows 3000000 \
   --project $MYPROJECT \
   --temp_location $MYBUCKET/$JOB_ID/tmp/ \
   --job_name $JOB_ID \
