@@ -78,7 +78,7 @@ TFMA can perform large-scale distributed evaluation of your model by using
 evaluation results can be visualized in a Jupyter notebook using the frontend
 components included in TFMA.
 
-![TFMA Slicing Metrics Browser](/g3doc/images/tfma-slicing-metrics-browser.png)
+![TFMA Slicing Metrics Browser](images/tfma-slicing-metrics-browser.png)
 
 Use `tfma.run_model_analysis` for evaluation. Since this uses Beam's local
 runner, it's mainly for local, small-scale experimentation. For example:
