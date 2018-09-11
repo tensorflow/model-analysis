@@ -194,6 +194,12 @@ def main():
       help='Filename prefix for emitted transformed examples')
 
   parser.add_argument(
+      '--transform_dir',
+      required=False,
+      default=None,
+      help='Directory in which the transform output is located')
+
+  parser.add_argument(
       '--max_rows',
       help='Number of rows to query from BigQuery',
       default=None,
@@ -205,6 +211,7 @@ def main():
       outfile_prefix=known_args.outfile_prefix,
       working_dir=known_args.output_dir,
       schema_file=known_args.schema_file,
+      transform_dir=known_args.transform_dir,
       max_rows=known_args.max_rows,
       pipeline_args=pipeline_args)
 

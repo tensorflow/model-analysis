@@ -16,16 +16,6 @@ set -u
 
 echo Starting local TFT preprocessing...
 
-# Preprocess the eval files
-echo Preprocessing eval data...
-rm -R -f ./data/eval/local_chicago_taxi_output
-python preprocess.py \
-  --input ./data/eval/data.csv \
-  --schema_file ./data/local_tfdv_output/schema.pbtxt \
-  --output_dir ./data/eval/local_chicago_taxi_output \
-  --outfile_prefix eval_transformed \
-  --runner DirectRunner
-
 # Preprocess the train files, keeping the transform functions
 echo Preprocessing train data...
 rm -R -f ./data/train/local_chicago_taxi_output
@@ -34,4 +24,15 @@ python preprocess.py \
   --schema_file ./data/local_tfdv_output/schema.pbtxt \
   --output_dir ./data/train/local_chicago_taxi_output \
   --outfile_prefix train_transformed \
+  --runner DirectRunner
+
+# Preprocess the eval files
+echo Preprocessing eval data...
+rm -R -f ./data/eval/local_chicago_taxi_output
+python preprocess.py \
+  --input ./data/eval/data.csv \
+  --schema_file ./data/local_tfdv_output/schema.pbtxt \
+  --output_dir ./data/eval/local_chicago_taxi_output \
+  --outfile_prefix eval_transformed \
+  --transform_dir ./data/train/local_chicago_taxi_output \
   --runner DirectRunner
