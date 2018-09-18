@@ -95,10 +95,11 @@ def transform_data(input_handle,
 
     for key in taxi.VOCAB_FEATURE_KEYS:
       # Build a vocabulary for this feature.
-      outputs[taxi.transformed_name(key)] = transform.compute_and_apply_vocabulary(
-          _fill_in_missing(inputs[key]),
-          top_k=taxi.VOCAB_SIZE,
-          num_oov_buckets=taxi.OOV_SIZE)
+      outputs[
+          taxi.transformed_name(key)] = transform.compute_and_apply_vocabulary(
+              _fill_in_missing(inputs[key]),
+              top_k=taxi.VOCAB_SIZE,
+              num_oov_buckets=taxi.OOV_SIZE)
 
     for key in taxi.BUCKET_FEATURE_KEYS:
       outputs[taxi.transformed_name(key)] = transform.bucketize(
