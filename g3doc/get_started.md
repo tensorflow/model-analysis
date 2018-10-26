@@ -104,9 +104,9 @@ Add additional metrics that are not included in the model with
 
 For distributed evaluation, construct an [Apache Beam](http://beam.apache.org)
 pipeline using a distributed runner. In the pipeline, use the
-`tfma.EvaluateAndWriteResults` for evaluation and to write out the results.
-The results can be loaded for visualization using `tfma.load_eval_result`.
-For example:
+`tfma.ExtractEvaluateAndWriteResults` for evaluation and to write out the
+results.  The results can be loaded for visualization using
+`tfma.load_eval_result`. For example:
 
 ```python
 # To run the pipeline.
@@ -114,7 +114,8 @@ with beam.Pipeline(runner=...) as p:
   _ = (p
        # You can change the source as appropriate, e.g. read from BigQuery.
        | 'ReadData' >> beam.io.ReadFromTFRecord(data_location)
-       | 'EvaluateAndWriteResults' >> tfma.EvaluateAndWriteResults(
+       | 'ExtractEvaluateAndWriteResults' >>
+       tfma.ExtractEvaluateAndWriteResults(
             eval_saved_model_path='/path/to/eval/saved/model',
             output_path='/path/to/output',
             display_only_data_location=data_location))
