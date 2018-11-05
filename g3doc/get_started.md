@@ -4,7 +4,7 @@
 
 TensorFlow Model Analysis (TFMA) can export a model's *evaluation graph* to a
 special `SavedModel` called `EvalSavedModel`. (Note that the evaluation
-graph is used and not the graph for training or inferene.) The `EvalSavedModel`
+graph is used and not the graph for training or inference.) The `EvalSavedModel`
 contains additional information that allows TFMA to compute the same evaluation
 metrics defined in the model in a distributed manner over a large amount of data
 and user-defined slices.
