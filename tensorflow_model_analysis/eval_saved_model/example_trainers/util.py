@@ -159,13 +159,16 @@ def export_model_and_eval_model(estimator,
     args = dict(export_dir_base=export_path)
     if isinstance(estimator, tf.contrib.learn.Estimator):
       args['serving_input_fn'] = serving_input_receiver_fn
+      export_fn = estimator.export_savedmodel
     else:
       args['serving_input_receiver_fn'] = serving_input_receiver_fn
-    export_path_result = estimator.export_savedmodel(**args)
+      export_fn = estimator.export_saved_model
+    export_path_result = export_fn(**args)
   if eval_export_path and eval_input_receiver_fn:
     eval_export_path_result = export.export_eval_savedmodel(
         estimator=estimator,
         export_dir_base=eval_export_path,
-        eval_input_receiver_fn=eval_input_receiver_fn)
+        eval_input_receiver_fn=eval_input_receiver_fn,
+        serving_input_receiver_fn=serving_input_receiver_fn)
 
   return export_path_result, eval_export_path_result

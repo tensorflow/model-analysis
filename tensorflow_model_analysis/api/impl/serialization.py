@@ -21,15 +21,16 @@ from __future__ import print_function
 import os
 import pickle
 import apache_beam as beam
+import numpy as np
 import six
 import tensorflow as tf
 
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis import version as tfma_version
 from tensorflow_model_analysis.api.impl import api_types
-from tensorflow_model_analysis.api.impl import evaluate
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
-from tensorflow_model_analysis.types_compat import Any, Dict, List, Tuple
+from tensorflow_model_analysis.types_compat import Any, Dict, List, Text, Tuple
 
 # File names for files written out to the result directory.
 _METRICS_OUTPUT_FILE = 'metrics'
@@ -65,8 +66,9 @@ def _check_version(raw_final_dict, path):
 
 
 def load_eval_config(output_path):
-  serialized_record = tf.python_io.tf_record_iterator(
-      os.path.join(output_path, _EVAL_CONFIG_FILE)).next()
+  serialized_record = six.next(
+      tf.python_io.tf_record_iterator(
+          os.path.join(output_path, _EVAL_CONFIG_FILE)))
   final_dict = _deserialize_eval_config_raw(serialized_record)
   _check_version(final_dict, output_path)
   return final_dict[_EVAL_CONFIG_KEY]
@@ -96,7 +98,7 @@ def deserialize_slice_key(
     else:
       raise TypeError(
           'unrecognized type of type %s, value %s' % (type(elem), elem))
-    result.append((bytes(elem.column), value))
+    result.append((tf.compat.as_bytes(elem.column), value))
   return tuple(result)
 
 
@@ -106,26 +108,26 @@ def _load_and_deserialize_metrics(
   for record in tf.python_io.tf_record_iterator(path):
     metrics_for_slice = metrics_for_slice_pb2.MetricsForSlice.FromString(record)
     result.append((
-        deserialize_slice_key(
-            metrics_for_slice.slice_key),  # pytype: disable=wrong-arg-types
+        deserialize_slice_key(metrics_for_slice.slice_key),  # pytype: disable=wrong-arg-types
         metrics_for_slice.metrics))
   return result
 
 
 def _load_and_deserialize_plots(
     path):
+  """Returns deserialized plots loaded from given path."""
   result = []
   for record in tf.python_io.tf_record_iterator(path):
     plots_for_slice = metrics_for_slice_pb2.PlotsForSlice.FromString(record)
     result.append((
-        deserialize_slice_key(
-            plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
+        deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
         plots_for_slice.plot_data))
   return result
 
 
 def load_plots_and_metrics(
-    output_path):
+    output_path
+):
   slicing_metrics = _load_and_deserialize_metrics(
       path=os.path.join(output_path, _METRICS_OUTPUT_FILE))
   plots = _load_and_deserialize_plots(
@@ -141,8 +143,8 @@ def _convert_slice_key(
   for (col, val) in slice_key:
     single_slice_key = result.single_slice_keys.add()
     single_slice_key.column = col
-    if isinstance(val, bytes):
-      single_slice_key.bytes_value = val
+    if isinstance(val, (six.binary_type, six.text_type)):
+      single_slice_key.bytes_value = tf.compat.as_bytes(val)
     elif isinstance(val, six.integer_types):
       single_slice_key.int64_value = val
     elif isinstance(val, float):
@@ -151,6 +153,32 @@ def _convert_slice_key(
       raise TypeError(
           'unrecognized type of type %s, value %s' % (type(val), val))
 
+  return result
+
+
+def _convert_to_array_value(
+    array):
+  """Converts NumPy array to ArrayValue."""
+  result = metrics_for_slice_pb2.ArrayValue()
+  result.shape[:] = array.shape
+  if array.dtype == 'int32':
+    result.data_type = metrics_for_slice_pb2.ArrayValue.INT32
+    result.int32_values[:] = array.flatten()
+  elif array.dtype == 'int64':
+    result.data_type = metrics_for_slice_pb2.ArrayValue.INT64
+    result.int64_values[:] = array.flatten()
+  elif array.dtype == 'float32':
+    result.data_type = metrics_for_slice_pb2.ArrayValue.FLOAT32
+    result.float32_values[:] = array.flatten()
+  elif array.dtype == 'float64':
+    result.data_type = metrics_for_slice_pb2.ArrayValue.FLOAT64
+    result.float64_values[:] = array.flatten()
+  else:
+    # For all other types, cast to string and convert to bytes.
+    result.data_type = metrics_for_slice_pb2.ArrayValue.BYTES
+    result.bytes_values[:] = [
+        tf.compat.as_bytes(x) for x in array.astype(six.text_type).flatten()
+    ]
   return result
 
 
@@ -165,14 +193,22 @@ def _convert_slice_metrics(
     if hasattr(post_export_metric, 'populate_stats_and_pop'):
       post_export_metric.populate_stats_and_pop(slice_metrics,
                                                 metrics_for_slice.metrics)
-  # We assume other metrics are float and convert them to double_value field.
+
   for name, value in slice_metrics.items():
-    # We only expect float values for now
-    try:
-      metrics_for_slice.metrics[name].double_value.value = float(value)
-    except (TypeError, ValueError) as e:
-      metrics_for_slice.metrics[name].unknown_type.value = str(value)
-      metrics_for_slice.metrics[name].unknown_type.error = e.message
+    if isinstance(value, (six.binary_type, six.text_type)):
+      # Convert textual types to string metrics.
+      metrics_for_slice.metrics[name].bytes_value = value
+    elif isinstance(value, np.ndarray):
+      # Convert NumPy arrays to ArrayValue.
+      metrics_for_slice.metrics[name].array_value.CopyFrom(
+          _convert_to_array_value(value))
+    else:
+      # We try to convert to float values.
+      try:
+        metrics_for_slice.metrics[name].double_value.value = float(value)
+      except (TypeError, ValueError) as e:
+        metrics_for_slice.metrics[name].unknown_type.value = str(value)
+        metrics_for_slice.metrics[name].unknown_type.error = e.message
 
 
 def _serialize_metrics(
@@ -190,7 +226,7 @@ def _serialize_metrics(
 
   Raises:
     TypeError: If the type of the feature value in slice key cannot be
-      recongnized.
+      recognized.
   """
   result = metrics_for_slice_pb2.MetricsForSlice()
   slice_key, slice_metrics = metrics
@@ -219,8 +255,7 @@ def _convert_slice_plots(
         'were: %s' % (
             slice_plots.keys(),
             [
-                x.name
-                for x in post_export_metrics  # pytype: disable=attribute-error
+                x.name for x in post_export_metrics  # pytype: disable=attribute-error
             ]))
 
 
@@ -244,8 +279,7 @@ def _serialize_plots(
   result.slice_key.CopyFrom(_convert_slice_key(slice_key))
 
   # Convert the slice plots.
-  _convert_slice_plots(slice_plots, post_export_metrics,
-                       result.plot_data)  # pytype: disable=wrong-arg-types
+  _convert_slice_plots(slice_plots, post_export_metrics, result.plot_data)  # pytype: disable=wrong-arg-types
 
   return result.SerializeToString()
 
@@ -255,12 +289,10 @@ def _serialize_plots(
 class SerializeMetricsAndPlots(beam.PTransform):  # pylint: disable=invalid-name
   """Converts metrics and plots into serialized protos."""
 
-  def __init__(self,
-               post_export_metrics):
+  def __init__(self, post_export_metrics):
     self._post_export_metrics = post_export_metrics
 
-  def expand(self,
-             metrics_and_plots):
+  def expand(self, metrics_and_plots):
     """Converts the given metrics_and_plots into serialized proto.
 
     Args:
@@ -282,7 +314,7 @@ class WriteMetricsPlotsAndConfig(beam.PTransform):
   """Writes metrics, plots and config to the given path.
 
   This is the internal implementation. Users should call
-  tfma.EvaluateAndWriteResults() instead, which calls this.
+  tfma.ExtractEvaluateAndWriteResults() instead, which calls this.
   """
 
   def __init__(self, output_path,
@@ -290,8 +322,10 @@ class WriteMetricsPlotsAndConfig(beam.PTransform):
     self._output_path = output_path
     self._eval_config = eval_config
 
-  def expand(self, metrics_and_plots
-            ):
+  def expand(
+      self,
+      metrics_and_plots
+  ):
     metrics_output_file = os.path.join(self._output_path, _METRICS_OUTPUT_FILE)
     plots_output_file = os.path.join(self._output_path, _PLOTS_OUTPUT_FILE)
     eval_config_file = os.path.join(self._output_path, _EVAL_CONFIG_FILE)
@@ -317,4 +351,4 @@ class WriteMetricsPlotsAndConfig(beam.PTransform):
         | 'WriteEvalConfig' >> beam.io.WriteToTFRecord(
             eval_config_file, shard_name_template=''))
 
-    return beam.pvalue.PDone(metrics.pipeline)
+    return beam.pvalue.PDone(metrics.pipeline)  # pytype: disable=bad-return-type

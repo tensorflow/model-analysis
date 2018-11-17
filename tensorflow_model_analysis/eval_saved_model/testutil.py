@@ -21,8 +21,10 @@ from __future__ import print_function
 import math
 import tempfile
 import tensorflow as tf
+from tensorflow_model_analysis.api.impl import api_types
+from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import util
-from tensorflow_model_analysis.types_compat import Dict, Iterable, Union, Sequence, Tuple
+from tensorflow_model_analysis.types_compat import Dict, Iterable, List, Union, Sequence, Text, Tuple
 
 from tensorflow.core.example import example_pb2
 
@@ -113,3 +115,51 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
                         got_sparse_tensor_value.values)
     self.assertAllEqual(expected_sparse_tensor_value.dense_shape,
                         got_sparse_tensor_value.dense_shape)
+    # Check dtypes too
+    self.assertEqual(expected_sparse_tensor_value.indices.dtype,
+                     got_sparse_tensor_value.indices.dtype)
+    self.assertEqual(expected_sparse_tensor_value.values.dtype,
+                     got_sparse_tensor_value.values.dtype)
+    self.assertEqual(expected_sparse_tensor_value.dense_shape.dtype,
+                     got_sparse_tensor_value.dense_shape.dtype)
+
+  def predict_injective_single_example(
+      self, eval_saved_model,
+      raw_example_bytes):
+    """Run predict for a single example for a injective model.
+
+    Args:
+      eval_saved_model: EvalSavedModel
+      raw_example_bytes: Raw example bytes for the example
+
+    Returns:
+      The singular FPL returned by eval_saved_model.predict on the given
+      raw_example_bytes.
+    """
+    fpls = eval_saved_model.predict(raw_example_bytes)
+    self.assertEqual(1, len(fpls))
+    self.assertEqual(0, fpls[0].example_ref)
+    return fpls[0]
+
+  def predict_injective_example_list(
+      self, eval_saved_model,
+      raw_example_bytes_list
+  ):
+    """Run predict_list for a list of examples for a injective model.
+
+    Args:
+      eval_saved_model: EvalSavedModel
+      raw_example_bytes_list: List of raw example bytes
+
+    Returns:
+      The list of FPLs returned by eval_saved_model.predict on the given
+      raw_example_bytes.
+    """
+    fpls = eval_saved_model.predict_list(raw_example_bytes_list)
+
+    # Check that each FPL corresponds to one example.
+    self.assertSequenceEqual(
+        range(0, len(raw_example_bytes_list)),
+        [fpl.example_ref for fpl in fpls])
+
+    return fpls

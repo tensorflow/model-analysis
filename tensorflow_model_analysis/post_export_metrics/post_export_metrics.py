@@ -24,12 +24,13 @@ from __future__ import print_function
 
 import abc
 
+from six import with_metaclass
 import tensorflow as tf
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metric_keys
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metrics
+from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Tuple, Type
+from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Text, Tuple, Type
 
 from tensorflow.python.estimator.canned import prediction_keys
 from tensorflow.python.ops import metrics_impl
@@ -82,7 +83,7 @@ def _export(name):
         metric.check_compatibility(features_dict, predictions_dict, labels_dict)
         metric_ops = {}
         for key, value in (metric.get_metric_ops(
-            features_dict, predictions_dict, labels_dict).iteritems()):
+            features_dict, predictions_dict, labels_dict).items()):
           metric_ops[key] = value
         return metric_ops
 
@@ -187,10 +188,8 @@ def _populate_to_bounded_value_and_pop(
       metric_key)
 
 
-class _PostExportMetric(object):
+class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
   """Abstract base class for post export metrics."""
-
-  __metaclass__ = abc.ABCMeta
 
   @abc.abstractmethod
   def check_compatibility(self, features_dict,
@@ -387,8 +386,8 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
     Label should be a single float that is in [0, 1].
 
     Args:
-      example_weight_key: The key of the example weight column in the
-        features dict. If None, all predictions are given a weight of 1.0.
+      example_weight_key: The key of the example weight column in the features
+        dict. If None, all predictions are given a weight of 1.0.
       num_buckets: The number of buckets used for the plot.
     """
     self._example_weight_key = example_weight_key
@@ -456,67 +455,8 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
       )
 
 
-def _confusion_matrix_metric_ops(
-    features_dict,
-    predictions_dict,
-    labels_dict,
-    example_weight_key,
-    thresholds,
-):
-  """Metric ops for computing confusion matrix at the given thresholds.
-
-  This is factored out because it's common to AucPlots and
-  ConfusionMatrixAtThresholds.
-
-  Args:
-    features_dict: Features dict.
-    predictions_dict: Predictions dict.
-    labels_dict: Labels dict.
-    example_weight_key: Example weight key (into features_dict).
-    thresholds: List of thresholds to compute the confusion matrix at.
-
-  Returns:
-    (value_op, update_op) for the metric. Note that the value_op produces a
-    matrix as described in the comments below.
-  """
-  # Note that we have to squeeze predictions, labels, weights so they are all
-  # N element vectors (otherwise some of them might be N x 1 tensors, and
-  # multiplying a N element vector with a N x 1 tensor uses matrix
-  # multiplication rather than element-wise multiplication).
-  squeezed_weights = None
-  if example_weight_key:
-    squeezed_weights = tf.squeeze(features_dict[example_weight_key])
-  prediction_tensor = tf.cast(
-      _get_prediction_tensor(predictions_dict), tf.float64)
-  values, update_ops = metrics_impl._confusion_matrix_at_thresholds(  # pylint: disable=protected-access
-      tf.squeeze(labels_dict), tf.squeeze(prediction_tensor), thresholds,
-      squeezed_weights)
-
-  values['precision'] = values['tp'] / (values['tp'] + values['fp'])
-  values['recall'] = values['tp'] / (values['tp'] + values['fn'])
-
-  # The final matrix will look like the following:
-  #
-  # [ fn@threshold_0 tn@threshold_0 ... recall@threshold_0 ]
-  # [ fn@threshold_1 tn@threshold_1 ... recall@threshold_1 ]
-  # [       :              :        ...         :          ]
-  # [       :              :        ...         :          ]
-  # [ fn@threshold_k tn@threshold_k ... recall@threshold_k ]
-  #
-  value_op = tf.transpose(
-      tf.stack([
-          values['fn'], values['tn'], values['fp'], values['tp'],
-          values['precision'], values['recall']
-      ]))
-  update_op = tf.group(update_ops['fn'], update_ops['tn'], update_ops['fp'],
-                       update_ops['tp'])
-
-  return (value_op, update_op)
-
-
-@_export('confusion_matrix_at_thresholds')
-class _ConfusionMatrixAtThresholds(_PostExportMetric):
-  """Confusion matrix at threhsolds."""
+class _ConfusionMatrixBasedMetric(_PostExportMetric):
+  """Base class for metrics that use confusion matrices."""
 
   def __init__(self,
                thresholds,
@@ -534,8 +474,8 @@ class _ConfusionMatrixAtThresholds(_PostExportMetric):
 
     Args:
       thresholds: List of thresholds to compute the confusion matrix at.
-      example_weight_key: The key of the example weight column in the
-        features dict. If None, all predictions are given a weight of 1.0.
+      example_weight_key: The key of the example weight column in the features
+        dict. If None, all predictions are given a weight of 1.0.
     """
     self._example_weight_key = example_weight_key
     self._thresholds = sorted(thresholds)
@@ -546,13 +486,92 @@ class _ConfusionMatrixAtThresholds(_PostExportMetric):
     _check_weight_present(features_dict, self._example_weight_key)
     _check_labels_and_predictions(predictions_dict, labels_dict)
 
+  def joined_confusion_matrix_metric_ops(
+      self,
+      features_dict,
+      predictions_dict,
+      labels_dict,
+  ):
+    """Calls confusion_matrix_metric_ops and joins the results.
+
+    Args:
+      features_dict: Features dict.
+      predictions_dict: Predictions dict.
+      labels_dict: Labels dict.
+
+    Returns:
+      (value_ops, update_ops) for the confusion matrix.  Note that the value_op
+      produces a matrix as described in the comments below.
+    """
+    values, update_ops = self.confusion_matrix_metric_ops(
+        features_dict, predictions_dict, labels_dict)
+    # The final matrix will look like the following:
+    #
+    # [ fn@threshold_0 tn@threshold_0 ... recall@threshold_0 ]
+    # [ fn@threshold_1 tn@threshold_1 ... recall@threshold_1 ]
+    # [       :              :        ...         :          ]
+    # [       :              :        ...         :          ]
+    # [ fn@threshold_k tn@threshold_k ... recall@threshold_k ]
+    #
+    value_op = tf.transpose(
+        tf.stack([
+            values['fn'], values['tn'], values['fp'], values['tp'],
+            values['precision'], values['recall']
+        ]))
+    update_op = tf.group(update_ops['fn'], update_ops['tn'], update_ops['fp'],
+                         update_ops['tp'])
+
+    return (value_op, update_op)
+
+  def confusion_matrix_metric_ops(
+      self,
+      features_dict,
+      predictions_dict,
+      labels_dict,
+  ):
+    """Metric ops for computing confusion matrix at the given thresholds.
+
+    This is factored out because it's common to AucPlots and
+    ConfusionMatrixAtThresholds.
+
+    Args:
+      features_dict: Features dict.
+      predictions_dict: Predictions dict.
+      labels_dict: Labels dict.
+
+    Returns:
+      (value_ops, update_ops) for the confusion matrix.
+    """
+    # Note that we have to squeeze predictions, labels, weights so they are all
+    # N element vectors (otherwise some of them might be N x 1 tensors, and
+    # multiplying a N element vector with a N x 1 tensor uses matrix
+    # multiplication rather than element-wise multiplication).
+    squeezed_weights = None
+    if self._example_weight_key:
+      squeezed_weights = tf.squeeze(features_dict[self._example_weight_key])
+    prediction_tensor = tf.cast(
+        _get_prediction_tensor(predictions_dict), tf.float64)
+    values, update_ops = metrics_impl._confusion_matrix_at_thresholds(  # pylint: disable=protected-access
+        tf.squeeze(labels_dict), tf.squeeze(prediction_tensor),
+        self._thresholds, squeezed_weights)
+
+    values['precision'] = values['tp'] / (values['tp'] + values['fp'])
+    values['recall'] = values['tp'] / (values['tp'] + values['fn'])
+    return (values, update_ops)  # pytype: disable=bad-return-type
+
+
+
+
+@_export('confusion_matrix_at_thresholds')
+class _ConfusionMatrixAtThresholds(_ConfusionMatrixBasedMetric):
+  """Confusion matrix at threhsolds."""
+
   def get_metric_ops(self, features_dict,
                      predictions_dict,
                      labels_dict
                     ):
-    value_op, update_op = _confusion_matrix_metric_ops(
-        features_dict, predictions_dict, labels_dict, self._example_weight_key,
-        self._thresholds)
+    value_op, update_op = self.joined_confusion_matrix_metric_ops(
+        features_dict, predictions_dict, labels_dict)
     return {
         metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES: (value_op,
                                                               update_op),
@@ -590,8 +609,10 @@ class _ConfusionMatrixAtThresholds(_PostExportMetric):
 
 
 @_export('auc_plots')
-class _AucPlots(_PostExportMetric):
+class _AucPlots(_ConfusionMatrixBasedMetric):
   """Plot metric for AUROC and AUPRC for predictions in [0, 1]."""
+
+  _thresholds = Ellipsis  # type: List[float]
 
   def __init__(self,
                example_weight_key = None,
@@ -608,33 +629,26 @@ class _AucPlots(_PostExportMetric):
     (soft labels, i.e. labels between 0 and 1 are *not* supported).
 
     Args:
-      example_weight_key: The key of the example weight column in the
-        features dict. If None, all predictions are given a weight of 1.0.
+      example_weight_key: The key of the example weight column in the features
+        dict. If None, all predictions are given a weight of 1.0.
       num_buckets: The number of buckets used for plot.
     """
-    self._example_weight_key = example_weight_key
-    self._num_buckets = num_buckets
-
-  def check_compatibility(self, features_dict,
-                          predictions_dict,
-                          labels_dict):
-    _check_weight_present(features_dict, self._example_weight_key)
-    _check_labels_and_predictions(predictions_dict, labels_dict)
+    thresholds = [i * 1.0 / num_buckets for i in range(0, num_buckets + 1)]
+    thresholds = [-1e-6] + thresholds
+    super(_AucPlots, self).__init__(
+        example_weight_key=example_weight_key, thresholds=thresholds)
 
   def get_metric_ops(self, features_dict,
                      predictions_dict,
                      labels_dict
                     ):
-    thresholds = [
-        i * 1.0 / self._num_buckets for i in range(0, self._num_buckets + 1)
-    ]
-    thresholds = [-1e-6] + thresholds
-    value_op, update_op = _confusion_matrix_metric_ops(
-        features_dict, predictions_dict, labels_dict, self._example_weight_key,
-        thresholds)
+
+    value_op, update_op = self.joined_confusion_matrix_metric_ops(
+        features_dict, predictions_dict, labels_dict)
     return {
         metric_keys.AUC_PLOTS_MATRICES: (value_op, update_op),
-        metric_keys.AUC_PLOTS_THRESHOLDS: (tf.identity(thresholds), tf.no_op()),
+        metric_keys.AUC_PLOTS_THRESHOLDS: (tf.identity(self._thresholds),
+                                           tf.no_op()),
     }
 
   def populate_plots_and_pop(
@@ -688,6 +702,7 @@ class _Auc(_PostExportMetric):
         tf.metrics.auc() directly.
       num_buckets: The number of buckets used for the curve. (num_buckets + 1)
         is used as the num_thresholds in tf.metrics.auc().
+
     Raises:
       ValueError: if the curve is neither 'ROC' nor 'PR'.
     """
@@ -788,8 +803,8 @@ class _PrecisionRecallAtK(_PostExportMetric):
         Use a value of `k` = 0 to indicate that all predictions should be
         considered.
       example_weight_key: The optional key of the example weight column in the
-        features_dict. If not given, all examples will be assumed to have
-        a weight of 1.0.
+        features_dict. If not given, all examples will be assumed to have a
+        weight of 1.0.
     """
     self._cutoffs = cutoffs
     self._example_weight_key = example_weight_key
@@ -825,6 +840,11 @@ class _PrecisionRecallAtK(_PostExportMetric):
     if isinstance(labels_dict, tf.SparseTensor):
       labels = tf.sparse_tensor_to_dense(labels_dict, default_value='')
 
+    # Expand dims if necessary.
+    labels = tf.cond(
+        tf.equal(tf.rank(labels), 1), lambda: tf.expand_dims(labels, -1),
+        lambda: labels)
+
     classes = predictions_dict[prediction_keys.PredictionKeys.CLASSES]
     scores = predictions_dict[prediction_keys.PredictionKeys.PROBABILITIES]
 
@@ -843,12 +863,12 @@ class _PrecisionRecallAtK(_PostExportMetric):
     recall_column = table[:, 2]
     for cutoff, precision, recall in zip(cutoff_column, precision_column,
                                          recall_column):
-      row = output_metrics[
-          metric_keys.PRECISION_AT_K].value_at_cutoffs.values.add()
+      row = output_metrics[metric_keys
+                           .PRECISION_AT_K].value_at_cutoffs.values.add()
       row.cutoff = int(cutoff)
       row.value = precision
 
-      row = output_metrics[
-          metric_keys.RECALL_AT_K].value_at_cutoffs.values.add()
+      row = output_metrics[metric_keys
+                           .RECALL_AT_K].value_at_cutoffs.values.add()
       row.cutoff = int(cutoff)
       row.value = recall

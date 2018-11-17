@@ -19,12 +19,14 @@ TFMA.
 
 
 
+from tensorflow_model_analysis.types_compat import Text
+
 # Prefix for post export metrics keys in metric_ops.
 _NAME_PREFIX = 'post_export_metrics'
 
 
 def _add_metric_prefix(name):
-  return '%s/%s' % (_NAME_PREFIX, name)
+  return '%s/%s' % (_NAME_PREFIX, name)  # pytype: disable=bad-return-type
 
 
 def upper_bound(name):

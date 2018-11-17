@@ -57,7 +57,7 @@ class SliceAccessorTest(tf.test.TestCase):
         },
     }
     accessor = slice_accessor.SliceAccessor(features_dict)
-    self.assertEqual(['apple', 'banana'], accessor.get('sparse'))
+    self.assertEqual([b'apple', b'banana'], accessor.get('sparse'))
     self.assertEqual([1.0, 2.0], accessor.get('dense'))
     self.assertEqual([7.0], accessor.get('dense_single'))
     self.assertEqual([2.0], accessor.get('squeeze_needed'))

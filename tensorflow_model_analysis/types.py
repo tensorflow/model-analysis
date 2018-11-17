@@ -20,45 +20,39 @@ from __future__ import print_function
 
 import copy
 
-import apache_beam as beam
 import numpy as np
 import tensorflow as tf
+from tensorflow_transform.beam import shared
 
-from tensorflow_model_analysis.types_compat import Any, Dict, List, Text, Tuple, Union, NamedTuple
+from tensorflow_model_analysis.types_compat import Any, Callable, Dict, List, Optional, Text, Tuple, Union, NamedTuple
 
 # pylint: disable=invalid-name
+
 TensorType = Union[tf.Tensor, tf.SparseTensor]
-DictOfTensorType = Dict[bytes, TensorType]
+TensorOrOperationType = Union[TensorType, tf.Operation]
+DictOfTensorType = Dict[Text, TensorType]
 TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
 
 # Type of keys we support for prediction, label and features dictionaries.
-KeyType = Union[Union[bytes, Text], Tuple[Union[bytes, Text], Ellipsis]]
-
-# Value of a Scalar fetched during session.run.
-FetchedScalarValue = Union[np.float32, np.float64, np.int32, np.int64, bytes]
+KeyType = Union[Text, Tuple[Text, Ellipsis]]
 
 # Value of a Tensor fetched using session.run.
 FetchedTensorValue = Union[tf.SparseTensorValue, np.ndarray]
 
-# Value fechted using session.run.
-FetchedValue = Union[FetchedScalarValue, FetchedTensorValue]
-
 # Dictionary of Tensor values fetched.
 # The dictionary maps original dictionary keys => ('node' => value).
-DictOfFetchedTensorValues = Dict[KeyType, Dict[bytes, FetchedTensorValue]]
+DictOfFetchedTensorValues = Dict[KeyType, Dict[Text, FetchedTensorValue]]
 
-ListOfFetchedTensorValues = List[FetchedTensorValue]
-
-
-def is_tensor(obj):
-  return isinstance(obj, tf.Tensor) or isinstance(obj, tf.SparseTensor)
+MetricVariablesType = List[Any]
 
 
 # Used in building the model diagnostics table, a MatrializedColumn is a value
-# inside of ExampleAndExtract that will be emitted to file.
+# inside of ExampleAndExtract that will be emitted to file. Note that for
+# strings, the values are raw byte strings rather than unicode strings. This is
+# by design, as features can have arbitrary bytes values.
 MaterializedColumn = NamedTuple(
     'MaterializedColumn',
-    [('name', bytes),
+    [('name', Text),
      ('value', Union[List[bytes], List[int], List[float], bytes, int, float])])
 
 # Used in building model diagnostics table, the ExampleAndExtracts holds an
@@ -66,9 +60,74 @@ MaterializedColumn = NamedTuple(
 # Each Extract has a name, stored as the key of the DictOfExtractedValues.
 DictOfExtractedValues = Dict[Text, Any]
 
+# pylint: enable=invalid-name
 
-Extractor = NamedTuple('Extractor', [('stage_name', bytes),
-                                     ('ptransform', beam.PTransform)])
+
+def is_tensor(obj):
+  return isinstance(obj, tf.Tensor) or isinstance(obj, tf.SparseTensor)
+
+
+class EvalSharedModel(
+    NamedTuple(
+        'EvalSharedModel',
+        [
+            ('model_path', Text),
+            ('add_metrics_callbacks',
+             List[Callable]),  # List[AnyMetricsCallbackType]
+            ('example_weight_key', Text),
+            ('shared_handle', shared.Shared)
+        ])):
+  # pyformat: disable
+  """Shared model used during extraction and evaluation.
+
+  Attributes:
+    model_path: Path to EvalSavedModel (containing the saved_model.pb file).
+    add_metrics_callbacks: Optional list of callbacks for adding additional
+      metrics to the graph. The names of the metrics added by the callbacks
+      should not conflict with existing metrics. See below for more details
+      about what each callback should do. The callbacks are only used during
+      evaluation.
+    example_weight_key: The key of the example weight column. If None, weight
+      will be 1 for each example.
+    shared_handle: Optional handle to a shared.Shared object for sharing the
+      in-memory model within / between stages.
+
+  More details on add_metrics_callbacks:
+
+    Each add_metrics_callback should have the following prototype:
+      def add_metrics_callback(features_dict, predictions_dict, labels_dict):
+
+    Note that features_dict, predictions_dict and labels_dict are not
+    necessarily dictionaries - they might also be Tensors, depending on what the
+    model's eval_input_receiver_fn returns.
+
+    It should create and return a metric_ops dictionary, such that
+    metric_ops['metric_name'] = (value_op, update_op), just as in the Trainer.
+
+    Short example:
+
+    def add_metrics_callback(features_dict, predictions_dict, labels):
+      metrics_ops = {}
+      metric_ops['mean_label'] = tf.metrics.mean(labels)
+      metric_ops['mean_probability'] = tf.metrics.mean(tf.slice(
+        predictions_dict['probabilities'], [0, 1], [2, 1]))
+      return metric_ops
+  """
+  # pyformat: enable
+
+  def __new__(
+      cls,
+      model_path,
+      add_metrics_callbacks = None,
+      example_weight_key = None,
+      shared_handle = None):
+    if not add_metrics_callbacks:
+      add_metrics_callbacks = []
+    if not shared_handle:
+      shared_handle = shared.Shared()
+    return super(EvalSharedModel,
+                 cls).__new__(cls, model_path, add_metrics_callbacks,
+                              example_weight_key, shared_handle)
 
 
 class ExampleAndExtracts(

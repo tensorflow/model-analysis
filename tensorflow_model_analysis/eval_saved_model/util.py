@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import six
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.types_compat import List, Optional, Tuple
@@ -29,6 +30,7 @@ from tensorflow.core.example import example_pb2
 def wrap_tensor_or_dict_of_tensors_in_identity(
     tensor_or_dict_of_tensors
 ):
+  # pyformat: disable
   """Wrap the given Tensor / dict of Tensors in tf.identity.
 
   Args:
@@ -43,15 +45,16 @@ def wrap_tensor_or_dict_of_tensors_in_identity(
     ValueError: We could not wrap the given Tensor / dict of Tensors in
       tf.identity.
   """
+  # pyformat: enable
 
   def _wrap_tensor_in_identity(tensor):
     if isinstance(tensor, tf.Tensor):
       return tf.identity(tensor)
     elif isinstance(tensor, tf.SparseTensor):
       return tf.SparseTensor(
-          indices=tensor.indices,
-          values=tensor.values,
-          dense_shape=tensor.dense_shape)
+          indices=tf.identity(tensor.indices),
+          values=tf.identity(tensor.values),
+          dense_shape=tf.identity(tensor.dense_shape))
     else:
       raise ValueError('could not wrap Tensor %s in identity' % str(tensor))
 
@@ -77,7 +80,7 @@ def make_example(**kwargs):
      constructed. The name of the field will be key, and the value will be
      value. The type will be deduced from the type of the value. Care must be
      taken for numeric types: 0 will be interpreted as an int, and 0.0 as a
-     float.
+       float.
 
   Returns:
     TensorFlow.Example with the corresponding fields set to the corresponding
@@ -95,8 +98,10 @@ def make_example(**kwargs):
       result.features.feature[key].float_list.value[:] = [value]
     elif isinstance(value, int):
       result.features.feature[key].int64_list.value[:] = [value]
-    elif isinstance(value, str):
+    elif isinstance(value, six.binary_type):
       result.features.feature[key].bytes_list.value[:] = [value]
+    elif isinstance(value, six.text_type):
+      result.features.feature[key].bytes_list.value[:] = [value.encode('utf8')]
     elif isinstance(value, list):
       if len(value) == 0:  # pylint: disable=g-explicit-length-test
         raise ValueError('empty lists not allowed, but field %s was an empty '
@@ -105,14 +110,19 @@ def make_example(**kwargs):
         result.features.feature[key].float_list.value[:] = value
       elif isinstance(value[0], int):
         result.features.feature[key].int64_list.value[:] = value
-      elif isinstance(value[0], str):
+      elif isinstance(value[0], six.binary_type):
         result.features.feature[key].bytes_list.value[:] = value
+      elif isinstance(value[0], six.text_type):
+        result.features.feature[key].bytes_list.value[:] = [
+            v.encode('utf8') for v in value
+        ]
       else:
-        raise TypeError('field %s was a list, but the first element had '
-                        'unknown type %s' % key, type(value[0]))
+        raise TypeError(
+            'field %s was a list, but the first element had '
+            'unknown type %s' % key, type(value[0]))
     else:
-      raise TypeError('unrecognised type for field %s: type %s' %
-                      (key, type(value)))
+      raise TypeError(
+          'unrecognised type for field %s: type %s' % (key, type(value)))
   return result
 
 
@@ -257,9 +267,11 @@ def _sparse_concat_rows(
   # We need this because we need to preserve the shape of these arrays,
   # even if their batch dimension is 0.
   empty_indices_with_shape = np.zeros(
-      _copy_shape_zero_rows(sparse_tensor_values[0].indices.shape))
+      _copy_shape_zero_rows(sparse_tensor_values[0].indices.shape),
+      dtype=sparse_tensor_values[0].indices.dtype)
   empty_values_with_shape = np.zeros(
-      _copy_shape_zero_rows(sparse_tensor_values[0].values.shape))
+      _copy_shape_zero_rows(sparse_tensor_values[0].values.shape),
+      dtype=sparse_tensor_values[0].values.dtype)
 
   indices = []
 
@@ -281,15 +293,18 @@ def _sparse_concat_rows(
       raise ValueError(
           'each sparse_tensor_value should only have one row, but %s had '
           'shape %s' % (sparse_tensor, sparse_tensor.dense_shape))
-    dense_shape_max = np.amax(
-        [dense_shape_max, sparse_tensor.dense_shape], axis=0)
+    dense_shape_max = np.amax([dense_shape_max, sparse_tensor.dense_shape],
+                              axis=0)
 
   # The final dense shape is the max of dense shapes of all the sparse tensor
   # values, except the number of rows should be the batch size.
   dense_shape_max[0] = len(sparse_tensor_values)
+
   return tf.SparseTensorValue(
-      indices=np.array(indices) if indices else empty_indices_with_shape,
-      values=np.array(values) if values else empty_values_with_shape,
+      indices=(np.array(indices, dtype=empty_indices_with_shape.dtype)
+               if indices else empty_indices_with_shape),
+      values=(np.array(values, dtype=empty_values_with_shape.dtype)
+              if values else empty_values_with_shape),
       dense_shape=dense_shape_max)
 
 
@@ -315,14 +330,18 @@ def _sparse_slice_rows(
   # We need this because we need to preserve the shape of these arrays,
   # even if their batch dimension is 0.
   empty_indices_with_shape = np.zeros(
-      _copy_shape_zero_rows(sparse_tensor_value.indices.shape))
+      _copy_shape_zero_rows(sparse_tensor_value.indices.shape),
+      dtype=sparse_tensor_value.indices.dtype)
   empty_values_with_shape = np.zeros(
-      _copy_shape_zero_rows(sparse_tensor_value.values.shape))
+      _copy_shape_zero_rows(sparse_tensor_value.values.shape),
+      dtype=sparse_tensor_value.values.dtype)
 
   if sparse_tensor_value.indices.size > 0:
-    sorted_indices, sorted_values = zip(*sorted(
-        zip(map(list, sparse_tensor_value.indices), sparse_tensor_value.values),
-        key=lambda (index, value): index))
+    indices = sparse_tensor_value.indices
+    # Sort indices matrix by rows, treating each row as a coordinate
+    argsort_indices = np.lexsort(np.transpose(indices)[::-1])
+    sorted_indices = indices[argsort_indices]
+    sorted_values = sparse_tensor_value.values[argsort_indices]
   else:
     sorted_indices = []
     sorted_values = []
@@ -349,10 +368,22 @@ def _sparse_slice_rows(
       values.append(sorted_values[offset])
       offset += 1
 
+    # We treat each split SparseTensorValue as having dense_shape equal to the
+    # maximum index in each dimension (+1 for zero-index).
+    if indices:
+      dense_shape[1:] = [max([index[i] for index in indices]) + 1
+                         for i in range(1, len(indices[0]))]
+    # For empty examples, we should have 0 in all other dimensions for the
+    # dense_shape.
+    else:
+      dense_shape[1:] = [0] * (len(original_dense_shape) - 1)
+
     result.append(
         tf.SparseTensorValue(
-            indices=np.array(indices) if indices else empty_indices_with_shape,
-            values=np.array(values) if values else empty_values_with_shape,
+            indices=(np.array(indices, dtype=empty_indices_with_shape.dtype)
+                     if indices else empty_indices_with_shape),
+            values=(np.array(values, dtype=empty_values_with_shape.dtype)
+                    if values else empty_values_with_shape),
             dense_shape=np.array(dense_shape)))
 
   return result
@@ -375,8 +406,12 @@ def split_tensor_value(
   if isinstance(tensor_value, tf.SparseTensorValue):
     return _sparse_slice_rows(tensor_value)
   elif isinstance(tensor_value, np.ndarray):
-    return np.split(
-        tensor_value, indices_or_sections=tensor_value.shape[0], axis=0)
+    if tensor_value.shape[0] != 0:
+      return np.split(
+          tensor_value, indices_or_sections=tensor_value.shape[0], axis=0)
+    else:
+      # The result value's shape must match the shape of `tensor_value`.
+      return np.zeros_like(tensor_value)
   else:
     raise TypeError('tensor_value had unknown type: %s, value was: %s' %
                     (type(tensor_value), tensor_value))
@@ -387,8 +422,8 @@ def merge_tensor_values(tensor_values
   """Merge a list of Tensor values into a single batch of Tensor values.
 
   Args:
-    tensor_values: A list of Tensor values, all fetched from the same node
-      in the same graph. Each Tensor value should be for a single example.
+    tensor_values: A list of Tensor values, all fetched from the same node in
+      the same graph. Each Tensor value should be for a single example.
 
   Returns:
     A single Tensor value that represents a batch of all the Tensor values

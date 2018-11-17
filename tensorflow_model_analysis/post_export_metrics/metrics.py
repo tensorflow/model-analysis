@@ -52,6 +52,7 @@ def calibration_plot(predictions,
                      num_buckets,
                      weights = None
                     ):
+  # pyformat: disable
   """Calibration plot for predictions in [left, right].
 
   A calibration plot contains multiple buckets, based on the prediction.
@@ -89,6 +90,7 @@ def calibration_plot(predictions,
   Returns:
     (value_op, update_op) for the calibration plot.
   """
+  # pyformat: enable
 
   with tf.variable_scope('calibration_plot', [predictions, labels]):
     predictions_f64 = tf.cast(predictions, tf.float64)
@@ -158,6 +160,7 @@ def precision_recall_at_k(classes,
                           cutoffs,
                           weights = None
                          ):
+  # pyformat: disable
   """Precision and recall at `k`.
 
   Args:
@@ -183,6 +186,7 @@ def precision_recall_at_k(classes,
   Returns:
     (value_op, update_op) for the precision/recall at K metric.
   """
+  # pyformat: enable
   num_cutoffs = len(cutoffs)
 
   with tf.variable_scope('precision_recall_at_k', [classes, scores, labels]):
@@ -231,14 +235,14 @@ def precision_recall_at_k(classes,
     """Compute precision/recall intermediate stats for a batch.
 
     Args:
-      classes: Tensor containing class names. Should be a
-        BATCH_SIZE x NUM_CLASSES Tensor.
-      scores: Tensor containing the associated scores. Should be a
-        BATCH_SIZE x NUM_CLASSES Tensor.
+      classes: Tensor containing class names. Should be a BATCH_SIZE x
+        NUM_CLASSES Tensor.
+      scores: Tensor containing the associated scores. Should be a BATCH_SIZE x
+        NUM_CLASSES Tensor.
       labels: Tensor containing the true labels. Should be a rank-2 Tensor where
         the first dimension is BATCH_SIZE. The second dimension can be anything.
-      weights: Weights for the associated exmaples. Should be a
-        BATCH_SIZE Tesnor.
+      weights: Weights for the associated exmaples. Should be a BATCH_SIZE
+        Tesnor.
 
     Returns:
       True positives, predicted positives, actual positives computed for the
@@ -273,7 +277,7 @@ def precision_recall_at_k(classes,
                                                 weights):
 
       label_set = set(label_row)
-      label_set.discard('')  # Remove filler elements.
+      label_set.discard(b'')  # Remove filler elements.
 
       for i, cutoff in enumerate(cutoffs):
         cutoff_to_use = cutoff if cutoff > 0 else num_classes
@@ -284,7 +288,7 @@ def precision_recall_at_k(classes,
 
       actual_positives += len(label_set) * weight
 
-    return true_positives, predicted_positives, actual_positives
+    return true_positives, predicted_positives, actual_positives  # pytype: disable=bad-return-type
 
   # Value op returns
   # [ K | precision at K | recall at K ]

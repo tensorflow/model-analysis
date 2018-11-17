@@ -139,6 +139,7 @@ const ValueType = {
   CONFUSION_MATRIX_AT_THRESHOLDS: 'confusionMatrixAtThresholds',
   FLOAT: 'float',
   MULTI_CLASS_CONFUSION_MATRIX: 'MultiClassConfusionMatrix',
+  RATIO_VALUE: 'ratioValue',
   STRING: 'string',
   VALUE_AT_CUTOFFS: 'valueAtCutoffs',
   UNKNOWN: 'unknown',
@@ -151,6 +152,15 @@ const BoundedValueFieldNames = {
   LOWER_BOUND: 'lowerBound',
   UPPER_BOUND: 'upperBound',
   VALUE: 'value',
+};
+
+/**
+ * @enum {string}
+ */
+const RatioValueFieldNames = {
+  DENOMINATOR: 'denominator',
+  NUMERATOR: 'numerator',
+  RATIO: 'ratio',
 };
 
 /**
@@ -297,6 +307,19 @@ function renderBoundedValue(value) {
         '></tfma-bounded-value>',
     'v': estimatedValue,
   };
+}
+
+/**
+ * @param {!BoundedValue} value
+ * @return {!TableProvider.GvizCell} A gviz cell for a bounded
+ *     value.
+ */
+function renderRatioValue(value) {
+  // Render RatioValue as bounded value if the confidence interval is computed.
+  // Otherwise, render it as float.
+  const ratio = value['ratio'];
+  return isBoundedValue(ratio) ? renderBoundedValue(ratio) :
+                                 renderFloat(ratio['value']);
 }
 
 /**
@@ -473,6 +496,16 @@ function isBoundedValue(value) {
 }
 
 /**
+ * @param {(string|number|?Object)} value
+ * @return {boolean} Returns true if the given value represents a ratio value.
+ */
+function isRatioValue(value) {
+  return !!value && goog.isDef(value[RatioValueFieldNames.NUMERATOR]) &&
+      goog.isDef(value[RatioValueFieldNames.DENOMINATOR]) &&
+      goog.isDef(value[RatioValueFieldNames.RATIO]);
+}
+
+/**
  * @param {string|number|?Object} value
  * @param {function(!Object):boolean} checkCallback
  * @return {boolean} True if value is a non-empty array and all of its items
@@ -550,6 +583,7 @@ registerRenderer(
 registerRenderer(
     ValueType.CONFUSION_MATRIX_AT_THRESHOLDS, renderConfusionMatrixAtThresholds,
     isConfusionMatrixAtThresholds);
+registerRenderer(ValueType.RATIO_VALUE, renderRatioValue, isRatioValue);
 
 /**
  * A map containing all format override renderers.

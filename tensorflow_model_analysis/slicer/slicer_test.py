@@ -28,7 +28,7 @@ from tensorflow_model_analysis.slicer import slicer
 class SlicerTest(tf.test.TestCase):
 
   def setUp(self):
-    self.longMessage = True
+    self.longMessage = True  # pylint: disable=invalid-name
 
   def _makeFeaturesDict(self, features_dict):
     result = {}
@@ -40,9 +40,9 @@ class SlicerTest(tf.test.TestCase):
     spec = slicer.SingleSliceSpec(columns=columns, features=features)
     msg = 'Test case %s: slice on columns %s, features %s' % (name, columns,
                                                               features)
-    six.assertCountEqual(self, expected,
-                         slicer.get_slices_for_features_dict(
-                             features_dict, [spec]), msg)
+    six.assertCountEqual(
+        self, expected,
+        slicer.get_slices_for_features_dict(features_dict, [spec]), msg)
 
   def testSliceEquality(self):
     overall = slicer.SingleSliceSpec()
@@ -58,14 +58,13 @@ class SlicerTest(tf.test.TestCase):
       self.assertEqual(hash(left), hash(right))
 
     check_equality_and_hash_equality(overall, slicer.SingleSliceSpec())
-    check_equality_and_hash_equality(
-        age_column, slicer.SingleSliceSpec(columns=['age']))
+    check_equality_and_hash_equality(age_column,
+                                     slicer.SingleSliceSpec(columns=['age']))
     check_equality_and_hash_equality(
         age_feature, slicer.SingleSliceSpec(features=[('age', 5)]))
-    check_equality_and_hash_equality(age_and_gender,
-                                     slicer.SingleSliceSpec(
-                                         columns=['age'],
-                                         features=[('gender', 'f')]))
+    check_equality_and_hash_equality(
+        age_and_gender,
+        slicer.SingleSliceSpec(columns=['age'], features=[('gender', 'f')]))
 
     self.assertNotEqual(overall, age_column)
     self.assertNotEqual(age_column, age_feature)
@@ -73,13 +72,12 @@ class SlicerTest(tf.test.TestCase):
     self.assertNotEqual(age_feature, age_and_gender)
 
     self.assertItemsEqual([slicer.SingleSliceSpec()], [overall])
-    self.assertItemsEqual(
-        [
-            slicer.SingleSliceSpec(columns=['age']),
-            slicer.SingleSliceSpec(),
-            slicer.SingleSliceSpec(features=[('age', 5)]),
-            slicer.SingleSliceSpec(columns=['age'], features=[('gender', 'f')])
-        ], [age_and_gender, age_feature, overall, age_column])
+    self.assertItemsEqual([
+        slicer.SingleSliceSpec(columns=['age']),
+        slicer.SingleSliceSpec(),
+        slicer.SingleSliceSpec(features=[('age', 5)]),
+        slicer.SingleSliceSpec(columns=['age'], features=[('gender', 'f')])
+    ], [age_and_gender, age_feature, overall, age_column])
 
   def testNoOverlappingColumns(self):
     self.assertRaises(ValueError, slicer.SingleSliceSpec, ['age'], [('age', 5)])
@@ -213,9 +211,9 @@ class SlicerTest(tf.test.TestCase):
 
     slice_spec = [spec_overall, spec_age, spec_age4, spec_age5_gender]
     expected = [(), (('age', 5),), (('age', 5), ('gender', 'f'))]
-    self.assertItemsEqual(expected,
-                          slicer.get_slices_for_features_dict(
-                              features_dict, slice_spec))
+    self.assertItemsEqual(
+        expected, slicer.get_slices_for_features_dict(features_dict,
+                                                      slice_spec))
 
   def testStringifySliceKey(self):
     test_cases = [

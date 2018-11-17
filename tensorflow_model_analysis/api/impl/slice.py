@@ -20,69 +20,26 @@ from __future__ import print_function
 
 
 
-
 import apache_beam as beam
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.eval_saved_model import load
+from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.slicer import slicer
-from tensorflow_model_analysis.types_compat import Generator, List, Tuple
-
+from tensorflow_model_analysis.types_compat import Generator, Text, Tuple
 
 # For use in Beam type annotations, because Beam's support for Python types
 # in Beam type annotations is not complete.
 _BeamSliceKeyType = beam.typehints.Tuple[  # pylint: disable=invalid-name
-    beam.typehints.Tuple[bytes, beam.typehints.Union[bytes, int, float]], Ellipsis]
+    beam.typehints.Tuple[Text, beam.typehints.Union[bytes, int, float]], Ellipsis]
 
 _METRICS_NAMESPACE = 'tensorflow_model_analysis'
 
 
 @beam.typehints.with_input_types(beam.typehints.Any)
-@beam.typehints.with_output_types(beam.typehints.Any)
-class _ExtractSliceKeys(beam.DoFn):
-  """A DoFn that extracts slice keys that apply per example."""
-
-  def __init__(self, slice_spec):
-    self._slice_spec = slice_spec
-
-  def process(self, element
-             ):
-    fpl = element.extracts.get(constants.FEATURES_PREDICTIONS_LABELS_KEY)
-    if not fpl:
-      raise RuntimeError('FPL missing, Please ensure Predict() was called.')
-    if not isinstance(fpl, load.FeaturesPredictionsLabels):
-      raise TypeError(
-          'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: '
-          '%s of type %s' % (str(fpl), type(fpl)))
-    features = fpl.features
-    slices = list(
-        slicer.get_slices_for_features_dict(features, self._slice_spec))
-
-    # Make a a shallow copy, so we don't mutate the original.
-    element_copy = (element.create_copy_with_shallow_copy_of_extracts())
-
-    element_copy.extracts[constants.SLICE_KEYS] = slices
-    # Add a list of stringified slice keys to be materialized to output table.
-    element_copy.extracts[
-        constants.SLICE_KEYS_MATERIALIZED] = types.MaterializedColumn(
-            name=constants.SLICE_KEYS_MATERIALIZED,
-            value=(list(slicer.stringify_slice_key(x) for x in slices)))
-    return [element_copy]
-
-
-@beam.ptransform_fn
-@beam.typehints.with_input_types(beam.typehints.Any)
-@beam.typehints.with_output_types(beam.typehints.Any)
-def ExtractSliceKeys(
-    examples_and_extracts,
-    slice_spec):
-  return examples_and_extracts | beam.ParDo(_ExtractSliceKeys(slice_spec))
-
-
-@beam.typehints.with_input_types(beam.typehints.Any)
 @beam.typehints.with_output_types(
-    beam.typehints.Tuple[_BeamSliceKeyType, beam.typehints.Any])
+    beam.typehints.Tuple[_BeamSliceKeyType, api_types.FeaturesPredictionsLabels]
+)
 class _FanoutSlicesDoFn(beam.DoFn):
   """A DoFn that performs per-slice key fanout prior to computing aggregates."""
 
@@ -92,11 +49,12 @@ class _FanoutSlicesDoFn(beam.DoFn):
     self._post_slice_num_instances = beam.metrics.Metrics.counter(
         _METRICS_NAMESPACE, 'post_slice_num_instances')
 
-  def process(self, element):
+  def process(self, element
+             ):
     fpl = element.extracts.get(constants.FEATURES_PREDICTIONS_LABELS_KEY)
     if not fpl:
       raise RuntimeError('FPL missing, Please ensure Predict() was called.')
-    if not isinstance(fpl, load.FeaturesPredictionsLabels):
+    if not isinstance(fpl, api_types.FeaturesPredictionsLabels):
       raise TypeError(
           'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: '
           '%s of type %s' % (str(fpl), type(fpl)))
@@ -115,6 +73,11 @@ class _FanoutSlicesDoFn(beam.DoFn):
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.typehints.Any)
 @beam.typehints.with_output_types(
-    beam.typehints.Tuple[_BeamSliceKeyType, beam.typehints.Any])  # pylint: disable=invalid-name
-def FanoutSlices(intro_result):
-  return intro_result | beam.ParDo(_FanoutSlicesDoFn())
+    beam.typehints.Tuple[_BeamSliceKeyType, api_types.FeaturesPredictionsLabels]
+)  # pylint: disable=invalid-name
+def FanoutSlices(pcoll):
+  """Fan out examples based on the slice keys."""
+  result = pcoll | 'DoSlicing' >> beam.ParDo(_FanoutSlicesDoFn())
+
+
+  return result

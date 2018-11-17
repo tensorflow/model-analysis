@@ -26,7 +26,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
 
-from tensorflow_model_analysis.types_compat import List, Union
+from tensorflow_model_analysis.types_compat import List, Text, Union
 
 
 class SliceAccessor(object):

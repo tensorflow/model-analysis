@@ -25,11 +25,7 @@ import apache_beam as beam
 import tensorflow as tf
 
 import tensorflow_model_analysis as tfma
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import post_export_metrics
-
 from trainer import taxi
-
-from tensorflow_model_analysis.slicer import slicer
 
 
 def process_tfma(eval_result_dir,
@@ -53,7 +49,6 @@ def process_tfma(eval_result_dir,
       None.
     eval_model_dir: A directory where the eval model is located.
     max_eval_rows: Number of rows to query from BigQuery.
-
     pipeline_args: additional DataflowRunner or DirectRunner args passed to the
       beam pipeline.
 
@@ -66,11 +61,18 @@ def process_tfma(eval_result_dir,
         'one of --input_csv or --big_query_table should be provided.')
 
   slice_spec = [
-      slicer.SingleSliceSpec(),
-      slicer.SingleSliceSpec(columns=['trip_start_hour'])
+      tfma.SingleSliceSpec(),
+      tfma.SingleSliceSpec(columns=['trip_start_hour'])
   ]
 
   schema = taxi.read_schema(schema_file)
+
+  eval_shared_model = tfma.default_eval_shared_model(
+      eval_saved_model_path=eval_model_dir,
+      add_metrics_callbacks=[
+          tfma.post_export_metrics.calibration_plot_and_prediction_histogram(),
+          tfma.post_export_metrics.auc_plots()
+      ])
 
   with beam.Pipeline(argv=pipeline_args) as pipeline:
     if input_csv:
@@ -97,13 +99,10 @@ def process_tfma(eval_result_dir,
     _ = (
         raw_data
         | 'ToSerializedTFExample' >> beam.Map(coder.encode)
-        | 'EvaluateAndWriteResults' >> tfma.EvaluateAndWriteResults(
-            eval_saved_model_path=eval_model_dir,
+        |
+        'ExtractEvaluateAndWriteResults' >> tfma.ExtractEvaluateAndWriteResults(
+            eval_shared_model=eval_shared_model,
             slice_spec=slice_spec,
-            add_metrics_callbacks=[
-                post_export_metrics.calibration_plot_and_prediction_histogram(),
-                post_export_metrics.auc_plots()
-            ],
             output_path=eval_result_dir))
 
 
@@ -130,8 +129,7 @@ def main():
       default=None,
       type=int)
   parser.add_argument(
-      '--schema_file',
-      help='File holding the schema for the input data')
+      '--schema_file', help='File holding the schema for the input data')
 
   known_args, pipeline_args = parser.parse_known_args()
 

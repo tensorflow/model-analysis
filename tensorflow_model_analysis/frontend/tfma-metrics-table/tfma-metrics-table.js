@@ -48,23 +48,21 @@ Polymer({
      */
     data: Object,
 
+    /** @type {number} */
+    pageSize: {type: Number, value: 20},
 
     /**
      * Google-chart options.
      * @type {!Object}
+     * @private
      */
-    options: {
-      type: Object,
-      value: () => {
-        return {
-          'allowHtml': true,
-          'width': '100%',
-          'page': 'enable',
-          'pageSize': 20,
-          'pageButtons': 'auto'
-        };
-      },
-    },
+    options_: {type: Object, computed: 'computeOptions_(pageSize)'},
+
+    /**
+     * An array of extra events to listen to on the chart object.
+     * @private {!Array<string>}
+     */
+    chartEvents_: {type: Array, value: () => ['page', 'sort']},
 
     /**
      * Selection of google-chart table.
@@ -86,11 +84,32 @@ Polymer({
      */
     plotData_: {
       type: Array,
-      computed: 'computePlotData_(data, metrics, metricFormats, ' +
-          'tableReady_)'
-    }
+      computed: 'computePlotData_(data, metrics, metricFormats, tableReady_)',
+    },
+
+    /**
+     * Index of the current page in the table.
+     * @private {number}
+     */
+    currentPage_: {type: Number, value: 0},
+
+    /**
+     * The array containing sorted indices of the rows of data if the user
+     * applied any sorting; null, otherwise.
+     * @private {?Array<number>}
+     */
+    sortedIndexes_: {type: Array, value: null},
+
+    /**
+     * The indices of rows of data in the current table view.
+     * @type {!Array<number>}
+     */
+    visibleRows: {type: Array, notify: true},
   },
 
+  observers: [
+    'updateVisibleRows_(currentPage_, pageSize, sortedIndexes_, plotData_.length)'
+  ],
 
   /**
    * Adds event listeners to elements after the table component is ready.
@@ -223,5 +242,60 @@ Polymer({
                 /** @type {!tfma.MetricValueFormatSpec|undefined} */(
                     formats[column]))));
     return [header].concat(renderedTable);
-  }
+  },
+
+  /**
+   * @param {number} pageSize
+   * @return {!Object} The default config options for the table.
+   * @private
+   */
+  computeOptions_: function(pageSize) {
+    return {
+      'allowHtml': true,
+      'width': '100%',
+      'page': 'enable',
+      'pageSize': pageSize,
+      'pageButtons': 'auto'
+    };
+  },
+
+  /**
+   * Handler for the underlying chart's page event. Updates the index of the
+   * current page.
+   * @param {!Event} pageEvent The event object.
+   * @private
+   */
+  onPage_: function(pageEvent) {
+    this.currentPage_ = pageEvent['detail']['data']['page'];
+  },
+
+  /**
+   * Handler for the underlying chart's sort event. Updates how the indices of
+   * the newly sorted table should map to the original data.
+   * @param {!Event} sortEvent The event object.
+   * @private
+   */
+  onSort_: function(sortEvent) {
+    this.sortedIndexes_ = sortEvent['detail']['data']['sortedIndexes'];
+  },
+
+  /**
+   * Updates the array of visible rows based on current page index and how the
+   * table is sorted.
+   * @param {number} pageIndex The current page index.
+   * @param {number} pageSize The current page size.
+   * @param {?Array<number>} sortedIndices An array containing the indices of
+   *     how the data is sorted. Null if extra sorting is applied.
+   * @param {number} rowCount The total number of rows in the table.
+   * @private
+   */
+  updateVisibleRows_: function(pageIndex, pageSize, sortedIndices, rowCount) {
+    const pageStartIndex = pageIndex * pageSize;
+    const pageEndIndex = Math.min(pageStartIndex + pageSize, rowCount - 1);
+    this.visibleRows = sortedIndices ?
+        sortedIndices.slice(pageStartIndex, pageEndIndex) :
+        Array.from(
+            {'length': pageEndIndex - pageStartIndex},
+            (value, index) => index + pageStartIndex);
+  },
 });

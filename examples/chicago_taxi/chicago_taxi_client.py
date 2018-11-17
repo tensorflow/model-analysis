@@ -48,7 +48,7 @@ def _do_local_inference(host, port, serialized_examples):
                                               shape=[len(serialized_examples)],
                                               dtype=tf.string)
   # The name of the input tensor is 'examples' based on
-  # https://github.com/tensorflow/tensorflow/blob/r1.9/tensorflow/python/estimator/export/export.py#L290
+  # https://github.com/tensorflow/tensorflow/blob/r1.11/tensorflow/python/estimator/export/export.py#L306
   request.inputs['examples'].CopyFrom(tfproto)
   print(stub.Predict(request, _LOCAL_INFERENCE_TIMEOUT_SECONDS))
 

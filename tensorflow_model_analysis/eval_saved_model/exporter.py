@@ -23,8 +23,9 @@ import os
 
 import tensorflow as tf
 
+from tensorflow_model_analysis import util as tfma_util
 from tensorflow_model_analysis.eval_saved_model import export
-from tensorflow_model_analysis.types_compat import Callable, Optional
+from tensorflow_model_analysis.types_compat import Callable, Dict, Optional, Text
 from tensorflow.python.estimator import gc
 from tensorflow.python.framework import errors_impl
 from tensorflow.python.platform import gfile
@@ -39,17 +40,35 @@ class _EvalSavedModelExporter(tf.estimator.Exporter):
   foundation for specialized `Exporter`s.
   """
 
-  def __init__(self, name,
-               eval_input_receiver_fn):
+  @tfma_util.kwargs_only
+  def __init__(
+      self,
+      name,
+      eval_input_receiver_fn,
+      serving_input_receiver_fn = None,
+      assets_extra = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
       name: Unique name of this `Exporter` that is going to be used in the
         export path.
-      eval_input_receiver_fn: Eval input receiver function..
+      eval_input_receiver_fn: Eval input receiver function.
+      serving_input_receiver_fn: (Optional) Serving input receiver function. We
+        recommend that you provide this as well, so that the exported SavedModel
+        also contains the serving graph. If not privded, the serving graph will
+        not be included in the exported SavedModel.
+      assets_extra: An optional dict specifying how to populate the assets.extra
+        directory within the exported SavedModel.  Each key should give the
+        destination path (including the filename) relative to the assets.extra
+        directory.  The corresponding value gives the full path of the source
+        file to be copied.  For example, the simple case of copying a single
+        file without renaming it is specified as
+        `{'my_asset_file.txt': '/path/to/my_asset_file.txt'}`.
     """
     self._name = name
     self._eval_input_receiver_fn = eval_input_receiver_fn
+    self._serving_input_receiver_fn = serving_input_receiver_fn
+    self._assets_extra = assets_extra
 
   @property
   def name(self):
@@ -64,7 +83,10 @@ class _EvalSavedModelExporter(tf.estimator.Exporter):
         estimator=estimator,
         export_dir_base=export_path,
         eval_input_receiver_fn=self._eval_input_receiver_fn,
-        checkpoint_path=checkpoint_path)
+        serving_input_receiver_fn=self._serving_input_receiver_fn,
+        assets_extra=self._assets_extra,
+        checkpoint_path=checkpoint_path,
+    )
 
     return export_result
 
@@ -75,17 +97,36 @@ class FinalExporter(tf.estimator.Exporter):
   This class performs a single export in the end of training.
   """
 
-  def __init__(self, name,
-               eval_input_receiver_fn):
+  @tfma_util.kwargs_only
+  def __init__(
+      self,
+      name,
+      eval_input_receiver_fn,
+      serving_input_receiver_fn = None,
+      assets_extra = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
       name: Unique name of this `Exporter` that is going to be used in the
         export path.
       eval_input_receiver_fn: Eval input receiver function.
+      serving_input_receiver_fn: (Optional) Serving input receiver function. We
+        recommend that you provide this as well, so that the exported SavedModel
+        also contains the serving graph. If not privded, the serving graph will
+        not be included in the exported SavedModel.
+      assets_extra: An optional dict specifying how to populate the assets.extra
+        directory within the exported SavedModel.  Each key should give the
+        destination path (including the filename) relative to the assets.extra
+        directory.  The corresponding value gives the full path of the source
+        file to be copied.  For example, the simple case of copying a single
+        file without renaming it is specified as
+        `{'my_asset_file.txt': '/path/to/my_asset_file.txt'}`.
     """
     self._eval_saved_model_exporter = _EvalSavedModelExporter(
-        name, eval_input_receiver_fn)
+        name=name,
+        eval_input_receiver_fn=eval_input_receiver_fn,
+        serving_input_receiver_fn=serving_input_receiver_fn,
+        assets_extra=assets_extra)
 
   @property
   def name(self):
@@ -110,16 +151,23 @@ class LatestExporter(tf.estimator.Exporter):
   In addition to exporting, this class also garbage collects stale exports.
   """
 
-  def __init__(self,
-               name,
-               eval_input_receiver_fn,
-               exports_to_keep = 5):
+  @tfma_util.kwargs_only
+  def __init__(
+      self,
+      name,
+      eval_input_receiver_fn,
+      serving_input_receiver_fn = None,
+      exports_to_keep = 5):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
       name: Unique name of this `Exporter` that is going to be used in the
         export path.
       eval_input_receiver_fn: Eval input receiver function.
+      serving_input_receiver_fn: (Optional) Serving input receiver function. We
+        recommend that you provide this as well, so that the exported SavedModel
+        also contains the serving graph. If not privded, the serving graph will
+        not be included in the exported SavedModel.
       exports_to_keep: Number of exports to keep.  Older exports will be
         garbage-collected.  Defaults to 5.  Set to `None` to disable garbage
         collection.
@@ -128,7 +176,9 @@ class LatestExporter(tf.estimator.Exporter):
       ValueError: if exports_to_keep is set to a non-positive value.
     """
     self._eval_saved_model_exporter = _EvalSavedModelExporter(
-        name, eval_input_receiver_fn)
+        name=name,
+        eval_input_receiver_fn=eval_input_receiver_fn,
+        serving_input_receiver_fn=serving_input_receiver_fn)
     self._exports_to_keep = exports_to_keep
     if exports_to_keep is not None and exports_to_keep <= 0:
       raise ValueError(

@@ -21,10 +21,13 @@ package tensorflow_model_analysis;
 
 // The value will be converted into an error message if we do not know its type.
 message UnknownType {
-  string value = 2;
   string error = 1;
+  bytes value = 2;
 }
 
+// Represents a real value which could be a pointwise estimate, optionally with
+// approximate bounds of some sort. For instance, for AUC, these bounds could be
+// the upper and lower Riemann sum of the integral.
 message BoundedValue {
   // The lower bound of the range.
   google.protobuf.DoubleValue lower_bound = 1;
@@ -34,6 +37,14 @@ message BoundedValue {
   // else it's an approximate value. For the approximate value, it should be
   // within the range [lower_bound, uppper_bound].
   google.protobuf.DoubleValue value = 3;
+
+  enum Methodology {
+    UNKNOWN = 0;
+    // Used to calculate AUC, the upper and lower Riemann sum for an integral.
+    RIEMANN_SUM = 1;
+  }
+  // Optionally describe the methodology that was used to calculate the bounds.
+  Methodology methodology = 4;
 }
 
 // Value at cutoffs, e.g. for precision@K, recall@K
@@ -59,6 +70,38 @@ message ConfusionMatrixAtThresholds {
   repeated ConfusionMatrixAtThreshold matrices = 1;
 }
 
+// Represents a computed result for a ratio value, optionally with an associated
+// confidence interval. Computing confidence intervals of ratios requires
+// keeping track of the aggregated numerator and denominator separately.
+message RatioValue {
+  google.protobuf.DoubleValue numerator = 1;
+  google.protobuf.DoubleValue denominator = 2;
+  BoundedValue ratio = 3;
+}
+
+// For metrics which return an array of values.
+message ArrayValue {
+  enum DataType {
+    UNKNOWN = 0;
+    BYTES = 1;
+    INT32 = 2;
+    INT64 = 3;
+    FLOAT32 = 4;
+    FLOAT64 = 5;
+  }
+
+  DataType data_type = 1;
+
+  repeated int32 shape = 2;
+
+  // Exactly one of these fields, corresponding to the data type, should be set.
+  repeated bytes bytes_values = 3;
+  repeated int32 int32_values = 4;
+  repeated int64 int64_values = 5;
+  repeated float float32_values = 6;
+  repeated double float64_values = 7;
+}
+
 // It stores metrics values in different types, so that the frontend will know
 // how to visualize the values based on the types.
 message MetricValue {
@@ -68,6 +111,9 @@ message MetricValue {
     ValueAtCutoffs value_at_cutoffs = 4;
     ConfusionMatrixAtThresholds confusion_matrix_at_thresholds = 5;
     UnknownType unknown_type = 3;
+    bytes bytes_value = 6;
+    ArrayValue array_value = 7;
+    RatioValue ratio_value = 8;
   }
 }
 

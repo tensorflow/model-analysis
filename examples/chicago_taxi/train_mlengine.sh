@@ -64,7 +64,7 @@ EVAL_STEPS=1000
 gcloud ml-engine jobs submit training $JOB_ID \
                                     --stream-logs \
                                     --job-dir $MODEL_DIR \
-                                    --runtime-version 1.9 \
+                                    --runtime-version 1.11 \
                                     --module-name trainer.task \
                                     --package-path trainer/ \
                                     --region us-central1 \
