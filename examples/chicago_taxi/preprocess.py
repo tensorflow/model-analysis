@@ -27,9 +27,8 @@ from trainer import taxi
 
 import tensorflow_transform as transform
 
-from tensorflow_transform.beam import impl as beam_impl
-from tensorflow_transform.beam.tft_beam_io import transform_fn_io
 from tensorflow_transform.coders import example_proto_coder
+import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
 
@@ -126,7 +125,7 @@ def transform_data(input_handle,
   raw_data_metadata = dataset_metadata.DatasetMetadata(raw_schema)
 
   with beam.Pipeline(argv=pipeline_args) as pipeline:
-    with beam_impl.Context(temp_dir=working_dir):
+    with tft_beam.Context(temp_dir=working_dir):
       if input_handle.lower().endswith('csv'):
         csv_coder = taxi.make_csv_coder(schema)
         raw_data = (
@@ -146,14 +145,14 @@ def transform_data(input_handle,
       if transform_dir is None:
         transform_fn = (
             (raw_data, raw_data_metadata)
-            | ('Analyze' >> beam_impl.AnalyzeDataset(preprocessing_fn)))
+            | ('Analyze' >> tft_beam.AnalyzeDataset(preprocessing_fn)))
 
         _ = (
             transform_fn
             | ('WriteTransformFn' >>
-               transform_fn_io.WriteTransformFn(working_dir)))
+               tft_beam.WriteTransformFn(working_dir)))
       else:
-        transform_fn = pipeline | transform_fn_io.ReadTransformFn(transform_dir)
+        transform_fn = pipeline | tft_beam.ReadTransformFn(transform_dir)
 
       # Shuffling the data before materialization will improve Training
       # effectiveness downstream.
@@ -161,7 +160,7 @@ def transform_data(input_handle,
 
       (transformed_data, transformed_metadata) = (
           ((shuffled_data, raw_data_metadata), transform_fn)
-          | 'Transform' >> beam_impl.TransformDataset())
+          | 'Transform' >> tft_beam.TransformDataset())
 
       coder = example_proto_coder.ExampleProtoCoder(transformed_metadata.schema)
       _ = (
