@@ -26,9 +26,9 @@ import tensorflow as tf
 from trainer import taxi
 
 import tensorflow_transform as transform
+import tensorflow_transform.beam as tft_beam
 
 from tensorflow_transform.coders import example_proto_coder
-import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
 
