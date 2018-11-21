@@ -64,11 +64,13 @@ from __future__ import print_function
 import apache_beam as beam
 from apache_beam.testing import util as beam_util
 
+from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api.impl import evaluate
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.slicer import slicer
-from tensorflow_model_analysis.types_compat import Any, List, Dict, Union
+from tensorflow_model_analysis.types_compat import Any, List, Dict, Text, Union
 
 
 class BoundedValue(object):
@@ -203,8 +205,8 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     eval_saved_model = load.EvalSavedModel(eval_saved_model_path)
 
     for example in serialized_examples:
-      features_predictions_labels = eval_saved_model.predict(example)
-      eval_saved_model.perform_metrics_update(features_predictions_labels)
+      for fpl in eval_saved_model.predict(example):
+        eval_saved_model.perform_metrics_update(fpl)
     return eval_saved_model.get_metric_values()
 
   def assertMetricsComputedWithBeamAre(self, eval_saved_model_path,
@@ -245,12 +247,18 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
+    eval_shared_model = types.EvalSharedModel(model_path=eval_saved_model_path)
+    extractors = model_eval_lib.default_extractors(
+        eval_shared_model=eval_shared_model)
+
     with beam.Pipeline() as pipeline:
       metrics, _ = (
           pipeline
           | 'CreateExamples' >> beam.Create(serialized_examples)
-          | 'Evaluate' >>
-          evaluate.Evaluate(eval_saved_model_path=eval_saved_model_path))
+          | 'ToExampleAndExtracts' >> evaluate.ToExampleAndExtracts()
+          | 'Extract' >> evaluate.Extract(extractors=extractors)
+          |
+          'Evaluate' >> evaluate.Evaluate(eval_shared_model=eval_shared_model))
 
       beam_util.assert_that(metrics, check_metrics)
 
@@ -295,7 +303,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
           slice_spec=[tfma.SingleSliceSpec(),
                       tfma.SingleSliceSpec(columns=['age'])],
           add_metrics_callbacks=[
-            add_metrics, tfma.post_export_metrics.post_export_metrics.auc()],
+            add_metrics, tfma.post_export_metrics.auc()],
           expected_slice_metrics=expected_slice_metrics)
 
     Args:
@@ -315,7 +323,8 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         slices = {}
         for slice_key, value in got:
           slices[slice_key] = value
-        self.assertItemsEqual(slices.keys(), expected_slice_metrics.keys())
+        self.assertItemsEqual(
+            list(slices.keys()), list(expected_slice_metrics.keys()))
         for slice_key, expected_metrics in expected_slice_metrics.items():
           self.assertDictElementsWithinBounds(
               got_values_dict=slices[slice_key],
@@ -323,11 +332,16 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
+    eval_shared_model = types.EvalSharedModel(
+        model_path=eval_saved_model_path,
+        add_metrics_callbacks=add_metrics_callbacks)
+    extractors = model_eval_lib.default_extractors(
+        eval_shared_model=eval_shared_model, slice_spec=slice_spec)
+
     metrics, _ = (
         examples_pcollection
-        | 'Evaluate' >> evaluate.Evaluate(
-            eval_saved_model_path=eval_saved_model_path,
-            slice_spec=slice_spec,
-            add_metrics_callbacks=add_metrics_callbacks))
+        | 'ToExampleAndExtracts' >> evaluate.ToExampleAndExtracts()
+        | 'Extract' >> evaluate.Extract(extractors=extractors)
+        | 'Evaluate' >> evaluate.Evaluate(eval_shared_model=eval_shared_model))
 
     beam_util.assert_that(metrics, check_metrics)

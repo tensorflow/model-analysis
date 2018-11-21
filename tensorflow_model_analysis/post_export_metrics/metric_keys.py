@@ -19,12 +19,14 @@ TFMA.
 
 
 
+from tensorflow_model_analysis.types_compat import Text
+
 # Prefix for post export metrics keys in metric_ops.
 _NAME_PREFIX = 'post_export_metrics'
 
 
 def _add_metric_prefix(name):
-  return '%s/%s' % (_NAME_PREFIX, name)
+  return '%s/%s' % (_NAME_PREFIX, name)  # pytype: disable=bad-return-type
 
 
 def upper_bound(name):
@@ -45,6 +47,12 @@ CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS = _add_metric_prefix(
     'confusion_matrix_at_thresholds/thresholds')
 CONFUSION_MATRIX_AT_THRESHOLDS = _add_metric_prefix(
     'confusion_matrix_at_thresholds')  # Output-only
+FAIRNESS_CONFUSION_MATRIX_MATRICES = _add_metric_prefix(
+    'fairness/confusion_matrix_at_thresholds/matrices')
+FAIRNESS_CONFUSION_MATRIX_THESHOLDS = _add_metric_prefix(
+    'fairness/confusion_matrix_at_thresholds/thresholds')
+FAIRNESS_CONFUSION_MATRIX = _add_metric_prefix(
+    'fairness/confusion_matrix_at_thresholds')  # Output-only
 AUC_PLOTS_MATRICES = _add_metric_prefix('auc_plots/matrices')
 AUC_PLOTS_THRESHOLDS = _add_metric_prefix('auc_plots/thresholds')
 AUC = _add_metric_prefix('auc')

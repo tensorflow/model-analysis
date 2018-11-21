@@ -27,7 +27,7 @@ from tensorflow.core.protobuf import meta_graph_pb2
 class GraphRefTest(tf.test.TestCase):
 
   def setUp(self):
-    self.longMessage = True
+    self.longMessage = True  # pylint: disable=invalid-name
 
   def testExtractSignatureOutputsWithPrefix(self):
     signature_def = meta_graph_pb2.SignatureDef()
@@ -82,22 +82,22 @@ class GraphRefTest(tf.test.TestCase):
             encoding.encode_key, ['alpha', 'bravo', 'charlie'])
     meta_graph_def.collection_def[
         'my_collection/fruits'].bytes_list.value[:] = [
-            'apple', 'banana', 'cherry'
+            b'apple', b'banana', b'cherry'
         ]
     expected = {
         'alpha': {
-            'fruits': 'apple'
+            'fruits': b'apple'
         },
         'bravo': {
-            'fruits': 'banana'
+            'fruits': b'banana'
         },
         'charlie': {
-            'fruits': 'cherry'
+            'fruits': b'cherry'
         }
     }
-    self.assertDictEqual(expected,
-                         graph_ref.get_node_map(meta_graph_def, 'my_collection',
-                                                ['fruits']))
+    self.assertDictEqual(
+        expected,
+        graph_ref.get_node_map(meta_graph_def, 'my_collection', ['fruits']))
 
   def testGetNodeMapEmpty(self):
     meta_graph_def = meta_graph_pb2.MetaGraphDef()
@@ -112,29 +112,30 @@ class GraphRefTest(tf.test.TestCase):
             encoding.encode_key, ['alpha', 'bravo', 'charlie'])
     meta_graph_def.collection_def[
         'my_collection/fruits'].bytes_list.value[:] = [
-            'apple', 'banana', 'cherry'
+            b'apple', b'banana', b'cherry'
         ]
     meta_graph_def.collection_def[
         'my_collection/animals'].bytes_list.value[:] = [
-            'aardvark', 'badger', 'camel'
+            b'aardvark', b'badger', b'camel'
         ]
     expected = {
         'alpha': {
-            'fruits': 'apple',
-            'animals': 'aardvark'
+            'fruits': b'apple',
+            'animals': b'aardvark'
         },
         'bravo': {
-            'fruits': 'banana',
-            'animals': 'badger'
+            'fruits': b'banana',
+            'animals': b'badger'
         },
         'charlie': {
-            'fruits': 'cherry',
-            'animals': 'camel'
+            'fruits': b'cherry',
+            'animals': b'camel'
         }
     }
-    self.assertDictEqual(expected,
-                         graph_ref.get_node_map(meta_graph_def, 'my_collection',
-                                                ['fruits', 'animals']))
+    self.assertDictEqual(
+        expected,
+        graph_ref.get_node_map(meta_graph_def, 'my_collection',
+                               ['fruits', 'animals']))
 
   def testGetNodeMapInGraph(self):
     g = tf.Graph()
@@ -170,10 +171,10 @@ class GraphRefTest(tf.test.TestCase):
             'animals': camel,
         }
     }
-    self.assertDictEqual(expected,
-                         graph_ref.get_node_map_in_graph(
-                             meta_graph_def, 'my_collection',
-                             ['fruits', 'animals'], g))
+    self.assertDictEqual(
+        expected,
+        graph_ref.get_node_map_in_graph(meta_graph_def, 'my_collection',
+                                        ['fruits', 'animals'], g))
 
   def testGetNodeInGraph(self):
     g = tf.Graph()
@@ -184,9 +185,8 @@ class GraphRefTest(tf.test.TestCase):
     meta_graph_def.collection_def['fruit_node'].any_list.value.extend(
         [encoding.encode_tensor_node(apple)])
 
-    self.assertEqual(apple,
-                     graph_ref.get_node_in_graph(meta_graph_def, 'fruit_node',
-                                                 g))
+    self.assertEqual(
+        apple, graph_ref.get_node_in_graph(meta_graph_def, 'fruit_node', g))
 
 
 if __name__ == '__main__':

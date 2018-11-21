@@ -56,8 +56,8 @@ def simple_fixed_prediction_classifier_extra_fields(export_path,
           mode=mode,
           predictions=predictions,
           export_outputs={
-              tf.saved_model.signature_constants.
-              DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+              tf.saved_model.signature_constants
+              .DEFAULT_SERVING_SIGNATURE_DEF_KEY:
                   tf.estimator.export.ClassificationOutput(
                       scores=scores, classes=classes),
           })

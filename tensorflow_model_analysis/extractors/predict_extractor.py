@@ -24,18 +24,40 @@ import apache_beam as beam
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.eval_saved_model import dofn
-from tensorflow_transform.beam import shared
-from tensorflow_model_analysis.types_compat import Any, Callable, Dict, Generator, List, Optional, Tuple
-
-MetricVariablesType = List[Any]  # pylint: disable=invalid-name
-
-# For use in Beam type annotations, because Beam's support for Python types
-# in Beam type annotations is not complete.
-_BeamSliceKeyType = beam.typehints.Tuple[  # pylint: disable=invalid-name
-    beam.typehints.Tuple[bytes, beam.typehints.Union[bytes, int, float]], Ellipsis]
+from tensorflow_model_analysis.extractors import feature_extractor
+from tensorflow_model_analysis.types_compat import Generator, List, Optional
 
 _METRICS_NAMESPACE = 'tensorflow_model_analysis'
+
+
+def PredictExtractor(eval_shared_model,
+                     desired_batch_size = None,
+                     materialize = True):
+  """Creates an Extractor for TFMAPredict.
+
+  The extractor's PTransform loads and runs the eval_saved_model against every
+  example yielding a copy of the ExampleAndExtracts input with an additional
+  'fpl' extract of type FeaturesPredictionsLabels.
+
+  Args:
+    eval_shared_model: Shared model parameters for EvalSavedModel.
+    desired_batch_size: Optional batch size for batching in Aggregate.
+    materialize: True to call the FeatureExtractor to add MaterializedColumn
+      entries for the features, predictions, and labels.
+
+  Returns:
+    Extractor for extracting features, predictions, and labels during predict.
+  """
+  # pylint: disable=no-value-for-parameter
+  return api_types.Extractor(
+      stage_name='Predict',
+      ptransform=TFMAPredict(
+          eval_shared_model=eval_shared_model,
+          desired_batch_size=desired_batch_size,
+          materialize=materialize))
+  # pylint: enable=no-value-for-parameter
 
 
 @beam.typehints.with_input_types(beam.typehints.List[types.ExampleAndExtracts])
@@ -43,11 +65,8 @@ _METRICS_NAMESPACE = 'tensorflow_model_analysis'
 class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
   """A DoFn that loads the model and predicts."""
 
-  def __init__(self, eval_saved_model_path,
-               add_metrics_callbacks,
-               shared_handle):
-    super(_TFMAPredictionDoFn, self).__init__(
-        eval_saved_model_path, add_metrics_callbacks, shared_handle)
+  def __init__(self, eval_shared_model):
+    super(_TFMAPredictionDoFn, self).__init__(eval_shared_model)
     self._predict_batch_size = beam.metrics.Metrics.distribution(
         _METRICS_NAMESPACE, 'predict_batch_size')
     self._num_instances = beam.metrics.Metrics.counter(_METRICS_NAMESPACE,
@@ -61,12 +80,10 @@ class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
     serialized_examples = [x.example for x in element]
 
     # Compute FeaturesPredictionsLabels for each serialized_example
-    for example_and_extracts, fpl in zip(
-        element, self._eval_saved_model.predict_list(serialized_examples)):
-
-      # Make a a shallow copy, so we don't mutate the original.
+    for fpl in self._eval_saved_model.predict_list(serialized_examples):
       element_copy = (
-          example_and_extracts.create_copy_with_shallow_copy_of_extracts())
+          element[fpl.example_ref].create_copy_with_shallow_copy_of_extracts())
+
       element_copy.extracts[constants.FEATURES_PREDICTIONS_LABELS_KEY] = fpl
       yield element_copy
 
@@ -75,21 +92,19 @@ class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
 @beam.typehints.with_input_types(beam.typehints.Any)
 @beam.typehints.with_output_types(beam.typehints.Any)
 def TFMAPredict(  # pylint: disable=invalid-name
-    examples,
-    eval_saved_model_path,
-    add_metrics_callbacks,
-    shared_handle,
-    desired_batch_size = None):
+    examples_and_extracts,
+    eval_shared_model,
+    desired_batch_size = None,
+    materialize = True):
   """A PTransform that adds predictions to ExamplesAndExtracts.
 
   Args:
-    examples: PCollection of serialized examples to be fed to the model
-    eval_saved_model_path: Path to the EvalSavedModle
-    add_metrics_callbacks: Optional list of add_metrics_callbacks. See docstring
-      for Evaluate in api/impl/evaluate.py for more details.
-    shared_handle: Handle to a shared.Shared object for sharing the in-memory
-      model within / between stages.
+    examples_and_extracts: PCollection of ExampleAndExtracts containing a
+      serialized example to be fed to the model.
+    eval_shared_model: Shared model parameters for EvalSavedModel.
     desired_batch_size: Optional. Desired batch size for prediction.
+    materialize: True to call the FeatureExtractor to add MaterializedColumn
+      entries for the features, predictions, and labels.
 
   Returns:
     PCollection of ExamplesAndExtracts, where the extracts contains the
@@ -105,10 +120,14 @@ def TFMAPredict(  # pylint: disable=invalid-name
   # stages (i.e. we use same shared handle for this and subsequent stages),
   # then if we don't add the metrics callbacks here, they won't be present
   # in the model in the later stages if we reuse the model from this stage.
-  return (examples
-          | 'Batch' >> beam.BatchElements(**batch_args)
-          | 'Predict' >> beam.ParDo(
-              _TFMAPredictionDoFn(
-                  eval_saved_model_path=eval_saved_model_path,
-                  add_metrics_callbacks=add_metrics_callbacks,
-                  shared_handle=shared_handle)))
+  examples_and_extracts = (
+      examples_and_extracts
+      | 'Batch' >> beam.BatchElements(**batch_args)
+      | 'Predict' >> beam.ParDo(
+          _TFMAPredictionDoFn(eval_shared_model=eval_shared_model)))
+
+  if materialize:
+    return (examples_and_extracts
+            | 'ExtractFeatures' >> feature_extractor.ExtractFeatures())
+
+  return examples_and_extracts

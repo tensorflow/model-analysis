@@ -21,18 +21,16 @@ import apache_beam as beam
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import util
-from tensorflow_transform.beam import shared
 
-from tensorflow_model_analysis.types_compat import Callable, Dict, List, Optional, Tuple
+from tensorflow_model_analysis.types_compat import List, Optional, Text
 
 _METRICS_NAMESPACE = 'tensorflow_model_analysis'
-
 
 
 def make_construct_fn(  # pylint: disable=invalid-name
     eval_saved_model_path,
     add_metrics_callbacks,
-    model_load_seconds_distribution):
+    model_load_seconds):
   """Returns construct function for Shared for constructing EvalSavedModel."""
 
   def construct():  # pylint: disable=invalid-name
@@ -59,9 +57,9 @@ def make_construct_fn(  # pylint: disable=invalid-name
                              'named %s' % overlap)
           metric_ops.update(new_metric_ops)
         result.register_additional_metric_ops(metric_ops)
+    result.graph_finalize()
     end_time = datetime.datetime.now()
-    model_load_seconds_distribution.update(
-        int((end_time - start_time).total_seconds()))
+    model_load_seconds.update(int((end_time - start_time).total_seconds()))
     return result
 
   return construct
@@ -70,21 +68,18 @@ def make_construct_fn(  # pylint: disable=invalid-name
 class EvalSavedModelDoFn(beam.DoFn):
   """Abstract class for DoFns that load the EvalSavedModel and use it."""
 
-  def __init__(self, eval_saved_model_path,
-               add_metrics_callbacks,
-               shared_handle):
-    self._eval_saved_model_path = eval_saved_model_path
-    self._add_metrics_callbacks = add_metrics_callbacks
-    self._shared_handle = shared_handle
+  def __init__(self, eval_shared_model):
+    self._eval_shared_model = eval_shared_model
     self._eval_saved_model = None  # type: load.EvalSavedModel
     self._model_load_seconds = beam.metrics.Metrics.distribution(
         _METRICS_NAMESPACE, 'model_load_seconds')
 
   def start_bundle(self):
-    self._eval_saved_model = self._shared_handle.acquire(
-        make_construct_fn(self._eval_saved_model_path,
-                          self._add_metrics_callbacks,
-                          self._model_load_seconds))
+    self._eval_saved_model = (
+        self._eval_shared_model.shared_handle.acquire(
+            make_construct_fn(self._eval_shared_model.model_path,
+                              self._eval_shared_model.add_metrics_callbacks,
+                              self._model_load_seconds)))
 
   def process(self, elem):
     raise NotImplementedError('not implemented')

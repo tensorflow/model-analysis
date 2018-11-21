@@ -103,9 +103,11 @@ class SeriesData {
     return this.evalRuns_.map(evalRun => {
       const values = evalRun.data.getAllMetricValues('');
       const config = evalRun.config;
-      return [
-        helper.getModelDisplayText(config), helper.getDataDisplayText(config)
-      ].concat(values);
+      const modelText = helper.getModelDisplayText(config);
+      const dataText = helper.getDataDisplayText(config);
+      const column1 = this.modelCentric_ ? modelText : dataText;
+      const column2 = this.modelCentric_ ? dataText : modelText;
+      return [column1, column2].concat(values);
     });
   }
 
@@ -152,8 +154,11 @@ class SeriesData {
 
   /** @override */
   getHeader(requiredColumns) {
-    return [this.helper_.getModelHeader(), this.helper_.getDataHeader()].concat(
-        requiredColumns);
+    const model = this.helper_.getModelHeader();
+    const data = this.helper_.getDataHeader();
+    const column1 = this.modelCentric_ ? model : data;
+    const column2 = this.modelCentric_ ? data : model;
+    return [column1, column2].concat(requiredColumns);
   }
 
   /** @override */

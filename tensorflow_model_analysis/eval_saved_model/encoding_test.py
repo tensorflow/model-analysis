@@ -24,16 +24,16 @@ from tensorflow_model_analysis.eval_saved_model import encoding
 class EncodingTest(tf.test.TestCase):
 
   def setUp(self):
-    self.longMessage = True
+    self.longMessage = True  # pylint: disable=invalid-name
 
   def testEncodeDecodeKey(self):
     test_cases = [
-        'a', 'simple', 'dollar$', '$dollar', '$do$ll$ar$', ('a'),
-        ('a', 'simple'), ('dollar$', 'simple'), ('do$llar', 'sim$ple', 'str$'),
+        'a', 'simple', 'dollar$', '$dollar', '$do$ll$ar$', ('a'), ('a',
+                                                                   'simple'),
+        ('dollar$', 'simple'), ('do$llar', 'sim$ple', 'str$'),
         ('many', 'many', 'elements', 'in', 'the', 'tuple'), u'unicode\u1234',
-        u'uni\u1234code\u2345', ('mixed', u'uni\u1234',
-                                 u'\u2345\u1234'), (u'\u1234\u2345',
-                                                    u'\u3456\u2345')
+        u'uni\u1234code\u2345', ('mixed', u'uni\u1234', u'\u2345\u1234'),
+        (u'\u1234\u2345', u'\u3456\u2345')
     ]
     for key in test_cases:
       self.assertEqual(key, encoding.decode_key(encoding.encode_key(key)))

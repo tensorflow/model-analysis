@@ -25,18 +25,23 @@ import tensorflow as tf
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.eval_saved_model import encoding
-from tensorflow_model_analysis.eval_saved_model import load
-from tensorflow_model_analysis.types_compat import Any, Dict
-
+from tensorflow_model_analysis.types_compat import Any, Dict, Text
 
 # For now, we store only the first N sparse keys in our diagnostics table.
 _MAX_SPARSE_FEATURES_PER_COLUMN = 10
 
 
-def _AugmentExtracts(
-    fpl_dict,
-    example_and_extracts):
+def FeatureExtractor():
+  # pylint: disable=no-value-for-parameter
+  return api_types.Extractor(
+      stage_name='ExtractFeatures', ptransform=ExtractFeatures())
+  # pylint: enable=no-value-for-parameter
+
+
+def _AugmentExtracts(fpl_dict,
+                     example_and_extracts):
   """Augments the ExampleAndExtracts with FeaturesPredictionsLabels.
 
   Args:
@@ -52,8 +57,7 @@ def _AugmentExtracts(
 
     if isinstance(val, tf.SparseTensorValue):
       example_and_extracts.extracts[name] = types.MaterializedColumn(
-          name=name,
-          value=val.values[0:_MAX_SPARSE_FEATURES_PER_COLUMN])
+          name=name, value=val.values[0:_MAX_SPARSE_FEATURES_PER_COLUMN])
 
     elif isinstance(val, np.ndarray):
       val = val[0]  # only support first dim for now.
@@ -92,7 +96,7 @@ def _MaterializeFeatures(
   if not fpl:
     raise RuntimeError('FPL missing, Please ensure _Predict() was called.')
 
-  if not isinstance(fpl, load.FeaturesPredictionsLabels):
+  if not isinstance(fpl, api_types.FeaturesPredictionsLabels):
     raise TypeError(
         'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: %s '
         'of type %s' % (str(fpl), type(fpl)))
@@ -119,7 +123,7 @@ def ExtractFeatures(
 
   Args:
     examples_and_extracts: PCollection containing the ExampleAndExtracts that
-                           will have MaterializedColumn added to its extracts.
+      will have MaterializedColumn added to its extracts.
 
   Returns:
     PCollection of ExampleAndExtracts

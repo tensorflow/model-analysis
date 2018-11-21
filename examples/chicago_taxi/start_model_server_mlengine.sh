@@ -31,7 +31,9 @@ gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/
 MODEL_BINARIES=$(gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/ \
   | sort | grep '\/[0-9]*\/$' | tail -n1)
 
+TF_VERSION=1.10
+
 gcloud ml-engine versions create v1 \
   --model chicago_taxi \
   --origin $MODEL_BINARIES \
-  --runtime-version 1.6
+  --runtime-version $TF_VERSION

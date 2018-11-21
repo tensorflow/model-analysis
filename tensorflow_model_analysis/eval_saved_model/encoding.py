@@ -19,8 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 
+import six
 import tensorflow as tf
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.types_compat import Text
 
 from google.protobuf import any_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
@@ -32,6 +34,7 @@ PREDICTIONS_COLLECTION = 'evaluation_only/predictions'
 INPUT_EXAMPLE_COLLECTION = 'evaluation_only/label_graph/input_example'
 LABELS_COLLECTION = 'evaluation_only/label_graph/labels'
 FEATURES_COLLECTION = 'evaluation_only/label_graph/features'
+EXAMPLE_REF_COLLECTION = 'evaluation_only/label_graph/example_ref'
 
 # Suffixes for the collection names
 KEY_SUFFIX = 'key'
@@ -49,10 +52,14 @@ DEFAULT_PREDICTIONS_DICT_KEY = '__predictions'
 DEFAULT_LABELS_DICT_KEY = '__labels'
 
 # Encoding prefixes for keys
-_TUPLE_KEY_PREFIX = '$Tuple$'
-_BYTES_KEY_PREFIX = '$Bytes$'
+_TUPLE_KEY_PREFIX = b'$Tuple$'
+_BYTES_KEY_PREFIX = b'$Bytes$'
 
 
+
+
+def with_suffix(name, suffix):
+  return '%s/%s' % (name, suffix)  # pytype: disable=bad-return-type
 
 
 def encode_key(key):
@@ -81,18 +88,19 @@ def encode_key(key):
 
   if isinstance(key, tuple):
     if not all(
-        isinstance(elem, str) or isinstance(elem, unicode) for elem in key):
+        isinstance(elem, six.binary_type) or isinstance(elem, six.text_type)
+        for elem in key):
       raise TypeError('if key is tuple, all elements should be strings. '
                       'key was: %s' % key)
-    utf8_keys = [elem.encode('utf8') for elem in key]
-    lengths = map(len, utf8_keys)
-    return '%s%d$%s$%s' % (_TUPLE_KEY_PREFIX, len(lengths),
-                           '$'.join(map(str, lengths)), '$'.join(utf8_keys))
-  elif isinstance(key, str) or isinstance(key, unicode):
-    return '$Bytes$' + key.encode('utf8')
+    utf8_keys = [tf.compat.as_bytes(elem) for elem in key]
+    length_strs = [tf.compat.as_bytes('%d' % len(key)) for key in utf8_keys]
+    return (_TUPLE_KEY_PREFIX + tf.compat.as_bytes('%d' % len(length_strs)) +
+            b'$' + b'$'.join(length_strs) + b'$' + b'$'.join(utf8_keys))
+  elif isinstance(key, six.binary_type) or isinstance(key, six.text_type):
+    return b'$Bytes$' + tf.compat.as_bytes(key)
   else:
-    raise TypeError('key has unrecognised type: type: %s, value %s' %
-                    (type(key), key))
+    raise TypeError(
+        'key has unrecognised type: type: %s, value %s' % (type(key), key))
 
 
 def decode_key(encoded_key):
@@ -108,11 +116,11 @@ def decode_key(encoded_key):
     ValueError: We couldn't decode the encoded key.
   """
   if encoded_key.startswith(_TUPLE_KEY_PREFIX):
-    parts = encoded_key[len(_TUPLE_KEY_PREFIX):].split('$', 1)
+    parts = encoded_key[len(_TUPLE_KEY_PREFIX):].split(b'$', 1)
     if len(parts) != 2:
       raise ValueError('invalid encoding: %s' % encoded_key)
     elem_count = int(parts[0])
-    parts = parts[1].split('$', elem_count)
+    parts = parts[1].split(b'$', elem_count)
     if len(parts) != elem_count + 1:
       raise ValueError('invalid encoding: %s' % encoded_key)
     lengths = map(int, parts[:elem_count])

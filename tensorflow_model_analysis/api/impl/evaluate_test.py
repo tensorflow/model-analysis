@@ -26,12 +26,16 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api.impl import evaluate
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
+from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_no_labels
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metric_keys
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.slicer import slicer
 
 
@@ -78,6 +82,13 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
         None, temp_eval_export_dir)
+    eval_shared_model = types.EvalSharedModel(
+        model_path=eval_export_dir,
+        add_metrics_callbacks=[_addExampleCountMetricCallback])
+    extractors = [
+        predict_extractor.PredictExtractor(eval_shared_model),
+        slice_key_extractor.SliceKeyExtractor()
+    ]
 
     with beam.Pipeline() as pipeline:
       example1 = self._makeExample(age=3.0, language='english', label=1.0)
@@ -87,15 +98,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
 
       metrics, _ = (
           pipeline
-          | beam.Create([
+          | 'Create' >> beam.Create([
               example1.SerializeToString(),
               example2.SerializeToString(),
               example3.SerializeToString(),
               example4.SerializeToString()
           ])
-          | evaluate.Evaluate(
-              eval_saved_model_path=eval_export_dir,
-              add_metrics_callbacks=[_addExampleCountMetricCallback]))
+          | 'ToExampleAnExtracts' >> evaluate.ToExampleAndExtracts()
+          | 'Extract' >> evaluate.Extract(extractors=extractors)
+          |
+          'Evaluate' >> evaluate.Evaluate(eval_shared_model=eval_shared_model))
 
       def check_result(got):
         try:
@@ -119,6 +131,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
         None, temp_eval_export_dir)
+    eval_shared_model = types.EvalSharedModel(
+        model_path=eval_export_dir,
+        add_metrics_callbacks=[_addExampleCountMetricCallback])
+    extractors = [
+        predict_extractor.PredictExtractor(eval_shared_model),
+        slice_key_extractor.SliceKeyExtractor([
+            slicer.SingleSliceSpec(),
+            slicer.SingleSliceSpec(columns=['slice_key'])
+        ])
+    ]
 
     for batch_size in [1, 2, 4, 8]:
 
@@ -136,20 +158,17 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
 
         metrics, plots = (
             pipeline
-            | beam.Create([
+            | 'Create' >> beam.Create([
                 example1.SerializeToString(),
                 example2.SerializeToString(),
                 example3.SerializeToString(),
                 example4.SerializeToString(),
                 example5.SerializeToString(),
             ])
-            | evaluate.Evaluate(
-                eval_saved_model_path=eval_export_dir,
-                add_metrics_callbacks=[_addExampleCountMetricCallback],
-                slice_spec=[
-                    slicer.SingleSliceSpec(),
-                    slicer.SingleSliceSpec(columns=['slice_key'])
-                ],
+            | 'ToExampleAnExtracts' >> evaluate.ToExampleAndExtracts()
+            | 'Extractors' >> evaluate.Extract(extractors=extractors)
+            | 'Evaluate' >> evaluate.Evaluate(
+                eval_shared_model=eval_shared_model,
                 desired_batch_size=batch_size))
 
         def check_result(got):
@@ -159,10 +178,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             for slice_key, value in got:
               slices[slice_key] = value
             overall_slice = ()
-            first_slice = (('slice_key', 'first_slice'),)
-            second_slice = (('slice_key', 'second_slice'),)
-            self.assertItemsEqual(slices.keys(),
-                                  [overall_slice, first_slice, second_slice])
+            first_slice = (('slice_key', b'first_slice'),)
+            second_slice = (('slice_key', b'second_slice'),)
+            self.assertItemsEqual(
+                list(slices.keys()), [overall_slice, first_slice, second_slice])
             self.assertDictElementsAlmostEqual(
                 slices[overall_slice], {
                     'accuracy': 0.4,
@@ -191,8 +210,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
           except AssertionError as err:
             # This function is redefined every iteration, so it will have the
             # right value of batch_size.
-            raise util.BeamAssertException('batch_size = %d, error: %s' %
-                                           (batch_size, err))  # pylint: disable=cell-var-from-loop
+            raise util.BeamAssertException(
+                'batch_size = %d, error: %s' % (batch_size, err))  # pylint: disable=cell-var-from-loop
 
         util.assert_that(metrics, check_result, label='metrics')
         util.assert_that(plots, util.is_empty(), label='plots')
@@ -201,6 +220,21 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
         None, temp_eval_export_dir)
+    eval_shared_model = types.EvalSharedModel(
+        model_path=eval_export_dir,
+        add_metrics_callbacks=[
+            _addExampleCountMetricCallback,
+            # Note that since everything runs in-process this doesn't
+            # actually test that the py_func can be correctly recreated
+            # on workers in a distributed context.
+            _addPyFuncMetricCallback,
+            post_export_metrics.example_count(),
+            post_export_metrics.example_weight(example_weight_key='age')
+        ])
+    extractors = [
+        predict_extractor.PredictExtractor(eval_shared_model),
+        slice_key_extractor.SliceKeyExtractor()
+    ]
 
     with beam.Pipeline() as pipeline:
       example1 = self._makeExample(age=3.0, language='english', label=1.0)
@@ -210,23 +244,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
 
       metrics, plots = (
           pipeline
-          | beam.Create([
+          | 'Create' >> beam.Create([
               example1.SerializeToString(),
               example2.SerializeToString(),
               example3.SerializeToString(),
               example4.SerializeToString()
           ])
-          | evaluate.Evaluate(
-              eval_saved_model_path=eval_export_dir,
-              add_metrics_callbacks=[
-                  _addExampleCountMetricCallback,
-                  # Note that since everything runs in-process this doesn't
-                  # actually test that the py_func can be correctly recreated
-                  # on workers in a distributed context.
-                  _addPyFuncMetricCallback,
-                  post_export_metrics.example_count(),
-                  post_export_metrics.example_weight(example_weight_key='age')
-              ]))
+          | 'ToExampleAnExtracts' >> evaluate.ToExampleAndExtracts()
+          | 'Extract' >> evaluate.Extract(extractors=extractors)
+          |
+          'Evaluate' >> evaluate.Evaluate(eval_shared_model=eval_shared_model))
 
       def check_result(got):
         try:
@@ -251,11 +278,73 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(metrics, check_result, label='metrics')
       util.assert_that(plots, util.is_empty(), label='plots')
 
+  def testEvaluateNoSlicingAddPostExportAndCustomMetricsUnsupervisedModel(self):
+    # Mainly for testing that the ExampleCount post export metric works with
+    # unsupervised models.
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator_no_labels
+        .simple_fixed_prediction_estimator_no_labels(None,
+                                                     temp_eval_export_dir))
+    eval_shared_model = types.EvalSharedModel(
+        model_path=eval_export_dir,
+        add_metrics_callbacks=[
+            post_export_metrics.example_count(),
+            post_export_metrics.example_weight(example_weight_key='prediction')
+        ])
+    extractors = [
+        predict_extractor.PredictExtractor(eval_shared_model),
+        slice_key_extractor.SliceKeyExtractor()
+    ]
+
+    with beam.Pipeline() as pipeline:
+      example1 = self._makeExample(prediction=1.0)
+      example2 = self._makeExample(prediction=2.0)
+
+      metrics, plots = (
+          pipeline
+          | 'Create' >> beam.Create([
+              example1.SerializeToString(),
+              example2.SerializeToString(),
+          ])
+          | 'ToExampleAnExtracts' >> evaluate.ToExampleAndExtracts()
+          | 'Extract' >> evaluate.Extract(extractors=extractors)
+          |
+          'Evaluate' >> evaluate.Evaluate(eval_shared_model=eval_shared_model))
+
+      def check_result(got):
+        try:
+          self.assertEqual(1, len(got), 'got: %s' % got)
+          (slice_key, value) = got[0]
+          self.assertEqual((), slice_key)
+          self.assertDictElementsAlmostEqual(
+              got_values_dict=value,
+              expected_values_dict={
+                  'average_loss': 2.5,
+                  metric_keys.EXAMPLE_COUNT: 2.0,
+                  metric_keys.EXAMPLE_WEIGHT: 3.0
+              })
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(metrics, check_result, label='metrics')
+      util.assert_that(plots, util.is_empty(), label='plots')
+
   def testEvaluateWithPlots(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
             None, temp_eval_export_dir))
+    eval_shared_model = types.EvalSharedModel(
+        model_path=eval_export_dir,
+        add_metrics_callbacks=[
+            post_export_metrics.example_count(),
+            post_export_metrics.auc_plots()
+        ])
+    extractors = [
+        predict_extractor.PredictExtractor(eval_shared_model),
+        slice_key_extractor.SliceKeyExtractor()
+    ]
 
     with beam.Pipeline() as pipeline:
       example1 = self._makeExample(prediction=0.0, label=1.0)
@@ -265,18 +354,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
 
       metrics, plots = (
           pipeline
-          | beam.Create([
+          | 'Create' >> beam.Create([
               example1.SerializeToString(),
               example2.SerializeToString(),
               example3.SerializeToString(),
               example4.SerializeToString()
           ])
-          | evaluate.Evaluate(
-              eval_saved_model_path=eval_export_dir,
-              add_metrics_callbacks=[
-                  post_export_metrics.example_count(),
-                  post_export_metrics.auc_plots()
-              ]))
+          | 'ToExampleAnExtracts' >> evaluate.ToExampleAndExtracts()
+          | 'Extract' >> evaluate.Extract(extractors=extractors)
+          |
+          'Evaluate' >> evaluate.Evaluate(eval_shared_model=eval_shared_model))
 
       def check_metrics(got):
         try:

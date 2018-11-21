@@ -28,15 +28,15 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_line
 from tensorflow_model_analysis.eval_saved_model.example_trainers import custom_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metric_keys
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.slicer import slicer
 
 
 class EvaluateTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
-    self.longMessage = True
+    self.longMessage = True  # pylint: disable=invalid-name
 
   def _getTempDir(self):
     return tempfile.mkdtemp()
@@ -79,14 +79,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     data_location = self._writeTFExamplesToTFRecords(examples)
     slice_spec = [slicer.SingleSliceSpec(columns=['language'])]
     eval_result = model_eval_lib.run_model_analysis(
-        model_location,
+        model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'),
         data_location,
-        slice_spec=slice_spec,
-        example_weight_key='age')
+        slice_spec=slice_spec)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
-        (('language', 'chinese'),): {
+        ((b'language', b'chinese'),): {
             'accuracy': {
                 'doubleValue': 0.5
             },
@@ -100,7 +100,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 'doubleValue': 2.0
             },
         },
-        (('language', 'english'),): {
+        ((b'language', b'english'),): {
             'accuracy': {
                 'doubleValue': 1.0
             },
@@ -131,11 +131,12 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(prediction=1.0, label=1.0),
         self._makeExample(prediction=1.0, label=1.0)
     ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_result = model_eval_lib.run_model_analysis(
-        model_location,
-        data_location,
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location,
         add_metrics_callbacks=[post_export_metrics.auc_plots()])
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    eval_result = model_eval_lib.run_model_analysis(eval_shared_model,
+                                                    data_location)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
@@ -163,7 +164,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     ]
     data_location = self._writeCSVToTextFile(examples)
     eval_result = model_eval_lib.run_model_analysis(
-        model_location, data_location, file_format='text')
+        model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location),
+        data_location,
+        file_format='text')
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {

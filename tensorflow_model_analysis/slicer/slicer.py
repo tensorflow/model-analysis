@@ -26,9 +26,10 @@ import itertools
 
 
 import six
+import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.slicer import slice_accessor
-from tensorflow_model_analysis.types_compat import Generator, Iterable, List, Tuple, Union
+from tensorflow_model_analysis.types_compat import Generator, Iterable, List, Text, Tuple, Union
 
 # FeatureValueType represents a value that a feature could take.
 FeatureValueType = Union[bytes, int, float]  # pylint: disable=invalid-name
@@ -36,7 +37,7 @@ FeatureValueType = Union[bytes, int, float]  # pylint: disable=invalid-name
 # SingletonSliceKeyType is a tuple, where the first element is the key of the
 # feature, and the second element is its value. This describes a single
 # feature-value pair.
-SingletonSliceKeyType = Tuple[bytes, FeatureValueType]  # pylint: disable=invalid-name
+SingletonSliceKeyType = Tuple[Text, FeatureValueType]  # pylint: disable=invalid-name
 
 # SliceKeyType is a tuple of SingletonSliceKeyType. This completely describes
 # a single slice.
@@ -83,11 +84,11 @@ class SingleSliceSpec(object):
 
     Args:
       columns: an iterable of column names to slice on.
-      features: a iterable of features to slice on. Each feature is a
-        (key, value) tuple. Note that the value can be either a string or an
-        int, and the type is taken into account when comparing values, so
-        SingleSliceSpec(features=[('age', '5')]) will *not* match a slice
-        with age=[5] (age is a string in the spec, but an int in the slice).
+      features: a iterable of features to slice on. Each feature is a (key,
+        value) tuple. Note that the value can be either a string or an int, and
+        the type is taken into account when comparing values, so
+        SingleSliceSpec(features=[('age', '5')]) will *not* match a slice with
+        age=[5] (age is a string in the spec, but an int in the slice).
 
     Raises:
       ValueError: There was overlap between the columns specified in columns
@@ -95,10 +96,10 @@ class SingleSliceSpec(object):
       ValueError: columns or features was a string: they should probably be a
         singleton list containing that string.
     """
-    if isinstance(columns, str):
+    if isinstance(columns, six.string_types):
       raise ValueError('columns is a string: it should probably be a singleton '
                        'list containing that string')
-    if isinstance(features, str):
+    if isinstance(features, six.string_types):
       raise ValueError('features is a string: it should probably be a '
                        'singleton list containing that string')
 
@@ -269,8 +270,13 @@ def stringify_slice_key(slice_key):
   separator = '_X_'
 
   for (feature, value) in slice_key:
-    keys.append(feature)
-    values.append(value)
+    # Since this is meant to be a human-readable string, we assume that the
+    # feature and feature value are valid UTF-8 strings (might not be true in
+    # cases where people store serialised protos in the features for instance).
+    keys.append(tf.compat.as_text(feature))
+    # We need to call as_str_any to convert non-string (e.g. integer) values to
+    # string first before converting to text.
+    values.append(tf.compat.as_text(tf.compat.as_str_any(value)))
 
   return separator.join([
       '{}'.format(key) for key in keys

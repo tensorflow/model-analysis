@@ -101,6 +101,30 @@ suite('tests', () => {
     };
     run(createDefaultTestData(), highlightFeature1);
   });
+
+  test('SortChangesVisibleRows', done => {
+    const resizeTable = () => {
+      element.pageSize = 3;
+      next(checkVisibleRows);
+    }
+    const checkVisibleRows = () => {
+      assert.deepEqual(element.visibleRows, [0, 1, 2]);
+      next(sortByWeightedExamples);
+    };
+
+    const sortByWeightedExamples = () => {
+      const weightedEexampleHeader = element.$.table.$$('thead tr th:nth-child(2)');
+      weightedEexampleHeader.click();
+      next(checkVisibleRowsAfterSort);
+    };
+
+    const checkVisibleRowsAfterSort = () => {
+      assert.deepEqual(element.visibleRows, [2, 0, 1]);
+      done();
+    };
+
+    run(createDefaultTestData(), resizeTable);
+  });
 });
   </script>
 </body>

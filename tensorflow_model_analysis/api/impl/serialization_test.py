@@ -26,8 +26,8 @@ import tensorflow as tf
 from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.api.impl import serialization
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metric_keys
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
 from google.protobuf import text_format
@@ -47,12 +47,12 @@ def _make_slice_key(*args):
 class SerializationTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
-    self.longMessage = True
+    self.longMessage = True  # pylint: disable=invalid-name
 
   def assertMetricsAlmostEqual(self, expected_metrics, got_metrics):
     self.assertItemsEqual(
-        expected_metrics.keys(),
-        got_metrics.keys(),
+        list(expected_metrics.keys()),
+        list(got_metrics.keys()),
         msg='keys do not match. expected_metrics: %s, got_metrics: %s' %
         (expected_metrics, got_metrics))
     for key in expected_metrics.keys():
@@ -98,8 +98,8 @@ class SerializationTest(testutil.TensorflowModelAnalysisTest):
         """, metrics_for_slice_pb2.SliceKey())
 
     got_slice_key = serialization.deserialize_slice_key(slice_metrics)
-    self.assertItemsEqual([('age', 5), ('language', 'english'), ('price', 1.0)],
-                          got_slice_key)
+    self.assertItemsEqual([(b'age', 5), (b'language', b'english'),
+                           (b'price', 1.0)], got_slice_key)
 
   def testSerializePlots(self):
     slice_key = _make_slice_key('fruit', 'apple')
@@ -239,6 +239,76 @@ class SerializationTest(testutil.TensorflowModelAnalysisTest):
         expected_metrics_for_slice,
         metrics_for_slice_pb2.MetricsForSlice.FromString(got))
 
+  def testStringMetrics(self):
+    slice_key = _make_slice_key()
+    slice_metrics = {
+        'valid_ascii': b'test string',
+        'valid_unicode': b'\xF0\x9F\x90\x84',  # U+1F404, Cow
+        'invalid_unicode': b'\xE2\x28\xA1',
+    }
+    expected_metrics_for_slice = metrics_for_slice_pb2.MetricsForSlice()
+    expected_metrics_for_slice.slice_key.SetInParent()
+    expected_metrics_for_slice.metrics[
+        'valid_ascii'].bytes_value = slice_metrics['valid_ascii']
+    expected_metrics_for_slice.metrics[
+        'valid_unicode'].bytes_value = slice_metrics['valid_unicode']
+    expected_metrics_for_slice.metrics[
+        'invalid_unicode'].bytes_value = slice_metrics['invalid_unicode']
+
+    got = serialization._serialize_metrics((slice_key, slice_metrics), [])
+    self.assertProtoEquals(
+        expected_metrics_for_slice,
+        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+
+  def testTensorValuedMetrics(self):
+    slice_key = _make_slice_key()
+    slice_metrics = {
+        'one_dim':
+            np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32),
+        'two_dims':
+            np.array([['two', 'dims', 'test'], ['TWO', 'DIMS', 'TEST']]),
+        'three_dims':
+            np.array([[[100, 200, 300]], [[500, 600, 700]]], dtype=np.int64),
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {}
+        metrics {
+          key: "one_dim"
+          value {
+            array_value {
+              data_type: FLOAT32
+              shape: 4
+              float32_values: [1.0, 2.0, 3.0, 4.0]
+            }
+          }
+        }
+        metrics {
+          key: "two_dims"
+          value {
+            array_value {
+              data_type: BYTES
+              shape: [2, 3]
+              bytes_values: ["two", "dims", "test", "TWO", "DIMS", "TEST"]
+            }
+          }
+        }
+        metrics {
+          key: "three_dims"
+          value {
+            array_value {
+              data_type: INT64
+              shape: [2, 1, 3]
+              int64_values: [100, 200, 300, 500, 600, 700]
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+    got = serialization._serialize_metrics((slice_key, slice_metrics), [])
+    self.assertProtoEquals(
+        expected_metrics_for_slice,
+        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+
   def testSerializeDeserializeEvalConfig(self):
     eval_config = api_types.EvalConfig(
         model_location='/path/to/model',
@@ -256,7 +326,7 @@ class SerializationTest(testutil.TensorflowModelAnalysisTest):
     self.assertEqual(eval_config, got_eval_config)
 
   def testSerializeDeserializeToFile(self):
-    metrics_slice_key = _make_slice_key('fruit', 'pear', 'animal', 'duck')
+    metrics_slice_key = _make_slice_key(b'fruit', b'pear', b'animal', b'duck')
     metrics_for_slice = text_format.Parse(
         """
         slice_key {
@@ -361,7 +431,7 @@ class SerializationTest(testutil.TensorflowModelAnalysisTest):
             }
           }
         }""", metrics_for_slice_pb2.PlotsForSlice())
-    plots_slice_key = _make_slice_key('fruit', 'peach', 'animal', 'cow')
+    plots_slice_key = _make_slice_key(b'fruit', b'peach', b'animal', b'cow')
     eval_config = api_types.EvalConfig(
         model_location='/path/to/model',
         data_location='/path/to/data',
@@ -386,8 +456,7 @@ class SerializationTest(testutil.TensorflowModelAnalysisTest):
       _ = ((metrics, plots)
            | 'WriteMetricsPlotsAndConfig' >>
            serialization.WriteMetricsPlotsAndConfig(
-               output_path=output_path,
-               eval_config=eval_config))
+               output_path=output_path, eval_config=eval_config))
 
     metrics, plots = serialization.load_plots_and_metrics(output_path)
     self.assertSliceMetricsListEqual(

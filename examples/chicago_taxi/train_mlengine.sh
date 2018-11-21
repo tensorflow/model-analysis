@@ -61,10 +61,12 @@ EVAL_FILE=$TFT_OUTPUT_PATH/train_transformed-*
 TRAIN_STEPS=100000
 EVAL_STEPS=1000
 
+TF_VERSION=1.10
+
 gcloud ml-engine jobs submit training $JOB_ID \
                                     --stream-logs \
                                     --job-dir $MODEL_DIR \
-                                    --runtime-version 1.9 \
+                                    --runtime-version $TF_VERSION \
                                     --module-name trainer.task \
                                     --package-path trainer/ \
                                     --region us-central1 \

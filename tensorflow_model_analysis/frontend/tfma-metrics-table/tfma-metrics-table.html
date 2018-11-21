@@ -185,8 +185,10 @@ limitations under the License.
         color: rgba(0,0,0,0.54);
       }
     </style>
-    <google-chart type="table" options="[[options]]" data="[[plotData_]]" selection="{{selection}}"
-                  id="table">
+
+    <google-chart type="table" options="[[options_]]" data="[[plotData_]]" selection="{{selection}}"
+                  id="table" events="[[chartEvents_]]" on-google-chart-page="onPage_"
+                  on-google-chart-sort="onSort_">
     </google-chart>
   </template>
   <script src="tfma-metrics-table.js"></script>
