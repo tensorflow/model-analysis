@@ -26,8 +26,8 @@ import tensorflow as tf
 from tensorflow_model_analysis.api import tfma_unit
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import metric_keys
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.slicer import slicer
 
 
@@ -111,9 +111,9 @@ class TFMAUnitTest(tfma_unit.TestCase):
   def testAssertGeneralMetricsComputedWithBeamAre(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields.
-        simple_fixed_prediction_estimator_extra_fields(None,
-                                                       temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None,
+                                                        temp_eval_export_dir))
     examples = [
         self.makeExample(
             prediction=0.0,
@@ -163,11 +163,11 @@ class TFMAUnitTest(tfma_unit.TestCase):
     }
     # We don't check AUC for the positive / negative only slices because
     # it's not clear what the value should be.
-    expected_slice_metrics[(('fixed_string', 'negative_slice'),)] = {
+    expected_slice_metrics[(('fixed_string', b'negative_slice'),)] = {
         'average_loss': (0.00 + 0.04 + 0.16) / 3.0,
         'mae': 0.2,
     }
-    expected_slice_metrics[(('fixed_string', 'positive_slice'),)] = {
+    expected_slice_metrics[(('fixed_string', b'positive_slice'),)] = {
         'average_loss': (0.04 + 0.01 + 0.00) / 3.0,
         'mae': 0.1,
     }

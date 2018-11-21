@@ -1,3 +1,77 @@
+# Release 0.11.0
+
+## Major Features and Improvements
+
+* We now support unsupervised models which have `model_fn`s that do not take a
+  `labels` argument.
+* Improved performance by using `make_callable` instead of repeated
+  `session.run` calls.
+* Improved performance by better choice of default "combine" batch size.
+* We now support passing in custom extractors in the model_eval_lib API.
+* Added support for models which have multiple examples per raw input (e.g.
+  input is a compressed example which expands to multiple examples when parsed
+  by the model). For such models, you must specify an `example_ref` parameter
+  to your `EvalInputReceiver`. This 1-D integer Tensor should be batch aligned
+  with features, predictions and labels and each element in it is an index in
+  the raw input tensor to identify which input each feature / prediction /
+  label came from. See
+  `eval_saved_model/example_trainers/fake_multi_examples_per_input_estimator.py`
+  for an example.
+* Added support for metrics with string `value_op`s.
+* Added support for metrics whose `value_op`s return multidimensional arrays.
+* We now support including your serving graph in the EvalSavedModel. You can
+  do this by passing a `serving_input_receiver_fn` to `export_eval_savedmodel`
+  or any of the TFMA Exporters.
+
+## Bug fixes and other changes
+
+* Depends on `apache-beam[gcp]>=2.8,<3`.
+* Depends on `tensorflow-transform>=0.11,<1`.
+* Requires pre-installed TensorFlow >=1.11,<2.
+* Factor our utility functions for adding sliceable "meta-features" to FPL.
+* Added public API docs
+* Add an extractor to add sliceable "meta-features" to FPL.
+* Potentially improved performance by fanning out large slices.
+* Add support for assets_extra in `tfma.exporter.FinalExporter`.
+* Add a light-weight library that includes only the export-related modules for
+  TFMA for use in your Trainer. See docstring in
+  `tensorflow_model_analysis/export_only/__init__.py` for usage.
+* Update `EvalInputReceiver` so the TFMA collections written to the graph only
+  contain the results of the last call if multiple calls to `EvalInputReceiver`
+  are made.
+* We now finalize the graph after it's loaded and post-export metrics are added,
+  potentially improving performance.
+* Fix a bug in post-export PrecisionRecallAtK where labels with only 1 dimension
+  were not correctly handled.
+* Fix an issue where we were not correctly wrapping SparseTensors for `features`
+  and `labels` in `tf.identity`, which could cause TFMA to encounter
+  TensorFlow issue #17568 if there were control dependencies on these `features`
+  or `labels`.
+* We now correctly preserve `dtypes` when splitting and concatenating
+  SparseTensors internally. The failure to do so previously could result in
+  unexpectedly large memory usage if string values were involved due to the
+  inefficient pickling of NumPy string arrays with a large number of elements.
+
+## Breaking changes
+
+* Requires pre-installed TensorFlow >=1.11,<2.
+* We now require that `EvalInputReceiver`, `export_eval_savedmodel`,
+  `make_export_strategy`, `make_final_exporter`, `FinalExporter` and
+  `LatestExporter` be called with keyword arguments only.
+* Removed `check_metric_compatibility` from `EvalSavedModel`.
+* We now enforce that the `receiver_tensors` dictionary for `EvalInputReceiver`
+  contains exactly one key named `examples`.
+* Post-export metrics have now been moved up one level to
+  `tfma.post_export_metrics`. They should now be accessed via
+  `tfma.post_export_metrics.auc` instead of
+  `tfma.post_export_metrics.post_export_metrics.auc` as they were before.
+* Separated extraction from evaluation. `EvaluteAndWriteResults` is now called
+  `ExtractEvaluateAndWriteResults`.
+* Added `EvalSharedModel` type to encapsulate `model_path` and
+  `add_metrics_callbacks` along with a handle to a shared model instance.
+
+## Deprecations
+
 # Release 0.9.2
 
 ## Major Features and Improvements
@@ -21,7 +95,6 @@
 ## Bug fixes and other changes
 
 * Depends on `apache-beam[gcp]>=2.6,<3`.
-* Requires pre-installed TensorFlow >=1.10,<2.
 * Updated ExampleCount to use the batch dimension as the example count. It
   also now tries a few fallbacks if none of the standard keys are found in the
   predictions dictionary: the first key in sorted order in the predictions
@@ -33,6 +106,8 @@
   Evaluate, resulting in no sharing of the model across stages.
 
 ## Breaking changes
+
+*   Requires pre-installed TensorFlow >=1.10,<2.
 
 ## Deprecations
 

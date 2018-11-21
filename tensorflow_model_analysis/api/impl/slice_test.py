@@ -27,9 +27,10 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.api.impl import slice as slice_api
-from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.slicer import slicer
 
 
@@ -41,7 +42,8 @@ def make_features_dict(features_dict):
 
 
 def create_fpls():
-  fpl1 = load.FeaturesPredictionsLabels(
+  fpl1 = api_types.FeaturesPredictionsLabels(
+      example_ref=0,
       features=make_features_dict({
           'gender': ['f'],
           'age': [13],
@@ -53,7 +55,8 @@ def create_fpls():
       labels=make_features_dict({
           'ad_risk_score': [0]
       }))
-  fpl2 = load.FeaturesPredictionsLabels(
+  fpl2 = api_types.FeaturesPredictionsLabels(
+      example_ref=0,
       features=make_features_dict({
           'gender': ['m'],
           'age': [10],
@@ -70,8 +73,7 @@ def create_fpls():
 
 def wrap_fpl(fpl):
   return types.ExampleAndExtracts(
-      example=fpl,
-      extracts={constants.FEATURES_PREDICTIONS_LABELS_KEY: fpl})
+      example=fpl, extracts={constants.FEATURES_PREDICTIONS_LABELS_KEY: fpl})
 
 
 class SliceTest(testutil.TensorflowModelAnalysisTest):
@@ -84,7 +86,7 @@ class SliceTest(testutil.TensorflowModelAnalysisTest):
           pipeline
           | 'CreateTestInput' >> beam.Create(fpls)
           | 'WrapFpls' >> beam.Map(wrap_fpl)
-          | 'ExtractSlices' >> slice_api.ExtractSliceKeys(
+          | 'ExtractSlices' >> slice_key_extractor.ExtractSliceKeys(
               [slicer.SingleSliceSpec()])
           | 'FanoutSlices' >> slice_api.FanoutSlices())
 
@@ -95,7 +97,10 @@ class SliceTest(testutil.TensorflowModelAnalysisTest):
               ((), fpls[0]),
               ((), fpls[1]),
           ]
-          self.assertEqual(sorted(got), sorted(expected_result))
+          self.assertEqual(len(got), len(expected_result))
+          self.assertTrue(
+              got[0] == expected_result[0] and got[1] == expected_result[1] or
+              got[1] == expected_result[0] and got[0] == expected_result[1])
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
@@ -108,7 +113,7 @@ class SliceTest(testutil.TensorflowModelAnalysisTest):
           pipeline
           | 'CreateTestInput' >> beam.Create(fpls)
           | 'WrapFpls' >> beam.Map(wrap_fpl)
-          | 'ExtractSlices' >> slice_api.ExtractSliceKeys([
+          | 'ExtractSlices' >> slice_key_extractor.ExtractSliceKeys([
               slicer.SingleSliceSpec(),
               slicer.SingleSliceSpec(columns=['gender'])
           ])
@@ -123,7 +128,9 @@ class SliceTest(testutil.TensorflowModelAnalysisTest):
               ((('gender', 'f'),), fpls[0]),
               ((('gender', 'm'),), fpls[1]),
           ]
-          self.assertEqual(sorted(got), sorted(expected_result))
+          self.assertEqual(
+              sorted(got, key=lambda x: x[0]),
+              sorted(expected_result, key=lambda x: x[0]))
         except AssertionError as err:
           raise util.BeamAssertException(err)
 

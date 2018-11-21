@@ -115,8 +115,17 @@ Polymer({
   computeOptions_: function(color, size, scale, overrides) {
     var options = {
       'title': 'Calibration Plot',
-      'hAxis': {'title': 'Average Prediction', 'minValue': 0, 'maxValue': 1},
-      'vAxis': {'title': 'Average Label', 'minValue': 0, 'maxValue': 1},
+      'hAxis': {
+        'title': 'Average Prediction',
+        'minValue': 0,
+        'maxValue': 1,
+        // Forces displayed value range to [0, 1].
+        'viewWindow': {'min': 0, 'max': 1}
+      },
+      'vAxis': {'title': 'Average Label', 'minValue': 0, 'maxValue': 1,
+        // Forces displayed value range [0, 1].
+        'viewWindow': {'min': 0, 'max': 1}
+      },
       'bubble': {'textStyle': {'fontSize': 11}},
       'colorAxis':
           {'colors': ['#F0F0F0', '#0A47A4'], 'minValue': 0, 'maxValue': 10},

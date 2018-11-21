@@ -30,11 +30,19 @@ from tensorflow.python.estimator.canned import metric_keys
 from tensorflow.python.estimator.canned import prediction_keys
 
 
-def simple_fixed_prediction_estimator(
-    export_path,
-    eval_export_path,
+def get_simple_fixed_prediction_estimator_and_metadata(
     output_prediction_key=prediction_keys.PredictionKeys.PREDICTIONS):
-  """Exports a simple fixed prediction estimator."""
+  """Returns a simple fixed prediction estimator and metadata.
+
+  Exposed for use with ExporterTest.
+
+  Args:
+    output_prediction_key: Output prediction key.
+
+  Returns:
+    Dictionary containing estimator, eval_input_receiver_fn,
+    serving_input_receiver_fn, train_input_fn and model_fn.
+  """
 
   def model_fn(features, labels, mode, params):
     """Model function for custom estimator."""
@@ -55,8 +63,8 @@ def simple_fixed_prediction_estimator(
           mode=mode,
           predictions=predictions_dict,
           export_outputs={
-              tf.saved_model.signature_constants.
-              DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+              tf.saved_model.signature_constants
+              .DEFAULT_SERVING_SIGNATURE_DEF_KEY:
                   tf.estimator.export.RegressionOutput(predictions)
           })
 
@@ -80,7 +88,6 @@ def simple_fixed_prediction_estimator(
     }, tf.constant([[1.0], [2.0], [3.0], [4.0]]),
 
   estimator = tf.estimator.Estimator(model_fn=model_fn)
-  estimator.train(input_fn=train_input_fn, steps=1)
 
   feature_spec = {'prediction': tf.FixedLenFeature([1], dtype=tf.float32)}
   eval_feature_spec = {
@@ -88,12 +95,33 @@ def simple_fixed_prediction_estimator(
       'label': tf.FixedLenFeature([1], dtype=tf.float32),
   }
 
-  return util.export_model_and_eval_model(
-      estimator=estimator,
-      serving_input_receiver_fn=(
+  return {
+      'estimator':
+          estimator,
+      'serving_input_receiver_fn': (
           tf.estimator.export.build_parsing_serving_input_receiver_fn(
               feature_spec)),
-      eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(
-          eval_feature_spec, label_key='label'),
+      'eval_input_receiver_fn':
+          export.build_parsing_eval_input_receiver_fn(
+              eval_feature_spec, label_key='label'),
+      'train_input_fn':
+          train_input_fn,
+      'model_fn':
+          model_fn,
+  }
+
+
+def simple_fixed_prediction_estimator(
+    export_path,
+    eval_export_path,
+    output_prediction_key=prediction_keys.PredictionKeys.PREDICTIONS):
+  estimator_metadata = get_simple_fixed_prediction_estimator_and_metadata(
+      output_prediction_key)
+  estimator_metadata['estimator'].train(
+      input_fn=estimator_metadata['train_input_fn'], steps=1)
+  return util.export_model_and_eval_model(
+      estimator=estimator_metadata['estimator'],
+      serving_input_receiver_fn=estimator_metadata['serving_input_receiver_fn'],
+      eval_input_receiver_fn=estimator_metadata['eval_input_receiver_fn'],
       export_path=export_path,
       eval_export_path=eval_export_path)

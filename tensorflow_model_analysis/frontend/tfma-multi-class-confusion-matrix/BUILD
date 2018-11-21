@@ -14,6 +14,7 @@ web_library(
     ],
     path = "/tfma-multi-class-confusion-matrix",
     deps = [
+        "//tensorflow_model_analysis/frontend/tfma-matrix:lib",
         "@org_polymer",
     ],
 )

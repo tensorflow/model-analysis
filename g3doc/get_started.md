@@ -110,13 +110,15 @@ results.  The results can be loaded for visualization using
 
 ```python
 # To run the pipeline.
+eval_shared_model = tfma.default_eval_shared_model(
+    model_path='/path/to/eval/saved/model')
 with beam.Pipeline(runner=...) as p:
   _ = (p
        # You can change the source as appropriate, e.g. read from BigQuery.
        | 'ReadData' >> beam.io.ReadFromTFRecord(data_location)
        | 'ExtractEvaluateAndWriteResults' >>
        tfma.ExtractEvaluateAndWriteResults(
-            eval_saved_model_path='/path/to/eval/saved/model',
+            eval_shared_model=eval_shared_model,
             output_path='/path/to/output',
             display_only_data_location=data_location))
 

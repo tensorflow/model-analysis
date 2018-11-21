@@ -57,6 +57,37 @@ testSuite({
         cell.f);
   },
 
+  testRenderValueWithRatioValueWithBounds: function() {
+    const value = 1;
+    const boundedRatio = makeBoundedValueObject(value, 0.5, 1.5);
+    const ratioValue = {
+      'numerator': 256,
+      'denominator': 1024,
+      'ratio': boundedRatio,
+    };
+
+    const cell = CellRenderer.renderValue(ratioValue);
+    assertEquals(value, cell.v);
+    assertEquals(
+        '<tfma-bounded-value value=1.00000 lower-bound=0.50000 ' +
+            'upper-bound=1.50000>' +
+            '</tfma-bounded-value>',
+        cell.f);
+  },
+
+  testRenderValueWithRatioValueWithoutBounds: function() {
+    const value = 1;
+    const ratioValue = {
+      'numerator': 256,
+      'denominator': 1024,
+      'ratio': {'value': value},
+    };
+
+    const cell = CellRenderer.renderValue(ratioValue);
+    assertEquals(value, cell.v);
+    assertEquals('1.00000', cell.f);
+  },
+
   testRenderValueWithMultiClassConfusionMatrix: function() {
     const matrix = {
       'entries': [

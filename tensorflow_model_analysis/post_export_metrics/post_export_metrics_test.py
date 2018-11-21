@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import os
 
 
@@ -26,6 +27,8 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api.impl import evaluate
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import dnn_classifier
@@ -36,8 +39,8 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_pr
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_regressor
-from tensorflow_model_analysis.eval_saved_model.post_export_metrics import post_export_metrics
-import tensorflow_model_analysis.eval_saved_model.post_export_metrics.metric_keys as metric_keys
+from tensorflow_model_analysis.post_export_metrics import post_export_metrics
+import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 
@@ -56,13 +59,18 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     self.assertTrue(custom_metrics_check is not None or
                     custom_plots_check is not None)
     serialized_examples = [ex.SerializeToString() for ex in examples]
+    eval_shared_model = types.EvalSharedModel(
+        model_path=eval_export_dir, add_metrics_callbacks=metrics)
+    extractors = model_eval_lib.default_extractors(
+        eval_shared_model=eval_shared_model)
     with beam.Pipeline() as pipeline:
       metrics, plots = (
           pipeline
-          | beam.Create(serialized_examples)
-          | evaluate.Evaluate(
-              eval_saved_model_path=eval_export_dir,
-              add_metrics_callbacks=metrics))
+          | 'Create' >> beam.Create(serialized_examples)
+          | 'ToExampleAndExtracts' >> evaluate.ToExampleAndExtracts()
+          | 'Extract' >> evaluate.Extract(extractors=extractors)
+          |
+          'Evaluate' >> evaluate.Evaluate(eval_shared_model=eval_shared_model))
       if custom_metrics_check is not None:
         util.assert_that(metrics, custom_metrics_check, label='metrics')
       if custom_plots_check is not None:
@@ -326,9 +334,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
   def testPrecisionRecallAtKWeighted(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_classifier_extra_fields.
-        simple_fixed_prediction_classifier_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_classifier_extra_fields
+        .simple_fixed_prediction_classifier_extra_fields(
+            None, temp_eval_export_dir))
     examples = [
         self._makeExample(
             classes=['a', 'b', 'c'],
@@ -381,9 +389,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
   def testPrecisionRecallAtKEmptyCutoffs(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_classifier_extra_fields.
-        simple_fixed_prediction_classifier_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_classifier_extra_fields
+        .simple_fixed_prediction_classifier_extra_fields(
+            None, temp_eval_export_dir))
     examples = [
         self._makeExample(
             classes=['a', 'b', 'c'],
@@ -491,9 +499,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
   def testCalibrationPlotAndPredictionHistogramWeighted(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields.
-        simple_fixed_prediction_estimator_extra_fields(None,
-                                                       temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None,
+                                                        temp_eval_export_dir))
     examples = [
         # For each example, we set label to prediction + 1.
         self._makeExample(
@@ -624,13 +632,16 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     self._runTestWithCustomCheck(
         examples, eval_export_dir, [auc_plots], custom_plots_check=check_result)
 
-  def testConfusionMatrixAtThresholdsWeighted(self):
-    temp_eval_export_dir = self._getEvalExportDir()
-    _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields.
-        simple_fixed_prediction_estimator_extra_fields(None,
-                                                       temp_eval_export_dir))
-    examples = [
+  def makeConfusionMatrixExamples(self):
+    """Helper to create a set of examples used by multiple tests."""
+    #            |      |       --------- Threshold -----------
+    # true label | pred | wt   | -1e-6 | 0.0 | 0.7 | 0.8 | 1.0
+    #     -      | 0.0  | 1.0  | FP    | TN  | TN  | TN  | TN
+    #     +      | 0.0  | 1.0  | TP    | FN  | FN  | FN  | FN
+    #     +      | 0.7  | 3.0  | TP    | TP  | FN  | FN  | FN
+    #     -      | 0.8  | 2.0  | FP    | FP  | FP  | TN  | TN
+    #     +      | 1.0  | 3.0  | TP    | TP  | TP  | TP  | FN
+    return [
         self._makeExample(
             prediction=0.0000,
             label=0.0000,
@@ -663,6 +674,14 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             fixed_int=0),
     ]
 
+  def testConfusionMatrixAtThresholdsWeighted(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None,
+                                                        temp_eval_export_dir))
+    examples = self.makeConfusionMatrixExamples()
+
     def check_result(got):  # pylint: disable=invalid-name
       try:
         self.assertEqual(1, len(got), 'got: %s' % got)
@@ -671,13 +690,6 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES,
                       value)
         matrices = value[metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES]
-        #            |      |       --------- Threshold -----------
-        # true label | pred | wt   | -1e-6 | 0.0 | 0.7 | 0.8 | 1.0
-        #     -      | 0.0  | 1.0  | FP    | TN  | TN  | TN  | TN
-        #     +      | 0.0  | 1.0  | TP    | FN  | FN  | FN  | FN
-        #     +      | 0.7  | 3.0  | TP    | TP  | FN  | FN  | FN
-        #     -      | 0.8  | 2.0  | FP    | FP  | FP  | TN  | TN
-        #     +      | 1.0  | 3.0  | TP    | TP  | TP  | TP  | FN
         self.assertSequenceAlmostEqual(matrices[0],
                                        [0.0, 0.0, 3.0, 7.0, 7.0 / 10.0, 1.0])
         self.assertSequenceAlmostEqual(
@@ -691,8 +703,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             [7.0, 3.0, 0.0, 0.0, float('nan'), 0.0])
         self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS,
                       value)
-        thresholds = value[
-            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS]
+        thresholds = value[metric_keys
+                           .CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS]
         self.assertAlmostEqual(-1e-6, thresholds[0])
         self.assertAlmostEqual(0.0, thresholds[1])
         self.assertAlmostEqual(0.7, thresholds[2])
@@ -709,6 +721,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                 thresholds=[-1e-6, 0.0, 0.7, 0.8, 1.0])
         ],
         custom_metrics_check=check_result)
+
 
   def testConfusionMatrixAtThresholdsSerialization(self):
     temp_eval_export_dir = self._getEvalExportDir()
@@ -747,8 +760,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             [2.0, 1.0, 0.0, 0.0, float('nan'), 0.0])
         self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS,
                       value)
-        thresholds = value[
-            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS]
+        thresholds = value[metric_keys
+                           .CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS]
         self.assertAlmostEqual(0.25, thresholds[0])
         self.assertAlmostEqual(0.75, thresholds[1])
         self.assertAlmostEqual(1.00, thresholds[2])
@@ -920,11 +933,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     }
 
     self._runTest(
-        examples,
-        eval_export_dir,
+        examples, eval_export_dir,
         [post_export_metrics.auc(),
-         post_export_metrics.auc(curve='PR')],
-        expected_values_dict)
+         post_export_metrics.auc(curve='PR')], expected_values_dict)
 
   def testAucUnweightedSerialization(self):
     temp_eval_export_dir = self._getEvalExportDir()

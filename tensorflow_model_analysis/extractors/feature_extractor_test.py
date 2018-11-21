@@ -24,8 +24,8 @@ import tensorflow as tf
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.eval_saved_model import encoding
-from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import feature_extractor
 
@@ -45,8 +45,7 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
         age=3.0, language='english', label=1.0, slice_key='first_slice')
 
     example_and_extracts = types.ExampleAndExtracts(
-        example=example1.SerializeToString(),
-        extracts={})
+        example=example1.SerializeToString(), extracts={})
     self.assertRaises(RuntimeError, feature_extractor._MaterializeFeatures,
                       example_and_extracts)
 
@@ -55,8 +54,7 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
         age=3.0, language='english', label=1.0, slice_key='first_slice')
 
     example_and_extracts = types.ExampleAndExtracts(
-        example=example1.SerializeToString(),
-        extracts={'fpl': 123})
+        example=example1.SerializeToString(), extracts={'fpl': 123})
     self.assertRaises(TypeError, feature_extractor._MaterializeFeatures,
                       example_and_extracts)
 
@@ -65,22 +63,32 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
         age=3.0, language='english', label=1.0, slice_key='first_slice')
 
     features = {
-        'f': {encoding.NODE_SUFFIX: np.array([1])},
-        's': {encoding.NODE_SUFFIX: tf.SparseTensorValue(
-            indices=[[0, 5], [1, 2], [3, 6]],
-            values=[100., 200., 300.],
-            dense_shape=[4, 10])}
+        'f': {
+            encoding.NODE_SUFFIX: np.array([1])
+        },
+        's': {
+            encoding.NODE_SUFFIX:
+                tf.SparseTensorValue(
+                    indices=[[0, 5], [1, 2], [3, 6]],
+                    values=[100., 200., 300.],
+                    dense_shape=[4, 10])
+        }
     }
     predictions = {'p': {encoding.NODE_SUFFIX: np.array([2])}}
     labels = {'l': {encoding.NODE_SUFFIX: np.array([3])}}
 
     example_and_extracts = types.ExampleAndExtracts(
         example=example1.SerializeToString(),
-        extracts={'fpl': load.FeaturesPredictionsLabels(features,
-                                                        predictions,
-                                                        labels)})
-    fpl = example_and_extracts.extracts[
-        constants.FEATURES_PREDICTIONS_LABELS_KEY]
+        extracts={
+            'fpl':
+                api_types.FeaturesPredictionsLabels(
+                    example_ref=0,
+                    features=features,
+                    predictions=predictions,
+                    labels=labels)
+        })
+    fpl = example_and_extracts.extracts[constants
+                                        .FEATURES_PREDICTIONS_LABELS_KEY]
     result = feature_extractor._MaterializeFeatures(example_and_extracts)
     self.assertTrue(isinstance(result, types.ExampleAndExtracts))
     self.assertEqual(result.extracts['fpl'], fpl)  # should still be there.
@@ -90,9 +98,10 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
                      types.MaterializedColumn(name='p', value=[2]))
     self.assertEqual(result.extracts['l'],
                      types.MaterializedColumn(name='l', value=[3]))
-    self.assertEqual(result.extracts['s'],
-                     types.MaterializedColumn(
-                         name='s', value=[100., 200., 300.]))
+    self.assertEqual(
+        result.extracts['s'],
+        types.MaterializedColumn(name='s', value=[100., 200., 300.]))
+
 
 if __name__ == '__main__':
   tf.test.main()

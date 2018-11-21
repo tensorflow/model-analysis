@@ -120,12 +120,11 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
 
     # Make the "sparse_values" feature.
     sparse_values = tf.squeeze(
-        tf.concat(
-            [
-                dense_t1, dense_t1**2, dense_t1**3, dense_t2, dense_t2**2,
-                dense_t2**3, dense_t3, dense_t3**2, dense_t3**3
-            ],
-            axis=0))
+        tf.concat([
+            dense_t1, dense_t1**2, dense_t1**3, dense_t2, dense_t2**2, dense_t2
+            **3, dense_t3, dense_t3**2, dense_t3**3
+        ],
+                  axis=0))
     sparse_total_elems = batch_size * sparse_dims * sparse_timesteps
     seq = tf.range(0, sparse_total_elems, dtype=tf.int64)
     batch_num = seq % batch_size
@@ -252,7 +251,7 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
   export_dir = None
   eval_export_dir = None
   if export_path:
-    export_dir = estimator.export_savedmodel(
+    export_dir = estimator.export_saved_model(
         export_dir_base=export_path,
         serving_input_receiver_fn=serving_input_receiver_fn)
 

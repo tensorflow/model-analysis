@@ -190,12 +190,12 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
     self.assertEqual(
         util.get_slicing_metrics(
             self._makeTestData(),
-            slicing_spec=SingleSliceSpec(features=[(
-                self.column_1, self.slice_a), (self.column_2, self.slice_d)])),
-        [{
-            'slice': self.column_d,
-            'metrics': self.metrics_d
-        }])
+            slicing_spec=SingleSliceSpec(
+                features=[(self.column_1,
+                           self.slice_a), (self.column_2, self.slice_d)])), [{
+                               'slice': self.column_d,
+                               'metrics': self.metrics_d
+                           }])
 
   def testRaisesErrorWhenColumnNotAvailable(self):
     with self.assertRaises(ValueError):

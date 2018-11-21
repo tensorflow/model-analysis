@@ -22,7 +22,7 @@ from tensorflow_model_analysis.api import model_eval_lib
 import tensorflow_model_analysis.notebook.visualization as visualization
 from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
 from tensorflow_model_analysis.view import util
-from tensorflow_model_analysis.types_compat import Optional
+from tensorflow_model_analysis.types_compat import Optional, Text
 
 
 def render_slicing_metrics(result,
@@ -35,7 +35,7 @@ def render_slicing_metrics(result,
     result: An tfma.EvalResult.
     slicing_column: The column to slice on.
     slicing_spec: The slicing spec to filter results. If neither column nor spec
-    is set, show overall.
+      is set, show overall.
 
   Returns:
     A SlicingMetricsViewer object if in Jupyter notebook; None if in Colab.
@@ -56,9 +56,9 @@ def render_time_series(
   Args:
     results: An tfma.EvalResults.
     slice_spec: A slicing spec determining the slice to show time series on.
-    Show overall if not set.
+      Show overall if not set.
     display_full_path: Whether to display the full path to model / data in the
-    visualization or just show file name.
+      visualization or just show file name.
 
   Returns:
     A TimeSeriesViewer object if in Jupyter notebook; None if in Colab.

@@ -23,6 +23,7 @@ Callable = None
 Generic = None
 Sequence = None
 Type = None
+AnyStr = Any
 Text = Any
 
 # pylint: enable=invalid-name

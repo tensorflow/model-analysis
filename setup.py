@@ -242,17 +242,17 @@ setup_args = {
         'tensorflow_model_analysis/static/index.js.map',
         'tensorflow_model_analysis/static/vulcanized_template.html',
     ]),],
+    # Make sure to sync the versions of common dependencies (numpy, six, and
+    # protobuf) with TF.
     'install_requires': [
-        'apache-beam[gcp]>=2.6,<3',
-        'grpc-google-iam-v1==0.11.1',
+        'apache-beam[gcp]>=2.8,<3',
         'numpy>=1.10,<2',
         'jupyter>=1.0,<2',
         'ipywidgets>=7.0,<8',
-        # TF now requires protobuf>=3.6.0.
         'protobuf>=3.6.0,<4',
         # For apitools.
         'six>=1.9,<2',
-        'tensorflow-transform>=0.9,<1',
+        'tensorflow-transform>=0.11,<1',
     ],
     'python_requires':
         '>=2.7,<3',
@@ -292,6 +292,9 @@ setup_args = {
     ],
     'namespace_packages': [],
     'requires': [],
+    'keywords': 'tensorflow model analysis tfx',
+    'url': 'https://www.tensorflow.org/tfx/model_analysis',
+    'download_url': 'https://pypi.org/project/tensorflow-model-analysis',
 }
 
 setup(**setup_args)

@@ -20,7 +20,7 @@ import os
 
 from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.slicer import slicer
-from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Tuple, Union
+from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Text, Tuple, Union
 
 
 def get_slicing_metrics(
@@ -36,7 +36,7 @@ def get_slicing_metrics(
 
   Args:
     results: A list of records. Each record is a tuple of (slice_name,
-    {metric_name, metric_value}).
+      {metric_name, metric_value}).
     slicing_column: The column to filter the resuslts with.
     slicing_spec: The slicer.SingleSliceSpec to filter the resutls with.
 
@@ -49,8 +49,8 @@ def get_slicing_metrics(
   """
 
   if slicing_column:
-    data = find_all_slices(
-        results, slicer.SingleSliceSpec(columns=[slicing_column]))
+    data = find_all_slices(results,
+                           slicer.SingleSliceSpec(columns=[slicing_column]))
   elif not slicing_spec:
     data = find_all_slices(results, slicer.SingleSliceSpec())
   else:
@@ -63,7 +63,7 @@ def get_slicing_metrics(
         slicing_column = slicer.OVERALL_SLICE_NAME
       raise ValueError('No slices found for %s' % slicing_column)
     else:
-      raise ValueError('No slices found for ' + str(slicing_spec))
+      raise ValueError('No slices found for %s' % slicing_spec)
   elif not slicing_column and not slicing_spec and slice_count > 1:
     raise ValueError(
         'More than one slice found for %s' % slicer.OVERALL_SLICE_NAME)
@@ -78,7 +78,7 @@ def find_all_slices(results,
 
   Args:
     results: A list of records. Each record is a tuple of (slice_name,
-    {metric_name, metric_value}).
+      {metric_name, metric_value}).
     slicing_spec: The spec to slice on.
 
   Returns:
@@ -92,7 +92,7 @@ def find_all_slices(results,
           'metrics': metric_value
       })
 
-  return data
+  return data  # pytype: disable=bad-return-type
 
 
 def get_time_series(
@@ -103,7 +103,7 @@ def get_time_series(
 
   Args:
     results: A collection of EvalResult whose metrics should be visualized in a
-    time series.
+      time series.
     slicing_spec: The spec specifying the slice to show in the time series.
     display_full_path: Whether to display the full path or just the file name.
 
@@ -138,7 +138,7 @@ def get_time_series(
   if not run_count:
     raise ValueError('Given slice spec has no matches in any eval run.')
 
-  return data
+  return data  # pytype: disable=bad-return-type
 
 
 def _get_identifier(path, use_full_path):
@@ -147,7 +147,7 @@ def _get_identifier(path, use_full_path):
   Args:
     path: The full path to the file.
     use_full_path: Whether to use the full path or just the file name as the
-    identifier.
+      identifier.
 
   Returns:
     A string containing the identifier
@@ -211,9 +211,9 @@ def get_plot_data_and_config(
 
   Args:
     results: A list of records. Each record is a tuple of (slice_name,
-    {metric_name, metric_value}).
+      {metric_name, metric_value}).
     slicing_spec: The slicer.SingleSliceSpec to identify the slice to fetch plot
-    for.
+      for.
 
   Returns:
     (plot_data, plot_config) for the specified slice.
@@ -241,4 +241,4 @@ def get_plot_data_and_config(
   plot_data = _replace_nan_with_none(target_slice['metrics'],
                                      _SUPPORTED_PLOT_KEYS)
 
-  return plot_data, plot_config
+  return plot_data, plot_config  # pytype: disable=bad-return-type

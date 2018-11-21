@@ -102,9 +102,9 @@ suite('tests', () => {
       assert.deepEqual(seriesData.getModelIds(), ['c.model', 'b.model', 'a.model']);
       const dt = seriesData.getDataTable();
       assert.deepEqual(seriesData.getDataTable(), [
-          ["c.model", "c.data", 0.63, 0.53, 0.8412698412698413, 30],
-          ["b.model", "b.data", 0.62, 0.52, 0.8387096774193549, 20],
-          ["a.model", "a.data", 0.61, 0.51, 0.8360655737704918, 10]]);
+          ["c.data", "c.model", 0.63, 0.53, 0.8412698412698413, 30],
+          ["b.data", "b.model", 0.62, 0.52, 0.8387096774193549, 20],
+          ["a.data", "a.model", 0.61, 0.51, 0.8360655737704918, 10]]);
       done();
     };
     run(checkDataParsed);

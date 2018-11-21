@@ -15,16 +15,28 @@
 
 
 from tensorflow_model_analysis import view
+# pylint: disable=unused-import
 from tensorflow_model_analysis.api import tfma_unit as test
-from tensorflow_model_analysis.api.model_eval_lib import *  # pylint: disable=wildcard-import
+
+from tensorflow_model_analysis.api.model_eval_lib import default_eval_shared_model
+from tensorflow_model_analysis.api.model_eval_lib import ExtractEvaluateAndWriteResults
+from tensorflow_model_analysis.api.model_eval_lib import load_eval_result
+from tensorflow_model_analysis.api.model_eval_lib import load_eval_results
+from tensorflow_model_analysis.api.model_eval_lib import make_eval_results
+from tensorflow_model_analysis.api.model_eval_lib import multiple_data_analysis
+from tensorflow_model_analysis.api.model_eval_lib import multiple_model_analysis
+from tensorflow_model_analysis.api.model_eval_lib import run_model_analysis
+
 from tensorflow_model_analysis.constants import DATA_CENTRIC_MODE
 from tensorflow_model_analysis.constants import MODEL_CENTRIC_MODE
+
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model import exporter
-from tensorflow_model_analysis.eval_saved_model import post_export_metrics
+
+from tensorflow_model_analysis.post_export_metrics import post_export_metrics
+
 from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
 from tensorflow_model_analysis.version import VERSION_STRING
-
 
 def _jupyter_nbextension_paths():
   return [{

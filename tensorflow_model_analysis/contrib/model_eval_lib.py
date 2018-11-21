@@ -31,7 +31,7 @@ from tensorflow_model_analysis.types_compat import List, Optional
 @beam.typehints.with_output_types(beam.typehints.Any)
 def BuildDiagnosticTable(  # pylint: disable=invalid-name
     examples,
-    eval_saved_model_path,
+    eval_shared_model,
     slice_spec = None,
     desired_batch_size = None):
   """Public API version of evaluate.BuildDiagnosticTable.
@@ -42,19 +42,18 @@ def BuildDiagnosticTable(  # pylint: disable=invalid-name
   Args:
     examples: PCollection of input examples. Can be any format the model accepts
       (e.g. string containing CSV row, TensorFlow.Example, etc).
-    eval_saved_model_path: Path to EvalSavedModel. This directory should contain
-      the saved_model.pb file.
+    eval_shared_model: Shared model parameters for EvalSavedModel.
     slice_spec: Optional list of SingleSliceSpec specifying the slices to slice
       the data into. If None, defaults to the overall slice.
     desired_batch_size: Optional batch size for batching in Predict and
       Aggregate.
 
   Returns:
-    beam.PCollection of ExampleAndExtracts. The caller is responsible for
+    beam.pvalue.PCollection of ExampleAndExtracts. The caller is responsible for
     committing to file for now.
   """
   if slice_spec is None:
     slice_spec = [slicer.SingleSliceSpec()]
   return (examples
           | 'BuildDiagnosticTable' >> evaluate.BuildDiagnosticTable(
-              eval_saved_model_path, slice_spec, desired_batch_size))
+              eval_shared_model, slice_spec, desired_batch_size))

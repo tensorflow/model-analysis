@@ -95,7 +95,11 @@ def simple_multi_head(export_path, eval_export_path):
   combined_head = tf.contrib.estimator.multi_head(
       [english_head, chinese_head, other_head])
 
-  estimator = tf.contrib.estimator.DNNLinearCombinedEstimator(
+  if hasattr(tf.estimator, 'DNNLinearCombinedEstimator'):
+    estimator_fn = tf.estimator.DNNLinearCombinedEstimator
+  else:
+    estimator_fn = tf.contrib.estimator.DNNLinearCombinedEstimator
+  estimator = estimator_fn(
       head=combined_head,
       dnn_feature_columns=[],
       dnn_optimizer=tf.train.AdagradOptimizer(learning_rate=0.01),

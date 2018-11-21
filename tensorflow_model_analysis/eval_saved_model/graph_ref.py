@@ -25,7 +25,7 @@ from __future__ import print_function
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import encoding
-from tensorflow_model_analysis.types_compat import Dict, List, Union
+from tensorflow_model_analysis.types_compat import Dict, List, Text, Union
 
 from google.protobuf import any_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
@@ -134,7 +134,7 @@ def get_node_map(meta_graph_def, prefix,
   """
   node_lists = []
   for node_suffix in node_suffixes:
-    collection_def_name = '%s/%s' % (prefix, node_suffix)
+    collection_def_name = encoding.with_suffix(prefix, node_suffix)
     collection_def = meta_graph_def.collection_def.get(collection_def_name)
     if collection_def is None:
       # If we can't find the CollectionDef, append an empty list.
@@ -146,9 +146,8 @@ def get_node_map(meta_graph_def, prefix,
     else:
       node_lists.append(
           getattr(collection_def, collection_def.WhichOneof('kind')).value)
-  keys = meta_graph_def.collection_def['%s/%s' %
-                                       (prefix,
-                                        encoding.KEY_SUFFIX)].bytes_list.value
+  keys = meta_graph_def.collection_def[encoding.with_suffix(
+      prefix, encoding.KEY_SUFFIX)].bytes_list.value
   if not all([len(node_list) == len(keys) for node_list in node_lists]):
     raise ValueError('length of each node_list should match length of keys. '
                      'prefix was %s, node_lists were %s, keys was %s' %
@@ -182,8 +181,7 @@ def get_node_map_in_graph(
   result = {}
   for key, elems in node_map.items():
     result[key] = {
-        k: encoding.decode_tensor_node(graph, n)
-        for k, n in elems.items()
+        k: encoding.decode_tensor_node(graph, n) for k, n in elems.items()
     }
   return result
 
@@ -229,6 +227,5 @@ def get_node_in_graph(meta_graph_def, path,
     The node in the graph with the name returned by
     get_node_wrapped_tensor_info.
   """
-  return encoding.decode_tensor_node(graph,
-                                     get_node_wrapped_tensor_info(
-                                         meta_graph_def, path))
+  return encoding.decode_tensor_node(
+      graph, get_node_wrapped_tensor_info(meta_graph_def, path))
