@@ -3,7 +3,9 @@ licenses(["notice"])  # Apache 2.0
 load("@io_bazel_rules_closure//closure:defs.bzl", "web_library")
 
 package(
-    default_visibility = ["//tensorflow_model_analysis:__subpackages__"],
+    default_visibility = [
+        "//tensorflow_model_analysis/frontend:__subpackages__",
+    ],
 )
 
 web_library(
@@ -14,6 +16,7 @@ web_library(
     ],
     path = "/tfma-metrics-table",
     deps = [
+        "//tensorflow_model_analysis/frontend/tfma-array-value:lib",
         "//tensorflow_model_analysis/frontend/tfma-bounded-value:lib",
         "//tensorflow_model_analysis/frontend/tfma-confusion-matrix-at-thresholds:lib",
         "//tensorflow_model_analysis/frontend/tfma-int64:lib",

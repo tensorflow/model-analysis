@@ -78,13 +78,17 @@ Polymer({
       return parsedData['matrices'].map((matrix, index) => {
         return {
           'showTitle': index == 0,
-          'threshold': this.getValue_(matrix, 'threshold', expanded),
-          'precision': this.getValue_(matrix, 'precision', expanded),
-          'recall': this.getValue_(matrix, 'recall', expanded),
-          'truePositives': this.getValue_(matrix, 'truePositives', expanded),
-          'trueNegatives': this.getValue_(matrix, 'trueNegatives', expanded),
-          'falsePositives': this.getValue_(matrix, 'falsePositives', expanded),
-          'falseNegatives': this.getValue_(matrix, 'falseNegatives', expanded),
+          'threshold': this.getFormattedValue_(matrix, 'threshold', expanded),
+          'precision': this.getFormattedValue_(matrix, 'precision', expanded),
+          'recall': this.getFormattedValue_(matrix, 'recall', expanded),
+          'truePositives':
+              this.getFormattedValue_(matrix, 'truePositives', expanded),
+          'trueNegatives':
+              this.getFormattedValue_(matrix, 'trueNegatives', expanded),
+          'falsePositives':
+              this.getFormattedValue_(matrix, 'falsePositives', expanded),
+          'falseNegatives':
+              this.getFormattedValue_(matrix, 'falseNegatives', expanded),
         };
       });
     }
@@ -123,9 +127,11 @@ Polymer({
    * @param {string} key
    * @param {boolean} expanded
    * @return {string}
+   * @private
    */
-  getValue_: function(object, key, expanded) {
-    return this.toFixed_(object[key] || 0, expanded);
+  getFormattedValue_: function(object, key, expanded) {
+    return this.toFixed_(
+        tfma.CellRenderer.extractFloatValue(object, key), expanded);
   },
 
   /**
@@ -134,8 +140,10 @@ Polymer({
    * @return {string} The specificity from the matrix.
    */
   computeSpecificity_: function(matrix, expanded) {
-    const trueNegatives = matrix['trueNegatives'] || 0;
-    const falsePositives = matrix['falsePositives'] || 0;
+    const trueNegatives =
+        tfma.CellRenderer.extractFloatValue(matrix, 'trueNegatives');
+    const falsePositives =
+        tfma.CellRenderer.extractFloatValue(matrix, 'falsePositives');
     const denominator = trueNegatives + falsePositives;
     return this.toFixed_(
         denominator ? trueNegatives / denominator : 0, expanded);

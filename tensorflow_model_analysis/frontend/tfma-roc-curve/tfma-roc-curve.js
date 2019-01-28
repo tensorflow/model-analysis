@@ -55,11 +55,15 @@ Polymer({
     const plotData = [['FPR', 'TPR', {'type': 'string', 'role': 'tooltip'}]];
     data.forEach((entry) => {
       const threshold = Math.max(0, Math.min(1, entry['threshold'] || 0));
-      const truePositives = entry['truePositives'] || 0;
-      const falseNegatives = entry['falseNegatives'] || 0;
+      const truePositives =
+          tfma.CellRenderer.extractFloatValue(entry, 'truePositives');
+      const falseNegatives =
+          tfma.CellRenderer.extractFloatValue(entry, 'falseNegatives');
       const truePositiveRate = truePositives / (truePositives + falseNegatives);
-      const trueNegatives = entry['trueNegatives'] || 0;
-      const falsePositives = entry['falsePositives'] || 0;
+      const trueNegatives =
+          tfma.CellRenderer.extractFloatValue(entry, 'trueNegatives');
+      const falsePositives =
+          tfma.CellRenderer.extractFloatValue(entry, 'falsePositives');
       const falsePositiveRate =
           falsePositives / (trueNegatives + falsePositives);
       const tooltip = 'Prediction threshold: ' + threshold.toFixed(5) +

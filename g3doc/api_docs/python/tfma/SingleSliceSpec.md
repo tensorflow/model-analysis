@@ -1,5 +1,5 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
-<meta itemprop="name" content="tfma.SingleSliceSpec" />
+<meta itemprop="name" content="tfma.slicer.SingleSliceSpec" />
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="__eq__"/>
 <meta itemprop="property" content="__init__"/>
@@ -9,7 +9,7 @@
 <meta itemprop="property" content="is_slice_applicable"/>
 </div>
 
-# tfma.SingleSliceSpec
+# tfma.slicer.SingleSliceSpec
 
 ## Class `SingleSliceSpec`
 

@@ -35,6 +35,9 @@ class GraphRefTest(tf.test.TestCase):
     def make_tensor_info(name):
       return tf.saved_model.utils.build_tensor_info(tf.constant(0.0, name=name))
 
+    # Test for single entry (non-dict) tensors.
+    signature_def.inputs['labels'].CopyFrom(make_tensor_info('labels'))
+
     signature_def.outputs['predictions'].CopyFrom(
         make_tensor_info('predictions'))
     signature_def.outputs['metrics/mean/value'].CopyFrom(
@@ -52,28 +55,34 @@ class GraphRefTest(tf.test.TestCase):
     signature_def.outputs['prefix/sub/more'].CopyFrom(
         make_tensor_info('prefix/sub/more'))
 
-    self.assertDictEqual({
-        'predictions': signature_def.outputs['predictions']
-    },
-                         graph_ref.extract_signature_outputs_with_prefix(
-                             'predictions', signature_def.outputs))
+    self.assertDictEqual(
+        {'__labels': signature_def.inputs['labels']},
+        graph_ref.extract_signature_inputs_or_outputs_with_prefix(
+            'labels', signature_def.inputs, '__labels'))
 
-    self.assertDictEqual({
-        'mean/value': signature_def.outputs['metrics/mean/value'],
-        'mean/update_op': signature_def.outputs['metrics/mean/update_op']
-    },
-                         graph_ref.extract_signature_outputs_with_prefix(
-                             'metrics', signature_def.outputs))
+    self.assertDictEqual(
+        {'predictions': signature_def.outputs['predictions']},
+        graph_ref.extract_signature_inputs_or_outputs_with_prefix(
+            'predictions', signature_def.outputs))
 
-    self.assertDictEqual({
-        'prefix': signature_def.outputs['prefix'],
-        'prefix1': signature_def.outputs['prefix1'],
-        'prefix2': signature_def.outputs['prefix2'],
-        'stuff': signature_def.outputs['prefix/stuff'],
-        'sub/more': signature_def.outputs['prefix/sub/more'],
-    },
-                         graph_ref.extract_signature_outputs_with_prefix(
-                             'prefix', signature_def.outputs))
+    self.assertDictEqual(
+        {
+            'mean/value': signature_def.outputs['metrics/mean/value'],
+            'mean/update_op': signature_def.outputs['metrics/mean/update_op']
+        },
+        graph_ref.extract_signature_inputs_or_outputs_with_prefix(
+            'metrics', signature_def.outputs))
+
+    self.assertDictEqual(
+        {
+            'prefix': signature_def.outputs['prefix'],
+            'prefix1': signature_def.outputs['prefix1'],
+            'prefix2': signature_def.outputs['prefix2'],
+            'stuff': signature_def.outputs['prefix/stuff'],
+            'sub/more': signature_def.outputs['prefix/sub/more'],
+        },
+        graph_ref.extract_signature_inputs_or_outputs_with_prefix(
+            'prefix', signature_def.outputs))
 
   def testGetNodeMapBasic(self):
     meta_graph_def = meta_graph_pb2.MetaGraphDef()

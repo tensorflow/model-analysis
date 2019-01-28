@@ -23,6 +23,16 @@ from tensorflow_model_analysis import util
 
 class UtilTest(tf.test.TestCase):
 
+  def testUniqueKey(self):
+    self.assertEqual('key', util.unique_key('key', ['key1', 'key2']))
+    self.assertEqual('key1_1', util.unique_key('key1', ['key1', 'key2']))
+    self.assertEqual('key1_2', util.unique_key('key1', ['key1', 'key1_1']))
+
+  def testCompoundKey(self):
+    self.assertEqual('a_b', util.compound_key(['a_b']))
+    self.assertEqual('a__b', util.compound_key(['a', 'b']))
+    self.assertEqual('a__b____c__d', util.compound_key(['a', 'b__c', 'd']))
+
   def testKwargsOnly(self):
 
     @util.kwargs_only

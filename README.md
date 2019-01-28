@@ -1,6 +1,10 @@
 <!-- See: www.tensorflow.org/tfx/model_analysis/ -->
 
-# TensorFlow Model Analysis [![PyPI](https://img.shields.io/pypi/pyversions/tensorflow-model-analysis.svg?style=plastic)](https://github.com/tensorflow/model-analysis)
+# TensorFlow Model Analysis
+
+[![Python](https://img.shields.io/pypi/pyversions/tensorflow-model-analysis.svg?style=plastic)](https://github.com/tensorflow/model-analysis)
+[![PyPI](https://badge.fury.io/py/tensorflow-model-analysis.svg)](https://badge.fury.io/py/tensorflow-model-analysis)
+[![Documentation](https://img.shields.io/badge/api-reference-blue.svg)](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma)
 
 *TensorFlow Model Analysis* (TFMA) is a library for evaluating TensorFlow models.
 It allows users to evaluate their models on large amounts of data in a

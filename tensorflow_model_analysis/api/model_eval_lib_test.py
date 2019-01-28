@@ -13,24 +13,42 @@
 # limitations under the License.
 """Test for using the model_eval_lib API."""
 
-from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import os
+import pickle
 import tempfile
 
 
+
+import apache_beam as beam
 import tensorflow as tf
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_linear_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import custom_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
+from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
+
+from google.protobuf import text_format
+
+
+def _make_slice_key(*args):
+  if len(args) % 2 != 0:
+    raise ValueError('number of arguments should be even')
+
+  result = []
+  for i in range(0, len(args), 2):
+    result.append((args[i], args[i + 1]))
+
+  return tuple(result)
 
 
 class EvaluateTest(testutil.TensorflowModelAnalysisTest):
@@ -66,6 +84,37 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
       for k in expected_value[s]:
         self.assertIn(k, m)
         self.assertDictElementsAlmostEqual(m[k], expected_value[s][k])
+
+  def assertSliceMetricsAlmostEqual(self, expected_metrics, got_metrics):
+    self.assertItemsEqual(
+        list(expected_metrics.keys()),
+        list(got_metrics.keys()),
+        msg='keys do not match. expected_metrics: %s, got_metrics: %s' %
+        (expected_metrics, got_metrics))
+    for key in expected_metrics.keys():
+      self.assertAlmostEqual(
+          expected_metrics[key],
+          got_metrics[key],
+          msg='value for key %s does not match' % key)
+
+  def assertSliceListEqual(self, expected_list, got_list, value_assert_fn):
+    self.assertEqual(
+        len(expected_list),
+        len(got_list),
+        msg='expected_list: %s, got_list: %s' % (expected_list, got_list))
+    for index, (expected, got) in enumerate(zip(expected_list, got_list)):
+      (expected_key, expected_value) = expected
+      (got_key, got_value) = got
+      self.assertEqual(
+          expected_key, got_key, msg='key mismatch at index %d' % index)
+      value_assert_fn(expected_value, got_value)
+
+  def assertSlicePlotsListEqual(self, expected_list, got_list):
+    self.assertSliceListEqual(expected_list, got_list, self.assertProtoEquals)
+
+  def assertSliceMetricsListEqual(self, expected_list, got_list):
+    self.assertSliceListEqual(expected_list, got_list,
+                              self.assertSliceMetricsAlmostEqual)
 
   def testRunModelAnalysis(self):
     model_location = self._exportEvalSavedModel(
@@ -260,6 +309,167 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                                   expected_result_1)
     self.assertMetricsAlmostEqual(eval_results._results[1].slicing_metrics,
                                   expected_result_2)
+
+  def testSerializeDeserializeEvalConfig(self):
+    eval_config = model_eval_lib.EvalConfig(
+        model_location='/path/to/model',
+        data_location='/path/to/data',
+        slice_spec=[
+            slicer.SingleSliceSpec(
+                features=[('age', 5), ('gender', 'f')], columns=['country']),
+            slicer.SingleSliceSpec(
+                features=[('age', 6), ('gender', 'm')], columns=['interest'])
+        ],
+        example_weight_metric_key='key')
+    serialized = model_eval_lib._serialize_eval_config(eval_config)
+    deserialized = pickle.loads(serialized)
+    got_eval_config = deserialized[model_eval_lib._EVAL_CONFIG_KEY]
+    self.assertEqual(eval_config, got_eval_config)
+
+  def testSerializeDeserializeToFile(self):
+    metrics_slice_key = _make_slice_key(b'fruit', b'pear', b'animal', b'duck')
+    metrics_for_slice = text_format.Parse(
+        """
+        slice_key {
+          single_slice_keys {
+            column: "fruit"
+            bytes_value: "pear"
+          }
+          single_slice_keys {
+            column: "animal"
+            bytes_value: "duck"
+          }
+        }
+        metrics {
+          key: "accuracy"
+          value {
+            double_value {
+              value: 0.8
+            }
+          }
+        }
+        metrics {
+          key: "example_weight"
+          value {
+            double_value {
+              value: 10.0
+            }
+          }
+        }
+        metrics {
+          key: "auc"
+          value {
+            bounded_value {
+              lower_bound {
+                value: 0.1
+              }
+              upper_bound {
+                value: 0.3
+              }
+              value {
+                value: 0.2
+              }
+            }
+          }
+        }
+        metrics {
+          key: "auprc"
+          value {
+            bounded_value {
+              lower_bound {
+                value: 0.05
+              }
+              upper_bound {
+                value: 0.17
+              }
+              value {
+                value: 0.1
+              }
+            }
+          }
+        }""", metrics_for_slice_pb2.MetricsForSlice())
+    plots_for_slice = text_format.Parse(
+        """
+        slice_key {
+          single_slice_keys {
+            column: "fruit"
+            bytes_value: "peach"
+          }
+          single_slice_keys {
+            column: "animal"
+            bytes_value: "cow"
+          }
+        }
+        plot_data {
+          calibration_histogram_buckets {
+            buckets {
+              lower_threshold_inclusive: -inf
+              upper_threshold_exclusive: 0.0
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.0
+              upper_threshold_exclusive: 0.5
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 1.0 }
+              total_weighted_refined_prediction { value: 0.3 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.5
+              upper_threshold_exclusive: 1.0
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.7 }
+            }
+            buckets {
+              lower_threshold_inclusive: 1.0
+              upper_threshold_exclusive: inf
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
+          }
+        }""", metrics_for_slice_pb2.PlotsForSlice())
+    plots_slice_key = _make_slice_key(b'fruit', b'peach', b'animal', b'cow')
+    eval_config = model_eval_lib.EvalConfig(
+        model_location='/path/to/model',
+        data_location='/path/to/data',
+        slice_spec=[
+            slicer.SingleSliceSpec(
+                features=[('age', 5), ('gender', 'f')], columns=['country']),
+            slicer.SingleSliceSpec(
+                features=[('age', 6), ('gender', 'm')], columns=['interest'])
+        ],
+        example_weight_metric_key='key')
+
+    output_path = self._getTempDir()
+    with beam.Pipeline() as pipeline:
+      metrics = (
+          pipeline
+          | 'CreateMetrics' >> beam.Create(
+              [metrics_for_slice.SerializeToString()]))
+      plots = (
+          pipeline
+          | 'CreatePlots' >> beam.Create([plots_for_slice.SerializeToString()]))
+      evaluation = {constants.METRICS_KEY: metrics, constants.PLOTS_KEY: plots}
+      _ = (
+          evaluation
+          | 'WriteResults' >> model_eval_lib.WriteResults(
+              writers=model_eval_lib.default_writers(output_path=output_path)))
+      _ = pipeline | model_eval_lib.WriteEvalConfig(eval_config, output_path)
+
+    metrics = metrics_and_plots_evaluator.load_and_deserialize_metrics(
+        path=os.path.join(output_path, model_eval_lib._METRICS_OUTPUT_FILE))
+    plots = metrics_and_plots_evaluator.load_and_deserialize_plots(
+        path=os.path.join(output_path, model_eval_lib._PLOTS_OUTPUT_FILE))
+    self.assertSliceMetricsListEqual(
+        [(metrics_slice_key, metrics_for_slice.metrics)], metrics)
+    self.assertSlicePlotsListEqual(
+        [(plots_slice_key, plots_for_slice.plot_data)], plots)
+    got_eval_config = model_eval_lib.load_eval_config(output_path)
+    self.assertEqual(eval_config, got_eval_config)
 
 
 if __name__ == '__main__':

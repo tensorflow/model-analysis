@@ -29,6 +29,7 @@ from apache_beam.testing import util
 
 import tensorflow as tf
 
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fake_multi_examples_per_input_estimator
@@ -59,19 +60,18 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       predict_extracts = (
           pipeline
           | beam.Create(serialized_examples)
-          # Our diagnostic outputs, pass types.ExampleAndExtracts throughout,
-          # however our aggregating functions do not use this interface.
-          | beam.Map(lambda x: types.ExampleAndExtracts(example=x, extracts={}))
-          | 'Predict' >> predict_extractor.TFMAPredict(
+          # Our diagnostic outputs, pass types.Extracts throughout, however our
+          # aggregating functions do not use this interface.
+          | beam.Map(lambda x: {constants.INPUT_KEY: x})
+          | 'Predict' >> predict_extractor._TFMAPredict(
               eval_shared_model=eval_shared_model, desired_batch_size=3))
 
       def check_result(got):
         try:
           self.assertEqual(4, len(got), 'got: %s' % got)
           for item in got:
-            extracts_dict = item.extracts
-            self.assertTrue('fpl' in extracts_dict)
-            fpl = extracts_dict['fpl']
+            self.assertTrue(constants.FEATURES_PREDICTIONS_LABELS_KEY in item)
+            fpl = item[constants.FEATURES_PREDICTIONS_LABELS_KEY]
             # Verify fpl contains features, probabilities, and correct labels.
             self.assertIn('language', fpl.features)
             self.assertIn('age', fpl.features)
@@ -100,14 +100,12 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     def check_result(got):
       try:
         self.assertEqual(6, len(got), 'got: %s' % got)
-        self.assertEqual(
-            ['3', '3', '3', '1', '2', '2'],
-            [example_and_extracts.example for example_and_extracts in got])
+        self.assertEqual(['3', '3', '3', '1', '2', '2'],
+                         [extracts[constants.INPUT_KEY] for extracts in got])
 
         for item in got:
-          extracts_dict = item.extracts
-          self.assertTrue('fpl' in extracts_dict)
-          fpl = extracts_dict['fpl']
+          self.assertTrue(constants.FEATURES_PREDICTIONS_LABELS_KEY in item)
+          fpl = item[constants.FEATURES_PREDICTIONS_LABELS_KEY]
           self.assertIn('input_index', fpl.features)
           self.assertIn('example_count', fpl.features)
           self.assertIn('intra_input_index', fpl.features)
@@ -119,10 +117,10 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       predict_extracts = (
           pipeline
           | beam.Create(raw_example_bytes)
-          # Our diagnostic outputs, pass types.ExampleAndExtracts throughout,
-          # however our aggregating functions do not use this interface.
-          | beam.Map(lambda x: types.ExampleAndExtracts(example=x, extracts={}))
-          | 'Predict' >> predict_extractor.TFMAPredict(
+          # Our diagnostic outputs, pass types.Extracts throughout, however our
+          # aggregating functions do not use this interface.
+          | beam.Map(lambda x: {constants.INPUT_KEY: x})
+          | 'Predict' >> predict_extractor._TFMAPredict(
               eval_shared_model=eval_shared_model, desired_batch_size=3))
 
       util.assert_that(predict_extracts, check_result)

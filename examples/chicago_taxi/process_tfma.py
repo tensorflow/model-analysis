@@ -61,8 +61,8 @@ def process_tfma(eval_result_dir,
         'one of --input_csv or --big_query_table should be provided.')
 
   slice_spec = [
-      tfma.SingleSliceSpec(),
-      tfma.SingleSliceSpec(columns=['trip_start_hour'])
+      tfma.slicer.SingleSliceSpec(),
+      tfma.slicer.SingleSliceSpec(columns=['trip_start_hour'])
   ]
 
   schema = taxi.read_schema(schema_file)

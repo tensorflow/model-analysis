@@ -18,16 +18,19 @@ from __future__ import division
 
 from __future__ import print_function
 
+import copy
 
 
 import apache_beam as beam
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.api.impl import api_types
+from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.slicer import slicer
 
 from tensorflow_model_analysis.types_compat import List, Optional
+
+SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSliceKeys'
 
 
 def SliceKeyExtractor(
@@ -35,14 +38,14 @@ def SliceKeyExtractor(
     materialize = True):
   """Creates an extractor for extracting slice keys.
 
-  The incoming ExampleAndExtracts must contain a FeaturesPredictionsLabels
-  extract keyed by 'fpl'. Typically this will be obtained by calling the
-  PredictExtractor.
+  The incoming Extracts must contain a FeaturesPredictionsLabels extract keyed
+  by tfma.FEATURES_PREDICTIONS_LABELS_KEY. Typically this will be obtained by
+  calling the PredictExtractor.
 
-  The extractor's PTransform yields a copy of the ExampleAndExtracts input with
-  an additional 'slice_keys' extract pointing at the list of SliceKeyType
-  values. If materialize is True then a materialized version of the slice keys
-  will be added under the key 'materialized_slice_keys'.
+  The extractor's PTransform yields a copy of the Extracts input with an
+  additional extract pointing at the list of SliceKeyType values keyed by
+  tfma.SLICE_KEY_TYPES_KEY. If materialize is True then a materialized version
+  of the slice keys will be added under the key tfma.MATERIALZED_SLICE_KEYS_KEY.
 
   Args:
     slice_spec: Optional list of SingleSliceSpec specifying the slices to slice
@@ -54,14 +57,14 @@ def SliceKeyExtractor(
   """
   if slice_spec is None:
     slice_spec = [slicer.SingleSliceSpec()]
-  return api_types.Extractor(
-      stage_name='ExtractSliceKeys',
-      ptransform=ExtractSliceKeys(slice_spec, materialize))
+  return extractor.Extractor(
+      stage_name=SLICE_KEY_EXTRACTOR_STAGE_NAME,
+      ptransform=_ExtractSliceKeys(slice_spec, materialize))
 
 
 @beam.typehints.with_input_types(beam.typehints.Any)
 @beam.typehints.with_output_types(beam.typehints.Any)
-class _ExtractSliceKeys(beam.DoFn):
+class _ExtractSliceKeysFn(beam.DoFn):
   """A DoFn that extracts slice keys that apply per example."""
 
   def __init__(self, slice_spec,
@@ -69,12 +72,11 @@ class _ExtractSliceKeys(beam.DoFn):
     self._slice_spec = slice_spec
     self._materialize = materialize
 
-  def process(self, element
-             ):
-    fpl = element.extracts.get(constants.FEATURES_PREDICTIONS_LABELS_KEY)
+  def process(self, element):
+    fpl = element.get(constants.FEATURES_PREDICTIONS_LABELS_KEY)
     if not fpl:
       raise RuntimeError('FPL missing, Please ensure Predict() was called.')
-    if not isinstance(fpl, api_types.FeaturesPredictionsLabels):
+    if not isinstance(fpl, types.FeaturesPredictionsLabels):
       raise TypeError(
           'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: '
           '%s of type %s' % (str(fpl), type(fpl)))
@@ -83,25 +85,22 @@ class _ExtractSliceKeys(beam.DoFn):
         slicer.get_slices_for_features_dict(features, self._slice_spec))
 
     # Make a a shallow copy, so we don't mutate the original.
-    element_copy = (element.create_copy_with_shallow_copy_of_extracts())
+    element_copy = copy.copy(element)
 
-    element_copy.extracts[constants.SLICE_KEYS] = slices
+    element_copy[constants.SLICE_KEY_TYPES_KEY] = slices
     # Add a list of stringified slice keys to be materialized to output table.
     if self._materialize:
-      element_copy.extracts[
-          constants.SLICE_KEYS_MATERIALIZED] = types.MaterializedColumn(
-              name=constants.SLICE_KEYS_MATERIALIZED,
-              value=(list(
-                  slicer.stringify_slice_key(x).encode('utf-8')
-                  for x in slices)))
+      element_copy[constants.SLICE_KEYS_KEY] = types.MaterializedColumn(
+          name=constants.SLICE_KEYS_KEY,
+          value=(list(
+              slicer.stringify_slice_key(x).encode('utf-8') for x in slices)))
     return [element_copy]
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.typehints.Any)
 @beam.typehints.with_output_types(beam.typehints.Any)
-def ExtractSliceKeys(examples_and_extracts,
-                     slice_spec,
-                     materialize = True):
-  return examples_and_extracts | beam.ParDo(
-      _ExtractSliceKeys(slice_spec, materialize))
+def _ExtractSliceKeys(extracts,
+                      slice_spec,
+                      materialize = True):
+  return extracts | beam.ParDo(_ExtractSliceKeysFn(slice_spec, materialize))

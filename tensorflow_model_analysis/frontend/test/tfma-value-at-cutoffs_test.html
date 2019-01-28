@@ -56,7 +56,7 @@ suite('tests', () => {
   });
 
   test('KIs0RepresentsAll', done => {
-    const data = JSON.stringify([{'cutoff': 0, 'value': 1}]);
+    const data = JSON.stringify({'values': [{'cutoff': 0, 'value': 1}]});
     insertValueAtCutoffs(data, () => {
       assert.equal(element.querySelector('div.td').textContent.trim(), 'All');
       done();
@@ -73,7 +73,7 @@ suite('tests', () => {
       precision.push(
           {'cutoff': i, 'value': 1 - 0.1 * i});
     }
-    return JSON.stringify(precision);
+    return JSON.stringify({'values': precision});
   }
 
   /**

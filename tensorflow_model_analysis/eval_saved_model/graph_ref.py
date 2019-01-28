@@ -21,11 +21,13 @@ from __future__ import division
 
 from __future__ import print_function
 
+import collections
 
 import tensorflow as tf
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
-from tensorflow_model_analysis.types_compat import Dict, List, Text, Union
+from tensorflow_model_analysis.types_compat import Dict, List, Optional, Text, Tuple, Union
 
 from google.protobuf import any_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
@@ -33,10 +35,11 @@ from tensorflow.core.protobuf import meta_graph_pb2
 CollectionDefValueType = Union[float, int, bytes, any_pb2.Any]  # pylint: disable=invalid-name
 
 
-def extract_signature_outputs_with_prefix(
+def extract_signature_inputs_or_outputs_with_prefix(
     prefix,
-    # signature_outputs is not actually a Dict, but behaves like one
-    signature_outputs
+    # Inputs and outputs are not actually Dicts, but behave like them
+    signature_inputs_or_outputs,
+    key_if_single_element = None
 ):
   """Extracts signature outputs with the given prefix.
 
@@ -45,7 +48,7 @@ def extract_signature_outputs_with_prefix(
 
   This is designed to extract structures from the  SignatureDef outputs map.
 
-   Structures of the following form:
+  Structures of the following form:
       <prefix>/key1
       <prefix>/key2
   will map to dictionary elements like so:
@@ -60,7 +63,9 @@ def extract_signature_outputs_with_prefix(
 
   Args:
     prefix: Prefix to extract
-    signature_outputs: Signature outputs to extract from
+    signature_inputs_or_outputs: Signature inputs or outputs to extract from
+    key_if_single_element: Key to use in the dictionary if the SignatureDef map
+      had only one entry with key <prefix> representing a single tensor.
 
   Returns:
     Dictionary extracted as described above. The values will be the TensorInfo
@@ -69,11 +74,14 @@ def extract_signature_outputs_with_prefix(
   Raises:
     ValueError: There were duplicate keys.
   """
+  matched_prefix = False
   result = {}
-  for k, v in signature_outputs.items():
+  for k, v in signature_inputs_or_outputs.items():
     if k.startswith(prefix + '/'):
       key = k[len(prefix) + 1:]
     elif k.startswith(prefix):
+      if k == prefix:
+        matched_prefix = True
       key = k
     else:
       continue
@@ -81,10 +89,208 @@ def extract_signature_outputs_with_prefix(
     if key in result:
       raise ValueError(
           'key "%s" already in dictionary. you might have repeated keys. '
-          'prefix was "%s", signature_outputs were: %s' % (prefix, key,
-                                                           signature_outputs))
+          'prefix was "%s", signature_def values were: %s' %
+          (prefix, key, signature_inputs_or_outputs))
     result[key] = v
+
+  if key_if_single_element and matched_prefix and len(result) == 1:
+    return {key_if_single_element: result[prefix]}
+
   return result
+
+
+def load_legacy_inputs(
+    meta_graph_def,
+    signature_def,
+    graph):
+  """Loads legacy inputs.
+
+  Args:
+    meta_graph_def: MetaGraphDef to lookup nodes in.
+    signature_def: SignatureDef to lookup nodes in.
+    graph: TensorFlow graph to lookup the nodes in.
+
+  Returns:
+    Tuple of (inputs_map, input_refs_node)
+  """
+  input_node = tf.saved_model.utils.get_tensor_from_tensor_info(
+      list(signature_def.inputs.values())[0], graph)
+  try:
+    input_refs_node = get_node_in_graph(meta_graph_def,
+                                        encoding.EXAMPLE_REF_COLLECTION, graph)  # pytype: disable=wrong-arg-types
+  except KeyError:
+    # If we can't find the ExampleRef collection, then this is probably a model
+    # created before we introduced the ExampleRef parameter to
+    # EvalInputReceiver. In that case, we default to a tensor of range(0,
+    # len(input_example)).
+    input_refs_node = tf.range(tf.size(input_node))
+  inputs_map = collections.OrderedDict(
+      {list(signature_def.inputs.keys())[0]: input_node})
+  return (inputs_map, input_refs_node)
+
+
+def load_legacy_features_and_labels(
+    meta_graph_def, graph
+):
+  """Loads legacy features and labels nodes.
+
+  Args:
+    meta_graph_def: MetaGraphDef to lookup nodes in.
+    graph: TensorFlow graph to lookup the nodes in.
+
+  Returns:
+    Tuple of (features_map, labels_map)
+  """
+  features_map = collections.OrderedDict(
+      get_node_map_in_graph(meta_graph_def, encoding.FEATURES_COLLECTION,
+                            [encoding.NODE_SUFFIX], graph))  # pytype: disable=wrong-arg-types
+  labels_map = collections.OrderedDict(
+      get_node_map_in_graph(meta_graph_def, encoding.LABELS_COLLECTION,
+                            [encoding.NODE_SUFFIX], graph))  # pytype: disable=wrong-arg-types
+  return (features_map, labels_map)
+
+
+def load_tfma_version(
+    signature_def,
+    graph,
+):
+  """Loads TFMA version information from signature_def.inputs.
+
+  Args:
+    signature_def: SignatureDef to lookup node in.
+    graph: TensorFlow graph to lookup the node in.
+
+  Returns:
+    TFMA version tensor.
+
+  Raises:
+    ValueError: If version not found signature_def.inputs.
+  """
+  if constants.SIGNATURE_DEF_TFMA_VERSION_KEY not in signature_def.inputs:
+    raise ValueError(
+        'tfma version not found in signature_def: %s' % signature_def)
+  return tf.saved_model.utils.get_tensor_from_tensor_info(
+      signature_def.inputs[constants.SIGNATURE_DEF_TFMA_VERSION_KEY], graph)
+
+
+def load_inputs(
+    signature_def,
+    graph,
+):
+  """Loads input nodes from signature_def.inputs.
+
+  Args:
+    signature_def: SignatureDef to lookup nodes in.
+    graph: TensorFlow graph to lookup the nodes in.
+
+  Returns:
+    Tuple of (inputs_map, input_refs_node) where inputs_map is an OrderedDict.
+
+  Raises:
+    ValueError: If inputs or input_refs not found signature_def.inputs.
+  """
+  inputs = extract_signature_inputs_or_outputs_with_prefix(
+      constants.SIGNATURE_DEF_INPUTS_PREFIX, signature_def.inputs)  # pytype: disable=wrong-arg-types
+  if not inputs:
+    raise ValueError('no inputs found in signature_def: %s' % signature_def)
+  inputs_map = collections.OrderedDict()
+  # Sort by key name so stable ordering is used when passing to feed_list.
+  for k in sorted(inputs.keys()):
+    inputs_map[k] = tf.saved_model.utils.get_tensor_from_tensor_info(
+        inputs[k], graph)
+
+  if constants.SIGNATURE_DEF_INPUT_REFS_KEY not in signature_def.inputs:
+    raise ValueError('no input_refs found in signature_def: %s' % signature_def)
+  input_refs_node = tf.saved_model.utils.get_tensor_from_tensor_info(
+      signature_def.inputs[constants.SIGNATURE_DEF_INPUT_REFS_KEY], graph)
+  return (inputs_map, input_refs_node)
+
+
+def load_features_and_labels(
+    signature_def, graph
+):
+  """Loads feature and label nodes from signature_def.inputs.
+
+  Args:
+    signature_def: SignatureDef to lookup nodes in.
+    graph: TensorFlow graph to lookup the nodes in.
+
+  Returns:
+    Tuple of (features_map, labels_map) where the maps are OrderedDicts.
+  """
+  features_map = collections.OrderedDict()
+  for k, v in extract_signature_inputs_or_outputs_with_prefix(
+      constants.SIGNATURE_DEF_FEATURES_PREFIX, signature_def.inputs,
+      constants.DEFAULT_FEATURES_DICT_KEY).items():  # pytype: disable=wrong-arg-types
+    features_map[k] = {
+        encoding.NODE_SUFFIX:
+            tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
+    }
+  labels_map = collections.OrderedDict()
+  for k, v in extract_signature_inputs_or_outputs_with_prefix(
+      constants.SIGNATURE_DEF_LABELS_PREFIX, signature_def.inputs,
+      constants.DEFAULT_LABELS_DICT_KEY).items():  # pytype: disable=wrong-arg-types
+    labels_map[k] = {
+        encoding.NODE_SUFFIX:
+            tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
+    }
+  return (features_map, labels_map)
+
+
+def load_predictions(
+    signature_def,
+    graph):
+  """Loads prediction nodes from signature_def.outputs.
+
+  Args:
+    signature_def: SignatureDef to lookup nodes in.
+    graph: TensorFlow graph to lookup the nodes in.
+
+  Returns:
+    Predictions map as an OrderedDict.
+  """
+  # The canonical ordering we use here is simply the ordering we get
+  # from the predictions collection.
+  predictions = extract_signature_inputs_or_outputs_with_prefix(
+      constants.PREDICTIONS_NAME, signature_def.outputs)  # pytype: disable=wrong-arg-types
+  predictions_map = collections.OrderedDict()
+  for k, v in predictions.items():
+    # Extract to dictionary with a single key for consistency with
+    # how features and labels are extracted.
+    predictions_map[k] = {
+        encoding.NODE_SUFFIX:
+            tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
+    }
+  return predictions_map
+
+
+def load_metrics(
+    signature_def,
+    graph):
+  """Loads metric nodes from signature_def.outputs.
+
+  Args:
+    signature_def: SignatureDef to lookup nodes in.
+    graph: TensorFlow graph to lookup the nodes in.
+
+  Returns:
+    Metrics map as an OrderedDict.
+  """
+  metrics = extract_signature_inputs_or_outputs_with_prefix(
+      constants.METRICS_NAME, signature_def.outputs)
+  metrics_map = collections.defaultdict(dict)
+  for k, v in metrics.items():
+    node = tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
+
+    if k.endswith('/' + constants.METRIC_VALUE_SUFFIX):
+      key = k[:-len(constants.METRIC_VALUE_SUFFIX) - 1]
+      metrics_map[key][encoding.VALUE_OP_SUFFIX] = node
+    elif k.endswith('/' + constants.METRIC_UPDATE_SUFFIX):
+      key = k[:-len(constants.METRIC_UPDATE_SUFFIX) - 1]
+      metrics_map[key][encoding.UPDATE_OP_SUFFIX] = node
+    else:
+      raise ValueError('unrecognised suffix for metric. key was: %s' % k)
+  return metrics_map
 
 
 def get_node_map(meta_graph_def, prefix,

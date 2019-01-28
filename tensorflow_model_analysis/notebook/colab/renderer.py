@@ -15,42 +15,8 @@
 
 
 
-import json
-from IPython import display
-
-from tensorflow_model_analysis.types_compat import Any, Dict, List, Union
-
-
-def _render_component_in_colab(
-    component_name, data,
-    config):
-  """Renders the specified component in Colab.
-
-  Colab requires custom visualization to be rendered in a sandbox so we cannot
-  use Jupyter widget.
-
-  Args:
-    component_name: The name of the component to render.
-    data: A dictionary containing data for visualization.
-    config: A dictionary containing the configuration.
-
-  Returns:
-    A SlicingMetricsViewer object.
-  """
-  display.display(
-      display.HTML("""
-          <link rel="import"
-          href="/nbextensions/tfma_widget_js/vulcanized_template.html">
-          <{component_name} id="component"></{component_name}>
-          <script>
-          const element = document.getElementById('component');
-          element.config = JSON.parse('{config}');
-          element.data = JSON.parse('{data}');
-          </script>
-          """.format(
-              component_name=component_name,
-              config=json.dumps(config),
-              data=json.dumps(data))))
+from tensorflow_model_analysis.notebook.colab import util
+from tensorflow_model_analysis.types_compat import Any, Dict, List, Text, Union
 
 
 def render_slicing_metrics(data,
@@ -61,7 +27,7 @@ def render_slicing_metrics(data,
     data: A list of dictionary containing metrics for correpsonding slices.
     config: A dictionary of the configuration.
   """
-  _render_component_in_colab('tfma-nb-slicing-metrics', data, config)
+  util.render_component('tfma-nb-slicing-metrics', data, config)
 
 
 def render_time_series(
@@ -73,7 +39,7 @@ def render_time_series(
     data: A list of dictionary containing metrics for different evaluation runs.
     config: A dictionary of the configuration.
   """
-  _render_component_in_colab('tfma-nb-time-series', data, config)
+  util.render_component('tfma-nb-time-series', data, config)
 
 
 def render_plot(
@@ -85,4 +51,4 @@ def render_plot(
     data: A dictionary containing plot data.
     config: A dictionary of the configuration.
   """
-  _render_component_in_colab('tfma-nb-plot', data, config)
+  util.render_component('tfma-nb-plot', data, config)

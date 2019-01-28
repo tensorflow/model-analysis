@@ -21,10 +21,11 @@ from __future__ import print_function
 import math
 import tempfile
 import tensorflow as tf
-from tensorflow_model_analysis.api.impl import api_types
+from tensorflow_model_analysis import types
+from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import util
-from tensorflow_model_analysis.types_compat import Dict, Iterable, List, Union, Sequence, Text, Tuple
+from tensorflow_model_analysis.types_compat import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
 
 from tensorflow.core.example import example_pb2
 
@@ -93,6 +94,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
                                 got_seq,
                                 expected_seq,
                                 places = 5,
+                                delta = 0,
                                 msg_prefix=''):
     got = list(got_seq)
     expected = list(expected_seq)
@@ -104,7 +106,10 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
       if math.isnan(a) or math.isnan(b):
         self.assertEqual(math.isnan(a), math.isnan(b), msg=msg)
       else:
-        self.assertAlmostEqual(a, b, msg=msg, places=places)
+        if delta:
+          self.assertAlmostEqual(a, b, msg=msg, delta=delta)
+        else:
+          self.assertAlmostEqual(a, b, msg=msg, places=places)
 
   def assertSparseTensorValueEqual(
       self, expected_sparse_tensor_value,
@@ -123,6 +128,21 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     self.assertEqual(expected_sparse_tensor_value.dense_shape.dtype,
                      got_sparse_tensor_value.dense_shape.dtype)
 
+  def createTestEvalSharedModel(
+      self,
+      eval_saved_model_path,
+      add_metrics_callbacks = None,
+      include_default_metrics = True,
+      example_weight_key = None):
+
+    return types.EvalSharedModel(
+        model_path=eval_saved_model_path,
+        add_metrics_callbacks=add_metrics_callbacks,
+        example_weight_key=example_weight_key,
+        construct_fn=dofn.make_construct_fn(eval_saved_model_path,
+                                            add_metrics_callbacks,
+                                            include_default_metrics))
+
   def predict_injective_single_example(
       self, eval_saved_model,
       raw_example_bytes):
@@ -138,13 +158,13 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     """
     fpls = eval_saved_model.predict(raw_example_bytes)
     self.assertEqual(1, len(fpls))
-    self.assertEqual(0, fpls[0].example_ref)
+    self.assertEqual(0, fpls[0].input_ref)
     return fpls[0]
 
-  def predict_injective_example_list(
-      self, eval_saved_model,
-      raw_example_bytes_list
-  ):
+  def predict_injective_example_list(self,
+                                     eval_saved_model,
+                                     raw_example_bytes_list
+                                    ):
     """Run predict_list for a list of examples for a injective model.
 
     Args:
@@ -159,7 +179,6 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
 
     # Check that each FPL corresponds to one example.
     self.assertSequenceEqual(
-        range(0, len(raw_example_bytes_list)),
-        [fpl.example_ref for fpl in fpls])
+        range(0, len(raw_example_bytes_list)), [fpl.input_ref for fpl in fpls])
 
     return fpls

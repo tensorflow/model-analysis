@@ -18,7 +18,6 @@ from __future__ import division
 
 from __future__ import print_function
 
-import copy
 
 import numpy as np
 import tensorflow as tf
@@ -37,28 +36,57 @@ TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
 KeyType = Union[Text, Tuple[Text, Ellipsis]]
 
 # Value of a Tensor fetched using session.run.
-FetchedTensorValue = Union[tf.SparseTensorValue, np.ndarray]
+TensorValue = Union[tf.SparseTensorValue, np.ndarray]
 
 # Dictionary of Tensor values fetched.
 # The dictionary maps original dictionary keys => ('node' => value).
-DictOfFetchedTensorValues = Dict[KeyType, Dict[Text, FetchedTensorValue]]
+DictOfFetchedTensorValues = Dict[KeyType, Dict[Text, TensorValue]]
 
 MetricVariablesType = List[Any]
 
 
-# Used in building the model diagnostics table, a MatrializedColumn is a value
-# inside of ExampleAndExtract that will be emitted to file. Note that for
-# strings, the values are raw byte strings rather than unicode strings. This is
-# by design, as features can have arbitrary bytes values.
+class ValueWithConfidenceInterval(
+    NamedTuple('ValueWithConfidenceInterval', [
+        ('value', float),
+        ('lower_bound', float),
+        ('upper_bound', float),
+        ('unsampled_value', float),
+    ])):
+  """Represents a value with mean, upper, and lower bound."""
+
+  def __new__(
+      cls,
+      value,
+      lower_bound = None,
+      upper_bound = None,
+      unsampled_value = None,
+  ):
+    # Add bounds checking?
+    return super(ValueWithConfidenceInterval, cls).__new__(
+        cls, value, lower_bound, upper_bound, unsampled_value)
+
+
+FeaturesPredictionsLabels = NamedTuple(
+    'FeaturesPredictionsLabels', [('input_ref', int),
+                                  ('features', DictOfFetchedTensorValues),
+                                  ('predictions', DictOfFetchedTensorValues),
+                                  ('labels', DictOfFetchedTensorValues)])
+
+# Used in building the model diagnostics table, a MaterializedColumn is a value
+# inside of Extracts that will be emitted to file. Note that for strings, the
+# values are raw byte strings rather than unicode strings. This is by design, as
+# features can have arbitrary bytes values.
 MaterializedColumn = NamedTuple(
     'MaterializedColumn',
     [('name', Text),
      ('value', Union[List[bytes], List[int], List[float], bytes, int, float])])
 
-# Used in building model diagnostics table, the ExampleAndExtracts holds an
-# example and all its "extractions." Extractions that should be emitted to file.
-# Each Extract has a name, stored as the key of the DictOfExtractedValues.
-DictOfExtractedValues = Dict[Text, Any]
+# Extracts represent data extracted during pipeline processing. In order to
+# provide a flexible API, these types are just dicts where the keys are defined
+# (reserved for use) by different extractor implementations. For example, the
+# PredictExtractor stores the data for the features, labels, and predictions
+# under the keys "features", "labels", and "predictions".
+Extracts = Dict[Text, Any]
 
 # pylint: enable=invalid-name
 
@@ -74,8 +102,10 @@ class EvalSharedModel(
             ('model_path', Text),
             ('add_metrics_callbacks',
              List[Callable]),  # List[AnyMetricsCallbackType]
+            ('include_default_metrics', bool),
             ('example_weight_key', Text),
-            ('shared_handle', shared.Shared)
+            ('shared_handle', shared.Shared),
+            ('construct_fn', Callable)
         ])):
   # pyformat: disable
   """Shared model used during extraction and evaluation.
@@ -87,10 +117,15 @@ class EvalSharedModel(
       should not conflict with existing metrics. See below for more details
       about what each callback should do. The callbacks are only used during
       evaluation.
+    include_default_metrics: True to include the default metrics that are part
+      of the saved model graph during evaluation.
     example_weight_key: The key of the example weight column. If None, weight
       will be 1 for each example.
     shared_handle: Optional handle to a shared.Shared object for sharing the
       in-memory model within / between stages.
+    construct_fn: A callable which creates a construct function
+      to set up the tensorflow graph. Callable takes a beam.metrics distribution
+      to track graph construction time.
 
   More details on add_metrics_callbacks:
 
@@ -117,46 +152,16 @@ class EvalSharedModel(
 
   def __new__(
       cls,
-      model_path,
+      model_path = None,
       add_metrics_callbacks = None,
+      include_default_metrics = True,
       example_weight_key = None,
-      shared_handle = None):
+      shared_handle = None,
+      construct_fn = None):
     if not add_metrics_callbacks:
       add_metrics_callbacks = []
     if not shared_handle:
       shared_handle = shared.Shared()
-    return super(EvalSharedModel,
-                 cls).__new__(cls, model_path, add_metrics_callbacks,
-                              example_weight_key, shared_handle)
-
-
-class ExampleAndExtracts(
-    NamedTuple('ExampleAndExtracts', [('example', bytes),
-                                      ('extracts', DictOfExtractedValues)])):
-  """Example and extracts."""
-
-  def create_copy_with_shallow_copy_of_extracts(self):
-    """Returns a new copy of this with a shallow copy of extracts.
-
-    This is NOT equivalent to making a shallow copy with copy.copy(this).
-    That does NOT make a shallow copy of the dictionary. An illustration of
-    the differences:
-      a = ExampleAndExtracts(example='content', extracts=dict(apple=[1, 2]))
-
-      # The dictionary is shared (and hence the elements are also shared)
-      b = copy.copy(a)
-      b.extracts['banana'] = 10
-      assert a.extracts['banana'] == 10
-
-      # The dictionary is not shared (but the elements are)
-      c = a.create_copy_with_shallow_copy_of_extracts()
-      c.extracts['cherry'] = 10
-      assert 'cherry' not in a.extracts  # The dictionary is not shared
-      c.extracts['apple'][0] = 100
-      assert a.extracts['apple'][0] == 100  # But the elements are
-
-    Returns:
-      A shallow copy of this object.
-    """
-    return ExampleAndExtracts(
-        example=self.example, extracts=copy.copy(self.extracts))
+    return super(EvalSharedModel, cls).__new__(
+        cls, model_path, add_metrics_callbacks, include_default_metrics,
+        example_weight_key, shared_handle, construct_fn)

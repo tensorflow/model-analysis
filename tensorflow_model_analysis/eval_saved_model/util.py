@@ -36,7 +36,7 @@ def wrap_tensor_or_dict_of_tensors_in_identity(
   Args:
     tensor_or_dict_of_tensors: Tensor or dict of Tensors to wrap around.
 
-  Workaround for TensorFlow issue #17568.
+  Workaround for TensorFlow issue #17568 (b/71769512).
 
   Returns:
     Tensor or dict of Tensors wrapped with tf.identity.
@@ -300,12 +300,14 @@ def _sparse_concat_rows(
   # values, except the number of rows should be the batch size.
   dense_shape_max[0] = len(sparse_tensor_values)
 
+  # pylint: disable=g-long-ternary
   return tf.SparseTensorValue(
       indices=(np.array(indices, dtype=empty_indices_with_shape.dtype)
                if indices else empty_indices_with_shape),
       values=(np.array(values, dtype=empty_values_with_shape.dtype)
               if values else empty_values_with_shape),
       dense_shape=dense_shape_max)
+  # pylint: enable=g-long-ternary
 
 
 def _sparse_slice_rows(
@@ -371,13 +373,17 @@ def _sparse_slice_rows(
     # We treat each split SparseTensorValue as having dense_shape equal to the
     # maximum index in each dimension (+1 for zero-index).
     if indices:
-      dense_shape[1:] = [max([index[i] for index in indices]) + 1
-                         for i in range(1, len(indices[0]))]
+      dense_shape[1:] = [
+          max([index[i]
+               for index in indices]) + 1
+          for i in range(1, len(indices[0]))
+      ]
     # For empty examples, we should have 0 in all other dimensions for the
     # dense_shape.
     else:
       dense_shape[1:] = [0] * (len(original_dense_shape) - 1)
 
+    # pylint: disable=g-long-ternary
     result.append(
         tf.SparseTensorValue(
             indices=(np.array(indices, dtype=empty_indices_with_shape.dtype)
@@ -385,6 +391,7 @@ def _sparse_slice_rows(
             values=(np.array(values, dtype=empty_values_with_shape.dtype)
                     if values else empty_values_with_shape),
             dense_shape=np.array(dense_shape)))
+    # pylint: enable=g-long-ternary
 
   return result
 
@@ -417,8 +424,8 @@ def split_tensor_value(
                     (type(tensor_value), tensor_value))
 
 
-def merge_tensor_values(tensor_values
-                       ):
+def merge_tensor_values(
+    tensor_values):
   """Merge a list of Tensor values into a single batch of Tensor values.
 
   Args:

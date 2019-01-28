@@ -52,6 +52,17 @@ Polymer({
     pageSize: {type: Number, value: 20},
 
     /**
+     * A look up table to override header.
+     * @type {!Object<string>}
+     */
+    headerOverride: {
+      type: Object,
+      value: () => {
+        return {};
+      }
+    },
+
+    /**
      * Google-chart options.
      * @type {!Object}
      * @private
@@ -84,7 +95,8 @@ Polymer({
      */
     plotData_: {
       type: Array,
-      computed: 'computePlotData_(data, metrics, metricFormats, tableReady_)',
+      computed:
+          'computePlotData_(data, metrics, metricFormats, headerOverride, tableReady_)',
     },
 
     /**
@@ -220,11 +232,13 @@ Polymer({
    * @param {!tfma.TableProviderExt} data
    * @param {!Array<string>} metrics
    * @param {!Object<!tfma.MetricValueFormatSpec>} metricFormats
+   * @param {!Object<string>} headerOverride
    * @param {boolean} tableReady
    * @return {!Array<!Array>}
    * @private
    */
-  computePlotData_: function(data, metrics, metricFormats, tableReady) {
+  computePlotData_: function(
+      data, metrics, metricFormats, headerOverride, tableReady) {
     if (!tableReady || !data.readyToRender()) {
       // No need to compute plot data if the table is not ready since it will
       // likely get ignored.
@@ -232,7 +246,9 @@ Polymer({
       // up properly.
       return [[]];
     }
-    const header = data.getHeader(metrics);
+    const header =
+        data.getHeader(metrics).map(metric => headerOverride[metric] || metric);
+
     const dataTable = data.getDataTable();
     const formats = data.getFormats(metricFormats);
     const renderedTable = dataTable.map(

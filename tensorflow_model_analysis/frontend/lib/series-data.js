@@ -67,6 +67,7 @@ class SeriesData {
           // beginning of the list should show up at the end of the time series
           // plot. As a result, totalEntries - index is used as back up value in
           // time series plot.
+          // @bug 76103045
           'v': this.getLineChartXCoord_(config, totalEntries - index),
           'f': this.helper_.getModelHeader() + ' ' +
               this.helper_.getModelDisplayText(config) + ' at ' +

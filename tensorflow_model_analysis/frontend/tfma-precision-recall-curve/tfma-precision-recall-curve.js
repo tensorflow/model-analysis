@@ -61,8 +61,10 @@ Polymer({
       // handle these cases, assume NaN and Infinity are converted to strings,
       // "NaN" and "Infinity" and use parseFloat to get back to NaN and
       // Infinity.
-      const recall = parseFloat(entry['recall'] || 0);
-      const precision = parseFloat(entry['precision'] || 0);
+      const recall =
+          parseFloat(tfma.CellRenderer.extractFloatValue(entry, 'recall') || 0);
+      const precision = parseFloat(
+          tfma.CellRenderer.extractFloatValue(entry, 'precision') || 0);
       const tooltip = 'Prediction threshold: ' + threshold.toFixed(5) +
           '\nRecall: ' + recall.toFixed(5) +
           '\nPrecision: ' + precision.toFixed(5);
