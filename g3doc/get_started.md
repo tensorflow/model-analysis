@@ -129,9 +129,10 @@ tfma.view.render_slicing_metrics(result)
 ```
 ## End-to-end example
 
-Try the extensive [end-to-end example](../examples/chicago_taxi/README.md)
+Try the extensive
+[end-to-end example](https://github.com/tensorflow/model-analysis/tree/master/examples/chicago_taxi)
 featuring [TensorFlow Transform](https://github.com/tensorflow/transform) for feature
 preprocessing,
-[TensorFlow Estimators](https://www.tensorflow.org/programmers_guide/estimators) for
+[TensorFlow Estimators](https://www.tensorflow.org/guide/estimators) for
 training, [TensorFlow Model Analysis](https://github.com/tensorflow/model-analysis) and Jupyter for
 evaluation, and [TensorFlow Serving](https://github.com/tensorflow/serving) for serving.

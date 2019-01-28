@@ -33,8 +33,8 @@ Evaluate PTransform instead.
 * <b>`data_location`</b>: The location of the data files.
 * <b>`file_format`</b>: The file format of the data, can be either 'text' or
     'tfrecords' for now. By default, 'tfrecords' will be used.
-* <b>`slice_spec`</b>: A list of tfma.SingleSliceSpec. Each spec represents a way to
-    slice the data.
+* <b>`slice_spec`</b>: A list of tfma.slicer.SingleSliceSpec. Each spec 
+    represents a way to slice the data.
     Example usages:
     - tfma.SingleSiceSpec(): no slice, metrics are computed on overall data.
     - tfma.SingleSiceSpec(columns=['country']): slice based on features in

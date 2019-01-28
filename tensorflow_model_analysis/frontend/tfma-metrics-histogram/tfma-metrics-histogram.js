@@ -437,6 +437,7 @@
         'hAxis': {'ticks': plotData.hAxisTicks},
         // We must specify vertical ticks to work around a gviz bug. Set the
         // label to x axis with an empty label so that the UI remains unchanged.
+        // @bug 34237301
         'vAxis': {'ticks': [{'v': 0, 'f': ''}]},
         'legend': {'position': 'top'},
         'tooltip': {'trigger': 'none'},

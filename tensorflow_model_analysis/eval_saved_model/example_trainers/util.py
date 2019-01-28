@@ -53,11 +53,12 @@ def make_regressor_input_fn(feature_spec):
   return _input_fn
 
 
-def make_classifier_input_fn(feature_spec):
+def make_classifier_input_fn(feature_spec, n_classes=2):
   """Train input function.
 
   Args:
     feature_spec: a dictionary mapping feature_name to Tensor or SparseTensor.
+    n_classes: set for multiclass.
 
   Returns:
     A function.
@@ -66,16 +67,26 @@ def make_classifier_input_fn(feature_spec):
   def _input_fn():
     """Example-based input function."""
 
+    english_label = 1.0
+    chinese_label = 0.0
+    if n_classes > 2:
+      # For multi-class labels, English is class 0, Chinese is class 1.
+      chinese_label = 1
+      english_label = 0
+
     serialized_examples = [
         x.SerializeToString() for x in [
-            util.make_example(age=1.0, language='english', label=1.0),
-            util.make_example(age=2.0, language='english', label=1.0),
-            util.make_example(age=3.0, language='chinese', label=0.0),
-            util.make_example(age=4.0, language='chinese', label=0.0)
+            util.make_example(age=1.0, language='english', label=english_label),
+            util.make_example(age=2.0, language='english', label=english_label),
+            util.make_example(age=3.0, language='chinese', label=chinese_label),
+            util.make_example(age=4.0, language='chinese', label=chinese_label)
         ]
     ]
     features = tf.parse_example(serialized_examples, feature_spec)
     labels = features.pop('label')
+    if n_classes > 2:
+      labels = tf.sparse_tensor_to_dense(labels, default_value=-1)
+
     return features, labels
 
   return _input_fn
@@ -86,7 +97,10 @@ def make_example(age, language, label=None):
   example.features.feature['age'].float_list.value.append(age)
   example.features.feature['language'].bytes_list.value.append(language)
   if label:
-    example.features.feature['label'].float_list.value.append(label)
+    if isinstance(label, list):
+      example.features.feature['label'].int64_list.value.extend(label)
+    else:
+      example.features.feature['label'].float_list.value.append(label)
   return example
 
 
@@ -103,7 +117,7 @@ def linear_columns(include_label_column=False):
   return features
 
 
-def dnn_columns(include_label_column=False):
+def dnn_columns(include_label_column=False, n_classes=2):
   """Return feature_columns for DNN model."""
   language = tf.feature_column.embedding_column(
       tf.feature_column.categorical_column_with_vocabulary_list(
@@ -113,6 +127,9 @@ def dnn_columns(include_label_column=False):
   features = [age, language]
   if include_label_column:
     label = tf.feature_column.numeric_column(key='label', default_value=0.0)
+    if n_classes > 2:
+      label = tf.feature_column.categorical_column_with_identity(
+          key='label', num_buckets=n_classes)
     features.append(label)
   return features
 
@@ -127,11 +144,19 @@ def regressor_extra_metrics(features, labels, predictions):
 
 
 def classifier_extra_metrics(features, labels, predictions):
+  if 'logistic' in predictions:
+    return {
+        'my_mean_prediction': tf.metrics.mean(predictions['logistic']),
+        'my_mean_age': tf.metrics.mean(features['age']),
+        'my_mean_label': tf.metrics.mean(labels),
+        'my_mean_age_times_label': tf.metrics.mean(labels * features['age']),
+    }
+  # Logistic won't be present in multiclass cases.
   return {
-      'my_mean_prediction': tf.metrics.mean(predictions['logistic']),
-      'my_mean_age': tf.metrics.mean(features['age']),
-      'my_mean_label': tf.metrics.mean(labels),
-      'my_mean_age_times_label': tf.metrics.mean(labels * features['age']),
+      'mean_english_prediction':
+          tf.metrics.mean(predictions['probabilities'][0]),
+      'my_mean_age':
+          tf.metrics.mean(features['age']),
   }
 
 

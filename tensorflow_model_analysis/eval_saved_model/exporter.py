@@ -186,7 +186,7 @@ class LatestExporter(tf.estimator.Exporter):
 
   @property
   def name(self):
-    return self._saved_model_exporter.name
+    return self._eval_saved_model_exporter.name
 
   def export(self, estimator, export_path,
              checkpoint_path, eval_result,

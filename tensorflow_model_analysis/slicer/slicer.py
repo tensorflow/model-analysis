@@ -25,11 +25,14 @@ from __future__ import print_function
 import itertools
 
 
+import apache_beam as beam
 import six
 import tensorflow as tf
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slice_accessor
-from tensorflow_model_analysis.types_compat import Generator, Iterable, List, Text, Tuple, Union
+from tensorflow_model_analysis.types_compat import Generator, Iterable, List, Optional, Text, Tuple, Union
 
 # FeatureValueType represents a value that a feature could take.
 FeatureValueType = Union[bytes, int, float]  # pylint: disable=invalid-name
@@ -39,11 +42,20 @@ FeatureValueType = Union[bytes, int, float]  # pylint: disable=invalid-name
 # feature-value pair.
 SingletonSliceKeyType = Tuple[Text, FeatureValueType]  # pylint: disable=invalid-name
 
-# SliceKeyType is a tuple of SingletonSliceKeyType. This completely describes
-# a single slice.
-SliceKeyType = Tuple[SingletonSliceKeyType, Ellipsis]  # pylint: disable=invalid-name
+# SliceKeyType is a either the empty tuple (for the overal slice) or a tuple of
+# SingletonSliceKeyType. This completely describes a single slice.
+SliceKeyType = Union[Tuple[()], Tuple[SingletonSliceKeyType, Ellipsis]]  # pylint: disable=invalid-name
 
 OVERALL_SLICE_NAME = 'Overall'
+
+# For use in Beam type annotations, because Beam's support for Python types
+# in Beam type annotations is not complete.
+BeamSliceKeyType = beam.typehints.Union[  # pylint: disable=invalid-name
+    beam.typehints.Tuple[beam.typehints.Tuple[(
+    )], beam.typehints.Union[bytes, int, float]],
+    beam.typehints.Tuple[beam.typehints.Tuple[Text, beam.typehints
+                                              .Union[bytes, int, float]], Ellipsis]]
+BeamExtractsType = beam.typehints.Dict[Text, beam.typehints.Any]  # pylint: disable=invalid-name
 
 
 class SingleSliceSpec(object):
@@ -216,6 +228,65 @@ class SingleSliceSpec(object):
       yield tuple(sorted(self._value_matches + list(column_part)))
 
 
+def serialize_slice_key(
+    slice_key):
+  """Converts SliceKeyType to SliceKey proto.
+
+  Args:
+    slice_key: The slice key in the format of SliceKeyType.
+
+  Returns:
+    The slice key in the format of SliceKey proto.
+
+  Raises:
+    TypeError: If the evaluate type is unreconized.
+  """
+  result = metrics_for_slice_pb2.SliceKey()
+
+  for (col, val) in slice_key:
+    single_slice_key = result.single_slice_keys.add()
+    single_slice_key.column = col
+    if isinstance(val, (six.binary_type, six.text_type)):
+      single_slice_key.bytes_value = tf.compat.as_bytes(val)
+    elif isinstance(val, six.integer_types):
+      single_slice_key.int64_value = val
+    elif isinstance(val, float):
+      single_slice_key.float_value = val
+    else:
+      raise TypeError(
+          'unrecognized type of type %s, value %s' % (type(val), val))
+
+  return result
+
+
+def deserialize_slice_key(
+    slice_key):
+  """Converts SliceKey proto to SliceKeyType.
+
+  Args:
+    slice_key: The slice key in the format of proto SliceKey.
+
+  Returns:
+    The slice key in the format of SliceKeyType.
+
+  Raises:
+    TypeError: If the evaluate type is unreconized.
+  """
+  result = []
+  for elem in slice_key.single_slice_keys:
+    if elem.HasField('bytes_value'):
+      value = elem.bytes_value
+    elif elem.HasField('int64_value'):
+      value = elem.int64_value
+    elif elem.HasField('float_value'):
+      value = elem.float_value
+    else:
+      raise TypeError(
+          'unrecognized type of type %s, value %s' % (type(elem), elem))
+    result.append((tf.compat.as_bytes(elem.column), value))
+  return tuple(result)
+
+
 def get_slices_for_features_dict(
     features_dict,
     slice_spec):
@@ -281,3 +352,50 @@ def stringify_slice_key(slice_key):
   return separator.join([
       '{}'.format(key) for key in keys
   ]) + ':' + separator.join(['{}'.format(value) for value in values])
+
+
+@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_output_types(
+    beam.typehints.Tuple[BeamSliceKeyType, BeamExtractsType])
+class _FanoutSlicesDoFn(beam.DoFn):
+  """A DoFn that performs per-slice key fanout prior to computing aggregates."""
+
+  def __init__(self, include_slice_keys_in_output):
+    self._num_slices_generated_per_instance = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE, 'num_slices_generated_per_instance')
+    self._post_slice_num_instances = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'post_slice_num_instances')
+    self._include_slice_keys_in_output = include_slice_keys_in_output
+
+  def process(self, element
+             ):
+    filtered = {}
+    for key in element:
+      if not self._include_slice_keys_in_output and key in (
+          constants.SLICE_KEY_TYPES_KEY, constants.SLICE_KEYS_KEY):
+        continue
+      filtered[key] = element[key]
+    slice_count = 0
+    for slice_key in element.get(constants.SLICE_KEY_TYPES_KEY):
+      slice_count += 1
+      yield (slice_key, filtered)
+
+    self._num_slices_generated_per_instance.update(slice_count)
+    self._post_slice_num_instances.inc(slice_count)
+
+
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_output_types(
+    beam.typehints.Tuple[BeamSliceKeyType, types.Extracts])  # pylint: disable=invalid-name
+def FanoutSlices(pcoll,
+                 include_slice_keys_in_output = False
+                ):  # pylint: disable=invalid-name
+  """Fan out extracts based on the slice keys (with slice keys removed)."""
+  result = pcoll | 'DoSlicing' >> beam.ParDo(
+      _FanoutSlicesDoFn(include_slice_keys_in_output))
+
+
+  return result

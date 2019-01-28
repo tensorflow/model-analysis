@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 import os
 
-from tensorflow_model_analysis.api.impl import api_types
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Text, Tuple, Union
 
@@ -174,6 +174,10 @@ def _replace_nan_with_none(
     plot_keys):
   """Replaces all instances of nan with None in plot data.
 
+  This is necessary for Colab integration where we serializes the data into json
+  string as NaN is not supported by json standard. Turning nan into None will
+  make the value null once parsed. The visualization already handles falsy
+  values by setting them to zero.
 
   Args:
     plot_data: The original plot data
@@ -218,6 +222,9 @@ def get_plot_data_and_config(
   Returns:
     (plot_data, plot_config) for the specified slice.
 
+    Note that plot_data should be of type Dict[Text, Any]. However, PyType
+    can't figure it out. As a result, the annotation has to be
+    Union[Dict[Text, Any], Text].
 
   Raises:
     ValueError: The provided slicing_column does not exist in results or more
@@ -242,3 +249,15 @@ def get_plot_data_and_config(
                                      _SUPPORTED_PLOT_KEYS)
 
   return plot_data, plot_config  # pytype: disable=bad-return-type
+
+
+def get_slicing_config(config):
+  """Util function that generates config for visualization.
+
+  Args:
+    config: EvalConfig that contains example_weight_metric_key.
+
+  Returns:
+    A dictionary containing configuration of the slicing metrics evalaution.
+  """
+  return {'weightedExamplesColumn': config.example_weight_metric_key}

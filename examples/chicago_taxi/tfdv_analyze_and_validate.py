@@ -101,8 +101,9 @@ def compute_stats(input_handle,
           | 'ReadBigQuery' >> beam.io.Read(
               beam.io.BigQuerySource(query=query, use_standard_sql=True))
           | 'ConvertToTFDVInput' >> beam.Map(
-              lambda x: {key: np.asarray([x[key]])  # pylint: disable=g-long-lambda
-                         for key in x if x[key] is not None}))
+              lambda x: {  # pylint: disable=g-long-lambda
+                  key: np.asarray([x[key]]) for key in x if x[key] is not None
+              }))
 
     _ = (
         raw_data

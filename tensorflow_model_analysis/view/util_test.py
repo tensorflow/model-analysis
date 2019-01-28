@@ -19,7 +19,7 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.api.impl import api_types
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.slicer.slicer import OVERALL_SLICE_NAME
 from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
@@ -118,25 +118,33 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
     ]
 
   def _makeEvalResults(self):
-    result_a = api_types.EvalResult(
+    result_a = model_eval_lib.EvalResult(
         slicing_metrics=self._makeTestData(),
         plots=None,
-        config=api_types.EvalConfig(
+        config=model_eval_lib.EvalConfig(
             example_weight_metric_key=None,
             slice_spec=None,
             data_location=self.data_location_1,
             model_location=self.model_location_1))
 
-    result_b = api_types.EvalResult(
+    result_b = model_eval_lib.EvalResult(
         slicing_metrics=[self.result_c2],
         plots=None,
-        config=api_types.EvalConfig(
+        config=model_eval_lib.EvalConfig(
             example_weight_metric_key=None,
             slice_spec=None,
             data_location=self.full_data_location_2,
             model_location=self.full_model_location_2))
-    return api_types.EvalResults([result_a, result_b],
-                                 constants.MODEL_CENTRIC_MODE)
+    return model_eval_lib.EvalResults([result_a, result_b],
+                                      constants.MODEL_CENTRIC_MODE)
+
+  def _makeEvalConfig(self):
+    eval_config = model_eval_lib.EvalConfig(
+        example_weight_metric_key='testing_key',
+        slice_spec=None,
+        data_location='',
+        model_location='')
+    return eval_config
 
   def testGetSlicingMetrics(self):
     self.assertEqual(
@@ -291,6 +299,11 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
             }],
         }
     })
+
+  def testGetSlicingConfig(self):
+    eval_config = self._makeEvalConfig()
+    slicing_config = util.get_slicing_config(eval_config)
+    self.assertEquals(slicing_config, {'weightedExamplesColumn': 'testing_key'})
 
 
 if __name__ == '__main__':

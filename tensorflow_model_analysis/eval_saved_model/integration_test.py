@@ -22,6 +22,7 @@ from __future__ import print_function
 import os
 import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -180,18 +181,21 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
     # Check that SparseFeatures were correctly populated.
     self.assertAllEqual(
-        np.array([b'cat'], dtype=np.object), features_predictions_labels_list[0]
-        .features['animals'][encoding.NODE_SUFFIX].values)
+        np.array([b'cat'], dtype=np.object),
+        features_predictions_labels_list[0].features['animals'][
+            encoding.NODE_SUFFIX].values)
     self.assertAllEqual(
-        np.array([b'dog'], dtype=np.object), features_predictions_labels_list[1]
-        .features['animals'][encoding.NODE_SUFFIX].values)
+        np.array([b'dog'], dtype=np.object),
+        features_predictions_labels_list[1].features['animals'][
+            encoding.NODE_SUFFIX].values)
     self.assertAllEqual(
         np.array([b'cat', b'dog'], dtype=np.object),
         features_predictions_labels_list[2].features['animals'][
             encoding.NODE_SUFFIX].values)
     self.assertAllEqual(
-        np.array([], dtype=np.object), features_predictions_labels_list[3]
-        .features['animals'][encoding.NODE_SUFFIX].values)
+        np.array([], dtype=np.object),
+        features_predictions_labels_list[3].features['animals'][
+            encoding.NODE_SUFFIX].values)
 
     eval_saved_model.metrics_reset_update_get_list(
         features_predictions_labels_list)
@@ -228,20 +232,20 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
     self.assertAllEqual(
         np.array([[[1, 1, 1], [0, 0, 0], [0, 0, 0]]], dtype=np.float64),
-        features_predictions_labels_list[0].features['embedding'][encoding
-                                                                  .NODE_SUFFIX])
+        features_predictions_labels_list[0].features['embedding'][
+            encoding.NODE_SUFFIX])
     self.assertAllEqual(
         np.array([[[0, 0, 0], [3, 3, 3], [0, 0, 0]]], dtype=np.float64),
-        features_predictions_labels_list[1].features['embedding'][encoding
-                                                                  .NODE_SUFFIX])
+        features_predictions_labels_list[1].features['embedding'][
+            encoding.NODE_SUFFIX])
     self.assertAllEqual(
         np.array([[[2, 2, 2], [0, 0, 0], [5, 5, 5]]], dtype=np.float64),
-        features_predictions_labels_list[2].features['embedding'][encoding
-                                                                  .NODE_SUFFIX])
+        features_predictions_labels_list[2].features['embedding'][
+            encoding.NODE_SUFFIX])
     self.assertAllEqual(
         np.array([[[5, 5, 5], [7, 7, 7], [11, 11, 11]]], dtype=np.float64),
-        features_predictions_labels_list[3].features['embedding'][encoding
-                                                                  .NODE_SUFFIX])
+        features_predictions_labels_list[3].features['embedding'][
+            encoding.NODE_SUFFIX])
 
     def to_dense(sparse_tensor_value):
       sess = tf.Session()
@@ -274,11 +278,17 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         'mean_prediction': 3203.5,
     })
 
-  def testPredictListMultipleExamplesPerInputModel(self):
+  def _sharedTestForPredictListMultipleExamplesPerInputModel(self, use_legacy):
     temp_eval_export_dir = self._getEvalExportDir()
-    _, eval_export_dir = (
-        fake_multi_examples_per_input_estimator
-        .fake_multi_examples_per_input_estimator(None, temp_eval_export_dir))
+    if use_legacy:
+      _, eval_export_dir = (
+          fake_multi_examples_per_input_estimator
+          .legacy_fake_multi_examples_per_input_estimator(
+              None, temp_eval_export_dir))
+    else:
+      _, eval_export_dir = (
+          fake_multi_examples_per_input_estimator
+          .fake_multi_examples_per_input_estimator(None, temp_eval_export_dir))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
     fpls = eval_saved_model.predict_list([b'0', b'1', b'3', b'0', b'2'])
@@ -303,10 +313,10 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
       _check_and_append_feature('intra_input_index', fpl, intra_input_index)
       _check_and_append_feature('annotation', fpl, annotation)
 
-      self.assertAllEqual((1,), fpl.labels[encoding.DEFAULT_LABELS_DICT_KEY][
+      self.assertAllEqual((1,), fpl.labels[constants.DEFAULT_LABELS_DICT_KEY][
           encoding.NODE_SUFFIX].shape)
-      labels.append(
-          fpl.labels[encoding.DEFAULT_LABELS_DICT_KEY][encoding.NODE_SUFFIX][0])
+      labels.append(fpl.labels[constants.DEFAULT_LABELS_DICT_KEY][
+          encoding.NODE_SUFFIX][0])
 
       self.assertAllEqual(
           (1,), fpl.predictions['predictions'][encoding.NODE_SUFFIX].shape)
@@ -325,6 +335,12 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     self.assertSequenceEqual([1, 2, 2, 2, 4, 4], labels)
     self.assertSequenceEqual([1, 2, 2, 2, 4, 4], predictions)
 
+  def testLegacyPredictListMultipleExamplesPerInputModel(self):
+    self._sharedTestForPredictListMultipleExamplesPerInputModel(True)
+
+  def testPredictListMultipleExamplesPerInputModel(self):
+    self._sharedTestForPredictListMultipleExamplesPerInputModel(False)
+
   def testPredictListMultipleExamplesPerInputModelNoExampleInInput(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
@@ -335,28 +351,28 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     fpls = eval_saved_model.predict_list(['0', '0'])
     self.assertFalse(fpls)
 
-  def testPredictListMisalignedExampleRef(self):
+  def testPredictListMisalignedInputRef(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fake_multi_examples_per_input_estimator
-        .bad_multi_examples_per_input_estimator_misaligned_example_ref(
+        .bad_multi_examples_per_input_estimator_misaligned_input_refs(
             None, temp_eval_export_dir))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
     with self.assertRaisesRegexp(ValueError,
-                                 'example_ref should be batch-aligned'):
+                                 'input_refs should be batch-aligned'):
       eval_saved_model.predict_list(['1'])
 
-  def testPredictListOutOfRangeExampleRef(self):
+  def testPredictListOutOfRangeInputRefs(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fake_multi_examples_per_input_estimator
-        .bad_multi_examples_per_input_estimator_out_of_range_example_ref(
+        .bad_multi_examples_per_input_estimator_out_of_range_input_refs(
             None, temp_eval_export_dir))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
     with self.assertRaisesRegexp(ValueError,
-                                 'An index in example_ref is out of range'):
+                                 'An index in input_refs is out of range'):
       eval_saved_model.predict_list(['1'])
 
   def testVariablePredictionLengths(self):
@@ -543,6 +559,60 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
             'label/mean/chinese_head': 0.5,
             'label/mean/other_head': 0.0
         })
+
+    # Check the added metrics.
+    # We don't control the trained model's weights fully, but it should
+    # predict probabilities > 0.7.
+    self.assertIn('mean_absolute_error/english_head', metric_values)
+    self.assertLess(metric_values['mean_absolute_error/english_head'], 0.3)
+
+    self.assertHasKeyWithValueAlmostEqual(metric_values,
+                                          'example_count/english_head', 2.0)
+
+  def testEvaluateWithOnlyAdditionalMetricsBasic(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = multi_head.simple_multi_head(None,
+                                                      temp_eval_export_dir)
+
+    eval_saved_model = load.EvalSavedModel(
+        eval_export_dir, include_default_metrics=False)
+    _, prediction_dict, label_dict = (
+        eval_saved_model.get_features_predictions_labels_dicts())
+    with eval_saved_model.graph_as_default():
+      metric_ops = {}
+      value_op, update_op = tf.metrics.mean_absolute_error(
+          label_dict['english_head'][0][0],
+          prediction_dict['english_head/probabilities'][0][1])
+      metric_ops['mean_absolute_error/english_head'] = (value_op, update_op)
+
+      value_op, update_op = tf.contrib.metrics.count(
+          prediction_dict['english_head/logits'])
+      metric_ops['example_count/english_head'] = (value_op, update_op)
+
+      eval_saved_model.register_additional_metric_ops(metric_ops)
+
+    example1 = self._makeMultiHeadExample('english')
+    features_predictions_labels = self.predict_injective_single_example(
+        eval_saved_model, example1.SerializeToString())
+    eval_saved_model.perform_metrics_update(features_predictions_labels)
+
+    example2 = self._makeMultiHeadExample('chinese')
+    features_predictions_labels = self.predict_injective_single_example(
+        eval_saved_model, example2.SerializeToString())
+    eval_saved_model.perform_metrics_update(features_predictions_labels)
+
+    metric_values = eval_saved_model.get_metric_values()
+
+    # Check that the original metrics are not there.
+    self.assertNotIn('accuracy/english_head', metric_values)
+    self.assertNotIn('accuracy/chinese_head', metric_values)
+    self.assertNotIn('accuracy/other_head', metric_values)
+    self.assertNotIn('auc/english_head', metric_values)
+    self.assertNotIn('auc/chinese_head', metric_values)
+    self.assertNotIn('auc/other_head', metric_values)
+    self.assertNotIn('label/mean/english_head', metric_values)
+    self.assertNotIn('label/mean/chinese_head', metric_values)
+    self.assertNotIn('label/mean/other_head', metric_values)
 
     # Check the added metrics.
     # We don't control the trained model's weights fully, but it should

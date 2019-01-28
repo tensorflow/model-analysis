@@ -27,6 +27,7 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.contrib import model_eval_lib as contrib
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -34,7 +35,7 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_c
 from tensorflow_model_analysis.slicer import slicer
 
 
-class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
+class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
 
   def _getTempDir(self):
     return tempfile.mkdtemp()
@@ -70,7 +71,7 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
         self.assertAlmostEqual(
             got_column.value, expected_column.value, places, msg='key %s' % key)
 
-  def testBuildDiagnosticsTable(self):
+  def testBuildAnalysisTable(self):
     model_location = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
     eval_shared_model = types.EvalSharedModel(model_path=model_location)
@@ -83,11 +84,11 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
           pipeline
           | 'CreateInput' >> beam.Create([example1.SerializeToString()])
           | 'BuildTable' >>
-          contrib.BuildDiagnosticTable(eval_shared_model=eval_shared_model))
+          contrib.BuildAnalysisTable(eval_shared_model=eval_shared_model))
 
       def check_result(got):
         self.assertEqual(1, len(got), 'got: %s' % got)
-        _, extracts = got[0]
+        extracts = got[0]
 
         # Values of type MaterializedColumn are emitted to signal to
         # downstream sink components to output the data to file.
@@ -98,35 +99,37 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
             materialized_dict,
             {
                 # Slice key
-                'slice_key':
+                'features__slice_key':
                     types.MaterializedColumn(
-                        name='slice_key', value=[b'first_slice']),
+                        name='features__slice_key', value=[b'first_slice']),
 
                 # Features
-                'language':
+                'features__language':
                     types.MaterializedColumn(
-                        name='language', value=[b'english']),
-                'age':
+                        name='features__language', value=[b'english']),
+                'features__age':
                     types.MaterializedColumn(
-                        name='age', value=np.array([3.], dtype=np.float32)),
+                        name='features__age',
+                        value=np.array([3.], dtype=np.float32)),
 
                 # Label
-                'label':
+                'features__label':
                     types.MaterializedColumn(
-                        name='label', value=np.array([1.], dtype=np.float32)),
-                '__labels':
+                        name='features__label',
+                        value=np.array([1.], dtype=np.float32)),
+                'labels':
                     types.MaterializedColumn(
-                        name='__labels', value=np.array([1.],
-                                                        dtype=np.float32)),
+                        name='labels', value=np.array([1.], dtype=np.float32)),
             })
         self._assertMaterializedColumnsExist(materialized_dict, [
-            'logits', 'probabilities', 'classes', 'logistic', 'class_ids',
-            'materialized_slice_keys'
+            'predictions__logits', 'predictions__probabilities',
+            'predictions__classes', 'predictions__logistic',
+            'predictions__class_ids', constants.SLICE_KEYS_KEY
         ])
 
-      util.assert_that(result, check_result)
+      util.assert_that(result[constants.ANALYSIS_KEY], check_result)
 
-  def testBuildDiagnosticsTableWithSlices(self):
+  def testBuildAnalysisTableWithSlices(self):
     model_location = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
     eval_shared_model = types.EvalSharedModel(model_path=model_location)
@@ -144,12 +147,12 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
       result = (
           pipeline
           | 'CreateInput' >> beam.Create([example1.SerializeToString()])
-          | 'BuildTable' >> contrib.BuildDiagnosticTable(
-              eval_shared_model, slice_spec))
+          | 'BuildTable' >> contrib.BuildAnalysisTable(eval_shared_model,
+                                                       slice_spec))
 
       def check_result(got):
         self.assertEqual(1, len(got), 'got: %s' % got)
-        _, extracts = got[0]
+        extracts = got[0]
 
         # Values of type MaterializedColumn are emitted to signal to
         # downstream sink components to output the data to file.
@@ -158,19 +161,21 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
                                  if isinstance(v, types.MaterializedColumn))
         self._assertMaterializedColumns(
             materialized_dict, {
-                'materialized_slice_keys':
+                constants.SLICE_KEYS_KEY:
                     types.MaterializedColumn(
-                        name='materialized_slice_keys',
+                        name=constants.SLICE_KEYS_KEY,
                         value=[
                             b'age:3.0', b'age:3',
                             b'age_X_language:3.0_X_english'
                         ])
             })
-        self._assertMaterializedColumnsExist(
-            materialized_dict,
-            ['logits', 'probabilities', 'classes', 'logistic', 'class_ids'])
+        self._assertMaterializedColumnsExist(materialized_dict, [
+            'predictions__logits', 'predictions__probabilities',
+            'predictions__classes', 'predictions__logistic',
+            'predictions__class_ids'
+        ])
 
-      util.assert_that(result, check_result)
+      util.assert_that(result[constants.ANALYSIS_KEY], check_result)
 
 
 if __name__ == '__main__':

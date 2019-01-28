@@ -66,11 +66,22 @@ from apache_beam.testing import util as beam_util
 
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.api.impl import evaluate
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
+from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_model_analysis.types_compat import Any, List, Dict, Text, Union
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.typehints.Any)
+@beam.typehints.with_output_types(beam.typehints.Any)
+def Extract(  # pylint: disable=invalid-name
+    extracts, extractors):
+  for x in extractors:
+    extracts = (extracts | x.stage_name >> x.ptransform)
+  return extracts
 
 
 class BoundedValue(object):
@@ -247,18 +258,21 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
-    eval_shared_model = types.EvalSharedModel(model_path=eval_saved_model_path)
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=eval_saved_model_path)
     extractors = model_eval_lib.default_extractors(
         eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
       metrics, _ = (
           pipeline
           | 'CreateExamples' >> beam.Create(serialized_examples)
-          | 'ToExampleAndExtracts' >> evaluate.ToExampleAndExtracts()
-          | 'Extract' >> evaluate.Extract(extractors=extractors)
-          |
-          'Evaluate' >> evaluate.Evaluate(eval_shared_model=eval_shared_model))
+          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'Extract' >> Extract(extractors=extractors)
+          | 'ComputeMetricsAndPlots' >> metrics_and_plots_evaluator
+          .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
+      # pylint: enable=no-value-for-parameter
 
       beam_util.assert_that(metrics, check_metrics)
 
@@ -300,8 +314,8 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         self.assertGeneralMetricsComputedWithBeamAre(
           eval_saved_model_path=path,
           examples_pcollection=examples,
-          slice_spec=[tfma.SingleSliceSpec(),
-                      tfma.SingleSliceSpec(columns=['age'])],
+          slice_spec=[tfma.slicer.SingleSliceSpec(),
+                      tfma.slicer.SingleSliceSpec(columns=['age'])],
           add_metrics_callbacks=[
             add_metrics, tfma.post_export_metrics.auc()],
           expected_slice_metrics=expected_slice_metrics)
@@ -332,16 +346,19 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
-    eval_shared_model = types.EvalSharedModel(
-        model_path=eval_saved_model_path,
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks)
     extractors = model_eval_lib.default_extractors(
         eval_shared_model=eval_shared_model, slice_spec=slice_spec)
 
+    # pylint: disable=no-value-for-parameter
     metrics, _ = (
         examples_pcollection
-        | 'ToExampleAndExtracts' >> evaluate.ToExampleAndExtracts()
-        | 'Extract' >> evaluate.Extract(extractors=extractors)
-        | 'Evaluate' >> evaluate.Evaluate(eval_shared_model=eval_shared_model))
+        | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+        | 'Extract' >> Extract(extractors=extractors)
+        | 'ComputeMetricsAndPlots' >> metrics_and_plots_evaluator
+        .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
+    # pylint: enable=no-value-for-parameter
 
     beam_util.assert_that(metrics, check_metrics)

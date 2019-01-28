@@ -30,17 +30,43 @@ from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
 
-def simple_dnn_classifier(export_path, eval_export_path):
+def build_parsing_eval_input_receiver_fn(feature_spec, label_key):
+  """Builds parsing eval receiver fn that handles sparse labels."""
+
+  def eval_input_receiver_fn():
+    """An input_fn that expects a serialized tf.Example."""
+    # Note it's *required* that the batch size should be variable for TFMA.
+    serialized_tf_example = tf.placeholder(
+        dtype=tf.string, shape=[None], name='input_example_tensor')
+    features = tf.parse_example(serialized_tf_example, feature_spec)
+    labels = None if label_key is None else features[label_key]
+
+    if isinstance(labels, tf.SparseTensor):
+      # This bit here is why a custom eval_input_receiver_fn is specified.
+      labels = tf.sparse_tensor_to_dense(labels, default_value=-1)
+
+    return export.EvalInputReceiver(
+        features=features,
+        labels=labels,
+        receiver_tensors={'examples': serialized_tf_example})
+
+  return eval_input_receiver_fn
+
+
+def simple_dnn_classifier(export_path, eval_export_path, n_classes=2):
   """Trains and exports a simple DNN classifier."""
 
   feature_spec = tf.feature_column.make_parse_example_spec(
-      feature_columns=util.dnn_columns(True))
+      feature_columns=util.dnn_columns(True, n_classes=n_classes))
   classifier = tf.estimator.DNNClassifier(
-      hidden_units=[4], feature_columns=util.dnn_columns(False))
+      hidden_units=[4],
+      feature_columns=util.dnn_columns(False),
+      n_classes=n_classes)
   classifier = tf.contrib.estimator.add_metrics(classifier,
                                                 util.classifier_extra_metrics)
   classifier.train(
-      input_fn=util.make_classifier_input_fn(feature_spec), steps=1000)
+      input_fn=util.make_classifier_input_fn(feature_spec, n_classes),
+      steps=1000)
 
   return util.export_model_and_eval_model(
       estimator=classifier,
@@ -48,8 +74,9 @@ def simple_dnn_classifier(export_path, eval_export_path):
           tf.estimator.export.build_parsing_serving_input_receiver_fn(
               tf.feature_column.make_parse_example_spec(
                   util.dnn_columns(False)))),
-      eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(
-          tf.feature_column.make_parse_example_spec(util.dnn_columns(True)),
+      eval_input_receiver_fn=build_parsing_eval_input_receiver_fn(
+          tf.feature_column.make_parse_example_spec(
+              util.dnn_columns(True, n_classes=n_classes)),
           label_key='label'),
       export_path=export_path,
       eval_export_path=eval_export_path)

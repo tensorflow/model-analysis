@@ -42,20 +42,9 @@ NODE_SUFFIX = 'node'
 VALUE_OP_SUFFIX = 'value_op'
 UPDATE_OP_SUFFIX = 'update_op'
 
-# If predictions/labels was not a dictionary, we internally wrap them
-# in a dictionary with the respective default keys.
-#
-# Note that the key names start with two underscores to avoid collisions
-# in the rare case that there are actually keys named 'predictions' or 'labels'
-# in the respective dictionaries.
-DEFAULT_PREDICTIONS_DICT_KEY = '__predictions'
-DEFAULT_LABELS_DICT_KEY = '__labels'
-
 # Encoding prefixes for keys
 _TUPLE_KEY_PREFIX = b'$Tuple$'
 _BYTES_KEY_PREFIX = b'$Bytes$'
-
-
 
 
 def with_suffix(name, suffix):

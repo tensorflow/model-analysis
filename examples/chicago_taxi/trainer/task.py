@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Trainer for the chicago_taxi demo."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import argparse
 import os
 
-import model
-import taxi
-
 import tensorflow as tf
-
 import tensorflow_model_analysis as tfma
+from trainer import model
+from trainer import taxi
 
 SERVING_MODEL_DIR = 'serving_model_dir'
 EVAL_MODEL_DIR = 'eval_model_dir'
@@ -45,22 +47,20 @@ def train_and_maybe_evaluate(hparams):
   """
   schema = taxi.read_schema(hparams.schema_file)
 
-  train_input = lambda: model.input_fn(
+  train_input = lambda: model.input_fn(  # pylint: disable=g-long-lambda
       hparams.train_files,
       hparams.tf_transform_dir,
-      batch_size=TRAIN_BATCH_SIZE
-  )
+      batch_size=TRAIN_BATCH_SIZE)
 
-  eval_input = lambda: model.input_fn(
+  eval_input = lambda: model.input_fn(  # pylint: disable=g-long-lambda
       hparams.eval_files,
       hparams.tf_transform_dir,
-      batch_size=EVAL_BATCH_SIZE
-  )
+      batch_size=EVAL_BATCH_SIZE)
 
   train_spec = tf.estimator.TrainSpec(
       train_input, max_steps=hparams.train_steps)
 
-  serving_receiver_fn = lambda: model.example_serving_receiver_fn(
+  serving_receiver_fn = lambda: model.example_serving_receiver_fn(  # pylint: disable=g-long-lambda
       hparams.tf_transform_dir, schema)
 
   exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
@@ -164,8 +164,7 @@ def main():
       default=100,
       type=int)
   parser.add_argument(
-      '--schema-file',
-      help='File holding the schema for the input data')
+      '--schema-file', help='File holding the schema for the input data')
 
   args = parser.parse_args()
 

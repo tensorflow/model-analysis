@@ -166,20 +166,22 @@ Polymer({
   },
 
   /**
-   * Computes the chart data for the named metric.
+   * Computes the chart data for the named metric using the given provider.
    * @param {string} metric
+   * @param {!tfma.LineChartProvider} provider
    * @return {!Array<!Object>}
+   * @private
    */
-  computeChartData_: function(metric) {
-    const lineChartData = this.provider.getLineChartData(metric);
+  computeChartData_: function(metric, provider) {
+    const lineChartData = provider.getLineChartData(metric);
     return [
       [
-        {'label': this.provider.getDataColumnName(), 'type': 'number'},
+        {'label': provider.getDataColumnName(), 'type': 'number'},
         {'role': 'annotation', 'type': 'string'},
         {'role': 'annotationText', 'type': 'string'},
         {'label': metric, 'type': 'number'}
-      ]].concat(lineChartData
-    );
+      ]
+    ].concat(lineChartData);
   },
 
   /**

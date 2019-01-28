@@ -42,15 +42,15 @@ def render_slicing_metrics(result,
   """
   data = util.get_slicing_metrics(result.slicing_metrics, slicing_column,
                                   slicing_spec)
-  config = {'weightedExamplesColumn': result.config.example_weight_metric_key}
+  config = util.get_slicing_config(result.config)
 
   return visualization.render_slicing_metrics(data, config)
 
 
-def render_time_series(
-    results,
-    slice_spec = None,
-    display_full_path = False):
+def render_time_series(results,
+                       slice_spec = None,
+                       display_full_path = False
+                      ):
   """Renders the time series view as widget.
 
   Args:
@@ -72,9 +72,9 @@ def render_time_series(
   return visualization.render_time_series(data, config)
 
 
-def render_plot(
-    result,
-    slicing_spec = None):
+def render_plot(result,
+                slicing_spec = None
+               ):
   """Renders the plot view as widget.
 
   Args:

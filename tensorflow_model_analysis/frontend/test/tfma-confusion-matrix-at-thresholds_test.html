@@ -41,19 +41,21 @@ setup(() => {
 });
 
 test('parsesValuesCorrectly', () => {
-  const data = [createConfusionMatrixAtThresholds(
-      0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0,87)];
+  const data = {
+    'matrices': [createConfusionMatrixAtThresholds(
+      0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87)]
+  };
   element.data = JSON.stringify(data);
-  displayedData = element.displayedData_;
+  const displayedData = element.displayedData_;
   assert.equal(displayedData.length, 1);
   const item = displayedData[0];
   assert.equal(item.threshold, '0.81000');
   assert.equal(item.precision, '0.82000');
   assert.equal(item.recall, '0.83000');
-  assert.equal(item.truePositive, '0.84000');
-  assert.equal(item.trueNegative, '0.85000');
-  assert.equal(item.falsePositive, '0.86000');
-  assert.equal(item.falseNegative, '0.87000');
+  assert.equal(item.truePositives, '0.84000');
+  assert.equal(item.trueNegatives, '0.85000');
+  assert.equal(item.falsePositives, '0.86000');
+  assert.equal(item.falseNegatives, '0.87000');
 });
 
 test('expandAndCollapse', done => {
@@ -239,30 +241,32 @@ test('doNotExpandIfEventHandled', done => {
  * @param {number} falseNegative
  * @return {!Object} A ConfusionMatrixAtThreshold in JSON format.
  */
-function createConfusionMatrixAtThreshold(
+function createConfusionMatrixAtThresholds(
     threshold, precision, recall, truePositive, trueNegative, falsePositive, falseNegative) {
   return {
     'threshold': threshold,
     'precision': precision,
     'recall': recall,
-    'truePositive': truePositive,
-    'trueNegative': trueNegative,
-    'falsePositive': falsePositive,
-    'falseNegative': falseNegative,
+    'truePositives': truePositive,
+    'trueNegatives': trueNegative,
+    'falsePositives': falsePositive,
+    'falseNegatives': falseNegative,
   };
 }
 
 function createDefaultData() {
-  return [
-    createConfusionMatrixAtThresholds(
-        0.51, 0.91, 0.81, 0.71, 0.61, 0.125, 0.375),
-    createConfusionMatrixAtThresholds(
-        0.52, 0.92, 0.82, 0.72, 0.62, 0.1, 0.5),
-    createConfusionMatrixAtThresholds(
-        0.53, 0.93, 0.83, 0.73, 0.63, 0.1, 0.5),
-    createConfusionMatrixAtThresholds(
-        0.54, 0.94, 0.84, 0.74, 0.64, 0.1, 0.5)
-  ];
+  return {
+    'matrices': [
+      createConfusionMatrixAtThresholds(
+          0.51, 0.91, 0.81, 0.71, 0.61, 0.125, 0.375),
+      createConfusionMatrixAtThresholds(
+          0.52, 0.92, 0.82, 0.72, 0.62, 0.1, 0.5),
+      createConfusionMatrixAtThresholds(
+          0.53, 0.93, 0.83, 0.73, 0.63, 0.1, 0.5),
+      createConfusionMatrixAtThresholds(
+          0.54, 0.94, 0.84, 0.74, 0.64, 0.1, 0.5)
+    ],
+  };
 }
   </script>
 </body>

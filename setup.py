@@ -20,7 +20,6 @@ from __future__ import print_function
 import os
 import platform
 import subprocess
-from subprocess import check_call
 import sys
 from distutils import log
 from distutils.command.build_py import build_py as _build_py
@@ -48,7 +47,7 @@ else:
 # Get version from version module.
 with open('tensorflow_model_analysis/version.py') as fp:
   globals_dict = {}
-  exec (fp.read(), globals_dict)  # pylint: disable=exec-used
+  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
 __version__ = globals_dict['VERSION_STRING']
 
 here = os.path.dirname(os.path.abspath(__file__))
@@ -114,6 +113,7 @@ def js_prerelease(command, strict=False):
   """Decorator for building minified js/css prior to another command."""
 
   class DecoratedCommand(command):
+    """Decorated command."""
 
     def run(self):
       jsdeps = self.distribution.get_command_obj('jsdeps')
@@ -183,7 +183,7 @@ class NPM(Command):
   def has_npm(self):
     npm_name = self.get_npm_name()
     try:
-      check_call([npm_name, '--version'])
+      subprocess.check_call([npm_name, '--version'])
       return True
     except:  # pylint: disable=bare-except
       return False
@@ -208,11 +208,10 @@ class NPM(Command):
       log.info(
           'Installing build dependencies with npm.  This may take a while...')
       npm_name = self.get_npm_name()
-      check_call(
-          [npm_name, 'install'],
-          cwd=node_root,
-          stdout=sys.stdout,
-          stderr=sys.stderr)
+      subprocess.check_call([npm_name, 'install'],
+                            cwd=node_root,
+                            stdout=sys.stdout,
+                            stderr=sys.stderr)
       os.utime(self.node_modules, None)
 
     for t in self.targets:
@@ -228,14 +227,10 @@ class NPM(Command):
 
 
 setup_args = {
-    'name':
-        'tensorflow_model_analysis',
-    'version':
-        __version__,
-    'description':
-        'A library for analyzing TensorFlow models',
-    'include_package_data':
-        True,
+    'name': 'tensorflow_model_analysis',
+    'version': __version__,
+    'description': 'A library for analyzing TensorFlow models',
+    'include_package_data': True,
     'data_files': [('share/jupyter/nbextensions/tfma_widget_js', [
         'tensorflow_model_analysis/static/extension.js',
         'tensorflow_model_analysis/static/index.js',
@@ -251,27 +246,24 @@ setup_args = {
         'ipywidgets>=7.0,<8',
         'protobuf>=3.6.0,<4',
         # For apitools.
+        # Note: try version 1.10 if error "metaclass conflict: the
+        # metaclass of a derived class must be a (non-strict) subclass of the
+        # metaclasses of all its bases" occurred in future.
         'six>=1.9,<2',
         'tensorflow-transform>=0.11,<1',
     ],
-    'python_requires':
-        '>=2.7,<3',
-    'packages':
-        find_packages(),
-    'zip_safe':
-        False,
+    'python_requires': '>=2.7,<3',
+    'packages': find_packages(),
+    'zip_safe': False,
     'cmdclass': {
         'build_py': js_prerelease(build_py),
         'egg_info': js_prerelease(egg_info),
         'sdist': js_prerelease(sdist, strict=True),
         'jsdeps': NPM,
     },
-    'author':
-        'Google LLC',
-    'author_email':
-        'tensorflow-extended-dev@googlegroups.com',
-    'license':
-        'Apache 2.0',
+    'author': 'Google LLC',
+    'author_email': 'tensorflow-extended-dev@googlegroups.com',
+    'license': 'Apache 2.0',
     'classifiers': [
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

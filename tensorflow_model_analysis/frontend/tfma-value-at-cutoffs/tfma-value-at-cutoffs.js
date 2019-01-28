@@ -49,7 +49,7 @@ Polymer({
     return values.map(function(pair) {
       return {
         'cutoff': pair['cutoff'] || 'All',
-        'value': (pair['value'] || 0).toFixed(tfma.FLOATING_POINT_PRECISION)
+        'value': tfma.CellRenderer.extractFloatValue(pair, 'value')
       };
     });
   },

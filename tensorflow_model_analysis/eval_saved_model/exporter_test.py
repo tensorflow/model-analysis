@@ -39,12 +39,15 @@ class ExporterTest(testutil.TensorflowModelAnalysisTest):
         fixed_prediction_estimator
         .get_simple_fixed_prediction_estimator_and_metadata())
 
+    exporter_name = 'TFMA'
     temp_eval_export_dir = self._getEvalExportDir()
     exporter_instance = exporter_class(
-        name='TFMA',
+        name=exporter_name,
         eval_input_receiver_fn=estimator_metadata['eval_input_receiver_fn'],
         serving_input_receiver_fn=estimator_metadata[
             'serving_input_receiver_fn'])
+
+    self.assertEqual(exporter_name, exporter_instance.name)
 
     estimator_metadata['estimator'].train(
         input_fn=estimator_metadata['train_input_fn'], steps=100)

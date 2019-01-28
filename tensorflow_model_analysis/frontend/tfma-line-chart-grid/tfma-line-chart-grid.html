@@ -59,7 +59,8 @@ limitations under the License.
       <template is="dom-repeat" items="[[selectedMetrics_]]">
         <paper-card id="card-[[item]]">
           <div class="card-content">
-            <tfma-line-chart metric$="[[item]]" data="[[computeChartData_(item)]]" title="[[item]]">
+            <tfma-line-chart metric$="[[item]]" data="[[computeChartData_(item, provider)]]"
+                             title="[[item]]">
             </tfma-line-chart>
           </div>
           <paper-icon-button metric$="[[item]]" icon="close" on-tap="closeLineChart_"

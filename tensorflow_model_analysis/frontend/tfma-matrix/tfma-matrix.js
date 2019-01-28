@@ -92,16 +92,30 @@ Polymer({
 
     const columns = {};
     const columnColors = {};
+
+    const headers = {};
+
     rows.forEach((row, index) => {
+      headers[row] = 1;
       Object.keys(data[row]).forEach(column => {
         columns[column] = 1;
+        headers[column] = 1;
       });
-      rowColors[row] = 'c' + (index % 16);
+    });
+    const columnNames = Object.keys(columns).sort();
+
+    const headerColors =
+        Object.keys(headers).sort().reduce((acc, label, index) => {
+          acc[label] = 'c' + (index % 16);
+          return acc;
+        }, {});
+
+    columnNames.forEach(column => {
+      columnColors[column] = headerColors[column];
     });
 
-    const columnNames = Object.keys(columns).sort();
-    columnNames.forEach((column, index) => {
-      columnColors[column] = 'c' + (index % 16);
+    rows.forEach(row => {
+      rowColors[row] = headerColors[row];
     });
 
     this.rowNames_ = rows;

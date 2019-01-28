@@ -19,14 +19,14 @@ TFMA.
 
 
 
-from tensorflow_model_analysis.types_compat import Text
+from tensorflow_model_analysis.types_compat import Optional, Text
 
 # Prefix for post export metrics keys in metric_ops.
-_NAME_PREFIX = 'post_export_metrics'
+NAME_PREFIX = 'post_export_metrics'
 
 
-def _add_metric_prefix(name):
-  return '%s/%s' % (_NAME_PREFIX, name)  # pytype: disable=bad-return-type
+def add_metric_prefix(name, prefix = NAME_PREFIX):
+  return '%s/%s' % (prefix, name)  # pytype: disable=bad-return-type
 
 
 def upper_bound(name):
@@ -37,29 +37,31 @@ def lower_bound(name):
   return name + '/lower_bound'
 
 
-EXAMPLE_WEIGHT = _add_metric_prefix('example_weight')
-EXAMPLE_COUNT = _add_metric_prefix('example_count')
-CALIBRATION_PLOT_MATRICES = _add_metric_prefix('calibration_plot/matrices')
-CALIBRATION_PLOT_BOUNDARIES = _add_metric_prefix('calibration_plot/boundaries')
-CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES = _add_metric_prefix(
+EXAMPLE_WEIGHT_BASE = 'example_weight'
+EXAMPLE_WEIGHT = add_metric_prefix(EXAMPLE_WEIGHT_BASE)
+EXAMPLE_COUNT_BASE = 'example_count'
+EXAMPLE_COUNT = add_metric_prefix(EXAMPLE_COUNT_BASE)
+CALIBRATION_PLOT_MATRICES = 'calibration_plot/matrices'
+CALIBRATION_PLOT_BOUNDARIES = 'calibration_plot/boundaries'
+CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES = (
     'confusion_matrix_at_thresholds/matrices')
-CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS = _add_metric_prefix(
+CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS = (
     'confusion_matrix_at_thresholds/thresholds')
-CONFUSION_MATRIX_AT_THRESHOLDS = _add_metric_prefix(
+CONFUSION_MATRIX_AT_THRESHOLDS = (
     'confusion_matrix_at_thresholds')  # Output-only
-FAIRNESS_CONFUSION_MATRIX_MATRICES = _add_metric_prefix(
+FAIRNESS_CONFUSION_MATRIX_MATRICES = (
     'fairness/confusion_matrix_at_thresholds/matrices')
-FAIRNESS_CONFUSION_MATRIX_THESHOLDS = _add_metric_prefix(
+FAIRNESS_CONFUSION_MATRIX_THESHOLDS = (
     'fairness/confusion_matrix_at_thresholds/thresholds')
-FAIRNESS_CONFUSION_MATRIX = _add_metric_prefix(
+FAIRNESS_CONFUSION_MATRIX = (
     'fairness/confusion_matrix_at_thresholds')  # Output-only
-AUC_PLOTS_MATRICES = _add_metric_prefix('auc_plots/matrices')
-AUC_PLOTS_THRESHOLDS = _add_metric_prefix('auc_plots/thresholds')
-AUC = _add_metric_prefix('auc')
-AUPRC = _add_metric_prefix('auprc')
-PRECISION_RECALL_AT_K = _add_metric_prefix('precision_recall_at_k')
-PRECISION_AT_K = _add_metric_prefix('precision_at_k')  # Output-only
-RECALL_AT_K = _add_metric_prefix('recall_at_k')  # Output-only
+AUC_PLOTS_MATRICES = 'auc_plots/matrices'
+AUC_PLOTS_THRESHOLDS = 'auc_plots/thresholds'
+AUC = 'auc'
+AUPRC = 'auprc'
+PRECISION_RECALL_AT_K = 'precision_recall_at_k'
+PRECISION_AT_K = 'precision_at_k'  # Output-only
+RECALL_AT_K = 'recall_at_k'  # Output-only
 
 # keys where the corresponding values are results for plots
 PLOT_KEYS = [

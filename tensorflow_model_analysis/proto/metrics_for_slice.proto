@@ -42,6 +42,10 @@ message BoundedValue {
     UNKNOWN = 0;
     // Used to calculate AUC, the upper and lower Riemann sum for an integral.
     RIEMANN_SUM = 1;
+    // Used to calculate confidence intervals using Poisson bootstrapping.
+    // For more details, please see:
+    // http://www.unofficialgoogledatascience.com/2015/08/an-introduction-to-poisson-bootstrap26.html
+    POISSON_BOOTSTRAP = 2;
   }
   // Optionally describe the methodology that was used to calculate the bounds.
   Methodology methodology = 4;
@@ -52,6 +56,9 @@ message ValueAtCutoffs {
   message ValueCutoffPair {
     int32 cutoff = 1;
     double value = 2;
+    // Bounded Value representation of the data. Populate both values. See
+    // comments in ConfusionMatrixAtThresholds for migration plan details.
+    BoundedValue bounded_value = 3;
   }
   repeated ValueCutoffPair values = 1;
 }
@@ -66,13 +73,26 @@ message ConfusionMatrixAtThresholds {
     double true_positives = 5;
     double precision = 6;
     double recall = 7;
+
+    // BoundedValue representations of the data. Since BoundedValue can also
+    // represent a point estimate without intervals it makes sense to use that
+    // in all cases in the future.
+    // Migration plan is to proceed as follows:
+    // - modify callers to always populate both fields
+    // - update frontend to preferentially look at the new bounded fields
+    // - stop populating the old fields
+    BoundedValue bounded_false_negatives = 8;
+    BoundedValue bounded_true_negatives = 9;
+    BoundedValue bounded_false_positives = 10;
+    BoundedValue bounded_true_positives = 11;
+    BoundedValue bounded_precision = 12;
+    BoundedValue bounded_recall = 13;
   }
   repeated ConfusionMatrixAtThreshold matrices = 1;
 }
 
-// Represents a computed result for a ratio value, optionally with an associated
-// confidence interval. Computing confidence intervals of ratios requires
-// keeping track of the aggregated numerator and denominator separately.
+// DEPRECATED, do not use. If you you have a use case that requires this
+// metric type, let tf-model-analysis-dev@ know about it.
 message RatioValue {
   google.protobuf.DoubleValue numerator = 1;
   google.protobuf.DoubleValue denominator = 2;
@@ -106,6 +126,12 @@ message ArrayValue {
 // how to visualize the values based on the types.
 message MetricValue {
   oneof type {
+    // Since BoundedValue can represent a point estimate without intervals it
+    // makes sense to use that in all non-plot cases in the future.
+    // Migration plan is to proceed as follows:
+    // - modify callers to always populate both fields
+    // - update frontend to preferentially look at the new bounded fields
+    // - stop populating the old fields
     google.protobuf.DoubleValue double_value = 1;
     BoundedValue bounded_value = 2;
     ValueAtCutoffs value_at_cutoffs = 4;
@@ -113,7 +139,8 @@ message MetricValue {
     UnknownType unknown_type = 3;
     bytes bytes_value = 6;
     ArrayValue array_value = 7;
-    RatioValue ratio_value = 8;
+
+    RatioValue ratio_value = 8 [deprecated = true];
   }
 }
 

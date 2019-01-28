@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Defines the model used to predict who will tip in the Chicago Taxi demo."""
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import os
-import taxi
 import tensorflow as tf
 
 import tensorflow_model_analysis as tfma
+from trainer import taxi
 from tensorflow_transform.beam.tft_beam_io import transform_fn_io
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import metadata_io

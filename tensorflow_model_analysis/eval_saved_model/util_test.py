@@ -113,12 +113,10 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
   def testSplitTensorValueSparseVarLenMultiDim(self):
     split_tensor_values = util.split_tensor_value(
         tf.SparseTensorValue(
-            indices=np.array([[0, 0, 0], [0, 0, 1],
-                              [1, 1, 2], [1, 3, 4],
+            indices=np.array([[0, 0, 0], [0, 0, 1], [1, 1, 2], [1, 3, 4],
                               [3, 0, 3], [3, 2, 1], [3, 3, 0]],
                              dtype=np.int64),
-            values=np.array([1, 2, 3, 4, 5, 6, 7],
-                            dtype=np.int64),
+            values=np.array([1, 2, 3, 4, 5, 6, 7], dtype=np.int64),
             dense_shape=np.array([4, 4, 5])))
     expected_sparse_tensor_values = [
         tf.SparseTensorValue(

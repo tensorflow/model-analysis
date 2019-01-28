@@ -22,7 +22,39 @@ import inspect
 import sys
 import traceback
 import six
-from tensorflow_model_analysis.types_compat import Text
+from tensorflow_model_analysis import constants
+from tensorflow_model_analysis.types_compat import List, Text
+
+
+def unique_key(key, current_keys):
+  """Returns a unique key given a list of current keys.
+
+  If the key exists in current_keys then a new key with _1, _2, ..., etc
+  appended will be returned, otherwise the key will be returned as passed.
+
+  Args:
+    key: desired key name.
+    current_keys: List of current key names.
+  """
+  index = 1
+  k = key
+  while k in current_keys:
+    k = '%s_%d' % (key, index)
+    index += 1
+  return k
+
+
+def compound_key(keys,
+                 separator = constants.KEY_SEPARATOR):
+  """Returns a compound key based on a list of keys.
+
+  Args:
+    keys: Keys used to make up compound key.
+    separator: Separator between keys. To ensure the keys can be parsed out of
+      any compound key created, any use of a separator within a key will be
+      replaced by two separators.
+  """
+  return separator.join([key.replace(separator, separator * 2) for key in keys])
 
 
 def reraise_augmented(exception, additional_message):

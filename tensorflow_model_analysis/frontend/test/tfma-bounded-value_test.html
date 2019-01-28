@@ -49,7 +49,6 @@ suite('tests', () => {
 
   test('createBoundedValueWithAttributes', () => {
     element = fixture('attributes-inlined-fixture');
-    debugger;
     checkText(element, '1.50000 (1.00000, 2.00000)');
   });
 });
@@ -66,12 +65,12 @@ function checkText(element, expectedText) {
 }
 
 /**
- * Extracts the text content of the element. For polymer 2.X, get the text from the shadow root.
+ * Extracts the text content of the element.
  * @param {!Element} element
  * @return {string}
  */
 function getTextContent(element) {
-  return element.textContent.trim() || element.root.textContent.trim();
+  return element.textContent.trim();
 }
 
 /**

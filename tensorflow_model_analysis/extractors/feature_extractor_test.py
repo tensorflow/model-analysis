@@ -24,7 +24,6 @@ import tensorflow as tf
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.api.impl import api_types
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import feature_extractor
@@ -44,19 +43,20 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
     example1 = self._makeExample(
         age=3.0, language='english', label=1.0, slice_key='first_slice')
 
-    example_and_extracts = types.ExampleAndExtracts(
-        example=example1.SerializeToString(), extracts={})
+    extracts = {constants.INPUT_KEY: example1.SerializeToString()}
     self.assertRaises(RuntimeError, feature_extractor._MaterializeFeatures,
-                      example_and_extracts)
+                      extracts)
 
   def testMaterializeFeaturesBadFPL(self):
     example1 = self._makeExample(
         age=3.0, language='english', label=1.0, slice_key='first_slice')
 
-    example_and_extracts = types.ExampleAndExtracts(
-        example=example1.SerializeToString(), extracts={'fpl': 123})
+    extracts = {
+        constants.INPUT_KEY: example1.SerializeToString(),
+        constants.FEATURES_PREDICTIONS_LABELS_KEY: 123
+    }
     self.assertRaises(TypeError, feature_extractor._MaterializeFeatures,
-                      example_and_extracts)
+                      extracts)
 
   def testMaterializeFeaturesNoMaterializedColumns(self):
     example1 = self._makeExample(
@@ -77,30 +77,90 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
     predictions = {'p': {encoding.NODE_SUFFIX: np.array([2])}}
     labels = {'l': {encoding.NODE_SUFFIX: np.array([3])}}
 
-    example_and_extracts = types.ExampleAndExtracts(
-        example=example1.SerializeToString(),
-        extracts={
-            'fpl':
-                api_types.FeaturesPredictionsLabels(
-                    example_ref=0,
-                    features=features,
-                    predictions=predictions,
-                    labels=labels)
-        })
-    fpl = example_and_extracts.extracts[constants
-                                        .FEATURES_PREDICTIONS_LABELS_KEY]
-    result = feature_extractor._MaterializeFeatures(example_and_extracts)
-    self.assertTrue(isinstance(result, types.ExampleAndExtracts))
-    self.assertEqual(result.extracts['fpl'], fpl)  # should still be there.
-    self.assertEqual(result.extracts['f'],
-                     types.MaterializedColumn(name='f', value=[1]))
-    self.assertEqual(result.extracts['p'],
-                     types.MaterializedColumn(name='p', value=[2]))
-    self.assertEqual(result.extracts['l'],
-                     types.MaterializedColumn(name='l', value=[3]))
+    extracts = {
+        constants.INPUT_KEY:
+            example1.SerializeToString(),
+        constants.FEATURES_PREDICTIONS_LABELS_KEY:
+            types.FeaturesPredictionsLabels(
+                input_ref=0,
+                features=features,
+                predictions=predictions,
+                labels=labels)
+    }
+    fpl = extracts[constants.FEATURES_PREDICTIONS_LABELS_KEY]
+    result = feature_extractor._MaterializeFeatures(extracts)
+    self.assertTrue(isinstance(result, dict))
+    self.assertEqual(result[constants.FEATURES_PREDICTIONS_LABELS_KEY],
+                     fpl)  # should still be there.
+    self.assertEqual(result['features__f'],
+                     types.MaterializedColumn(name='features__f', value=[1]))
+    self.assertEqual(result['predictions__p'],
+                     types.MaterializedColumn(name='predictions__p', value=[2]))
+    self.assertEqual(result['labels__l'],
+                     types.MaterializedColumn(name='labels__l', value=[3]))
     self.assertEqual(
-        result.extracts['s'],
-        types.MaterializedColumn(name='s', value=[100., 200., 300.]))
+        result['features__s'],
+        types.MaterializedColumn(name='features__s', value=[100., 200., 300.]))
+
+  def testMaterializeFeaturesFromTfExample(self):
+    example1 = self._makeExample(age=3.0, language='english', label=1.0)
+
+    extracts = {constants.INPUT_KEY: example1.SerializeToString()}
+    input_example = extracts[constants.INPUT_KEY]
+    result = feature_extractor._MaterializeFeatures(
+        extracts, source=constants.INPUT_KEY)
+    self.assertTrue(isinstance(result, dict))
+    self.assertEqual(result[constants.INPUT_KEY],
+                     input_example)  # should still be there.
+    self.assertEqual(
+        result['features__age'],
+        types.MaterializedColumn(name='features__age', value=[3.0]))
+    self.assertEqual(
+        result['features__language'],
+        types.MaterializedColumn(name='features__language', value=[b'english']))
+    self.assertEqual(
+        result['features__label'],
+        types.MaterializedColumn(name='features__label', value=[1.0]))
+
+  def testMaterializeFeaturesWithBadSource(self):
+    example1 = self._makeExample(age=3.0, language='english', label=1.0)
+
+    extracts = {constants.INPUT_KEY: example1.SerializeToString()}
+
+    self.assertRaises(RuntimeError, feature_extractor._MaterializeFeatures,
+                      extracts, None, '10')
+
+  def testMaterializeFeaturesWithExcludes(self):
+    example1 = self._makeExample(
+        age=3.0, language='english', label=1.0, slice_key='first_slice')
+
+    features = {
+        'f': {
+            encoding.NODE_SUFFIX: np.array([1])
+        },
+        's': {
+            encoding.NODE_SUFFIX:
+                tf.SparseTensorValue(
+                    indices=[[0, 5], [1, 2], [3, 6]],
+                    values=[100., 200., 300.],
+                    dense_shape=[4, 10])
+        }
+    }
+    predictions = {'p': {encoding.NODE_SUFFIX: np.array([2])}}
+    labels = {'l': {encoding.NODE_SUFFIX: np.array([3])}}
+
+    extracts = {
+        constants.INPUT_KEY:
+            example1.SerializeToString(),
+        constants.FEATURES_PREDICTIONS_LABELS_KEY:
+            types.FeaturesPredictionsLabels(
+                input_ref=0,
+                features=features,
+                predictions=predictions,
+                labels=labels)
+    }
+    result = feature_extractor._MaterializeFeatures(extracts, excludes=['s'])
+    self.assertFalse('features__s' in result)
 
 
 if __name__ == '__main__':
