@@ -166,6 +166,18 @@ closure_js_library(
     ],
 )
 
+closure_js_library(
+    name = "test-util",
+    srcs = [
+        "test-util.js",
+    ],
+    suppress = [
+        "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_UNRECOGNIZED_TYPE_ERROR",
+        "JSC_UNUSED_LOCAL_ASSIGNMENT",
+    ],
+)
+
 JS_LIB_EXTERNS = [
     "externs.js",
 ]
