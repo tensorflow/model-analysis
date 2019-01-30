@@ -6,6 +6,8 @@
     writers). See [architecture](g3doc/architecture.md) for more details.
 *   Added support for excluding the default metrics from the saved model graph
     during evaluation.
+*   Added a mechanism for performing evaluations via post_export_metrics without
+    access to a Tensorflow EvalSavedModel.
 
 ## Bug fixes and other changes
 
