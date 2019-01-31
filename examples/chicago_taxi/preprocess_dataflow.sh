@@ -42,12 +42,16 @@ echo Using GCP project: $MYPROJECT
 echo Job output path: $JOB_OUTPUT_PATH
 echo TFT output path: $TFT_OUTPUT_PATH
 
+#input=gs://clouddfe-goenka/chicago_taxi_data/taxi_trips_000000000000.csv
+input=bigquery-public-data.chicago_taxi_trips.taxi_trips
+
+
 echo Preprocessing train data...
 
 python preprocess.py \
   --output_dir $TFT_OUTPUT_PATH \
   --outfile_prefix train_transformed \
-  --input bigquery-public-data.chicago_taxi_trips.taxi_trips \
+  --input=$input \
   --schema_file $SCHEMA_PATH \
   --project $MYPROJECT \
   --temp_location $TEMP_PATH \
