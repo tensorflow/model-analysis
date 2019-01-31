@@ -241,7 +241,7 @@ setup_args = {
     # protobuf) with TF.
     'install_requires': [
         'apache-beam[gcp]>=2.8,<3',
-        'numpy>=1.10,<2',
+        'numpy>=1.14.5,<2',
         'jupyter>=1.0,<2',
         'ipywidgets>=7.0,<8',
         'protobuf>=3.6.0,<4',

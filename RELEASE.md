@@ -24,6 +24,7 @@
     treated as positive examples. Now we treat a fractional label `l` in `[0,
     1]` as two examples, a positive example with weight `l` and a negative
     example with weight `1 - l`.
+*   Depends on `numpy>=1.14.5,<2`.
 
 ## Breaking changes
 
