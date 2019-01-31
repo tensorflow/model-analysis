@@ -238,7 +238,7 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
           self.assertAlmostEqual(2.5, value, delta=2.5)
 
       def check_english_slice(slices):
-        my_dict = slices[(('language', 'english'),)]
+        my_dict = slices[(('language', 'english'))]
         self.assertAlmostEqual(3.5, my_dict['my_mean_age'].value, delta=1)
         self.assertAlmostEqual(3.5, my_dict['my_mean_age'].unsampled_value)
         for value in my_dict['accuracy']:
@@ -249,7 +249,7 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
           self.assertAlmostEqual(3.5, value, delta=1)
 
       def check_chinese_slice(slices):
-        my_dict = slices[(('language', 'chinese'),)]
+        my_dict = slices[(('language', 'chinese'))]
         self.assertAlmostEqual(4.0, my_dict['my_mean_age'].value, delta=1)
         self.assertAlmostEqual(4.0, my_dict['my_mean_age'].unsampled_value)
         for value in my_dict['accuracy']:

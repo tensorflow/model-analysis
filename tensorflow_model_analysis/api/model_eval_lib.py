@@ -73,18 +73,32 @@ def _assert_tensorflow_version():
         'https://github.com/tensorflow/tensorflow. ' % tf.__version__)
 
 
-EvalConfig = NamedTuple(  # pylint: disable=invalid-name
-    'EvalConfig',
-    [
-        ('model_location',
-         Text),  # The location of the model used for this evaluation
-        ('data_location',
-         Text),  # The location of the data used for this evaluation
-        ('slice_spec', Optional[List[slicer.SingleSliceSpec]]
-        ),  # The corresponding slice spec
-        ('example_weight_metric_key',
-         Text),  # The name of the metric that contains example weight
-    ])
+class EvalConfig(
+    NamedTuple(
+        'EvalConfig',
+        [
+            ('model_location',
+             Text),  # The location of the model used for this evaluation
+            ('data_location',
+             Text),  # The location of the data used for this evaluation
+            ('slice_spec', Optional[List[slicer.SingleSliceSpec]]
+            ),  # The corresponding slice spec
+            ('example_weight_metric_key',
+             Text),  # The name of the metric that contains example weight
+            ('num_bootstrap_samples', int
+            ),  # Number of bootstrapping if calculating confidence is desired.
+        ])):
+  """Config used for extraction and evaluation."""
+
+  def __new__(cls,
+              model_location,
+              data_location = None,
+              slice_spec = None,
+              example_weight_metric_key = None,
+              num_bootstrap_samples = 1):
+    return super(EvalConfig,
+                 cls).__new__(cls, model_location, data_location, slice_spec,
+                              example_weight_metric_key, num_bootstrap_samples)
 
 
 def _check_version(raw_final_dict, path):
@@ -259,16 +273,22 @@ def default_extractors(  # pylint: disable=invalid-name
 
 def default_evaluators(  # pylint: disable=invalid-name
     eval_shared_model,
-    desired_batch_size = None):
+    desired_batch_size = None,
+    num_bootstrap_samples = None):
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
     eval_shared_model: Shared model parameters for EvalSavedModel.
     desired_batch_size: Optional batch size for batching in Aggregate.
+    num_bootstrap_samples: Number of bootstrap samples to draw. If more than 1,
+      confidence intervals will be computed for metrics. Suggested value is at
+      least 20.
   """
   return [
       metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
-          eval_shared_model, desired_batch_size)
+          eval_shared_model,
+          desired_batch_size,
+          num_bootstrap_samples=num_bootstrap_samples)
   ]
 
 
@@ -457,7 +477,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     extractors = None,
     evaluators = None,
     writers = None,
-    write_config = True):
+    write_config = True,
+    num_bootstrap_samples = 1):
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -510,6 +531,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       these will be added by calling the default_writers function. If no writers
       are provided, default_writers will be used.
     write_config: True to write the config along with the results.
+    num_bootstrap_samples: Optional, set to at least 20 in order to calculate
+      metrics with confidence intervals.
 
   Raises:
     ValueError: If matching Extractor not found for an Evaluator.
@@ -527,7 +550,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   if not evaluators:
     evaluators = default_evaluators(
         eval_shared_model=eval_shared_model,
-        desired_batch_size=desired_batch_size)
+        desired_batch_size=desired_batch_size,
+        num_bootstrap_samples=num_bootstrap_samples)
 
   for v in evaluators:
     evaluator.verify_evaluator(v, extractors)
@@ -547,7 +571,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       model_location=eval_shared_model.model_path,
       data_location=data_location,
       slice_spec=slice_spec,
-      example_weight_metric_key=example_weight_metric_key)
+      example_weight_metric_key=example_weight_metric_key,
+      num_bootstrap_samples=num_bootstrap_samples)
 
   # pylint: disable=no-value-for-parameter
   _ = (
@@ -575,6 +600,7 @@ def run_model_analysis(
     writers = None,
     write_config = True,
     pipeline_options = None,
+    num_bootstrap_samples = 1,
 ):
   """Runs TensorFlow model analysis.
 
@@ -616,6 +642,8 @@ def run_model_analysis(
     write_config: True to write the config along with the results.
     pipeline_options: Optional arguments to run the Pipeline, for instance
       whether to run directly.
+    num_bootstrap_samples: Optional, set to at least 20 in order to calculate
+      metrics with confidence intervals.
 
   Returns:
     An EvalResult that can be used with the TFMA visualization functions.
@@ -651,7 +679,8 @@ def run_model_analysis(
             extractors=extractors,
             evaluators=evaluators,
             writers=writers,
-            write_config=write_config))
+            write_config=write_config,
+            num_bootstrap_samples=num_bootstrap_samples))
     # pylint: enable=no-value-for-parameter
 
   eval_result = load_eval_result(output_path=output_path)

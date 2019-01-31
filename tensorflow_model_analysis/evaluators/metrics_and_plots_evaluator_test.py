@@ -85,8 +85,8 @@ def _make_slice_key(*args):
   result = []
   for i in range(0, len(args), 2):
     result.append((args[i], args[i + 1]))
-
-  return tuple(result)
+  result = tuple(result)
+  return result
 
 
 def _full_key(name_constant):
@@ -744,6 +744,101 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
 
         util.assert_that(metrics, check_result, label='metrics')
         util.assert_that(plots, util.is_empty(), label='plots')
+
+  def testEvaluateWithSlicingAndUncertainty(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = linear_classifier.simple_linear_classifier(
+        None, temp_eval_export_dir)
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=eval_export_dir,
+        add_metrics_callbacks=[_addExampleCountMetricCallback])
+    extractors = [
+        predict_extractor.PredictExtractor(eval_shared_model),
+        slice_key_extractor.SliceKeyExtractor([
+            slicer.SingleSliceSpec(),
+            slicer.SingleSliceSpec(columns=['slice_key'])
+        ])
+    ]
+
+    for batch_size in [1, 2, 4, 8]:
+
+      with beam.Pipeline() as pipeline:
+        example1 = self._makeExample(
+            age=3.0, language='english', label=1.0, slice_key='first_slice')
+        example2 = self._makeExample(
+            age=3.0, language='chinese', label=0.0, slice_key='first_slice')
+        example3 = self._makeExample(
+            age=4.0, language='english', label=0.0, slice_key='second_slice')
+        example4 = self._makeExample(
+            age=5.0, language='chinese', label=1.0, slice_key='second_slice')
+        example5 = self._makeExample(
+            age=5.0, language='chinese', label=1.0, slice_key='second_slice')
+
+        metrics, _ = (
+            pipeline
+            | 'Create' >> beam.Create([
+                example1.SerializeToString(),
+                example2.SerializeToString(),
+                example3.SerializeToString(),
+                example4.SerializeToString(),
+                example5.SerializeToString(),
+            ])
+            | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+            | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
+            | 'ComputeMetricsAndPlots' >>
+            metrics_and_plots_evaluator.ComputeMetricsAndPlots(
+                eval_shared_model=eval_shared_model,
+                desired_batch_size=batch_size,
+                num_bootstrap_samples=10))
+
+        def check_result(got):
+          try:
+            self.assertEqual(3, len(got), 'got: %s' % got)
+            slices = {}
+            for slice_key, value in got:
+              slices[slice_key] = value
+            overall_slice = ()
+            first_slice = (('slice_key', b'first_slice'),)
+            second_slice = (('slice_key', b'second_slice'),)
+            self.assertItemsEqual(
+                list(slices.keys()), [overall_slice, first_slice, second_slice])
+            self.assertDictElementsWithIntervalsAlmostEqual(
+                slices[overall_slice], {
+                    'accuracy': 0.4,
+                    'label/mean': 0.6,
+                    'my_mean_age': 4.0,
+                    'my_mean_age_times_label': 2.6,
+                    'added_example_count': 5.0
+                })
+            self.assertDictElementsWithIntervalsAlmostEqual(
+                slices[first_slice], {
+                    'accuracy': 1.0,
+                    'label/mean': 0.5,
+                    'my_mean_age': 3.0,
+                    'my_mean_age_times_label': 1.5,
+                    'added_example_count': 2.0
+                })
+            self.assertDictElementsWithIntervalsAlmostEqual(
+                slices[second_slice], {
+                    'accuracy': 0.0,
+                    'label/mean': 2.0 / 3.0,
+                    'my_mean_age': 14.0 / 3.0,
+                    'my_mean_age_times_label': 10.0 / 3.0,
+                    'added_example_count': 3.0
+                })
+            # Ensure that serialization of the key at the end of
+            # ComputeMetricsAndPlots works.
+            for slice_key, value in got:
+              metrics_and_plots_evaluator._serialize_metrics((slice_key, value),
+                                                             [])
+
+          except AssertionError as err:
+            # This function is redefined every iteration, so it will have the
+            # right value of batch_size.
+            raise util.BeamAssertException(
+                'batch_size = %d, error: %s' % (batch_size, err))  # pylint: disable=cell-var-from-loop
+
+        util.assert_that(metrics, check_result, label='metrics')
 
   def testEvaluateNoSlicingAddPostExportAndCustomMetrics(self):
     temp_eval_export_dir = self._getEvalExportDir()

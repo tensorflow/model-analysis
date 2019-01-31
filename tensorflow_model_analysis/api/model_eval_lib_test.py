@@ -170,6 +170,65 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
+  def testRunModelAnalysisWithUncertainty(self):
+    model_location = self._exportEvalSavedModel(
+        linear_classifier.simple_linear_classifier)
+    examples = [
+        self._makeExample(age=3.0, language='english', label=1.0),
+        self._makeExample(age=3.0, language='chinese', label=0.0),
+        self._makeExample(age=4.0, language='english', label=1.0),
+        self._makeExample(age=5.0, language='chinese', label=1.0)
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    slice_spec = [slicer.SingleSliceSpec(columns=['language'])]
+    eval_result = model_eval_lib.run_model_analysis(
+        model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'),
+        data_location,
+        slice_spec=slice_spec,
+        num_bootstrap_samples=20)
+    # We only check some of the metrics to ensure that the end-to-end
+    # pipeline works.
+    expected = {
+        ((b'language', b'chinese'),): {
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 8.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
+        },
+        ((b'language', b'english'),): {
+            'accuracy': {
+                'boundedValue': {
+                    'value': 1.0,
+                    'lowerBound': 1.0,
+                    'upperBound': 1.0,
+                    'methodology': 'POISSON_BOOTSTRAP'
+                }
+            },
+            'my_mean_label': {
+                'boundedValue': {
+                    'value': 1.0,
+                    'lowerBound': 1.0,
+                    'upperBound': 1.0,
+                    'methodology': 'POISSON_BOOTSTRAP'
+                }
+            },
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 7.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
+        }
+    }
+    self.assertEqual(eval_result.config.model_location, model_location)
+    self.assertEqual(eval_result.config.data_location, data_location)
+    self.assertEqual(eval_result.config.slice_spec, slice_spec)
+    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
+    self.assertFalse(eval_result.plots)
+
   def testRunModelAnalysisWithPlots(self):
     model_location = self._exportEvalSavedModel(
         fixed_prediction_estimator.simple_fixed_prediction_estimator)

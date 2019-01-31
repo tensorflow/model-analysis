@@ -8,6 +8,10 @@
     during evaluation.
 *   Added a mechanism for performing evaluations via post_export_metrics without
     access to a Tensorflow EvalSavedModel.
+*   Added support for computing metrics with confidence intervals using the
+    [Poisson bootstrap technique](http://www.unofficialgoogledatascience.com/2015/08/an-introduction-to-poisson-bootstrap26.html).
+    To use, set the num_bootstrap_samples to a number greater than 1--20 is
+    recommended for confidence intervals.
 
 ## Bug fixes and other changes
 

@@ -40,7 +40,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     desired_batch_size = None,
     metrics_key = constants.METRICS_KEY,
     plots_key = constants.PLOTS_KEY,
-    run_after = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME
+    run_after = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
+    num_bootstrap_samples = 1,
 ):
   """Creates an Evaluator for evaluating metrics and plots.
 
@@ -50,6 +51,9 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
     run_after: Extractor to run after (None means before any extractors).
+    num_bootstrap_samples: Number of bootstrap samples to draw. If more than 1,
+      confidence intervals will be computed for metrics. Suggested value is at
+      least 20.
 
   Returns:
     Evaluator for evaluating metrics and plots. The output will be stored under
@@ -63,7 +67,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           eval_shared_model=eval_shared_model,
           desired_batch_size=desired_batch_size,
           metrics_key=metrics_key,
-          plots_key=plots_key))
+          plots_key=plots_key,
+          num_bootstrap_samples=num_bootstrap_samples))
   # pylint: enable=no-value-for-parameter
 
 
@@ -317,7 +322,8 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     eval_shared_model,
     desired_batch_size = None,
     metrics_key = constants.METRICS_KEY,
-    plots_key = constants.PLOTS_KEY):
+    plots_key = constants.PLOTS_KEY,
+    num_bootstrap_samples = 1):
   """Evaluates metrics and plots using the EvalSavedModel.
 
   Args:
@@ -332,6 +338,9 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     desired_batch_size: Optional batch size for batching in Aggregate.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
+    num_bootstrap_samples: Number of bootstrap samples to draw. If more than 1,
+      confidence intervals will be computed for metrics. Suggested value is at
+      least 20.
 
   Returns:
     Evaluation containing serialized protos keyed by 'metrics' and 'plots'.
@@ -345,7 +354,9 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
           constants.SLICE_KEY_TYPES_KEY
       ])
       | 'ComputeMetricsAndPlots' >> ComputeMetricsAndPlots(
-          eval_shared_model, desired_batch_size))
+          eval_shared_model,
+          desired_batch_size,
+          num_bootstrap_samples=num_bootstrap_samples))
   metrics, plots = (
       (metrics, plots)
       | 'SerializeMetricsAndPlots' >> SerializeMetricsAndPlots(

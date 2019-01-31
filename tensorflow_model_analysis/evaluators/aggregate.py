@@ -133,7 +133,9 @@ class _FanoutBootstrapFn(beam.DoFn):
     slice_key, value = element
     for i in range(0, self._num_bootstrap_samples):
       # Prepend the sample ID to the original slice key.
-      augmented_slice_key = ((_SAMPLE_ID, i), slice_key)
+      slice_key_as_list = list(slice_key)
+      slice_key_as_list.insert(0, (_SAMPLE_ID, i))
+      augmented_slice_key = tuple(slice_key_as_list)
       # This fans out the pipeline, but because we are reducing in a
       # CombinePerKey, we shouldn't have to deal with a great increase in
       # network traffic.
@@ -196,7 +198,7 @@ class _MergeBootstrap(beam.DoFn):
       unsampled_slice_key, unsampled_metrics = result
       side_input_results[unsampled_slice_key] = unsampled_metrics
     if len(metrics) == 1:
-      yield slice_key, metrics
+      yield slice_key, metrics[0]
       return
 
     original_structure = copy.copy(metrics[0])
@@ -208,9 +210,6 @@ class _MergeBootstrap(beam.DoFn):
       for key in m_dict:
         _collect_metrics(m_dict[key], key, uber_metrics)
         unsampled_slice_key = slice_key
-        if slice_key not in side_input_results:
-          # Due to inconsistencies in Tuple casting in slice_key extractors.
-          unsampled_slice_key = slice_key[0]
         _collect_metrics(side_input_results[unsampled_slice_key][key], key,
                          unsampled_metrics)
 
@@ -547,12 +546,11 @@ class _ExtractOutputDoFn(beam.DoFn):
     if metric_variables:
       self._eval_saved_model.set_metric_variables(metric_variables)
       result = self._eval_saved_model.get_metric_values()
+
       # If slice key contains uncertainty sample ID, remove it from the key.
       if len(slice_key) and _SAMPLE_ID in slice_key[0]:
         slice_key = slice_key[1:]
-      if len(slice_key) and not slice_key[0]:  # Overall slice.
-        slice_key = ()
-      yield (tuple(slice_key), result)
+      yield (slice_key, result)
     else:
       # Increase a counter for empty bootstrap samples. When sampling is not
       # enabled, this should never be exected. The slice extractor/fanout only
