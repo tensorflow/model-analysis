@@ -71,7 +71,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.slicer import slicer
-from tensorflow_model_analysis.types_compat import Any, List, Dict, Text, Union
+from tensorflow_model_analysis.types_compat import Any, List, Dict, Text, Union, Optional
 
 
 @beam.ptransform_fn
@@ -220,9 +220,12 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         eval_saved_model.perform_metrics_update(fpl)
     return eval_saved_model.get_metric_values()
 
-  def assertMetricsComputedWithBeamAre(self, eval_saved_model_path,
-                                       serialized_examples,
-                                       expected_metrics):
+  def assertMetricsComputedWithBeamAre(
+      self,
+      eval_saved_model_path,
+      serialized_examples,
+      expected_metrics,
+      add_metrics_callbacks = None):
     """Checks metrics computed using Beam.
 
     Metrics will be computed over all examples, without any slicing. If you
@@ -243,6 +246,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         EvalSavedModel.
       serialized_examples: List of serialized example bytes.
       expected_metrics: Dictionary of expected metric values.
+      add_metrics_callbacks: Optional. Callbacks for adding additional metrics.
     """
 
     def check_metrics(got):
@@ -259,7 +263,8 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         raise beam_util.BeamAssertException(err)
 
     eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=eval_saved_model_path)
+        eval_saved_model_path=eval_saved_model_path,
+        add_metrics_callbacks=add_metrics_callbacks)
     extractors = model_eval_lib.default_extractors(
         eval_shared_model=eval_shared_model)
 
