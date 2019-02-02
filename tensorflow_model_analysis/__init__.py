@@ -54,6 +54,8 @@ from tensorflow_model_analysis.constants import VALUES_SUFFIX
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model import exporter
+from tensorflow_model_analysis.eval_saved_model.constants import DEFAULT_LABELS_DICT_KEY
+from tensorflow_model_analysis.eval_saved_model.constants import DEFAULT_PREDICTIONS_DICT_KEY
 
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 
