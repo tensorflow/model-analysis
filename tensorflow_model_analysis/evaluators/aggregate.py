@@ -38,6 +38,8 @@ from tensorflow_model_analysis.types_compat import Any, Dict, Generator, Iterabl
 
 _SAMPLE_ID = '___SAMPLE_ID'
 
+_COMBINEFN_COMPACT_SUPPORTED = False
+
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(
@@ -87,6 +89,8 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
     compute_with_sampling = True
 
   fanout = 16
+  if _COMBINEFN_COMPACT_SUPPORTED:
+    fanout = None
 
   output_results = (
       slice_result
@@ -332,6 +336,8 @@ class _AggregateCombineFn(beam.CombineFn):
   # batch flushing, but shouldn't be too large as it also acts as cap on the
   # maximum memory usage of the computation.
   _DEFAULT_DESIRED_BATCH_SIZE = 100
+  if _COMBINEFN_COMPACT_SUPPORTED:
+    _DEFAULT_DESIRED_BATCH_SIZE = 1000
 
   def __init__(self,
                eval_shared_model,

@@ -66,6 +66,17 @@ class ValueWithConfidenceInterval(
         cls, value, lower_bound, upper_bound, unsampled_value)
 
 
+# AddMetricsCallback should have the following prototype:
+#   def add_metrics_callback(features_dict, predictions_dict, labels_dict):
+#
+# It should create and return a metric_ops dictionary, such that
+# metric_ops['metric_name'] = (value_op, update_op), just as in the Trainer.
+#
+# Note that features_dict, predictions_dict and labels_dict are not
+# necessarily dictionaries - they might also be Tensors, depending on what the
+# model's eval_input_receiver_fn returns.
+AddMetricsCallbackType = Any
+
 FeaturesPredictionsLabels = NamedTuple(
     'FeaturesPredictionsLabels', [('input_ref', int),
                                   ('features', DictOfFetchedTensorValues),

@@ -31,7 +31,9 @@ gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/
 MODEL_BINARIES=$(gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/ \
   | sort | grep '\/[0-9]*\/$' | tail -n1)
 
+# LINT.IfChange
 TF_VERSION=1.10
+# LINT.ThenChange(setup.py)
 
 gcloud ml-engine versions create v1 \
   --model chicago_taxi \

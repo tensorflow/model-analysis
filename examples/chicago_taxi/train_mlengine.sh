@@ -61,7 +61,9 @@ EVAL_FILE=$TFT_OUTPUT_PATH/train_transformed-*
 TRAIN_STEPS=100000
 EVAL_STEPS=1000
 
+# LINT.IfChange
 TF_VERSION=1.10
+# LINT.ThenChange(setup.py)
 
 gcloud ml-engine jobs submit training $JOB_ID \
                                     --stream-logs \

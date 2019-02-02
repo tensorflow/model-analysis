@@ -14,7 +14,11 @@
 """Setup dependencies for local and cloud deployment."""
 import setuptools
 
+# LINT.IfChange
 TF_VERSION = '1.11.0'
+# LINT.ThenChange(chicago_taxi_client.py,
+#                 train_mlengine.sh,
+#                 start_model_server_mlengine.sh)
 
 if __name__ == '__main__':
   setuptools.setup(

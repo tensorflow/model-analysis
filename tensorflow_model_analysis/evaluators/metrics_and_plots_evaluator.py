@@ -72,6 +72,11 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
   # pylint: enable=no-value-for-parameter
 
 
+# The desired output type is
+# List[Tuple[slicer.SliceKeyType,
+# protobuf.python.google.internal.containers.MessageMap[Union[str, unicode],
+# metrics_for_slice_pb2.MetricValue]], while the metrics type isn't visible to
+# this module.
 def load_and_deserialize_metrics(
     path):
   result = []

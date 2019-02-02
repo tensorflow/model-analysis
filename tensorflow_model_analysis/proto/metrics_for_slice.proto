@@ -18,6 +18,8 @@ import "google/protobuf/wrappers.proto";
 
 package tensorflow_model_analysis;
 
+// This proto is copied into PerformanceStatistics because of b/110954446.
+// LINT.IfChange
 
 // The value will be converted into an error message if we do not know its type.
 message UnknownType {
@@ -193,3 +195,6 @@ message PlotsForSlice {
   PlotData plot_data = 2;
 }
 
+// LINT.ThenChange(
+//   ../../../../intelligence/lantern/proto/stats/\
+//      performance_statistics.proto)

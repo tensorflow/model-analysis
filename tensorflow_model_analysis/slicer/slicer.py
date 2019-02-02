@@ -384,6 +384,25 @@ class _FanoutSlicesDoFn(beam.DoFn):
     self._post_slice_num_instances.inc(slice_count)
 
 
+@beam.ptransform_fn
+@beam.typehints.with_input_types(
+    beam.typehints.Tuple[BeamSliceKeyType, types.Extracts])
+@beam.typehints.with_output_types(int)
+def _TrackDistinctSliceKeys(  # pylint: disable=invalid-name
+    slice_keys_and_values):
+  """Gathers slice key telemetry post slicing."""
+
+  def increment_counter(element):  # pylint: disable=invalid-name
+    num_distinct_slice_keys = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_distinct_slice_keys')
+    num_distinct_slice_keys.inc(element)
+    return element
+
+  return (slice_keys_and_values
+          | 'ExtractSliceKeys' >> beam.Keys()
+          | 'RemoveDuplicates' >> beam.RemoveDuplicates()
+          | 'Size' >> beam.combiners.Count.Globally()
+          | 'IncrementCounter' >> beam.Map(increment_counter))
 
 
 @beam.ptransform_fn
@@ -397,5 +416,8 @@ def FanoutSlices(pcoll,
   result = pcoll | 'DoSlicing' >> beam.ParDo(
       _FanoutSlicesDoFn(include_slice_keys_in_output))
 
+  # pylint: disable=no-value-for-parameter
+  _ = result | 'TrackDistinctSliceKeys' >> _TrackDistinctSliceKeys()
+  # pylint: enable=no-value-for-parameter
 
   return result

@@ -57,6 +57,7 @@ from tensorflow_model_analysis.eval_saved_model import exporter
 
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 
+from tensorflow_model_analysis.types import AddMetricsCallbackType
 from tensorflow_model_analysis.types import EvalSharedModel
 from tensorflow_model_analysis.types import Extracts
 from tensorflow_model_analysis.types import FeaturesPredictionsLabels
