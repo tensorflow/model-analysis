@@ -25,6 +25,7 @@
     1]` as two examples, a positive example with weight `l` and a negative
     example with weight `1 - l`.
 *   Depends on `numpy>=1.14.5,<2`.
+*   Chicago Taxi example is moved to tfx repo (https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi)
 
 ## Breaking changes
 

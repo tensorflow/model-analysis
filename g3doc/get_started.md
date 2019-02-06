@@ -128,9 +128,8 @@ result = tfma.load_eval_result(output_path='/path/to/out')
 tfma.view.render_slicing_metrics(result)
 ```
 ## End-to-end example
-
 Try the extensive
-[end-to-end example](https://github.com/tensorflow/model-analysis/tree/master/examples/chicago_taxi)
+[end-to-end example](https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi)
 featuring [TensorFlow Transform](https://github.com/tensorflow/transform) for feature
 preprocessing,
 [TensorFlow Estimators](https://www.tensorflow.org/guide/estimators) for

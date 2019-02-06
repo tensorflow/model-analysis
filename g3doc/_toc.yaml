@@ -4,5 +4,5 @@ toc:
 
 - heading: Examples
 - title: Chicago Taxi (end-to-end)
-  path: https://github.com/tensorflow/model-analysis/tree/master/examples/chicago_taxi
+  path: https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi
   status: external
