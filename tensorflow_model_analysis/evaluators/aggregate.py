@@ -38,7 +38,8 @@ from tensorflow_model_analysis.types_compat import Any, Dict, Generator, Iterabl
 
 _SAMPLE_ID = '___SAMPLE_ID'
 
-_COMBINEFN_COMPACT_SUPPORTED = False
+_COMBINEFN_COMPACT_SUPPORTED = (
+    getattr(beam.CombineFn, 'compact', None) is not None)
 
 
 @beam.ptransform_fn
