@@ -35,7 +35,6 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_model_analysis.types_compat import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
-
 _SAMPLE_ID = '___SAMPLE_ID'
 
 _COMBINEFN_COMPACT_SUPPORTED = (
