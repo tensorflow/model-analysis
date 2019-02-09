@@ -12,7 +12,7 @@ distributed manner, using the same metrics defined in their trainer. These
 metrics can be computed over different slices of data and visualized in Jupyter
 notebooks.
 
-![TFMA Slicing Metrics Browser](g3doc/images/tfma-slicing-metrics-browser.gif)
+![TFMA Slicing Metrics Browser](https://raw.githubusercontent.com/tensorflow/model-analysis/master/g3doc/images/tfma-slicing-metrics-browser.gif)
 
 Caution: TFMA may introduce backwards incompatible changes before version 1.0.
 
@@ -27,7 +27,7 @@ pip install tensorflow-model-analysis
 
 Currently, TFMA requires that TensorFlow is installed but does not have an
 explicit dependency on the TensorFlow PyPI package. See the
-[TensorFlow install guides](/install) for instructions.
+[TensorFlow install guides](https://www.tensorflow.org/install/) for instructions.
 
 To enable TFMA visualization in Jupyter Notebook:
 
@@ -51,7 +51,8 @@ designed to be extensible for other Apache Beam runners.
 ## Getting Started
 
 For instructions on using TFMA, see the [get started
-guide](g3doc/get_started.md) and try out the extensive [end-to-end example](https://github.com/tensorflow/tfx/examples/chicago_taxi/README.md).
+guide](https://github.com/tensorflow/model-analysis/blob/master/g3doc/get_started.md) and try out
+the extensive [end-to-end example](https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi/README.md).
 
 ## Compatible Versions
 
