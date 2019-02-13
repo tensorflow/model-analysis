@@ -153,6 +153,7 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
     for i, fpl in enumerate(fpls):
       self.assertIn('language', fpl.features)
       self.assertIn('label', fpl.labels)
+      self.assertIn('label', fpl.features)  # Labels should also be in features.
       self.assertIn('probabilities', fpl.predictions)
       self.assertIn('age', fpl.features)
       self.assertEquals(expected_age[i], fpl.features['age']['node'])

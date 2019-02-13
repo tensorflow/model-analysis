@@ -203,10 +203,9 @@ class ModelAgnosticPredict(object):
       for key in split_features:
         if key in self._config.label_keys:
           labels[key] = {encoding.NODE_SUFFIX: split_features[key][i]}
-        elif key in self._config.prediction_keys:
+        if key in self._config.prediction_keys:
           predictions[key] = {encoding.NODE_SUFFIX: split_features[key][i]}
-        else:
-          features[key] = {encoding.NODE_SUFFIX: split_features[key][i]}
+        features[key] = {encoding.NODE_SUFFIX: split_features[key][i]}
 
       result.append(
           types.FeaturesPredictionsLabels(
