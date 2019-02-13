@@ -66,7 +66,7 @@ def _AugmentExtracts(fpl_dict, prefix,
       continue
     val = val.get(encoding.NODE_SUFFIX)
 
-    if name in (prefix, constants.KEY_SEPARATOR + prefix):
+    if name in (prefix, util.KEY_SEPARATOR + prefix):
       col_name = prefix
     else:
       col_name = util.compound_key([prefix, name])
@@ -145,9 +145,10 @@ def _MaterializeFeatures(
     # We disable pytyping here because we know that 'fpl' key corresponds to a
     # non-materialized column.
     # pytype: disable=attribute-error
-    _AugmentExtracts(fpl.features, 'features', excludes, result)
-    _AugmentExtracts(fpl.predictions, 'predictions', excludes, result)
-    _AugmentExtracts(fpl.labels, 'labels', excludes, result)
+    _AugmentExtracts(fpl.features, constants.FEATURES_KEY, excludes, result)
+    _AugmentExtracts(fpl.predictions, constants.PREDICTIONS_KEY, excludes,
+                     result)
+    _AugmentExtracts(fpl.labels, constants.LABELS_KEY, excludes, result)
     # pytype: enable=attribute-error
     return result
   elif source == constants.INPUT_KEY:

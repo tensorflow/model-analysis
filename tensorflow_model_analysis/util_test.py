@@ -28,6 +28,11 @@ class UtilTest(tf.test.TestCase):
     self.assertEqual('key1_1', util.unique_key('key1', ['key1', 'key2']))
     self.assertEqual('key1_2', util.unique_key('key1', ['key1', 'key1_1']))
 
+  def testUniqueKeyWithUpdateKeys(self):
+    keys = ['key1', 'key2']
+    util.unique_key('key1', keys, update_keys=True)
+    self.assertEqual(['key1', 'key2', 'key1_1'], keys)
+
   def testCompoundKey(self):
     self.assertEqual('a_b', util.compound_key(['a_b']))
     self.assertEqual('a__b', util.compound_key(['a', 'b']))

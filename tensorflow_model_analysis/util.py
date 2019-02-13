@@ -22,11 +22,22 @@ import inspect
 import sys
 import traceback
 import six
-from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.types_compat import List, Text
+from tensorflow_model_analysis.types_compat import List, Optional, Text
+
+# Separator used when combining multiple layers of Extracts keys into a single
+# string. Normally we would like to use '.' or '/' as a separator, but the
+# output gets written to a table backed by a proto based schema which limits the
+# characters that can be used to [a-zA-Z_].
+KEY_SEPARATOR = '__'
+# Suffix for keys representing the top k keys associated with a sparse item.
+KEYS_SUFFIX = 'keys'
+# Suffix for keys representing the top k values associated with a sparse item.
+VALUES_SUFFIX = 'values'
 
 
-def unique_key(key, current_keys):
+def unique_key(key,
+               current_keys,
+               update_keys = False):
   """Returns a unique key given a list of current keys.
 
   If the key exists in current_keys then a new key with _1, _2, ..., etc
@@ -35,17 +46,19 @@ def unique_key(key, current_keys):
   Args:
     key: desired key name.
     current_keys: List of current key names.
+    update_keys: True to append the new key to current_keys.
   """
   index = 1
   k = key
   while k in current_keys:
     k = '%s_%d' % (key, index)
     index += 1
+  if update_keys:
+    current_keys.append(k)
   return k
 
 
-def compound_key(keys,
-                 separator = constants.KEY_SEPARATOR):
+def compound_key(keys, separator = KEY_SEPARATOR):
   """Returns a compound key based on a list of keys.
 
   Args:
@@ -55,6 +68,16 @@ def compound_key(keys,
       replaced by two separators.
   """
   return separator.join([key.replace(separator, separator * 2) for key in keys])
+
+
+def create_keys_key(key):
+  """Creates secondary key representing the sparse keys associated with key."""
+  return '_'.join([key, KEYS_SUFFIX])
+
+
+def create_values_key(key):
+  """Creates secondary key representing sparse values associated with key."""
+  return '_'.join([key, VALUES_SUFFIX])
 
 
 def reraise_augmented(exception, additional_message):
