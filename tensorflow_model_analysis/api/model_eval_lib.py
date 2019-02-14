@@ -59,14 +59,7 @@ def _assert_tensorflow_version():
   """Check that we're using a compatible TF version."""
   # Fail with a clear error in case we are not using a compatible TF version.
   major, minor, _ = tf.__version__.split('.')
-  major = int(major)
-  minor = int(minor)
-  okay = True
-  if major != 1:
-    okay = False
-  if minor < 11:
-    okay = False
-  if not okay:
+  if int(major) != 1 or int(minor) < 11:
     raise RuntimeError(
         'Tensorflow version >= 1.11, < 2 is required. Found (%s). Please '
         'install the latest 1.x version from '

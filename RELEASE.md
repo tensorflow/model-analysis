@@ -1,7 +1,9 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
-
+*   Python 3.5 readiness complete (all tests pass). Full Python 3.5
+    compatibility is expected to be available with the next version of Model
+    Analysis (after Apache Beam 2.11 is released).
 *   Added support for customizing the pipeline (via extractors, evaluators, and
     writers). See [architecture](g3doc/architecture.md) for more details.
 *   Added support for excluding the default metrics from the saved model graph
@@ -25,6 +27,8 @@
     1]` as two examples, a positive example with weight `l` and a negative
     example with weight `1 - l`.
 *   Depends on `numpy>=1.14.5,<2`.
+*   Depends on `scipy==0.19.1`.
+*   Depends on `protobuf==3.7.0rc2`.
 *   Chicago Taxi example is moved to tfx repo (https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi)
 
 ## Breaking changes

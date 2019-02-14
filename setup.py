@@ -246,11 +246,13 @@ setup_args = {
     # Make sure to sync the versions of common dependencies (numpy, six, and
     # protobuf) with TF.
     'install_requires': [
+        # Sort alphabetically
         'apache-beam[gcp]>=2.8,<3',
-        'numpy>=1.14.5,<2',
-        'jupyter>=1.0,<2',
         'ipywidgets>=7.0,<8',
-        'protobuf>=3.6.0,<4',
+        'jupyter>=1.0,<2',
+        'numpy>=1.14.5,<2',
+        'protobuf==3.7.0rc2',
+        'scipy==0.19.1',
         # For apitools.
         # Note: try version 1.10 if error "metaclass conflict: the
         # metaclass of a derived class must be a (non-strict) subclass of the
