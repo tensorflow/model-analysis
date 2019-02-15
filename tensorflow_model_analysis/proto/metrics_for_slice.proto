@@ -14,9 +14,9 @@
 
 syntax = "proto3";
 
-import "google/protobuf/wrappers.proto";
-
 package tensorflow_model_analysis;
+
+import "google/protobuf/wrappers.proto";
 
 // This proto is copied into PerformanceStatistics because of b/110954446.
 // LINT.IfChange
@@ -191,8 +191,16 @@ message PlotData {
 message PlotsForSlice {
   // The slice key for the metrics.
   SliceKey slice_key = 1;
-  // The plot data
-  PlotData plot_data = 2;
+  // The plot data--deprecated please use 'plots' instead.
+  PlotData plot_data = 2 [deprecated = true];
+
+  // Use this field instead of tfma_plots to support multiple plot evaluations
+  // in a single evaluator run. Note that each entry of TFMAPlotData should
+  // contain all plots for the same grouping. eg: for the same head of a
+  // multihead model or for the same class in the case of multiclass. For
+  // example, the key can be of the form 'post_export_metrics/head_name' for a
+  // multihead model.
+  map<string, PlotData> plots = 3;
 }
 
 // LINT.ThenChange(
