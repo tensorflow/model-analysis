@@ -158,7 +158,7 @@ class TFMAUnitTest(tfma_unit.TestCase):
         'mae':
             0.15,
         # Note that we don't check the exact value because of numerical errors.
-        'post_export_metrics/' + metric_keys.AUC:
+        metric_keys.AUC:
             tfma_unit.BoundedValue(0.98, 1.00),
     }
     # We don't check AUC for the positive / negative only slices because

@@ -144,10 +144,6 @@ def _check_weight_present(features_dict,
         'features were: %s' % (example_weight_key, features_dict.keys()))
 
 
-def _prepend_default_string(base_key):
-  return metric_keys.add_metric_prefix(base_key, metric_keys.NAME_PREFIX)
-
-
 def _populate_to_auc_bounded_value_and_pop(
     combined_metrics,
     output_metrics,
@@ -156,38 +152,37 @@ def _populate_to_auc_bounded_value_and_pop(
 
   The metric to be converted should be in the dict `combined_metrics` with key
   as `metric_key`. The `combined_metrics` should also contain
-  metric_keys.lower_bound(metric_key) and metric_keys.upper_bound(metric_key)
-  which store the lower_bound and upper_bound of that metric. The result will be
-  stored as bounded_value type in dict `output_metrics`. After the conversion,
-  the metric will be poped out from the `combined_metrics`.
+  metric_keys.lower_bound_key(metric_key) and
+  metric_keys.upper_bound_key(metric_key) which store the lower_bound and
+  upper_bound of that metric. The result will be stored as bounded_value type in
+  dict `output_metrics`. After the conversion, the metric will be poped out from
+  the `combined_metrics`.
 
   Args:
     combined_metrics: The dict containing raw TFMA metrics.
     output_metrics: The dict where we convert the metrics to.
-    metric_key: The key in the dict `metircs` for extracting the metric value.
+    metric_key: The key in the dict `metrics` for extracting the metric value.
   """
   riemann_sum_lower_bound = combined_metrics.pop(
-      _prepend_default_string(metric_keys.lower_bound(metric_key)))
+      metric_keys.lower_bound_key(metric_key))
   if isinstance(riemann_sum_lower_bound, types.ValueWithConfidenceInterval):
     riemann_sum_lower_bound = riemann_sum_lower_bound.unsampled_value
-  output_metrics[_prepend_default_string(
-      metric_key)].bounded_value.lower_bound.value = riemann_sum_lower_bound
+  output_metrics[metric_key].bounded_value.lower_bound.value = (
+      riemann_sum_lower_bound)
   riemann_sum_upper_bound = combined_metrics.pop(
-      _prepend_default_string(metric_keys.upper_bound(metric_key)))
+      metric_keys.upper_bound_key(metric_key))
   if isinstance(riemann_sum_upper_bound, types.ValueWithConfidenceInterval):
     riemann_sum_upper_bound = riemann_sum_upper_bound.unsampled_value
-  output_metrics[_prepend_default_string(
-      metric_key)].bounded_value.upper_bound.value = riemann_sum_upper_bound
-  output_metrics[_prepend_default_string(
-      metric_key)].bounded_value.methodology = (
-          metrics_pb2.BoundedValue.RIEMANN_SUM)
+  output_metrics[metric_key].bounded_value.upper_bound.value = (
+      riemann_sum_upper_bound)
+  output_metrics[metric_key].bounded_value.methodology = (
+      metrics_pb2.BoundedValue.RIEMANN_SUM)
 
-  value = combined_metrics.pop(_prepend_default_string(metric_key))
+  value = combined_metrics.pop(metric_key)
   if isinstance(value, types.ValueWithConfidenceInterval):
     # Currently taking the computed mean value, conserving legacy functionality.
     value = value.value
-  output_metrics[_prepend_default_string(
-      metric_key)].bounded_value.value.value = value
+  output_metrics[metric_key].bounded_value.value.value = value
 
 
 class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
@@ -282,8 +277,7 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     # class to evaluate.
     return self._select_class(predictions_tensor, labels_tensor)
 
-  def _metric_key(self, base_key,
-                  add_prefix = True):
+  def _metric_key(self, base_key):
     """Constructs a metric key, including user-specified prefix if necessary.
 
     In cases with multi-headed models, an evaluation may need multiple instances
@@ -293,17 +287,13 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
 
     Args:
       base_key: The original key for the metric, often from metric_keys.
-      add_prefix: If true, prepends the metric key with 'post_export_metrics'.
 
     Returns:
       Either the base key, or the key augmented with a specified tag or label.
     """
-    tagged_key = base_key
     if self._metric_tag:
-      tagged_key = metric_keys.add_metric_prefix(base_key, self._metric_tag)
-    if add_prefix:
-      return _prepend_default_string(tagged_key)
-    return tagged_key
+      return metric_keys.tagged_key(base_key, self._metric_tag)
+    return base_key
 
   @abc.abstractmethod
   def check_compatibility(self, features_dict,
@@ -446,7 +436,7 @@ class _ExampleCount(_PostExportMetric):
         ref_tensor = tf.constant([])
 
     return {
-        self._metric_key(metric_keys.EXAMPLE_COUNT_BASE):
+        self._metric_key(metric_keys.EXAMPLE_COUNT):
             metrics.total(tf.shape(ref_tensor)[0])
     }
 
@@ -454,17 +444,17 @@ class _ExampleCount(_PostExportMetric):
       self, combine_metrics,
       output_metrics):
     count_result = combine_metrics.pop(
-        self._metric_key(metric_keys.EXAMPLE_COUNT_BASE))
+        self._metric_key(metric_keys.EXAMPLE_COUNT))
     if isinstance(count_result, types.ValueWithConfidenceInterval):
       # We do not want to display confidence interval bounds on known
       # quantities such as ExampleCount, so we use the calculated value
       # without sampling.
       output_metrics[self._metric_key(
-          metric_keys.EXAMPLE_COUNT_BASE)].double_value.value = (
+          metric_keys.EXAMPLE_COUNT)].double_value.value = (
               count_result.unsampled_value)
     else:
       output_metrics[self._metric_key(
-          metric_keys.EXAMPLE_COUNT_BASE)].double_value.value = count_result
+          metric_keys.EXAMPLE_COUNT)].double_value.value = count_result
 
 
 @_export('example_weight')
@@ -499,25 +489,23 @@ class _ExampleWeight(_PostExportMetric):
                      labels_dict
                     ):
     value = features_dict[self._example_weight_key]
-    return {
-        self._metric_key(metric_keys.EXAMPLE_WEIGHT_BASE): metrics.total(value)
-    }
+    return {self._metric_key(metric_keys.EXAMPLE_WEIGHT): metrics.total(value)}
 
   def populate_stats_and_pop(
       self, combine_metrics,
       output_metrics):
     weight_result = combine_metrics.pop(
-        self._metric_key(metric_keys.EXAMPLE_WEIGHT_BASE))
+        self._metric_key(metric_keys.EXAMPLE_WEIGHT))
     if isinstance(weight_result, types.ValueWithConfidenceInterval):
       # We do not want to display confidence interval bounds on known
       # quantities such as ExampleWeight, so we use the calculated value
       # without sampling.
       output_metrics[self._metric_key(
-          metric_keys.EXAMPLE_WEIGHT_BASE)].double_value.value = (
+          metric_keys.EXAMPLE_WEIGHT)].double_value.value = (
               weight_result.unsampled_value)
     else:
       output_metrics[self._metric_key(
-          metric_keys.EXAMPLE_WEIGHT_BASE)].double_value.value = weight_result
+          metric_keys.EXAMPLE_WEIGHT)].double_value.value = weight_result
 
 
 _DEFAULT_NUM_BUCKETS = 10000
@@ -1116,18 +1104,17 @@ class _Auc(_PostExportMetric):
 
     return {
         self._metric_key(self._metric_name): (value_ops, value_update),
-        self._metric_key(metric_keys.lower_bound(self._metric_name)): (
+        metric_keys.lower_bound_key(self._metric_key(self._metric_name)): (
             lower_bound_ops, lower_bound_update),
-        self._metric_key(metric_keys.upper_bound(self._metric_name)): (
+        metric_keys.upper_bound_key(self._metric_key(self._metric_name)): (
             upper_bound_ops, upper_bound_update),
     }
 
   def populate_stats_and_pop(
       self, combine_metrics,
       output_metrics):
-    _populate_to_auc_bounded_value_and_pop(
-        combine_metrics, output_metrics,
-        self._metric_key(self._metric_name, False))
+    _populate_to_auc_bounded_value_and_pop(combine_metrics, output_metrics,
+                                           self._metric_key(self._metric_name))
 
 
 @_export('precision_recall_at_k')

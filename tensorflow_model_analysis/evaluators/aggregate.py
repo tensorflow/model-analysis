@@ -494,14 +494,9 @@ class _SeparateMetricsAndPlotsFn(beam.DoFn):
     slicing_metrics = {}
     plots = {}
     for k, v in results.items():  # pytype: disable=attribute-error
-      plot = False
-      # We need to check for substrings here because metrics may have prefixes
-      # based on multiple labels and/or heads.
-      for subkey in metric_keys.PLOT_KEYS:
-        if k.endswith(subkey):
-          plots[k] = v
-          plot = True
-      if not plot:
+      if metric_keys.is_plot_key(k):
+        plots[k] = v
+      else:
         slicing_metrics[k] = v
     yield (slice_key, slicing_metrics)
     if plots:

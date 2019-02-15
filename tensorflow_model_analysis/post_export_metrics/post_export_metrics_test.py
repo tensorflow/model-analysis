@@ -51,11 +51,6 @@ from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 _MAGIC_SEED = 857586
 
 
-def full_key(name_constant):
-  """Convenient way of getting metric prefixed with 'post_export_metrics'."""
-  return metric_keys.add_metric_prefix(name_constant, metric_keys.NAME_PREFIX)
-
-
 class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
   num_bootstrap_samples = 1  # Set to number > 1 to test uncertainty.
@@ -232,18 +227,10 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=5.0, language='chinese', label=0.0)
     ]
     expected_values_dict = {
-        metric_keys.EXAMPLE_COUNT:
-            4.0,
-        metric_keys.EXAMPLE_WEIGHT:
-            15.0,
-        full_key(
-            metric_keys.add_metric_prefix(metric_keys.EXAMPLE_COUNT_BASE,
-                                          'my_tag')):
-            4.0,
-        full_key(
-            metric_keys.add_metric_prefix(metric_keys.EXAMPLE_WEIGHT_BASE,
-                                          'my_tag')):
-            15.0,
+        metric_keys.EXAMPLE_COUNT: 4.0,
+        metric_keys.EXAMPLE_WEIGHT: 15.0,
+        metric_keys.tagged_key(metric_keys.EXAMPLE_COUNT, 'my_tag'): 4.0,
+        metric_keys.tagged_key(metric_keys.EXAMPLE_WEIGHT, 'my_tag'): 15.0,
     }
     self._runTest(examples, eval_export_dir, [
         post_export_metrics.example_count(),
@@ -294,15 +281,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertDictElementsAlmostEqual(value, expected_values_dict)
         # Check that AUC was calculated for each class. We can't check the exact
         # values since we don't know the exact prediction of the model.
-        self.assertIn(
-            full_key(metric_keys.add_metric_prefix(metric_keys.AUC, 'english')),
-            value)
-        self.assertIn(
-            full_key(metric_keys.add_metric_prefix(metric_keys.AUC, 'chinese')),
-            value)
-        self.assertIn(
-            full_key(metric_keys.add_metric_prefix(metric_keys.AUC, 'other')),
-            value)
+        self.assertIn(metric_keys.tagged_key(metric_keys.AUC, 'english'), value)
+        self.assertIn(metric_keys.tagged_key(metric_keys.AUC, 'chinese'), value)
+        self.assertIn(metric_keys.tagged_key(metric_keys.AUC, 'other'), value)
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -355,16 +336,11 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             scores=[0.0, 0.0, 0.99]),
     ]
     expected_values_dict = {
-        metric_keys.EXAMPLE_COUNT:
-            5.0,
-        metric_keys.EXAMPLE_WEIGHT:
-            20.0,
-        full_key(metric_keys.add_metric_prefix(metric_keys.AUC, 'english')):
-            0.99999952,
-        full_key(metric_keys.add_metric_prefix(metric_keys.AUC, 'chinese')):
-            0.9999997,
-        full_key(metric_keys.add_metric_prefix(metric_keys.AUC, 'other')):
-            0.99999952,
+        metric_keys.EXAMPLE_COUNT: 5.0,
+        metric_keys.EXAMPLE_WEIGHT: 20.0,
+        metric_keys.tagged_key(metric_keys.AUC, 'english'): 0.99999952,
+        metric_keys.tagged_key(metric_keys.AUC, 'chinese'): 0.9999997,
+        metric_keys.tagged_key(metric_keys.AUC, 'other'): 0.99999952,
     }
     self._runTest(examples, eval_export_dir, [
         post_export_metrics.example_count(),
@@ -446,8 +422,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.PRECISION_RECALL_AT_K), value)
-        table = value[full_key(metric_keys.PRECISION_RECALL_AT_K)]
+        self.assertIn(metric_keys.PRECISION_RECALL_AT_K, value)
+        table = value[metric_keys.PRECISION_RECALL_AT_K]
         cutoffs = table[:, 0].tolist()
         precision = table[:, 1].tolist()
         recall = table[:, 2].tolist()
@@ -512,7 +488,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                 }
               }
             }
-            """, output_metrics[full_key(metric_keys.PRECISION_AT_K)])
+            """, output_metrics[metric_keys.PRECISION_AT_K])
         self.assertProtoEquals(
             """
             value_at_cutoffs {
@@ -562,7 +538,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                 }
               }
             }
-            """, output_metrics[full_key(metric_keys.RECALL_AT_K)])
+            """, output_metrics[metric_keys.RECALL_AT_K])
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -606,8 +582,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.PRECISION_RECALL_AT_K), value)
-        table = value[full_key(metric_keys.PRECISION_RECALL_AT_K)]
+        self.assertIn(metric_keys.PRECISION_RECALL_AT_K, value)
+        table = value[metric_keys.PRECISION_RECALL_AT_K]
         cutoffs = table[:, 0].tolist()
         precision = table[:, 1].tolist()
         recall = table[:, 2].tolist()
@@ -704,8 +680,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.PRECISION_RECALL_AT_K), value)
-        table = value[full_key(metric_keys.PRECISION_RECALL_AT_K)]
+        self.assertIn(metric_keys.PRECISION_RECALL_AT_K, value)
+        table = value[metric_keys.PRECISION_RECALL_AT_K]
         cutoffs = table[:, 0].tolist()
         precision = table[:, 1].tolist()
         recall = table[:, 2].tolist()
@@ -745,8 +721,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.PRECISION_RECALL_AT_K), value)
-        table = value[full_key(metric_keys.PRECISION_RECALL_AT_K)]
+        self.assertIn(metric_keys.PRECISION_RECALL_AT_K, value)
+        table = value[metric_keys.PRECISION_RECALL_AT_K]
         cutoffs = table[:, 0].tolist()
         precision = table[:, 1].tolist()
         recall = table[:, 2].tolist()
@@ -796,15 +772,15 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.CALIBRATION_PLOT_MATRICES), value)
-        buckets = value[full_key(metric_keys.CALIBRATION_PLOT_MATRICES)]
+        self.assertIn(metric_keys.CALIBRATION_PLOT_MATRICES, value)
+        buckets = value[metric_keys.CALIBRATION_PLOT_MATRICES]
         self.assertSequenceAlmostEqual(buckets[0], [-19.0, -17.0, 2.0])
         self.assertSequenceAlmostEqual(buckets[1], [0.0, 1.0, 1.0])
         self.assertSequenceAlmostEqual(buckets[11], [0.00303, 3.00303, 3.0])
         self.assertSequenceAlmostEqual(buckets[10000], [1.99997, 3.99997, 2.0])
         self.assertSequenceAlmostEqual(buckets[10001], [28.0, 32.0, 4.0])
-        self.assertIn(full_key(metric_keys.CALIBRATION_PLOT_BOUNDARIES), value)
-        boundaries = value[full_key(metric_keys.CALIBRATION_PLOT_BOUNDARIES)]
+        self.assertIn(metric_keys.CALIBRATION_PLOT_BOUNDARIES, value)
+        boundaries = value[metric_keys.CALIBRATION_PLOT_BOUNDARIES]
         self.assertAlmostEqual(0.0, boundaries[0])
         self.assertAlmostEqual(0.001, boundaries[10])
         self.assertAlmostEqual(0.005, boundaries[50])
@@ -869,8 +845,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.CALIBRATION_PLOT_MATRICES), value)
-        buckets = value[full_key(metric_keys.CALIBRATION_PLOT_MATRICES)]
+        self.assertIn(metric_keys.CALIBRATION_PLOT_MATRICES, value)
+        buckets = value[metric_keys.CALIBRATION_PLOT_MATRICES]
         self.assertSequenceAlmostEqual([item.value for item in buckets[0]],
                                        [-19.0, -17.0, 2.0],
                                        delta=2)
@@ -886,8 +862,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertSequenceAlmostEqual([item.value for item in buckets[10001]],
                                        [28.0, 32.0, 4.0],
                                        delta=2)
-        self.assertIn(full_key(metric_keys.CALIBRATION_PLOT_BOUNDARIES), value)
-        boundaries = value[full_key(metric_keys.CALIBRATION_PLOT_BOUNDARIES)]
+        self.assertIn(metric_keys.CALIBRATION_PLOT_BOUNDARIES, value)
+        boundaries = value[metric_keys.CALIBRATION_PLOT_BOUNDARIES]
         self.assertAlmostEqual(0.0, boundaries[0].value)
         self.assertAlmostEqual(0.001, boundaries[10].value)
         self.assertAlmostEqual(0.005, boundaries[50].value)
@@ -974,8 +950,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.CALIBRATION_PLOT_MATRICES), value)
-        buckets = value[full_key(metric_keys.CALIBRATION_PLOT_MATRICES)]
+        self.assertIn(metric_keys.CALIBRATION_PLOT_MATRICES, value)
+        buckets = value[metric_keys.CALIBRATION_PLOT_MATRICES]
         self.assertSequenceAlmostEqual(buckets[0], [-28.0, -25.0, 3.0])
         self.assertSequenceAlmostEqual(buckets[1], [0.0, 0.0, 0.0])
         self.assertSequenceAlmostEqual(buckets[11], [0.00608, 6.00608, 6.0])
@@ -1011,8 +987,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.AUC_PLOTS_MATRICES), value)
-        matrices = value[full_key(metric_keys.AUC_PLOTS_MATRICES)]
+        self.assertIn(metric_keys.AUC_PLOTS_MATRICES, value)
+        matrices = value[metric_keys.AUC_PLOTS_MATRICES]
         #            |      | --------- Threshold -----------
         # true label | pred | -1e-6 | 0.0 | 0.7 | 0.8 | 1.0
         #     -      | 0.0  | FP    | TN  | TN  | TN  | TN
@@ -1030,8 +1006,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                                        [2, 2, 0, 1, 1.0 / 1.0, 1.0 / 3.0])
         self.assertSequenceAlmostEqual(
             matrices[10001], [3, 2, 0, 0, float('nan'), 0.0])
-        self.assertIn(full_key(metric_keys.AUC_PLOTS_THRESHOLDS), value)
-        thresholds = value[full_key(metric_keys.AUC_PLOTS_THRESHOLDS)]
+        self.assertIn(metric_keys.AUC_PLOTS_THRESHOLDS, value)
+        thresholds = value[metric_keys.AUC_PLOTS_THRESHOLDS]
         self.assertAlmostEqual(0.0, thresholds[1])
         self.assertAlmostEqual(0.001, thresholds[11])
         self.assertAlmostEqual(0.005, thresholds[51])
@@ -1103,8 +1079,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.AUC_PLOTS_MATRICES), value)
-        matrices = value[full_key(metric_keys.AUC_PLOTS_MATRICES)]
+        self.assertIn(metric_keys.AUC_PLOTS_MATRICES, value)
+        matrices = value[metric_keys.AUC_PLOTS_MATRICES]
         #            |      | --------- Threshold -----------
         # true label | pred | -1e-6 | 0.0 | 0.7 | 0.8 | 1.0
         #     -      | 0.0  | FP    | TN  | TN  | TN  | TN
@@ -1125,8 +1101,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertSequenceAlmostEqual(
             [matrix.value for matrix in matrices[10001]],
             [3, 2, 0, 0, float('nan'), 0.0])
-        self.assertIn(full_key(metric_keys.AUC_PLOTS_THRESHOLDS), value)
-        thresholds = value[full_key(metric_keys.AUC_PLOTS_THRESHOLDS)]
+        self.assertIn(metric_keys.AUC_PLOTS_THRESHOLDS, value)
+        thresholds = value[metric_keys.AUC_PLOTS_THRESHOLDS]
         self.assertAlmostEqual(0.0, thresholds[1].value)
         self.assertAlmostEqual(0.001, thresholds[11].value)
         self.assertAlmostEqual(0.005, thresholds[51].value)
@@ -1268,11 +1244,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(
-            full_key(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES),
-            value)
-        matrices = value[full_key(
-            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES)]
+        self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES,
+                      value)
+        matrices = value[metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES]
         self.assertSequenceAlmostEqual(matrices[0],
                                        [0.0, 0.0, 3.0, 7.0, 7.0 / 10.0, 1.0])
         self.assertSequenceAlmostEqual(
@@ -1284,11 +1258,10 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertSequenceAlmostEqual(
             matrices[4],
             [7.0, 3.0, 0.0, 0.0, float('nan'), 0.0])
-        self.assertIn(
-            full_key(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS),
-            value)
-        thresholds = value[full_key(
-            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS)]
+        self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS,
+                      value)
+        thresholds = value[
+            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS]
         self.assertAlmostEqual(-1e-6, thresholds[0])
         self.assertAlmostEqual(0.0, thresholds[1])
         self.assertAlmostEqual(0.7, thresholds[2])
@@ -1320,11 +1293,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(
-            full_key(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES),
-            value)
-        matrices = value[full_key(
-            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES)]
+        self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES,
+                      value)
+        matrices = value[metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES]
         self.assertSequenceAlmostEqual([matrix.value for matrix in matrices[0]],
                                        [0.0, 0.0, 3.0, 7.0, 7.0 / 10.0, 1.0])
         self.assertSequenceAlmostEqual(
@@ -1338,11 +1309,10 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertSequenceAlmostEqual(
             [matrix.value for matrix in matrices[4]],
             [7.0, 3.0, 0.0, 0.0, float('nan'), 0.0])
-        self.assertIn(
-            full_key(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS),
-            value)
-        thresholds = value[full_key(
-            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS)]
+        self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS,
+                      value)
+        thresholds = value[
+            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS]
         self.assertAlmostEqual(-1e-6, thresholds[0].value)
         self.assertAlmostEqual(0.0, thresholds[1].value)
         self.assertAlmostEqual(0.7, thresholds[2].value, places=5)
@@ -1382,11 +1352,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(
-            full_key(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES),
-            value)
-        matrices = value[full_key(
-            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES)]
+        self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES,
+                      value)
+        matrices = value[metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES]
         #            |      | ---- Threshold ----
         # true label | pred | 0.25 | 0.75 | 1.00
         #     -      | 0.0  | TN   | TN   | TN
@@ -1399,11 +1367,10 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertSequenceAlmostEqual(
             matrices[2],
             [2.0, 1.0, 0.0, 0.0, float('nan'), 0.0])
-        self.assertIn(
-            full_key(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS),
-            value)
-        thresholds = value[full_key(
-            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS)]
+        self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS,
+                      value)
+        thresholds = value[
+            metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS]
         self.assertAlmostEqual(0.25, thresholds[0])
         self.assertAlmostEqual(0.75, thresholds[1])
         self.assertAlmostEqual(1.00, thresholds[2])
@@ -1535,8 +1502,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                 }
               }
             }
-            """, output_metrics[full_key(
-                metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS)])
+            """, output_metrics[metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS])
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -1589,36 +1555,26 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
         self.assertIn(
-            full_key(
-                metric_keys.add_metric_prefix(
-                    metric_keys.CALIBRATION_PLOT_MATRICES, 'chinese_head')),
-            value)
+            metric_keys.tagged_key(metric_keys.CALIBRATION_PLOT_MATRICES,
+                                   'chinese_head'), value)
         self.assertIn(
-            full_key(
-                metric_keys.add_metric_prefix(
-                    metric_keys.CALIBRATION_PLOT_MATRICES, 'english_head')),
-            value)
+            metric_keys.tagged_key(metric_keys.CALIBRATION_PLOT_MATRICES,
+                                   'english_head'), value)
         self.assertIn(
-            full_key(
-                metric_keys.add_metric_prefix(
-                    metric_keys.CALIBRATION_PLOT_MATRICES, 'chinese_head')),
-            value)
+            metric_keys.tagged_key(metric_keys.CALIBRATION_PLOT_MATRICES,
+                                   'chinese_head'), value)
         self.assertIn(
-            full_key(
-                metric_keys.add_metric_prefix(
-                    metric_keys.CALIBRATION_PLOT_MATRICES, 'english_head')),
-            value)
+            metric_keys.tagged_key(metric_keys.CALIBRATION_PLOT_MATRICES,
+                                   'english_head'), value)
         # We just check that the bucket sums look sane, since we don't know
         # the exact predictions of the model.
-        buckets = value[full_key(
-            metric_keys.add_metric_prefix(metric_keys.CALIBRATION_PLOT_MATRICES,
-                                          'chinese_head'))]
+        buckets = value[metric_keys.tagged_key(
+            metric_keys.CALIBRATION_PLOT_MATRICES, 'chinese_head')]
         bucket_sums = np.sum(buckets, axis=0)
         self.assertAlmostEqual(bucket_sums[1], 3.0)  # label sum
         self.assertAlmostEqual(bucket_sums[2], 5.0)  # weight sum
-        buckets = value[full_key(
-            metric_keys.add_metric_prefix(metric_keys.CALIBRATION_PLOT_MATRICES,
-                                          'english_head'))]
+        buckets = value[metric_keys.tagged_key(
+            metric_keys.CALIBRATION_PLOT_MATRICES, 'english_head')]
         bucket_sums = np.sum(buckets, axis=0)
         self.assertAlmostEqual(bucket_sums[1], 2.0)  # label sum
         self.assertAlmostEqual(bucket_sums[2], 5.0)  # weight sum
@@ -1656,7 +1612,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(full_key(metric_keys.CALIBRATION_PLOT_MATRICES), value)
+        self.assertIn(metric_keys.CALIBRATION_PLOT_MATRICES, value)
         # We just check that the bucket sums look sane, since we don't know
         # the exact predictions of the model.
         #
@@ -1666,7 +1622,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Estimators, for which the prediction Tensor returned for a batch
         # of examples will be a N x 1 Tensor, rather than just an N element
         # vector.
-        buckets = value[full_key(metric_keys.CALIBRATION_PLOT_MATRICES)]
+        buckets = value[metric_keys.CALIBRATION_PLOT_MATRICES]
         bucket_sums = np.sum(buckets, axis=0)
         self.assertAlmostEqual(bucket_sums[1], 2.0)  # label sum
         self.assertAlmostEqual(bucket_sums[2], 4.0)  # weight sum
@@ -1687,14 +1643,14 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     # These plots were generated by hand. For this test to make sense
     # it must actually match the kind of output the TFMA produces.
     tfma_plots = {
-        full_key(metric_keys.CALIBRATION_PLOT_MATRICES):
+        metric_keys.CALIBRATION_PLOT_MATRICES:
             np.array([
                 [0.0, 0.0, 0.0],
                 [0.3, 1.0, 1.0],
                 [0.7, 0.0, 1.0],
                 [0.0, 0.0, 0.0],
             ]),
-        full_key(metric_keys.CALIBRATION_PLOT_BOUNDARIES):
+        metric_keys.CALIBRATION_PLOT_BOUNDARIES:
             np.array([0.0, 0.5, 1.0]),
     }
     expected_plot_data = """
@@ -1734,10 +1690,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         post_export_metrics.calibration_plot_and_prediction_histogram())
     calibration_plot.populate_plots_and_pop(tfma_plots, plot_data)
     self.assertProtoEquals(expected_plot_data, plot_data)
-    self.assertFalse(
-        full_key(metric_keys.CALIBRATION_PLOT_MATRICES) in tfma_plots)
-    self.assertFalse(
-        full_key(metric_keys.CALIBRATION_PLOT_BOUNDARIES) in tfma_plots)
+    self.assertNotIn(metric_keys.CALIBRATION_PLOT_MATRICES, tfma_plots)
+    self.assertNotIn(metric_keys.CALIBRATION_PLOT_BOUNDARIES, tfma_plots)
 
   def testAucUnweighted(self):
     temp_eval_export_dir = self._getEvalExportDir()
@@ -1753,12 +1707,12 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     ]
 
     expected_values_dict = {
-        full_key(metric_keys.AUC): 0.58333,
-        full_key(metric_keys.lower_bound(metric_keys.AUC)): 0.5,
-        full_key(metric_keys.upper_bound(metric_keys.AUC)): 0.66667,
-        full_key(metric_keys.AUPRC): 0.74075,
-        full_key(metric_keys.lower_bound(metric_keys.AUPRC)): 0.70000,
-        full_key(metric_keys.upper_bound(metric_keys.AUPRC)): 0.77778,
+        metric_keys.AUC: 0.58333,
+        metric_keys.lower_bound_key(metric_keys.AUC): 0.5,
+        metric_keys.upper_bound_key(metric_keys.AUC): 0.66667,
+        metric_keys.AUPRC: 0.74075,
+        metric_keys.lower_bound_key(metric_keys.AUPRC): 0.70000,
+        metric_keys.upper_bound_key(metric_keys.AUPRC): 0.77778,
     }
 
     self._runTest(
@@ -1780,9 +1734,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     ]
 
     expected_values_dict = {
-        full_key(metric_keys.lower_bound(metric_keys.AUPRC)): 0.74075,
-        full_key(metric_keys.lower_bound(metric_keys.AUPRC)): 0.70000,
-        full_key(metric_keys.upper_bound(metric_keys.AUPRC)): 0.77778,
+        metric_keys.lower_bound_key(metric_keys.AUPRC): 0.74075,
+        metric_keys.lower_bound_key(metric_keys.AUPRC): 0.70000,
+        metric_keys.upper_bound_key(metric_keys.AUPRC): 0.77778,
     }
 
     auc_metric = post_export_metrics.auc(curve='PR')
@@ -1813,7 +1767,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
               }
               methodology: RIEMANN_SUM
             }
-            """, output_metrics[full_key(metric_keys.AUPRC)])
+            """, output_metrics[metric_keys.AUPRC])
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -1860,20 +1814,20 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     # which gives a different estimate.
 
     expected_values_dict = {
-        full_key(metric_keys.AUC):
+        metric_keys.AUC:
             0.8571425,
-        full_key(metric_keys.lower_bound(metric_keys.AUC)):
+        metric_keys.lower_bound_key(metric_keys.AUC):
             0.7678569,
-        full_key(metric_keys.upper_bound(metric_keys.AUC)):
+        metric_keys.upper_bound_key(metric_keys.AUC):
             0.94642806,
         # Note that 'trapeozidal' produces an AUPRC of 0.8357143, which
         # agrees with the old Lantern, but we are now using
         # 'careful_interpolation', which gives this estimate instead.
-        full_key(metric_keys.AUPRC):
+        metric_keys.AUPRC:
             0.773698,
-        full_key(metric_keys.lower_bound(metric_keys.AUPRC)):
+        metric_keys.lower_bound_key(metric_keys.AUPRC):
             0.75714254,
-        full_key(metric_keys.upper_bound(metric_keys.AUPRC)):
+        metric_keys.upper_bound_key(metric_keys.AUPRC):
             0.91428518,
     }
 
@@ -1924,25 +1878,12 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     # The AUC is (1.6 / 1.9 * 1.4 / 1.6) + (0.3 / 1.9 * 1.1 / 1.6) = 0.8453947
 
     expected_values_dict = {
-        metric_keys.add_metric_prefix(metric_keys.AUC, metric_keys.NAME_PREFIX):
-            0.8453947,
-        metric_keys.add_metric_prefix(
-            metric_keys.lower_bound(metric_keys.AUC), metric_keys.NAME_PREFIX):
-            0.73026288,
-        metric_keys.add_metric_prefix(
-            metric_keys.upper_bound(metric_keys.AUC), metric_keys.NAME_PREFIX):
-            0.96052581,
-        metric_keys.add_metric_prefix(metric_keys.AUPRC,
-                                      metric_keys.NAME_PREFIX):
-            0.79660767,
-        metric_keys.add_metric_prefix(
-            metric_keys.lower_bound(metric_keys.AUPRC),
-            metric_keys.NAME_PREFIX):
-            0.79368389,
-        metric_keys.add_metric_prefix(
-            metric_keys.upper_bound(metric_keys.AUPRC),
-            metric_keys.NAME_PREFIX):
-            0.96842057,
+        metric_keys.AUC: 0.8453947,
+        metric_keys.lower_bound_key(metric_keys.AUC): 0.73026288,
+        metric_keys.upper_bound_key(metric_keys.AUC): 0.96052581,
+        metric_keys.AUPRC: 0.79660767,
+        metric_keys.lower_bound_key(metric_keys.AUPRC): 0.79368389,
+        metric_keys.upper_bound_key(metric_keys.AUPRC): 0.96842057,
     }
 
     self._runTest(examples, eval_export_dir, [
@@ -1958,14 +1899,14 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     # These plots were generated by hand. For this test to make sense
     # it must actually match the kind of output the TFMA produces.
     tfma_plots = {
-        full_key(metric_keys.AUC_PLOTS_MATRICES):
+        metric_keys.AUC_PLOTS_MATRICES:
             np.array([
                 [0.0, 0.0, 1.0, 1.0, 0.5, 1.0],
                 [0.0, 0.0, 1.0, 1.0, 0.5, 1.0],
                 [1.0, 0.0, 1.0, 0.0, 0.0, 0.0],
                 [1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
             ]),
-        full_key(metric_keys.AUC_PLOTS_THRESHOLDS):
+        metric_keys.AUC_PLOTS_THRESHOLDS:
             np.array([1e-6, 0, 0.5, 1.0]),
     }
     expected_plot_data = """
@@ -2126,8 +2067,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     auc_plots = post_export_metrics.auc_plots()
     auc_plots.populate_plots_and_pop(tfma_plots, plot_data)
     self.assertProtoEquals(expected_plot_data, plot_data)
-    self.assertFalse(full_key(metric_keys.AUC_PLOTS_MATRICES) in tfma_plots)
-    self.assertFalse(full_key(metric_keys.AUC_PLOTS_THRESHOLDS) in tfma_plots)
+    self.assertNotIn(metric_keys.AUC_PLOTS_MATRICES, tfma_plots)
+    self.assertNotIn(metric_keys.AUC_PLOTS_THRESHOLDS, tfma_plots)
 
 
 if __name__ == '__main__':

@@ -22,49 +22,81 @@ TFMA.
 from tensorflow_model_analysis.types_compat import Optional, Text
 
 # Prefix for post export metrics keys in metric_ops.
-NAME_PREFIX = 'post_export_metrics'
+DEFAULT_PREFIX = 'post_export_metrics'
 
 
-def add_metric_prefix(name, prefix = NAME_PREFIX):
-  return '%s/%s' % (prefix, name)  # pytype: disable=bad-return-type
+def base_key(suffix, prefix = DEFAULT_PREFIX):
+  """Creates a base key from a prefix and a suffix."""
+  return '%s/%s' % (prefix, suffix)
 
 
-def upper_bound(name):
-  return name + '/upper_bound'
+def tagged_key(key, tag):
+  """Returns a base key tagged with a user defined tag.
+
+  The tag is inserted after the base key's initial prefix.
+
+  Example: add_tag('a/c', 'b') -> 'a/b/c'
+
+  Args:
+    key: Base key.
+    tag: Tag to add to base key.
+  """
+  parts = key.split('/')
+  if len(parts) > 1:
+    return '%s/%s/%s' % (parts[0], tag, '/'.join(parts[1:]))
+  return '%s/%s' % (tag, key)
 
 
-def lower_bound(name):
-  return name + '/lower_bound'
+def upper_bound_key(key):
+  """Creates an upper_bound key from a child key."""
+  return key + '/upper_bound'
 
 
-EXAMPLE_WEIGHT_BASE = 'example_weight'
-EXAMPLE_WEIGHT = add_metric_prefix(EXAMPLE_WEIGHT_BASE)
-EXAMPLE_COUNT_BASE = 'example_count'
-EXAMPLE_COUNT = add_metric_prefix(EXAMPLE_COUNT_BASE)
-CALIBRATION_PLOT_MATRICES = 'calibration_plot/matrices'
-CALIBRATION_PLOT_BOUNDARIES = 'calibration_plot/boundaries'
-CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES = (
+def lower_bound_key(key):
+  """Create a lower_bound key from a child key."""
+  return key + '/lower_bound'
+
+
+EXAMPLE_WEIGHT = base_key('example_weight')
+EXAMPLE_COUNT = base_key('example_count')
+_CALIBRATION_PLOT_MATRICES_SUFFIX = 'calibration_plot/matrices'
+CALIBRATION_PLOT_MATRICES = base_key(_CALIBRATION_PLOT_MATRICES_SUFFIX)
+_CALIBRATION_PLOT_BOUNDARIES_SUFFIX = 'calibration_plot/boundaries'
+CALIBRATION_PLOT_BOUNDARIES = base_key(_CALIBRATION_PLOT_BOUNDARIES_SUFFIX)
+CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES = base_key(
     'confusion_matrix_at_thresholds/matrices')
-CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS = (
+CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS = base_key(
     'confusion_matrix_at_thresholds/thresholds')
-CONFUSION_MATRIX_AT_THRESHOLDS = (
+CONFUSION_MATRIX_AT_THRESHOLDS = base_key(
     'confusion_matrix_at_thresholds')  # Output-only
-FAIRNESS_CONFUSION_MATRIX_MATRICES = (
+FAIRNESS_CONFUSION_MATRIX_MATRICES = base_key(
     'fairness/confusion_matrix_at_thresholds/matrices')
-FAIRNESS_CONFUSION_MATRIX_THESHOLDS = (
+FAIRNESS_CONFUSION_MATRIX_THESHOLDS = base_key(
     'fairness/confusion_matrix_at_thresholds/thresholds')
-FAIRNESS_CONFUSION_MATRIX = (
+FAIRNESS_CONFUSION_MATRIX = base_key(
     'fairness/confusion_matrix_at_thresholds')  # Output-only
-AUC_PLOTS_MATRICES = 'auc_plots/matrices'
-AUC_PLOTS_THRESHOLDS = 'auc_plots/thresholds'
-AUC = 'auc'
-AUPRC = 'auprc'
-PRECISION_RECALL_AT_K = 'precision_recall_at_k'
-PRECISION_AT_K = 'precision_at_k'  # Output-only
-RECALL_AT_K = 'recall_at_k'  # Output-only
+_AUC_PLOTS_MATRICES_SUFFIX = 'auc_plots/matrices'
+AUC_PLOTS_MATRICES = base_key(_AUC_PLOTS_MATRICES_SUFFIX)
+_AUC_PLOTS_THRESHOLDS_SUFFIX = 'auc_plots/thresholds'
+AUC_PLOTS_THRESHOLDS = base_key(_AUC_PLOTS_THRESHOLDS_SUFFIX)
+AUC = base_key('auc')
+AUPRC = base_key('auprc')
+PRECISION_RECALL_AT_K = base_key('precision_recall_at_k')
+PRECISION_AT_K = base_key('precision_at_k')  # Output-only
+RECALL_AT_K = base_key('recall_at_k')  # Output-only
 
-# keys where the corresponding values are results for plots
-PLOT_KEYS = [
-    CALIBRATION_PLOT_MATRICES, CALIBRATION_PLOT_BOUNDARIES, AUC_PLOTS_MATRICES,
-    AUC_PLOTS_THRESHOLDS
+# Suffixes of keys where the corresponding values are results for plots
+_PLOT_SUFFIXES = [
+    _CALIBRATION_PLOT_MATRICES_SUFFIX, _CALIBRATION_PLOT_BOUNDARIES_SUFFIX,
+    _AUC_PLOTS_MATRICES_SUFFIX, _AUC_PLOTS_THRESHOLDS_SUFFIX
 ]
+
+
+def is_plot_key(key):
+  """Returns true if key is a plot key."""
+  # We need to check for suffixes here because metrics may have prefixes based
+  # on multiple labels and/or heads.
+  for suffix in _PLOT_SUFFIXES:
+    if key.endswith(suffix):
+      return True
+  return False
