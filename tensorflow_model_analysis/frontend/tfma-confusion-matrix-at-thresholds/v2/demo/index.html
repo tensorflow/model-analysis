@@ -1,0 +1,61 @@
+<!--
+Copyright 2018 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<html>
+  <header>
+    <style>
+      #container tfma-confusion-matrix-at-thresholds:nth-child(n+2) .subheader {
+        height: 0;
+        overflow: hidden;
+      }
+      #container, .bounding-box {
+        width: 480px;
+        border: 1px dashed grey;
+        padding: 12px;
+      }
+      .bounding-box.wide {
+        width: 1080px;
+      }
+    </style>
+  </header>
+  <body>
+    <h3>Typical use case: multple instances in a row. Subheader should be hidden.</h3>
+    <div id="container">
+      <tfma-confusion-matrix-at-thresholds>
+      </tfma-confusion-matrix-at-thresholds>
+      <tfma-confusion-matrix-at-thresholds>
+      </tfma-confusion-matrix-at-thresholds>
+      <tfma-confusion-matrix-at-thresholds>
+      </tfma-confusion-matrix-at-thresholds>
+      <tfma-confusion-matrix-at-thresholds>
+      </tfma-confusion-matrix-at-thresholds>
+    </div>
+    <h3>Multiple records in data, collapsed initially</h3>
+    <div class="bounding-box wide">
+      <tfma-confusion-matrix-at-thresholds id="collapsed">
+      </tfma-confusion-matrix-at-thresholds>
+    </div>
+    <h3>Multiple records in data, expanded initlaly</h3>
+    <div class="bounding-box wide">
+      <tfma-confusion-matrix-at-thresholds id="expanded" expanded>
+      </tfma-confusion-matrix-at-thresholds>
+    </div>
+    <h3>Multiple records in data, stay expanded</h3>
+    <div class="bounding-box wide">
+      <tfma-confusion-matrix-at-thresholds id="nonInteractive" expanded>
+      </tfma-confusion-matrix-at-thresholds>
+    </div>
+  </body>
+</html>
