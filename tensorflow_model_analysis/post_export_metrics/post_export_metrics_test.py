@@ -1331,7 +1331,6 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         ],
         custom_metrics_check=check_result)
 
-
   def testConfusionMatrixAtThresholdsSerialization(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (

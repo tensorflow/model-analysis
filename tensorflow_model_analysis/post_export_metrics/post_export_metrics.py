@@ -903,8 +903,6 @@ class _ConfusionMatrixAtThresholds(_ConfusionMatrixBasedMetric):
            _create_confusion_matrix_proto(matrix, threshold)))
 
 
-
-
 @_export('auc_plots')
 class _AucPlots(_ConfusionMatrixBasedMetric):
   """Plot metric for AUROC and AUPRC for predictions in [0, 1]."""
