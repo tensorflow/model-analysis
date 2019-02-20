@@ -17,6 +17,8 @@
 
 ## Bug fixes and other changes
 
+*   Fixed correctness issue stemming from TFMA incorrectly relying on evaluation
+    ordering that TF doesn't guarantee.
 *   We now store feature and label Tensor information in SignatureDef inputs
     instead of Collections in anticipation of Collections being deprecated in TF
     2.0.

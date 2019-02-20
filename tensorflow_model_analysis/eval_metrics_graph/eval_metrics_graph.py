@@ -87,8 +87,8 @@ class EvalMetricsGraph(object):
 
     # Placeholders and feed input for the metric variables.
     self._metric_variable_placeholders = []
-    self._metrics_reset_update_get_fn_feed_list = []
-    self._metrics_reset_update_get_fn_feed_list_keys = []
+    self._perform_metrics_update_fn_feed_list = []
+    self._perform_metrics_update_fn_feed_list_keys = []
 
     # Dict that maps Features Predictions Label keys to their tensors.
     self._features_map = {}
@@ -101,7 +101,6 @@ class EvalMetricsGraph(object):
 
     # Callables to perform the above ops.
     self._perform_metrics_update_fn = None
-    self._metrics_reset_update_get_fn = None
 
     try:
       self._construct_graph()
@@ -207,12 +206,9 @@ class EvalMetricsGraph(object):
       self._reset_variables_op = tf.local_variables_initializer()
       self._session.run(self._reset_variables_op)
 
-    self._metrics_reset_update_get_fn = self._session.make_callable(
-        fetches=[self._all_metric_update_ops, self._metric_variable_nodes],
-        feed_list=self._metrics_reset_update_get_fn_feed_list)
     self._perform_metrics_update_fn = self._session.make_callable(
         fetches=self._all_metric_update_ops,
-        feed_list=self._metrics_reset_update_get_fn_feed_list)
+        feed_list=self._perform_metrics_update_fn_feed_list)
 
   def _log_debug_message_for_tracing_feed_errors(
       self, fetches,
@@ -299,21 +295,28 @@ class EvalMetricsGraph(object):
   def perform_metrics_update(
       self,
       features_predictions_labels):
-    """Run a single metrics update step on a single FPL."""
-    feed_list = self._create_feed_for_features_predictions_labels(
-        features_predictions_labels)
+    """Run a single metrics update step a single FPL."""
+    self._perform_metrics_update_list([features_predictions_labels])
+
+  def _perform_metrics_update_list(
+      self,
+      features_predictions_labels_list
+  ):
+    """Run a metrics update on a list of FPLs."""
+    feed_list = self._create_feed_for_features_predictions_labels_list(
+        features_predictions_labels_list)
     try:
       self._perform_metrics_update_fn(*feed_list)
     except (RuntimeError, TypeError, ValueError,
             tf.errors.OpError) as exception:
       feed_dict = dict(
-          zip(self._metrics_reset_update_get_fn_feed_list_keys, feed_list))
+          zip(self._perform_metrics_update_fn_feed_list_keys, feed_list))
       self._log_debug_message_for_tracing_feed_errors(
           fetches=[self._all_metric_update_ops] + self._metric_variable_nodes,
-          feed_list=self._metrics_reset_update_get_fn_feed_list)
+          feed_list=self._perform_metrics_update_fn_feed_list)
       general_util.reraise_augmented(
-          exception, 'features_predictions_labels = %s, feed_dict = %s' %
-          (features_predictions_labels, feed_dict))
+          exception, 'features_predictions_labels_list = %s, feed_dict = %s' %
+          (features_predictions_labels_list, feed_dict))
 
   def metrics_reset_update_get(
       self, features_predictions_labels
@@ -326,24 +329,11 @@ class EvalMetricsGraph(object):
       features_predictions_labels_list
   ):
     """Run the metrics reset, update, get operations on a list of FPLs."""
+    # Note that due to tf op reordering issues on some hardware, DO NOT merge
+    # these operations into a single atomic reset_update_get operation.
     self.reset_metric_variables()
-
-    feed_list = self._create_feed_for_features_predictions_labels_list(
-        features_predictions_labels_list)
-    try:
-      [_, result] = self._metrics_reset_update_get_fn(*feed_list)
-    except (RuntimeError, TypeError, ValueError,
-            tf.errors.OpError) as exception:
-      feed_dict = dict(
-          zip(self._metrics_reset_update_get_fn_feed_list_keys, feed_list))
-      self._log_debug_message_for_tracing_feed_errors(
-          fetches=[self._all_metric_update_ops],
-          feed_list=self._metrics_reset_update_get_fn_feed_list)
-      general_util.reraise_augmented(
-          exception, 'features_predictions_labels_list = %s, feed_dict = %s' %
-          (features_predictions_labels_list, feed_dict))
-
-    return result
+    self._perform_metrics_update_list(features_predictions_labels_list)
+    return self.get_metric_variables()
 
   def get_metric_variables(self):
     """Returns a list containing the metric variable values."""

@@ -157,9 +157,9 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
           self._iterate_fpl_maps_in_canonical_order()):
         feed_list.append(map_dict[encoding.NODE_SUFFIX])
         feed_list_keys.append((which_map, key))
-      self._metrics_reset_update_get_fn_feed_list = feed_list
+      self._perform_metrics_update_fn_feed_list = feed_list
       # We also keep the associated keys for better error messages.
-      self._metrics_reset_update_get_fn_feed_list_keys = feed_list_keys
+      self._perform_metrics_update_fn_feed_list_keys = feed_list_keys
 
       self._metric_names = []
       self._metric_value_ops = []

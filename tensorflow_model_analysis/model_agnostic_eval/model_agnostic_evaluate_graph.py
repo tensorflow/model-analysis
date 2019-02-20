@@ -135,9 +135,9 @@ class ModelAgnosticEvaluateGraph(eval_metrics_graph.EvalMetricsGraph):
       feed_list.append(placeholder)
       feed_list_keys.append((which_map, key))
 
-    self._metrics_reset_update_get_fn_feed_list = feed_list
+    self._perform_metrics_update_fn_feed_list = feed_list
     # We also keep the associated keys for better error messages.
-    self._metrics_reset_update_get_fn_feed_list_keys = feed_list_keys
+    self._perform_metrics_update_fn_feed_list_keys = feed_list_keys
 
   def _create_feed_for_features_predictions_labels_list(
       self,
