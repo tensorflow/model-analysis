@@ -17,6 +17,8 @@
 
 ## Bug fixes and other changes
 
+*   Fixed bugs where TFMA was incorrectly modifying elements in DoFns, which
+    violates the Beam API.
 *   Fixed correctness issue stemming from TFMA incorrectly relying on evaluation
     ordering that TF doesn't guarantee.
 *   We now store feature and label Tensor information in SignatureDef inputs

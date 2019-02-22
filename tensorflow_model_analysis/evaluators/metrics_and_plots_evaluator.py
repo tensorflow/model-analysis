@@ -131,14 +131,19 @@ def _convert_slice_metrics(
     post_export_metrics,
     metrics_for_slice):
   """Converts slice_metrics into the given metrics_for_slice proto."""
+
+  slice_metrics_copy = slice_metrics.copy()
+  # Prevent further references to this, so we don't accidentally mutate it.
+  del slice_metrics
+
   # Convert the metrics from post_export_metrics to the structured output if
   # defined.
   for post_export_metric in post_export_metrics:
     if hasattr(post_export_metric, 'populate_stats_and_pop'):
-      post_export_metric.populate_stats_and_pop(slice_metrics,
+      post_export_metric.populate_stats_and_pop(slice_metrics_copy,
                                                 metrics_for_slice.metrics)
 
-  for name, value in slice_metrics.items():
+  for name, value in slice_metrics_copy.items():
     if isinstance(value, types.ValueWithConfidenceInterval):
       # Convert to a bounded value.
       metrics_for_slice.metrics[name].bounded_value.value.value = value.value
@@ -198,15 +203,19 @@ def _convert_slice_plots(
     post_export_metrics,
     plot_data):
   """Converts slice_plots into the given plot_data proto."""
+  slice_plots_copy = slice_plots.copy()
+  # Prevent further references to this, so we don't accidentally mutate it.
+  del slice_plots
+
   for post_export_metric in post_export_metrics:
     if hasattr(post_export_metric, 'populate_plots_and_pop'):
-      post_export_metric.populate_plots_and_pop(slice_plots, plot_data)
+      post_export_metric.populate_plots_and_pop(slice_plots_copy, plot_data)
 
-  if slice_plots:
+  if slice_plots_copy:
     raise NotImplementedError(
         'some plots were not converted or popped. keys: %s. post_export_metrics'
         'were: %s' % (
-            slice_plots.keys(),
+            slice_plots_copy.keys(),
             [
                 x.name for x in post_export_metrics  # pytype: disable=attribute-error
             ]))
