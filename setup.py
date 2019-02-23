@@ -247,7 +247,7 @@ setup_args = {
     # protobuf) with TF.
     'install_requires': [
         # Sort alphabetically
-        'apache-beam[gcp]>=2.8,<3',
+        'apache-beam[gcp]>=2.10,<3',
         'ipywidgets>=7.0,<8',
         'jupyter>=1.0,<2',
         'numpy>=1.14.5,<2',
@@ -258,7 +258,7 @@ setup_args = {
         # metaclass of a derived class must be a (non-strict) subclass of the
         # metaclasses of all its bases" occurred in future.
         'six>=1.9,<2',
-        'tensorflow-transform>=0.11,<1',
+        'tensorflow-transform>=0.12,<1',
     ],
     'python_requires': '>=2.7,<3',
     'packages': find_packages(),

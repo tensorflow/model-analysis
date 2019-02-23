@@ -1,4 +1,4 @@
-# Current version (not yet released; still in development)
+# Release 0.12.0
 
 ## Major Features and Improvements
 *   Python 3.5 readiness complete (all tests pass). Full Python 3.5
