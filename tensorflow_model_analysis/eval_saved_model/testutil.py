@@ -154,15 +154,16 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
       eval_saved_model_path,
       add_metrics_callbacks = None,
       include_default_metrics = True,
-      example_weight_key = None):
+      example_weight_key = None,
+      additional_fetches = None):
 
     return types.EvalSharedModel(
         model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks,
         example_weight_key=example_weight_key,
-        construct_fn=dofn.make_construct_fn(eval_saved_model_path,
-                                            add_metrics_callbacks,
-                                            include_default_metrics))
+        construct_fn=dofn.make_construct_fn(
+            eval_saved_model_path, add_metrics_callbacks,
+            include_default_metrics, additional_fetches))
 
   def predict_injective_single_example(
       self, eval_saved_model,
@@ -177,10 +178,10 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
       The singular FPL returned by eval_saved_model.predict on the given
       raw_example_bytes.
     """
-    fpls = eval_saved_model.predict(raw_example_bytes)
-    self.assertEqual(1, len(fpls))
-    self.assertEqual(0, fpls[0].input_ref)
-    return fpls[0]
+    fetched_list = eval_saved_model.predict(raw_example_bytes)
+    self.assertEqual(1, len(fetched_list))
+    self.assertEqual(0, fetched_list[0].input_ref)
+    return eval_saved_model.as_features_predictions_labels(fetched_list)[0]
 
   def predict_injective_example_list(self,
                                      eval_saved_model,
@@ -196,10 +197,11 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
       The list of FPLs returned by eval_saved_model.predict on the given
       raw_example_bytes.
     """
-    fpls = eval_saved_model.predict_list(raw_example_bytes_list)
+    fetched_list = eval_saved_model.predict_list(raw_example_bytes_list)
 
     # Check that each FPL corresponds to one example.
     self.assertSequenceEqual(
-        range(0, len(raw_example_bytes_list)), [fpl.input_ref for fpl in fpls])
+        range(0, len(raw_example_bytes_list)),
+        [fetched.input_ref for fetched in fetched_list])
 
-    return fpls
+    return eval_saved_model.as_features_predictions_labels(fetched_list)

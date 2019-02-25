@@ -38,21 +38,25 @@ FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
 
 
 def FeatureExtractor(
+    additional_extracts = None,
     excludes = None,
     extract_source = constants.FEATURES_PREDICTIONS_LABELS_KEY):
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=FEATURE_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractFeatures(excludes=excludes, source=extract_source))
+      ptransform=_ExtractFeatures(
+          additional_extracts=additional_extracts,
+          excludes=excludes,
+          source=extract_source))
   # pylint: enable=no-value-for-parameter
 
 
-def _AugmentExtracts(fpl_dict, prefix,
-                     excludes, extracts):
+def _AugmentExtracts(data, prefix, excludes,
+                     extracts):
   """Augments the Extracts with FeaturesPredictionsLabels.
 
   Args:
-    fpl_dict: The dictionary returned by PredictExtractor.
+    data: Data dictionary returned by PredictExtractor.
     prefix: Prefix to use in column naming (e.g. 'features', 'labels', etc).
     excludes: List of strings containing features, predictions, or labels to
       exclude from materialization.
@@ -61,13 +65,20 @@ def _AugmentExtracts(fpl_dict, prefix,
   Raises:
     TypeError: If the FeaturesPredictionsLabels is corrupt.
   """
-  for name, val in fpl_dict.items():
+  for name, val in data.items():
     if excludes is not None and name in excludes:
       continue
-    val = val.get(encoding.NODE_SUFFIX)
+    # If data originated from FeaturesPredictionsLabels, then the value will be
+    # stored under a 'node' key.
+    if isinstance(val, dict) and encoding.NODE_SUFFIX in val:
+      val = val.get(encoding.NODE_SUFFIX)
 
     if name in (prefix, util.KEY_SEPARATOR + prefix):
       col_name = prefix
+    elif prefix not in ('features', 'predictions', 'labels'):
+      # Names used by additional extracts should be properly escaped already so
+      # avoid escaping the name a second time by manually combining the prefix.
+      col_name = prefix + util.KEY_SEPARATOR + name
     else:
       col_name = util.compound_key([prefix, name])
 
@@ -107,6 +118,7 @@ def _ParseExample(extracts):
 
 def _MaterializeFeatures(
     extracts,
+    additional_extracts = None,
     excludes = None,
     source = constants.FEATURES_PREDICTIONS_LABELS_KEY):
   """Converts FeaturesPredictionsLabels into MaterializedColumn in the extract.
@@ -116,6 +128,8 @@ def _MaterializeFeatures(
 
   Args:
     extracts: The Extracts to be augmented.
+    additional_extracts: Optional list of additional extracts to include along
+      with the features, predictions, and labels.
     excludes: Optional list of strings containing features, predictions, or
       labels to exclude from materialization.
     source: Source for extracting features. Currently it supports extracting
@@ -131,6 +145,11 @@ def _MaterializeFeatures(
   """
   # Make a a shallow copy, so we don't mutate the original.
   result = copy.copy(extracts)
+
+  if additional_extracts:
+    for key in additional_extracts:
+      if key in result:
+        _AugmentExtracts(result[key], key, excludes, result)
 
   if source == constants.FEATURES_PREDICTIONS_LABELS_KEY:
     fpl = result.get(constants.FEATURES_PREDICTIONS_LABELS_KEY)
@@ -166,6 +185,7 @@ def _MaterializeFeatures(
 @beam.typehints.with_input_types(beam.typehints.Any)
 @beam.typehints.with_output_types(beam.typehints.Any)
 def _ExtractFeatures(extracts,
+                     additional_extracts = None,
                      excludes = None,
                      source = constants.FEATURES_PREDICTIONS_LABELS_KEY
                     ):
@@ -177,6 +197,8 @@ def _ExtractFeatures(extracts,
   Args:
     extracts: PCollection containing the Extracts that will have
       MaterializedColumn added to.
+    additional_extracts: Optional list of additional extracts to include along
+      with the features, predictions, and labels.
     excludes: Optional list of strings containing features, predictions, or
       labels to exclude from materialization.
     source: Source for extracting features. Currently it supports extracting
@@ -186,4 +208,7 @@ def _ExtractFeatures(extracts,
     PCollection of Extracts
   """
   return extracts | 'MaterializeFeatures' >> beam.Map(
-      _MaterializeFeatures, excludes=excludes, source=source)
+      _MaterializeFeatures,
+      additional_extracts=additional_extracts,
+      excludes=excludes,
+      source=source)

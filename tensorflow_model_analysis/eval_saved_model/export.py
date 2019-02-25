@@ -104,9 +104,9 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
       updated_receiver_tensors[prefix] = tensor_or_dict
 
   add_tensors(constants.SIGNATURE_DEF_INPUTS_PREFIX, receiver_tensors)
-  add_tensors(constants.SIGNATURE_DEF_FEATURES_PREFIX, features)
+  add_tensors(constants.FEATURES_NAME, features)
   if labels is not None:
-    add_tensors(constants.SIGNATURE_DEF_LABELS_PREFIX, labels)
+    add_tensors(constants.LABELS_NAME, labels)
   updated_receiver_tensors[constants.SIGNATURE_DEF_INPUT_REFS_KEY] = (
       input_refs)
   updated_receiver_tensors[constants.SIGNATURE_DEF_TFMA_VERSION_KEY] = (
@@ -234,7 +234,7 @@ def _add_tfma_collections(features,
   if labels is not None:
     # Labels can either be a Tensor, or a dict of Tensors.
     if not isinstance(labels, dict):
-      labels = {constants.DEFAULT_LABELS_DICT_KEY: labels}
+      labels = {util.default_dict_key(constants.LABELS_NAME): labels}
 
     for label_key, label_node in labels.items():
       _encode_and_add_to_node_collection(encoding.LABELS_COLLECTION, label_key,

@@ -25,6 +25,7 @@ import apache_beam as beam
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
 from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import feature_extractor
@@ -50,7 +51,8 @@ def PredictExtractor(eval_shared_model,
       entries for the features, predictions, and labels.
 
   Returns:
-    Extractor for extracting features, predictions, and labels during predict.
+    Extractor for extracting features, predictions, labels, and other tensors
+    during predict.
   """
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
@@ -82,9 +84,16 @@ class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
     serialized_examples = [x[constants.INPUT_KEY] for x in element]
 
     # Compute FeaturesPredictionsLabels for each serialized_example
-    for fpl in self._eval_saved_model.predict_list(serialized_examples):
-      element_copy = copy.copy(element[fpl.input_ref])
-      element_copy[constants.FEATURES_PREDICTIONS_LABELS_KEY] = fpl
+    for fetched in self._eval_saved_model.predict_list(serialized_examples):
+      element_copy = copy.copy(element[fetched.input_ref])
+      element_copy[constants.FEATURES_PREDICTIONS_LABELS_KEY] = (
+          self._eval_saved_model.as_features_predictions_labels([fetched])[0])
+      for key in fetched.values:
+        if key in (eval_saved_model_constants.FEATURES_NAME,
+                   eval_saved_model_constants.LABELS_NAME,
+                   eval_saved_model_constants.PREDICTIONS_NAME):
+          continue
+        element_copy[key] = fetched.values[key]
       yield element_copy
 
 
@@ -127,6 +136,7 @@ def _TFMAPredict(  # pylint: disable=invalid-name
           _TFMAPredictionDoFn(eval_shared_model=eval_shared_model)))
 
   if materialize:
-    return extracts | 'ExtractFeatures' >> feature_extractor._ExtractFeatures()  # pylint: disable=protected-access
+    return extracts | 'ExtractFeatures' >> feature_extractor._ExtractFeatures(  # pylint: disable=protected-access
+        additional_extracts=eval_shared_model.additional_fetches)
 
   return extracts

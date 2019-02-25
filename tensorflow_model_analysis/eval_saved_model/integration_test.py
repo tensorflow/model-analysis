@@ -22,7 +22,6 @@ from __future__ import print_function
 import os
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -58,6 +57,22 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         english_label=english_label,
         chinese_label=chinese_label,
         other_label=other_label)
+
+  def testLoadSavedModelDisallowsAdditionalFetchesWithFeatures(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = multi_head.simple_multi_head(None,
+                                                      temp_eval_export_dir)
+    with self.assertRaisesRegexp(
+        ValueError, 'additional_fetches should not contain "features"'):
+      load.EvalSavedModel(eval_export_dir, additional_fetches=['features'])
+
+  def testLoadSavedModelDisallowsAdditionalFetchesWithLabels(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = multi_head.simple_multi_head(None,
+                                                      temp_eval_export_dir)
+    with self.assertRaisesRegexp(
+        ValueError, 'additional_fetches should not contain "labels"'):
+      load.EvalSavedModel(eval_export_dir, additional_fetches=['labels'])
 
   def testEvaluateExistingMetricsBasic(self):
     temp_eval_export_dir = self._getEvalExportDir()
@@ -291,8 +306,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
           .fake_multi_examples_per_input_estimator(None, temp_eval_export_dir))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    fpls = eval_saved_model.predict_list([b'0', b'1', b'3', b'0', b'2'])
-    self.assertEqual(6, len(fpls))
+    fetched_list = eval_saved_model.predict_list([b'0', b'1', b'3', b'0', b'2'])
+    self.assertEqual(6, len(fetched_list))
 
     input_index = []
     example_count = []
@@ -301,27 +316,21 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     intra_input_index = []
     annotation = []
 
-    def _check_and_append_feature(feature_name, one_fpl, feature_values):
-      self.assertEqual(
-          (1,), one_fpl.features[feature_name][encoding.NODE_SUFFIX].shape)
-      feature_values.append(
-          one_fpl.features[feature_name][encoding.NODE_SUFFIX][0])
+    def _check_and_append_feature(feature_name, one_fetch, feature_values):
+      self.assertEqual((1,), one_fetch.values['features'][feature_name].shape)
+      feature_values.append(one_fetch.values['features'][feature_name][0])
 
-    for fpl in fpls:
-      _check_and_append_feature('input_index', fpl, input_index)
-      _check_and_append_feature('example_count', fpl, example_count)
-      _check_and_append_feature('intra_input_index', fpl, intra_input_index)
-      _check_and_append_feature('annotation', fpl, annotation)
+    for fetched in fetched_list:
+      _check_and_append_feature('input_index', fetched, input_index)
+      _check_and_append_feature('example_count', fetched, example_count)
+      _check_and_append_feature('intra_input_index', fetched, intra_input_index)
+      _check_and_append_feature('annotation', fetched, annotation)
 
-      self.assertAllEqual((1,), fpl.labels[constants.DEFAULT_LABELS_DICT_KEY][
-          encoding.NODE_SUFFIX].shape)
-      labels.append(fpl.labels[constants.DEFAULT_LABELS_DICT_KEY][
-          encoding.NODE_SUFFIX][0])
+      self.assertAllEqual((1,), fetched.values['labels'].shape)
+      labels.append(fetched.values['labels'])
 
-      self.assertAllEqual(
-          (1,), fpl.predictions['predictions'][encoding.NODE_SUFFIX].shape)
-      predictions.append(
-          fpl.predictions['predictions'][encoding.NODE_SUFFIX][0])
+      self.assertAllEqual((1,), fetched.values['predictions'].shape)
+      predictions.append(fetched.values['predictions'])
 
     self.assertSequenceEqual([1, 3, 3, 3, 2, 2], example_count)
     self.assertSequenceEqual([1, 2, 2, 2, 4, 4], input_index)
@@ -348,8 +357,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         .fake_multi_examples_per_input_estimator(None, temp_eval_export_dir))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    fpls = eval_saved_model.predict_list(['0', '0'])
-    self.assertFalse(fpls)
+    fetched_list = eval_saved_model.predict_list(['0', '0'])
+    self.assertFalse(fetched_list)
 
   def testPredictListMisalignedInputRef(self):
     temp_eval_export_dir = self._getEvalExportDir()

@@ -203,7 +203,8 @@ def default_eval_shared_model(
     eval_saved_model_path,
     add_metrics_callbacks = None,
     include_default_metrics = True,
-    example_weight_key = None):
+    example_weight_key = None,
+    additional_fetches = None):
   """Returns default EvalSharedModel.
 
   Args:
@@ -216,6 +217,10 @@ def default_eval_shared_model(
       of the saved model graph during evaluation.
     example_weight_key: The key of the example weight column. If None, weight
       will be 1 for each example.
+    additional_fetches: Prefixes of additional tensors stored in
+      signature_def.inputs that should be fetched at prediction time. The
+      "features" and "labels" tensors are handled automatically and should not
+      be included.
   """
   # Always compute example weight and example count.
   # PyType doesn't know about the magic exports we do in post_export_metrics.
@@ -237,9 +242,12 @@ def default_eval_shared_model(
       add_metrics_callbacks=add_metrics_callbacks,
       include_default_metrics=include_default_metrics,
       example_weight_key=example_weight_key,
-      construct_fn=dofn.make_construct_fn(eval_saved_model_path,
-                                          add_metrics_callbacks,
-                                          include_default_metrics))
+      additional_fetches=additional_fetches,
+      construct_fn=dofn.make_construct_fn(
+          eval_saved_model_path,
+          add_metrics_callbacks,
+          include_default_metrics,
+          additional_fetches=additional_fetches))
 
 
 def default_extractors(  # pylint: disable=invalid-name

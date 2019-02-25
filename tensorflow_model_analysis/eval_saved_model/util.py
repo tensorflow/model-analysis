@@ -22,9 +22,25 @@ import numpy as np
 import six
 import tensorflow as tf
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.types_compat import List, Optional, Tuple
+from tensorflow_model_analysis import util
+from tensorflow_model_analysis.types_compat import List, Optional, Text, Tuple
 
 from tensorflow.core.example import example_pb2
+
+
+def default_dict_key(prefix):
+  """Returns the default key to use with a dict associated with given prefix."""
+  return util.KEY_SEPARATOR + prefix
+
+
+def extract_tensor_maybe_dict(
+    prefix,
+    dict_of_tensors):
+  """Returns tensor if single entry under default key else returns dict."""
+  default_key = default_dict_key(prefix)
+  if list(dict_of_tensors.keys()) == [default_key]:
+    return dict_of_tensors[default_key]
+  return dict_of_tensors
 
 
 def wrap_tensor_or_dict_of_tensors_in_identity(

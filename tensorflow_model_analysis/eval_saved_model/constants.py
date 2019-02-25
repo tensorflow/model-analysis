@@ -18,19 +18,10 @@ EVAL_SAVED_MODEL_TAG = 'eval_saved_model'
 
 SIGNATURE_DEF_INPUTS_PREFIX = 'inputs'
 SIGNATURE_DEF_INPUT_REFS_KEY = 'input_refs'
-SIGNATURE_DEF_LABELS_PREFIX = 'labels'
-SIGNATURE_DEF_FEATURES_PREFIX = 'features'
 SIGNATURE_DEF_TFMA_VERSION_KEY = 'tfma/version'
 
-# If features/predictions/labels was not a dictionary, we internally wrap them
-# in a dictionary with the respective default keys.
-#
-# Note that the key names start with two underscores to avoid collisions
-# in the rare case that there are actually keys named 'features', 'predictions'
-# or 'labels' in the respective dictionaries.
-DEFAULT_FEATURES_DICT_KEY = '__features'
-DEFAULT_PREDICTIONS_DICT_KEY = '__predictions'
-DEFAULT_LABELS_DICT_KEY = '__labels'
+FEATURES_NAME = 'features'
+LABELS_NAME = 'labels'
 
 EVAL_TAG = 'eval'
 DEFAULT_EVAL_SIGNATURE_DEF_KEY = 'eval'

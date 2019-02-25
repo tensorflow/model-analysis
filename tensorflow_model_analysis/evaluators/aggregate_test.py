@@ -87,12 +87,13 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      predict_result = eval_saved_model.predict_list([
-          example1.SerializeToString(),
-          example2.SerializeToString(),
-          example3.SerializeToString(),
-          example4.SerializeToString()
-      ])
+      predict_result = eval_saved_model.as_features_predictions_labels(
+          eval_saved_model.predict_list([
+              example1.SerializeToString(),
+              example2.SerializeToString(),
+              example3.SerializeToString(),
+              example4.SerializeToString()
+          ]))
 
       metrics, _ = (
           pipeline
@@ -130,13 +131,17 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      predict_result_english_slice = eval_saved_model.predict_list(
-          [example1.SerializeToString(),
-           example3.SerializeToString()])
+      predict_result_english_slice = (
+          eval_saved_model.as_features_predictions_labels(
+              eval_saved_model.predict_list(
+                  [example1.SerializeToString(),
+                   example3.SerializeToString()])))
 
-      predict_result_chinese_slice = eval_saved_model.predict_list(
-          [example2.SerializeToString(),
-           example4.SerializeToString()])
+      predict_result_chinese_slice = (
+          eval_saved_model.as_features_predictions_labels(
+              eval_saved_model.predict_list(
+                  [example2.SerializeToString(),
+                   example4.SerializeToString()])))
 
       test_input = (
           create_test_input(predict_result_english_slice, [(
@@ -202,13 +207,17 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      predict_result_english_slice = eval_saved_model.predict_list(
-          [example1.SerializeToString(),
-           example3.SerializeToString()])
+      predict_result_english_slice = (
+          eval_saved_model.as_features_predictions_labels(
+              eval_saved_model.predict_list(
+                  [example1.SerializeToString(),
+                   example3.SerializeToString()])))
 
-      predict_result_chinese_slice = eval_saved_model.predict_list(
-          [example2.SerializeToString(),
-           example4.SerializeToString()])
+      predict_result_chinese_slice = (
+          eval_saved_model.as_features_predictions_labels(
+              eval_saved_model.predict_list(
+                  [example2.SerializeToString(),
+                   example4.SerializeToString()])))
 
       test_input = (
           create_test_input(predict_result_english_slice, [(

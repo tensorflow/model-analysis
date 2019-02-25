@@ -27,6 +27,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
+from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.types_compat import Dict, List, Optional, Text, Tuple, Union
 
 from google.protobuf import any_pb2
@@ -117,7 +118,7 @@ def load_legacy_inputs(
       list(signature_def.inputs.values())[0], graph)
   try:
     input_refs_node = get_node_in_graph(meta_graph_def,
-                                        encoding.EXAMPLE_REF_COLLECTION, graph)  # pytype: disable=wrong-arg-types
+                                        encoding.EXAMPLE_REF_COLLECTION, graph)
   except KeyError:
     # If we can't find the ExampleRef collection, then this is probably a model
     # created before we introduced the ExampleRef parameter to
@@ -141,13 +142,24 @@ def load_legacy_features_and_labels(
   Returns:
     Tuple of (features_map, labels_map)
   """
-  features_map = collections.OrderedDict(
+  encoded_features_map = collections.OrderedDict(
       get_node_map_in_graph(meta_graph_def, encoding.FEATURES_COLLECTION,
-                            [encoding.NODE_SUFFIX], graph))  # pytype: disable=wrong-arg-types
-  labels_map = collections.OrderedDict(
+                            [encoding.NODE_SUFFIX], graph))
+  features_map = collections.OrderedDict()
+  for key in encoded_features_map:
+    features_map[key] = encoded_features_map[key][encoding.NODE_SUFFIX]
+
+  encoded_labels_map = collections.OrderedDict(
       get_node_map_in_graph(meta_graph_def, encoding.LABELS_COLLECTION,
-                            [encoding.NODE_SUFFIX], graph))  # pytype: disable=wrong-arg-types
+                            [encoding.NODE_SUFFIX], graph))
+  labels_map = collections.OrderedDict()
+  for key in encoded_labels_map:
+    labels_map[key] = encoded_labels_map[key][encoding.NODE_SUFFIX]
+
+  # Assume that KeyType is only Text
+  # pytype: disable=bad-return-type
   return (features_map, labels_map)
+  # pytype: enable=bad-return-type
 
 
 def load_tfma_version(
@@ -190,7 +202,7 @@ def load_inputs(
     ValueError: If inputs or input_refs not found signature_def.inputs.
   """
   inputs = extract_signature_inputs_or_outputs_with_prefix(
-      constants.SIGNATURE_DEF_INPUTS_PREFIX, signature_def.inputs)  # pytype: disable=wrong-arg-types
+      constants.SIGNATURE_DEF_INPUTS_PREFIX, signature_def.inputs)
   if not inputs:
     raise ValueError('no inputs found in signature_def: %s' % signature_def)
   inputs_map = collections.OrderedDict()
@@ -206,40 +218,31 @@ def load_inputs(
   return (inputs_map, input_refs_node)
 
 
-def load_features_and_labels(
-    signature_def, graph
+def load_additional_inputs(
+    prefix,
+    signature_def,
+    graph,
 ):
-  """Loads feature and label nodes from signature_def.inputs.
+  """Loads additional input tensors from signature_def.inputs.
 
   Args:
+    prefix: Prefix used for tensors in signature_def.inputs (e.g. features,
+      labels, etc)
     signature_def: SignatureDef to lookup nodes in.
     graph: TensorFlow graph to lookup the nodes in.
 
   Returns:
-    Tuple of (features_map, labels_map) where the maps are OrderedDicts.
+    OrderedDict of tensors.
   """
-  features_map = collections.OrderedDict()
+  tensors = collections.OrderedDict()
   for k, v in extract_signature_inputs_or_outputs_with_prefix(
-      constants.SIGNATURE_DEF_FEATURES_PREFIX, signature_def.inputs,
-      constants.DEFAULT_FEATURES_DICT_KEY).items():  # pytype: disable=wrong-arg-types
-    features_map[k] = {
-        encoding.NODE_SUFFIX:
-            tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
-    }
-  labels_map = collections.OrderedDict()
-  for k, v in extract_signature_inputs_or_outputs_with_prefix(
-      constants.SIGNATURE_DEF_LABELS_PREFIX, signature_def.inputs,
-      constants.DEFAULT_LABELS_DICT_KEY).items():  # pytype: disable=wrong-arg-types
-    labels_map[k] = {
-        encoding.NODE_SUFFIX:
-            tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
-    }
-  return (features_map, labels_map)
+      prefix, signature_def.inputs, util.default_dict_key(prefix)).items():
+    tensors[k] = tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
+  return tensors
 
 
-def load_predictions(
-    signature_def,
-    graph):
+def load_predictions(signature_def,
+                     graph):
   """Loads prediction nodes from signature_def.outputs.
 
   Args:
@@ -252,15 +255,14 @@ def load_predictions(
   # The canonical ordering we use here is simply the ordering we get
   # from the predictions collection.
   predictions = extract_signature_inputs_or_outputs_with_prefix(
-      constants.PREDICTIONS_NAME, signature_def.outputs)  # pytype: disable=wrong-arg-types
+      constants.PREDICTIONS_NAME, signature_def.outputs,
+      util.default_dict_key(constants.PREDICTIONS_NAME))
   predictions_map = collections.OrderedDict()
   for k, v in predictions.items():
     # Extract to dictionary with a single key for consistency with
     # how features and labels are extracted.
-    predictions_map[k] = {
-        encoding.NODE_SUFFIX:
-            tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
-    }
+    predictions_map[k] = tf.saved_model.utils.get_tensor_from_tensor_info(
+        v, graph)
   return predictions_map
 
 

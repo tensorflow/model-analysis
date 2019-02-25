@@ -267,15 +267,17 @@ class EvalMetricsGraph(object):
     for key, value in self._predictions_map.items():
       predictions[key] = value[encoding.NODE_SUFFIX]
     # Unnest if it wasn't a dictionary to begin with.
-    if list(predictions.keys()) == [constants.DEFAULT_PREDICTIONS_DICT_KEY]:
-      predictions = predictions[constants.DEFAULT_PREDICTIONS_DICT_KEY]
+    default_predictions_key = util.default_dict_key(constants.PREDICTIONS_NAME)
+    if list(predictions.keys()) == [default_predictions_key]:
+      predictions = predictions[default_predictions_key]
 
     labels = {}
     for key, value in self._labels_map.items():
       labels[key] = value[encoding.NODE_SUFFIX]
     # Unnest if it wasn't a dictionary to begin with.
-    if list(labels.keys()) == [constants.DEFAULT_LABELS_DICT_KEY]:
-      labels = labels[constants.DEFAULT_LABELS_DICT_KEY]
+    default_labels_key = util.default_dict_key(constants.LABELS_NAME)
+    if list(labels.keys()) == [default_labels_key]:
+      labels = labels[default_labels_key]
 
     return (features, predictions, labels)
 

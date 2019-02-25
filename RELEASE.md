@@ -3,6 +3,14 @@
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
+*   Added support for fetching additional tensors at prediction time besides
+    features, predictions, and labels (predict now returns FetchedTensorValues
+    type).
+*   Removed internal usages of encoding.NODE_SUFFIX indirection within dicts
+    in the eval_saved_model module (encoding.NODE_SUFFIX is still used in
+    FeaturesPredictionLabels)
+*   Predictions are now returned as tensors (vs dicts) when "predictions" is the
+    only output (this is consistent with how features and labels work).
 
 ## Breaking changes
 

@@ -373,7 +373,8 @@ class _AggregateCombineFn(beam.CombineFn):
       construct_fn = dofn.make_construct_fn(
           eval_saved_model_path=self._eval_shared_model.model_path,
           add_metrics_callbacks=self._eval_shared_model.add_metrics_callbacks,
-          include_default_metrics=True)
+          include_default_metrics=True,
+          additional_fetches=None)
       self._eval_metrics_graph = (
           self._eval_shared_model.shared_handle.acquire(
               construct_fn(self._model_load_seconds)))
@@ -531,7 +532,8 @@ class _ExtractOutputDoFn(beam.DoFn):
       construct_fn = dofn.make_construct_fn(
           eval_saved_model_path=self._eval_shared_model.model_path,
           add_metrics_callbacks=self._eval_shared_model.add_metrics_callbacks,
-          include_default_metrics=True)
+          include_default_metrics=True,
+          additional_fetches=None)
       self._eval_saved_model = (
           self._eval_shared_model.shared_handle.acquire(
               construct_fn(self._model_load_seconds)))

@@ -32,15 +32,10 @@ TensorOrOperationType = Union[TensorType, tf.Operation]
 DictOfTensorType = Dict[Text, TensorType]
 TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
 
-# Type of keys we support for prediction, label and features dictionaries.
-KeyType = Union[Text, Tuple[Text, Ellipsis]]
-
 # Value of a Tensor fetched using session.run.
 TensorValue = Union[tf.SparseTensorValue, np.ndarray]
-
-# Dictionary of Tensor values fetched.
-# The dictionary maps original dictionary keys => ('node' => value).
-DictOfFetchedTensorValues = Dict[KeyType, Dict[Text, TensorValue]]
+DictOfTensorValue = Dict[Text, TensorValue]
+TensorValueMaybeDict = Union[TensorValue, DictOfTensorValue]
 
 MetricVariablesType = List[Any]
 
@@ -76,6 +71,14 @@ class ValueWithConfidenceInterval(
 # necessarily dictionaries - they might also be Tensors, depending on what the
 # model's eval_input_receiver_fn returns.
 AddMetricsCallbackType = Any
+
+# Type of keys we support for prediction, label and features dictionaries.
+FPLKeyType = Union[Text, Tuple[Text, Ellipsis]]
+
+# Dictionary of Tensor values fetched. The dictionary maps original dictionary
+# keys => ('node' => value). This type exists for backward compatibility with
+# FeaturesPredictionsLabels, new code should use DictOfTensorValue instead.
+DictOfFetchedTensorValues = Dict[FPLKeyType, Dict[Text, TensorValue]]
 
 FeaturesPredictionsLabels = NamedTuple(
     'FeaturesPredictionsLabels', [('input_ref', int),
@@ -115,6 +118,7 @@ class EvalSharedModel(
              List[Callable]),  # List[AnyMetricsCallbackType]
             ('include_default_metrics', bool),
             ('example_weight_key', Text),
+            ('additional_fetches', List[Text]),
             ('shared_handle', shared.Shared),
             ('construct_fn', Callable)
         ])):
@@ -132,6 +136,10 @@ class EvalSharedModel(
       of the saved model graph during evaluation.
     example_weight_key: The key of the example weight column. If None, weight
       will be 1 for each example.
+    additional_fetches: Prefixes of additional tensors stored in
+      signature_def.inputs that should be fetched at prediction time. The
+      "features" and "labels" tensors are handled automatically and should not
+      be included in this list.
     shared_handle: Optional handle to a shared.Shared object for sharing the
       in-memory model within / between stages.
     construct_fn: A callable which creates a construct function
@@ -167,6 +175,7 @@ class EvalSharedModel(
       add_metrics_callbacks = None,
       include_default_metrics = True,
       example_weight_key = None,
+      additional_fetches = None,
       shared_handle = None,
       construct_fn = None):
     if not add_metrics_callbacks:
@@ -175,4 +184,4 @@ class EvalSharedModel(
       shared_handle = shared.Shared()
     return super(EvalSharedModel, cls).__new__(
         cls, model_path, add_metrics_callbacks, include_default_metrics,
-        example_weight_key, shared_handle, construct_fn)
+        example_weight_key, additional_fetches, shared_handle, construct_fn)
