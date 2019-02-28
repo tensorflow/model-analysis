@@ -20,15 +20,13 @@ const _ = require('lodash');
  * Helper method to load the vulcanized templates.
  */
 function loadVulcanizedTemplate() {
-  const templateLocation =
-      __webpack_public_path__ + 'vulcanized_template.html';
+  const templateLocation = __webpack_public_path__ + 'vulcanized_tfma.js';
 
   // If the vulcanizes tempalets are not loaded yet, load it now.
-  if (!document.querySelector('link[href="' + templateLocation + '"]')) {
-    const link = document.createElement('link');
-    link.setAttribute('rel', 'import');
-    link.setAttribute('href', templateLocation);
-    document.head.appendChild(link);
+  if (!document.querySelector('script[src="' + templateLocation + '"]')) {
+    const script = document.createElement('script');
+    script.setAttribute('src', templateLocation);
+    document.head.appendChild(script);
   }
 }
 

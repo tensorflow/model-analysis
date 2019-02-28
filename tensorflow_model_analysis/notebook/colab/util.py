@@ -38,8 +38,8 @@ def render_component(
   """
   display.display(
       display.HTML("""
-          <link rel="import"
-          href="/nbextensions/tfma_widget_js/vulcanized_template.html">
+          <script src="/nbextensions/tfma_widget_js/vulcanized_tfma.js">
+          </script>
           <{component_name} id="component"></{component_name}>
           <script>
           const element = document.getElementById('component');

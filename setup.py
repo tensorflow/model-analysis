@@ -164,6 +164,8 @@ class NPM(Command):
       os.path.join(here, 'tensorflow_model_analysis', 'static', 'extension.js'),
       os.path.join(here, 'tensorflow_model_analysis', 'static', 'index.js'),
       os.path.join(here, 'tensorflow_model_analysis', 'static',
+                   'vulcanized_tfma.js'),
+      os.path.join(here, 'tensorflow_model_analysis', 'static',
                    'vulcanized_template.html'),
   ]
 
@@ -226,6 +228,7 @@ class NPM(Command):
     update_package_data(self.distribution)
 
 
+
 # Get the long description from the README file.
 with open('README.md') as fp:
   _LONG_DESCRIPTION = fp.read()
@@ -242,6 +245,7 @@ setup_args = {
         'tensorflow_model_analysis/static/index.js',
         'tensorflow_model_analysis/static/index.js.map',
         'tensorflow_model_analysis/static/vulcanized_template.html',
+        'tensorflow_model_analysis/static/vulcanized_tfma.js',
     ]),],
     # Make sure to sync the versions of common dependencies (numpy, six, and
     # protobuf) with TF.
