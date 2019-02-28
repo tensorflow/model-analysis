@@ -20,11 +20,10 @@ import '@polymer/iron-pages/iron-pages.js';
 import '@polymer/paper-button/paper-button.js';
 import '@polymer/paper-spinner/paper-spinner.js';
 import '@polymer/paper-tabs/paper-tabs.js';
-import '@org_googlewebcomponents_google_chart/google-chart/google-chart.js';
 import '../../tfma-calibration-plot/v2/tfma-calibration-plot.js';
 import '../../tfma-precision-recall-curve/v2/tfma-precision-recall-curve.js';
 import '../../tfma-prediction-distribution/v2/tfma-prediction-distribution.js';
-import '../../tfma-roc-curve/v2/tfma-roc-curve.js'
+import '../../tfma-roc-curve/v2/tfma-roc-curve.js';
 
 const TABS = {
   CALIBRATION_PLOT: 'cp',

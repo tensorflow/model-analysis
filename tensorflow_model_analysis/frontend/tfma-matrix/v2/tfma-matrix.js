@@ -15,6 +15,7 @@
  */
 
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
+import {GestureEventListeners} from '@polymer/polymer/lib/mixins/gesture-event-listeners.js';
 import {template} from './tfma-matrix-template.html.js';
 
 /**
@@ -23,7 +24,7 @@ import {template} from './tfma-matrix-template.html.js';
  * @polymer
  * @extends {PolymerElement}
  */
-export class Matrix extends Polymer.GestureEventListeners
+export class Matrix extends GestureEventListeners
 (PolymerElement) {
   constructor() {
     super();
