@@ -154,12 +154,14 @@ def calibration_plot(predictions,
   return value_op, update_op
 
 
-def precision_recall_at_k(classes,
-                          scores,
-                          labels,
-                          cutoffs,
-                          weights = None
-                         ):
+def _precision_recall_at_k(
+    classes,
+    scores,
+    labels,
+    cutoffs,
+    weights = None,
+    precision = True,
+    recall = True):
   # pyformat: disable
   """Precision and recall at `k`.
 
@@ -171,11 +173,13 @@ def precision_recall_at_k(classes,
     labels: Tensor containing the true labels. Should be a rank-2 Tensor where
       the first dimension is BATCH_SIZE. The second dimension can be anything.
     cutoffs: List containing the values for the `k` at which to compute the
-     precision and recall for. Use a value of `k` = 0 to indicate that all
-     predictions should be considered.
+      precision and recall for. Use a value of `k` = 0 to indicate that all
+      predictions should be considered.
     weights: Optional weights for each of the examples. If None,
       each of the predictions/labels will be assumed to have a weight of 1.0.
       If present, should be a BATCH_SIZE Tensor.
+    precision: True to compute precision.
+    recall: True to compute recall.
 
   The value_op will return a matrix with len(cutoffs) rows and 3 columns:
   [ cutoff 0, precision at cutoff 0, recall at cutoff 0 ]
@@ -183,13 +187,26 @@ def precision_recall_at_k(classes,
   [     :                :                  :           ]
   [ cutoff n, precision at cutoff n, recall at cutoff n ]
 
+  If only one of precision or recall is True then the value_op will return only
+  2 columns (cutoff and ether precision or recall depending on which is True).
+
   Returns:
     (value_op, update_op) for the precision/recall at K metric.
   """
   # pyformat: enable
+  if not precision and not recall:
+    raise ValueError('one of either precision or recall must be set')
+
   num_cutoffs = len(cutoffs)
 
-  with tf.variable_scope('precision_recall_at_k', [classes, scores, labels]):
+  if precision and recall:
+    scope = 'precision_recall_at_k'
+  elif precision:
+    scope = 'precision_at_k'
+  else:
+    scope = 'recall_at_k'
+
+  with tf.variable_scope(scope, [classes, scores, labels]):
 
     # Predicted positive.
     predicted_positives = tf.Variable(
@@ -294,10 +311,16 @@ def precision_recall_at_k(classes,
   # [ K | precision at K | recall at K ]
   # PyType doesn't like TF operator overloads: b/92797687
   # pytype: disable=unsupported-operands
-  precision = true_positives / predicted_positives
-  recall = true_positives / actual_positives
+  precision_op = true_positives / predicted_positives
+  recall_op = true_positives / actual_positives
   # pytype: enable=unsupported-operands
-  value_op = tf.transpose(tf.stack([cutoffs, precision, recall], axis=0))
+  if precision and recall:
+    value_op = tf.transpose(
+        tf.stack([cutoffs, precision_op, recall_op], axis=0))
+  elif precision:
+    value_op = tf.transpose(tf.stack([cutoffs, precision_op], axis=0))
+  else:
+    value_op = tf.transpose(tf.stack([cutoffs, recall_op], axis=0))
 
   true_positives_update, predicted_positives_update, actual_positives_update = (
       tf.py_func(compute_batch_stats, [classes, scores, labels, weights_f64],
@@ -309,3 +332,77 @@ def precision_recall_at_k(classes,
       tf.assign_add(actual_positives, actual_positives_update))
 
   return value_op, update_op
+
+
+def precision_at_k(classes,
+                   scores,
+                   labels,
+                   cutoffs,
+                   weights = None
+                  ):
+  # pyformat: disable
+  """Precision at `k`.
+
+  Args:
+    classes: Tensor containing class names. Should be a BATCH_SIZE x NUM_CLASSES
+      Tensor.
+    scores: Tensor containing the associated scores. Should be a
+      BATCH_SIZE x NUM_CLASSES Tensor.
+    labels: Tensor containing the true labels. Should be a rank-2 Tensor where
+      the first dimension is BATCH_SIZE. The second dimension can be anything.
+    cutoffs: List containing the values for the `k` at which to compute the
+      precision for. Use a value of `k` = 0 to indicate that all predictions
+      should be considered.
+    weights: Optional weights for each of the examples. If None,
+      each of the predictions/labels will be assumed to have a weight of 1.0.
+      If present, should be a BATCH_SIZE Tensor.
+
+  The value_op will return a matrix with len(cutoffs) rows and 2 columns:
+  [ cutoff 0, precision at cutoff 0 ]
+  [ cutoff 1, precision at cutoff 1 ]
+  [     :                :          ]
+  [ cutoff n, precision at cutoff n ]
+
+  Returns:
+    (value_op, update_op) for the precision at K metric.
+  """
+  # pyformat: enable
+  return _precision_recall_at_k(classes, scores, labels, cutoffs, weights, True,
+                                False)
+
+
+def recall_at_k(classes,
+                scores,
+                labels,
+                cutoffs,
+                weights = None
+               ):
+  # pyformat: disable
+  """Recall at `k`.
+
+  Args:
+    classes: Tensor containing class names. Should be a BATCH_SIZE x NUM_CLASSES
+      Tensor.
+    scores: Tensor containing the associated scores. Should be a
+      BATCH_SIZE x NUM_CLASSES Tensor.
+    labels: Tensor containing the true labels. Should be a rank-2 Tensor where
+      the first dimension is BATCH_SIZE. The second dimension can be anything.
+    cutoffs: List containing the values for the `k` at which to compute the
+      recall for. Use a value of `k` = 0 to indicate that all predictions should
+      be considered.
+    weights: Optional weights for each of the examples. If None,
+      each of the predictions/labels will be assumed to have a weight of 1.0.
+      If present, should be a BATCH_SIZE Tensor.
+
+  The value_op will return a matrix with len(cutoffs) rows and 2 columns:
+  [ cutoff 0, recall at cutoff 0 ]
+  [ cutoff 1, recall at cutoff 1 ]
+  [     :                :       ]
+  [ cutoff n, recall at cutoff n ]
+
+  Returns:
+    (value_op, update_op) for the recall at K metric.
+  """
+  # pyformat: enable
+  return _precision_recall_at_k(classes, scores, labels, cutoffs, weights,
+                                False, True)

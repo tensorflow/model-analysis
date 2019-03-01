@@ -44,7 +44,6 @@ from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
-
 # Seed that returns '1' for the first 14 calls to Poisson(1). This means that
 # the bootstrap samples generated for small test sets should a) be deterministic
 # and b) match the values seen when not computing uncertainty.
@@ -414,23 +413,27 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             fixed_string=''),
     ]
 
-    precision_recall_metric = post_export_metrics.precision_recall_at_k(
-        [0, 1, 2, 3, 5])
+    precision_metric = post_export_metrics.precision_at_k([0, 1, 2, 3, 5])
+    recall_metric = post_export_metrics.recall_at_k([0, 1, 2, 3, 5])
 
     def check_result(got):  # pylint: disable=invalid-name
       try:
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(metric_keys.PRECISION_RECALL_AT_K, value)
-        table = value[metric_keys.PRECISION_RECALL_AT_K]
-        cutoffs = table[:, 0].tolist()
-        precision = table[:, 1].tolist()
-        recall = table[:, 2].tolist()
 
+        self.assertIn(metric_keys.PRECISION_AT_K, value)
+        precision_table = value[metric_keys.PRECISION_AT_K]
+        cutoffs = precision_table[:, 0].tolist()
+        precision = precision_table[:, 1].tolist()
         self.assertEqual(cutoffs, [0, 1, 2, 3, 5])
         self.assertSequenceAlmostEqual(
             precision, [4.0 / 9.0, 2.0 / 3.0, 2.0 / 6.0, 4.0 / 9.0, 4.0 / 9.0])
+
+        self.assertIn(metric_keys.RECALL_AT_K, value)
+        recall_table = value[metric_keys.RECALL_AT_K]
+        cutoffs = recall_table[:, 0].tolist()
+        recall = recall_table[:, 1].tolist()
         self.assertSequenceAlmostEqual(
             recall, [4.0 / 4.0, 2.0 / 4.0, 2.0 / 4.0, 4.0 / 4.0, 4.0 / 4.0])
 
@@ -438,7 +441,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Note that we can't just make this a dict, since proto maps
         # allow uninitialized key access, i.e. they act like defaultdicts.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        precision_recall_metric.populate_stats_and_pop(value, output_metrics)
+        precision_metric.populate_stats_and_pop(value, output_metrics)
         self.assertProtoEquals(
             """
             value_at_cutoffs {
@@ -489,6 +492,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
               }
             }
             """, output_metrics[metric_keys.PRECISION_AT_K])
+        output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
+        recall_metric.populate_stats_and_pop(value, output_metrics)
         self.assertProtoEquals(
             """
             value_at_cutoffs {
@@ -544,7 +549,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [precision_recall_metric],
+        eval_export_dir, [precision_metric, recall_metric],
         custom_metrics_check=check_result)
 
   def testPrecisionRecallAtKUnweightedWithUncertainty(self):
@@ -574,32 +579,39 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             fixed_string=''),
     ]
 
-    precision_recall_metric = post_export_metrics.precision_recall_at_k(
-        [0, 1, 2, 3, 5])
+    precision_metric = post_export_metrics.precision_at_k([0, 1, 2, 3, 5])
+    recall_metric = post_export_metrics.recall_at_k([0, 1, 2, 3, 5])
 
     def check_result(got):  # pylint: disable=invalid-name
       try:
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(metric_keys.PRECISION_RECALL_AT_K, value)
-        table = value[metric_keys.PRECISION_RECALL_AT_K]
-        cutoffs = table[:, 0].tolist()
-        precision = table[:, 1].tolist()
-        recall = table[:, 2].tolist()
 
+        self.assertIn(metric_keys.PRECISION_AT_K, value)
+        precision_table = value[metric_keys.PRECISION_AT_K]
+        cutoffs = precision_table[:, 0].tolist()
+        precision = precision_table[:, 1].tolist()
         expected_cutoffs = [0, 1, 2, 3, 5]
         expected_precision = [
             4.0 / 9.0, 2.0 / 3.0, 2.0 / 6.0, 4.0 / 9.0, 4.0 / 9.0
-        ]
-        expected_recall = [
-            4.0 / 4.0, 2.0 / 4.0, 2.0 / 4.0, 4.0 / 4.0, 4.0 / 4.0
         ]
         self.assertSequenceAlmostEqual([cutoff.value for cutoff in cutoffs],
                                        expected_cutoffs)
         self.assertSequenceAlmostEqual([prec.value for prec in precision],
                                        expected_precision,
                                        delta=0.2)
+
+        self.assertIn(metric_keys.RECALL_AT_K, value)
+        recall_table = value[metric_keys.RECALL_AT_K]
+        cutoffs = recall_table[:, 0].tolist()
+        recall = recall_table[:, 1].tolist()
+        expected_cutoffs = [0, 1, 2, 3, 5]
+        expected_recall = [
+            4.0 / 4.0, 2.0 / 4.0, 2.0 / 4.0, 4.0 / 4.0, 4.0 / 4.0
+        ]
+        self.assertSequenceAlmostEqual([cutoff.value for cutoff in cutoffs],
+                                       expected_cutoffs)
         self.assertSequenceAlmostEqual([rec.value for rec in recall],
                                        expected_recall,
                                        delta=0.2)
@@ -608,41 +620,42 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Note that we can't just make this a dict, since proto maps
         # allow uninitialized key access, i.e. they act like defaultdicts.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        precision_recall_metric.populate_stats_and_pop(value, output_metrics)
-        for value in output_metrics[
+        precision_metric.populate_stats_and_pop(value, output_metrics)
+        for v in output_metrics[
             metric_keys.PRECISION_AT_K].value_at_cutoffs.values:
           # Note that we can't check the exact values because of nondeterminism.
           # We'll check that the values are equivalent, and close enough to the
           # expected precision and recall values for the cutoff.
-          expected_value = expected_precision[expected_cutoffs.index(
-              value.cutoff)]
-          self.assertAlmostEqual(value.value, expected_value, delta=0.2)
+          expected_value = expected_precision[expected_cutoffs.index(v.cutoff)]
+          self.assertAlmostEqual(v.value, expected_value, delta=0.2)
           self.assertAlmostEqual(
-              value.bounded_value.value.value, expected_value, delta=0.2)
+              v.bounded_value.value.value, expected_value, delta=0.2)
           self.assertAlmostEqual(
-              value.bounded_value.upper_bound.value, expected_value, delta=0.4)
+              v.bounded_value.upper_bound.value, expected_value, delta=0.4)
           self.assertAlmostEqual(
-              value.bounded_value.lower_bound.value, expected_value, delta=0.4)
+              v.bounded_value.lower_bound.value, expected_value, delta=0.4)
 
-        for value in output_metrics[
+        output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
+        recall_metric.populate_stats_and_pop(value, output_metrics)
+        for v in output_metrics[
             metric_keys.RECALL_AT_K].value_at_cutoffs.values:
           # Note that we can't check the exact values because of nondeterminism.
           # We'll check that the values are equivalent, and close enough to the
           # expected precision and recall values for the cutoff.
-          expected_value = expected_recall[expected_cutoffs.index(value.cutoff)]
-          self.assertAlmostEqual(value.value, expected_value, delta=0.2)
+          expected_value = expected_recall[expected_cutoffs.index(v.cutoff)]
+          self.assertAlmostEqual(v.value, expected_value, delta=0.2)
           self.assertAlmostEqual(
-              value.bounded_value.value.value, expected_value, delta=0.2)
+              v.bounded_value.value.value, expected_value, delta=0.2)
           self.assertAlmostEqual(
-              value.bounded_value.upper_bound.value, expected_value, delta=0.4)
+              v.bounded_value.upper_bound.value, expected_value, delta=0.4)
           self.assertAlmostEqual(
-              value.bounded_value.lower_bound.value, expected_value, delta=0.4)
+              v.bounded_value.lower_bound.value, expected_value, delta=0.4)
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [precision_recall_metric],
+        eval_export_dir, [precision_metric, recall_metric],
         custom_metrics_check=check_result)
 
   def testPrecisionRecallAtKWeighted(self):
@@ -680,14 +693,18 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(metric_keys.PRECISION_RECALL_AT_K, value)
-        table = value[metric_keys.PRECISION_RECALL_AT_K]
+        self.assertIn(metric_keys.PRECISION_AT_K, value)
+        table = value[metric_keys.PRECISION_AT_K]
         cutoffs = table[:, 0].tolist()
         precision = table[:, 1].tolist()
-        recall = table[:, 2].tolist()
-
         self.assertEqual(cutoffs, [1, 3])
         self.assertSequenceAlmostEqual(precision, [3.0 / 6.0, 7.0 / 18.0])
+
+        self.assertIn(metric_keys.RECALL_AT_K, value)
+        table = value[metric_keys.RECALL_AT_K]
+        cutoffs = table[:, 0].tolist()
+        recall = table[:, 1].tolist()
+        self.assertEqual(cutoffs, [1, 3])
         self.assertSequenceAlmostEqual(recall, [3.0 / 7.0, 7.0 / 7.0])
       except AssertionError as err:
         raise util.BeamAssertException(err)
@@ -695,8 +712,10 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     self._runTestWithCustomCheck(
         examples,
         eval_export_dir, [
-            post_export_metrics.precision_recall_at_k(
-                [1, 3], example_weight_key='fixed_float')
+            post_export_metrics.precision_at_k(
+                [1, 3], example_weight_key='fixed_float'),
+            post_export_metrics.recall_at_k([1, 3],
+                                            example_weight_key='fixed_float')
         ],
         custom_metrics_check=check_result)
 
@@ -721,21 +740,28 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertIn(metric_keys.PRECISION_RECALL_AT_K, value)
-        table = value[metric_keys.PRECISION_RECALL_AT_K]
+        self.assertIn(metric_keys.PRECISION_AT_K, value)
+        table = value[metric_keys.PRECISION_AT_K]
         cutoffs = table[:, 0].tolist()
         precision = table[:, 1].tolist()
-        recall = table[:, 2].tolist()
-
         self.assertEqual(cutoffs, [])
         self.assertSequenceAlmostEqual(precision, [])
+
+        self.assertIn(metric_keys.RECALL_AT_K, value)
+        table = value[metric_keys.RECALL_AT_K]
+        cutoffs = table[:, 0].tolist()
+        recall = table[:, 1].tolist()
+        self.assertEqual(cutoffs, [])
         self.assertSequenceAlmostEqual(recall, [])
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [post_export_metrics.precision_recall_at_k([])],
+        eval_export_dir, [
+            post_export_metrics.precision_at_k([]),
+            post_export_metrics.recall_at_k([])
+        ],
         custom_metrics_check=check_result)
 
   def testCalibrationPlotAndPredictionHistogramUnweighted(self):

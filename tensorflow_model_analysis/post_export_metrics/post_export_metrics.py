@@ -891,8 +891,8 @@ class _ConfusionMatrixAtThresholds(_ConfusionMatrixBasedMetric):
     if len(matrices) != len(thresholds):
       raise ValueError(
           'matrices should have the same length as thresholds, but lengths '
-          'were: matrices: %d, thresholds: %d' % (len(matrices),
-                                                  len(thresholds)))
+          'were: matrices: %d, thresholds: %d' %
+          (len(matrices), len(thresholds)))
 
     for threshold, matrix in zip(thresholds, matrices):
       if isinstance(threshold, types.ValueWithConfidenceInterval):
@@ -972,8 +972,8 @@ class _AucPlots(_ConfusionMatrixBasedMetric):
     if len(matrices) != len(thresholds):
       raise ValueError(
           'len(matrices) should be equal to len(thresholds), but lengths were '
-          'len(matrices)=%d and len(thresholds)=%d instead' % (len(matrices),
-                                                               len(thresholds)))
+          'len(matrices)=%d and len(thresholds)=%d instead' %
+          (len(matrices), len(thresholds)))
     for matrix_row, threshold in zip(matrices, list(thresholds)):
       matrix = output_plots.confusion_matrix_at_thresholds.matrices.add()
       if isinstance(threshold, types.ValueWithConfidenceInterval):
@@ -1115,11 +1115,10 @@ class _Auc(_PostExportMetric):
                                            self._metric_key(self._metric_name))
 
 
-@_export('precision_recall_at_k')
 class _PrecisionRecallAtK(_PostExportMetric):
-  """Metric that computes precision and recall at K for classification models.
+  """Metric that computes precision or recall at K for classification models.
 
-  Create a metric that computes precision and recall at K.
+  Create a metric that computes precision or recall at K.
 
   Predictions should be a dict containing the CLASSES key and PROBABILITIES
   keys. Predictions should have the same size for all examples. The model
@@ -1138,6 +1137,7 @@ class _PrecisionRecallAtK(_PostExportMetric):
   _metric_tag = None  # type: Text
 
   def __init__(self,
+               metric_name,
                cutoffs,
                example_weight_key = None,
                target_prediction_keys = None,
@@ -1145,9 +1145,10 @@ class _PrecisionRecallAtK(_PostExportMetric):
                metric_tag = None,
                classes_key = None,
                probabilities_key = None):
-    """Creates a metric that computes the precision and recall at `k`.
+    """Creates a metric that computes either precision or recall at `k`.
 
     Args:
+      metric_name: Metric (PRECISION_AT_KEY or RECALL_AT_K) to compute.
       cutoffs: List of `k` values at which to compute the precision and recall.
         Use a value of `k` = 0 to indicate that all predictions should be
         considered.
@@ -1163,6 +1164,7 @@ class _PrecisionRecallAtK(_PostExportMetric):
       probabilities_key: Optionally, the key from predictions that specifies
         probabilities.
     """
+    self._metric_name = metric_name
     self._cutoffs = cutoffs
     self._example_weight_key = example_weight_key
     self._classes_key = classes_key or prediction_keys.PredictionKeys.CLASSES
@@ -1183,8 +1185,8 @@ class _PrecisionRecallAtK(_PostExportMetric):
           'predictions_dict was: %s' % (self._classes_key, predictions_dict))
     if self._probabilities_key not in predictions_dict:
       raise KeyError('predictions_dict should contain '
-                     '%s. predictions_dict was: %s' % (self._probabilities_key,
-                                                       predictions_dict))
+                     '%s. predictions_dict was: %s' %
+                     (self._probabilities_key, predictions_dict))
     if self._labels_key:
       labels_dict = labels_dict[self._labels_key]
 
@@ -1217,44 +1219,144 @@ class _PrecisionRecallAtK(_PostExportMetric):
     classes = predictions_dict[self._classes_key]
     scores = predictions_dict[self._probabilities_key]
 
-    return {
-        self._metric_key(metric_keys.PRECISION_RECALL_AT_K):
-            metrics.precision_recall_at_k(classes, scores, labels,
+    if self._metric_name == metric_keys.PRECISION_AT_K:
+      metric_ops = metrics.precision_at_k(classes, scores, labels,
                                           self._cutoffs, squeezed_weights)
-    }
+    else:
+      metric_ops = metrics.recall_at_k(classes, scores, labels, self._cutoffs,
+                                       squeezed_weights)
+
+    return {self._metric_key(self._metric_name): metric_ops}
 
   def populate_stats_and_pop(
       self, combine_metrics,
       output_metrics):
-    table = combine_metrics.pop(
-        self._metric_key(metric_keys.PRECISION_RECALL_AT_K))
+    table = combine_metrics.pop(self._metric_key(self._metric_name))
     cutoff_column = table[:, 0]
-    precision_column = table[:, 1]
-    recall_column = table[:, 2]
-    for cutoff, precision, recall in zip(cutoff_column, precision_column,
-                                         recall_column):
+    value_column = table[:, 1]
+    for cutoff, value in zip(cutoff_column, value_column):
       if isinstance(cutoff, types.ValueWithConfidenceInterval):
         cutoff = cutoff.unsampled_value
       row = output_metrics[self._metric_key(
-          metric_keys.PRECISION_AT_K)].value_at_cutoffs.values.add()
+          self._metric_name)].value_at_cutoffs.values.add()
       row.cutoff = int(cutoff)
-      if isinstance(precision, types.ValueWithConfidenceInterval):
-        row.value = precision.value
-        row.bounded_value.value.value = precision.value
-        row.bounded_value.upper_bound.value = precision.upper_bound
-        row.bounded_value.lower_bound.value = precision.lower_bound
+      if isinstance(value, types.ValueWithConfidenceInterval):
+        row.value = value.value
+        row.bounded_value.value.value = value.value
+        row.bounded_value.upper_bound.value = value.upper_bound
+        row.bounded_value.lower_bound.value = value.lower_bound
       else:
-        row.value = precision
-        row.bounded_value.value.value = precision
+        row.value = value
+        row.bounded_value.value.value = value
 
-      row = output_metrics[self._metric_key(
-          metric_keys.RECALL_AT_K)].value_at_cutoffs.values.add()
-      row.cutoff = int(cutoff)
-      if isinstance(recall, types.ValueWithConfidenceInterval):
-        row.value = recall.value
-        row.bounded_value.value.value = recall.value
-        row.bounded_value.upper_bound.value = recall.upper_bound
-        row.bounded_value.lower_bound.value = recall.lower_bound
-      else:
-        row.value = recall
-        row.bounded_value.value.value = recall
+
+@_export('precision_at_k')
+class _PrecisionAtK(_PrecisionRecallAtK):
+  """Metric that computes precision at K for classification models.
+
+  Create a metric that computes precision at K.
+
+  Predictions should be a dict containing the CLASSES key and PROBABILITIES
+  keys. Predictions should have the same size for all examples. The model
+  should NOT, for instance, produce 2 classes on one example and 4 classes on
+  another example.
+
+  Labels should be a string Tensor, or a SparseTensor whose dense form is
+  a string Tensor whose entries are the corresponding labels. Note that the
+  values of the CLASSES in the predictions and that of labels will be compared
+  directly, so they should come from the "same vocabulary", so if predictions
+  are class IDs, then labels should be class IDs, and so on.
+  """
+
+  def __init__(self,
+               cutoffs,
+               example_weight_key = None,
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               classes_key = None,
+               probabilities_key = None):
+    """Creates a metric that computes the precision at `k`.
+
+    Args:
+      cutoffs: List of `k` values at which to compute the precision and recall.
+        Use a value of `k` = 0 to indicate that all predictions should be
+        considered.
+      example_weight_key: The optional key of the example weight column in the
+        features_dict. If not given, all examples will be assumed to have a
+        weight of 1.0.
+      target_prediction_keys: Optional acceptable keys in predictions_dict in
+        descending order of precedence.
+      labels_key: Optionally, the key from labels_dict to use.
+      metric_tag: If provided, a custom metric tag. Only necessary to
+        disambiguate instances of the same metric on different predictions.
+      classes_key: Optionally, the key from predictions that specifies classes.
+      probabilities_key: Optionally, the key from predictions that specifies
+        probabilities.
+    """
+    super(_PrecisionAtK,
+          self).__init__(metric_keys.PRECISION_AT_K, cutoffs,
+                         example_weight_key, target_prediction_keys, labels_key,
+                         metric_tag, classes_key, probabilities_key)
+
+  def populate_stats_and_pop(  # pylint: disable=useless-super-delegation
+      self, combine_metrics,
+      output_metrics):
+    return super(_PrecisionAtK, self).populate_stats_and_pop(
+        combine_metrics, output_metrics)
+
+
+@_export('recall_at_k')
+class _RecallAtK(_PrecisionRecallAtK):
+  """Metric that computes recall at K for classification models.
+
+  Create a metric that computes recall at K.
+
+  Predictions should be a dict containing the CLASSES key and PROBABILITIES
+  keys. Predictions should have the same size for all examples. The model
+  should NOT, for instance, produce 2 classes on one example and 4 classes on
+  another example.
+
+  Labels should be a string Tensor, or a SparseTensor whose dense form is
+  a string Tensor whose entries are the corresponding labels. Note that the
+  values of the CLASSES in the predictions and that of labels will be compared
+  directly, so they should come from the "same vocabulary", so if predictions
+  are class IDs, then labels should be class IDs, and so on.
+  """
+
+  def __init__(self,
+               cutoffs,
+               example_weight_key = None,
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               classes_key = None,
+               probabilities_key = None):
+    """Creates a metric that computes the recall at `k`.
+
+    Args:
+      cutoffs: List of `k` values at which to compute the precision and recall.
+        Use a value of `k` = 0 to indicate that all predictions should be
+        considered.
+      example_weight_key: The optional key of the example weight column in the
+        features_dict. If not given, all examples will be assumed to have a
+        weight of 1.0.
+      target_prediction_keys: Optional acceptable keys in predictions_dict in
+        descending order of precedence.
+      labels_key: Optionally, the key from labels_dict to use.
+      metric_tag: If provided, a custom metric tag. Only necessary to
+        disambiguate instances of the same metric on different predictions.
+      classes_key: Optionally, the key from predictions that specifies classes.
+      probabilities_key: Optionally, the key from predictions that specifies
+        probabilities.
+    """
+    super(_RecallAtK,
+          self).__init__(metric_keys.RECALL_AT_K, cutoffs, example_weight_key,
+                         target_prediction_keys, labels_key, metric_tag,
+                         classes_key, probabilities_key)
+
+  def populate_stats_and_pop(  # pylint: disable=useless-super-delegation
+      self, combine_metrics,
+      output_metrics):
+    return super(_RecallAtK, self).populate_stats_and_pop(
+        combine_metrics, output_metrics)

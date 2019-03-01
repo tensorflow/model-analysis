@@ -22,7 +22,8 @@
 *   <a href="./tfma/post_export_metrics/confusion_matrix_at_thresholds.md"><code>tfma.post_export_metrics.confusion_matrix_at_thresholds</code></a>
 *   <a href="./tfma/post_export_metrics/example_count.md"><code>tfma.post_export_metrics.example_count</code></a>
 *   <a href="./tfma/post_export_metrics/example_weight.md"><code>tfma.post_export_metrics.example_weight</code></a>
-*   <a href="./tfma/post_export_metrics/precision_recall_at_k.md"><code>tfma.post_export_metrics.precision_recall_at_k</code></a>
+*   <a href="./tfma/post_export_metrics/precision_at_k.md"><code>tfma.post_export_metrics.precision_at_k</code></a>
+*   <a href="./tfma/post_export_metrics/recall_at_k.md"><code>tfma.post_export_metrics.recall_at_k</code></a>
 *   <a href="./tfma/run_model_analysis.md"><code>tfma.run_model_analysis</code></a>
 *   <a href="./tfma/version.md"><code>tfma.version</code></a>
 *   <a href="./tfma/view.md"><code>tfma.view</code></a>

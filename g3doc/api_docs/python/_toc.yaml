@@ -56,8 +56,10 @@ toc:
       path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/example_count
     - title: example_weight
       path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/example_weight
-    - title: precision_recall_at_k
-      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/precision_recall_at_k
+    - title: precision_at_k
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/precision_at_k
+    - title: recall_at_k
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/recall_at_k
   - title: tfma.version
     section:
     - title: Overview

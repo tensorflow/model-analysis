@@ -13,6 +13,8 @@
     only output (this is consistent with how features and labels work).
 
 ## Breaking changes
+*   Post export metrics for precision_recall_at_k were split into separate
+    fuctions: precision_at_k and recall_at_k.
 
 ## Deprecations
 

@@ -24,5 +24,7 @@ parameter of Evaluate to compute them.
 
 [`example_weight(...)`](../tfma/post_export_metrics/example_weight.md): This is the function that the user calls.
 
-[`precision_recall_at_k(...)`](../tfma/post_export_metrics/precision_recall_at_k.md): This is the function that the user calls.
+[`precision_at_k(...)`](../tfma/post_export_metrics/precision_at_k.md): This is the function that the user calls.
+
+[`recall_at_k(...)`](../tfma/post_export_metrics/recall_at_k.md): This is the function that the user calls.
 

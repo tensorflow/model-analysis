@@ -81,9 +81,8 @@ _AUC_PLOTS_THRESHOLDS_SUFFIX = 'auc_plots/thresholds'
 AUC_PLOTS_THRESHOLDS = base_key(_AUC_PLOTS_THRESHOLDS_SUFFIX)
 AUC = base_key('auc')
 AUPRC = base_key('auprc')
-PRECISION_RECALL_AT_K = base_key('precision_recall_at_k')
-PRECISION_AT_K = base_key('precision_at_k')  # Output-only
-RECALL_AT_K = base_key('recall_at_k')  # Output-only
+PRECISION_AT_K = base_key('precision_at_k')
+RECALL_AT_K = base_key('recall_at_k')
 
 # Suffixes of keys where the corresponding values are results for plots
 _PLOT_SUFFIXES = [
