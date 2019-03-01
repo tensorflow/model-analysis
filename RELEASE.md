@@ -11,6 +11,7 @@
     FeaturesPredictionLabels)
 *   Predictions are now returned as tensors (vs dicts) when "predictions" is the
     only output (this is consistent with how features and labels work).
+*   Depends on `apache-beam[gcp]>=2.11,<3`.
 
 ## Breaking changes
 *   Post export metrics for precision_recall_at_k were split into separate
