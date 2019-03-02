@@ -1,6 +1,7 @@
-# Current version (not yet released; still in development)
+# Current version 0.13.0
 
 ## Major Features and Improvements
+*   Python 3.5 is supported.
 
 ## Bug fixes and other changes
 *   Added support for fetching additional tensors at prediction time besides
@@ -12,10 +13,13 @@
 *   Predictions are now returned as tensors (vs dicts) when "predictions" is the
     only output (this is consistent with how features and labels work).
 *   Depends on `apache-beam[gcp]>=2.11,<3`.
+*   Depends on `protobuf>=3.7,<4`.
+*   Depends on `scipy==1.1.0`.
 
 ## Breaking changes
 *   Post export metrics for precision_recall_at_k were split into separate
     fuctions: precision_at_k and recall_at_k.
+*   Requires pre-installed TensorFlow >=1.13,<2.
 
 ## Deprecations
 

@@ -252,19 +252,19 @@ setup_args = {
     'install_requires': [
         # Sort alphabetically
         'apache-beam[gcp]>=2.11,<3',
-        'ipywidgets>=7.0,<8',
-        'jupyter>=1.0,<2',
+        'ipywidgets>=7,<8',
+        'jupyter>=1,<2',
         'numpy>=1.14.5,<2',
-        'protobuf==3.7.0rc2',
-        'scipy==0.19.1',
+        'protobuf>=3.7,<4',
+        'scipy==1.1.0',
         # For apitools.
         # Note: try version 1.10 if error "metaclass conflict: the
         # metaclass of a derived class must be a (non-strict) subclass of the
         # metaclasses of all its bases" occurred in future.
         'six>=1.9,<2',
-        'tensorflow-transform>=0.12,<1',
+        'tensorflow-transform>=0.13,<1',
     ],
-    'python_requires': '>=2.7,<3',
+    'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*',
     'packages': find_packages(),
     'zip_safe': False,
     'cmdclass': {
@@ -286,7 +286,8 @@ setup_args = {
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 2 :: Only',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Mathematics',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
