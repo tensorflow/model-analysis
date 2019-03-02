@@ -64,8 +64,8 @@ combinations may also work.
 |------------------------------------------------------------------------------------|--------------|----------------|
 |[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md)|nightly (1.x) |2.11.0          |
 |[0.13.0](https://github.com/tensorflow/model-analysis/blob/v0.13.0/RELEASE.md)      |1.13          |2.11.0          |
-|0.12.1                                                                              |1.12          |2.10.0          |
-|0.12.0                                                                              |1.12          |2.10.0          |
+|[0.12.1](https://github.com/tensorflow/model-analysis/blob/v0.12.1/RELEASE.md)      |1.12          |2.10.0          |
+|[0.12.0](https://github.com/tensorflow/model-analysis/blob/v0.12.0/RELEASE.md)      |1.12          |2.10.0          |
 |[0.11.0](https://github.com/tensorflow/model-analysis/blob/v0.11.0/RELEASE.md)      |1.11          |2.8.0           |
 |[0.9.2](https://github.com/tensorflow/model-analysis/blob/v0.9.2/RELEASE.md)        |1.9           |2.6.0           |
 |[0.9.1](https://github.com/tensorflow/model-analysis/blob/v0.9.1/RELEASE.md)        |1.10          |2.6.0           |

@@ -1,4 +1,14 @@
-# Current version 0.13.0
+# Current version (not yet released; still in development)
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+## Breaking changes
+
+## Deprecations
+
+# Release 0.13.0
 
 ## Major Features and Improvements
 *   Python 3.5 is supported.
