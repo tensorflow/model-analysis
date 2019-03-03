@@ -1,8 +1,7 @@
 toc:
-- title: Get Started
+- title: "Install"
+  path: /tfx/model_analysis/install
+- title: "Get started"
   path: /tfx/model_analysis/get_started
-
-- heading: Examples
-- title: Chicago Taxi (end-to-end)
-  path: https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi
-  status: external
+- title: "Architecture"
+  path: /tfx/model_analysis/architecture
