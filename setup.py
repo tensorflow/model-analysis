@@ -264,7 +264,7 @@ setup_args = {
         'six>=1.9,<2',
         'tensorflow-transform>=0.13,<1',
     ],
-    'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*',
+    'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     'packages': find_packages(),
     'zip_safe': False,
     'cmdclass': {
@@ -299,7 +299,7 @@ setup_args = {
     'requires': [],
     'keywords': 'tensorflow model analysis tfx',
     'url': 'https://www.tensorflow.org/tfx/model_analysis',
-    'download_url': 'https://pypi.org/project/tensorflow-model-analysis',
+    'download_url': 'https://github.com/tensorflow/model-analysis/tags',
 }
 
 setup(**setup_args)
