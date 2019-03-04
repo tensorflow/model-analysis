@@ -3,5 +3,3 @@ toc:
   path: /tfx/model_analysis/install
 - title: "Get started"
   path: /tfx/model_analysis/get_started
-- title: "Architecture"
-  path: /tfx/model_analysis/architecture
