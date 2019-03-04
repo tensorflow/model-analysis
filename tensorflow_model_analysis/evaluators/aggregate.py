@@ -37,9 +37,6 @@ from tensorflow_model_analysis.types_compat import Any, Dict, Generator, Iterabl
 
 _SAMPLE_ID = '___SAMPLE_ID'
 
-_COMBINEFN_COMPACT_SUPPORTED = (
-    getattr(beam.CombineFn, 'compact', None) is not None)
-
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(
@@ -88,17 +85,13 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
         _FanoutBootstrapFn(num_bootstrap_samples))
     compute_with_sampling = True
 
-  fanout = 16
-  if _COMBINEFN_COMPACT_SUPPORTED:
-    fanout = None
-
   output_results = (
       slice_result
       | 'CombinePerSlice' >> beam.CombinePerKey(
           _AggregateCombineFn(
               eval_shared_model=eval_shared_model,
               desired_batch_size=desired_batch_size,
-              compute_with_sampling=False)).with_hot_key_fanout(fanout)
+              compute_with_sampling=False))
       | 'InterpretOutput' >> beam.ParDo(
           _ExtractOutputDoFn(eval_shared_model=eval_shared_model)))
   if compute_with_sampling:
@@ -109,7 +102,7 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
                 eval_shared_model=eval_shared_model,
                 desired_batch_size=desired_batch_size,
                 compute_with_sampling=True,
-                seed_for_testing=random_seed)).with_hot_key_fanout(fanout)
+                seed_for_testing=random_seed))
         | 'InterpretSampledOutput' >> beam.ParDo(
             _ExtractOutputDoFn(eval_shared_model=eval_shared_model))
         | beam.GroupByKey()
@@ -335,9 +328,7 @@ class _AggregateCombineFn(beam.CombineFn):
   # This needs to be large enough to allow for efficient TF invocations during
   # batch flushing, but shouldn't be too large as it also acts as cap on the
   # maximum memory usage of the computation.
-  _DEFAULT_DESIRED_BATCH_SIZE = 100
-  if _COMBINEFN_COMPACT_SUPPORTED:
-    _DEFAULT_DESIRED_BATCH_SIZE = 1000
+  _DEFAULT_DESIRED_BATCH_SIZE = 1000
 
   def __init__(self,
                eval_shared_model,
