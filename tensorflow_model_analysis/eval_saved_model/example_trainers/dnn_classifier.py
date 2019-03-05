@@ -53,9 +53,7 @@ def build_parsing_eval_input_receiver_fn(feature_spec, label_key):
   return eval_input_receiver_fn
 
 
-def simple_dnn_classifier(export_path, eval_export_path, n_classes=2):
-  """Trains and exports a simple DNN classifier."""
-
+def get_simple_dnn_classifier_and_metadata(n_classes=2):
   feature_spec = tf.feature_column.make_parse_example_spec(
       feature_columns=util.dnn_columns(True, n_classes=n_classes))
   classifier = tf.estimator.DNNClassifier(
@@ -64,19 +62,34 @@ def simple_dnn_classifier(export_path, eval_export_path, n_classes=2):
       n_classes=n_classes)
   classifier = tf.contrib.estimator.add_metrics(classifier,
                                                 util.classifier_extra_metrics)
-  classifier.train(
-      input_fn=util.make_classifier_input_fn(feature_spec, n_classes),
-      steps=1000)
-
-  return util.export_model_and_eval_model(
-      estimator=classifier,
-      serving_input_receiver_fn=(
+  return {
+      'estimator':
+          classifier,
+      'serving_input_receiver_fn': (
           tf.estimator.export.build_parsing_serving_input_receiver_fn(
               tf.feature_column.make_parse_example_spec(
                   util.dnn_columns(False)))),
-      eval_input_receiver_fn=build_parsing_eval_input_receiver_fn(
-          tf.feature_column.make_parse_example_spec(
-              util.dnn_columns(True, n_classes=n_classes)),
-          label_key='label'),
+      'eval_input_receiver_fn':
+          build_parsing_eval_input_receiver_fn(
+              tf.feature_column.make_parse_example_spec(
+                  util.dnn_columns(True, n_classes=n_classes)),
+              label_key='label'),
+      'train_input_fn':
+          util.make_classifier_input_fn(feature_spec, n_classes),
+  }
+
+
+def simple_dnn_classifier(export_path, eval_export_path, n_classes=2):
+  """Trains and exports a simple DNN classifier."""
+
+  estimator_metadata = get_simple_dnn_classifier_and_metadata(
+      n_classes=n_classes)
+  estimator_metadata['estimator'].train(
+      input_fn=estimator_metadata['train_input_fn'], steps=1000)
+
+  return util.export_model_and_eval_model(
+      estimator=estimator_metadata['estimator'],
+      serving_input_receiver_fn=estimator_metadata['serving_input_receiver_fn'],
+      eval_input_receiver_fn=estimator_metadata['eval_input_receiver_fn'],
       export_path=export_path,
       eval_export_path=eval_export_path)
