@@ -71,7 +71,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.slicer import slicer
-from tensorflow_model_analysis.types_compat import Any, List, Dict, Text, Union, Optional
+from tensorflow_model_analysis.types_compat import Any, List, Dict, Text, Optional
 
 
 @beam.ptransform_fn
@@ -117,9 +117,21 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     """
     return self._makeExample(**kwargs).SerializeToString()
 
-  def assertDictElementsWithinBounds(
-      self, got_values_dict,
-      expected_values_dict):
+  def assertDictElementsWithinBounds(self, got_values_dict,
+                                     expected_values_dict):
+    """Checks the elements for two dictionaries.
+
+    It asserts all values in `expected_values_dict` are close to values with the
+    same key in `got_values_dict`.
+
+    Args:
+      got_values_dict: The actual dictionary.
+      expected_values_dict: The expected dictionary. The values in can be either
+        `BoundedValue` or any type accepted by
+        `tf.test.TestCase.assertAllClose()`. When the type is `BoundedValue`, it
+        expects the corresponding value from `got_values_dict` falls into the
+        boundaries provided in the `BoundedValue`.
+    """
     for key, value in expected_values_dict.items():
       self.assertIn(key, got_values_dict)
       got_value = got_values_dict[key]
@@ -129,7 +141,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
                     '(both ends inclusive), but value was %f instead' %
                     (key, value.lower_bound, value.upper_bound, got_value))
       else:
-        self.assertAlmostEqual(got_value, value, msg='key = %s' % key)
+        self.assertAllClose(got_value, value, msg='key = %s' % key)
 
   def assertMetricsComputedWithoutBeamAre(self, eval_saved_model_path,
                                           serialized_examples,

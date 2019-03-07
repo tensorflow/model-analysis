@@ -123,7 +123,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
         len(got), len(expected), msg=msg_prefix + 'lengths do not match')
     for index, (a, b) in enumerate(zip(got, expected)):
       msg = msg_prefix + 'at index %d. sequences were: %s and %s' % (index, got,
-                                                                     expected),
+                                                                     expected)
       if math.isnan(a) or math.isnan(b):
         self.assertEqual(math.isnan(a), math.isnan(b), msg=msg)
       else:
