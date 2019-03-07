@@ -16,6 +16,6 @@
 import '@polymer/polymer/lib/elements/dom-if.js';
 import '@polymer/polymer/lib/elements/dom-repeat.js';
 
-import '../../tfma-nb-plot/v2/tfma-nb-plot.js';
-import '../../tfma-nb-slicing-metrics/v2/tfma-nb-slicing-metrics.js';
-import '../../tfma-nb-time-series/v2/tfma-nb-time-series.js';
+import '../tfma-nb-plot/tfma-nb-plot.js';
+import '../tfma-nb-slicing-metrics/tfma-nb-slicing-metrics.js';
+import '../tfma-nb-time-series/tfma-nb-time-series.js';

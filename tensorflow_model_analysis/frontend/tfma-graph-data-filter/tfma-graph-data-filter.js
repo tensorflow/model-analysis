@@ -25,8 +25,8 @@ import '@polymer/paper-input/paper-input.js';
 import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
 import '@polymer/paper-slider/paper-slider.js';
-import '../../tfma-metrics-histogram/v2/tfma-metrics-histogram.js';
-import '../../tfma-slice-overview/v2/tfma-slice-overview.js';
+import '../tfma-metrics-histogram/tfma-metrics-histogram.js';
+import '../tfma-slice-overview/tfma-slice-overview.js';
 
 /** @enum {string} */
 const ElementId = {

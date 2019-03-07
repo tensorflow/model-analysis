@@ -30,7 +30,7 @@ import '@polymer/paper-listbox/paper-listbox.js';
 import '@polymer/paper-slider/paper-slider.js';
 import '@polymer/paper-toggle-button/paper-toggle-button.js';
 import {mixinBehaviors} from '@polymer/polymer/lib/legacy/class.js';
-import '../../../../../javascript/google_chart/google-chart-loader.js';
+import '../../../../javascript/google_chart/google-chart-loader.js';
 
 /**
  * The types of metrics histograms supported.

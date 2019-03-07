@@ -22,7 +22,7 @@ import '@polymer/paper-dropdown-menu/paper-dropdown-menu.js';
 import '@polymer/paper-icon-button/paper-icon-button.js';
 import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
-import '../../tfma-line-chart/v2/tfma-line-chart.js';
+import '../tfma-line-chart/tfma-line-chart.js';
 
 /**
  * tfma-line-chart-grid renders the time series plot for a number of metrics in

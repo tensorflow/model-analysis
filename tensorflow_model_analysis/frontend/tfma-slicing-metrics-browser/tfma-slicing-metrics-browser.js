@@ -16,8 +16,8 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-slicing-metrics-browser-template.html.js';
 
-import '../../tfma-graph-data-filter/v2/tfma-graph-data-filter.js';
-import '../../tfma-metrics-table/v2/tfma-metrics-table.js';
+import '../tfma-graph-data-filter/tfma-graph-data-filter.js';
+import '../tfma-metrics-table/tfma-metrics-table.js';
 
 /** @enum {string} */
 const ElementId = {

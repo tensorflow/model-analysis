@@ -16,7 +16,7 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-nb-time-series-template.html.js';
 
-import '../../tfma-time-series-browser/v2/tfma-time-series-browser.js';
+import '../tfma-time-series-browser/tfma-time-series-browser.js';
 
 /**
  *

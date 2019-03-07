@@ -17,12 +17,12 @@ import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 
 import {template} from './tfma-metrics-table-template.html.js';
 
-import '../../tfma-array-value/v2/tfma-array-value.js';
-import '../../tfma-bounded-value/v2/tfma-bounded-value.js';
-import '../../tfma-confusion-matrix-at-thresholds/v2/tfma-confusion-matrix-at-thresholds.js';
-import '../../tfma-int64/v2/tfma-int64.js';
-import '../../tfma-multi-class-confusion-matrix/v2/tfma-multi-class-confusion-matrix.js';
-import '../../tfma-value-at-cutoffs/v2/tfma-value-at-cutoffs.js';
+import '../tfma-array-value/tfma-array-value.js';
+import '../tfma-bounded-value/tfma-bounded-value.js';
+import '../tfma-confusion-matrix-at-thresholds/tfma-confusion-matrix-at-thresholds.js';
+import '../tfma-int64/tfma-int64.js';
+import '../tfma-multi-class-confusion-matrix/tfma-multi-class-confusion-matrix.js';
+import '../tfma-value-at-cutoffs/tfma-value-at-cutoffs.js';
 
 /**
  * tfma-metrics-table renders a table containig computed metrics.

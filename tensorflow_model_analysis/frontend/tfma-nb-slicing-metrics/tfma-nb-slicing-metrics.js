@@ -16,7 +16,7 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-nb-slicing-metrics-template.html.js';
 
-import '../../tfma-slicing-metrics-browser/v2/tfma-slicing-metrics-browser.js';
+import '../tfma-slicing-metrics-browser/tfma-slicing-metrics-browser.js';
 
 /**
  * tfma-nb-slicing-metrics provides a wrapper for tfma-slicing-metrics-browser

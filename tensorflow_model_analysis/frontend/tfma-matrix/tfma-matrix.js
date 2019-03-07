@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {GestureEventListeners} from '@polymer/polymer/lib/mixins/gesture-event-listeners.js';
+import {PolymerElement} from '@polymer/polymer/polymer-element.js';
+
 import {template} from './tfma-matrix-template.html.js';
 
 /**

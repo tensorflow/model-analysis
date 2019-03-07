@@ -16,7 +16,7 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-nb-plot-template.html.js';
 
-import '../../tfma-plot/v2/tfma-plot.js';
+import '../tfma-plot/tfma-plot.js';
 
 /**
  * tfma-nb-plot is a wrapper for tfma-plot component in the notebook setting.

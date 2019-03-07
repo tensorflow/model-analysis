@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
-import '../../tfma-matrix/v2/tfma-matrix.js';
+import '../tfma-matrix/tfma-matrix.js';
 import {template} from './tfma-multi-class-confusion-matrix-template.html.js';
 
 /**

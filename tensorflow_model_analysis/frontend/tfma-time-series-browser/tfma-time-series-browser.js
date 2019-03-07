@@ -16,8 +16,8 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-time-series-browser-template.html.js';
 
-import '../../tfma-line-chart-grid/v2/tfma-line-chart-grid.js';
-import '../../tfma-metrics-table/v2/tfma-metrics-table.js';
+import '../tfma-line-chart-grid/tfma-line-chart-grid.js';
+import '../tfma-metrics-table/tfma-metrics-table.js';
 
 /**
  * tfma-line-chart-grid renders the time series plot for a number of metrics in
