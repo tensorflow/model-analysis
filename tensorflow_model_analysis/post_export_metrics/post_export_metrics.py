@@ -360,8 +360,9 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     """
     pass
 
-  def populate_plots_and_pop(self, plots,
-                             output_plots):
+  def populate_plots_and_pop(
+      self, plots,
+      output_plots):
     """Converts the metric in `plots` to `output_plots` and pops.
 
     Please override the method if the metric is plot type. The plot should also
@@ -369,7 +370,7 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
 
     Args:
       plots: The dict containing raw TFMA plots.
-      output_plots: The PlotData where we convert the plots to.
+      output_plots: Dict from key to PlotData where we convert the plots to.
     """
     pass
 
@@ -598,8 +599,9 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
             tf.no_op()),
     }
 
-  def populate_plots_and_pop(self, plots,
-                             output_plots):
+  def populate_plots_and_pop(
+      self, plots,
+      output_plots):
     matrices = plots.pop(
         self._metric_key(metric_keys.CALIBRATION_PLOT_MATRICES))
     boundaries = plots.pop(
@@ -624,7 +626,9 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
         total_pred = total_pred.unsampled_value
       if isinstance(total_label, types.ValueWithConfidenceInterval):
         total_label = total_label.unsampled_value
-      output_plots.calibration_histogram_buckets.buckets.add(
+      output_plots[self._metric_key(
+          metric_keys.DEFAULT_PREFIX
+      )].calibration_histogram_buckets.buckets.add(
           lower_threshold_inclusive=lower_threshold,
           upper_threshold_exclusive=upper_threshold,
           total_weighted_refined_prediction={
@@ -965,8 +969,9 @@ class _AucPlots(_ConfusionMatrixBasedMetric):
             self._thresholds), tf.no_op()),
     }
 
-  def populate_plots_and_pop(self, plots,
-                             output_plots):
+  def populate_plots_and_pop(
+      self, plots,
+      output_plots):
     matrices = plots.pop(self._metric_key(metric_keys.AUC_PLOTS_MATRICES))
     thresholds = plots.pop(self._metric_key(metric_keys.AUC_PLOTS_THRESHOLDS))
     if len(matrices) != len(thresholds):
@@ -975,7 +980,9 @@ class _AucPlots(_ConfusionMatrixBasedMetric):
           'len(matrices)=%d and len(thresholds)=%d instead' %
           (len(matrices), len(thresholds)))
     for matrix_row, threshold in zip(matrices, list(thresholds)):
-      matrix = output_plots.confusion_matrix_at_thresholds.matrices.add()
+      matrix = output_plots[self._metric_key(
+          metric_keys.DEFAULT_PREFIX
+      )].confusion_matrix_at_thresholds.matrices.add()
       if isinstance(threshold, types.ValueWithConfidenceInterval):
         threshold = threshold.unsampled_value
       matrix.threshold = threshold

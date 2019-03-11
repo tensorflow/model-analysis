@@ -261,7 +261,50 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     slice_key, plots = eval_result.plots[0]
     self.assertEqual((), slice_key)
     self.assertDictElementsAlmostEqual(
-        plots['confusionMatrixAtThresholds']['matrices'][8001], expected_matrix)
+        plots['post_export_metrics']['confusionMatrixAtThresholds']['matrices']
+        [8001], expected_matrix)
+
+  def testRunModelAnalysisWithMultiplePlots(self):
+    model_location = self._exportEvalSavedModel(
+        fixed_prediction_estimator.simple_fixed_prediction_estimator)
+    examples = [
+        self._makeExample(prediction=0.0, label=1.0),
+        self._makeExample(prediction=0.7, label=0.0),
+        self._makeExample(prediction=0.8, label=1.0),
+        self._makeExample(prediction=1.0, label=1.0),
+        self._makeExample(prediction=1.0, label=1.0)
+    ]
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location,
+        add_metrics_callbacks=[
+            post_export_metrics.auc_plots(),
+            post_export_metrics.auc_plots(metric_tag='test')
+        ])
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    eval_result = model_eval_lib.run_model_analysis(eval_shared_model,
+                                                    data_location)
+    # We only check some of the metrics to ensure that the end-to-end
+    # pipeline works.
+    expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
+    expected_matrix = {
+        'threshold': 0.8,
+        'falseNegatives': 2.0,
+        'trueNegatives': 1.0,
+        'truePositives': 2.0,
+        'precision': 1.0,
+        'recall': 0.5
+    }
+    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected_metrics)
+    self.assertEqual(len(eval_result.plots), 1)
+    slice_key, plots = eval_result.plots[0]
+    self.assertEqual((), slice_key)
+    tf.logging.info(plots.keys())
+    self.assertDictElementsAlmostEqual(
+        plots['post_export_metrics']['confusionMatrixAtThresholds']['matrices']
+        [8001], expected_matrix)
+    self.assertDictElementsAlmostEqual(
+        plots['post_export_metrics/test']['confusionMatrixAtThresholds']
+        ['matrices'][8001], expected_matrix)
 
   def testRunModelAnalysisForCSVText(self):
     model_location = self._exportEvalSavedModel(

@@ -117,35 +117,38 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           bytes_value: 'apple'
         }
       }
-      plot_data {
-        calibration_histogram_buckets {
-          buckets {
-            lower_threshold_inclusive: -inf
-            upper_threshold_exclusive: 0.0
-            num_weighted_examples { value: 0.0 }
-            total_weighted_label { value: 0.0 }
-            total_weighted_refined_prediction { value: 0.0 }
-          }
-          buckets {
-            lower_threshold_inclusive: 0.0
-            upper_threshold_exclusive: 0.5
-            num_weighted_examples { value: 1.0 }
-            total_weighted_label { value: 1.0 }
-            total_weighted_refined_prediction { value: 0.3 }
-          }
-          buckets {
-            lower_threshold_inclusive: 0.5
-            upper_threshold_exclusive: 1.0
-            num_weighted_examples { value: 1.0 }
-            total_weighted_label { value: 0.0 }
-            total_weighted_refined_prediction { value: 0.7 }
-          }
-          buckets {
-            lower_threshold_inclusive: 1.0
-            upper_threshold_exclusive: inf
-            num_weighted_examples { value: 0.0 }
-            total_weighted_label { value: 0.0 }
-            total_weighted_refined_prediction { value: 0.0 }
+      plots {
+        key: "post_export_metrics"
+        value {
+          calibration_histogram_buckets {
+            buckets {
+              lower_threshold_inclusive: -inf
+              upper_threshold_exclusive: 0.0
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.0
+              upper_threshold_exclusive: 0.5
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 1.0 }
+              total_weighted_refined_prediction { value: 0.3 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.5
+              upper_threshold_exclusive: 1.0
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.7 }
+            }
+            buckets {
+              lower_threshold_inclusive: 1.0
+              upper_threshold_exclusive: inf
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
           }
         }
       }

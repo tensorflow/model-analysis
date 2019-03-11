@@ -97,7 +97,6 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual((), slice_key)
         self.assertDictElementsAlmostEqual(value, expected_values_dict)
       except AssertionError as err:
-        tf.logging.error(got)
         raise util.BeamAssertException(err)
 
     self._runTestWithCustomCheck(
@@ -814,7 +813,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertAlmostEqual(0.100, boundaries[1000])
         self.assertAlmostEqual(0.800, boundaries[8000])
         self.assertAlmostEqual(1.000, boundaries[10000])
-        plot_data = metrics_for_slice_pb2.PlotData()
+        plot_data = metrics_for_slice_pb2.PlotsForSlice().plots
         calibration_plot.populate_plots_and_pop(value, plot_data)
         self.assertProtoEquals(
             """lower_threshold_inclusive:1.0
@@ -827,7 +826,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             }
             total_weighted_refined_prediction {
               value: 28.0
-            }""", plot_data.calibration_histogram_buckets.buckets[10001])
+            }""", plot_data['post_export_metrics'].calibration_histogram_buckets
+            .buckets[10001])
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -897,7 +897,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertAlmostEqual(0.100, boundaries[1000].value)
         self.assertAlmostEqual(0.800, boundaries[8000].value)
         self.assertAlmostEqual(1.000, boundaries[10000].value)
-        plot_data = metrics_for_slice_pb2.PlotData()
+        plot_data = metrics_for_slice_pb2.PlotsForSlice().plots
         calibration_plot.populate_plots_and_pop(value, plot_data)
         self.assertProtoEquals(
             """lower_threshold_inclusive:1.0
@@ -910,7 +910,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             }
             total_weighted_refined_prediction {
               value: 28.0
-            }""", plot_data.calibration_histogram_buckets.buckets[10001])
+            }""", plot_data['post_export_metrics'].calibration_histogram_buckets
+            .buckets[10001])
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -1041,7 +1042,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertAlmostEqual(0.100, thresholds[1001])
         self.assertAlmostEqual(0.800, thresholds[8001])
         self.assertAlmostEqual(1.000, thresholds[10001])
-        plot_data = metrics_for_slice_pb2.PlotData()
+        plot_data = metrics_for_slice_pb2.PlotsForSlice().plots
         auc_plots.populate_plots_and_pop(value, plot_data)
         self.assertProtoEquals(
             """threshold: 1.0
@@ -1077,7 +1078,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             bounded_recall {
               value {
               }
-            }""", plot_data.confusion_matrix_at_thresholds.matrices[10001])
+            }""", plot_data['post_export_metrics']
+            .confusion_matrix_at_thresholds.matrices[10001])
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -1136,7 +1138,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertAlmostEqual(0.100, thresholds[1001].value)
         self.assertAlmostEqual(0.800, thresholds[8001].value)
         self.assertAlmostEqual(1.000, thresholds[10001].value)
-        plot_data = metrics_for_slice_pb2.PlotData()
+        plot_data = metrics_for_slice_pb2.PlotsForSlice().plots
         auc_plots.populate_plots_and_pop(value, plot_data)
         self.assertProtoEquals(
             """threshold: 1.0
@@ -1208,7 +1210,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
               value {
               }
               methodology: POISSON_BOOTSTRAP
-            }""", plot_data.confusion_matrix_at_thresholds.matrices[10001])
+            }""", plot_data['post_export_metrics']
+            .confusion_matrix_at_thresholds.matrices[10001])
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -1710,11 +1713,11 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         }
       }
     """
-    plot_data = metrics_for_slice_pb2.PlotData()
+    plot_data = metrics_for_slice_pb2.PlotsForSlice().plots
     calibration_plot = (
         post_export_metrics.calibration_plot_and_prediction_histogram())
     calibration_plot.populate_plots_and_pop(tfma_plots, plot_data)
-    self.assertProtoEquals(expected_plot_data, plot_data)
+    self.assertProtoEquals(expected_plot_data, plot_data['post_export_metrics'])
     self.assertNotIn(metric_keys.CALIBRATION_PLOT_MATRICES, tfma_plots)
     self.assertNotIn(metric_keys.CALIBRATION_PLOT_BOUNDARIES, tfma_plots)
 
@@ -2088,10 +2091,10 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
        }
      }
     """
-    plot_data = metrics_for_slice_pb2.PlotData()
+    plot_data = metrics_for_slice_pb2.PlotsForSlice().plots
     auc_plots = post_export_metrics.auc_plots()
     auc_plots.populate_plots_and_pop(tfma_plots, plot_data)
-    self.assertProtoEquals(expected_plot_data, plot_data)
+    self.assertProtoEquals(expected_plot_data, plot_data['post_export_metrics'])
     self.assertNotIn(metric_keys.AUC_PLOTS_MATRICES, tfma_plots)
     self.assertNotIn(metric_keys.AUC_PLOTS_THRESHOLDS, tfma_plots)
 

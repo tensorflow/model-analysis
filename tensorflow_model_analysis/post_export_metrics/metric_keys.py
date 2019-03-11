@@ -35,7 +35,8 @@ def tagged_key(key, tag):
 
   The tag is inserted after the base key's initial prefix.
 
-  Example: add_tag('a/c', 'b') -> 'a/b/c'
+  Example: tagged_key('a/c', 'b') -> 'a/b/c'
+  Example: tagged_key('a', 'b') -> 'a/b'  # Use case for plots keys.
 
   Args:
     key: Base key.
@@ -44,7 +45,7 @@ def tagged_key(key, tag):
   parts = key.split('/')
   if len(parts) > 1:
     return '%s/%s/%s' % (parts[0], tag, '/'.join(parts[1:]))
-  return '%s/%s' % (tag, key)
+  return '%s/%s' % (key, tag)
 
 
 def upper_bound_key(key):

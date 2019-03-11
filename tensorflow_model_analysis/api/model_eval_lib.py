@@ -189,9 +189,9 @@ def load_eval_result(output_path):
   plots_proto_list = metrics_and_plots_evaluator.load_and_deserialize_plots(
       path=os.path.join(output_path, _PLOTS_OUTPUT_FILE))
 
-  slicing_metrics = [(key, _convert_metric_map_to_dict(metrics_data))
+  slicing_metrics = [(key, _convert_proto_map_to_dict(metrics_data))
                      for key, metrics_data in metrics_proto_list]
-  plots = [(key, json_format.MessageToDict(plot_data))
+  plots = [(key, _convert_proto_map_to_dict(plot_data))
            for key, plot_data in plots_proto_list]
 
   eval_config = load_eval_config(output_path)
@@ -319,17 +319,17 @@ def default_writers(output_path):  # pylint: disable=invalid-name
 # some protocol buffer field. Note that MessageMap is not a protobuf message,
 # none of the exising utility methods work on it. We must iterate over its
 # values and call the utility function individually.
-def _convert_metric_map_to_dict(metric_map):
+def _convert_proto_map_to_dict(proto_map):
   """Converts a metric map (metrics in MetricsForSlice protobuf) into a dict.
 
   Args:
-    metric_map: A protocol buffer MessageMap that has behaviors like dict. The
+    proto_map: A protocol buffer MessageMap that has behaviors like dict. The
       keys are strings while the values are protocol buffers. However, it is not
       a protobuf message and cannot be passed into json_format.MessageToDict
       directly. Instead, we must iterate over its values.
 
   Returns:
-    A dict representing the metric_map. For example:
+    A dict representing the proto_map. For example:
     Assume myProto contains
     {
       metrics: {
@@ -364,7 +364,7 @@ def _convert_metric_map_to_dict(metric_map):
       }
     }
 
-    The output of _convert_metric_map_to_dict(myProto.metrics) would be
+    The output of _convert_proto_map_to_dict(myProto.metrics) would be
 
     {
       'double': {
@@ -382,7 +382,7 @@ def _convert_metric_map_to_dict(metric_map):
     Note that field names are converted to lowerCamelCase and the field value in
     google.protobuf.DoubleValue is collapsed automatically.
   """
-  return {k: json_format.MessageToDict(metric_map[k]) for k in metric_map}
+  return {k: json_format.MessageToDict(proto_map[k]) for k in proto_map}
 
 
 @beam.ptransform_fn

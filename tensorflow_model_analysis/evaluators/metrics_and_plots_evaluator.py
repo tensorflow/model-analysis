@@ -94,9 +94,14 @@ def load_and_deserialize_plots(
   result = []
   for record in tf.python_io.tf_record_iterator(path):
     plots_for_slice = metrics_for_slice_pb2.PlotsForSlice.FromString(record)
-    result.append((
-        slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
-        plots_for_slice.plot_data))
+    if plots_for_slice.HasField('plot_data'):
+      result.append((
+          slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
+          plots_for_slice.plot_data))
+    if plots_for_slice.plots:
+      result.append((
+          slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
+          plots_for_slice.plots))
   return result
 
 
@@ -210,7 +215,6 @@ def _convert_slice_plots(
   for post_export_metric in post_export_metrics:
     if hasattr(post_export_metric, 'populate_plots_and_pop'):
       post_export_metric.populate_plots_and_pop(slice_plots_copy, plot_data)
-
   if slice_plots_copy:
     raise NotImplementedError(
         'some plots were not converted or popped. keys: %s. post_export_metrics'
@@ -241,7 +245,7 @@ def _serialize_plots(
   result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   # Convert the slice plots.
-  _convert_slice_plots(slice_plots, post_export_metrics, result.plot_data)  # pytype: disable=wrong-arg-types
+  _convert_slice_plots(slice_plots, post_export_metrics, result.plots)  # pytype: disable=wrong-arg-types
 
   return result.SerializeToString()
 

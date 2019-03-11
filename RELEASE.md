@@ -14,17 +14,19 @@
 *   Python 3.5 is supported.
 
 ## Bug fixes and other changes
+
 *   Added support for fetching additional tensors at prediction time besides
     features, predictions, and labels (predict now returns FetchedTensorValues
     type).
-*   Removed internal usages of encoding.NODE_SUFFIX indirection within dicts
-    in the eval_saved_model module (encoding.NODE_SUFFIX is still used in
+*   Removed internal usages of encoding.NODE_SUFFIX indirection within dicts in
+    the eval_saved_model module (encoding.NODE_SUFFIX is still used in
     FeaturesPredictionLabels)
 *   Predictions are now returned as tensors (vs dicts) when "predictions" is the
     only output (this is consistent with how features and labels work).
 *   Depends on `apache-beam[gcp]>=2.11,<3`.
 *   Depends on `protobuf>=3.7,<4`.
 *   Depends on `scipy==1.1.0`.
+*   Add support for multiple plots in a single evaluation.
 
 ## Breaking changes
 *   Post export metrics for precision_recall_at_k were split into separate
