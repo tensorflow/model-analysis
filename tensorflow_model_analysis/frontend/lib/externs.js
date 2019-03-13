@@ -267,6 +267,7 @@ tfma.MetricValueFormat = {
   INT64: '',
   FLOAT: '',
   ROW_ID: '',
+  VALUE_AT_CUTOFFS: '',
 };
 
 /**

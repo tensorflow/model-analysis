@@ -52,13 +52,14 @@ const FLOATING_POINT_PRECISION = 5;
 
 /** @enum {string} */
 const MetricValueFormat = {
-  STRING: 'string',
   FLOAT: 'float',
-  INT: 'int',
   HTML: 'html',
-  ROW_ID: 'rowId',
+  INT: 'int',
   INT64: 'int64',
   MULTI_VALUES_METRIC_AT_K: 'multiValueMetricAtK',
+  ROW_ID: 'rowId',
+  STRING: 'string',
+  VALUE_AT_CUTOFFS: 'valueAtCutoffs',
 };
 
 /** @enum {string}*/
@@ -160,6 +161,9 @@ goog.exportSymbol('tfma.MetricValueFormat.INT', MetricValueFormat.INT);
 goog.exportSymbol('tfma.MetricValueFormat.INT64', MetricValueFormat.INT64);
 goog.exportSymbol('tfma.MetricValueFormat.FLOAT', MetricValueFormat.FLOAT);
 goog.exportSymbol('tfma.MetricValueFormat.ROW_ID', MetricValueFormat.ROW_ID);
+goog.exportSymbol(
+    'tfma.MetricValueFormat.VALUE_AT_CUTOFFS',
+    MetricValueFormat.VALUE_AT_CUTOFFS);
 
 goog.exportSymbol(
     'tfma.PlotDataFieldNames.CALIBRATION_BUCKETS',
