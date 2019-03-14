@@ -30,6 +30,12 @@ suite('tests', () => {
     element = fixture('attributes-inlined-fixture');
     checkText(element, '1.50000 (1.00000, 2.00000)');
   });
+
+  test('valuesNaN', () => {
+    element = fixture('plain-fixture');
+    element.data = '{"lowerBound": "NaN", "upperBound": "NaN", "value": "NaN"}';
+    checkText(element, 'NaN (NaN, NaN)');
+  });
 });
 
 /**

@@ -373,9 +373,9 @@ function renderString(value) {
 function renderBoundedValue(value) {
   const estimatedValue = value[BoundedValueFieldNames.VALUE];
   return {
-    'f': '<tfma-bounded-value value=' + trimFloat(estimatedValue) +
-        ' lower-bound=' + trimFloat(value[BoundedValueFieldNames.LOWER_BOUND]) +
-        ' upper-bound=' + trimFloat(value[BoundedValueFieldNames.UPPER_BOUND]) +
+    'f': '<tfma-bounded-value value=' + estimatedValue +
+        ' lower-bound=' + value[BoundedValueFieldNames.LOWER_BOUND] +
+        ' upper-bound=' + value[BoundedValueFieldNames.UPPER_BOUND] +
         '></tfma-bounded-value>',
     'v': estimatedValue,
   };

@@ -84,12 +84,13 @@ export class BoundedValue extends PolymerElement {
   }
 
   /**
-   * @param {number} value
+   * @param {string|number} value
    * @return {string} The given value formatted as a string.
    * @private
    */
   formatValue_(value) {
-    return value.toFixed(tfma.FLOATING_POINT_PRECISION);
+    return value == 'NaN' ? 'NaN' :
+                            value.toFixed(tfma.FLOATING_POINT_PRECISION);
   }
 }
 

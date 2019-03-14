@@ -66,8 +66,17 @@ testSuite({
     const cell = CellRenderer.renderValue(boundedValue);
     assertEquals(value, cell.v);
     assertEquals(
-        '<tfma-bounded-value value=1.00000 lower-bound=2.00000 ' +
-            'upper-bound=3.00000>' +
+        '<tfma-bounded-value value=1 lower-bound=2 upper-bound=3>' +
+            '</tfma-bounded-value>',
+        cell.f);
+  },
+
+  testRenderValueWithBoundedValueWithNaN: function() {
+    const boundedValue = makeBoundedValueObject('NaN', 'NaN', 'NaN');
+    const cell = CellRenderer.renderValue(boundedValue);
+    assertEquals('NaN', cell.v);
+    assertEquals(
+        '<tfma-bounded-value value=NaN lower-bound=NaN upper-bound=NaN>' +
             '</tfma-bounded-value>',
         cell.f);
   },
@@ -84,8 +93,7 @@ testSuite({
     const cell = CellRenderer.renderValue(ratioValue);
     assertEquals(value, cell.v);
     assertEquals(
-        '<tfma-bounded-value value=1.00000 lower-bound=0.50000 ' +
-            'upper-bound=1.50000>' +
+        '<tfma-bounded-value value=1 lower-bound=0.5 upper-bound=1.5>' +
             '</tfma-bounded-value>',
         cell.f);
   },
@@ -459,9 +467,9 @@ testSuite({
 
 /**
  * Creates a bound value object with the given inputs.
- * @param {number} value
- * @param {number=} opt_lowerBound
- * @param {number=} opt_upperBound
+ * @param {string|number} value
+ * @param {string|number=} opt_lowerBound
+ * @param {string|number=} opt_upperBound
  * @return {!Object}
  */
 function makeBoundedValueObject(value, opt_lowerBound, opt_upperBound) {
