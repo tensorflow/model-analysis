@@ -18,12 +18,12 @@
  */
 
 /**
- * @type {!Object}
+ * @const
  */
 var tfma = {};
 
 /**
- * @type {!Object}
+ * @const
  */
 tfma.BucketsWrapper = {};
 
@@ -40,7 +40,7 @@ tfma.BucketsWrapper.getCalibrationPlotData = function(
     buckets, fit, scale, color, size, newBucketSize, outputArray) {};
 
 /**
- * @type {!Object}
+ * @const
  */
 tfma.CellRenderer = {};
 
