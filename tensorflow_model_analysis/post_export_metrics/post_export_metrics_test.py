@@ -300,7 +300,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_classifier_identity_label
-        .simple_fixed_prediction_classifier(None, temp_eval_export_dir))
+        .simple_fixed_prediction_classifier_identity_label(
+            None, temp_eval_export_dir))
     examples = [
         self._makeExample(
             age=3.0,
@@ -543,6 +544,57 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
               }
             }
             """, output_metrics[metric_keys.RECALL_AT_K])
+      except AssertionError as err:
+        raise util.BeamAssertException(err)
+
+    self._runTestWithCustomCheck(
+        examples,
+        eval_export_dir, [precision_metric, recall_metric],
+        custom_metrics_check=check_result)
+
+  def testPrecisionRecallAtKCast(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_classifier_identity_label
+        .simple_fixed_prediction_classifier_identity_label(
+            None, temp_eval_export_dir))
+    examples = [
+        self._makeExample(
+            classes=['0', '1', '2'],
+            scores=[0.9, 0.8, 0.7],
+            label=[2],
+            language='ignored',
+            age=2.0),
+        self._makeExample(
+            classes=['0', '1', '2'],
+            scores=[0.9, 0.2, 0.1],
+            label=[0],
+            language='ignored',
+            age=2.0),
+    ]
+
+    precision_metric = post_export_metrics.precision_at_k([0, 1])
+    recall_metric = post_export_metrics.recall_at_k([0, 1])
+
+    def check_result(got):  # pylint: disable=invalid-name
+      try:
+        self.assertEqual(1, len(got), 'got: %s' % got)
+        (slice_key, value) = got[0]
+        self.assertEqual((), slice_key)
+
+        self.assertIn(metric_keys.PRECISION_AT_K, value)
+        precision_table = value[metric_keys.PRECISION_AT_K]
+        cutoffs = precision_table[:, 0].tolist()
+        precision = precision_table[:, 1].tolist()
+        self.assertEqual(cutoffs, [0, 1])
+        self.assertSequenceAlmostEqual(precision, [2.0 / 6.0, 1.0 / 2.0])
+
+        self.assertIn(metric_keys.RECALL_AT_K, value)
+        recall_table = value[metric_keys.RECALL_AT_K]
+        cutoffs = recall_table[:, 0].tolist()
+        recall = recall_table[:, 1].tolist()
+        self.assertEqual(cutoffs, [0, 1])
+        self.assertSequenceAlmostEqual(recall, [2.0 / 2.0, 1.0 / 2.0])
       except AssertionError as err:
         raise util.BeamAssertException(err)
 

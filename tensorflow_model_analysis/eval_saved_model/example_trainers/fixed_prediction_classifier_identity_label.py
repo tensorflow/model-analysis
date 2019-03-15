@@ -32,7 +32,8 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_pr
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
 
-def simple_fixed_prediction_classifier(export_path, eval_export_path):
+def simple_fixed_prediction_classifier_identity_label(export_path,
+                                                      eval_export_path):
   """Exports a simple fixed prediction classifier."""
 
   estimator = tf.estimator.Estimator(

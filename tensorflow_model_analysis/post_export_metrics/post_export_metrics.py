@@ -1122,6 +1122,13 @@ class _Auc(_PostExportMetric):
                                            self._metric_key(self._metric_name))
 
 
+def _cast_or_convert(original, target_type):
+  if target_type == tf.string and original.dtype != tf.string:
+    return tf.as_string(original)
+  else:
+    return tf.cast(original, target_type)
+
+
 class _PrecisionRecallAtK(_PostExportMetric):
   """Metric that computes precision or recall at K for classification models.
 
@@ -1225,6 +1232,8 @@ class _PrecisionRecallAtK(_PostExportMetric):
 
     classes = predictions_dict[self._classes_key]
     scores = predictions_dict[self._probabilities_key]
+
+    labels = _cast_or_convert(labels, classes.dtype)
 
     if self._metric_name == metric_keys.PRECISION_AT_K:
       metric_ops = metrics.precision_at_k(classes, scores, labels,

@@ -3,6 +3,9 @@
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
+*  Cast / convert labels for precision / recall at K so that they work even if
+   the label and the classes Tensors have different types, as long as the types
+   are compatible.
 
 ## Breaking changes
 
