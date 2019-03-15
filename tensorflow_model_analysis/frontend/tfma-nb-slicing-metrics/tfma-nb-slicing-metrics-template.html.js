@@ -16,7 +16,7 @@
 const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
 template.innerHTML = `
 <tfma-slicing-metrics-browser data="[[browserData_]]" metrics="[[metrics_]]"
-                              weighted-examples-column="[[getWeightedExampleColumn_(config)]]">
+                              weighted-examples-column="[[weightColumn_]]">
 </tfma-slicing-metrics-browser>
 `;
 export {template};

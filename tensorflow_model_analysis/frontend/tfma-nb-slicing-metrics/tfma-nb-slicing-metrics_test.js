@@ -102,4 +102,21 @@ suite('tests', () => {
     };
     run(checkConfigParsed);
   });
+
+  test('setsWeightColumnTo1IfAbsent', done => {
+    const newWeightColumn = 'newWeightColumn';
+
+    const changeWeightColumn = () => {
+      element.config = {'weightedExamplesColumn': newWeightColumn};
+      setTimeout(checkBrowser, 0);
+    };
+    const checkBrowser = () => {
+      const browser = element.shadowRoot.querySelector('tfma-slicing-metrics-browser');
+      assert.equal(browser.weightedExamplesColumn, newWeightColumn);
+      const data = browser.data;
+      assert.equal(data[0]['metrics'][newWeightColumn], 1);
+      done();
+    };
+    run(changeWeightColumn);
+  });
 });

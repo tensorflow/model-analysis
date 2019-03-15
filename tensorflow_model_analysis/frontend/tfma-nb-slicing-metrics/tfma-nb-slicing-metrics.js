@@ -46,7 +46,7 @@ export class NotebookSlicingMetricsWrapper extends PolymerElement {
        * is the evaluation results for the slice.
        * @type {!Array<{slice: string, metrics:!Object}>}
        */
-      data: {type: Array, observer: 'dataChanged_'},
+      data: {type: Array},
 
       /**
        * A key value pair for the configuration.
@@ -58,30 +58,57 @@ export class NotebookSlicingMetricsWrapper extends PolymerElement {
        * The data consumed by the slicing metrics browser.
        * @private {!Array<!Object>}
        */
-      browserData_: {type: Array},
+      browserData_: {
+        type: Array,
+      },
 
       /**
        * @private {!Array<string>}
        */
       metrics_: {type: Array},
+
+      /**
+       * @private {string}
+       */
+      weightColumn_: {type: String},
     };
   }
 
+  static get observers() {
+    return ['setUp_(data, config)'];
+  }
+
   /**
-   * @param {!Array<{slice: string, metrics:!Object}>} data
+   * Sets up all fields based on data and config.
+   * @param {!Array<{slice: string, metrics:!Object}>|undefined} data
+   * @param {!Object|undefined} config
    * @private
    */
-  dataChanged_(data) {
+  setUp_(data, config) {
+    if (!data || !config) {
+      return;
+    }
+
     // Note that tfma.Data.flattenMetrics modifies its input in place so we
     // compute the following in an observer instead of making them computed
     // properties.
     tfma.Data.flattenMetrics(data, 'metrics');
-    this.metrics_ = tfma.Data.getAvailableMetrics([data], 'metrics');
-    this.browserData_ = data;
-  }
 
-  getWeightedExampleColumn_(config) {
-    return config['weightedExamplesColumn'];
+    const metrics = tfma.Data.getAvailableMetrics([data], 'metrics');
+    const weightColumn = config['weightedExamplesColumn'];
+    const absent = metrics.indexOf(weightColumn) < 0;
+
+    // If the weight column is missing, set it to 1.
+    if (absent) {
+      data.map(entry => {
+        entry['metrics'][weightColumn] = 1;
+      });
+      metrics.push(weightColumn);
+    }
+
+    this.weightColumn_ = weightColumn;
+    this.metrics_ = metrics;
+    this.browserData_ = data;
   }
 }
 
