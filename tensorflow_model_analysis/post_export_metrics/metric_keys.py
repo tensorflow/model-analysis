@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Library defining metric keys for post export evaluation.
+"""Library defining metric keys for post export metrics.
 
 These keys defines the name of the post export metrics that are supported by
 TFMA.
