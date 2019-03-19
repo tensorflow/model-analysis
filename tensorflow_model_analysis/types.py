@@ -134,8 +134,7 @@ class EvalSharedModel(
       evaluation.
     include_default_metrics: True to include the default metrics that are part
       of the saved model graph during evaluation.
-    example_weight_key: The key of the example weight column. If None, weight
-      will be 1 for each example.
+    example_weight_key: Deprecated.
     additional_fetches: Prefixes of additional tensors stored in
       signature_def.inputs that should be fetched at prediction time. The
       "features" and "labels" tensors are handled automatically and should not

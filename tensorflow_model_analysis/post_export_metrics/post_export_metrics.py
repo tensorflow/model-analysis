@@ -185,6 +185,52 @@ def _populate_to_auc_bounded_value_and_pop(
   output_metrics[metric_key].bounded_value.value.value = value
 
 
+def _additional_prediction_keys(keys,
+                                metric_tag,
+                                tensor_index = None
+                               ):
+  """Returns a list of additional keys to try given a metric tag and index.
+
+  If a metric_tag was given then we also search for keys prefixed by the
+  metric_tag. In most cases the metric_tag is the head name and
+  tf.contrib.estimator.multi_head prefixes the predictions by the head. If
+  tensor_index was also provided then we also search under the tag stripped of
+  the index. In this case the tag has the form <head_name>_<tensor_index>.
+
+  For example, given the following setup:
+
+    head1 = tf.contrib.estimator.multi_class_head(n_classes=3, name='head1')
+    head2 = tf.contrib.estimator.binary_classification_head(name='head2')
+    head = tf.contrib.estimator.multi_head([head1, head2])
+    ...
+
+  The prediction keys will be under head1/logistic and head2/logistic.
+
+  If the default prediction key search was ['logistic', 'probabilities'] and the
+  metric_tag was set to 'head1' to tag post export metrics for head1, then
+  additional keys will be searched for under 'head1/logistic' and
+  'head1/probabilities'. If a tensor index was also provided to binarize a
+  multi-class output using index '3' as the positive class with a metric_tag of
+  'head1_3' to distinguish it from other binarized post export metrics, then in
+  addition to searching under the keys prefixed by the metric tag (e.g.
+  'head1_3/logistic', 'head1_3/probablities'), a search will also be done under
+  the tag stripped of the index (e.g. 'head1/logistic', 'head1/probablitites').
+
+  Args:
+    keys: Target prediction keys.
+    metric_tag: Metric tag.
+    tensor_index: Optional index to specify positive class.
+  """
+  additional_keys = []
+  for key in keys:
+    if tensor_index:
+      suffix = '_%d' % tensor_index
+      if metric_tag.endswith(suffix):
+        additional_keys.append('%s/%s' % (metric_tag[:-len(suffix)], key))
+    additional_keys.append('%s/%s' % (metric_tag, key))
+  return additional_keys
+
+
 class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
   """Abstract base class for post export metrics."""
 
@@ -214,6 +260,10 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
       # Specified metric tag takes priority over target_prediction_key if
       # defined.
       self._metric_tag = metric_tag
+
+      self._target_prediction_keys.extend(
+          _additional_prediction_keys(self._target_prediction_keys, metric_tag,
+                                      self._tensor_index))
 
   def _select_class(self, predictions_tensor, labels_tensor):
     """Gets predictions and labels for the class at index self._tensor_index."""
@@ -1169,8 +1219,7 @@ class _PrecisionRecallAtK(_PostExportMetric):
       example_weight_key: The optional key of the example weight column in the
         features_dict. If not given, all examples will be assumed to have a
         weight of 1.0.
-      target_prediction_keys: Optional acceptable keys in predictions_dict in
-        descending order of precedence.
+      target_prediction_keys: Ignored (use classes_key and probabilities_key).
       labels_key: Optionally, the key from labels_dict to use.
       metric_tag: If provided, a custom metric tag. Only necessary to
         disambiguate instances of the same metric on different predictions.
@@ -1181,9 +1230,18 @@ class _PrecisionRecallAtK(_PostExportMetric):
     self._metric_name = metric_name
     self._cutoffs = cutoffs
     self._example_weight_key = example_weight_key
-    self._classes_key = classes_key or prediction_keys.PredictionKeys.CLASSES
-    self._probabilities_key = (
+    classes_key = classes_key or prediction_keys.PredictionKeys.CLASSES
+    probabilities_key = (
         probabilities_key or prediction_keys.PredictionKeys.PROBABILITIES)
+    self._classes_keys = [classes_key]
+    self._probabilities_keys = [probabilities_key]
+    if metric_tag:
+      self._classes_keys.extend(
+          _additional_prediction_keys(self._classes_keys, metric_tag, None))
+      self._probabilities_keys.extend(
+          _additional_prediction_keys(self._probabilities_keys, metric_tag,
+                                      None))
+
     super(_PrecisionRecallAtK, self).__init__(target_prediction_keys,
                                               labels_key, metric_tag)
 
@@ -1193,14 +1251,14 @@ class _PrecisionRecallAtK(_PostExportMetric):
     if not isinstance(predictions_dict, dict):
       raise TypeError('predictions_dict should be a dict. predictions_dict '
                       'was: %s' % predictions_dict)
-    if self._classes_key not in predictions_dict:
+    if _get_target_tensor(predictions_dict, self._classes_keys) is None:
       raise KeyError(
-          'predictions_dict should contain %s. '
-          'predictions_dict was: %s' % (self._classes_key, predictions_dict))
-    if self._probabilities_key not in predictions_dict:
-      raise KeyError('predictions_dict should contain '
-                     '%s. predictions_dict was: %s' %
-                     (self._probabilities_key, predictions_dict))
+          'predictions_dict should contain one of %s. '
+          'predictions_dict was: %s' % (self._classes_keys, predictions_dict))
+    if _get_target_tensor(predictions_dict, self._probabilities_keys) is None:
+      raise KeyError('predictions_dict should contain one of %s. '
+                     'predictions_dict was: %s' %
+                     (self._probabilities_keys, predictions_dict))
     if self._labels_key:
       labels_dict = labels_dict[self._labels_key]
 
@@ -1230,8 +1288,8 @@ class _PrecisionRecallAtK(_PostExportMetric):
         tf.equal(tf.rank(labels),
                  1), lambda: tf.expand_dims(labels, -1), lambda: labels)
 
-    classes = predictions_dict[self._classes_key]
-    scores = predictions_dict[self._probabilities_key]
+    classes = _get_target_tensor(predictions_dict, self._classes_keys)
+    scores = _get_target_tensor(predictions_dict, self._probabilities_keys)
 
     labels = _cast_or_convert(labels, classes.dtype)
 

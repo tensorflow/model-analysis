@@ -11,7 +11,6 @@ tfma.run_model_analysis(
     data_location,
     file_format='tfrecords',
     slice_spec=None,
-    example_weight_key=None,
     add_metrics_callbacks=None,
     output_path=None,
     extractors=None
@@ -33,7 +32,7 @@ Evaluate PTransform instead.
 * <b>`data_location`</b>: The location of the data files.
 * <b>`file_format`</b>: The file format of the data, can be either 'text' or
     'tfrecords' for now. By default, 'tfrecords' will be used.
-* <b>`slice_spec`</b>: A list of tfma.slicer.SingleSliceSpec. Each spec 
+* <b>`slice_spec`</b>: A list of tfma.slicer.SingleSliceSpec. Each spec
     represents a way to slice the data.
     Example usages:
     - tfma.SingleSiceSpec(): no slice, metrics are computed on overall data.
@@ -43,8 +42,6 @@ Evaluate PTransform instead.
     - tfma.SingleSiceSpec(features=[('country', 'us')]): metrics are computed
       on slice "country:us".
     If None, defaults to the overall slice.
-* <b>`example_weight_key`</b>: The key of the example weight column. If None, weight
-    will be 1 for each example.
 * <b>`add_metrics_callbacks`</b>: Optional list of callbacks for adding additional
     metrics to the graph. The names of the metrics added by the callbacks
     should not conflict with existing metrics, or metrics added by other
