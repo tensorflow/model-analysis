@@ -18,7 +18,7 @@ from __future__ import print_function
 
 import os
 import tempfile
-
+# Standard Imports
 import numpy as np
 import tensorflow as tf
 

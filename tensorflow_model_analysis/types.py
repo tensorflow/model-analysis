@@ -15,15 +15,15 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
-
+# Standard Imports
 import numpy as np
 import tensorflow as tf
 from tensorflow_transform.beam import shared
 
-from tensorflow_model_analysis.types_compat import Any, Callable, Dict, List, Optional, Text, Tuple, Union, NamedTuple
+from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union, NamedTuple
 
 # pylint: disable=invalid-name
 
@@ -51,10 +51,10 @@ class ValueWithConfidenceInterval(
 
   def __new__(
       cls,
-      value,
-      lower_bound = None,
-      upper_bound = None,
-      unsampled_value = None,
+      value: float,
+      lower_bound: Optional[float] = None,
+      upper_bound: Optional[float] = None,
+      unsampled_value: Optional[float] = None,
   ):
     # Add bounds checking?
     return super(ValueWithConfidenceInterval, cls).__new__(
@@ -73,7 +73,7 @@ class ValueWithConfidenceInterval(
 AddMetricsCallbackType = Any
 
 # Type of keys we support for prediction, label and features dictionaries.
-FPLKeyType = Union[Text, Tuple[Text, Ellipsis]]
+FPLKeyType = Union[Text, Tuple[Text, ...]]
 
 # Dictionary of Tensor values fetched. The dictionary maps original dictionary
 # keys => ('node' => value). This type exists for backward compatibility with
@@ -171,13 +171,13 @@ class EvalSharedModel(
 
   def __new__(
       cls,
-      model_path = None,
-      add_metrics_callbacks = None,
-      include_default_metrics = True,
-      example_weight_key = None,
-      additional_fetches = None,
-      shared_handle = None,
-      construct_fn = None):
+      model_path: Optional[Text] = None,
+      add_metrics_callbacks: Optional[List[AddMetricsCallbackType]] = None,
+      include_default_metrics: Optional[bool] = True,
+      example_weight_key: Optional[Text] = None,
+      additional_fetches: Optional[List[Text]] = None,
+      shared_handle: Optional[shared.Shared] = None,
+      construct_fn: Optional[Callable[..., Any]] = None):
     if not add_metrics_callbacks:
       add_metrics_callbacks = []
     if not shared_handle:

@@ -15,11 +15,11 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import copy
-
+# Standard Imports
 
 import apache_beam as beam
 
@@ -29,14 +29,14 @@ from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_m
 from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import feature_extractor
-from tensorflow_model_analysis.types_compat import Generator, List, Optional
+from typing import Generator, List, Optional
 
 PREDICT_EXTRACTOR_STAGE_NAME = 'Predict'
 
 
-def PredictExtractor(eval_shared_model,
-                     desired_batch_size = None,
-                     materialize = True):
+def PredictExtractor(eval_shared_model: types.EvalSharedModel,
+                     desired_batch_size: Optional[int] = None,
+                     materialize: Optional[bool] = True) -> extractor.Extractor:
   """Creates an Extractor for TFMAPredict.
 
   The extractor's PTransform loads and runs the eval_saved_model against every
@@ -65,19 +65,19 @@ def PredictExtractor(eval_shared_model,
 
 
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
-@beam.typehints.with_output_types(beam.typehints.Any)
+@beam.typehints.with_output_types(types.Extracts)
 class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
   """A DoFn that loads the model and predicts."""
 
-  def __init__(self, eval_shared_model):
+  def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
     super(_TFMAPredictionDoFn, self).__init__(eval_shared_model)
     self._predict_batch_size = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'predict_batch_size')
     self._num_instances = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_instances')
 
-  def process(self, element
-             ):
+  def process(self, element: List[types.Extracts]
+             ) -> Generator[types.Extracts, None, None]:
     batch_size = len(element)
     self._predict_batch_size.update(batch_size)
     self._num_instances.inc(batch_size)
@@ -98,13 +98,13 @@ class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.typehints.Any)
-@beam.typehints.with_output_types(beam.typehints.Any)
+@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_output_types(types.Extracts)
 def _TFMAPredict(  # pylint: disable=invalid-name
-    extracts,
-    eval_shared_model,
-    desired_batch_size = None,
-    materialize = True):
+    extracts: beam.pvalue.PCollection,
+    eval_shared_model: types.EvalSharedModel,
+    desired_batch_size: Optional[int] = None,
+    materialize: Optional[bool] = True) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions to Extracts.
 
   Args:

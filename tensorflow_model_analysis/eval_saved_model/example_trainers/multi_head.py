@@ -21,10 +21,10 @@ The true model for the Other head is language == 'other'.
 """
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
-
+# Standard Imports
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export
@@ -95,6 +95,7 @@ def simple_multi_head(export_path, eval_export_path):
   combined_head = tf.contrib.estimator.multi_head(
       [english_head, chinese_head, other_head])
 
+  # TODO(b/118630716): Remove this check once we depend on TF 1.13.
   if hasattr(tf.estimator, 'DNNLinearCombinedEstimator'):
     estimator_fn = tf.estimator.DNNLinearCombinedEstimator
   else:

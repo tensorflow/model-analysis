@@ -21,5 +21,7 @@ def _is_colab():
 
 if _is_colab():
   from tensorflow_model_analysis.notebook.colab.renderer import *  # pylint: disable=wildcard-import,g-import-not-at-top
+  from tensorflow_model_analysis.notebook.colab.widget import *  # pylint: disable=wildcard-import,g-import-not-at-top
 else:
+  from tensorflow_model_analysis.notebook.jupyter.tfma_widget import *  # pylint: disable=wildcard-import,g-import-not-at-top
   from tensorflow_model_analysis.notebook.jupyter.renderer import *  # pylint: disable=wildcard-import,g-import-not-at-top

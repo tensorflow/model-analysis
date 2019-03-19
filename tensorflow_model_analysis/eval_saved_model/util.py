@@ -15,7 +15,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import numpy as np
@@ -23,19 +23,19 @@ import six
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
-from tensorflow_model_analysis.types_compat import List, Optional, Text, Tuple
+from typing import List, Optional, Text, Tuple
 
 from tensorflow.core.example import example_pb2
 
 
-def default_dict_key(prefix):
+def default_dict_key(prefix: Text) -> Text:
   """Returns the default key to use with a dict associated with given prefix."""
   return util.KEY_SEPARATOR + prefix
 
 
 def extract_tensor_maybe_dict(
-    prefix,
-    dict_of_tensors):
+    prefix: Text,
+    dict_of_tensors: types.DictOfTensorType) -> types.TensorTypeMaybeDict:
   """Returns tensor if single entry under default key else returns dict."""
   default_key = default_dict_key(prefix)
   if list(dict_of_tensors.keys()) == [default_key]:
@@ -44,8 +44,8 @@ def extract_tensor_maybe_dict(
 
 
 def wrap_tensor_or_dict_of_tensors_in_identity(
-    tensor_or_dict_of_tensors
-):
+    tensor_or_dict_of_tensors: types.TensorTypeMaybeDict
+) -> types.TensorTypeMaybeDict:
   # pyformat: disable
   """Wrap the given Tensor / dict of Tensors in tf.identity.
 
@@ -63,7 +63,7 @@ def wrap_tensor_or_dict_of_tensors_in_identity(
   """
   # pyformat: enable
 
-  def _wrap_tensor_in_identity(tensor):
+  def _wrap_tensor_in_identity(tensor: types.TensorType) -> types.TensorType:
     if isinstance(tensor, tf.Tensor):
       return tf.identity(tensor)
     elif isinstance(tensor, tf.SparseTensor):
@@ -84,7 +84,7 @@ def wrap_tensor_or_dict_of_tensors_in_identity(
     return _wrap_tensor_in_identity(tensor_or_dict_of_tensors)
 
 
-def make_example(**kwargs):
+def make_example(**kwargs) -> example_pb2.Example:
   """Make a TensorFlow Example with the given fields.
 
   The arguments can be singleton values, or a list of values, e.g.
@@ -142,14 +142,14 @@ def make_example(**kwargs):
   return result
 
 
-def _copy_shape_zero_rows(shape):
+def _copy_shape_zero_rows(shape: Tuple[int, ...]) -> Tuple[int, ...]:
   """Return a copy of given shape with the number of rows zeroed out."""
   temp = list(shape)
   temp[0] = 0
   return tuple(temp)
 
 
-def _dense_concat_rows(arrays):
+def _dense_concat_rows(arrays: List[np.ndarray]) -> np.ndarray:
   """Concat a list of np.arrays along rows.
 
   This is similar to (but not the same as) np.concatenate(arrays, axis=0),
@@ -235,7 +235,7 @@ def _dense_concat_rows(arrays):
 
 
 def _sparse_concat_rows(
-    sparse_tensor_values):
+    sparse_tensor_values: List[tf.SparseTensorValue]) -> tf.SparseTensorValue:
   """Concat a list of SparseTensorValues along rows.
 
   This is similar to (but not the same as)
@@ -302,7 +302,7 @@ def _sparse_concat_rows(
     if cur_indices.size == 0:
       # Empty SparseTensorValue.
       continue
-    cur_indices[:, 0, Ellipsis] += row
+    cur_indices[:, 0, ...] += row
     indices.extend(cur_indices.tolist())
     values.extend(sparse_tensor.values)
     if sparse_tensor.dense_shape[0] != 1:
@@ -327,7 +327,7 @@ def _sparse_concat_rows(
 
 
 def _sparse_slice_rows(
-    sparse_tensor_value):
+    sparse_tensor_value: tf.SparseTensorValue) -> List[tf.SparseTensorValue]:
   """Returns a list of single rows of a SparseTensorValue.
 
   This is equivalent to:
@@ -413,7 +413,7 @@ def _sparse_slice_rows(
 
 
 def split_tensor_value(
-    tensor_value):
+    tensor_value: types.TensorValue) -> List[types.TensorValue]:
   """Split a single batch of Tensor values into a list of Tensor values.
 
   Args:
@@ -441,7 +441,7 @@ def split_tensor_value(
 
 
 def merge_tensor_values(
-    tensor_values):
+    tensor_values: List[types.TensorValue]) -> Optional[types.TensorValue]:
   """Merge a list of Tensor values into a single batch of Tensor values.
 
   Args:
@@ -473,3 +473,7 @@ def merge_tensor_values(
   else:
     raise TypeError('tensor_values[0] had unknown type: %s, value was: %s' %
                     (type(tensor_values[0]), tensor_values[0]))
+
+
+def add_build_data_collection():
+  return

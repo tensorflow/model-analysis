@@ -61,17 +61,17 @@ Then the expected output is:
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
-
+# Standard Imports
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util as general_util
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
 
-from tensorflow_model_analysis.types_compat import Any, Dict, List, NamedTuple, Text  # pytype: disable=not-supported-yet
+from typing import Any, Dict, List, NamedTuple, Text  # pytype: disable=not-supported-yet
 
 
 class ModelAgnosticConfig(
@@ -83,8 +83,8 @@ class ModelAgnosticConfig(
         ])):
   """A config spec for running ModelAgnostic evaluation."""
 
-  def __new__(cls, label_keys, prediction_keys,
-              feature_spec):
+  def __new__(cls, label_keys: List[Text], prediction_keys: List[Text],
+              feature_spec: Dict[Text, Any]):
     """Creates a ModelAgnosticConfig instance.
 
     Creates a config spec for doing ModelAgnostic evaluation (Model evaluation
@@ -141,7 +141,7 @@ class ModelAgnosticPredict(object):
   Design Doc: go/model-agnostic-tfma
   """
 
-  def __init__(self, model_agnostic_config):
+  def __init__(self, model_agnostic_config: ModelAgnosticConfig):
     self._graph = tf.Graph()
     self._session = tf.Session(graph=self._graph)
     self._config = model_agnostic_config
@@ -164,7 +164,7 @@ class ModelAgnosticPredict(object):
           fetches=features, feed_list=[serialized_example])
 
   def get_fpls_from_examples(
-      self, input_example_bytes_list):
+      self, input_example_bytes_list: List[bytes]) -> List[Any]:
     """Generates FPLs from serialized examples using a ModelAgnostic graph.
 
     Args:

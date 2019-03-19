@@ -15,13 +15,13 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import copy
 import datetime
 
-
+# Standard Imports
 
 import apache_beam as beam
 import tensorflow as tf
@@ -31,14 +31,17 @@ from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict as agnostic_predict
 from tensorflow_transform.beam import shared
-from tensorflow_model_analysis.types_compat import Generator, List, Optional
+from typing import Generator, List, Optional
 
+# TODO(b/73167447): This should instead likely be "tfx.ModelAnalysis".
+# Eg see TFT. Also, there should only be one constant for this in the TFMA
+# codebase.
 _METRICS_NAMESPACE = 'tensorflow_model_analysis'
 
 
 def ModelAgnosticGetFPLFeedConfig(
-    model_agnostic_config
-):
+    model_agnostic_config: agnostic_predict.ModelAgnosticConfig
+) -> eval_metrics_graph.FPLFeedConfig:
   """Creates an FPLFeedConfig from the input ModelAgnosticConfig.
 
   Creates the placeholder ops based on the input ModelAgnosticConfig. The
@@ -80,8 +83,8 @@ def ModelAgnosticGetFPLFeedConfig(
 
 # pylint: disable=no-value-for-parameter
 def ModelAgnosticExtractor(
-    model_agnostic_config,
-    desired_batch_size = None):
+    model_agnostic_config: agnostic_predict.ModelAgnosticConfig,
+    desired_batch_size: Optional[int] = None) -> extractor.Extractor:
   """Creates an Extractor for ModelAgnosticEval.
 
   The extractor's PTransform creates and runs ModelAgnosticEval against every
@@ -112,16 +115,16 @@ def ModelAgnosticExtractor(
 class _ModelAgnosticExtractDoFn(beam.DoFn):
   """A DoFn that extracts the FPL from the examples."""
 
-  def __init__(self, model_agnostic_config
-              ):
+  def __init__(self, model_agnostic_config: agnostic_predict.ModelAgnosticConfig
+              ) -> None:
     self._model_agnostic_config = model_agnostic_config
     self._shared_handle = shared.Shared()
     self._model_load_seconds = beam.metrics.Metrics.distribution(
         _METRICS_NAMESPACE, 'model_load_seconds')
 
   def _make_construct_fn(  # pylint: disable=invalid-name
-      self, model_agnostic_config,
-      model_load_seconds):
+      self, model_agnostic_config: agnostic_predict.ModelAgnosticConfig,
+      model_load_seconds: beam.metrics.metricbase.Distribution):
     """Returns construct func for Shared for constructing ModelAgnosticEval."""
 
     def construct():  # pylint: disable=invalid-name
@@ -140,8 +143,8 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
         self._make_construct_fn(self._model_agnostic_config,
                                 self._model_load_seconds))
 
-  def process(self, element
-             ):
+  def process(self, element: List[types.Extracts]
+             ) -> Generator[types.Extracts, None, None]:
     serialized_examples = [x[constants.INPUT_KEY] for x in element]
 
     # Compute FeaturesPredictionsLabels for each serialized_example using
@@ -157,9 +160,9 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def ModelAgnosticExtract(  # pylint: disable=invalid-name
-    extracts,
-    model_agnostic_config,
-    desired_batch_size = None):
+    extracts: beam.pvalue.PCollection,
+    model_agnostic_config: agnostic_predict.ModelAgnosticConfig,
+    desired_batch_size: Optional[int] = None) -> beam.pvalue.PCollection:
   """A PTransform that generates features, predictions, labels.
 
   Args:

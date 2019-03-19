@@ -15,24 +15,24 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
-
+# Standard Imports
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor
-from tensorflow_model_analysis.types_compat import List, Optional, Text
+from typing import List, Optional, Text
 
 
 def AnalysisTableEvaluator(  # pylint: disable=invalid-name
-    key = constants.ANALYSIS_KEY,
-    run_after = extractor.LAST_EXTRACTOR_STAGE_NAME,
-    include = None,
-    exclude = None):
+    key: Text = constants.ANALYSIS_KEY,
+    run_after: Text = extractor.LAST_EXTRACTOR_STAGE_NAME,
+    include: Optional[List[Text]] = None,
+    exclude: Optional[List[Text]] = None) -> evaluator.Evaluator:
   """Creates an Evaluator for returning Extracts data for analysis.
 
   If both include and exclude are None then tfma.INPUT_KEY extracts will be
@@ -61,13 +61,13 @@ def AnalysisTableEvaluator(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.typehints.Any)
+@beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(evaluator.Evaluation)
 def EvaluateExtracts(  # pylint: disable=invalid-name
-    extracts,
-    key = constants.ANALYSIS_KEY,
-    include = None,
-    exclude = None):
+    extracts: beam.pvalue.PCollection,
+    key: Text = constants.ANALYSIS_KEY,
+    include: Optional[List[Text]] = None,
+    exclude: Optional[List[Text]] = None) -> evaluator.Evaluation:
   """Creates Evaluation output for extracts.
 
   If both include and exclude are None then tfma.INPUT_KEY extracts will be

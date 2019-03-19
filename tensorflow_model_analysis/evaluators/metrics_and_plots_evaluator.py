@@ -15,10 +15,10 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
-
+# Standard Imports
 
 import apache_beam as beam
 import numpy as np
@@ -32,17 +32,17 @@ from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
-from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Text, Tuple
+from typing import Any, Dict, List, Optional, Text, Tuple
 
 
 def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
-    eval_shared_model,
-    desired_batch_size = None,
-    metrics_key = constants.METRICS_KEY,
-    plots_key = constants.PLOTS_KEY,
-    run_after = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
-    num_bootstrap_samples = 1,
-):
+    eval_shared_model: types.EvalSharedModel,
+    desired_batch_size: Optional[int] = None,
+    metrics_key: Text = constants.METRICS_KEY,
+    plots_key: Text = constants.PLOTS_KEY,
+    run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
+    num_bootstrap_samples: Optional[int] = 1,
+) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -78,7 +78,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
 # metrics_for_slice_pb2.MetricValue]], while the metrics type isn't visible to
 # this module.
 def load_and_deserialize_metrics(
-    path):
+    path: Text) -> List[Tuple[slicer.SliceKeyType, Any]]:
   result = []
   for record in tf.python_io.tf_record_iterator(path):
     metrics_for_slice = metrics_for_slice_pb2.MetricsForSlice.FromString(record)
@@ -89,7 +89,7 @@ def load_and_deserialize_metrics(
 
 
 def load_and_deserialize_plots(
-    path):
+    path: Text) -> List[Tuple[slicer.SliceKeyType, Any]]:
   """Returns deserialized plots loaded from given path."""
   result = []
   for record in tf.python_io.tf_record_iterator(path):
@@ -106,7 +106,7 @@ def load_and_deserialize_plots(
 
 
 def _convert_to_array_value(
-    array):
+    array: np.ndarray) -> metrics_for_slice_pb2.ArrayValue:
   """Converts NumPy array to ArrayValue."""
   result = metrics_for_slice_pb2.ArrayValue()
   result.shape[:] = array.shape
@@ -132,9 +132,9 @@ def _convert_to_array_value(
 
 
 def _convert_slice_metrics(
-    slice_metrics,
-    post_export_metrics,
-    metrics_for_slice):
+    slice_metrics: Dict[Text, Any],
+    post_export_metrics: List[types.AddMetricsCallbackType],
+    metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice) -> None:
   """Converts slice_metrics into the given metrics_for_slice proto."""
 
   slice_metrics_copy = slice_metrics.copy()
@@ -175,8 +175,8 @@ def _convert_slice_metrics(
 
 
 def _serialize_metrics(
-    metrics,
-    post_export_metrics):
+    metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
+    post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
   """Converts the given slice metrics into serialized proto MetricsForSlice.
 
   Args:
@@ -204,9 +204,9 @@ def _serialize_metrics(
 
 
 def _convert_slice_plots(
-    slice_plots,
-    post_export_metrics,
-    plot_data):
+    slice_plots: Dict[Text, Any],
+    post_export_metrics: List[types.AddMetricsCallbackType],
+    plot_data: Dict[Text, metrics_for_slice_pb2.PlotData]):
   """Converts slice_plots into the given plot_data proto."""
   slice_plots_copy = slice_plots.copy()
   # Prevent further references to this, so we don't accidentally mutate it.
@@ -226,8 +226,8 @@ def _convert_slice_plots(
 
 
 def _serialize_plots(
-    plots,
-    post_export_metrics):
+    plots: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
+    post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
   """Converts the given slice plots into serialized proto PlotsForSlice..
 
   Args:
@@ -255,12 +255,12 @@ def _serialize_plots(
 class SerializeMetricsAndPlots(beam.PTransform):  # pylint: disable=invalid-name
   """Converts metrics and plots into serialized protos."""
 
-  def __init__(self, post_export_metrics):
+  def __init__(self, post_export_metrics: List[types.AddMetricsCallbackType]):
     self._post_export_metrics = post_export_metrics
 
   def expand(
       self,
-      metrics_and_plots
+      metrics_and_plots: Tuple[beam.pvalue.PCollection, beam.pvalue.PCollection]
   ):
     """Converts the given metrics_and_plots into serialized proto.
 
@@ -279,16 +279,16 @@ class SerializeMetricsAndPlots(beam.PTransform):  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.typehints.Any)
+@beam.typehints.with_input_types(types.Extracts)
 # No typehint for output type, since it's a multi-output DoFn result that
 # Beam doesn't support typehints for yet (BEAM-3280).
 def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
-    extracts,
-    eval_shared_model,
-    desired_batch_size = None,
-    num_bootstrap_samples = 1,
-    random_seed = None,
-):
+    extracts: beam.pvalue.PCollection,
+    eval_shared_model: types.EvalSharedModel,
+    desired_batch_size: Optional[int] = None,
+    num_bootstrap_samples: Optional[int] = 1,
+    random_seed: Optional[int] = None,
+) -> beam.pvalue.DoOutputsTuple:
   """Computes metrics and plots using the EvalSavedModel.
 
   Args:
@@ -333,15 +333,15 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.typehints.Any)
+@beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(evaluator.Evaluation)
 def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
-    extracts,
-    eval_shared_model,
-    desired_batch_size = None,
-    metrics_key = constants.METRICS_KEY,
-    plots_key = constants.PLOTS_KEY,
-    num_bootstrap_samples = 1):
+    extracts: beam.pvalue.PCollection,
+    eval_shared_model: types.EvalSharedModel,
+    desired_batch_size: Optional[int] = None,
+    metrics_key: Text = constants.METRICS_KEY,
+    plots_key: Text = constants.PLOTS_KEY,
+    num_bootstrap_samples: Optional[int] = 1) -> evaluator.Evaluation:
   """Evaluates metrics and plots using the EvalSavedModel.
 
   Args:

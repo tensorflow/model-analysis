@@ -20,7 +20,7 @@ import os
 import pickle
 import tempfile
 
-
+# Standard Imports
 
 import apache_beam as beam
 import tensorflow as tf

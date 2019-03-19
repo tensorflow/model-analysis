@@ -23,6 +23,7 @@ Callable = None
 Generic = None
 Sequence = None
 Type = None
+# TODO(xinzha): figure out whether we can use six.string_types in beam
 AnyStr = Any
 Text = Any
 

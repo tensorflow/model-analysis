@@ -14,7 +14,7 @@
 """View API for Tensorflow Model Analysis."""
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 from tensorflow_model_analysis import constants
@@ -22,13 +22,13 @@ from tensorflow_model_analysis.api import model_eval_lib
 import tensorflow_model_analysis.notebook.visualization as visualization
 from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
 from tensorflow_model_analysis.view import util
-from tensorflow_model_analysis.types_compat import Optional, Text
+from typing import Optional, Text
 
 
-def render_slicing_metrics(result,
-                           slicing_column = None,
-                           slicing_spec = None
-                          ):
+def render_slicing_metrics(result: model_eval_lib.EvalResult,
+                           slicing_column: Optional[Text] = None,
+                           slicing_spec: Optional[SingleSliceSpec] = None
+                          ) -> Optional[visualization.SlicingMetricsViewer]:
   """Renders the slicing metrics view as widget.
 
   Args:
@@ -47,10 +47,10 @@ def render_slicing_metrics(result,
   return visualization.render_slicing_metrics(data, config)
 
 
-def render_time_series(results,
-                       slice_spec = None,
-                       display_full_path = False
-                      ):
+def render_time_series(results: model_eval_lib.EvalResults,
+                       slice_spec: Optional[SingleSliceSpec] = None,
+                       display_full_path: bool = False
+                      ) -> Optional[visualization.TimeSeriesViewer]:
   """Renders the time series view as widget.
 
   Args:
@@ -72,9 +72,9 @@ def render_time_series(results,
   return visualization.render_time_series(data, config)
 
 
-def render_plot(result,
-                slicing_spec = None
-               ):
+def render_plot(result: model_eval_lib.EvalResult,
+                slicing_spec: Optional[SingleSliceSpec] = None
+               ) -> Optional[visualization.PlotViewer]:
   """Renders the plot view as widget.
 
   Args:

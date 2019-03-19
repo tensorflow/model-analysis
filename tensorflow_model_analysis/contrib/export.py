@@ -15,7 +15,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import contextlib
@@ -23,20 +23,20 @@ import inspect
 import os
 import pickle
 
-
+# Standard Imports
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util as tfma_util
 
-from tensorflow_model_analysis.types_compat import Any, Callable, Dict, Optional, Text
+from typing import Any, Callable, Dict, Optional, Text
 
 from tensorflow.python.feature_column import feature_column_v2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_estimator.python.estimator.canned import dnn
 
 
-def _make_observing_layer_call(old_call_fn,
-                               key_prefix, output_dict):
+def _make_observing_layer_call(old_call_fn: Callable[..., Any],
+                               key_prefix: Text, output_dict: Dict[Text, Any]):
   """Returns a a function that wraps <Layer>.__call__ and observes arguments.
 
   The returned function can be used to replace DenseFeatures.__call__ and
@@ -77,8 +77,8 @@ def _make_observing_layer_call(old_call_fn,
   return observing_call
 
 
-def _make_observing_model_call(old_call_fn, key,
-                               output_dict):
+def _make_observing_model_call(old_call_fn: Callable[..., Any], key: Text,
+                               output_dict: Dict[Text, Any]):
   """Returns a a function that wraps <Model>.__call__ and observes arguments.
 
   The returned function can be used to replace _DNNModel.__call__ and
@@ -104,7 +104,7 @@ def _make_observing_model_call(old_call_fn, key,
 
 
 @contextlib.contextmanager
-def _observe_dnn_model(output_dict):
+def _observe_dnn_model(output_dict: Dict[Text, Any]):
   """Observe feature and feature metadata from DNN models.
 
   We do this by monkey-patching the appropriate input feature layers and
@@ -137,7 +137,7 @@ def _observe_dnn_model(output_dict):
 
 
 def _serialize_feature_column(
-    feature_column):
+    feature_column: feature_column_v2.FeatureColumn) -> Dict[Text, Any]:
   """Serialize the given feature column into a dictionary."""
   if not hasattr(feature_column, '_is_v2_column'):
     raise ValueError('feature_column does not has _is_v2_column attribute')
@@ -213,8 +213,8 @@ def _serialize_feature_column(
 
 
 def _serialize_feature_metadata_for_model(
-    cols_to_output_tensors,
-    features):
+    cols_to_output_tensors: Dict[feature_column_v2.FeatureColumn, tf.Tensor],
+    features: Dict[Text, types.TensorType]) -> Dict[Text, Any]:
   """Serialize feature metadata for a single model into a dictionary."""
   feature_columns = []
   associated_tensors = []
@@ -233,12 +233,12 @@ def _serialize_feature_metadata_for_model(
   }
 
 
-def feature_metadata_path(export_path):
+def feature_metadata_path(export_path: bytes) -> bytes:
   """Returns the path to the feature metadata for the given export dir."""
   return os.path.join(export_path, b'assets.extra', b'feature_metadata')
 
 
-def serialize_feature_metadata(output_dict):
+def serialize_feature_metadata(output_dict: Dict[Text, Any]) -> bytes:
   """Returns a blob of serialized feature metadata.
 
   Args:
@@ -259,11 +259,12 @@ def serialize_feature_metadata(output_dict):
 @tfma_util.kwargs_only
 def export_eval_savedmodel_with_feature_metadata(
     estimator,
-    export_dir_base,
-    eval_input_receiver_fn,
-    serving_input_receiver_fn = None,
-    assets_extra = None,
-    checkpoint_path = None):
+    export_dir_base: Text,
+    eval_input_receiver_fn: Callable[[], tfma.export.EvalInputReceiverType],
+    serving_input_receiver_fn: Optional[
+        Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
+    assets_extra: Optional[Dict[Text, Text]] = None,
+    checkpoint_path: Optional[Text] = None) -> bytes:
   """Like tfma.export.export_eval_savedmodel, with extra feature metadata."""
   output_dict = {}
   with _observe_dnn_model(output_dict):
@@ -295,7 +296,7 @@ def export_eval_savedmodel_with_feature_metadata(
 
 
 def deserialize_feature_metadata(
-    serialized_feature_metadata):
+    serialized_feature_metadata: bytes) -> Dict[Text, Any]:
   """Deserialize serialized feature metadata blob.
 
   Args:
@@ -315,8 +316,8 @@ def deserialize_feature_metadata(
 
   result = {'feature_columns': [], 'associated_tensors': [], 'features': {}}
 
-  def merge_feature_metadata(into,
-                             merge_from):
+  def merge_feature_metadata(into: Dict[Text, Any],
+                             merge_from: Dict[Text, Any]) -> None:
     """Merge the second feature metadata dictionary into the first."""
     into['feature_columns'].extend(merge_from['feature_columns'])
     into['associated_tensors'].extend(merge_from['associated_tensors'])
@@ -339,7 +340,7 @@ def deserialize_feature_metadata(
   return result
 
 
-def load_feature_metadata(eval_saved_model_path):
+def load_feature_metadata(eval_saved_model_path: bytes):
   """Get feature data (feature columns, feature) from EvalSavedModel metadata.
 
   Args:
@@ -354,8 +355,8 @@ def load_feature_metadata(eval_saved_model_path):
     return deserialize_feature_metadata(f.read())
 
 
-def load_and_resolve_feature_metadata(eval_saved_model_path,
-                                      graph):
+def load_and_resolve_feature_metadata(eval_saved_model_path: bytes,
+                                      graph: tf.Graph):
   """Get feature data (feature columns, feature) from EvalSavedModel metadata.
 
   Like load_feature_metadata, but additionally resolves the Tensors in the given

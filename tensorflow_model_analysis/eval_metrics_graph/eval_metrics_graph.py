@@ -28,12 +28,12 @@ found in EvalSavedModel.
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import abc
 import itertools
-
+# Standard Imports
 import tensorflow as tf
 
 from tensorflow_model_analysis import types
@@ -41,7 +41,7 @@ from tensorflow_model_analysis import util as general_util
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
-from tensorflow_model_analysis.types_compat import Any, Dict, List, NamedTuple, Text, Tuple
+from typing import Any, Dict, List, NamedTuple, Text, Tuple
 
 # Config for defining the input tensor feed into the EvalMetricsGraph. This
 # is needed for model agnostic use cases where a graph must be constructed.
@@ -119,7 +119,7 @@ class EvalMetricsGraph(object):
     raise NotImplementedError
 
   def register_add_metric_callbacks(
-      self, add_metrics_callbacks):
+      self, add_metrics_callbacks: List[types.AddMetricsCallbackType]) -> None:
     """Register additional metric callbacks.
 
     Runs the given list of callbacks for adding additional metrics to the graph.
@@ -165,7 +165,7 @@ class EvalMetricsGraph(object):
     self._graph.finalize()
 
   def register_additional_metric_ops(
-      self, metric_ops):
+      self, metric_ops: Dict[Text, Tuple[tf.Tensor, tf.Tensor]]) -> None:
     """Register additional metric ops that were added.
 
     Args:
@@ -211,11 +211,11 @@ class EvalMetricsGraph(object):
         feed_list=self._perform_metrics_update_fn_feed_list)
 
   def _log_debug_message_for_tracing_feed_errors(
-      self, fetches,
-      feed_list):
+      self, fetches: List[types.TensorOrOperationType],
+      feed_list: List[types.TensorOrOperationType]) -> None:
     """Logs debug message for tracing feed errors."""
 
-    def create_tuple_list(tensor):
+    def create_tuple_list(tensor: types.TensorOrOperationType):
       """Create a list of tuples describing a Tensor."""
       result = None
       if isinstance(tensor, tf.Operation):
@@ -232,10 +232,10 @@ class EvalMetricsGraph(object):
         result = [('Unknown', str(tensor))]
       return result
 
-    def flatten(target):
+    def flatten(target: List[List[Any]]) -> List[Any]:
       return list(itertools.chain.from_iterable(target))
 
-    def log_list(name, target):
+    def log_list(name: Text, target: List[Any]) -> None:
       tf.logging.info('%s = [', name)
       for elem_type, elem_name in flatten(
           [create_tuple_list(x) for x in target]):
@@ -249,7 +249,8 @@ class EvalMetricsGraph(object):
     tf.logging.info('-------------------- end fetches and feeds information')
 
   def get_features_predictions_labels_dicts(
-      self):
+      self) -> Tuple[types.TensorTypeMaybeDict, types.TensorTypeMaybeDict, types
+                     .TensorTypeMaybeDict]:
     """Returns features, predictions, labels dictionaries (or values).
 
     The dictionaries contain references to the nodes, so they can be used
@@ -282,28 +283,28 @@ class EvalMetricsGraph(object):
     return (features, predictions, labels)
 
   def _create_feed_for_features_predictions_labels(
-      self, features_predictions_labels
-  ):
+      self, features_predictions_labels: types.FeaturesPredictionsLabels
+  ) -> List[types.TensorValue]:
     return self._create_feed_for_features_predictions_labels_list(
         [features_predictions_labels])
 
   @abc.abstractmethod
   def _create_feed_for_features_predictions_labels_list(
       self,
-      features_predictions_labels_list
-  ):
+      features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
+  ) -> List[types.TensorValue]:
     raise NotImplementedError
 
   def perform_metrics_update(
       self,
-      features_predictions_labels):
+      features_predictions_labels: types.FeaturesPredictionsLabels) -> None:
     """Run a single metrics update step a single FPL."""
     self._perform_metrics_update_list([features_predictions_labels])
 
   def _perform_metrics_update_list(
       self,
-      features_predictions_labels_list
-  ):
+      features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
+  ) -> None:
     """Run a metrics update on a list of FPLs."""
     feed_list = self._create_feed_for_features_predictions_labels_list(
         features_predictions_labels_list)
@@ -321,15 +322,15 @@ class EvalMetricsGraph(object):
           (features_predictions_labels_list, feed_dict))
 
   def metrics_reset_update_get(
-      self, features_predictions_labels
-  ):
+      self, features_predictions_labels: types.FeaturesPredictionsLabels
+  ) -> List[Any]:
     """Run the metrics reset, update, get operations on a single FPL."""
     return self.metrics_reset_update_get_list([features_predictions_labels])
 
   def metrics_reset_update_get_list(
       self,
-      features_predictions_labels_list
-  ):
+      features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
+  ) -> List[Any]:
     """Run the metrics reset, update, get operations on a list of FPLs."""
     # Note that due to tf op reordering issues on some hardware, DO NOT merge
     # these operations into a single atomic reset_update_get operation.
@@ -337,13 +338,13 @@ class EvalMetricsGraph(object):
     self._perform_metrics_update_list(features_predictions_labels_list)
     return self.get_metric_variables()
 
-  def get_metric_variables(self):
+  def get_metric_variables(self) -> List[Any]:
     """Returns a list containing the metric variable values."""
     result = self._session.run(fetches=self._metric_variable_nodes)
     return result
 
   def _create_feed_for_metric_variables(
-      self, metric_variable_values):
+      self, metric_variable_values: List[Any]) -> Dict[types.TensorType, Any]:
     """Returns a feed dict for feeding metric variables values to set them.
 
     Args:
@@ -360,18 +361,18 @@ class EvalMetricsGraph(object):
       result[node] = value
     return result
 
-  def set_metric_variables(self, metric_variable_values):
+  def set_metric_variables(self, metric_variable_values: List[Any]) -> None:
     """Set metric variable values to the given values."""
     self._session.run(
         fetches=self._all_metric_variable_assign_ops,
         feed_dict=self._create_feed_for_metric_variables(
             metric_variable_values))
 
-  def reset_metric_variables(self):
+  def reset_metric_variables(self) -> None:
     """Reset metric variable values to their initial values."""
     self._session.run(self._reset_variables_op)
 
-  def get_metric_values(self):
+  def get_metric_values(self) -> Dict[Text, Any]:
     """Retrieve metric values."""
     metric_values = self._session.run(fetches=self._metric_value_ops)
     return dict(zip(self._metric_names, metric_values))

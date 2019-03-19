@@ -17,12 +17,12 @@ For example usage, see the tests associated with this file.
 """
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import copy
 
-
+# Standard Imports
 
 import apache_beam as beam
 import numpy as np
@@ -31,11 +31,11 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import encoding
-from tensorflow_model_analysis.types_compat import Any, Callable, Text
+from typing import Any, Callable, Text
 
 
-def get_feature_value(fpl,
-                      feature_key):
+def get_feature_value(fpl: types.FeaturesPredictionsLabels,
+                      feature_key: Text) -> Any:
   """Helper to get value from FPL dict."""
   node_value = fpl.features[feature_key][encoding.NODE_SUFFIX]
   if isinstance(node_value, tf.SparseTensorValue):
@@ -43,9 +43,9 @@ def get_feature_value(fpl,
   return node_value
 
 
-def _set_feature_value(features,
-                       feature_key,
-                       feature_value):
+def _set_feature_value(features: types.DictOfFetchedTensorValues,
+                       feature_key: Text,
+                       feature_value: Any) -> types.DictOfFetchedTensorValues:
   """Helper to set feature in FPL dict."""
   if not isinstance(feature_value, np.ndarray) and not isinstance(
       feature_value, tf.SparseTensorValue):
@@ -54,7 +54,7 @@ def _set_feature_value(features,
   return features  # pytype: disable=bad-return-type
 
 
-def get_fpl_copy(extracts):
+def get_fpl_copy(extracts: types.Extracts) -> types.FeaturesPredictionsLabels:
   """Get a copy of the FPL in the extracts of extracts."""
   fpl_orig = extracts.get(constants.FEATURES_PREDICTIONS_LABELS_KEY)
   if not fpl_orig:
@@ -70,8 +70,8 @@ def get_fpl_copy(extracts):
   return fpl_copy
 
 
-def update_fpl_features(fpl,
-                        new_features):
+def update_fpl_features(fpl: types.FeaturesPredictionsLabels,
+                        new_features: types.DictOfFetchedTensorValues):
   """Add new features to the FPL."""
   for key, value in new_features.items():
     # if the key already exists in the dictionary, throw an error.
@@ -81,8 +81,9 @@ def update_fpl_features(fpl,
 
 
 def _ExtractMetaFeature(  # pylint: disable=invalid-name
-    extracts,
-    new_features_fn):
+    extracts: types.Extracts,
+    new_features_fn: Callable[[types.FeaturesPredictionsLabels], types
+                              .DictOfFetchedTensorValues]) -> types.Extracts:
   """Augments FPL dict with new feature(s)."""
   # Create a new feature from existing ones.
   fpl_copy = get_fpl_copy(extracts)
@@ -97,12 +98,13 @@ def _ExtractMetaFeature(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.typehints.Any)
-@beam.typehints.with_output_types(beam.typehints.Any)
+@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_output_types(types.Extracts)
 def ExtractMetaFeature(  # pylint: disable=invalid-name
-    extracts,
-    new_features_fn
-):
+    extracts: beam.pvalue.PCollection,
+    new_features_fn: Callable[[types.FeaturesPredictionsLabels], types
+                              .DictOfFetchedTensorValues]
+) -> beam.pvalue.PCollection:
   """Extracts meta-features derived from existing features.
 
   It must be the case that the PredictExtractor was called before calling this
