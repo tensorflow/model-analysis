@@ -13,7 +13,7 @@
 # limitations under the License.
 """DoFns that load EvalSavedModel and use it."""
 
-# Standard __future__ imports
+
 
 import datetime
 import apache_beam as beam
@@ -22,16 +22,16 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import load
 
-from typing import List, Optional, Text
+from tensorflow_model_analysis.types_compat import List, Optional, Text
 
 
 def make_construct_fn(  # pylint: disable=invalid-name
-    eval_saved_model_path: Text,
-    add_metrics_callbacks: List[types.AddMetricsCallbackType],
-    include_default_metrics: bool, additional_fetches: Optional[List[Text]]):
+    eval_saved_model_path,
+    add_metrics_callbacks,
+    include_default_metrics, additional_fetches):
   """Returns construct function for Shared for constructing EvalSavedModel."""
 
-  def construct_fn(model_load_seconds: beam.metrics.metricbase.Distribution):
+  def construct_fn(model_load_seconds):
     """Thin wrapper for the actual construct to allow for metrics."""
 
     def construct():  # pylint: disable=invalid-name
@@ -56,7 +56,7 @@ def make_construct_fn(  # pylint: disable=invalid-name
 class EvalSavedModelDoFn(beam.DoFn):
   """Abstract class for DoFns that load the EvalSavedModel and use it."""
 
-  def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
+  def __init__(self, eval_shared_model):
     self._eval_shared_model = eval_shared_model
     self._eval_saved_model = None  # type: load.EvalSavedModel
     self._model_load_seconds = beam.metrics.Metrics.distribution(

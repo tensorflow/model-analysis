@@ -8,7 +8,6 @@
    are compatible.
 
 ## Breaking changes
-*   Expose Python 3 types in the code (this will break Python 2 compatibility)
 
 ## Deprecations
 

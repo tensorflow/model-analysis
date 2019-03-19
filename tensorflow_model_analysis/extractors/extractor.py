@@ -15,14 +15,14 @@
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
 import copy
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
-from typing import List, NamedTuple, Optional, Text
+from tensorflow_model_analysis.types_compat import List, NamedTuple, Optional, Text
 
 # Tag for the last extractor in list of extractors.
 LAST_EXTRACTOR_STAGE_NAME = '<last-extractor>'
@@ -41,11 +41,11 @@ Extractor = NamedTuple(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(types.Extracts)
-def Filter(extracts: beam.pvalue.PCollection,
-           include: Optional[List[Text]] = None,
-           exclude: Optional[List[Text]] = None):
+@beam.typehints.with_input_types(beam.typehints.Any)
+@beam.typehints.with_output_types(beam.typehints.Any)
+def Filter(extracts,
+           include = None,
+           exclude = None):
   """Filters extracts to include/exclude specified keys.
 
   Args:
@@ -62,7 +62,7 @@ def Filter(extracts: beam.pvalue.PCollection,
   if include and exclude:
     raise ValueError('only one of include or exclude should be used.')
 
-  def filter_extracts(extracts: types.Extracts) -> types.Extracts:  # pylint: disable=invalid-name
+  def filter_extracts(extracts):  # pylint: disable=invalid-name
     """Filters extracts."""
     if not include and not exclude:
       return extracts

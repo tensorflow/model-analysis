@@ -19,11 +19,11 @@ parameter of Evaluate to compute them.
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
 import abc
-# Standard Imports
+
 import numpy as np
 from six import with_metaclass
 import tensorflow as tf
@@ -31,15 +31,13 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
-from typing import Any, Dict, List, Optional, Text, Tuple, Type
+from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Text, Tuple, Type
 
 from tensorflow.python.estimator.canned import prediction_keys
 from tensorflow.python.ops import metrics_impl
 
 
-# TODO(b/111754250): revisit it and determine whether to simplify the 4-level
-# deep nesting of functions
-def _export(name: Text):
+def _export(name):
   """Decorator for exporting a _PostExportMetric class.
 
   The net effect of the decorator is to create a function with the given name
@@ -72,15 +70,15 @@ def _export(name: Text):
     Decorator for exporting a post export metric class.
   """
 
-  def _actual_export(cls: Type[Any]):
+  def _actual_export(cls):
     """This is the actual decorator."""
 
     def fn(*args, **kwargs):
       """This is the function that the user calls."""
 
-      def callback(features_dict: types.TensorTypeMaybeDict,
-                   predictions_dict: types.TensorTypeMaybeDict,
-                   labels_dict: types.TensorTypeMaybeDict):
+      def callback(features_dict,
+                   predictions_dict,
+                   labels_dict):
         """This actual callback that goes into add_metrics_callbacks."""
         metric = cls(*args, **kwargs)
         metric.check_compatibility(features_dict, predictions_dict, labels_dict)
@@ -112,8 +110,8 @@ default_key_precedence = [
 ]
 
 
-def _get_target_tensor(maybe_dict: types.TensorTypeMaybeDict,
-                       key_precedence: List[Text]) -> types.TensorType:
+def _get_target_tensor(maybe_dict,
+                       key_precedence):
   """Returns Tensor for prediction or labels dicts.
 
   Args:
@@ -136,8 +134,8 @@ def _get_target_tensor(maybe_dict: types.TensorTypeMaybeDict,
   return None
 
 
-def _check_weight_present(features_dict: types.TensorTypeMaybeDict,
-                          example_weight_key: Optional[Text] = None):
+def _check_weight_present(features_dict,
+                          example_weight_key = None):
   """Raise ValueError if the example weight is not present."""
   if (example_weight_key is not None and
       example_weight_key not in features_dict):
@@ -147,9 +145,9 @@ def _check_weight_present(features_dict: types.TensorTypeMaybeDict,
 
 
 def _populate_to_auc_bounded_value_and_pop(
-    combined_metrics: Dict[Text, Any],
-    output_metrics: Dict[Text, metrics_pb2.MetricValue],
-    metric_key: Text) -> None:
+    combined_metrics,
+    output_metrics,
+    metric_key):
   """Converts the given metric to bounded_value type in dict `output_metrics`.
 
   The metric to be converted should be in the dict `combined_metrics` with key
@@ -183,8 +181,6 @@ def _populate_to_auc_bounded_value_and_pop(
   value = combined_metrics.pop(metric_key)
   if isinstance(value, types.ValueWithConfidenceInterval):
     # Currently taking the computed mean value, conserving legacy functionality.
-    # TODO(raz): Need to determine how best to handle confidence interval in
-    # this case.
     value = value.value
   output_metrics[metric_key].bounded_value.value.value = value
 
@@ -193,10 +189,10 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
   """Abstract base class for post export metrics."""
 
   def __init__(self,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
-               tensor_index: Optional[int] = None):
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               tensor_index = None):
     """Common init of _PostExportMetrics.
 
     Args:
@@ -262,8 +258,8 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     return predictions_for_class, labels_for_class
 
   def _get_labels_and_predictions(
-      self, predictions_dict: types.TensorTypeMaybeDict,
-      labels_dict: types.TensorTypeMaybeDict) -> Tuple[Any, Any]:
+      self, predictions_dict,
+      labels_dict):
     """Raise TypeError if the predictions and labels cannot be understood."""
     predictions_tensor = _get_target_tensor(predictions_dict,
                                             self._target_prediction_keys)
@@ -281,7 +277,7 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     # class to evaluate.
     return self._select_class(predictions_tensor, labels_tensor)
 
-  def _metric_key(self, base_key: Text) -> Text:
+  def _metric_key(self, base_key):
     """Constructs a metric key, including user-specified prefix if necessary.
 
     In cases with multi-headed models, an evaluation may need multiple instances
@@ -300,9 +296,9 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     return base_key
 
   @abc.abstractmethod
-  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
-                          predictions_dict: types.TensorTypeMaybeDict,
-                          labels_dict: types.TensorTypeMaybeDict) -> None:
+  def check_compatibility(self, features_dict,
+                          predictions_dict,
+                          labels_dict):
     """Checks whether this metric is compatible with the model.
 
     This function should make this determination based on the features,
@@ -323,10 +319,10 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     raise NotImplementedError('not implemented')
 
   @abc.abstractmethod
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(self, features_dict,
+                     predictions_dict,
+                     labels_dict
+                    ):
     """Returns the metric_ops entry for this metric.
 
     Note that the metric will be added to metric_ops via
@@ -348,8 +344,8 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     raise NotImplementedError('not implemented')
 
   def populate_stats_and_pop(
-      self, combined_metrics: Dict[Text, Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      self, combined_metrics,
+      output_metrics):
     """Converts the metric in `combined_metrics` to `output_metrics` and pops.
 
     Please override the method if the metric is NOT plot type and should be
@@ -365,8 +361,8 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     pass
 
   def populate_plots_and_pop(
-      self, plots: Dict[Text, Any],
-      output_plots: Dict[Text, metrics_pb2.PlotData]) -> None:
+      self, plots,
+      output_plots):
     """Converts the metric in `plots` to `output_plots` and pops.
 
     Please override the method if the metric is plot type. The plot should also
@@ -379,8 +375,6 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     pass
 
 
-# TODO(b/79364723): make metric key unique for post export metrics with
-# different params.
 @_export('example_count')
 class _ExampleCount(_PostExportMetric):
   """Metric that counts the number of examples processed.
@@ -395,19 +389,18 @@ class _ExampleCount(_PostExportMetric):
   number of examples in the batch.
   """
 
-  # TODO(b/116341909): Remove these declarations once PyType bug is fixed.
-  _labels_key = ...  # type: Text
+  _labels_key = Ellipsis  # type: Text
   _metric_tag = None  # type: Text
 
-  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
-                          predictions_dict: types.TensorTypeMaybeDict,
-                          labels_dict: types.TensorTypeMaybeDict) -> None:
+  def check_compatibility(self, features_dict,
+                          predictions_dict,
+                          labels_dict):
     pass
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(self, features_dict,
+                     predictions_dict,
+                     labels_dict
+                    ):
     ref_tensor = _get_target_tensor(predictions_dict,
                                     self._target_prediction_keys)
     if ref_tensor is None:
@@ -449,8 +442,8 @@ class _ExampleCount(_PostExportMetric):
     }
 
   def populate_stats_and_pop(
-      self, combine_metrics: Dict[Text, Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      self, combine_metrics,
+      output_metrics):
     count_result = combine_metrics.pop(
         self._metric_key(metric_keys.EXAMPLE_COUNT))
     if isinstance(count_result, types.ValueWithConfidenceInterval):
@@ -469,12 +462,12 @@ class _ExampleCount(_PostExportMetric):
 class _ExampleWeight(_PostExportMetric):
   """Metric that computes the sum of example weights."""
 
-  _labels_key = ...  # type: Text
+  _labels_key = Ellipsis  # type: Text
   _metric_tag = None  # type: Text
 
   def __init__(self,
-               example_weight_key: Text,
-               metric_tag: Optional[Text] = None) -> None:
+               example_weight_key,
+               metric_tag = None):
     """Create a metric that computes the sum of example weights.
 
     Args:
@@ -487,21 +480,21 @@ class _ExampleWeight(_PostExportMetric):
     self._example_weight_key = example_weight_key
     super(_ExampleWeight, self).__init__(metric_tag=metric_tag)
 
-  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
-                          predictions_dict: types.TensorTypeMaybeDict,
-                          labels_dict: types.TensorTypeMaybeDict) -> None:
+  def check_compatibility(self, features_dict,
+                          predictions_dict,
+                          labels_dict):
     _check_weight_present(features_dict, self._example_weight_key)
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(self, features_dict,
+                     predictions_dict,
+                     labels_dict
+                    ):
     value = features_dict[self._example_weight_key]
     return {self._metric_key(metric_keys.EXAMPLE_WEIGHT): metrics.total(value)}
 
   def populate_stats_and_pop(
-      self, combine_metrics: Dict[Text, Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      self, combine_metrics,
+      output_metrics):
     weight_result = combine_metrics.pop(
         self._metric_key(metric_keys.EXAMPLE_WEIGHT))
     if isinstance(weight_result, types.ValueWithConfidenceInterval):
@@ -531,18 +524,18 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
   ends.
   """
 
-  _target_prediction_keys = ...  # type: List[Text]
-  _labels_key = ...  # type: Text
+  _target_prediction_keys = Ellipsis  # type: List[Text]
+  _labels_key = Ellipsis  # type: Text
   _metric_tag = None  # type: Text
-  _tensor_index = ...  # type: int
+  _tensor_index = Ellipsis  # type: int
 
   def __init__(self,
-               example_weight_key: Optional[Text] = None,
-               num_buckets: int = _DEFAULT_NUM_BUCKETS,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
-               tensor_index: Optional[int] = None) -> None:
+               example_weight_key = None,
+               num_buckets = _DEFAULT_NUM_BUCKETS,
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               tensor_index = None):
     """Create a plot metric for calibration plot and prediction histogram.
 
     Predictions should be one of:
@@ -573,16 +566,16 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
         metric_tag,
         tensor_index=tensor_index)
 
-  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
-                          predictions_dict: types.TensorTypeMaybeDict,
-                          labels_dict: types.TensorTypeMaybeDict) -> None:
+  def check_compatibility(self, features_dict,
+                          predictions_dict,
+                          labels_dict):
     _check_weight_present(features_dict, self._example_weight_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(self, features_dict,
+                     predictions_dict,
+                     labels_dict
+                    ):
     # Note that we have to squeeze predictions, labels, weights so they are all
     # N element vectors (otherwise some of them might be N x 1 tensors, and
     # multiplying a N element vector with a N x 1 tensor uses matrix
@@ -607,8 +600,8 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
     }
 
   def populate_plots_and_pop(
-      self, plots: Dict[Text, Any],
-      output_plots: Dict[Text, metrics_pb2.PlotData]) -> None:
+      self, plots,
+      output_plots):
     matrices = plots.pop(
         self._metric_key(metric_keys.CALIBRATION_PLOT_MATRICES))
     boundaries = plots.pop(
@@ -633,8 +626,6 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
         total_pred = total_pred.unsampled_value
       if isinstance(total_label, types.ValueWithConfidenceInterval):
         total_label = total_label.unsampled_value
-      # TODO(ckuhn): Figure out how this should work with uncertainty calculated
-      # using the Poisson bootstrap method.
       output_plots[self._metric_key(
           metric_keys.DEFAULT_PREFIX
       )].calibration_histogram_buckets.buckets.add(
@@ -702,17 +693,17 @@ def _create_predictions_labels_weights_for_fractional_labels(
 class _ConfusionMatrixBasedMetric(_PostExportMetric):
   """Base class for metrics that use confusion matrices."""
 
-  _target_prediction_keys = ...  # type: List[Text]
-  _labels_key = ...  # type: Text
+  _target_prediction_keys = Ellipsis  # type: List[Text]
+  _labels_key = Ellipsis  # type: Text
   _metric_tag = None  # type: Text
 
   def __init__(self,
-               thresholds: List[float],
-               example_weight_key: Optional[Text] = None,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
-               tensor_index: Optional[int] = None) -> None:
+               thresholds,
+               example_weight_key = None,
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               tensor_index = None):
     """Create a metric that computes the confusion matrix at given thresholds.
 
     Predictions should be one of:
@@ -744,18 +735,18 @@ class _ConfusionMatrixBasedMetric(_PostExportMetric):
         metric_tag,
         tensor_index=tensor_index)
 
-  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
-                          predictions_dict: types.TensorTypeMaybeDict,
-                          labels_dict: types.TensorTypeMaybeDict) -> None:
+  def check_compatibility(self, features_dict,
+                          predictions_dict,
+                          labels_dict):
     _check_weight_present(features_dict, self._example_weight_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
   def joined_confusion_matrix_metric_ops(
       self,
-      features_dict: types.TensorTypeMaybeDict,
-      predictions_dict: types.TensorTypeMaybeDict,
-      labels_dict: types.TensorTypeMaybeDict,
-  ) -> Tuple[types.TensorType, types.TensorType]:
+      features_dict,
+      predictions_dict,
+      labels_dict,
+  ):
     """Calls confusion_matrix_metric_ops and joins the results.
 
     Args:
@@ -789,11 +780,10 @@ class _ConfusionMatrixBasedMetric(_PostExportMetric):
 
   def confusion_matrix_metric_ops(
       self,
-      features_dict: types.TensorTypeMaybeDict,
-      predictions_dict: types.TensorTypeMaybeDict,
-      labels_dict: types.TensorTypeMaybeDict,
-  ) -> Tuple[Dict[Text, List[types.TensorType]], Dict[Text, List[types
-                                                                 .TensorType]]]:
+      features_dict,
+      predictions_dict,
+      labels_dict,
+  ):
     """Metric ops for computing confusion matrix at the given thresholds.
 
     This is factored out because it's common to AucPlots and
@@ -823,7 +813,6 @@ class _ConfusionMatrixBasedMetric(_PostExportMetric):
         _create_predictions_labels_weights_for_fractional_labels(
             prediction_tensor, label_tensor, squeezed_weights))
 
-    # TODO(b/72239826): Expose _confusion_matrix_at_thresholds for OSS?
     values, update_ops = metrics_impl._confusion_matrix_at_thresholds(  # pylint: disable=protected-access
         label_tensor, prediction_tensor, self._thresholds, squeezed_weights)
 
@@ -858,8 +847,8 @@ def _set_output_matrix_field(matrix_entry, output_matrix, field_name):
 
 
 def _create_confusion_matrix_proto(
-    matrix: List[Any], threshold: float
-) -> metrics_pb2.ConfusionMatrixAtThresholds.ConfusionMatrixAtThreshold:
+    matrix, threshold
+):
   """Populates matrix proto values from value_op matrix."""
   output_matrix = (
       metrics_pb2.ConfusionMatrixAtThresholds.ConfusionMatrixAtThreshold())
@@ -877,10 +866,10 @@ def _create_confusion_matrix_proto(
 class _ConfusionMatrixAtThresholds(_ConfusionMatrixBasedMetric):
   """Confusion matrix at thresholds."""
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(self, features_dict,
+                     predictions_dict,
+                     labels_dict
+                    ):
     value_op, update_op = self.joined_confusion_matrix_metric_ops(
         features_dict, predictions_dict, labels_dict)
     # The format and lint tools don't agree on the formatting here.
@@ -896,8 +885,8 @@ class _ConfusionMatrixAtThresholds(_ConfusionMatrixBasedMetric):
     # pyformat: enable
 
   def populate_stats_and_pop(
-      self, combine_metrics: Dict[Text, Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      self, combine_metrics,
+      output_metrics):
     matrices = combine_metrics.pop(
         self._metric_key(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES))
     thresholds = combine_metrics.pop(
@@ -922,18 +911,18 @@ class _ConfusionMatrixAtThresholds(_ConfusionMatrixBasedMetric):
 class _AucPlots(_ConfusionMatrixBasedMetric):
   """Plot metric for AUROC and AUPRC for predictions in [0, 1]."""
 
-  _thresholds = ...  # type: List[float]
-  _labels_key = ...  # type: Text
+  _thresholds = Ellipsis  # type: List[float]
+  _labels_key = Ellipsis  # type: Text
   _metric_tag = None  # type: Text
-  _tensor_index = ...  # type: int
+  _tensor_index = Ellipsis  # type: int
 
   def __init__(self,
-               example_weight_key: Optional[Text] = None,
-               num_buckets: int = _DEFAULT_NUM_BUCKETS,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
-               tensor_index: Optional[int] = None) -> None:
+               example_weight_key = None,
+               num_buckets = _DEFAULT_NUM_BUCKETS,
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               tensor_index = None):
     """Create a plot metric for AUROC and AUPRC.
 
     Predictions should be one of:
@@ -967,10 +956,10 @@ class _AucPlots(_ConfusionMatrixBasedMetric):
         metric_tag=metric_tag,
         tensor_index=tensor_index)
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(self, features_dict,
+                     predictions_dict,
+                     labels_dict
+                    ):
 
     value_op, update_op = self.joined_confusion_matrix_metric_ops(
         features_dict, predictions_dict, labels_dict)
@@ -981,8 +970,8 @@ class _AucPlots(_ConfusionMatrixBasedMetric):
     }
 
   def populate_plots_and_pop(
-      self, plots: Dict[Text, Any],
-      output_plots: Dict[Text, metrics_pb2.PlotData]) -> None:
+      self, plots,
+      output_plots):
     matrices = plots.pop(self._metric_key(metric_keys.AUC_PLOTS_MATRICES))
     thresholds = plots.pop(self._metric_key(metric_keys.AUC_PLOTS_THRESHOLDS))
     if len(matrices) != len(thresholds):
@@ -1010,19 +999,19 @@ class _Auc(_PostExportMetric):
   boundaries for the metric.
   """
 
-  _target_prediction_keys = ...  # type: List[Text]
-  _labels_key = ...  # type: Text
+  _target_prediction_keys = Ellipsis  # type: List[Text]
+  _labels_key = Ellipsis  # type: Text
   _metric_tag = None  # type: Text
-  _tensor_index = ...  # type: int
+  _tensor_index = Ellipsis  # type: int
 
   def __init__(self,
-               example_weight_key: Optional[Text] = None,
+               example_weight_key = None,
                curve='ROC',
-               num_buckets: int = _DEFAULT_NUM_BUCKETS,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
-               tensor_index: Optional[int] = None) -> None:
+               num_buckets = _DEFAULT_NUM_BUCKETS,
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               tensor_index = None):
     """Create a metric that computes bounded AUROC or AUPRC.
 
     Predictions should be one of:
@@ -1069,16 +1058,16 @@ class _Auc(_PostExportMetric):
         metric_tag=metric_tag,
         tensor_index=tensor_index)
 
-  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
-                          predictions_dict: types.TensorTypeMaybeDict,
-                          labels_dict: types.TensorTypeMaybeDict) -> None:
+  def check_compatibility(self, features_dict,
+                          predictions_dict,
+                          labels_dict):
     _check_weight_present(features_dict, self._example_weight_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(self, features_dict,
+                     predictions_dict,
+                     labels_dict
+                    ):
     # Note that we have to squeeze predictions, labels, weights so they are all
     # N element vectors (otherwise some of them might be N x 1 tensors, and
     # multiplying a N element vector with a N x 1 tensor uses matrix
@@ -1127,13 +1116,13 @@ class _Auc(_PostExportMetric):
     }
 
   def populate_stats_and_pop(
-      self, combine_metrics: Dict[Text, Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      self, combine_metrics,
+      output_metrics):
     _populate_to_auc_bounded_value_and_pop(combine_metrics, output_metrics,
                                            self._metric_key(self._metric_name))
 
 
-def _cast_or_convert(original: tf.Tensor, target_type: tf.DType) -> tf.Tensor:
+def _cast_or_convert(original, target_type):
   if target_type == tf.string and original.dtype != tf.string:
     return tf.as_string(original)
   else:
@@ -1157,19 +1146,19 @@ class _PrecisionRecallAtK(_PostExportMetric):
   are class IDs, then labels should be class IDs, and so on.
   """
 
-  _target_prediction_keys = ...  # type: List[Text]
-  _labels_key = ...  # type: Text
+  _target_prediction_keys = Ellipsis  # type: List[Text]
+  _labels_key = Ellipsis  # type: Text
   _metric_tag = None  # type: Text
 
   def __init__(self,
-               metric_name: Text,
-               cutoffs: List[int],
-               example_weight_key: Optional[Text] = None,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
-               classes_key: Optional[Text] = None,
-               probabilities_key: Optional[Text] = None):
+               metric_name,
+               cutoffs,
+               example_weight_key = None,
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               classes_key = None,
+               probabilities_key = None):
     """Creates a metric that computes either precision or recall at `k`.
 
     Args:
@@ -1198,9 +1187,9 @@ class _PrecisionRecallAtK(_PostExportMetric):
     super(_PrecisionRecallAtK, self).__init__(target_prediction_keys,
                                               labels_key, metric_tag)
 
-  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
-                          predictions_dict: types.TensorTypeMaybeDict,
-                          labels_dict: types.TensorTypeMaybeDict) -> None:
+  def check_compatibility(self, features_dict,
+                          predictions_dict,
+                          labels_dict):
     if not isinstance(predictions_dict, dict):
       raise TypeError('predictions_dict should be a dict. predictions_dict '
                       'was: %s' % predictions_dict)
@@ -1220,10 +1209,10 @@ class _PrecisionRecallAtK(_PostExportMetric):
           'labels_dict should be a tensor. labels_dict was: %s' % labels_dict)
     _check_weight_present(features_dict, self._example_weight_key)
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(self, features_dict,
+                     predictions_dict,
+                     labels_dict
+                    ):
 
     squeezed_weights = None
     if self._example_weight_key:
@@ -1256,8 +1245,8 @@ class _PrecisionRecallAtK(_PostExportMetric):
     return {self._metric_key(self._metric_name): metric_ops}
 
   def populate_stats_and_pop(
-      self, combine_metrics: Dict[Text, Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      self, combine_metrics,
+      output_metrics):
     table = combine_metrics.pop(self._metric_key(self._metric_name))
     cutoff_column = table[:, 0]
     value_column = table[:, 1]
@@ -1296,13 +1285,13 @@ class _PrecisionAtK(_PrecisionRecallAtK):
   """
 
   def __init__(self,
-               cutoffs: List[int],
-               example_weight_key: Optional[Text] = None,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
-               classes_key: Optional[Text] = None,
-               probabilities_key: Optional[Text] = None):
+               cutoffs,
+               example_weight_key = None,
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               classes_key = None,
+               probabilities_key = None):
     """Creates a metric that computes the precision at `k`.
 
     Args:
@@ -1327,8 +1316,8 @@ class _PrecisionAtK(_PrecisionRecallAtK):
                          metric_tag, classes_key, probabilities_key)
 
   def populate_stats_and_pop(  # pylint: disable=useless-super-delegation
-      self, combine_metrics: Dict[Text, Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      self, combine_metrics,
+      output_metrics):
     return super(_PrecisionAtK, self).populate_stats_and_pop(
         combine_metrics, output_metrics)
 
@@ -1352,13 +1341,13 @@ class _RecallAtK(_PrecisionRecallAtK):
   """
 
   def __init__(self,
-               cutoffs: List[int],
-               example_weight_key: Optional[Text] = None,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
-               classes_key: Optional[Text] = None,
-               probabilities_key: Optional[Text] = None):
+               cutoffs,
+               example_weight_key = None,
+               target_prediction_keys = None,
+               labels_key = None,
+               metric_tag = None,
+               classes_key = None,
+               probabilities_key = None):
     """Creates a metric that computes the recall at `k`.
 
     Args:
@@ -1383,7 +1372,7 @@ class _RecallAtK(_PrecisionRecallAtK):
                          classes_key, probabilities_key)
 
   def populate_stats_and_pop(  # pylint: disable=useless-super-delegation
-      self, combine_metrics: Dict[Text, Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      self, combine_metrics,
+      output_metrics):
     return super(_RecallAtK, self).populate_stats_and_pop(
         combine_metrics, output_metrics)

@@ -23,15 +23,9 @@ SIGNATURE_DEF_TFMA_VERSION_KEY = 'tfma/version'
 FEATURES_NAME = 'features'
 LABELS_NAME = 'labels'
 
-# TODO(b/79777718): Really tf.saved_model.tag_constants.EVAL
 EVAL_TAG = 'eval'
-# TODO(b/79777718): Really model_fn.EXPORT_TAG_MAP[ModeKeys.EVAL]
 DEFAULT_EVAL_SIGNATURE_DEF_KEY = 'eval'
-# TODO(b/79777718): Really tf.estimator.export.EvalOutput.PREDICTIONS_NAME
 PREDICTIONS_NAME = 'predictions'
-# TODO(b/79777718): Really tf.estimator.export.EvalOutput.METRICS_NAME
 METRICS_NAME = 'metrics'
-# TODO(b/79777718): Really tf.estimator.export.EvalOutput.METRIC_VALUE_SUFFIX
 METRIC_VALUE_SUFFIX = 'value'
-# TODO(b/79777718): Really tf.estimator.export.EvalOutput.METRIC_UPDATE_SUFFIX
 METRIC_UPDATE_SUFFIX = 'update_op'

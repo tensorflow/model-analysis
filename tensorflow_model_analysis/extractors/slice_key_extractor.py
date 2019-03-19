@@ -15,11 +15,11 @@
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
 import copy
-# Standard Imports
+
 
 import apache_beam as beam
 
@@ -28,14 +28,14 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.slicer import slicer
 
-from typing import List, Optional
+from tensorflow_model_analysis.types_compat import List, Optional
 
 SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSliceKeys'
 
 
 def SliceKeyExtractor(
-    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-    materialize: Optional[bool] = True) -> extractor.Extractor:
+    slice_spec = None,
+    materialize = True):
   """Creates an extractor for extracting slice keys.
 
   The incoming Extracts must contain a FeaturesPredictionsLabels extract keyed
@@ -62,17 +62,17 @@ def SliceKeyExtractor(
       ptransform=_ExtractSliceKeys(slice_spec, materialize))
 
 
-@beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(types.Extracts)
+@beam.typehints.with_input_types(beam.typehints.Any)
+@beam.typehints.with_output_types(beam.typehints.Any)
 class _ExtractSliceKeysFn(beam.DoFn):
   """A DoFn that extracts slice keys that apply per example."""
 
-  def __init__(self, slice_spec: List[slicer.SingleSliceSpec],
-               materialize: bool):
+  def __init__(self, slice_spec,
+               materialize):
     self._slice_spec = slice_spec
     self._materialize = materialize
 
-  def process(self, element: types.Extracts) -> List[types.Extracts]:
+  def process(self, element):
     fpl = element.get(constants.FEATURES_PREDICTIONS_LABELS_KEY)
     if not fpl:
       raise RuntimeError('FPL missing, Please ensure Predict() was called.')
@@ -98,9 +98,9 @@ class _ExtractSliceKeysFn(beam.DoFn):
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(types.Extracts)
-def _ExtractSliceKeys(extracts: beam.pvalue.PCollection,
-                      slice_spec: List[slicer.SingleSliceSpec],
-                      materialize: bool = True) -> beam.pvalue.PCollection:
+@beam.typehints.with_input_types(beam.typehints.Any)
+@beam.typehints.with_output_types(beam.typehints.Any)
+def _ExtractSliceKeys(extracts,
+                      slice_spec,
+                      materialize = True):
   return extracts | beam.ParDo(_ExtractSliceKeysFn(slice_spec, materialize))

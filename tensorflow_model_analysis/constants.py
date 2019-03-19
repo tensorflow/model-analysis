@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Standard Imports
+
 
 # Mode for multiple model analysis runs
 UNKNOWN_EVAL_MODE = 'unknown_eval_mode'
@@ -28,9 +28,6 @@ DATA_CENTRIC_MODE = 'data_centric_mode'
 PLACEHOLDER = 'placeholder'
 SPARSE_PLACEHOLDER = 'sparse_placeholder'
 
-# TODO(b/73167447): This should instead likely be "tfx.ModelAnalysis".
-# Eg see TFT. Also, there should only be one constant for this in the TFMA
-# codebase.
 METRICS_NAMESPACE = 'tensorflow_model_analysis'
 
 # Keys for Extracts dictionary (keys starting with _ will not be materialized).

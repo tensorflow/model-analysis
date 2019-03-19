@@ -15,10 +15,10 @@
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
-# Standard Imports
+
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
@@ -27,7 +27,7 @@ from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import graph_ref
 from tensorflow_model_analysis.eval_saved_model import util
-from typing import Any, Dict, Generator, List, NamedTuple, Optional, Text, Tuple, Union
+from tensorflow_model_analysis.types_compat import Any, Dict, Generator, List, NamedTuple, Optional, Text, Tuple, Union
 
 from tensorflow.core.protobuf import meta_graph_pb2
 
@@ -63,9 +63,9 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
   """
 
   def __init__(self,
-               path: Text,
-               include_default_metrics: Optional[bool] = True,
-               additional_fetches: Optional[List[Text]] = None):
+               path,
+               include_default_metrics = True,
+               additional_fetches = None):
     """Initializes EvalSavedModel.
 
     Args:
@@ -89,7 +89,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     self._additional_fetches = additional_fetches
     super(EvalSavedModel, self).__init__()
 
-  def _check_version(self, version_node: types.TensorType):
+  def _check_version(self, version_node):
     version = self._session.run(version_node)
     if not version:
       raise ValueError(
@@ -97,8 +97,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     # We don't actually do any checking for now, since we don't have any
     # compatibility issues.
 
-  # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
-  def _legacy_check_version(self, meta_graph_def: meta_graph_pb2.MetaGraphDef):
+  def _legacy_check_version(self, meta_graph_def):
     version = meta_graph_def.collection_def.get(
         encoding.TFMA_VERSION_COLLECTION)
     if version is None:
@@ -109,7 +108,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
 
   def _iterate_fpl_maps_in_canonical_order(
       self
-  ) -> Generator[Tuple[Text, types.FPLKeyType, types.TensorType], None, None]:
+  ):
     """Iterate through features, predictions, labels maps in canonical order.
 
     We need to fix a canonical order because to use `make_callable`, we must use
@@ -162,7 +161,6 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
       # only a single input will be present. We will use this as our flag to
       # indicate whether the features and labels should be read using the legacy
       # collections or using new signature_def.inputs.
-      # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
       if len(signature_def.inputs) == 1:
         self._legacy_check_version(meta_graph_def)
         self._input_map, self._input_refs_node = graph_ref.load_legacy_inputs(
@@ -228,8 +226,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
           feed_list=list(self._input_map.values()))
 
   def get_features_predictions_labels_dicts(
-      self) -> Tuple[types.TensorTypeMaybeDict, types.TensorTypeMaybeDict, types
-                     .TensorTypeMaybeDict]:
+      self):
     """Returns features, predictions, labels dictionaries (or values).
 
     The dictionaries contain references to the nodes, so they can be used
@@ -261,7 +258,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     return (features, predictions, labels)
 
   def predict(self,
-              single_input: SingleInputFeedType) -> List[FetchedTensorValues]:
+              single_input):
     """Returns fetches (features, predictions, labels, etc) for single_input.
 
     Args:
@@ -280,7 +277,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     return self.predict_list([single_input])
 
   def predict_list(self,
-                   inputs: MultipleInputFeedType) -> List[FetchedTensorValues]:
+                   inputs):
     """Like predict, but takes a list of inputs.
 
     Args:
@@ -312,7 +309,6 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     all_fetches[constants.LABELS_NAME] = labels
     all_fetches[constants.PREDICTIONS_NAME] = predictions
 
-    # TODO(cyfoo): Optimise this.
     split_fetches = {}
     for group, tensors in all_fetches.items():
       split_tensors = {}
@@ -352,12 +348,12 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     return result
 
   def as_features_predictions_labels(self,
-                                     fetched_values: List[FetchedTensorValues]
-                                    ) -> List[types.FeaturesPredictionsLabels]:
+                                     fetched_values
+                                    ):
     """Gets features, predictions, labels as FeaturesPredictionsLabelsType."""
 
-    def fpl_dict(fetched: FetchedTensorValues,
-                 group: Text) -> types.DictOfFetchedTensorValues:
+    def fpl_dict(fetched,
+                 group):
       native = fetched.values[group]
       wrapped = {}
       if not isinstance(native, dict):
@@ -378,8 +374,8 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
 
   def _create_feed_for_features_predictions_labels_list(
       self,
-      features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
-  ) -> List[types.TensorValue]:
+      features_predictions_labels_list
+  ):
     """Create feed list for feeding a list of features, predictions, labels."""
     result = []
     for which_map, key, _ in self._iterate_fpl_maps_in_canonical_order():

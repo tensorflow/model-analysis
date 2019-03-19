@@ -20,7 +20,7 @@ from __future__ import print_function
 import os
 import string
 
-# Standard Imports
+
 
 import apache_beam as beam
 from apache_beam.testing import util

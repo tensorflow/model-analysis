@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
 import os
@@ -25,7 +25,7 @@ import tensorflow as tf
 
 from tensorflow_model_analysis import util as tfma_util
 from tensorflow_model_analysis.eval_saved_model import export
-from typing import Callable, Dict, Optional, Text
+from tensorflow_model_analysis.types_compat import Callable, Dict, Optional, Text
 from tensorflow.python.estimator import gc
 from tensorflow.python.framework import errors_impl
 from tensorflow.python.platform import gfile
@@ -43,11 +43,10 @@ class _EvalSavedModelExporter(tf.estimator.Exporter):
   @tfma_util.kwargs_only
   def __init__(
       self,
-      name: Text,
-      eval_input_receiver_fn: Callable[[], export.EvalInputReceiverType],
-      serving_input_receiver_fn: Optional[
-          Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
-      assets_extra: Optional[Dict[Text, Text]] = None):
+      name,
+      eval_input_receiver_fn,
+      serving_input_receiver_fn = None,
+      assets_extra = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
@@ -72,12 +71,12 @@ class _EvalSavedModelExporter(tf.estimator.Exporter):
     self._assets_extra = assets_extra
 
   @property
-  def name(self) -> Text:
+  def name(self):
     return self._name
 
-  def export(self, estimator: tf.estimator.Estimator, export_path: Text,
-             checkpoint_path: Optional[Text], eval_result: Optional[bytes],
-             is_the_final_export: bool) -> bytes:
+  def export(self, estimator, export_path,
+             checkpoint_path, eval_result,
+             is_the_final_export):
     del is_the_final_export
 
     export_result = export.export_eval_savedmodel(
@@ -101,11 +100,10 @@ class FinalExporter(tf.estimator.Exporter):
   @tfma_util.kwargs_only
   def __init__(
       self,
-      name: Text,
-      eval_input_receiver_fn: Callable[[], export.EvalInputReceiverType],
-      serving_input_receiver_fn: Optional[
-          Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
-      assets_extra: Optional[Dict[Text, Text]] = None):
+      name,
+      eval_input_receiver_fn,
+      serving_input_receiver_fn = None,
+      assets_extra = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
@@ -131,12 +129,12 @@ class FinalExporter(tf.estimator.Exporter):
         assets_extra=assets_extra)
 
   @property
-  def name(self) -> Text:
+  def name(self):
     return self._eval_saved_model_exporter.name
 
-  def export(self, estimator: tf.estimator.Estimator, export_path: Text,
-             checkpoint_path: Optional[Text], eval_result: Optional[bytes],
-             is_the_final_export: bool) -> Optional[bytes]:
+  def export(self, estimator, export_path,
+             checkpoint_path, eval_result,
+             is_the_final_export):
     if not is_the_final_export:
       return None
 
@@ -156,11 +154,10 @@ class LatestExporter(tf.estimator.Exporter):
   @tfma_util.kwargs_only
   def __init__(
       self,
-      name: Text,
-      eval_input_receiver_fn: Callable[[], export.EvalInputReceiverType],
-      serving_input_receiver_fn: Optional[
-          Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
-      exports_to_keep: int = 5):
+      name,
+      eval_input_receiver_fn,
+      serving_input_receiver_fn = None,
+      exports_to_keep = 5):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
@@ -188,12 +185,12 @@ class LatestExporter(tf.estimator.Exporter):
           '`exports_to_keep`, if provided, must be positive number')
 
   @property
-  def name(self) -> Text:
+  def name(self):
     return self._eval_saved_model_exporter.name
 
-  def export(self, estimator: tf.estimator.Estimator, export_path: Text,
-             checkpoint_path: Optional[Text], eval_result: Optional[bytes],
-             is_the_final_export: bool) -> bytes:
+  def export(self, estimator, export_path,
+             checkpoint_path, eval_result,
+             is_the_final_export):
     export_result = self._eval_saved_model_exporter.export(
         estimator, export_path, checkpoint_path, eval_result,
         is_the_final_export)
@@ -201,7 +198,7 @@ class LatestExporter(tf.estimator.Exporter):
     self._garbage_collect_exports(export_path)
     return export_result
 
-  def _garbage_collect_exports(self, export_dir_base: Text):
+  def _garbage_collect_exports(self, export_dir_base):
     """Deletes older exports, retaining only a given number of the most recent.
 
     Export subdirectories are assumed to be named with monotonically increasing

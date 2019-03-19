@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Standard Imports
+
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -224,8 +224,6 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
     with beam.Pipeline() as pipeline:
       # Set up the inputs. All we need is are tf.Examples and an example parsing
       # spec with explicit mapping for key to (Features, Predictions, Labels).
-      # TODO(b/119788402): Add a fairness data examples/callbacks as another
-      # test.
       examples = [
           self._makeExample(
               age=3.0, language='english', probabilities=1.0, labels=1.0),

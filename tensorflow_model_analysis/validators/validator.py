@@ -15,11 +15,11 @@
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
 import apache_beam as beam
-from typing import Dict, NamedTuple, Text
+from tensorflow_model_analysis.types_compat import Dict, NamedTuple, Text
 
 # A validator takes a set of alternative evaluations as input and compares them
 # to produce a Validation output. A typical example of a validator is the

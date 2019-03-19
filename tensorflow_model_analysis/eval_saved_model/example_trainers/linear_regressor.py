@@ -23,10 +23,10 @@ This model also extracts an additional slice_key feature for evaluation
 """
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
-# Standard Imports
+
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export

@@ -15,12 +15,12 @@
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
 import copy
 
-# Standard Imports
+
 import apache_beam as beam
 import numpy as np
 from scipy import mean
@@ -33,7 +33,7 @@ from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer
-from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
+from tensorflow_model_analysis.types_compat import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
 _SAMPLE_ID = '___SAMPLE_ID'
 
@@ -45,12 +45,12 @@ _SAMPLE_ID = '___SAMPLE_ID'
     beam.typehints.Tuple[slicer.BeamSliceKeyType, beam.typehints
                          .List[beam.typehints.Any]])
 def ComputePerSliceMetrics(  # pylint: disable=invalid-name
-    slice_result: beam.pvalue.PCollection,
-    eval_shared_model: types.EvalSharedModel,
-    desired_batch_size: Optional[int] = None,
-    num_bootstrap_samples: Optional[int] = 1,
-    random_seed: Optional[int] = None,
-) -> beam.pvalue.PCollection:
+    slice_result,
+    eval_shared_model,
+    desired_batch_size = None,
+    num_bootstrap_samples = 1,
+    random_seed = None,
+):
   """PTransform for computing, aggregating and combining metrics.
 
   Args:
@@ -71,7 +71,6 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
     PCollection of (slice key, metrics) and
     PCollection of (slice key, plot metrics).
   """
-  # TODO(ckuhn): Remove this workaround per discussions in CL/227944001
   slice_result.element_type = beam.typehints.Any
 
   compute_with_sampling = False
@@ -122,12 +121,12 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
 class _FanoutBootstrapFn(beam.DoFn):
   """For each bootstrap sample you want, we fan out an additional slice."""
 
-  def __init__(self, num_bootstrap_samples: int):
+  def __init__(self, num_bootstrap_samples):
     self._num_bootstrap_samples = num_bootstrap_samples
 
   def process(
-      self, element: Tuple[slicer.SliceKeyType, types.Extracts]
-  ) -> Generator[Tuple[slicer.SliceKeyType, types.Extracts], None, None]:
+      self, element
+  ):
     slice_key, value = element
     for i in range(0, self._num_bootstrap_samples):
       # Prepend the sample ID to the original slice key.
@@ -137,13 +136,11 @@ class _FanoutBootstrapFn(beam.DoFn):
       # This fans out the pipeline, but because we are reducing in a
       # CombinePerKey, we shouldn't have to deal with a great increase in
       # network traffic.
-      # TODO(b/120421778): Create benchmarks to better understand performance
-      # implications and tradeoffs.
       yield (augmented_slice_key, value)
 
 
-def _collect_metrics(item: Union[int, float, np.ndarray], cumulative_key: Text,
-                     aggregated_metrics: Dict[Text, Any]):
+def _collect_metrics(item, cumulative_key,
+                     aggregated_metrics):
   """Aggregates individual metrics over multiple bootstrap samples.
 
   Since some metric values are compound, we have to make sure to aggregate
@@ -171,8 +168,8 @@ def _collect_metrics(item: Union[int, float, np.ndarray], cumulative_key: Text,
 
 
 def _populate_bounded_metrics(
-    index_list: List[int], metric_structure: np.ndarray,
-    value: Union[int, float, types.ValueWithConfidenceInterval, np.ndarray]):
+    index_list, metric_structure,
+    value):
   """Recreates the original metric structure with bounded values."""
   if not index_list:
     metric_structure = value
@@ -250,8 +247,8 @@ class _MergeBootstrap(beam.DoFn):
 
 
 def _add_metric_variables(  # pylint: disable=invalid-name
-    left: types.MetricVariablesType,
-    right: types.MetricVariablesType) -> types.MetricVariablesType:
+    left,
+    right):
   """Returns left and right metric variables combined."""
   if left is not None and right is not None:
     if len(left) != len(right):
@@ -274,26 +271,26 @@ class _AggState(object):
 
   def __init__(self):
     self.metric_variables = None  # type: Optional[types.MetricVariablesType]
-    self.fpls = []  # type: List[types.FeaturesPredictionsLabels]
+    self.fpls = []  # type: List[beam.typehints.Any]
 
   def copy_from(  # pylint: disable=invalid-name
-      self, other: '_AggState') -> None:
+      self, other):
     if other.metric_variables:
       self.metric_variables = other.metric_variables
     self.fpls = other.fpls
 
-  def __iadd__(self, other: '_AggState') -> '_AggState':
+  def __iadd__(self, other):
     self.metric_variables = _add_metric_variables(self.metric_variables,
                                                   other.metric_variables)
     self.fpls.extend(other.fpls)
     return self
 
   def add_fpl(  # pylint: disable=invalid-name
-      self, fpl: types.FeaturesPredictionsLabels) -> None:
+      self, fpl):
     self.fpls.append(fpl)
 
   def add_metrics_variables(  # pylint: disable=invalid-name
-      self, metric_variables: types.MetricVariablesType) -> None:
+      self, metric_variables):
     self.metric_variables = _add_metric_variables(self.metric_variables,
                                                   metric_variables)
 
@@ -334,16 +331,15 @@ class _AggregateCombineFn(beam.CombineFn):
   _DEFAULT_DESIRED_BATCH_SIZE = 1000
 
   def __init__(self,
-               eval_shared_model: types.EvalSharedModel,
-               desired_batch_size: Optional[int] = None,
-               compute_with_sampling: Optional[bool] = False,
-               seed_for_testing: Optional[int] = None) -> None:
+               eval_shared_model,
+               desired_batch_size = None,
+               compute_with_sampling = False,
+               seed_for_testing = None):
     self._eval_shared_model = eval_shared_model
     self._eval_metrics_graph = None  # type: eval_metrics_graph.EvalMetricsGraph
     self._seed_for_testing = seed_for_testing
     # We really want the batch size to be adaptive like it is in
     # beam.BatchElements(), but there isn't an easy way to make it so.
-    # TODO(b/73789023): Figure out how to make this batch size dynamic.
     if desired_batch_size and desired_batch_size > 0:
       self._desired_batch_size = desired_batch_size
     else:
@@ -359,13 +355,11 @@ class _AggregateCombineFn(beam.CombineFn):
     self._num_compacts = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_compacts')
 
-  def _start_bundle(self) -> None:
+  def _start_bundle(self):
     # There's no initialisation method for CombineFns.
     # See BEAM-3736: Add SetUp() and TearDown() for CombineFns.
     # Default to eval_saved_model dofn to preserve legacy assumption
     # of eval_saved_model.
-    # TODO(ihchen): Update all callers and make this an error condition to not
-    # have construct_fn specified.
     if self._eval_shared_model.construct_fn is None:
       construct_fn = dofn.make_construct_fn(
           eval_saved_model_path=self._eval_shared_model.model_path,
@@ -381,7 +375,7 @@ class _AggregateCombineFn(beam.CombineFn):
               self._eval_shared_model.construct_fn(self._model_load_seconds)))
 
   def _poissonify(
-      self, accumulator: _AggState) -> List[types.FeaturesPredictionsLabels]:
+      self, accumulator):
     # pylint: disable=line-too-long
     """Creates a bootstrap resample of the data in an accumulator.
 
@@ -407,8 +401,8 @@ class _AggregateCombineFn(beam.CombineFn):
         result.extend([fpl] * poisson_counts[i])
     return result
 
-  def _maybe_do_batch(self, accumulator: _AggState,
-                      force: bool = False) -> None:
+  def _maybe_do_batch(self, accumulator,
+                      force = False):
     """Maybe intro metrics and update accumulator in place.
 
     Checks if accumulator has enough FPLs for a batch, and if so, does the
@@ -442,16 +436,16 @@ class _AggregateCombineFn(beam.CombineFn):
           self._eval_metrics_graph.reset_metric_variables()
         del accumulator.fpls[:]
 
-  def create_accumulator(self) -> _AggState:
+  def create_accumulator(self):
     return _AggState()
 
-  def add_input(self, accumulator: _AggState,
-                elem: types.Extracts) -> _AggState:
+  def add_input(self, accumulator,
+                elem):
     accumulator.add_fpl(elem[constants.FEATURES_PREDICTIONS_LABELS_KEY])
     self._maybe_do_batch(accumulator)
     return accumulator
 
-  def merge_accumulators(self, accumulators: Iterable[_AggState]) -> _AggState:
+  def merge_accumulators(self, accumulators):
     result = self.create_accumulator()
     for acc in accumulators:
       result += acc
@@ -466,13 +460,13 @@ class _AggregateCombineFn(beam.CombineFn):
       self._maybe_do_batch(result)
     return result
 
-  def compact(self, accumulator: _AggState) -> _AggState:
+  def compact(self, accumulator):
     self._maybe_do_batch(accumulator, force=True)  # Guaranteed compaction.
     self._num_compacts.inc(1)
     return accumulator
 
   def extract_output(
-      self, accumulator: _AggState) -> Optional[types.MetricVariablesType]:
+      self, accumulator):
     # It's possible that the accumulator has not been fully flushed, if it was
     # not produced by a call to compact (which is not guaranteed across all Beam
     # Runners), so we defensively flush it here again, before we extract data
@@ -487,7 +481,7 @@ class _SeparateMetricsAndPlotsFn(beam.DoFn):
   OUTPUT_TAG_PLOTS = 'tag_plots'
 
   def process(self,
-              element: Tuple[slicer.SliceKeyType, types.MetricVariablesType]):
+              element):
     (slice_key, results) = element
     slicing_metrics = {}
     plots = {}
@@ -509,7 +503,7 @@ class _SeparateMetricsAndPlotsFn(beam.DoFn):
 class _ExtractOutputDoFn(beam.DoFn):
   """A DoFn that extracts the metrics output."""
 
-  def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
+  def __init__(self, eval_shared_model):
     self._eval_shared_model = eval_shared_model
     self._model_load_seconds = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'model_load_seconds')
@@ -520,13 +514,11 @@ class _ExtractOutputDoFn(beam.DoFn):
     self._num_bootstrap_empties = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_bootstrap_empties')
 
-  def start_bundle(self) -> None:
+  def start_bundle(self):
     # There's no initialisation method for CombineFns.
     # See BEAM-3736: Add SetUp() and TearDown() for CombineFns.
     # Default to eval_saved_model dofn to preserve legacy assumption
     # of eval_saved_model.
-    # TODO(ihchen): Update all callers and make this an error condition to not
-    # have construct_fn specified.
     if self._eval_shared_model.construct_fn is None:
       construct_fn = dofn.make_construct_fn(
           eval_saved_model_path=self._eval_shared_model.model_path,
@@ -542,8 +534,8 @@ class _ExtractOutputDoFn(beam.DoFn):
               self._eval_shared_model.construct_fn(self._model_load_seconds)))
 
   def process(
-      self, element: Tuple[slicer.SliceKeyType, types.MetricVariablesType]
-  ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
+      self, element
+  ):
     (slice_key, metric_variables) = element
     if metric_variables:
       self._eval_saved_model.set_metric_variables(metric_variables)

@@ -15,14 +15,14 @@
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
 import inspect
 import sys
 import traceback
 import six
-from typing import List, Optional, Text
+from tensorflow_model_analysis.types_compat import List, Optional, Text
 
 # Separator used when combining multiple layers of Extracts keys into a single
 # string. Normally we would like to use '.' or '/' as a separator, but the
@@ -35,9 +35,9 @@ KEYS_SUFFIX = 'keys'
 VALUES_SUFFIX = 'values'
 
 
-def unique_key(key: Text,
-               current_keys: List[Text],
-               update_keys: Optional[bool] = False) -> Text:
+def unique_key(key,
+               current_keys,
+               update_keys = False):
   """Returns a unique key given a list of current keys.
 
   If the key exists in current_keys then a new key with _1, _2, ..., etc
@@ -58,7 +58,7 @@ def unique_key(key: Text,
   return k
 
 
-def compound_key(keys: List[Text], separator: Text = KEY_SEPARATOR) -> Text:
+def compound_key(keys, separator = KEY_SEPARATOR):
   """Returns a compound key based on a list of keys.
 
   Args:
@@ -70,17 +70,17 @@ def compound_key(keys: List[Text], separator: Text = KEY_SEPARATOR) -> Text:
   return separator.join([key.replace(separator, separator * 2) for key in keys])
 
 
-def create_keys_key(key: Text) -> Text:
+def create_keys_key(key):
   """Creates secondary key representing the sparse keys associated with key."""
   return '_'.join([key, KEYS_SUFFIX])
 
 
-def create_values_key(key: Text) -> Text:
+def create_values_key(key):
   """Creates secondary key representing sparse values associated with key."""
   return '_'.join([key, VALUES_SUFFIX])
 
 
-def reraise_augmented(exception: Exception, additional_message: Text) -> None:
+def reraise_augmented(exception, additional_message):
   """Reraise a given exception with additional information.
 
   Based on _reraise_augmented in Apache Beam.

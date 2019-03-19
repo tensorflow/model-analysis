@@ -14,20 +14,20 @@
 """View API for Tensorflow Model Analysis."""
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 import os
 
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.slicer import slicer
-from typing import Any, Dict, List, Optional, Text, Tuple, Union
+from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Text, Tuple, Union
 
 
 def get_slicing_metrics(
-    results: List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]],
-    slicing_column: Optional[Text] = None,
-    slicing_spec: Optional[slicer.SingleSliceSpec] = None,
-) -> List[Dict[Text, Union[Dict[Text, Any], Text]]]:
+    results,
+    slicing_column = None,
+    slicing_spec = None,
+):
   """Util function that extracts slicing metrics from the results.
 
   If neither slicing_column nor slicing_spec is provided, get Overall. If
@@ -71,9 +71,9 @@ def get_slicing_metrics(
     return data
 
 
-def find_all_slices(results: List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]],
-                    slicing_spec: slicer.SingleSliceSpec
-                   ) -> List[Dict[Text, Union[Dict[Text, Any], Text]]]:
+def find_all_slices(results,
+                    slicing_spec
+                   ):
   """Util function that extracts slicing metrics for the named column.
 
   Args:
@@ -96,9 +96,9 @@ def find_all_slices(results: List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]],
 
 
 def get_time_series(
-    results: model_eval_lib.EvalResults, slicing_spec: slicer.SingleSliceSpec,
-    display_full_path: bool
-) -> List[Dict[Text, Union[Dict[Union[float, Text], Any], Text]]]:
+    results, slicing_spec,
+    display_full_path
+):
   """Uitl function that extracts time series data for the specified slice.
 
   Args:
@@ -141,7 +141,7 @@ def get_time_series(
   return data  # pytype: disable=bad-return-type
 
 
-def _get_identifier(path: Text, use_full_path: bool) -> Text:
+def _get_identifier(path, use_full_path):
   """"Returns the desired identifier based on the path to the file.
 
   Args:
@@ -170,8 +170,8 @@ _SUPPORTED_PLOT_KEYS = {
 
 
 def _replace_nan_with_none(
-    plot_data: Union[Dict[Text, Any], Text],
-    plot_keys: Dict[Text, Dict[Text, Text]]) -> Union[Dict[Text, Any], Text]:
+    plot_data,
+    plot_keys):
   """Replaces all instances of nan with None in plot data.
 
   This is necessary for Colab integration where we serializes the data into json
@@ -208,10 +208,9 @@ def _replace_nan_with_none(
 
 
 def get_plot_data_and_config(
-    results: List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]],
-    slicing_spec: slicer.SingleSliceSpec,
-) -> Tuple[Union[Dict[Text, Any], Text],
-           Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text]]]:
+    results,
+    slicing_spec,
+):
   """Util function that extracts plot for a particular slice from the results.
 
   Args:
@@ -252,7 +251,7 @@ def get_plot_data_and_config(
   return plot_data, plot_config  # pytype: disable=bad-return-type
 
 
-def get_slicing_config(config: model_eval_lib.EvalConfig) -> Dict[Text, Text]:
+def get_slicing_config(config):
   """Util function that generates config for visualization.
 
   Args:

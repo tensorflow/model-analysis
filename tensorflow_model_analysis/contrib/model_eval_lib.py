@@ -15,10 +15,10 @@
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
-# Standard Imports
+
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
@@ -30,20 +30,20 @@ from tensorflow_model_analysis.extractors import feature_extractor
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.slicer import slicer
-from typing import List, Optional
+from tensorflow_model_analysis.types_compat import List, Optional
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(bytes)
 @beam.typehints.with_output_types(evaluator.Evaluation)
 def BuildAnalysisTable(  # pylint: disable=invalid-name
-    examples: beam.pvalue.PCollection,
-    eval_shared_model: types.EvalSharedModel,
-    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-    desired_batch_size: Optional[int] = None,
-    extractors: Optional[List[extractor.Extractor]] = None,
-    evaluators: Optional[List[evaluator.Evaluator]] = None
-) -> beam.pvalue.PCollection:
+    examples,
+    eval_shared_model,
+    slice_spec = None,
+    desired_batch_size = None,
+    extractors = None,
+    evaluators = None
+):
   """Builds an analysis table from data extracted from the input.
 
   Use this function to build an example-oriented PCollection of output data

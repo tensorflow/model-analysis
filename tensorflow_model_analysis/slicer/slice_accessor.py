@@ -18,27 +18,27 @@ For use within this directory only.
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
-# Standard Imports
+
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
 
-from typing import List, Text, Union
+from tensorflow_model_analysis.types_compat import List, Text, Union
 
 
 class SliceAccessor(object):
   """Wrapper around features dict for accessing keys and values for slicing."""
 
-  def __init__(self, features_dict: types.DictOfFetchedTensorValues):
+  def __init__(self, features_dict):
     self._features_dict = features_dict
 
-  def has_key(self, key: Text):
+  def has_key(self, key):
     return key in self._features_dict
 
-  def get(self, key: Text) -> List[Union[int, bytes, float]]:
+  def get(self, key):
     """Get the values of the feature with the given key.
 
     Args:

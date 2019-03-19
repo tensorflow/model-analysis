@@ -17,20 +17,20 @@ These keys defines the name of the post export metrics that are supported by
 TFMA.
 """
 
-# Standard __future__ imports
 
-from typing import Optional, Text
+
+from tensorflow_model_analysis.types_compat import Optional, Text
 
 # Prefix for post export metrics keys in metric_ops.
 DEFAULT_PREFIX = 'post_export_metrics'
 
 
-def base_key(suffix: Text, prefix: Optional[Text] = DEFAULT_PREFIX) -> Text:
+def base_key(suffix, prefix = DEFAULT_PREFIX):
   """Creates a base key from a prefix and a suffix."""
   return '%s/%s' % (prefix, suffix)
 
 
-def tagged_key(key: Text, tag: Text) -> Text:
+def tagged_key(key, tag):
   """Returns a base key tagged with a user defined tag.
 
   The tag is inserted after the base key's initial prefix.
@@ -48,12 +48,12 @@ def tagged_key(key: Text, tag: Text) -> Text:
   return '%s/%s' % (key, tag)
 
 
-def upper_bound_key(key: Text) -> Text:
+def upper_bound_key(key):
   """Creates an upper_bound key from a child key."""
   return key + '/upper_bound'
 
 
-def lower_bound_key(key: Text) -> Text:
+def lower_bound_key(key):
   """Create a lower_bound key from a child key."""
   return key + '/lower_bound'
 
@@ -92,7 +92,7 @@ _PLOT_SUFFIXES = [
 ]
 
 
-def is_plot_key(key: Text) -> bool:
+def is_plot_key(key):
   """Returns true if key is a plot key."""
   # We need to check for suffixes here because metrics may have prefixes based
   # on multiple labels and/or heads.

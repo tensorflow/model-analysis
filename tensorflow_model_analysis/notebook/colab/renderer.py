@@ -13,14 +13,14 @@
 # limitations under the License.
 """Colab renderer API."""
 
-# Standard __future__ imports
+
 
 from tensorflow_model_analysis.notebook.colab import util
-from typing import Any, Dict, List, Text, Union
+from tensorflow_model_analysis.types_compat import Any, Dict, List, Text, Union
 
 
-def render_slicing_metrics(data: List[Dict[Text, Union[Dict[Text, Any], Text]]],
-                           config: Dict[Text, Text]) -> None:
+def render_slicing_metrics(data,
+                           config):
   """Renders the slicing metrics view in Colab.
 
   Args:
@@ -31,8 +31,8 @@ def render_slicing_metrics(data: List[Dict[Text, Union[Dict[Text, Any], Text]]],
 
 
 def render_time_series(
-    data: List[Dict[Text, Union[Dict[Union[float, Text], Any], Text]]],
-    config: Dict[Text, bool]) -> None:
+    data,
+    config):
   """Renders the time series view in Colab.
 
   Args:
@@ -43,8 +43,8 @@ def render_time_series(
 
 
 def render_plot(
-    data: Dict[Text, List[Union[Text, float, List[float]]]],
-    config: Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text]]) -> None:
+    data,
+    config):
   """Renders the plot view in Colab.
 
   Args:

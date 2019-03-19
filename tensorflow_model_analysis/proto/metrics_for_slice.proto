@@ -133,7 +133,6 @@ message ConfusionMatrixAtThresholds {
 
 // DEPRECATED, do not use. If you you have a use case that requires this
 // metric type, let tf-model-analysis-dev@ know about it.
-// TODO(b/122263401): Remove this once safe.
 message RatioValue {
   google.protobuf.DoubleValue numerator = 1;
   google.protobuf.DoubleValue denominator = 2;

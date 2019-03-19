@@ -293,7 +293,6 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         'mean_prediction': 3203.5,
     })
 
-  # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
   def _sharedTestForPredictListMultipleExamplesPerInputModel(self, use_legacy):
     temp_eval_export_dir = self._getEvalExportDir()
     if use_legacy:
@@ -345,7 +344,6 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     self.assertSequenceEqual([1, 2, 2, 2, 4, 4], labels)
     self.assertSequenceEqual([1, 2, 2, 2, 4, 4], predictions)
 
-  # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
   def testLegacyPredictListMultipleExamplesPerInputModel(self):
     self._sharedTestForPredictListMultipleExamplesPerInputModel(True)
 

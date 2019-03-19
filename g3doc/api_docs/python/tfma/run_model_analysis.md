@@ -36,7 +36,6 @@ Evaluate PTransform instead.
 * <b>`slice_spec`</b>: A list of tfma.slicer.SingleSliceSpec. Each spec 
     represents a way to slice the data.
     Example usages:
-    # TODO(xinzha): add more use cases once they are supported in frontend.
     - tfma.SingleSiceSpec(): no slice, metrics are computed on overall data.
     - tfma.SingleSiceSpec(columns=['country']): slice based on features in
       column "country". We might get metrics for slice "country:us",

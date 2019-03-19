@@ -15,24 +15,24 @@
 
 from __future__ import absolute_import
 from __future__ import division
-# Standard __future__ imports
+
 from __future__ import print_function
 
-# Standard Imports
+
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.validators import validator
-from typing import Dict, List, Text
+from tensorflow_model_analysis.types_compat import Dict, List, Text
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_input_types(beam.typehints.Any)
 @beam.typehints.with_output_types(validator.Validation)
 def Validate(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection,
-    alternatives: Dict[Text, beam.PTransform],
-    validators: List[validator.Validator]):
+    extracts,
+    alternatives,
+    validators):
   """Performs validation of alternative evaluations.
 
   Args:
