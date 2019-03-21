@@ -210,6 +210,7 @@ def _replace_nan_with_none(
 def get_plot_data_and_config(
     results,
     slicing_spec,
+    label = None,
 ):
   """Util function that extracts plot for a particular slice from the results.
 
@@ -218,6 +219,7 @@ def get_plot_data_and_config(
       {metric_name, metric_value}).
     slicing_spec: The slicer.SingleSliceSpec to identify the slice to fetch plot
       for.
+    label: A partial label used to match a set of plots in the results.
 
   Returns:
     (plot_data, plot_config) for the specified slice.
@@ -228,7 +230,9 @@ def get_plot_data_and_config(
 
   Raises:
     ValueError: The provided slicing_column does not exist in results or more
-    than one result is found.
+    than one result is found; or there is not plot data available; or there are
+    multiple sets of plot while label is not provided; or label matches to more
+    than one set of plots; or label does not match any set of plots.
   """
   matching_slices = find_all_slices(results, slicing_spec)
   count = len(matching_slices)
@@ -245,8 +249,41 @@ def get_plot_data_and_config(
       'metricKeys': _SUPPORTED_PLOT_KEYS,
   }
 
-  plot_data = _replace_nan_with_none(target_slice['metrics'],
-                                     _SUPPORTED_PLOT_KEYS)
+  plot_sets = list(target_slice['metrics'].items())  # pytype: disable=attribute-error
+
+  plot_sets_count = len(plot_sets)
+
+  if plot_sets_count == 0:
+    raise ValueError('No plot data found for the slice.')
+
+  plot_set = None
+
+  if not label:
+    if plot_sets_count == 1:
+      # If there is only one set of plot, label is not necessary and we simply
+      # return the only set of plots available.
+      plot_set = plot_sets[0][1]
+    else:
+      # If more than one set of plots are available, ask the user to provide a
+      # label to help determine which set to return.
+      raise ValueError(
+          'More than one set of plots available. Please provide a partial '
+          'label for matching.')
+  else:
+    for (key, plots) in plot_sets:
+      if label in key:
+        if not plot_set:
+          plot_set = plots
+        else:
+          raise ValueError(
+              'Label %s matches more than one key. Keys are %s. Please make it more specific.'
+              % (label, ', '.join([key for key, _ in plot_sets])))
+    if not plot_set:
+      raise ValueError(
+          'Label %s does not match any key. Keys are %s. Please provide a new one.'
+          % (label, ', '.join([key for key, _ in plot_sets])))
+
+  plot_data = _replace_nan_with_none(plot_set, _SUPPORTED_PLOT_KEYS)
 
   return plot_data, plot_config  # pytype: disable=bad-return-type
 

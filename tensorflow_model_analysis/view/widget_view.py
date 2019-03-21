@@ -72,18 +72,22 @@ def render_time_series(results,
   return visualization.render_time_series(data, config)
 
 
-def render_plot(result,
-                slicing_spec = None
-               ):
+def render_plot(
+    result,
+    slicing_spec = None,
+    label = None,
+):
   """Renders the plot view as widget.
 
   Args:
     result: An tfma.EvalResult.
     slicing_spec: The slicing spec to identify the slice. Show overall if unset.
+    label: A partial label used to match a set of plots in the results.
 
   Returns:
     A PlotViewer object if in Jupyter notebook; None if in Colab.
   """
   slice_spec_to_use = slicing_spec if slicing_spec else SingleSliceSpec()
-  data, config = util.get_plot_data_and_config(result.plots, slice_spec_to_use)
+  data, config = util.get_plot_data_and_config(result.plots, slice_spec_to_use,
+                                               label)
   return visualization.render_plot(data, config)

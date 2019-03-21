@@ -502,35 +502,38 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             bytes_value: "cow"
           }
         }
-        plot_data {
-          calibration_histogram_buckets {
-            buckets {
-              lower_threshold_inclusive: -inf
-              upper_threshold_exclusive: 0.0
-              num_weighted_examples { value: 0.0 }
-              total_weighted_label { value: 0.0 }
-              total_weighted_refined_prediction { value: 0.0 }
-            }
-            buckets {
-              lower_threshold_inclusive: 0.0
-              upper_threshold_exclusive: 0.5
-              num_weighted_examples { value: 1.0 }
-              total_weighted_label { value: 1.0 }
-              total_weighted_refined_prediction { value: 0.3 }
-            }
-            buckets {
-              lower_threshold_inclusive: 0.5
-              upper_threshold_exclusive: 1.0
-              num_weighted_examples { value: 1.0 }
-              total_weighted_label { value: 0.0 }
-              total_weighted_refined_prediction { value: 0.7 }
-            }
-            buckets {
-              lower_threshold_inclusive: 1.0
-              upper_threshold_exclusive: inf
-              num_weighted_examples { value: 0.0 }
-              total_weighted_label { value: 0.0 }
-              total_weighted_refined_prediction { value: 0.0 }
+        plots {
+          key: ''
+          value {
+            calibration_histogram_buckets {
+              buckets {
+                lower_threshold_inclusive: -inf
+                upper_threshold_exclusive: 0.0
+                num_weighted_examples { value: 0.0 }
+                total_weighted_label { value: 0.0 }
+                total_weighted_refined_prediction { value: 0.0 }
+              }
+              buckets {
+                lower_threshold_inclusive: 0.0
+                upper_threshold_exclusive: 0.5
+                num_weighted_examples { value: 1.0 }
+                total_weighted_label { value: 1.0 }
+                total_weighted_refined_prediction { value: 0.3 }
+              }
+              buckets {
+                lower_threshold_inclusive: 0.5
+                upper_threshold_exclusive: 1.0
+                num_weighted_examples { value: 1.0 }
+                total_weighted_label { value: 0.0 }
+                total_weighted_refined_prediction { value: 0.7 }
+              }
+              buckets {
+                lower_threshold_inclusive: 1.0
+                upper_threshold_exclusive: inf
+                num_weighted_examples { value: 0.0 }
+                total_weighted_label { value: 0.0 }
+                total_weighted_refined_prediction { value: 0.0 }
+              }
             }
           }
         }""", metrics_for_slice_pb2.PlotsForSlice())
@@ -568,8 +571,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         path=os.path.join(output_path, model_eval_lib._PLOTS_OUTPUT_FILE))
     self.assertSliceMetricsListEqual(
         [(metrics_slice_key, metrics_for_slice.metrics)], metrics)
-    self.assertSlicePlotsListEqual(
-        [(plots_slice_key, plots_for_slice.plot_data)], plots)
+    self.assertSlicePlotsListEqual([(plots_slice_key, plots_for_slice.plots)],
+                                   plots)
     got_eval_config = model_eval_lib.load_eval_config(output_path)
     self.assertEqual(eval_config, got_eval_config)
 

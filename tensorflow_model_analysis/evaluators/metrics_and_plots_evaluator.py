@@ -95,13 +95,16 @@ def load_and_deserialize_plots(
   for record in tf.python_io.tf_record_iterator(path):
     plots_for_slice = metrics_for_slice_pb2.PlotsForSlice.FromString(record)
     if plots_for_slice.HasField('plot_data'):
-      result.append((
-          slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
-          plots_for_slice.plot_data))
-    if plots_for_slice.plots:
-      result.append((
-          slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
-          plots_for_slice.plots))
+      if plots_for_slice.plots:
+        raise RuntimeError('Both plots and plot_data are set.')
+
+      # For backward compatibility, plots data geneated with old code are added
+      # to the plots map with default key empty string.
+      plots_for_slice.plots[''].CopyFrom(plots_for_slice.plot_data)
+
+    result.append((
+        slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
+        plots_for_slice.plots))
   return result
 
 

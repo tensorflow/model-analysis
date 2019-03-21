@@ -65,43 +65,77 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
   full_model_location_2 = os.path.join('full', 'path', 'to', 'model',
                                        base_model_location_2)
 
+  key = 'plot_key'
+
   plots_data_a = {
-      'calibrationHistogramBuckets': {
-          'buckets': [{
-              'v': 0
-          }, {
-              'v': 1
-          }],
+      key: {
+          'calibrationHistogramBuckets': {
+              'buckets': [{
+                  'v': 0
+              }, {
+                  'v': 1
+              }],
+          }
       }
   }
   plots_a = ([(column_1, slice_a)], plots_data_a)
 
   plots_data_b = {
-      'calibrationHistogramBuckets': {
-          'buckets': [{
-              'v': 0.25
-          }, {
-              'v': 0.5
-          }, {
-              'v': 0.75
-          }],
+      key: {
+          'calibrationHistogramBuckets': {
+              'buckets': [{
+                  'v': 0.25
+              }, {
+                  'v': 0.5
+              }, {
+                  'v': 0.75
+              }],
+          }
       }
   }
   plots_b = ([(column_1, slice_b)], plots_data_b)
 
-  plots_data_b2 = {'calibrationHistogramBuckets': {'buckets': [{'v': 0.5}],}}
+  plots_data_b2 = {
+      key: {
+          'calibrationHistogramBuckets': {
+              'buckets': [{
+                  'v': 0.5
+              }],
+          }
+      }
+  }
   plots_b2 = ([(column_1, slice_b)], plots_data_b)
 
   plots_data_c = {
-      'calibrationHistogramBuckets': {
-          'buckets': [{
-              'v': 0.5
-          }, {
-              'v': 'NaN'
-          }],
+      key: {
+          'calibrationHistogramBuckets': {
+              'buckets': [{
+                  'v': 0.5
+              }, {
+                  'v': 'NaN'
+              }],
+          }
       }
   }
   plots_c = ([(column_1, slice_c)], plots_data_c)
+
+  plots_data_c2 = {
+      'label/head_a': {
+          'calibrationHistogramBuckets': {
+              'buckets': [{
+                  'v': 0.5
+              }],
+          }
+      },
+      'label/head_b': {
+          'calibrationHistogramBuckets': {
+              'buckets': [{
+                  'v': 0.5
+              }],
+          }
+      }
+  }
+  plots_c2 = ([(column_2, slice_c)], plots_data_c2)
 
   def _makeTestData(self):
     return [
@@ -115,6 +149,7 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         self.plots_b,
         self.plots_b2,
         self.plots_c,
+        self.plots_c2,
     ]
 
   def _makeEvalResults(self):
@@ -270,8 +305,8 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         self._makeTestPlotsData(),
         SingleSliceSpec(features=[(self.column_1, self.slice_a)]))
 
-    self.assertEquals(data, self.plots_data_a)
-    self.assertEquals(config['sliceName'], self.column_a)
+    self.assertEqual(data, self.plots_data_a[self.key])
+    self.assertEqual(config['sliceName'], self.column_a)
 
   def testRaisesErrorWhenNoMatchAvailableInPlotData(self):
     with self.assertRaises(ValueError):
@@ -290,7 +325,7 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         self._makeTestPlotsData(),
         SingleSliceSpec(features=[(self.column_1, self.slice_c)]))
 
-    self.assertEquals(data, {
+    self.assertEqual(data, {
         'calibrationHistogramBuckets': {
             'buckets': [{
                 'v': 0.5
@@ -300,10 +335,38 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         }
     })
 
+  def testGetPlotUsingLabel(self):
+    data, _ = util.get_plot_data_and_config(
+        self._makeTestPlotsData(),
+        SingleSliceSpec(features=[(self.column_2, self.slice_c)]),
+        label='head_a')
+
+    self.assertEqual(data, self.plots_data_c2['label/head_a'])
+
+  def testRaisesErrorWhenLabelNotProvided(self):
+    with self.assertRaises(ValueError):
+      util.get_plot_data_and_config(
+          self._makeTestPlotsData(),
+          SingleSliceSpec(features=[(self.column_2, self.slice_c)]))
+
+  def testRaisesErrorWhenNoMatchForLabel(self):
+    with self.assertRaises(ValueError):
+      util.get_plot_data_and_config(
+          self._makeTestPlotsData(),
+          SingleSliceSpec(features=[(self.column_1, self.slice_c)]),
+          label='head_a')
+
+  def testRaisesErrorWhenMultipleMatchForLabel(self):
+    with self.assertRaises(ValueError):
+      util.get_plot_data_and_config(
+          self._makeTestPlotsData(),
+          SingleSliceSpec(features=[(self.column_2, self.slice_c)]),
+          label='head_')
+
   def testGetSlicingConfig(self):
     eval_config = self._makeEvalConfig()
     slicing_config = util.get_slicing_config(eval_config)
-    self.assertEquals(slicing_config, {'weightedExamplesColumn': 'testing_key'})
+    self.assertEqual(slicing_config, {'weightedExamplesColumn': 'testing_key'})
 
 
 if __name__ == '__main__':
