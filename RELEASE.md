@@ -6,8 +6,6 @@
 *  Cast / convert labels for precision / recall at K so that they work even if
    the label and the classes Tensors have different types, as long as the types
    are compatible.
-*   Post export metrics will now also search for prediction keys prefixed by
-    metric_tag if it is specified.
 
 ## Breaking changes
 

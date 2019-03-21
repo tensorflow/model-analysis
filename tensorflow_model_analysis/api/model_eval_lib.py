@@ -76,7 +76,8 @@ class EvalConfig(
              Text),  # The location of the data used for this evaluation
             ('slice_spec', Optional[List[slicer.SingleSliceSpec]]
             ),  # The corresponding slice spec
-            ('example_weight_metric_key', Text),  # Deprecated
+            ('example_weight_metric_key',
+             Text),  # The name of the metric that contains example weight
             ('num_bootstrap_samples', int
             ),  # Number of bootstrapping if calculating confidence is desired.
         ])):
@@ -214,7 +215,8 @@ def default_eval_shared_model(
       weight will be added automatically.
     include_default_metrics: True to include the default metrics that are part
       of the saved model graph during evaluation.
-    example_weight_key: Deprecated.
+    example_weight_key: The key of the example weight column. If None, weight
+      will be 1 for each example.
     additional_fetches: Prefixes of additional tensors stored in
       signature_def.inputs that should be fetched at prediction time. The
       "features" and "labels" tensors are handled automatically and should not
@@ -486,7 +488,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   Example usage:
     eval_shared_model = tfma.default_eval_shared_model(
         eval_saved_model_path=model_location,
-        add_metrics_callbacks=[...])
+        add_metrics_callbacks=[...],
+        example_weight_key=example_weight_key)
     with beam.Pipeline(runner=...) as p:
       _ = (p
            | 'ReadData' >> beam.io.ReadFromTFRecord(data_location)
