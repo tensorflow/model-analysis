@@ -15,14 +15,14 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
-
+# Standard Imports
 import six
 import tensorflow as tf
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.types_compat import Text
+from typing import Text
 
 from google.protobuf import any_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
@@ -47,11 +47,11 @@ _TUPLE_KEY_PREFIX = b'$Tuple$'
 _BYTES_KEY_PREFIX = b'$Bytes$'
 
 
-def with_suffix(name, suffix):
+def with_suffix(name: Text, suffix: Text) -> Text:
   return '%s/%s' % (name, suffix)  # pytype: disable=bad-return-type
 
 
-def encode_key(key):
+def encode_key(key: types.FPLKeyType) -> bytes:
   """Encode a dictionary key as a string.
 
   For encoding dictionary keys in the prediction, label and feature
@@ -92,7 +92,7 @@ def encode_key(key):
         'key has unrecognised type: type: %s, value %s' % (type(key), key))
 
 
-def decode_key(encoded_key):
+def decode_key(encoded_key: bytes) -> types.FPLKeyType:
   """Decode an encoded dictionary key encoded with encode_key.
 
   Args:
@@ -125,7 +125,7 @@ def decode_key(encoded_key):
     raise ValueError('invalid encoding: %s' % encoded_key)
 
 
-def encode_tensor_node(node):
+def encode_tensor_node(node: types.TensorType) -> any_pb2.Any:
   """Encode a "reference" to a Tensor/SparseTensor as a TensorInfo in an Any.
 
   We put the Tensor / SparseTensor in a TensorInfo, which we then wrap in an
@@ -143,8 +143,8 @@ def encode_tensor_node(node):
   return any_buf
 
 
-def decode_tensor_node(graph,
-                       encoded_tensor_node):
+def decode_tensor_node(graph: tf.Graph,
+                       encoded_tensor_node: any_pb2.Any) -> types.TensorType:
   """Decode an encoded Tensor node encoded with encode_tensor_node.
 
   Decodes the encoded Tensor "reference", and returns the node in the given

@@ -15,7 +15,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import math
@@ -25,7 +25,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import util
-from tensorflow_model_analysis.types_compat import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
+from typing import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
 
 from tensorflow.core.example import example_pb2
 
@@ -33,21 +33,21 @@ from tensorflow.core.example import example_pb2
 class TensorflowModelAnalysisTest(tf.test.TestCase):
   """Test class that extends tf.test.TestCase with extra functionality."""
 
-  def setUp(self):
+  def setUp(self) -> None:
     self.longMessage = True  # pylint: disable=invalid-name
 
-  def _getTempDir(self):
+  def _getTempDir(self) -> Text:
     return tempfile.mkdtemp()
 
-  def _makeExample(self, **kwargs):
+  def _makeExample(self, **kwargs) -> example_pb2.Example:
     return util.make_example(**kwargs)
 
   def assertHasKeyWithIntervalValueAlmostEqual(
       self,
-      d,
-      key,
-      value,
-      places = 5):
+      d: Dict[Text, types.ValueWithConfidenceInterval],
+      key: Text,
+      value: float,
+      places: int = 5) -> None:
 
     self.assertIn(key, d)
     self.assertTrue(isinstance(d[key], types.ValueWithConfidenceInterval))
@@ -55,35 +55,36 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
         d[key].unsampled_value, value, places=places, msg='key %s' % key)
 
   def assertHasKeyWithValueAlmostEqual(self,
-                                       d,
-                                       key,
-                                       value,
-                                       places = 5):
+                                       d: Dict[Text, float],
+                                       key: Text,
+                                       value: float,
+                                       places: int = 5) -> None:
     self.assertIn(key, d)
     self.assertAlmostEqual(d[key], value, places=places, msg='key %s' % key)
 
   def assertDictElementsAlmostEqual(self,
-                                    got_values_dict,
-                                    expected_values_dict,
-                                    places = 5):
+                                    got_values_dict: Dict[Text, float],
+                                    expected_values_dict: Dict[Text, float],
+                                    places: int = 5) -> None:
     for key, expected_value in expected_values_dict.items():
       self.assertHasKeyWithValueAlmostEqual(got_values_dict, key,
                                             expected_value, places)
 
   def assertDictElementsWithIntervalsAlmostEqual(
       self,
-      got_values_dict,
-      expected_values_dict,
-      places = 5):
+      got_values_dict: Dict[Text, types.ValueWithConfidenceInterval],
+      expected_values_dict: Dict[Text, float],
+      places: int = 5) -> None:
     for key, expected_value in expected_values_dict.items():
       self.assertHasKeyWithIntervalValueAlmostEqual(got_values_dict, key,
                                                     expected_value, places)
 
   def assertDictMatrixRowsAlmostEqual(
       self,
-      got_values_dict,
-      expected_values_dict,
-      places = 5):
+      got_values_dict: Dict[Text, Sequence[Iterable[Union[float, int]]]],
+      expected_values_dict: Dict[Text, Iterable[
+          Tuple[int, Iterable[Union[float, int]]]]],
+      places: int = 5) -> None:
     """Fails if got_values_dict does not match values in expected_values_dict.
 
     For each entry, expected_values_dict provides the row index and the values
@@ -112,11 +113,11 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
             msg_prefix='for key %s, row %d: ' % (key, row))
 
   def assertSequenceAlmostEqual(self,
-                                got_seq,
-                                expected_seq,
-                                places = 5,
-                                delta = 0,
-                                msg_prefix=''):
+                                got_seq: Iterable[Union[float, int]],
+                                expected_seq: Iterable[Union[float, int]],
+                                places: int = 5,
+                                delta: float = 0,
+                                msg_prefix='') -> None:
     got = list(got_seq)
     expected = list(expected_seq)
     self.assertEqual(
@@ -133,8 +134,8 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
           self.assertAlmostEqual(a, b, msg=msg, places=places)
 
   def assertSparseTensorValueEqual(
-      self, expected_sparse_tensor_value,
-      got_sparse_tensor_value):
+      self, expected_sparse_tensor_value: tf.SparseTensorValue,
+      got_sparse_tensor_value: tf.SparseTensorValue) -> None:
     self.assertAllEqual(expected_sparse_tensor_value.indices,
                         got_sparse_tensor_value.indices)
     self.assertAllEqual(expected_sparse_tensor_value.values,
@@ -151,11 +152,12 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
 
   def createTestEvalSharedModel(
       self,
-      eval_saved_model_path,
-      add_metrics_callbacks = None,
-      include_default_metrics = True,
-      example_weight_key = None,
-      additional_fetches = None):
+      eval_saved_model_path: Text,
+      add_metrics_callbacks: Optional[List[
+          types.AddMetricsCallbackType]] = None,
+      include_default_metrics: Optional[bool] = True,
+      example_weight_key: Optional[Text] = None,
+      additional_fetches: Optional[List[Text]] = None) -> types.EvalSharedModel:
 
     return types.EvalSharedModel(
         model_path=eval_saved_model_path,
@@ -166,8 +168,8 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
             include_default_metrics, additional_fetches))
 
   def predict_injective_single_example(
-      self, eval_saved_model,
-      raw_example_bytes):
+      self, eval_saved_model: load.EvalSavedModel,
+      raw_example_bytes: bytes) -> types.FeaturesPredictionsLabels:
     """Run predict for a single example for a injective model.
 
     Args:
@@ -184,9 +186,9 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     return eval_saved_model.as_features_predictions_labels(fetched_list)[0]
 
   def predict_injective_example_list(self,
-                                     eval_saved_model,
-                                     raw_example_bytes_list
-                                    ):
+                                     eval_saved_model: load.EvalSavedModel,
+                                     raw_example_bytes_list: List[bytes]
+                                    ) -> List[types.FeaturesPredictionsLabels]:
     """Run predict_list for a list of examples for a injective model.
 
     Args:

@@ -13,19 +13,20 @@
 # limitations under the License.
 """Utility for Colab renderer API."""
 
-
+# Standard __future__ imports
 
 import json
 from IPython import display
 
-from tensorflow_model_analysis.types_compat import Any, Dict, List, Text, Union
+from typing import Any, Dict, List, Text, Union
 
 
 def render_component(
-    component_name,
-    data,
-    config
-):
+    component_name: Text,
+    data: Union[List[Dict[Text, Union[Dict[Text, Any], Text]]],
+                Dict[Text, List[Union[Text, float, List[float]]]]],
+    config: Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text, bool]]
+) -> None:
   """Renders the specified component in Colab.
 
   Colab requires custom visualization to be rendered in a sandbox so we cannot

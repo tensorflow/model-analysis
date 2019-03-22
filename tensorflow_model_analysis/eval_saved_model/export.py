@@ -13,15 +13,16 @@
 # limitations under the License.
 """Library for exporting the EvalSavedModel."""
 
+# TODO(b/72233799): Have TF.Learn review this.
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import types as python_types
 
-
+# Standard Imports
 import six
 import tensorflow as tf
 
@@ -31,8 +32,7 @@ from tensorflow_model_analysis import version
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
-
-from tensorflow_model_analysis.types_compat import Callable, Dict, Optional, Text, Union
+from typing import Callable, Dict, Optional, Text, Union
 
 from tensorflow.python.estimator.export import export as export_lib
 
@@ -43,10 +43,10 @@ EvalInputReceiverType = Union[  # pylint: disable=invalid-name
 
 @tfma_util.kwargs_only
 def EvalInputReceiver(  # pylint: disable=invalid-name
-    features,
-    labels,
-    receiver_tensors,
-    input_refs = None):
+    features: types.TensorTypeMaybeDict,
+    labels: Optional[types.TensorTypeMaybeDict],
+    receiver_tensors: types.TensorTypeMaybeDict,
+    input_refs: Optional[types.TensorType] = None) -> EvalInputReceiverType:
   """Returns an appropriate receiver for eval_input_receiver_fn.
 
   This is a wrapper around TensorFlow's InputReceiver that adds additional
@@ -112,8 +112,9 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
   updated_receiver_tensors[constants.SIGNATURE_DEF_TFMA_VERSION_KEY] = (
       tf.constant(version.VERSION_STRING))
 
+  # TODO(b/119308261): Remove once all evaluator binaries have been updated.
   _add_tfma_collections(features, labels, input_refs)
-
+  util.add_build_data_collection()
 
   # Workaround for TensorFlow issue #17568. Note that we pass the
   # identity-wrapped features and labels to model_fn, but we have to feed
@@ -135,12 +136,13 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
   # pylint: enable=unreachable
 
 
+# TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
 @tfma_util.kwargs_only
 def _LegacyEvalInputReceiver(  # pylint: disable=invalid-name
-    features,
-    labels,
-    receiver_tensors,
-    input_refs = None):
+    features: types.TensorTypeMaybeDict,
+    labels: Optional[types.TensorTypeMaybeDict],
+    receiver_tensors: Dict[Text, types.TensorType],
+    input_refs: Optional[types.TensorType] = None) -> EvalInputReceiverType:
   """Returns a legacy eval_input_receiver_fn.
 
   This is for testing purposes only.
@@ -194,13 +196,13 @@ def _LegacyEvalInputReceiver(  # pylint: disable=invalid-name
   # Note that in the collection we store the unwrapped versions, because
   # we want to feed the unwrapped versions.
   _add_tfma_collections(features, labels, input_refs)
-
+  util.add_build_data_collection()
   return receiver
 
 
-def _add_tfma_collections(features,
-                          labels,
-                          input_refs):
+def _add_tfma_collections(features: types.TensorTypeMaybeDict,
+                          labels: Optional[types.TensorTypeMaybeDict],
+                          input_refs: types.TensorType):
   """Add extra collections for features, labels, input_refs, version.
 
   This should be called within the Graph that will be saved. Typical usage
@@ -248,9 +250,9 @@ def _add_tfma_collections(features,
   tf.add_to_collection(encoding.TFMA_VERSION_COLLECTION, version.VERSION_STRING)
 
 
-def _encode_and_add_to_node_collection(collection_prefix,
-                                       key,
-                                       node):
+def _encode_and_add_to_node_collection(collection_prefix: Text,
+                                       key: types.FPLKeyType,
+                                       node: types.TensorType) -> None:
   tf.add_to_collection(
       encoding.with_suffix(collection_prefix, encoding.KEY_SUFFIX),
       encoding.encode_key(key))
@@ -261,7 +263,7 @@ def _encode_and_add_to_node_collection(collection_prefix,
 
 def build_parsing_eval_input_receiver_fn(
     feature_spec,
-    label_key):
+    label_key: Optional[Text]) -> Callable[[], EvalInputReceiverType]:
   """Build a eval_input_receiver_fn expecting fed tf.Examples.
 
   Creates a eval_input_receiver_fn that expects a serialized tf.Example fed
@@ -294,13 +296,15 @@ def build_parsing_eval_input_receiver_fn(
   return eval_input_receiver_fn
 
 
+# TODO(b/110472071): Temporary for tf.contrib.learn Estimator support only.
 @tfma_util.kwargs_only
 def _export_eval_savedmodel_contrib_estimator(
     estimator,
-    export_dir_base,
-    eval_input_receiver_fn,
-    serving_input_receiver_fn = None,
-    checkpoint_path = None):
+    export_dir_base: Text,
+    eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
+    serving_input_receiver_fn: Optional[
+        Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
+    checkpoint_path: Optional[Text] = None) -> bytes:
   """Export a EvalSavedModel for the given tf.contrib.learn Estimator.
 
   This is a compatibility shim for exporting tf.contrib.learn Estiamtors.
@@ -418,11 +422,12 @@ def _export_eval_savedmodel_contrib_estimator(
 @tfma_util.kwargs_only
 def export_eval_savedmodel(
     estimator,
-    export_dir_base,
-    eval_input_receiver_fn,
-    serving_input_receiver_fn = None,
-    assets_extra = None,
-    checkpoint_path = None):
+    export_dir_base: Text,
+    eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
+    serving_input_receiver_fn: Optional[
+        Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
+    assets_extra: Optional[Dict[Text, Text]] = None,
+    checkpoint_path: Optional[Text] = None) -> bytes:
   """Export a EvalSavedModel for the given estimator.
 
   Args:
@@ -450,6 +455,7 @@ def export_eval_savedmodel(
   Raises:
     ValueError: Could not find a checkpoint to export.
   """
+  # TODO(b/110472071): Temporary for tf.contrib.learn Estimator support only.
   if isinstance(estimator, tf.contrib.learn.Estimator):
     return _export_eval_savedmodel_contrib_estimator(
         estimator=estimator,
@@ -471,10 +477,11 @@ def export_eval_savedmodel(
 
 @tfma_util.kwargs_only
 def make_export_strategy(
-    eval_input_receiver_fn,
-    serving_input_receiver_fn = None,
-    exports_to_keep = 5,
-):
+    eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
+    serving_input_receiver_fn: Optional[
+        Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
+    exports_to_keep: Optional[int] = 5,
+) -> tf.contrib.learn.ExportStrategy:
   """Create an ExportStrategy for EvalSavedModel.
 
   Note: The strip_default_attrs is not used for EvalSavedModel export. And

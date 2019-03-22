@@ -11,7 +11,6 @@ http_archive(
 )
 
 load("@io_bazel_rules_closure//closure:defs.bzl", "closure_repositories")
-
 closure_repositories()
 
 http_archive(
@@ -22,10 +21,8 @@ http_archive(
 )
 
 load("@org_tensorflow_tensorboard//third_party:workspace.bzl", "tensorboard_workspace")
-
 tensorboard_workspace()
 
 load("//third_party:workspace.bzl", "tensorflow_model_analysis_workspace")
-
 # Please add all new dependencies in workspace.bzl.
 tensorflow_model_analysis_workspace()

@@ -15,14 +15,14 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import os
 import pickle
 import tempfile
 
-
+# Standard Imports
 
 import apache_beam as beam
 import six
@@ -41,7 +41,7 @@ import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_model_analysis.validators import validator
 from tensorflow_model_analysis.writers import writer
-from tensorflow_model_analysis.types_compat import Any, Dict, List, NamedTuple, Optional, Text, Tuple, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Text, Tuple, Union
 
 from google.protobuf import json_format
 
@@ -84,17 +84,17 @@ class EvalConfig(
   """Config used for extraction and evaluation."""
 
   def __new__(cls,
-              model_location,
-              data_location = None,
-              slice_spec = None,
-              example_weight_metric_key = None,
-              num_bootstrap_samples = 1):
+              model_location: Text,
+              data_location: Optional[Text] = None,
+              slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+              example_weight_metric_key: Optional[Text] = None,
+              num_bootstrap_samples: Optional[int] = 1):
     return super(EvalConfig,
                  cls).__new__(cls, model_location, data_location, slice_spec,
                               example_weight_metric_key, num_bootstrap_samples)
 
 
-def _check_version(raw_final_dict, path):
+def _check_version(raw_final_dict: Dict[Text, Any], path: Text):
   version = raw_final_dict.get(_VERSION_KEY)
   if version is None:
     raise ValueError(
@@ -104,14 +104,14 @@ def _check_version(raw_final_dict, path):
   # compatibility issues.
 
 
-def _serialize_eval_config(eval_config):
+def _serialize_eval_config(eval_config: EvalConfig) -> bytes:
   final_dict = {}
   final_dict[_VERSION_KEY] = tfma_version.VERSION_STRING
   final_dict[_EVAL_CONFIG_KEY] = eval_config
   return pickle.dumps(final_dict)
 
 
-def load_eval_config(output_path):
+def load_eval_config(output_path: Text) -> EvalConfig:
   serialized_record = six.next(
       tf.python_io.tf_record_iterator(
           os.path.join(output_path, _EVAL_CONFIG_FILE)))
@@ -131,8 +131,8 @@ class EvalResults(object):
   """Class for results from multiple model analysis run."""
 
   def __init__(self,
-               results,
-               mode = constants.UNKNOWN_EVAL_MODE):
+               results: List[EvalResult],
+               mode: Text = constants.UNKNOWN_EVAL_MODE):
     supported_modes = [
         constants.DATA_CENTRIC_MODE,
         constants.MODEL_CENTRIC_MODE,
@@ -144,14 +144,14 @@ class EvalResults(object):
     self._results = results
     self._mode = mode
 
-  def get_results(self):
+  def get_results(self) -> List[EvalResult]:
     return self._results
 
-  def get_mode(self):
+  def get_mode(self) -> Text:
     return self._mode
 
 
-def make_eval_results(results, mode):
+def make_eval_results(results: List[EvalResult], mode: Text) -> EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:
@@ -166,7 +166,7 @@ def make_eval_results(results, mode):
   return EvalResults(results, mode)
 
 
-def load_eval_results(output_paths, mode):
+def load_eval_results(output_paths: List[Text], mode: Text) -> EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:
@@ -182,7 +182,7 @@ def load_eval_results(output_paths, mode):
   return make_eval_results(results, mode)
 
 
-def load_eval_result(output_path):
+def load_eval_result(output_path: Text) -> EvalResult:
   """Creates an EvalResult object for use with the visualization functions."""
   metrics_proto_list = metrics_and_plots_evaluator.load_and_deserialize_metrics(
       path=os.path.join(output_path, _METRICS_OUTPUT_FILE))
@@ -200,11 +200,11 @@ def load_eval_result(output_path):
 
 
 def default_eval_shared_model(
-    eval_saved_model_path,
-    add_metrics_callbacks = None,
-    include_default_metrics = True,
-    example_weight_key = None,
-    additional_fetches = None):
+    eval_saved_model_path: Text,
+    add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
+    include_default_metrics: Optional[bool] = True,
+    example_weight_key: Optional[Text] = None,
+    additional_fetches: Optional[List[Text]] = None) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
 
   Args:
@@ -251,10 +251,10 @@ def default_eval_shared_model(
 
 
 def default_extractors(  # pylint: disable=invalid-name
-    eval_shared_model,
-    slice_spec = None,
-    desired_batch_size = None,
-    materialize = True):
+    eval_shared_model: types.EvalSharedModel,
+    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+    desired_batch_size: Optional[int] = None,
+    materialize: Optional[bool] = True) -> List[extractor.Extractor]:
   """Returns the default extractors for use in ExtractAndEvaluate.
 
   Args:
@@ -273,9 +273,9 @@ def default_extractors(  # pylint: disable=invalid-name
 
 
 def default_evaluators(  # pylint: disable=invalid-name
-    eval_shared_model,
-    desired_batch_size = None,
-    num_bootstrap_samples = None):
+    eval_shared_model: types.EvalSharedModel,
+    desired_batch_size: Optional[int] = None,
+    num_bootstrap_samples: Optional[int] = None) -> List[evaluator.Evaluator]:
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
@@ -293,7 +293,7 @@ def default_evaluators(  # pylint: disable=invalid-name
   ]
 
 
-def default_writers(output_path):  # pylint: disable=invalid-name
+def default_writers(output_path: Text) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
 
   Args:
@@ -319,7 +319,7 @@ def default_writers(output_path):  # pylint: disable=invalid-name
 # some protocol buffer field. Note that MessageMap is not a protobuf message,
 # none of the exising utility methods work on it. We must iterate over its
 # values and call the utility function individually.
-def _convert_proto_map_to_dict(proto_map):
+def _convert_proto_map_to_dict(proto_map: Dict[Text, Any]) -> Dict[Text, Any]:
   """Converts a metric map (metrics in MetricsForSlice protobuf) into a dict.
 
   Args:
@@ -387,20 +387,21 @@ def _convert_proto_map_to_dict(proto_map):
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(bytes)
-@beam.typehints.with_output_types(beam.typehints.Any)
+@beam.typehints.with_output_types(types.Extracts)
 def InputsToExtracts(  # pylint: disable=invalid-name
-    inputs):
+    inputs: beam.pvalue.PCollection):
   """Converts serialized inputs (e.g. examples) to Extracts."""
   return inputs | beam.Map(lambda x: {constants.INPUT_KEY: x})
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.typehints.Any)
+@beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(evaluator.Evaluation)
 def ExtractAndEvaluate(  # pylint: disable=invalid-name
-    extracts, extractors,
-    evaluators):
+    extracts: beam.pvalue.PCollection, extractors: List[extractor.Extractor],
+    evaluators: List[evaluator.Evaluator]):
   """Performs Extractions and Evaluations in provided order."""
+  # TODO(b/120629430): Add support for merging outputs.
   evaluation = {}
   # Run evaluators that run before extraction (i.e. that only require
   # the incoming input extract added by ReadInputs)
@@ -423,8 +424,8 @@ def ExtractAndEvaluate(  # pylint: disable=invalid-name
     Union[evaluator.Evaluation, validator.Validation])
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def WriteResults(  # pylint: disable=invalid-name
-    evaluation_or_validation,
-    writers):
+    evaluation_or_validation: Union[evaluator.Evaluation, validator.Validation],
+    writers: List[writer.Writer]):
   """Writes Evaluation or Validation results using given writers.
 
   Args:
@@ -448,7 +449,7 @@ def WriteResults(  # pylint: disable=invalid-name
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def WriteEvalConfig(  # pylint: disable=invalid-name
-    pipeline, eval_config, output_path):
+    pipeline: beam.Pipeline, eval_config: EvalConfig, output_path: Text):
   """Writes EvalConfig to file.
 
   Args:
@@ -469,17 +470,17 @@ def WriteEvalConfig(  # pylint: disable=invalid-name
 @beam.ptransform_fn
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
-    examples,
-    eval_shared_model,
-    output_path,
-    display_only_data_location = None,
-    slice_spec = None,
-    desired_batch_size = None,
-    extractors = None,
-    evaluators = None,
-    writers = None,
-    write_config = True,
-    num_bootstrap_samples = 1):
+    examples: beam.pvalue.PCollection,
+    eval_shared_model: types.EvalSharedModel,
+    output_path: Text,
+    display_only_data_location: Optional[Text] = None,
+    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+    desired_batch_size: Optional[int] = None,
+    extractors: Optional[List[extractor.Extractor]] = None,
+    evaluators: Optional[List[evaluator.Evaluator]] = None,
+    writers: Optional[List[writer.Writer]] = None,
+    write_config: Optional[bool] = True,
+    num_bootstrap_samples: Optional[int] = 1) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -591,18 +592,18 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
 
 
 def run_model_analysis(
-    eval_shared_model,
-    data_location,
-    file_format = 'tfrecords',
-    slice_spec = None,
-    output_path = None,
-    extractors = None,
-    evaluators = None,
-    writers = None,
-    write_config = True,
-    pipeline_options = None,
-    num_bootstrap_samples = 1,
-):
+    eval_shared_model: types.EvalSharedModel,
+    data_location: Text,
+    file_format: Text = 'tfrecords',
+    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+    output_path: Optional[Text] = None,
+    extractors: Optional[List[extractor.Extractor]] = None,
+    evaluators: Optional[List[evaluator.Evaluator]] = None,
+    writers: Optional[List[writer.Writer]] = None,
+    write_config: Optional[bool] = True,
+    pipeline_options: Optional[Any] = None,
+    num_bootstrap_samples: Optional[int] = 1,
+) -> EvalResult:
   """Runs TensorFlow model analysis.
 
   It runs a Beam pipeline to compute the slicing metrics exported in TensorFlow
@@ -622,6 +623,7 @@ def run_model_analysis(
     slice_spec: A list of tfma.slicer.SingleSliceSpec. Each spec represents a
       way to slice the data. If None, defaults to the overall slice.
       Example usages:
+      # TODO(xinzha): add more use cases once they are supported in frontend.
       - tfma.SingleSiceSpec(): no slice, metrics are computed on overall data.
       - tfma.SingleSiceSpec(columns=['country']): slice based on features in
         column "country". We might get metrics for slice "country:us",
@@ -688,8 +690,8 @@ def run_model_analysis(
   return eval_result
 
 
-def multiple_model_analysis(model_locations, data_location,
-                            **kwargs):
+def multiple_model_analysis(model_locations: List[Text], data_location: Text,
+                            **kwargs) -> EvalResults:
   """Run model analysis for multiple models on the same data set.
 
   Args:
@@ -710,8 +712,8 @@ def multiple_model_analysis(model_locations, data_location,
   return EvalResults(results, constants.MODEL_CENTRIC_MODE)
 
 
-def multiple_data_analysis(model_location, data_locations,
-                           **kwargs):
+def multiple_data_analysis(model_location: Text, data_locations: List[Text],
+                           **kwargs) -> EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:

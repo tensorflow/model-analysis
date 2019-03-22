@@ -22,11 +22,11 @@ an example FPL to determine FPL feed structure.
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import datetime
-
+# Standard Imports
 import apache_beam as beam
 import tensorflow as tf
 
@@ -36,15 +36,15 @@ from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
 
-from tensorflow_model_analysis.types_compat import Any, Generator, List, Optional, Text, Tuple  # pytype: disable=not-supported-yet
+from typing import Any, Generator, List, Optional, Text, Tuple  # pytype: disable=not-supported-yet
 
 
 def make_construct_fn(  # pylint: disable=invalid-name
-    add_metrics_callbacks,
-    fpl_feed_config):
+    add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]],
+    fpl_feed_config: eval_metrics_graph.FPLFeedConfig):
   """Returns a construct fn for constructing the model agnostic eval graph."""
 
-  def construct_fn(model_load_seconds):
+  def construct_fn(model_load_seconds: beam.metrics.metricbase.Distribution):
     """Thin wrapper for the actual construct to allow for metrics."""
 
     def construct():  # pylint: disable=invalid-name
@@ -64,8 +64,8 @@ def make_construct_fn(  # pylint: disable=invalid-name
 class ModelAgnosticEvaluateGraph(eval_metrics_graph.EvalMetricsGraph):
   """Class handler for using a ModelAgnosticEvaluation graph."""
 
-  def __init__(self, add_metrics_callbacks,
-               fpl_feed_config):
+  def __init__(self, add_metrics_callbacks: List[types.AddMetricsCallbackType],
+               fpl_feed_config: eval_metrics_graph.FPLFeedConfig):
     # Note that we do not actually initialize the graph here. The reason is we
     # wait until we get the first FeaturesPredictionsLabels to get
     # how the graph is to be constructed. Otherwise, we will need define a
@@ -83,7 +83,7 @@ class ModelAgnosticEvaluateGraph(eval_metrics_graph.EvalMetricsGraph):
 
   def _iterate_fpl_maps_in_canonical_order(
       self
-  ):
+  ) -> Generator[Tuple[Text, types.FPLKeyType, types.TensorType], None, None]:
     for key, value in sorted(self._fpl_feed_config.features.items()):
       yield 'features', key, value  # pytype: disable=bad-return-type
     for key, value in sorted(self._fpl_feed_config.predictions.items()):
@@ -91,7 +91,7 @@ class ModelAgnosticEvaluateGraph(eval_metrics_graph.EvalMetricsGraph):
     for key, value in sorted(self._fpl_feed_config.labels.items()):
       yield 'labels', key, value  # pytype: disable=bad-return-type
 
-  def _create_placeholder(self, fpl_feed):
+  def _create_placeholder(self, fpl_feed: Tuple[Text, Any]):
     """Generates a placeholder op given the input fetched_tensor_value."""
     # numpy array for dense Tensor, SparseTensorValue for SparseTensor
     (tensor_type, dtype) = fpl_feed
@@ -141,8 +141,8 @@ class ModelAgnosticEvaluateGraph(eval_metrics_graph.EvalMetricsGraph):
 
   def _create_feed_for_features_predictions_labels_list(
       self,
-      features_predictions_labels_list
-  ):
+      features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
+  ) -> List[types.TensorValue]:
     """Create feed list for a list of FeaturesPredictionsLabels."""
 
     # Feed in the tensors in the following order:

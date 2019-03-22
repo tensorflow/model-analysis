@@ -15,12 +15,12 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import apache_beam as beam
 from tensorflow_model_analysis.extractors import extractor
-from tensorflow_model_analysis.types_compat import Dict, List, NamedTuple, Text
+from typing import Dict, List, NamedTuple, Text
 
 # An evaluator is a PTransform that takes Extracts as input and produces an
 # Evaluation as output. A typical example of an evaluator is the
@@ -46,8 +46,8 @@ Evaluator = NamedTuple(  # pylint: disable=invalid-name
 Evaluation = Dict[Text, beam.pvalue.PCollection]
 
 
-def verify_evaluator(evaluator,
-                     extractors):
+def verify_evaluator(evaluator: Evaluator,
+                     extractors: List[extractor.Extractor]):
   """Verifies evaluator is matched with an extractor.
 
   Args:

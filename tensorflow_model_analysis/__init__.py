@@ -16,6 +16,9 @@
 # pylint: disable=unused-import
 # pylint: disable=g-bad-import-order
 
+# TODO(b/77140537) For API docs
+# We want to document the view module, but it doesn't work with
+# the current tools, so we have a temporary stub.
 from tensorflow_model_analysis import view
 from tensorflow_model_analysis.api import tfma_unit as test
 
@@ -45,6 +48,7 @@ from tensorflow_model_analysis.constants import BASELINE_SCORE_KEY
 from tensorflow_model_analysis.constants import CANDIDATE_KEY
 from tensorflow_model_analysis.constants import DATA_CENTRIC_MODE
 from tensorflow_model_analysis.constants import EXAMPLE_SCORE_KEY
+# TODO(b/120222218): Remove after passing of native FPL supported.
 from tensorflow_model_analysis.constants import FEATURES_PREDICTIONS_LABELS_KEY
 from tensorflow_model_analysis.constants import FEATURES_KEY
 from tensorflow_model_analysis.constants import INPUT_KEY
@@ -58,12 +62,16 @@ from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model import exporter
 
+from tensorflow_model_analysis.notebook.jupyter.jupyter_nbextension import *  # pylint: disable=wildcard-import
+
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 
 from tensorflow_model_analysis.types import AddMetricsCallbackType
 from tensorflow_model_analysis.types import EvalSharedModel
 from tensorflow_model_analysis.types import Extracts
+# TODO(b/120222218): Remove after passing of native FPL supported.
 from tensorflow_model_analysis.types import FeaturesPredictionsLabels
+# TODO(b/120222218): Remove after passing of native FPL supported.
 from tensorflow_model_analysis.types import MaterializedColumn
 from tensorflow_model_analysis.types import TensorType
 from tensorflow_model_analysis.types import TensorTypeMaybeDict
@@ -75,16 +83,11 @@ from tensorflow_model_analysis.util import unique_key
 
 from tensorflow_model_analysis.version import VERSION_STRING
 
+# TODO(b/73882264): The orders should be kept in order to make benchmark on
+# DataFlow work. We need to look into why the import orders matters for the
+# DataFlow benchmark.
 from tensorflow_model_analysis import extractors
 from tensorflow_model_analysis import slicer
 from tensorflow_model_analysis import validators
 from tensorflow_model_analysis import evaluators
 from tensorflow_model_analysis import writers
-
-def _jupyter_nbextension_paths():
-  return [{
-      'section': 'notebook',
-      'src': 'static',
-      'dest': 'tfma_widget_js',
-      'require': 'tfma_widget_js/extension'
-  }]

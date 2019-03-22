@@ -15,18 +15,18 @@
 
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
-
+# Standard Imports
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.types_compat import List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 def total(
-    values):
+    values: types.TensorType) -> Tuple[types.TensorType, types.TensorType]:
   """Metric to compute the running total of a value."""
 
   with tf.variable_scope('total', values):
@@ -45,13 +45,13 @@ def total(
     return value_op, update_op
 
 
-def calibration_plot(predictions,
-                     labels,
-                     left,
-                     right,
-                     num_buckets,
-                     weights = None
-                    ):
+def calibration_plot(predictions: types.TensorType,
+                     labels: types.TensorType,
+                     left: float,
+                     right: float,
+                     num_buckets: int,
+                     weights: Optional[types.TensorType] = None
+                    ) -> Tuple[types.TensorType, types.TensorType]:
   # pyformat: disable
   """Calibration plot for predictions in [left, right].
 
@@ -155,13 +155,13 @@ def calibration_plot(predictions,
 
 
 def _precision_recall_at_k(
-    classes,
-    scores,
-    labels,
-    cutoffs,
-    weights = None,
-    precision = True,
-    recall = True):
+    classes: types.TensorType,
+    scores: types.TensorType,
+    labels: types.TensorType,
+    cutoffs: List[int],
+    weights: Optional[types.TensorType] = None,
+    precision: Optional[bool] = True,
+    recall: Optional[bool] = True) -> Tuple[types.TensorType, types.TensorType]:
   # pyformat: disable
   """Precision and recall at `k`.
 
@@ -246,9 +246,9 @@ def _precision_recall_at_k(
     else:
       weights_f64 = tf.ones(tf.shape(labels)[0], tf.float64)
 
-  def compute_batch_stats(classes, scores,
-                          labels,
-                          weights):
+  def compute_batch_stats(classes: np.ndarray, scores: np.ndarray,
+                          labels: np.ndarray,
+                          weights: np.ndarray) -> np.ndarray:
     """Compute precision/recall intermediate stats for a batch.
 
     Args:
@@ -334,12 +334,12 @@ def _precision_recall_at_k(
   return value_op, update_op
 
 
-def precision_at_k(classes,
-                   scores,
-                   labels,
-                   cutoffs,
-                   weights = None
-                  ):
+def precision_at_k(classes: types.TensorType,
+                   scores: types.TensorType,
+                   labels: types.TensorType,
+                   cutoffs: List[int],
+                   weights: Optional[types.TensorType] = None
+                  ) -> Tuple[types.TensorType, types.TensorType]:
   # pyformat: disable
   """Precision at `k`.
 
@@ -371,12 +371,12 @@ def precision_at_k(classes,
                                 False)
 
 
-def recall_at_k(classes,
-                scores,
-                labels,
-                cutoffs,
-                weights = None
-               ):
+def recall_at_k(classes: types.TensorType,
+                scores: types.TensorType,
+                labels: types.TensorType,
+                cutoffs: List[int],
+                weights: Optional[types.TensorType] = None
+               ) -> Tuple[types.TensorType, types.TensorType]:
   # pyformat: disable
   """Recall at `k`.
 

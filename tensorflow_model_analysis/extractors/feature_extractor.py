@@ -14,11 +14,11 @@
 """Implements API for extracting features from an example."""
 from __future__ import absolute_import
 from __future__ import division
-
+# Standard __future__ imports
 from __future__ import print_function
 
 import copy
-
+# Standard Imports
 
 import apache_beam as beam
 import numpy as np
@@ -29,7 +29,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.extractors import extractor
-from tensorflow_model_analysis.types_compat import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional, Text
 
 # For now, we store only the first N sparse keys in our diagnostics table.
 _MAX_SPARSE_FEATURES_PER_COLUMN = 10
@@ -38,9 +38,9 @@ FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
 
 
 def FeatureExtractor(
-    additional_extracts = None,
-    excludes = None,
-    extract_source = constants.FEATURES_PREDICTIONS_LABELS_KEY):
+    additional_extracts: Optional[List[Text]] = None,
+    excludes: Optional[List[bytes]] = None,
+    extract_source: int = constants.FEATURES_PREDICTIONS_LABELS_KEY):
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=FEATURE_EXTRACTOR_STAGE_NAME,
@@ -51,8 +51,8 @@ def FeatureExtractor(
   # pylint: enable=no-value-for-parameter
 
 
-def _AugmentExtracts(data, prefix, excludes,
-                     extracts):
+def _AugmentExtracts(data: Dict[Text, Any], prefix: Text, excludes: List[bytes],
+                     extracts: types.Extracts) -> None:
   """Augments the Extracts with FeaturesPredictionsLabels.
 
   Args:
@@ -98,7 +98,7 @@ def _AugmentExtracts(data, prefix, excludes,
           (name, val, type(val)))
 
 
-def _ParseExample(extracts):
+def _ParseExample(extracts: types.Extracts) -> None:
   """Feature extraction from serialized tf.Example."""
   # Deserialize the example.
   example = tf.train.Example()
@@ -117,10 +117,10 @@ def _ParseExample(extracts):
 
 
 def _MaterializeFeatures(
-    extracts,
-    additional_extracts = None,
-    excludes = None,
-    source = constants.FEATURES_PREDICTIONS_LABELS_KEY):
+    extracts: types.Extracts,
+    additional_extracts: Optional[List[Text]] = None,
+    excludes: Optional[List[bytes]] = None,
+    source: int = constants.FEATURES_PREDICTIONS_LABELS_KEY) -> types.Extracts:
   """Converts FeaturesPredictionsLabels into MaterializedColumn in the extract.
 
   It must be the case that the PredictExtractor was called before calling this
@@ -182,13 +182,13 @@ def _MaterializeFeatures(
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.typehints.Any)
-@beam.typehints.with_output_types(beam.typehints.Any)
-def _ExtractFeatures(extracts,
-                     additional_extracts = None,
-                     excludes = None,
-                     source = constants.FEATURES_PREDICTIONS_LABELS_KEY
-                    ):
+@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_output_types(types.Extracts)
+def _ExtractFeatures(extracts: beam.pvalue.PCollection,
+                     additional_extracts: Optional[List[Text]] = None,
+                     excludes: Optional[List[bytes]] = None,
+                     source: int = constants.FEATURES_PREDICTIONS_LABELS_KEY
+                    ) -> beam.pvalue.PCollection:
   """Builds MaterializedColumn extracts from FPL created in evaluate.Predict().
 
   It must be the case that the PredictExtractor was called before calling this
