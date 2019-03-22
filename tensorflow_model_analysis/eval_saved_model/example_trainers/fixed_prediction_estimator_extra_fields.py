@@ -34,7 +34,8 @@ from tensorflow.python.estimator.canned import prediction_keys
 
 
 def simple_fixed_prediction_estimator_extra_fields(export_path,
-                                                   eval_export_path):
+                                                   eval_export_path,
+                                                   include_metrics=True):
   """Exports a simple fixed prediction estimator that parses extra fields."""
 
   def model_fn(features, labels, mode, params):
@@ -57,9 +58,10 @@ def simple_fixed_prediction_estimator_extra_fields(export_path,
 
     loss = tf.losses.mean_squared_error(predictions, labels)
     train_op = tf.assign_add(tf.train.get_global_step(), 1)
-    eval_metric_ops = {
-        metric_keys.MetricKeys.LOSS_MEAN: tf.metrics.mean(loss),
-    }
+
+    eval_metric_ops = {}
+    if include_metrics:
+      eval_metric_ops[metric_keys.MetricKeys.LOSS_MEAN] = tf.metrics.mean(loss)
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
