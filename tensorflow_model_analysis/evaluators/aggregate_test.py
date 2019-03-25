@@ -24,6 +24,7 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
@@ -45,31 +46,59 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
   def _getEvalExportDir(self):
     return os.path.join(self._getTempDir(), 'eval_export_dir')
 
-  def testCollectMetricsOverSamples(self):
-    confusion_matrix_value = np.array([[0, 0, 2, 7, 0.77777779, 1],
-                                       [1, 0, 2, 6, 0.75, 0.85714287],
-                                       [4, 0, 2, 3, 0.60000002, 0.42857143],
-                                       [4, 2, 0, 3, 1, 0.42857143],
-                                       [7, 2, 0, 0, float('nan'), 0]])
-    uber_metrics = {}
-    aggregate._collect_metrics(confusion_matrix_value, 'my_key', uber_metrics)
-    self.assertEqual(len(uber_metrics), 30)
-    self.assertEqual(uber_metrics['my_key,0,0'], [0])
-    self.assertEqual(uber_metrics['my_key,0,1'], [0])
-    self.assertEqual(uber_metrics['my_key,4,4'], [])  # nan
-    aggregate._collect_metrics(
+  def testCalculateConfidenceInterval(self):
+    sampling_data_list = [
         np.array([
-            1,
-            2,
-            0,
-            3,
-            1,
-            1,
-        ]), 'my_key,0', uber_metrics)
-    self.assertEqual(len(uber_metrics), 30)
-    self.assertEqual(uber_metrics['my_key,0,0'], [0, 1])
-    self.assertEqual(uber_metrics['my_key,0,1'], [0, 2])
-    self.assertEqual(uber_metrics['my_key,4,4'], [])  # nan
+            [0, 0, 2, 7, 0.77777779, 1],
+            [1, 0, 2, 6, 0.75, 0.85714287],
+            [4, 0, 2, 3, 0.60000002, 0.42857143],
+            [4, 2, 0, 3, 1, 0.42857143],
+            [7, 2, 0, 0, float('nan'), 0],
+        ]),
+        np.array([
+            [7, 2, 0, 0, float('nan'), 0],
+            [0, 0, 2, 7, 0.77777779, 1],
+            [1, 0, 2, 6, 0.75, 0.85714287],
+            [4, 0, 2, 3, 0.60000002, 0.42857143],
+            [4, 2, 0, 3, 1, 0.42857143],
+        ]),
+    ]
+    unsampled_data = np.array([
+        [4, 2, 0, 3, 1, 0.42857143],
+        [7, 2, 0, 0, float('nan'), 0],
+        [0, 0, 2, 7, 0.77777779, 1],
+        [1, 0, 2, 6, 0.75, 0.85714287],
+        [4, 0, 2, 3, 0.60000002, 0.42857143],
+    ])
+    result = aggregate._calculate_confidence_interval(sampling_data_list,
+                                                      unsampled_data)
+    print(result)
+    self.assertIsInstance(result, np.ndarray)
+    self.assertEqual(result.shape, (5, 6))
+    self.assertAlmostEqual(result[0][0].value, 3.5, delta=0.1)
+    self.assertAlmostEqual(result[0][0].lower_bound, -40.97, delta=0.1)
+    self.assertAlmostEqual(result[0][0].upper_bound, 47.97, delta=0.1)
+    self.assertEqual(result[0][0].unsampled_value, 4.0)
+    self.assertAlmostEqual(result[0][4].value, 0.77, delta=0.1)
+    self.assertTrue(np.isnan(result[0][4].lower_bound))
+    self.assertTrue(np.isnan(result[0][4].upper_bound))
+    self.assertEqual(result[0][4].unsampled_value, 1.0)
+
+    sampling_data_list = [
+        np.array([1, 2]),
+        np.array([1, 2]),
+        np.array([1, float('nan')])
+    ]
+    unsampled_data = np.array([1, 2])
+    result = aggregate._calculate_confidence_interval(sampling_data_list,
+                                                      unsampled_data)
+    self.assertIsInstance(result, np.ndarray)
+    self.assertEqual(result.tolist(), [
+        types.ValueWithConfidenceInterval(
+            value=1.0, lower_bound=1.0, upper_bound=1.0, unsampled_value=1),
+        types.ValueWithConfidenceInterval(
+            value=2.0, lower_bound=2.0, upper_bound=2.0, unsampled_value=2)
+    ])
 
   def testAggregateOverallSlice(self):
 
@@ -221,8 +250,9 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
 
       test_input = (
           create_test_input(predict_result_english_slice, [(
-              ('language', 'english'))]) + create_test_input(
-                  predict_result_chinese_slice, [(('language', 'chinese'))]) +
+              ('language', 'english'))]) +
+          create_test_input(predict_result_chinese_slice, [(
+              ('language', 'chinese'))]) +
           # Overall slice
           create_test_input(
               predict_result_english_slice + predict_result_chinese_slice,
