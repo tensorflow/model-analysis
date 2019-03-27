@@ -368,6 +368,14 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
     slicing_config = util.get_slicing_config(eval_config)
     self.assertEqual(slicing_config, {'weightedExamplesColumn': 'testing_key'})
 
+  def testOverrideWeightColumnForSlicingMetricsView(self):
+    overriding_weight_column = 'override'
+    eval_config = self._makeEvalConfig()
+    slicing_config = util.get_slicing_config(
+        eval_config, weighted_example_column_to_use=overriding_weight_column)
+    self.assertEqual(slicing_config['weightedExamplesColumn'],
+                     overriding_weight_column)
+
 
 if __name__ == '__main__':
   tf.test.main()

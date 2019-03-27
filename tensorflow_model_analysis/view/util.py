@@ -289,13 +289,21 @@ def get_plot_data_and_config(
   return plot_data, plot_config  # pytype: disable=bad-return-type
 
 
-def get_slicing_config(config: model_eval_lib.EvalConfig) -> Dict[Text, Text]:
+def get_slicing_config(config: model_eval_lib.EvalConfig,
+                       weighted_example_column_to_use: Text = None
+                      ) -> Dict[Text, Text]:
   """Util function that generates config for visualization.
 
   Args:
     config: EvalConfig that contains example_weight_metric_key.
+    weighted_example_column_to_use: Override for weighetd example column in the
+      slicing metrics browser.
 
   Returns:
     A dictionary containing configuration of the slicing metrics evalaution.
   """
-  return {'weightedExamplesColumn': config.example_weight_metric_key}
+  return {
+      'weightedExamplesColumn':
+          weighted_example_column_to_use if weighted_example_column_to_use else
+          config.example_weight_metric_key
+  }

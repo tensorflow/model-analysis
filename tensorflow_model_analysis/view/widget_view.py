@@ -27,7 +27,8 @@ from typing import Optional, Text
 
 def render_slicing_metrics(result: model_eval_lib.EvalResult,
                            slicing_column: Optional[Text] = None,
-                           slicing_spec: Optional[SingleSliceSpec] = None
+                           slicing_spec: Optional[SingleSliceSpec] = None,
+                           weighted_example_column: Text = None
                           ) -> Optional[visualization.SlicingMetricsViewer]:
   """Renders the slicing metrics view as widget.
 
@@ -36,13 +37,16 @@ def render_slicing_metrics(result: model_eval_lib.EvalResult,
     slicing_column: The column to slice on.
     slicing_spec: The slicing spec to filter results. If neither column nor spec
       is set, show overall.
+    weighted_example_column: Override for the weighted example column. This can
+      be used when different weights are applied in different aprts of the model
+      (eg: multi-head).
 
   Returns:
     A SlicingMetricsViewer object if in Jupyter notebook; None if in Colab.
   """
   data = util.get_slicing_metrics(result.slicing_metrics, slicing_column,
                                   slicing_spec)
-  config = util.get_slicing_config(result.config)
+  config = util.get_slicing_config(result.config, weighted_example_column)
 
   return visualization.render_slicing_metrics(data, config)
 
