@@ -25,8 +25,8 @@ from tensorflow_model_analysis import types
 from typing import List, Optional, Tuple
 
 
-def total(
-    values: types.TensorType) -> Tuple[types.TensorType, types.TensorType]:
+def total(values: types.TensorType
+         ) -> Tuple[types.TensorType, types.TensorType]:
   """Metric to compute the running total of a value."""
 
   with tf.variable_scope('total', values):
@@ -138,8 +138,9 @@ def calibration_plot(predictions: types.TensorType,
     else:
       weights_f64 = tf.ones_like(indices, dtype=tf.float64)
 
-    update_prediction_buckets_op = tf.scatter_add(
-        prediction_bucket_counts, indices, predictions_f64 * weights_f64)
+    update_prediction_buckets_op = tf.scatter_add(prediction_bucket_counts,
+                                                  indices,
+                                                  predictions_f64 * weights_f64)
     update_label_buckets_op = tf.scatter_add(label_bucket_counts, indices,
                                              labels_f64 * weights_f64)
     update_weight_buckets_op = tf.scatter_add(weight_bucket_counts, indices,
@@ -154,14 +155,14 @@ def calibration_plot(predictions: types.TensorType,
   return value_op, update_op
 
 
-def _precision_recall_at_k(
-    classes: types.TensorType,
-    scores: types.TensorType,
-    labels: types.TensorType,
-    cutoffs: List[int],
-    weights: Optional[types.TensorType] = None,
-    precision: Optional[bool] = True,
-    recall: Optional[bool] = True) -> Tuple[types.TensorType, types.TensorType]:
+def _precision_recall_at_k(classes: types.TensorType,
+                           scores: types.TensorType,
+                           labels: types.TensorType,
+                           cutoffs: List[int],
+                           weights: Optional[types.TensorType] = None,
+                           precision: Optional[bool] = True,
+                           recall: Optional[bool] = True
+                          ) -> Tuple[types.TensorType, types.TensorType]:
   # pyformat: disable
   """Precision and recall at `k`.
 

@@ -102,6 +102,17 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     self._runTestWithCustomCheck(
         examples, eval_export_dir, metrics, custom_metrics_check=check_result)
 
+  def testAdditionalPredictionKeysNoIndex(self):
+    keys = post_export_metrics._additional_prediction_keys(['key1', 'key2'],
+                                                           'tag', None)
+    self.assertItemsEqual(keys, ['tag/key1', 'tag/key2'])
+
+  def testAdditionalPredictionKeysWithIndex(self):
+    keys = post_export_metrics._additional_prediction_keys(['key1', 'key2'],
+                                                           'tag_1', 1)
+    self.assertItemsEqual(keys,
+                          ['tag_1/key1', 'tag/key1', 'tag_1/key2', 'tag/key2'])
+
   def testExampleCountNoStandardKeys(self):
     # Test ExampleCount with a custom Estimator that doesn't have any of the
     # standard PredictionKeys.
@@ -1663,12 +1674,15 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [
+        eval_export_dir,
+        [
             post_export_metrics.calibration_plot_and_prediction_histogram(
-                target_prediction_keys=['chinese_head/logistic'],
+                # Note the target_prediction_key uses chinese_head/logistic
+                # automatically due to additional prefixing with metric_tag
                 labels_key='chinese_head',
                 metric_tag='chinese_head'),
             post_export_metrics.calibration_plot_and_prediction_histogram(
+                # Test explicit use
                 target_prediction_keys=['english_head/logistic'],
                 labels_key='english_head',
                 metric_tag='english_head')
