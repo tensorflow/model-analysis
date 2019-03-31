@@ -1192,6 +1192,29 @@ def _cast_or_convert(original: tf.Tensor, target_type: tf.DType) -> tf.Tensor:
     return tf.cast(original, target_type)
 
 
+def _class_ids(probabilities: tf.Tensor) -> tf.Tensor:
+  """Returns class_ids associated with given probabilities tensor.
+
+  Args:
+    probabilities: Batch of probablitities (i.e. [[class0, class1, ...], ...]
+      with shape [batch, n_classes]).
+
+  Returns:
+    Class IDs for N classes (i.e. [[0, 1, ..., n-1], ...] with shape
+    [batch, n_classes]).
+  """
+  n_classes = tf.cast(tf.shape(probabilities)[-1], tf.int64)
+  # Tensor representing shape of class_ids expanded by batch dims: [1,n_classes]
+  expanded_dims = tf.concat(
+      [tf.ones_like(tf.shape(probabilities))[:-1], [n_classes]], axis=0)
+  # Tensor for multiplying tiles by batch size. Shape should be [batch_size,1]
+  batch_multiplier = tf.concat([tf.shape(probabilities)[:-1], [1]], axis=0)
+  # Batches of [0, ..., n_classes]
+  return tf.tile(
+      input=tf.reshape(tensor=tf.range(n_classes), shape=expanded_dims),
+      multiples=batch_multiplier)
+
+
 class _PrecisionRecallAtK(_PostExportMetric):
   """Metric that computes precision or recall at K for classification models.
 
@@ -1303,6 +1326,17 @@ class _PrecisionRecallAtK(_PostExportMetric):
 
     classes = _get_target_tensor(predictions_dict, self._classes_keys)
     scores = _get_target_tensor(predictions_dict, self._probabilities_keys)
+
+    # To support canned Estimators which right now only expose the argmax class
+    # id, if labels are ints then then the classes are likely class_ids in
+    # string form, so we can automatically expand the classes to the full set
+    # for matching the labels (see b/113170729).
+    if labels.dtype == tf.int64:
+      classes = tf.cond(
+          # Match only when classes has a single item (i.e. argmax).
+          tf.equal(tf.shape(classes)[-1], 1),
+          lambda: tf.as_string(_class_ids(scores)),
+          lambda: classes)
 
     labels = _cast_or_convert(labels, classes.dtype)
 

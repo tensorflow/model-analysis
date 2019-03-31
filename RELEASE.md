@@ -8,6 +8,8 @@
     are compatible.
 *   Post export metrics will now also search for prediction keys prefixed by
     metric_tag if it is specified.
+*   Added support for precision/recall @ k using canned estimators provided
+    label vocab not used.
 
 ## Breaking changes
 *   Expose Python 3 types in the code (this will break Python 2 compatibility)

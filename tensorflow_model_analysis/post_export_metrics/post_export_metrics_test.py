@@ -826,6 +826,51 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         ],
         custom_metrics_check=check_result)
 
+  def testPrecisionRecallWithCannedEstimatorAndNoLabelVocab(self):
+    # This tests that we have worked around b/113170729 when label vocabs are
+    # not used.
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = dnn_classifier.simple_dnn_classifier(
+        None, temp_eval_export_dir, n_classes=3)
+    examples = [
+        self._makeExample(age=3.0, language='english', label=0),
+        self._makeExample(age=3.0, language='chinese', label=1),
+        self._makeExample(age=4.0, language='english', label=0),
+        self._makeExample(age=5.0, language='chinese', label=1),
+    ]
+
+    precision_metric = post_export_metrics.precision_at_k([0, 1])
+    recall_metric = post_export_metrics.recall_at_k([0, 1])
+
+    def check_result(got):  # pylint: disable=invalid-name
+      try:
+        self.assertEqual(1, len(got), 'got: %s' % got)
+        (slice_key, value) = got[0]
+        self.assertEqual((), slice_key)
+
+        # Check that precision/recall was calculated. We can't check the exact
+        # values since we don't know the exact prediction of the model.
+        self.assertIn(metric_keys.PRECISION_AT_K, value)
+        precision_table = value[metric_keys.PRECISION_AT_K]
+        cutoffs = precision_table[:, 0].tolist()
+        precision = precision_table[:, 1].tolist()
+        self.assertEqual(cutoffs, [0, 1])
+        self.assertEqual(len(precision), 2)
+
+        self.assertIn(metric_keys.RECALL_AT_K, value)
+        recall_table = value[metric_keys.RECALL_AT_K]
+        cutoffs = recall_table[:, 0].tolist()
+        recall = recall_table[:, 1].tolist()
+        self.assertEqual(len(recall), 2)
+
+      except AssertionError as err:
+        raise util.BeamAssertException(err)
+
+    self._runTestWithCustomCheck(
+        examples,
+        eval_export_dir, [precision_metric, recall_metric],
+        custom_metrics_check=check_result)
+
   def testCalibrationPlotAndPredictionHistogramUnweighted(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
