@@ -135,7 +135,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
-        ((b'language', b'chinese'),): {
+        (('language', b'chinese'),): {
             'accuracy': {
                 'doubleValue': 0.5
             },
@@ -149,7 +149,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 'doubleValue': 2.0
             },
         },
-        ((b'language', b'english'),): {
+        (('language', b'english'),): {
             'accuracy': {
                 'doubleValue': 1.0
             },
@@ -190,7 +190,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
-        ((b'language', b'chinese'),): {
+        (('language', b'chinese'),): {
             metric_keys.EXAMPLE_WEIGHT: {
                 'doubleValue': 8.0
             },
@@ -198,7 +198,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 'doubleValue': 2.0
             },
         },
-        ((b'language', b'english'),): {
+        (('language', b'english'),): {
             'accuracy': {
                 'boundedValue': {
                     'value': 1.0,
@@ -429,7 +429,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertEqual(eval_config, got_eval_config)
 
   def testSerializeDeserializeToFile(self):
-    metrics_slice_key = _make_slice_key(b'fruit', b'pear', b'animal', b'duck')
+    metrics_slice_key = _make_slice_key('fruit', b'pear', 'animal', b'duck')
     metrics_for_slice = text_format.Parse(
         """
         slice_key {
@@ -537,7 +537,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             }
           }
         }""", metrics_for_slice_pb2.PlotsForSlice())
-    plots_slice_key = _make_slice_key(b'fruit', b'peach', b'animal', b'cow')
+    plots_slice_key = _make_slice_key('fruit', b'peach', 'animal', b'cow')
     eval_config = model_eval_lib.EvalConfig(
         model_location='/path/to/model',
         data_location='/path/to/data',

@@ -111,8 +111,8 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
         """, metrics_for_slice_pb2.SliceKey())
 
     got_slice_key = slicer.deserialize_slice_key(slice_metrics)
-    self.assertItemsEqual([(b'age', 5), (b'language', b'english'),
-                           (b'price', 1.0)], got_slice_key)
+    self.assertItemsEqual([('age', 5), ('language', b'english'),
+                           ('price', 1.0)], got_slice_key)
 
   def testSliceEquality(self):
     overall = slicer.SingleSliceSpec()

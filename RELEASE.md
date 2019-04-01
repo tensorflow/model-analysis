@@ -10,6 +10,8 @@
     metric_tag if it is specified.
 *   Added support for precision/recall @ k using canned estimators provided
     label vocab not used.
+*   Preserve unicode type of slice keys when serialising to and deserialising
+    from disk, instead of always converting them to bytes.
 
 ## Breaking changes
 *   Expose Python 3 types in the code (this will break Python 2 compatibility)

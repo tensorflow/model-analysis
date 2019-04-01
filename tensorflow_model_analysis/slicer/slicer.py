@@ -283,7 +283,7 @@ def deserialize_slice_key(
     else:
       raise TypeError(
           'unrecognized type of type %s, value %s' % (type(elem), elem))
-    result.append((tf.compat.as_bytes(elem.column), value))
+    result.append((elem.column, value))
   return tuple(result)
 
 
