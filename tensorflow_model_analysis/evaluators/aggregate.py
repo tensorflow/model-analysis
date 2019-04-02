@@ -273,6 +273,8 @@ class _AggState(object):
   we need this.
   """
 
+  __slots__ = ['metric_variables', 'fpls']
+
   def __init__(self):
     self.metric_variables = None  # type: Optional[types.MetricVariablesType]
     self.fpls = []  # type: List[types.FeaturesPredictionsLabels]

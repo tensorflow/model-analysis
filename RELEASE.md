@@ -3,6 +3,7 @@
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
+
 *   Cast / convert labels for precision / recall at K so that they work even if
     the label and the classes Tensors have different types, as long as the types
     are compatible.
@@ -12,6 +13,7 @@
     label vocab not used.
 *   Preserve unicode type of slice keys when serialising to and deserialising
     from disk, instead of always converting them to bytes.
+*   Use `__slots__` in accumulators.
 
 ## Breaking changes
 *   Expose Python 3 types in the code (this will break Python 2 compatibility)
