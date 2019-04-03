@@ -29,6 +29,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import dofn
+from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer
 from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
@@ -530,6 +531,8 @@ class _ExtractOutputDoFn(beam.DoFn):
     # of eval_saved_model.
     # TODO(ihchen): Update all callers and make this an error condition to not
     # have construct_fn specified.
+    counter_util.update_beam_counters(
+        self._eval_shared_model.add_metrics_callbacks)
     if self._eval_shared_model.construct_fn is None:
       construct_fn = dofn.make_construct_fn(
           eval_saved_model_path=self._eval_shared_model.model_path,
