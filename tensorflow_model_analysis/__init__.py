@@ -62,8 +62,6 @@ from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model import exporter
 
-from tensorflow_model_analysis.notebook.jupyter.jupyter_nbextension import *  # pylint: disable=wildcard-import
-
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 
 from tensorflow_model_analysis.types import AddMetricsCallbackType
@@ -91,3 +89,11 @@ from tensorflow_model_analysis import slicer
 from tensorflow_model_analysis import validators
 from tensorflow_model_analysis import evaluators
 from tensorflow_model_analysis import writers
+
+def _jupyter_nbextension_paths():
+  return [{
+    'section': 'notebook',
+    'src': 'static',
+    'dest': 'tfma_widget_js',
+    'require': 'tfma_widget_js/extension'
+  }]
