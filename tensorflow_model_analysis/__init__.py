@@ -19,7 +19,6 @@
 # TODO(b/77140537) For API docs
 # We want to document the view module, but it doesn't work with
 # the current tools, so we have a temporary stub.
-from tensorflow_model_analysis import view
 from tensorflow_model_analysis.api import tfma_unit as test
 
 from tensorflow_model_analysis.api.model_eval_lib import default_eval_shared_model
@@ -89,6 +88,7 @@ from tensorflow_model_analysis import slicer
 from tensorflow_model_analysis import validators
 from tensorflow_model_analysis import evaluators
 from tensorflow_model_analysis import writers
+from tensorflow_model_analysis import view
 
 def _jupyter_nbextension_paths():
   return [{
