@@ -1,6 +1,8 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
+*   Added support for squared pearson correlation (R squared) post export
+    metric.
 
 ## Bug fixes and other changes
 

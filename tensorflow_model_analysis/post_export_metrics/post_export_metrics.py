@@ -571,6 +571,80 @@ class _ExampleWeight(_PostExportMetric):
 _DEFAULT_NUM_BUCKETS = 10000
 
 
+@_export('squared_pearson_correlation')
+class _SquaredPearsonCorrelation(_PostExportMetric):
+  """Metric that computes the squared pearson correlation (r squared)."""
+
+  _target_prediction_keys = ...  # type: List[Text]
+  _labels_key = ...  # type: Text
+  _metric_tag = None  # type: Text
+  _tensor_index = ...  # type: int
+
+  def __init__(self,
+               example_weight_key: Optional[Text] = None,
+               target_prediction_keys: Optional[List[Text]] = None,
+               labels_key: Optional[Text] = None,
+               metric_tag: Optional[Text] = None) -> None:
+    """Create a metric that computes the squared pearson correlation.
+
+    Args:
+      example_weight_key: The key of the example weight column in the features
+        dict. If None, all predictions are given a weight of 1.0.
+      target_prediction_keys: If provided, the prediction keys to look for in
+        order.
+      labels_key: If provided, a custom label key.
+      metric_tag: If provided, a custom metric tag. Only necessary to
+        disambiguate instances of the same metric on different predictions.
+    """
+    self._example_weight_key = example_weight_key
+    super(_SquaredPearsonCorrelation, self).__init__(
+        target_prediction_keys=target_prediction_keys,
+        labels_key=labels_key,
+        metric_tag=metric_tag)
+
+  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
+                          predictions_dict: types.TensorTypeMaybeDict,
+                          labels_dict: types.TensorTypeMaybeDict) -> None:
+    _check_weight_present(features_dict, self._example_weight_key)
+    self._get_labels_and_predictions(predictions_dict, labels_dict)
+
+  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
+                     predictions_dict: types.TensorTypeMaybeDict,
+                     labels_dict: types.TensorTypeMaybeDict
+                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+    # Note that we have to squeeze predictions, labels, weights so they are all
+    # N element vectors (otherwise some of them might be N x 1 tensors, and
+    # multiplying a N element vector with a N x 1 tensor uses matrix
+    # multiplication rather than element-wise multiplication).
+    predictions, labels = self._get_labels_and_predictions(
+        predictions_dict, labels_dict)
+    predictions = _flatten_to_one_dim(tf.cast(predictions, tf.float64))
+    labels = _flatten_to_one_dim(tf.cast(labels, tf.float64))
+    weights = tf.ones_like(predictions)
+    if self._example_weight_key:
+      weights = _flatten_to_one_dim(
+          tf.cast(features_dict[self._example_weight_key], tf.float64))
+    return {
+        self._metric_key(metric_keys.SQUARED_PEARSON_CORRELATION):
+            metrics.squared_pearson_correlation(predictions, labels, weights)
+    }
+
+  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
+                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
+                            ) -> None:
+    r_squared = combine_metrics.pop(
+        self._metric_key(metric_keys.SQUARED_PEARSON_CORRELATION))
+    bounded_value = output_metrics[self._metric_key(
+        metric_keys.SQUARED_PEARSON_CORRELATION)].bounded_value
+    if isinstance(r_squared, types.ValueWithConfidenceInterval):
+      bounded_value.value.value = r_squared.value
+      bounded_value.lower_bound.value = r_squared.lower_bound
+      bounded_value.upper_bound.value = r_squared.upper_bound
+      bounded_value.methodology = metrics_pb2.BoundedValue.POISSON_BOOTSTRAP
+    else:
+      bounded_value.value.value = r_squared
+
+
 @_export('calibration_plot_and_prediction_histogram')
 class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
   """Plot metric for calibration plot and prediction histogram.

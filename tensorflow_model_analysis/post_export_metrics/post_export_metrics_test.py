@@ -398,6 +398,37 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         post_export_metrics.example_weight('age')
     ], expected_values_dict)
 
+  def testPostExportMetricsSquaredPearsonCorrelation(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator.simple_fixed_prediction_estimator(
+            None, temp_eval_export_dir))
+    examples = [
+        self._makeExample(prediction=1.0, label=1.0),
+        self._makeExample(prediction=2.0, label=4.0),
+        self._makeExample(prediction=2.0, label=3.0),
+        self._makeExample(prediction=3.0, label=3.0),
+    ]
+    expected_values_dict = {
+        metric_keys.EXAMPLE_COUNT:
+            4.0,
+        # Weighted (by 'prediction'):
+        #   1: prediction = 1*1 = 1, label = 1*1 = 1
+        #   2: prediction = 2*2 = 4, label = 2*4 = 8
+        #   3: prediction = 2*2 = 4, label = 2*3 = 6
+        #   3: prediction = 3*3 = 9, label = 3*3 = 9
+        # unexplained = (1 - 1)^2 + (8 - 4)^2 + (6 - 4)^2 + (9 - 9)^2 = 20
+        # mean_label = (1 + 8 + 6 + 9) / 4 = 6
+        # total = (1 - 6)^2 + (8 - 6)^2 + (6 - 6)^2 + (9 - 6)^2 = 38
+        # r^2 = 1 - (20/38) = .47368
+        metric_keys.SQUARED_PEARSON_CORRELATION:
+            0.47368,
+    }
+    self._runTest(examples, eval_export_dir, [
+        post_export_metrics.example_count(),
+        post_export_metrics.squared_pearson_correlation('prediction')
+    ], expected_values_dict)
+
   def testPrecisionRecallAtKUnweighted(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (

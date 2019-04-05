@@ -45,6 +45,60 @@ def total(values: types.TensorType
     return value_op, update_op
 
 
+def squared_pearson_correlation(predictions: types.TensorType,
+                                labels: types.TensorType,
+                                weights: Optional[types.TensorType] = None
+                               ) -> Tuple[types.TensorType, types.TensorType]:
+  """Metric to compute the squared pearson correlation (R squared)."""
+  with tf.variable_scope('squared_pearson_correlation',
+                         [predictions, labels, weights]):
+    weighted_predictions = tf.multiply(predictions, weights)
+    weighted_labels = tf.multiply(labels, weights)
+
+    regression_error = tf.Variable(
+        initial_value=0.0,
+        dtype=tf.float64,
+        trainable=False,
+        collections=[
+            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+        ],
+        validate_shape=True,
+        name='regression_error')
+
+    update_regression_error_op = tf.assign_add(
+        regression_error,
+        tf.reduce_sum(
+            tf.square(tf.subtract(weighted_labels, weighted_predictions))))
+
+    total_error = tf.Variable(
+        initial_value=0.0,
+        dtype=tf.float64,
+        trainable=False,
+        collections=[
+            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+        ],
+        validate_shape=True,
+        name='total_error')
+
+    update_total_error_op = tf.assign_add(
+        total_error,
+        tf.reduce_sum(
+            tf.square(
+                tf.subtract(weighted_labels, tf.reduce_mean(weighted_labels)))))
+
+    def r_squared(_, regression_error, total_error):
+      return tf.subtract(
+          tf.cast(1.0, tf.float64), tf.div_no_nan(regression_error,
+                                                  total_error))
+
+    value_op = tf.distribute.get_replica_context().merge_call(
+        r_squared, args=(regression_error, total_error))
+    update_op = tf.subtract(
+        tf.cast(1.0, tf.float64),
+        tf.div_no_nan(update_regression_error_op, update_total_error_op))
+    return value_op, update_op
+
+
 def calibration_plot(predictions: types.TensorType,
                      labels: types.TensorType,
                      left: float,
