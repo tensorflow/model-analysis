@@ -343,6 +343,7 @@ def _export_eval_savedmodel_contrib_estimator(
   methods = [
       'experimental_export_all_saved_models',
       '_add_meta_graph_for_mode',
+      '_export_all_saved_models',
       '_create_and_assert_global_step',
       '_create_global_step',
   ]
