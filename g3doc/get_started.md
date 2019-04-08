@@ -129,7 +129,7 @@ tfma.view.render_slicing_metrics(result)
 ```
 ## End-to-end example
 Try the extensive
-[end-to-end example](https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi)
+[end-to-end example](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi)
 featuring [TensorFlow Transform](https://github.com/tensorflow/transform) for feature
 preprocessing,
 [TensorFlow Estimators](https://www.tensorflow.org/guide/estimators) for

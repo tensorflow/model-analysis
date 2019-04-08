@@ -84,7 +84,7 @@
 *   Depends on `numpy>=1.14.5,<2`.
 *   Depends on `scipy==0.19.1`.
 *   Depends on `protobuf==3.7.0rc2`.
-*   Chicago Taxi example is moved to tfx repo (https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi)
+*   Chicago Taxi example is moved to tfx repo (https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi)
 
 ## Breaking changes
 
