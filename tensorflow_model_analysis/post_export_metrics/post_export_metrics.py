@@ -31,7 +31,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
-from typing import Any, Dict, List, Optional, Text, Tuple, Type
+from typing import Any, Dict, List, Optional, Text, Tuple, Type, Union
 
 from tensorflow.python.estimator.canned import prediction_keys
 from tensorflow.python.ops import metrics_impl
@@ -235,6 +235,18 @@ def _additional_prediction_keys(keys: List[Text],
         additional_keys.append('%s/%s' % (metric_tag[:-len(suffix)], key))
     additional_keys.append('%s/%s' % (metric_tag, key))
   return additional_keys
+
+
+def _populate_bounded_value(metric, value):
+  """Populates metric with given value based on its type."""
+  bounded_value = metric.bounded_value
+  if isinstance(value, types.ValueWithConfidenceInterval):
+    bounded_value.lower_bound.value = value.lower_bound
+    bounded_value.upper_bound.value = value.upper_bound
+    bounded_value.value.value = value.value
+    bounded_value.methodology = metrics_pb2.BoundedValue.POISSON_BOOTSTRAP
+  else:
+    bounded_value.value.value = value
 
 
 class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
@@ -634,15 +646,9 @@ class _SquaredPearsonCorrelation(_PostExportMetric):
                             ) -> None:
     r_squared = combine_metrics.pop(
         self._metric_key(metric_keys.SQUARED_PEARSON_CORRELATION))
-    bounded_value = output_metrics[self._metric_key(
-        metric_keys.SQUARED_PEARSON_CORRELATION)].bounded_value
-    if isinstance(r_squared, types.ValueWithConfidenceInterval):
-      bounded_value.value.value = r_squared.value
-      bounded_value.lower_bound.value = r_squared.lower_bound
-      bounded_value.upper_bound.value = r_squared.upper_bound
-      bounded_value.methodology = metrics_pb2.BoundedValue.POISSON_BOOTSTRAP
-    else:
-      bounded_value.value.value = r_squared
+    _populate_bounded_value(
+        output_metrics[self._metric_key(
+            metric_keys.SQUARED_PEARSON_CORRELATION)], r_squared)
 
 
 @_export('calibration_plot_and_prediction_histogram')
@@ -1555,3 +1561,84 @@ class _RecallAtK(_PrecisionRecallAtK):
       output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     return super(_RecallAtK,
                  self).populate_stats_and_pop(combine_metrics, output_metrics)
+
+
+@_export('mean_absolute_error')
+class _MeanAbsoluteError(_PostExportMetric):
+  """Computes the mean absolute error between the labels and predictions.
+
+  The tf.metrics.mean_absolute_error function used to compute mean absolute
+  error creates two local variables, total and count that are used to compute
+  the mean absolute error. This average is weighted by weights, and it is
+  ultimately returned as mean_absolute_error: an idempotent operation that
+  simply divides total by count.
+  """
+
+  _example_weight_key = ...  # type: Text
+  _target_prediction_keys = ...  # type: List[Text]
+  _labels_key = ...  # type: Text
+  _metric_tag = None  # type: Text
+  _tensor_index = ...  # type: int
+
+  def __init__(self,
+               example_weight_key: Optional[Text] = None,
+               target_prediction_keys: Optional[List[Text]] = None,
+               labels_key: Optional[Text] = None,
+               metric_tag: Optional[Text] = None,
+               tensor_index: Optional[int] = None):
+    """Creates a metric that computes mean absolute error.
+
+    Labels and predictions can take any of the float values.
+
+    Args:
+      example_weight_key: The key of the example weight column in the features
+        dict. If None, all predictions are given a weight of 1.0.
+      target_prediction_keys: Optional acceptable keys in predictions_dict in
+        descending order of precedence.
+      labels_key: Optionally, the key from labels_dict to use.
+      metric_tag: If provided, a custom metric tag. Only necessary to
+        disambiguate instances of the same metric on different predictions or
+        for readability concerns in tool output.
+      tensor_index: Optional index to specify class predictions to calculate
+        metrics on in the case of multi-class models.
+    """
+    self._example_weight_key = example_weight_key
+    super(_MeanAbsoluteError, self).__init__(
+        target_prediction_keys,
+        labels_key,
+        metric_tag,
+        tensor_index=tensor_index)
+
+  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
+                          predictions_dict: types.TensorTypeMaybeDict,
+                          labels_dict: types.TensorTypeMaybeDict) -> None:
+    _check_weight_present(features_dict, self._example_weight_key)
+    self._get_labels_and_predictions(predictions_dict, labels_dict)
+
+  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
+                     predictions_dict: types.TensorTypeMaybeDict,
+                     labels_dict: types.TensorTypeMaybeDict
+                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+    predictions, labels = self._get_labels_and_predictions(
+        predictions_dict, labels_dict)
+    prediction_tensor = _flatten_to_one_dim(tf.cast(predictions, tf.float64))
+    label_tensor = _flatten_to_one_dim(tf.cast(labels, tf.float64))
+    squeezed_weights = tf.ones_like(prediction_tensor)
+    if self._example_weight_key:
+      squeezed_weights = _flatten_to_one_dim(
+          tf.cast(features_dict[self._example_weight_key], tf.float64))
+    metric_ops = tf.metrics.mean_absolute_error(
+        labels=label_tensor,
+        predictions=prediction_tensor,
+        weights=squeezed_weights)
+
+    return {self._metric_key(metric_keys.MEAN_ABSOLUTE_ERROR): metric_ops}
+
+  def populate_stats_and_pop(
+      self,
+      combine_metrics: Dict[Text, Union[types
+                                        .ValueWithConfidenceInterval, float]],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+    metric_key = self._metric_key(metric_keys.MEAN_ABSOLUTE_ERROR)
+    metric_value = combine_metrics[metric_key]
+    _populate_bounded_value(output_metrics[metric_key], metric_value)

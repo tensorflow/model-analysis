@@ -2240,6 +2240,169 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     self.assertNotIn(metric_keys.AUC_PLOTS_MATRICES, tfma_plots)
     self.assertNotIn(metric_keys.AUC_PLOTS_THRESHOLDS, tfma_plots)
 
+  def testMeanAbsoluteError(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator.simple_fixed_prediction_estimator(
+            None, temp_eval_export_dir))
+    examples = [
+        self._makeExample(prediction=0.0000, label=0.0000),
+        self._makeExample(prediction=0.0000, label=1.0000),
+        self._makeExample(prediction=13.7000, label=13.0000),
+        self._makeExample(prediction=9.7000, label=10.0000),
+        self._makeExample(prediction=1.0000, label=1.0000),
+    ]
+
+    expected_values_dict = {
+        metric_keys.tagged_key(metric_keys.MEAN_ABSOLUTE_ERROR, 'abc'): 0.4
+    }
+
+    self._runTest(examples, eval_export_dir, [
+        post_export_metrics.mean_absolute_error(
+            labels_key='label',
+            target_prediction_keys=['prediction'],
+            metric_tag='abc')
+    ], expected_values_dict)
+
+  def testMeanAbsoluteErrorUnweightedSerialization(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator.simple_fixed_prediction_estimator(
+            None, temp_eval_export_dir))
+    examples = [
+        self._makeExample(prediction=0.0000, label=0.0000),
+        self._makeExample(prediction=0.0000, label=1.0000),
+        self._makeExample(prediction=0.7000, label=1.0000),
+        self._makeExample(prediction=0.7000, label=0.0000),
+        self._makeExample(prediction=1.0000, label=1.0000),
+    ]
+
+    metric_key = metric_keys.tagged_key(metric_keys.MEAN_ABSOLUTE_ERROR, 'abc')
+    expected_values_dict = {metric_key: 0.4}
+
+    mean_absolute_error_metric = post_export_metrics.mean_absolute_error(
+        labels_key='label',
+        target_prediction_keys=['prediction'],
+        metric_tag='abc')
+
+    def check_result(got):  # pylint: disable=invalid-name
+      try:
+        self.assertEqual(1, len(got), 'got: %s' % got)
+        (slice_key, value) = got[0]
+        self.assertEqual((), slice_key)
+        self.assertDictElementsAlmostEqual(value, expected_values_dict)
+
+        # Check serialization too.
+        # Note that we can't just make this a dict, since proto maps
+        # allow uninitialized key access, i.e. they act like defaultdicts.
+        output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
+        mean_absolute_error_metric.populate_stats_and_pop(value, output_metrics)
+        self.assertProtoEquals(
+            """
+            bounded_value {
+              value {
+                value: 0.4
+              }
+            }
+            """, output_metrics[metric_key])
+      except AssertionError as err:
+        raise util.BeamAssertException(err)
+
+    self._runTestWithCustomCheck(
+        examples,
+        eval_export_dir, [mean_absolute_error_metric],
+        custom_metrics_check=check_result)
+
+  def testMeanAbsoluteErrorWeightedLabels(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None,
+                                                        temp_eval_export_dir))
+
+    # Same set of examples as in the unweighted case, except this time
+    # with weights.
+    examples = [
+        self._makeExample(
+            prediction=0.0000,
+            label=0.0000,
+            fixed_float=1.0,
+            fixed_string='',
+            fixed_int=5),
+        self._makeExample(
+            prediction=0.8000,
+            label=0.6000,
+            fixed_float=0.5,
+            fixed_string='',
+            fixed_int=5),
+        self._makeExample(
+            prediction=1.0000,
+            label=0.7000,
+            fixed_float=2.0,
+            fixed_string='',
+            fixed_int=5),
+    ]
+
+    expected_values_dict = {
+        metric_keys.tagged_key(metric_keys.MEAN_ABSOLUTE_ERROR, 'abc'): 0.2,
+    }
+
+    self._runTest(examples, eval_export_dir, [
+        post_export_metrics.mean_absolute_error(
+            labels_key='label',
+            target_prediction_keys=['prediction'],
+            metric_tag='abc',
+            example_weight_key='fixed_float')
+    ], expected_values_dict)
+
+  def testMeanAbsoluteErrorWithUncertainty(self):
+    self.num_bootstrap_samples = 20
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator.simple_fixed_prediction_estimator(
+            None, temp_eval_export_dir))
+    examples = [
+        self._makeExample(prediction=0.0000, label=0.0000),
+        self._makeExample(prediction=0.0000, label=1.0000),
+        self._makeExample(prediction=0.7000, label=1.0000),
+        self._makeExample(prediction=0.8000, label=0.0000),
+        self._makeExample(prediction=1.0000, label=1.0000),
+    ]
+
+    mean_absolute_error_metric = post_export_metrics.mean_absolute_error(
+        labels_key='label',
+        target_prediction_keys=['prediction'],
+        metric_tag='abc')
+    metric_key = metric_keys.tagged_key(metric_keys.MEAN_ABSOLUTE_ERROR, 'abc')
+
+    def check_result(got):  # pylint: disable=invalid-name
+      try:
+        self.assertEqual(1, len(got), 'got: %s' % got)
+        (slice_key, value) = got[0]
+        self.assertEqual((), slice_key)
+
+        self.assertIn(metric_key, value)
+        self.assertAlmostEqual(value[metric_key].value, 0.4, delta=0.2)
+
+        # Check serialization too.
+        output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
+        mean_absolute_error_metric.populate_stats_and_pop(value, output_metrics)
+        actual_metric_value = output_metrics[metric_key]
+        self.assertAlmostEqual(
+            actual_metric_value.bounded_value.value.value, 0.4, delta=0.2)
+        self.assertAlmostEqual(
+            actual_metric_value.bounded_value.upper_bound.value, 0.4, delta=0.2)
+        self.assertAlmostEqual(
+            actual_metric_value.bounded_value.lower_bound.value, 0.4, delta=0.2)
+
+      except AssertionError as err:
+        raise util.BeamAssertException(err)
+
+    self._runTestWithCustomCheck(
+        examples,
+        eval_export_dir, [mean_absolute_error_metric],
+        custom_metrics_check=check_result)
+
 
 if __name__ == '__main__':
   tf.test.main()

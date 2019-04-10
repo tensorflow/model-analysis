@@ -11,8 +11,10 @@
 # Release 0.13.1
 
 ## Major Features and Improvements
+
 *   Added support for squared pearson correlation (R squared) post export
     metric.
+*   Added support for mean absolute error post export metric.
 
 ## Bug fixes and other changes
 *   Cast / convert labels for precision / recall at K so that they work even if
