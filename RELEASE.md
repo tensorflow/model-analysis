@@ -1,6 +1,7 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
+*   Added documentation on architecture.
 
 ## Bug fixes and other changes
 
