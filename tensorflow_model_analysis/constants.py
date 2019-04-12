@@ -28,10 +28,7 @@ DATA_CENTRIC_MODE = 'data_centric_mode'
 PLACEHOLDER = 'placeholder'
 SPARSE_PLACEHOLDER = 'sparse_placeholder'
 
-# TODO(b/73167447): This should instead likely be "tfx.ModelAnalysis".
-# Eg see TFT. Also, there should only be one constant for this in the TFMA
-# codebase.
-METRICS_NAMESPACE = 'tensorflow_model_analysis'
+METRICS_NAMESPACE = 'tfx.ModelAnalysis'
 
 # Keys for Extracts dictionary (keys starting with _ will not be materialized).
 

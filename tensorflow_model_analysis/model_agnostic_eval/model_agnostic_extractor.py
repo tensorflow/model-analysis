@@ -33,11 +33,6 @@ from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict
 from tensorflow_transform.beam import shared
 from typing import Generator, List, Optional
 
-# TODO(b/73167447): This should instead likely be "tfx.ModelAnalysis".
-# Eg see TFT. Also, there should only be one constant for this in the TFMA
-# codebase.
-_METRICS_NAMESPACE = 'tensorflow_model_analysis'
-
 
 def ModelAgnosticGetFPLFeedConfig(
     model_agnostic_config: agnostic_predict.ModelAgnosticConfig
@@ -120,7 +115,7 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
     self._model_agnostic_config = model_agnostic_config
     self._shared_handle = shared.Shared()
     self._model_load_seconds = beam.metrics.Metrics.distribution(
-        _METRICS_NAMESPACE, 'model_load_seconds')
+        constants.METRICS_NAMESPACE, 'model_load_seconds')
 
   def _make_construct_fn(  # pylint: disable=invalid-name
       self, model_agnostic_config: agnostic_predict.ModelAgnosticConfig,
