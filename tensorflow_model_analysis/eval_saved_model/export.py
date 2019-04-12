@@ -457,7 +457,8 @@ def export_eval_savedmodel(
     ValueError: Could not find a checkpoint to export.
   """
   # TODO(b/110472071): Temporary for tf.contrib.learn Estimator support only.
-  if isinstance(estimator, tf.contrib.learn.Estimator):
+  if isinstance(estimator, tf.contrib.learn.Estimator) and\
+        not hasattr(estimator, 'experimental_export_all_saved_models'):
     return _export_eval_savedmodel_contrib_estimator(
         estimator=estimator,
         export_dir_base=export_dir_base,
