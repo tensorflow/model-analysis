@@ -85,6 +85,52 @@ class ExporterTest(testutil.TensorflowModelAnalysisTest):
   def testLatestExporter(self):
     self.runTestForExporter(exporter.LatestExporter)
 
+  def testAdaptToRemoveMetrics(self):
+    estimator_metadata = (
+        fixed_prediction_estimator
+        .get_simple_fixed_prediction_estimator_and_metadata())
+
+    exporter_name = 'TFMA'
+    temp_eval_export_dir = self._getEvalExportDir()
+    exporter_instance = exporter.FinalExporter(
+        name=exporter_name,
+        eval_input_receiver_fn=estimator_metadata['eval_input_receiver_fn'],
+        serving_input_receiver_fn=estimator_metadata[
+            'serving_input_receiver_fn'])
+    exporter_instance = exporter.adapt_to_remove_metrics(
+        exporter_instance, ['average_loss'])
+
+    self.assertEqual(exporter_name, exporter_instance.name)
+
+    estimator_metadata['estimator'].train(
+        input_fn=estimator_metadata['train_input_fn'], steps=100)
+    eval_export_dir = exporter_instance.export(
+        estimator=estimator_metadata['estimator'],
+        export_path=temp_eval_export_dir,
+        checkpoint_path=None,
+        eval_result=None,
+        is_the_final_export=True)
+
+    # Check the eval graph.
+    eval_saved_model = load.EvalSavedModel(eval_export_dir)
+    example1 = self._makeExample(prediction=0.9, label=0.0)
+    features_predictions_labels = self.predict_injective_single_example(
+        eval_saved_model, example1.SerializeToString())
+    eval_saved_model.perform_metrics_update(features_predictions_labels)
+
+    metric_values = eval_saved_model.get_metric_values()
+    self.assertNotIn('average_loss', metric_values)
+
+    # Check the serving graph.
+    # TODO(b/124466113): Remove tf.compat.v2 once TF 2.0 is the default.
+    if hasattr(tf, 'compat.v2'):
+      imported = tf.compat.v2.saved_model.load(
+          eval_export_dir, tags=tf.saved_model.SERVING)
+      predictions = imported.signatures[
+          tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY](
+              inputs=tf.constant([example1.SerializeToString()]))
+      self.assertAllClose(predictions['outputs'], np.array([[0.9]]))
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -19,13 +19,15 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import contextlib
 import os
+import types
 
 import tensorflow as tf
 
 from tensorflow_model_analysis import util as tfma_util
 from tensorflow_model_analysis.eval_saved_model import export
-from typing import Callable, Dict, Optional, Text
+from typing import Callable, Dict, List, Optional, Text
 from tensorflow.python.estimator import gc
 from tensorflow.python.framework import errors_impl
 from tensorflow.python.platform import gfile
@@ -231,3 +233,83 @@ class LatestExporter(tf.estimator.Exporter):
       except errors_impl.NotFoundError as e:
         tf_logging.warn('Can not delete %s recursively: %s', p.path, e)
     # pylint: enable=protected-access
+
+
+@contextlib.contextmanager
+def _remove_metrics(estimator: tf.estimator.Estimator,
+                    metrics_to_remove: List[Text]):
+  """Modifies the Estimator to make its model_fn return less metrics in EVAL.
+
+  Note that this only removes the metrics from the
+  EstimatorSpec.eval_metric_ops. It does not remove them from the graph or
+  undo any side-effects that they might have had (e.g. modifications to
+  METRIC_VARIABLES collections).
+
+  This is useful for when you use py_func, streaming metrics, or other metrics
+  incompatible with TFMA in your trainer. To keep these metrics in your trainer
+  (so they still show up in Tensorboard) and still use TFMA, you can call
+  remove_metrics on your Estimator before calling export_eval_savedmodel.
+
+  This is a context manager, so it can be used like:
+    with _remove_metrics(estimator, ['streaming_auc']):
+      tfma.export.export_eval_savedmodel(estimator, ...)
+
+  Args:
+    estimator: tf.estimator.Estimator to modify. Will be mutated in place.
+    metrics_to_remove: List of names of metrics to remove.
+
+  Yields:
+    Nothing.
+  """
+  old_call_model_fn = estimator._call_model_fn  # pylint: disable=protected-access
+
+  def wrapped_call_model_fn(unused_self, features, labels, mode, config):
+    result = old_call_model_fn(features, labels, mode, config)
+    if mode == tf.estimator.ModeKeys.EVAL:
+      filtered_eval_metric_ops = {}
+      for k, v in result.eval_metric_ops.items():
+        if k in metrics_to_remove:
+          continue
+        filtered_eval_metric_ops[k] = v
+      result = result._replace(eval_metric_ops=filtered_eval_metric_ops)
+    return result
+
+  estimator._call_model_fn = types.MethodType(  # pylint: disable=protected-access
+      wrapped_call_model_fn, estimator)
+
+  yield
+
+  estimator._call_model_fn = old_call_model_fn  # pylint: disable=protected-access
+
+
+def adapt_to_remove_metrics(exporter: tf.estimator.Exporter,
+                            metrics_to_remove: List[Text]
+                           ) -> tf.estimator.Exporter:
+  """Modifies the given exporter to remove metrics before export.
+
+  This is useful for when you use py_func, streaming metrics, or other metrics
+  incompatible with TFMA in your trainer. To keep these metrics in your trainer
+  (so they still show up in Tensorboard) and still use TFMA, you can call
+  adapt_to_remove_metrics on your TFMA exporter.
+
+  Args:
+    exporter: Exporter to modify. Will be mutated in place.
+    metrics_to_remove: List of names of metrics to remove.
+
+  Returns:
+    The mutated exporter, which will be modified in place. We also return it
+    so that this can be used in an expression.
+  """
+
+  old_export = exporter.export
+
+  def wrapped_export(unused_self, estimator: tf.estimator.Estimator,
+                     export_path: Text, checkpoint_path: Optional[Text],
+                     eval_result: Optional[bytes],
+                     is_the_final_export: bool) -> bytes:
+    with _remove_metrics(estimator, metrics_to_remove):
+      return old_export(estimator, export_path, checkpoint_path, eval_result,
+                        is_the_final_export)
+
+  exporter.export = types.MethodType(wrapped_export, exporter)
+  return exporter

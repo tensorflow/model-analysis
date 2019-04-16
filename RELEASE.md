@@ -1,7 +1,11 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
+
 *   Added documentation on architecture.
+*   Added an `adapt_to_remove_metrics` function to `tfma.exporter` which can be
+    used to remove metrics incompatible with TFMA (e.g. `py_func` or streaming
+    metrics) before exporting the TFMA EvalSavedModel.
 
 ## Bug fixes and other changes
 
