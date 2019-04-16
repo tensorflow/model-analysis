@@ -59,6 +59,7 @@ closure_js_library(
         "data.js",
     ],
     suppress = [
+        "JSC_MISSING_CONST_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
         "JSC_UNRECOGNIZED_TYPE_ERROR",
         "JSC_UNUSED_LOCAL_ASSIGNMENT",
@@ -114,6 +115,7 @@ closure_js_library(
         "series-data.js",
     ],
     suppress = [
+        "JSC_MISSING_CONST_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
         "JSC_UNRECOGNIZED_TYPE_ERROR",
         "JSC_UNUSED_LOCAL_ASSIGNMENT",
@@ -143,6 +145,7 @@ closure_js_library(
         "single-series-graph-data.js",
     ],
     suppress = [
+        "JSC_MISSING_CONST_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
         "JSC_UNRECOGNIZED_TYPE_ERROR",
         "JSC_UNUSED_LOCAL_ASSIGNMENT",
