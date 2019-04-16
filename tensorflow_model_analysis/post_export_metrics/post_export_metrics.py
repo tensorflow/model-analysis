@@ -295,8 +295,10 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
       # classes in predictions > 1.
       predictions_tensor.shape.assert_has_rank(2)
       assert_op = tf.Assert(
-          tf.greater_equal(tf.shape(predictions_tensor)[1], 1),
-          [predictions_tensor])
+          tf.greater_equal(tf.shape(predictions_tensor)[1], 1), [
+              'For multi-hot labels, predictions_tensor should have more than '
+              'one class. predictions_tensor was:', predictions_tensor
+          ])
       with tf.control_dependencies([assert_op]):
         # One-hot vector for each class index in labels.
         # Result has shape [batch_size, max_num_classes_in_batch, depth]
@@ -315,8 +317,11 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
 
     assert_op = tf.Assert(
         tf.reduce_all(
-            tf.equal(tf.shape(predictions_tensor), tf.shape(labels_tensor))),
-        [predictions_tensor, labels_tensor])
+            tf.equal(tf.shape(predictions_tensor), tf.shape(labels_tensor))), [
+                'Predictions and labels tensors should have the same shape. ',
+                'predictions_tensor: ', predictions_tensor, 'labels_tensor: ',
+                labels_tensor
+            ])
     with tf.control_dependencies([assert_op]):
       predictions_for_class = predictions_tensor[:, self._tensor_index]
       labels_for_class = tf.cast(labels_tensor[:, self._tensor_index],
@@ -815,9 +820,15 @@ def _create_predictions_labels_weights_for_fractional_labels(
     Tuple of updated (prediction_tensor, label_tensor, weight_tensor).
   """
 
+  assert_message = (
+      'Labels should be in the range [0, 1]. Check that the '
+      'metrics you have configured are compatible with your model type, e.g. '
+      'you should not configure AUC for a regression model.')
   with tf.control_dependencies([
-      tf.assert_greater_equal(label_tensor, np.float64(0.0)),
-      tf.assert_less_equal(label_tensor, np.float64(1.0))
+      tf.assert_greater_equal(
+          label_tensor, np.float64(0.0), message=assert_message),
+      tf.assert_less_equal(
+          label_tensor, np.float64(1.0), message=assert_message)
   ]):
     return (
         tf.concat([prediction_tensor, prediction_tensor], axis=0),
