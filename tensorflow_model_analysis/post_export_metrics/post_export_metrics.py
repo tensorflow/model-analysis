@@ -199,15 +199,15 @@ def _additional_prediction_keys(keys: List[Text],
 
   If a metric_tag was given then we also search for keys prefixed by the
   metric_tag. In most cases the metric_tag is the head name and
-  tf.contrib.estimator.multi_head prefixes the predictions by the head. If
-  tensor_index was also provided then we also search under the tag stripped of
-  the index. In this case the tag has the form <head_name>_<tensor_index>.
+  tf.estimator.MultiHead prefixes the predictions by the head. If tensor_index
+  was also provided then we also search under the tag stripped of the index. In
+  this case the tag has the form <head_name>_<tensor_index>.
 
   For example, given the following setup:
 
-    head1 = tf.contrib.estimator.multi_class_head(n_classes=3, name='head1')
-    head2 = tf.contrib.estimator.binary_classification_head(name='head2')
-    head = tf.contrib.estimator.multi_head([head1, head2])
+    head1 = tf.estimator.MultiClassHead(n_classes=3, name='head1')
+    head2 = tf.estimator.BinaryClassHead(name='head2')
+    head = tf.estimator.MultiHead([head1, head2])
     ...
 
   The prediction keys will be under head1/logistic and head2/logistic.

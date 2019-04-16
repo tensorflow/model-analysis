@@ -6,6 +6,7 @@
 ## Bug fixes and other changes
 
 ## Breaking changes
+*   Removed uses of deprecated tf.contrib packages (where possible).
 
 ## Deprecations
 

@@ -37,22 +37,22 @@ returns the parsed features. It parses and returns the label.
 The following snippet defines an example `eval_input_receiver_fn`:
 
 ```python
-country = tf.contrib.layers.sparse_column_with_hash_buckets('country', 100)
-language = tf.contrib.layers.sparse_column_with_hash_buckets(language, 100)
-age = tf.contrib.layers.real_valued_column('age')
-label = tf.contrib.layers.real_valued_column('label')
+country = tf.feature_column.categorical_column_with_hash('country', 100)
+language = tf.feature_column.categorical_column_with_hash('language', 100)
+age = tf.feature_column.numeric_column('age')
+label = tf.feature_column.numeric_column('label')
 
 def eval_input_receiver_fn():
-  serialized_tf_example = tf.placeholder(
-    dtype=tf.string, shape=[None], name='input_example_placeholder')
+  serialized_tf_example = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_example_placeholder')
 
   # This *must* be a dictionary containing a single key 'examples', which
   # points to the input placeholder.
   receiver_tensors = {'examples': serialized_tf_example}
 
-  feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(
-    [country, language, age, label])
-  features = tf.parse_example(serialized_tf_example, feature_spec)
+  feature_spec =  tf.feature_column.make_parse_example_spec(
+      [country, language, age, label])
+  features = tf.io.parse_example(serialized_tf_example, feature_spec)
 
   return tfma.export.EvalInputReceiver(
     features=features,

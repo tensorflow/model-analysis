@@ -37,6 +37,7 @@ from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.post_export_metrics import metrics as metric_fns
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
@@ -49,7 +50,8 @@ def _addExampleCountMetricCallback(  # pylint: disable=invalid-name
   del features_dict
   del labels_dict
   metric_ops = {}
-  value_op, update_op = tf.contrib.metrics.count(predictions_dict['logits'])
+  value_op, update_op = metric_fns.total(
+      tf.shape(predictions_dict['logits'])[0])
   metric_ops['added_example_count'] = (value_op, update_op)
   return metric_ops
 

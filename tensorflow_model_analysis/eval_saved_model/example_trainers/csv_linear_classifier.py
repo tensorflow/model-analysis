@@ -73,11 +73,11 @@ def simple_csv_linear_classifier(export_path, eval_export_path):
                 dense_shape=[4, 1])
     }, tf.constant([[1], [1], [0], [0]])
 
-  language = tf.contrib.layers.sparse_column_with_keys('language',
-                                                       ['english', 'chinese'])
-  age = tf.contrib.layers.real_valued_column('age')
+  language = tf.feature_column.categorical_column_with_vocabulary_list(
+      'language', ['english', 'chinese'])
+  age = tf.feature_column.numeric_column('age')
   all_features = [age, language]
-  feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(all_features)
+  feature_spec = tf.feature_column.make_parse_example_spec(all_features)
 
   classifier = tf.estimator.LinearClassifier(feature_columns=all_features)
   classifier.train(input_fn=input_fn, steps=1000)

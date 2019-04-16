@@ -39,17 +39,17 @@ def simple_multi_head(export_path, eval_export_path):
     serialized_tf_example = tf.placeholder(
         dtype=tf.string, shape=[None], name='input_example_tensor')
 
-    language = tf.contrib.layers.sparse_column_with_keys(
+    language = tf.feature_column.categorical_column_with_vocabulary_list(
         'language', ['english', 'chinese', 'other'])
-    age = tf.contrib.layers.real_valued_column('age')
-    english_label = tf.contrib.layers.real_valued_column('english_label')
-    chinese_label = tf.contrib.layers.real_valued_column('chinese_label')
-    other_label = tf.contrib.layers.real_valued_column('other_label')
+    age = tf.feature_column.numeric_column('age')
+    english_label = tf.feature_column.numeric_column('english_label')
+    chinese_label = tf.feature_column.numeric_column('chinese_label')
+    other_label = tf.feature_column.numeric_column('other_label')
     all_features = [age, language, english_label, chinese_label, other_label]
-    feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(
-        all_features)
+    feature_spec = tf.feature_column.make_parse_example_spec(all_features)
     receiver_tensors = {'examples': serialized_tf_example}
-    features = tf.parse_example(serialized_tf_example, feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_tf_example, features=feature_spec)
 
     labels = {
         'english_head': features['english_label'],
@@ -80,12 +80,14 @@ def simple_multi_head(export_path, eval_export_path):
     }
     return features, labels
 
-  language = tf.contrib.layers.sparse_column_with_keys(
+  language = tf.feature_column.categorical_column_with_vocabulary_list(
       'language', ['english', 'chinese', 'other'])
-  age = tf.contrib.layers.real_valued_column('age')
+  age = tf.feature_column.numeric_column('age')
   all_features = [age, language]
-  feature_spec = tf.contrib.layers.create_feature_spec_for_parsing(all_features)
+  feature_spec = tf.feature_column.make_parse_example_spec(all_features)
 
+  # TODO(b/130299739): Update with tf.estimator.BinaryClassHead and
+  #   tf.estimator.MultiClassHead
   english_head = tf.contrib.estimator.binary_classification_head(
       name='english_head')
   chinese_head = tf.contrib.estimator.binary_classification_head(
@@ -95,12 +97,7 @@ def simple_multi_head(export_path, eval_export_path):
   combined_head = tf.contrib.estimator.multi_head(
       [english_head, chinese_head, other_head])
 
-  # TODO(b/118630716): Remove this check once we depend on TF 1.13.
-  if hasattr(tf.estimator, 'DNNLinearCombinedEstimator'):
-    estimator_fn = tf.estimator.DNNLinearCombinedEstimator
-  else:
-    estimator_fn = tf.contrib.estimator.DNNLinearCombinedEstimator
-  estimator = estimator_fn(
+  estimator = tf.estimator.DNNLinearCombinedEstimator(
       head=combined_head,
       dnn_feature_columns=[],
       dnn_optimizer=tf.train.AdagradOptimizer(learning_rate=0.01),

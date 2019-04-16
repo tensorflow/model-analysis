@@ -36,6 +36,9 @@ from typing import Callable, Dict, Optional, Text, Union
 
 from tensorflow.python.estimator.export import export as export_lib
 
+# TODO(b/110472071): Temporary for tf.contrib.learn Estimator support only.
+IS_TF_1 = hasattr(tf, '__version__') and tf.__version__[0] == '1'
+
 # Return type of EvalInputReceiver function.
 EvalInputReceiverType = Union[  # pylint: disable=invalid-name
     export_lib.SupervisedInputReceiver, export_lib.UnsupervisedInputReceiver]
@@ -296,130 +299,6 @@ def build_parsing_eval_input_receiver_fn(
   return eval_input_receiver_fn
 
 
-# TODO(b/110472071): Temporary for tf.contrib.learn Estimator support only.
-@tfma_util.kwargs_only
-def _export_eval_savedmodel_contrib_estimator(
-    estimator,
-    export_dir_base: Text,
-    eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
-    serving_input_receiver_fn: Optional[
-        Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
-    checkpoint_path: Optional[Text] = None) -> bytes:
-  """Export a EvalSavedModel for the given tf.contrib.learn Estimator.
-
-  This is a compatibility shim for exporting tf.contrib.learn Estiamtors.
-  The way we do this is we copy over the methods we need from
-  tf.estimator.Estimator, add a shim for converting ModelFnOps to EstimatorSpec
-  so we can use those methods, and then call the copied methods.
-
-  Args:
-    estimator: Estimator to export the graph for.
-    export_dir_base: Base path for export. Graph will be exported into a
-      subdirectory of this base path.
-    eval_input_receiver_fn: Eval input receiver function.
-    serving_input_receiver_fn: (Optional) Serving input receiver function. If
-      not privded, the serving graph will not be included in the exported
-      SavedModel.
-    checkpoint_path: Path to a specific checkpoint to export. If set to None,
-      exports the latest checkpoint.
-
-  Returns:
-    Path to the directory where the eval graph was exported.
-
-  Raises:
-    ValueError: Could not find a checkpoint to export; Or the Estimator had
-      an _export_all_saved_models method, which suggests that it wasn't
-      actually a contrib Estimator.
-  """
-
-  if hasattr(estimator, 'experimental_export_all_saved_models'):
-    raise ValueError(
-        'not expecting contrib estimator to have '
-        'experimental_export_all_saved_models method, but the estimator had '
-        'the method')
-
-  # Copy the TF Core Estimator methods we need for exporting the model
-  # into the tf.contrib.learn Estimator we got.
-  methods = [
-      'experimental_export_all_saved_models',
-      '_add_meta_graph_for_mode',
-      '_export_all_saved_models',
-      '_create_and_assert_global_step',
-      '_create_global_step',
-  ]
-  for method in methods:
-    if six.PY2:
-      estimator_function = getattr(tf.estimator.Estimator, method).__func__
-    else:
-      estimator_function = getattr(tf.estimator.Estimator, method)
-    fn = python_types.MethodType(estimator_function, estimator)
-    setattr(estimator, method, fn)
-
-  # We need our own version of this because the TF version calls into its parent
-  # class, which isn't what it expects for contrib Estimators.
-  def call_add_meta_graph_and_variables(
-      self,  # pylint: disable=unused-argument
-      save_variables,
-      builder,
-      session,
-      kwargs):
-    if save_variables:
-      builder.add_meta_graph_and_variables(session, **kwargs)
-    else:
-      builder.add_meta_graph(**kwargs)
-
-  setattr(estimator, '_call_add_meta_graph_and_variables',
-          python_types.MethodType(call_add_meta_graph_and_variables, estimator))
-  setattr(estimator, '_strip_default_attrs', False)
-
-  def call_model_fn_override(self, *args, **kwargs):
-    """Shim that converts ModelFnOps to EstimatorSpec."""
-    model_fn_ops = self._old_call_model_fn(*args, **kwargs)  # pylint: disable=protected-access
-    estimator_spec = tf.estimator.EstimatorSpec(
-        loss=tf.constant(0.0),
-        mode=tf.estimator.ModeKeys.EVAL,
-        predictions=model_fn_ops.predictions,
-        eval_metric_ops=model_fn_ops.eval_metric_ops,
-        scaffold=model_fn_ops.scaffold)
-    return estimator_spec
-
-  estimator._old_call_model_fn = estimator._call_model_fn  # pylint: disable=protected-access
-  estimator._call_model_fn = python_types.MethodType(  # pylint: disable=protected-access
-      call_model_fn_override, estimator)
-
-  if serving_input_receiver_fn:
-
-    def wrapped_serving_input_receiver_fn():
-      """Shim to maybe upconvert legacy InputFnOps to ServingInputReceiver."""
-      maybe_input_fn_ops = serving_input_receiver_fn()
-      if isinstance(maybe_input_fn_ops, tf.contrib.learn.InputFnOps):
-        return tf.estimator.export.ServingInputReceiver(
-            features=maybe_input_fn_ops.features,
-            receiver_tensors=maybe_input_fn_ops.default_inputs)
-      return maybe_input_fn_ops
-  else:
-    wrapped_serving_input_receiver_fn = None
-
-  result = tf.contrib.estimator.export_all_saved_models(
-      estimator,
-      export_dir_base=export_dir_base,
-      input_receiver_fn_map={
-          tf.estimator.ModeKeys.EVAL: eval_input_receiver_fn,
-          tf.estimator.ModeKeys.PREDICT: wrapped_serving_input_receiver_fn,
-      },
-      checkpoint_path=checkpoint_path)
-
-  # Undo all the changes we made.
-  estimator._call_model_fn = estimator._old_call_model_fn  # pylint: disable=protected-access
-  del estimator._old_call_model_fn
-  for method in methods:
-    delattr(estimator, method)
-  delattr(estimator, '_call_add_meta_graph_and_variables')
-  delattr(estimator, '_strip_default_attrs')
-
-  return result
-
-
 @tfma_util.kwargs_only
 def export_eval_savedmodel(
     estimator,
@@ -457,7 +336,7 @@ def export_eval_savedmodel(
     ValueError: Could not find a checkpoint to export.
   """
   # TODO(b/110472071): Temporary for tf.contrib.learn Estimator support only.
-  if isinstance(estimator, tf.contrib.learn.Estimator):
+  if IS_TF_1 and isinstance(estimator, tf.contrib.learn.Estimator):
     return _export_eval_savedmodel_contrib_estimator(
         estimator=estimator,
         export_dir_base=export_dir_base,
@@ -465,8 +344,7 @@ def export_eval_savedmodel(
         serving_input_receiver_fn=serving_input_receiver_fn,
         checkpoint_path=checkpoint_path)
 
-  return tf.contrib.estimator.export_all_saved_models(
-      estimator,
+  return estimator.experimental_export_all_saved_models(
       export_dir_base=export_dir_base,
       input_receiver_fn_map={
           tf.estimator.ModeKeys.EVAL: eval_input_receiver_fn,
@@ -476,48 +354,175 @@ def export_eval_savedmodel(
       checkpoint_path=checkpoint_path)
 
 
-@tfma_util.kwargs_only
-def make_export_strategy(
-    eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
-    serving_input_receiver_fn: Optional[
-        Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
-    exports_to_keep: Optional[int] = 5,
-) -> tf.contrib.learn.ExportStrategy:
-  """Create an ExportStrategy for EvalSavedModel.
+# TODO(b/110472071): Temporary for tf.contrib.learn Estimator support only.
+if IS_TF_1:
 
-  Note: The strip_default_attrs is not used for EvalSavedModel export. And
-  writing the EvalSavedModel proto in text format is not supported for now.
+  @tfma_util.kwargs_only
+  def _export_eval_savedmodel_contrib_estimator(
+      estimator,
+      export_dir_base: Text,
+      eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
+      serving_input_receiver_fn: Optional[
+          Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
+      checkpoint_path: Optional[Text] = None) -> bytes:
+    """Export a EvalSavedModel for the given tf.contrib.learn Estimator.
 
-  Args:
-    eval_input_receiver_fn: Eval input receiver function.
-    serving_input_receiver_fn: (Optional) Serving input receiver function. We
-      recommend that you provide this as well, so that the exported SavedModel
-      also contains the serving graph. If not privded, the serving graph will
-      not be included in the exported SavedModel.
-    exports_to_keep: Number of exports to keep.  Older exports will be
-      garbage-collected.  Defaults to 5.  Set to None to disable garbage
-      collection.
+    This is a compatibility shim for exporting tf.contrib.learn Estiamtors.
+    The way we do this is we copy over the methods we need from
+    tf.estimator.Estimator, add a shim for converting ModelFnOps to
+    EstimatorSpec
+    so we can use those methods, and then call the copied methods.
 
-  Returns:
-    An ExportStrategy for EvalSavedModel that can be passed to the
-    tf.contrib.learn.Experiment constructor.
-  """
+    Args:
+      estimator: Estimator to export the graph for.
+      export_dir_base: Base path for export. Graph will be exported into a
+        subdirectory of this base path.
+      eval_input_receiver_fn: Eval input receiver function.
+      serving_input_receiver_fn: (Optional) Serving input receiver function. If
+        not privded, the serving graph will not be included in the exported
+        SavedModel.
+      checkpoint_path: Path to a specific checkpoint to export. If set to None,
+        exports the latest checkpoint.
 
-  def export_fn(estimator,
-                export_dir_base,
-                checkpoint_path=None,
-                strip_default_attrs=False):
-    """Export function."""
-    del strip_default_attrs
-    export_dir = export_eval_savedmodel(
-        estimator=estimator,
+    Returns:
+      Path to the directory where the eval graph was exported.
+
+    Raises:
+      ValueError: Could not find a checkpoint to export; Or the Estimator had
+        an _export_all_saved_models method, which suggests that it wasn't
+        actually a contrib Estimator.
+    """
+
+    if hasattr(estimator, 'experimental_export_all_saved_models'):
+      raise ValueError(
+          'not expecting contrib estimator to have '
+          'experimental_export_all_saved_models method, but the estimator had '
+          'the method')
+
+    # Copy the TF Core Estimator methods we need for exporting the model
+    # into the tf.contrib.learn Estimator we got.
+    methods = [
+        'experimental_export_all_saved_models',
+        '_add_meta_graph_for_mode',
+        '_export_all_saved_models',
+        '_create_and_assert_global_step',
+        '_create_global_step',
+    ]
+    for method in methods:
+      if six.PY2:
+        estimator_function = getattr(tf.estimator.Estimator, method).__func__
+      else:
+        estimator_function = getattr(tf.estimator.Estimator, method)
+      fn = python_types.MethodType(estimator_function, estimator)
+      setattr(estimator, method, fn)
+
+    # We need our own version of this because the TF version calls into its
+    # parent class, which isn't what it expects for contrib Estimators.
+    def call_add_meta_graph_and_variables(
+        self,  # pylint: disable=unused-argument
+        save_variables,
+        builder,
+        session,
+        kwargs):
+      if save_variables:
+        builder.add_meta_graph_and_variables(session, **kwargs)
+      else:
+        builder.add_meta_graph(**kwargs)
+
+    setattr(
+        estimator, '_call_add_meta_graph_and_variables',
+        python_types.MethodType(call_add_meta_graph_and_variables, estimator))
+    setattr(estimator, '_strip_default_attrs', False)
+
+    def call_model_fn_override(self, *args, **kwargs):
+      """Shim that converts ModelFnOps to EstimatorSpec."""
+      model_fn_ops = self._old_call_model_fn(*args, **kwargs)  # pylint: disable=protected-access
+      estimator_spec = tf.estimator.EstimatorSpec(
+          loss=tf.constant(0.0),
+          mode=tf.estimator.ModeKeys.EVAL,
+          predictions=model_fn_ops.predictions,
+          eval_metric_ops=model_fn_ops.eval_metric_ops,
+          scaffold=model_fn_ops.scaffold)
+      return estimator_spec
+
+    estimator._old_call_model_fn = estimator._call_model_fn  # pylint: disable=protected-access
+    estimator._call_model_fn = python_types.MethodType(  # pylint: disable=protected-access
+        call_model_fn_override, estimator)
+
+    if serving_input_receiver_fn:
+
+      def wrapped_serving_input_receiver_fn():
+        """Shim to maybe upconvert legacy InputFnOps to ServingInputReceiver."""
+        maybe_input_fn_ops = serving_input_receiver_fn()
+        if isinstance(maybe_input_fn_ops, tf.contrib.learn.InputFnOps):
+          return tf.estimator.export.ServingInputReceiver(
+              features=maybe_input_fn_ops.features,
+              receiver_tensors=maybe_input_fn_ops.default_inputs)
+        return maybe_input_fn_ops
+    else:
+      wrapped_serving_input_receiver_fn = None
+
+    result = tf.contrib.estimator.export_all_saved_models(
+        estimator,
         export_dir_base=export_dir_base,
-        eval_input_receiver_fn=eval_input_receiver_fn,
-        serving_input_receiver_fn=serving_input_receiver_fn,
+        input_receiver_fn_map={
+            tf.estimator.ModeKeys.EVAL: eval_input_receiver_fn,
+            tf.estimator.ModeKeys.PREDICT: wrapped_serving_input_receiver_fn,
+        },
         checkpoint_path=checkpoint_path)
-    tf.contrib.learn.utils.saved_model_export_utils.garbage_collect_exports(
-        export_dir_base, exports_to_keep)
-    return export_dir
 
-  return tf.contrib.learn.ExportStrategy(constants.EVAL_SAVED_MODEL_EXPORT_NAME,
-                                         export_fn)
+    # Undo all the changes we made.
+    estimator._call_model_fn = estimator._old_call_model_fn  # pylint: disable=protected-access
+    del estimator._old_call_model_fn
+    for method in methods:
+      delattr(estimator, method)
+    delattr(estimator, '_call_add_meta_graph_and_variables')
+    delattr(estimator, '_strip_default_attrs')
+
+    return result
+
+  @tfma_util.kwargs_only
+  def make_export_strategy(
+      eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
+      serving_input_receiver_fn: Optional[
+          Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
+      exports_to_keep: Optional[int] = 5,
+  ) -> tf.contrib.learn.ExportStrategy:
+    """Create an ExportStrategy for EvalSavedModel.
+
+    Note: The strip_default_attrs is not used for EvalSavedModel export. And
+    writing the EvalSavedModel proto in text format is not supported for now.
+
+    Args:
+      eval_input_receiver_fn: Eval input receiver function.
+      serving_input_receiver_fn: (Optional) Serving input receiver function. We
+        recommend that you provide this as well, so that the exported SavedModel
+        also contains the serving graph. If not privded, the serving graph will
+        not be included in the exported SavedModel.
+      exports_to_keep: Number of exports to keep.  Older exports will be
+        garbage-collected.  Defaults to 5.  Set to None to disable garbage
+        collection.
+
+    Returns:
+      An ExportStrategy for EvalSavedModel that can be passed to the
+      tf.contrib.learn.Experiment constructor.
+    """
+
+    def export_fn(estimator,
+                  export_dir_base,
+                  checkpoint_path=None,
+                  strip_default_attrs=False):
+      """Export function."""
+      del strip_default_attrs
+      export_dir = export_eval_savedmodel(
+          estimator=estimator,
+          export_dir_base=export_dir_base,
+          eval_input_receiver_fn=eval_input_receiver_fn,
+          serving_input_receiver_fn=serving_input_receiver_fn,
+          checkpoint_path=checkpoint_path)
+      tf.contrib.learn.utils.saved_model_export_utils.garbage_collect_exports(
+          export_dir_base, exports_to_keep)
+      return export_dir
+
+    return tf.contrib.learn.ExportStrategy(
+        constants.EVAL_SAVED_MODEL_EXPORT_NAME, export_fn)

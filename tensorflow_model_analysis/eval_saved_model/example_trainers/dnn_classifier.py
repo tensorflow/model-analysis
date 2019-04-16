@@ -16,7 +16,7 @@
 The true model is language == 'english'.
 
 The model has the standard metrics added by DNNClassifier, plus additional
-metrics added using tf.contrib.estimator.
+metrics added using tf.estimator.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -60,8 +60,8 @@ def get_simple_dnn_classifier_and_metadata(n_classes=2):
       hidden_units=[4],
       feature_columns=util.dnn_columns(False),
       n_classes=n_classes)
-  classifier = tf.contrib.estimator.add_metrics(classifier,
-                                                util.classifier_extra_metrics)
+  classifier = tf.estimator.add_metrics(classifier,
+                                        util.classifier_extra_metrics)
   return {
       'estimator':
           classifier,

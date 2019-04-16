@@ -16,7 +16,7 @@
 The true model is age * 3 + (language == 'english')
 
 The model has the standard metrics added by DNNRegressor, plus additional
-metrics added using tf.contrib.estimator.
+metrics added using tf.estimator.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -37,8 +37,7 @@ def simple_dnn_regressor(export_path, eval_export_path):
       feature_columns=util.dnn_columns(True))
   regressor = tf.estimator.DNNRegressor(
       hidden_units=[4], feature_columns=util.dnn_columns(False))
-  regressor = tf.contrib.estimator.add_metrics(regressor,
-                                               util.regressor_extra_metrics)
+  regressor = tf.estimator.add_metrics(regressor, util.regressor_extra_metrics)
   regressor.train(
       input_fn=util.make_regressor_input_fn(feature_spec), steps=3000)
 

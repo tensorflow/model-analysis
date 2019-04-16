@@ -70,13 +70,14 @@ class ExporterTest(testutil.TensorflowModelAnalysisTest):
     self.assertDictElementsAlmostEqual(metric_values, {'average_loss': 0.81})
 
     # Check the serving graph.
-    estimator = tf.contrib.estimator.SavedModelEstimator(eval_export_dir)
-
-    def predict_input_fn():
-      return {'inputs': tf.constant([example1.SerializeToString()])}
-
-    predictions = next(estimator.predict(predict_input_fn))
-    self.assertAllClose(predictions['outputs'], np.array([0.9]))
+    # TODO(b/124466113): Remove tf.compat.v2 once TF 2.0 is the default.
+    if hasattr(tf, 'compat.v2'):
+      imported = tf.compat.v2.saved_model.load(
+          eval_export_dir, tags=tf.saved_model.SERVING)
+      predictions = imported.signatures[
+          tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY](
+              inputs=tf.constant([example1.SerializeToString()]))
+      self.assertAllClose(predictions['outputs'], np.array([[0.9]]))
 
   def testFinalExporter(self):
     self.runTestForExporter(exporter.FinalExporter)

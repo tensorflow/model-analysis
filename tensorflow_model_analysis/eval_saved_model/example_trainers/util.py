@@ -194,14 +194,9 @@ def export_model_and_eval_model(estimator,
   eval_export_path_result = None
 
   if export_path and serving_input_receiver_fn:
-    args = dict(export_dir_base=export_path)
-    if isinstance(estimator, tf.contrib.learn.Estimator):
-      args['serving_input_fn'] = serving_input_receiver_fn
-      export_fn = estimator.export_savedmodel
-    else:
-      args['serving_input_receiver_fn'] = serving_input_receiver_fn
-      export_fn = estimator.export_saved_model
-    export_path_result = export_fn(**args)
+    export_path_result = estimator.export_saved_model(
+        export_dir_base=export_path,
+        serving_input_receiver_fn=serving_input_receiver_fn)
   if eval_export_path and eval_input_receiver_fn:
     eval_export_path_result = export.export_eval_savedmodel(
         estimator=estimator,

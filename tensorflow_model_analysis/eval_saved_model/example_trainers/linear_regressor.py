@@ -16,7 +16,7 @@
 The true model is age * 3 + (language == 'english')
 
 The model has the standard metrics added by LinearRegressor, plus additional
-metrics added using tf.contrib.estimator.
+metrics added using tf.estimator.
 
 This model also extracts an additional slice_key feature for evaluation
 (this feature is not used in training).
@@ -44,8 +44,7 @@ def simple_linear_regressor(export_path, eval_export_path):
 
   regressor = tf.estimator.LinearRegressor(
       feature_columns=util.linear_columns())
-  regressor = tf.contrib.estimator.add_metrics(regressor,
-                                               util.regressor_extra_metrics)
+  regressor = tf.estimator.add_metrics(regressor, util.regressor_extra_metrics)
   regressor.train(
       input_fn=util.make_regressor_input_fn(
           tf.feature_column.make_parse_example_spec(util.linear_columns(True))),

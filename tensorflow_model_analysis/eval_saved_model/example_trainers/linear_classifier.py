@@ -16,7 +16,7 @@
 The true model is language == 'english'.
 
 The model has the standard metrics added by LinearClassifier, plus additional
-metrics added using tf.contrib.estimator.
+metrics added using tf.estimator.
 
 This model also extracts an additional slice_key feature for evaluation
 (this feature is not used in training).
@@ -44,8 +44,8 @@ def simple_linear_classifier(export_path, eval_export_path):
 
   classifier = tf.estimator.LinearClassifier(
       feature_columns=util.linear_columns())
-  classifier = tf.contrib.estimator.add_metrics(classifier,
-                                                util.classifier_extra_metrics)
+  classifier = tf.estimator.add_metrics(classifier,
+                                        util.classifier_extra_metrics)
   classifier.train(
       input_fn=util.make_classifier_input_fn(
           tf.feature_column.make_parse_example_spec(util.linear_columns(True))),

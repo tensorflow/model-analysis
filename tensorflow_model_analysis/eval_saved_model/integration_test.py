@@ -539,8 +539,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
           prediction_dict['english_head/probabilities'][0][1])
       metric_ops['mean_absolute_error/english_head'] = (value_op, update_op)
 
-      value_op, update_op = tf.contrib.metrics.count(
-          prediction_dict['english_head/logits'])
+      value_op, update_op = metrics.total(
+          tf.shape(prediction_dict['english_head/logits'])[0])
       metric_ops['example_count/english_head'] = (value_op, update_op)
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
@@ -596,8 +596,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
           prediction_dict['english_head/probabilities'][0][1])
       metric_ops['mean_absolute_error/english_head'] = (value_op, update_op)
 
-      value_op, update_op = tf.contrib.metrics.count(
-          prediction_dict['english_head/logits'])
+      value_op, update_op = metrics.total(
+          tf.shape(prediction_dict['english_head/logits'])[0])
       metric_ops['example_count/english_head'] = (value_op, update_op)
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
@@ -644,8 +644,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model.get_features_predictions_labels_dicts())
     with eval_saved_model.graph_as_default():
       metric_ops = {}
-      value_op, update_op = tf.contrib.metrics.count(
-          prediction_dict['english_head/logits'])
+      value_op, update_op = metrics.total(
+          tf.shape(prediction_dict['english_head/logits'])[0])
       metric_ops['example_count/english_head'] = (value_op, update_op)
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
@@ -698,8 +698,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model.get_features_predictions_labels_dicts())
     with eval_saved_model.graph_as_default():
       metric_ops = {}
-      value_op, update_op = tf.contrib.metrics.count(
-          prediction_dict['english_head/logits'])
+      value_op, update_op = metrics.total(
+          tf.shape(prediction_dict['english_head/logits'])[0])
       metric_ops['example_count/english_head'] = (value_op, update_op)
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
@@ -741,8 +741,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model.get_features_predictions_labels_dicts())
     with eval_saved_model.graph_as_default():
       metric_ops = {}
-      value_op, update_op = tf.contrib.metrics.count(
-          prediction_dict['english_head/logits'])
+      value_op, update_op = metrics.total(
+          tf.shape(prediction_dict['english_head/logits'])[0])
       metric_ops['example_count/english_head'] = (value_op, update_op)
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
@@ -860,13 +860,14 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     self.assertDictElementsAlmostEqual(metric_values, {'average_loss': 0.81})
 
     # Check the serving graph.
-    estimator = tf.contrib.estimator.SavedModelEstimator(eval_export_dir)
-
-    def predict_input_fn():
-      return {'inputs': tf.constant([example1.SerializeToString()])}
-
-    predictions = next(estimator.predict(predict_input_fn))
-    self.assertAllClose(predictions['outputs'], np.array([0.9]))
+    # TODO(b/124466113): Remove tf.compat.v2 once TF 2.0 is the default.
+    if hasattr(tf, 'compat.v2'):
+      imported = tf.compat.v2.saved_model.load(
+          eval_export_dir, tags=tf.saved_model.SERVING)
+      predictions = imported.signatures[
+          tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY](
+              inputs=tf.constant([example1.SerializeToString()]))
+      self.assertAllClose(predictions['outputs'], np.array([[0.9]]))
 
   def testEvaluateExistingMetricsWithExportedCustomMetricsDNN(self):
     temp_eval_export_dir = self._getEvalExportDir()
