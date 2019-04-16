@@ -292,7 +292,8 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
         ('one int64 feature', (('age', 1),), 'age:1'),
         ('mixed', (('age', 1), ('gender', 'f')), 'age_X_gender:1_X_f'),
         ('more', (('age', 1), ('gender', 'f'), ('interest', 'cars')),
-         'age_X_gender_X_interest:1_X_f_X_cars')
+         'age_X_gender_X_interest:1_X_f_X_cars'),
+        ('unicode', (('text', b'\xe4\xb8\xad\xe6\x96\x87'),), u'text:\u4e2d\u6587'),
     ]  # pyformat: disable
     for (name, slice_key, stringified_key) in test_cases:
       self.assertEqual(

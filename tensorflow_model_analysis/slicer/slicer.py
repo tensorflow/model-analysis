@@ -349,9 +349,10 @@ def stringify_slice_key(slice_key: SliceKeyType) -> Text:
     # string first before converting to text.
     values.append(tf.compat.as_text(tf.compat.as_str_any(value)))
 
-  return separator.join([
-      '{}'.format(key) for key in keys
-  ]) + ':' + separator.join(['{}'.format(value) for value in values])
+  # To use u'{}' instead of '{}' here to avoid encoding a unicode character with
+  # ascii codec.
+  return (separator.join([u'{}'.format(key) for key in keys]) + ':' +
+          separator.join([u'{}'.format(value) for value in values]))
 
 
 @beam.typehints.with_input_types(types.Extracts)
