@@ -7,15 +7,25 @@
 
 ``` python
 tfma.run_model_analysis(
-    model_location,
+    eval_shared_model,
     data_location,
     file_format='tfrecords',
     slice_spec=None,
-    add_metrics_callbacks=None,
     output_path=None,
-    extractors=None
+    extractors=None,
+    evaluators=None,
+    writers=None,
+    write_config=True,
+    pipeline_options=None,
+    num_bootstrap_samples=1
 )
 ```
+
+
+
+Defined in [`api/model_eval_lib.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/api/model_eval_lib.py).
+
+<!-- Placeholder for "Used in" -->
 
 Runs TensorFlow model analysis.
 
@@ -28,12 +38,14 @@ Evaluate PTransform instead.
 
 #### Args:
 
-* <b>`model_location`</b>: The location of the exported eval saved model.
+* <b>`eval_shared_model`</b>: Shared model parameters for EvalSavedModel including any
+    additional metrics (see EvalSharedModel for more information on how to
+    configure additional metrics).
 * <b>`data_location`</b>: The location of the data files.
 * <b>`file_format`</b>: The file format of the data, can be either 'text' or
     'tfrecords' for now. By default, 'tfrecords' will be used.
-* <b>`slice_spec`</b>: A list of tfma.slicer.SingleSliceSpec. Each spec
-    represents a way to slice the data.
+* <b>`slice_spec`</b>: A list of tfma.slicer.SingleSliceSpec. Each spec represents a
+    way to slice the data. If None, defaults to the overall slice.
     Example usages:
     # TODO(xinzha): add more use cases once they are supported in frontend.
     - tfma.SingleSiceSpec(): no slice, metrics are computed on overall data.
@@ -42,15 +54,23 @@ Evaluate PTransform instead.
       "country:jp", and etc in results.
     - tfma.SingleSiceSpec(features=[('country', 'us')]): metrics are computed
       on slice "country:us".
-    If None, defaults to the overall slice.
-* <b>`add_metrics_callbacks`</b>: Optional list of callbacks for adding additional
-    metrics to the graph. The names of the metrics added by the callbacks
-    should not conflict with existing metrics, or metrics added by other
-    callbacks. See docstring for Evaluate in api/impl/evaluate.py for more
-    details.
 * <b>`output_path`</b>: The directory to output metrics and results to. If None, we use
     a temporary directory.
-* <b>`extractors`</b>: An optional list of PTransforms to run before slicing the data.
+* <b>`extractors`</b>: Optional list of Extractors to apply to Extracts. Typically
+    these will be added by calling the default_extractors function. If no
+    extractors are provided, default_extractors (non-materialized) will be
+    used.
+* <b>`evaluators`</b>: Optional list of Evaluators for evaluating Extracts. Typically
+    these will be added by calling the default_evaluators function. If no
+    evaluators are provided, default_evaluators will be used.
+* <b>`writers`</b>: Optional list of Writers for writing Evaluation output. Typically
+    these will be added by calling the default_writers function. If no writers
+    are provided, default_writers will be used.
+* <b>`write_config`</b>: True to write the config along with the results.
+* <b>`pipeline_options`</b>: Optional arguments to run the Pipeline, for instance
+    whether to run directly.
+* <b>`num_bootstrap_samples`</b>: Optional, set to at least 20 in order to calculate
+    metrics with confidence intervals.
 
 
 #### Returns:

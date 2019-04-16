@@ -13,6 +13,12 @@ tfma.multiple_data_analysis(
 )
 ```
 
+
+
+Defined in [`api/model_eval_lib.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/api/model_eval_lib.py).
+
+<!-- Placeholder for "Used in" -->
+
 Run model analysis for a single model on multiple data sets.
 
 #### Args:

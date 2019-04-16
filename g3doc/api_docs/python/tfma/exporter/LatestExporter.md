@@ -12,6 +12,12 @@
 
 
 
+
+
+Defined in [`eval_saved_model/exporter.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/eval_saved_model/exporter.py).
+
+<!-- Placeholder for "Used in" -->
+
 This class regularly exports the EvalSavedModel.
 
 In addition to exporting, this class also garbage collects stale exports.
@@ -20,27 +26,12 @@ In addition to exporting, this class also garbage collects stale exports.
 
 ``` python
 __init__(
-    name,
-    eval_input_receiver_fn,
-    exports_to_keep=5
+    *args,
+    **kwargs
 )
 ```
 
-Create an `Exporter` to use with `tf.estimator.EvalSpec`.
-
-#### Args:
-
-* <b>`name`</b>: Unique name of this `Exporter` that is going to be used in the
-    export path.
-* <b>`eval_input_receiver_fn`</b>: Eval input receiver function.
-* <b>`exports_to_keep`</b>: Number of exports to keep.  Older exports will be
-    garbage-collected.  Defaults to 5.  Set to `None` to disable garbage
-    collection.
-
-
-#### Raises:
-
-* <b>`ValueError`</b>: if exports_to_keep is set to a non-positive value.
+Wrapped function.
 
 
 

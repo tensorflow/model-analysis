@@ -5,7 +5,13 @@
 
 # Module: tfma.view
 
-View API for Tensorflow Model Analysis.
+
+
+Defined in [`view/__init__.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/view/__init__.py).
+
+<!-- Placeholder for "Used in" -->
+
+Initializes TFMA's view rendering api.
 
 ## Functions
 

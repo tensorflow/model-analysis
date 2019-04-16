@@ -5,6 +5,12 @@
 
 # Module: tfma.exporter
 
+
+
+Defined in [`eval_saved_model/exporter.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/eval_saved_model/exporter.py).
+
+<!-- Placeholder for "Used in" -->
+
 `Exporter` class represents different flavors of model export.
 
 ## Classes

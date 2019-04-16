@@ -13,6 +13,12 @@ tfma.view.render_time_series(
 )
 ```
 
+
+
+Defined in [`view/widget_view.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/view/widget_view.py).
+
+<!-- Placeholder for "Used in" -->
+
 Renders the time series view as widget.
 
 #### Args:

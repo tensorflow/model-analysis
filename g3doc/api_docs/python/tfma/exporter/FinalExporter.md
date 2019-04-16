@@ -12,6 +12,12 @@
 
 
 
+
+
+Defined in [`eval_saved_model/exporter.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/eval_saved_model/exporter.py).
+
+<!-- Placeholder for "Used in" -->
+
 This class exports the EvalSavedModel in the end.
 
 This class performs a single export in the end of training.
@@ -20,26 +26,12 @@ This class performs a single export in the end of training.
 
 ``` python
 __init__(
-    name,
-    eval_input_receiver_fn,
-    assets_extra
+    *args,
+    **kwargs
 )
 ```
 
-Create an `Exporter` to use with `tf.estimator.EvalSpec`.
-
-#### Args:
-
-* <b>`name`</b>: Unique name of this `Exporter` that is going to be used in the
-    export path.
-* <b>`eval_input_receiver_fn`</b>: Eval input receiver function.
-* <b>`assets_extra`</b>: An optional dict specifying how to populate the assets.extra
-    directory within the exported SavedModel.  Each key should give the
-    destination path (including the filename) relative to the assets.extra
-    directory.  The corresponding value gives the full path of the source
-    file to be copied.  For example, the simple case of copying a single
-    file without renaming it is specified as
-    `{'my_asset_file.txt': '/path/to/my_asset_file.txt'}`.
+Wrapped function.
 
 
 
