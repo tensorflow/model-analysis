@@ -5,9 +5,8 @@
 
 # Module: tfma.validators
 
-
-
-Defined in [`validators/__init__.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/validators/__init__.py).
+Defined in
+[`validators/__init__.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/validators/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -15,5 +14,5 @@ Init module for TensorFlow Model Analysis validators.
 
 ## Classes
 
-[`class Validator`](../tfma/validators/Validator.md): Validator(stage_name, ptransform)
-
+[`class Validator`](../tfma/validators/Validator.md): Validator(stage_name,
+ptransform)

@@ -5,16 +5,15 @@
 
 # tfma.post_export_metrics.example_weight
 
-``` python
+```python
 tfma.post_export_metrics.example_weight(
     *args,
     **kwargs
 )
 ```
 
-
-
-Defined in [`post_export_metrics/post_export_metrics.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/post_export_metrics/post_export_metrics.py).
+Defined in
+[`post_export_metrics/post_export_metrics.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/post_export_metrics/post_export_metrics.py).
 
 <!-- Placeholder for "Used in" -->
 

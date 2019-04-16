@@ -5,13 +5,12 @@
 
 # tfma.create_keys_key
 
-``` python
+```python
 tfma.create_keys_key(key)
 ```
 
-
-
-Defined in [`util.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/util.py).
+Defined in
+[`util.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/util.py).
 
 <!-- Placeholder for "Used in" -->
 

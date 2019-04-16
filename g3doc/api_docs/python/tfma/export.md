@@ -5,9 +5,8 @@
 
 # Module: tfma.export
 
-
-
-Defined in [`eval_saved_model/export.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/eval_saved_model/export.py).
+Defined in
+[`eval_saved_model/export.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/eval_saved_model/export.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -15,5 +14,5 @@ Library for exporting the EvalSavedModel.
 
 ## Functions
 
-[`build_parsing_eval_input_receiver_fn(...)`](../tfma/export/build_parsing_eval_input_receiver_fn.md): Build a eval_input_receiver_fn expecting fed tf.Examples.
-
+[`build_parsing_eval_input_receiver_fn(...)`](../tfma/export/build_parsing_eval_input_receiver_fn.md):
+Build a eval_input_receiver_fn expecting fed tf.Examples.

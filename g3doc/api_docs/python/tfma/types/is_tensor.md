@@ -5,13 +5,11 @@
 
 # tfma.types.is_tensor
 
-``` python
+```python
 tfma.types.is_tensor(obj)
 ```
 
-
-
-Defined in [`types.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/types.py).
+Defined in
+[`types.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/types.py).
 
 <!-- Placeholder for "Used in" -->
-

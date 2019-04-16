@@ -5,7 +5,7 @@
 
 # tfma.evaluators.AnalysisTableEvaluator
 
-``` python
+```python
 tfma.evaluators.AnalysisTableEvaluator(
     key=constants.ANALYSIS_KEY,
     run_after=extractor.LAST_EXTRACTOR_STAGE_NAME,
@@ -14,9 +14,8 @@ tfma.evaluators.AnalysisTableEvaluator(
 )
 ```
 
-
-
-Defined in [`evaluators/analysis_table_evaluator.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/evaluators/analysis_table_evaluator.py).
+Defined in
+[`evaluators/analysis_table_evaluator.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/evaluators/analysis_table_evaluator.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -27,19 +26,18 @@ excluded by default.
 
 #### Args:
 
-* <b>`key`</b>: Name to use for key in Evaluation output.
-* <b>`run_after`</b>: Extractor to run after (None means before any extractors).
-* <b>`include`</b>: Keys of extracts to include in output. Keys starting with '_' are
-    automatically filtered out at write time.
-* <b>`exclude`</b>: Keys of extracts to exclude from output.
-
+*   <b>`key`</b>: Name to use for key in Evaluation output.
+*   <b>`run_after`</b>: Extractor to run after (None means before any
+    extractors).
+*   <b>`include`</b>: Keys of extracts to include in output. Keys starting with
+    '_' are automatically filtered out at write time.
+*   <b>`exclude`</b>: Keys of extracts to exclude from output.
 
 #### Returns:
 
 Evaluator for collecting analysis data. The output is stored under the key
 'analysis'.
 
-
 #### Raises:
 
-* <b>`ValueError`</b>: If both include and exclude are used.
+*   <b>`ValueError`</b>: If both include and exclude are used.

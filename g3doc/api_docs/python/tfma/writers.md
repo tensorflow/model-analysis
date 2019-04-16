@@ -5,9 +5,8 @@
 
 # Module: tfma.writers
 
-
-
-Defined in [`writers/__init__.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/writers/__init__.py).
+Defined in
+[`writers/__init__.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/writers/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -19,5 +18,5 @@ Init module for TensorFlow Model Analysis writers.
 
 ## Functions
 
-[`Write(...)`](../tfma/writers/Write.md): Writes given Evaluation or Validation data using given writer PTransform.
-
+[`Write(...)`](../tfma/writers/Write.md): Writes given Evaluation or Validation
+data using given writer PTransform.

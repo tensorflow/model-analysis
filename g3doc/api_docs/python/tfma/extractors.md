@@ -9,9 +9,8 @@
 
 # Module: tfma.extractors
 
-
-
-Defined in [`extractors/__init__.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/extractors/__init__.py).
+Defined in
+[`extractors/__init__.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/extractors/__init__.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -19,17 +18,21 @@ Init module for TensorFlow Model Analysis extractors.
 
 ## Classes
 
-[`class Extractor`](../tfma/extractors/Extractor.md): Extractor(stage_name, ptransform)
+[`class Extractor`](../tfma/extractors/Extractor.md): Extractor(stage_name,
+ptransform)
 
 ## Functions
 
 [`FeatureExtractor(...)`](../tfma/extractors/FeatureExtractor.md)
 
-[`Filter(...)`](../tfma/extractors/Filter.md): Filters extracts to include/exclude specified keys.
+[`Filter(...)`](../tfma/extractors/Filter.md): Filters extracts to
+include/exclude specified keys.
 
-[`PredictExtractor(...)`](../tfma/extractors/PredictExtractor.md): Creates an Extractor for TFMAPredict.
+[`PredictExtractor(...)`](../tfma/extractors/PredictExtractor.md): Creates an
+Extractor for TFMAPredict.
 
-[`SliceKeyExtractor(...)`](../tfma/extractors/SliceKeyExtractor.md): Creates an extractor for extracting slice keys.
+[`SliceKeyExtractor(...)`](../tfma/extractors/SliceKeyExtractor.md): Creates an
+extractor for extracting slice keys.
 
 ## Other Members
 
@@ -40,4 +43,3 @@ Init module for TensorFlow Model Analysis extractors.
 <h3 id="PREDICT_EXTRACTOR_STAGE_NAME"><code>PREDICT_EXTRACTOR_STAGE_NAME</code></h3>
 
 <h3 id="SLICE_KEY_EXTRACTOR_STAGE_NAME"><code>SLICE_KEY_EXTRACTOR_STAGE_NAME</code></h3>
-

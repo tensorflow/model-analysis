@@ -5,7 +5,7 @@
 
 # tfma.extractors.Filter
 
-``` python
+```python
 tfma.extractors.Filter(
     *args,
     **kwargs
@@ -18,16 +18,14 @@ Filters extracts to include/exclude specified keys.
 
 #### Args:
 
-* <b>`extracts`</b>: PCollection of extracts.
-* <b>`include`</b>: Keys to include in output.
-* <b>`exclude`</b>: Keys to exclude from output.
-
+*   <b>`extracts`</b>: PCollection of extracts.
+*   <b>`include`</b>: Keys to include in output.
+*   <b>`exclude`</b>: Keys to exclude from output.
 
 #### Returns:
 
 Filtered PCollection of Extracts.
 
-
 #### Raises:
 
-* <b>`ValueError`</b>: If both include and exclude are used.
+*   <b>`ValueError`</b>: If both include and exclude are used.

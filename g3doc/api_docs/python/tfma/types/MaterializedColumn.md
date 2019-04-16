@@ -10,16 +10,13 @@
 
 ## Class `MaterializedColumn`
 
-
-
 ### Aliases:
 
-* Class `tfma.MaterializedColumn`
-* Class `tfma.types.MaterializedColumn`
+*   Class `tfma.MaterializedColumn`
+*   Class `tfma.types.MaterializedColumn`
 
-
-
-Defined in [`types.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/types.py).
+Defined in
+[`types.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/types.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -27,7 +24,7 @@ MaterializedColumn(name, value)
 
 <h2 id="__new__"><code>__new__</code></h2>
 
-``` python
+```python
 @staticmethod
 __new__(
     _cls,
@@ -38,17 +35,8 @@ __new__(
 
 Create new instance of MaterializedColumn(name, value)
 
-
-
 ## Properties
 
 <h3 id="name"><code>name</code></h3>
 
-
-
 <h3 id="value"><code>value</code></h3>
-
-
-
-
-

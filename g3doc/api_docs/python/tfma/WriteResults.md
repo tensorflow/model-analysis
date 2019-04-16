@@ -5,7 +5,7 @@
 
 # tfma.WriteResults
 
-``` python
+```python
 tfma.WriteResults(
     *args,
     **kwargs
@@ -18,14 +18,12 @@ Writes Evaluation or Validation results using given writers.
 
 #### Args:
 
-* <b>`evaluation_or_validation`</b>: Evaluation or Validation output.
-* <b>`writers`</b>: Writes to use for writing out output.
-
+*   <b>`evaluation_or_validation`</b>: Evaluation or Validation output.
+*   <b>`writers`</b>: Writes to use for writing out output.
 
 #### Raises:
 
-* <b>`ValueError`</b>: If Evaluation or Validation is empty.
-
+*   <b>`ValueError`</b>: If Evaluation or Validation is empty.
 
 #### Returns:
 

@@ -12,16 +12,13 @@
 
 ## Class `FeaturesPredictionsLabels`
 
-
-
 ### Aliases:
 
-* Class `tfma.FeaturesPredictionsLabels`
-* Class `tfma.types.FeaturesPredictionsLabels`
+*   Class `tfma.FeaturesPredictionsLabels`
+*   Class `tfma.types.FeaturesPredictionsLabels`
 
-
-
-Defined in [`types.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/types.py).
+Defined in
+[`types.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/types.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -29,7 +26,7 @@ FeaturesPredictionsLabels(input_ref, features, predictions, labels)
 
 <h2 id="__new__"><code>__new__</code></h2>
 
-``` python
+```python
 @staticmethod
 __new__(
     _cls,
@@ -40,27 +37,15 @@ __new__(
 )
 ```
 
-Create new instance of FeaturesPredictionsLabels(input_ref, features, predictions, labels)
-
-
+Create new instance of FeaturesPredictionsLabels(input_ref, features,
+predictions, labels)
 
 ## Properties
 
 <h3 id="input_ref"><code>input_ref</code></h3>
 
-
-
 <h3 id="features"><code>features</code></h3>
-
-
 
 <h3 id="predictions"><code>predictions</code></h3>
 
-
-
 <h3 id="labels"><code>labels</code></h3>
-
-
-
-
-

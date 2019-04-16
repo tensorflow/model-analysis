@@ -5,7 +5,7 @@
 
 # tfma.InputsToExtracts
 
-``` python
+```python
 tfma.InputsToExtracts(
     *args,
     **kwargs

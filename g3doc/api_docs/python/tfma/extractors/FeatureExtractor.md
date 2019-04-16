@@ -5,7 +5,7 @@
 
 # tfma.extractors.FeatureExtractor
 
-``` python
+```python
 tfma.extractors.FeatureExtractor(
     additional_extracts=None,
     excludes=None,
@@ -13,9 +13,7 @@ tfma.extractors.FeatureExtractor(
 )
 ```
 
-
-
-Defined in [`extractors/feature_extractor.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/extractors/feature_extractor.py).
+Defined in
+[`extractors/feature_extractor.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/extractors/feature_extractor.py).
 
 <!-- Placeholder for "Used in" -->
-

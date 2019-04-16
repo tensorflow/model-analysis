@@ -12,11 +12,8 @@
 
 ## Class `ValueWithConfidenceInterval`
 
-
-
-
-
-Defined in [`types.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/types.py).
+Defined in
+[`types.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/types.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -24,7 +21,7 @@ Represents a value with mean, upper, and lower bound.
 
 <h2 id="__new__"><code>__new__</code></h2>
 
-``` python
+```python
 @staticmethod
 __new__(
     cls,
@@ -35,27 +32,15 @@ __new__(
 )
 ```
 
-Create new instance of ValueWithConfidenceInterval(value, lower_bound, upper_bound, unsampled_value)
-
-
+Create new instance of ValueWithConfidenceInterval(value, lower_bound,
+upper_bound, unsampled_value)
 
 ## Properties
 
 <h3 id="value"><code>value</code></h3>
 
-
-
 <h3 id="lower_bound"><code>lower_bound</code></h3>
-
-
 
 <h3 id="upper_bound"><code>upper_bound</code></h3>
 
-
-
 <h3 id="unsampled_value"><code>unsampled_value</code></h3>
-
-
-
-
-

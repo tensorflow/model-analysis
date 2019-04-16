@@ -26,9 +26,8 @@
 
 # Module: tfma.constants
 
-
-
-Defined in [`constants.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/constants.py).
+Defined in
+[`constants.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/constants.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -77,4 +76,3 @@ Constants used in TensorFlow Model Analysis.
 <h3 id="SPARSE_PLACEHOLDER"><code>SPARSE_PLACEHOLDER</code></h3>
 
 <h3 id="UNKNOWN_EVAL_MODE"><code>UNKNOWN_EVAL_MODE</code></h3>
-

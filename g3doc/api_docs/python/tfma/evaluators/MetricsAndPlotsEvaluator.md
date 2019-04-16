@@ -5,7 +5,7 @@
 
 # tfma.evaluators.MetricsAndPlotsEvaluator
 
-``` python
+```python
 tfma.evaluators.MetricsAndPlotsEvaluator(
     eval_shared_model,
     desired_batch_size=None,
@@ -16,9 +16,8 @@ tfma.evaluators.MetricsAndPlotsEvaluator(
 )
 ```
 
-
-
-Defined in [`evaluators/metrics_and_plots_evaluator.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/evaluators/metrics_and_plots_evaluator.py).
+Defined in
+[`evaluators/metrics_and_plots_evaluator.py`](https://github.com/tensorflow/model-analysis/tree/master/tensorflow_model_analysis/evaluators/metrics_and_plots_evaluator.py).
 
 <!-- Placeholder for "Used in" -->
 
@@ -26,15 +25,15 @@ Creates an Evaluator for evaluating metrics and plots.
 
 #### Args:
 
-* <b>`eval_shared_model`</b>: Shared model parameters for EvalSavedModel.
-* <b>`desired_batch_size`</b>: Optional batch size for batching in Aggregate.
-* <b>`metrics_key`</b>: Name to use for metrics key in Evaluation output.
-* <b>`plots_key`</b>: Name to use for plots key in Evaluation output.
-* <b>`run_after`</b>: Extractor to run after (None means before any extractors).
-* <b>`num_bootstrap_samples`</b>: Number of bootstrap samples to draw. If more than 1,
-    confidence intervals will be computed for metrics. Suggested value is at
-    least 20.
-
+*   <b>`eval_shared_model`</b>: Shared model parameters for EvalSavedModel.
+*   <b>`desired_batch_size`</b>: Optional batch size for batching in Aggregate.
+*   <b>`metrics_key`</b>: Name to use for metrics key in Evaluation output.
+*   <b>`plots_key`</b>: Name to use for plots key in Evaluation output.
+*   <b>`run_after`</b>: Extractor to run after (None means before any
+    extractors).
+*   <b>`num_bootstrap_samples`</b>: Number of bootstrap samples to draw. If more
+    than 1, confidence intervals will be computed for metrics. Suggested value
+    is at least 20.
 
 #### Returns:
 

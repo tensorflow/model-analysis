@@ -5,7 +5,7 @@
 
 # tfma.ExtractAndEvaluate
 
-``` python
+```python
 tfma.ExtractAndEvaluate(
     *args,
     **kwargs
