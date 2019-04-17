@@ -277,7 +277,7 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
           sample_mean,
           sample_standard_deviation,
           sample_degrees_of_freedom,
-          delta=1):
+          delta=2):
         self.assertEqual(target.unsampled_value, unsampled_value)
         self.assertAlmostEqual(target.sample_mean, sample_mean, delta=delta)
         self.assertAlmostEqual(
