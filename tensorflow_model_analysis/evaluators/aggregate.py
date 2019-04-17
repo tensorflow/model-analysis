@@ -22,8 +22,6 @@ from __future__ import print_function
 import apache_beam as beam
 import numpy as np
 from scipy import mean
-from scipy.stats import sem
-from scipy.stats import t
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
@@ -163,7 +161,7 @@ class _MergeBootstrap(beam.DoFn):
 
     Yields:
       A tuple of slice key and the metrics dict which contains the unsampled
-      value, as well as value with confidence interval data.
+      value, as well as parameters about t distribution.
 
     Raises:
       ValueError if the key of metrics inside element does not equal to the
@@ -201,13 +199,13 @@ class _MergeBootstrap(beam.DoFn):
 
     metrics_with_confidence = {}
     for metrics_name in metrics_dict:
-      metrics_with_confidence[metrics_name] = _calculate_confidence_interval(
+      metrics_with_confidence[metrics_name] = _calculate_t_distribution(
           metrics_dict[metrics_name], unsampled_metrics_dict[metrics_name])
 
     yield slice_key, metrics_with_confidence
 
 
-def _calculate_confidence_interval(
+def _calculate_t_distribution(
     sampling_data_list: List[Union[int, float, np.ndarray]],
     unsampled_data: Union[int, float, np.ndarray]):
   """Calculate the confidence interval of the data.
@@ -220,14 +218,14 @@ def _calculate_confidence_interval(
 
   Returns:
     Confidence Interval value stored inside
-    types.ValueWithConfidenceInterval.
+    types.ValueWithTDistribution.
   """
   if isinstance(sampling_data_list[0], (np.ndarray, list)):
     merged_data = sampling_data_list[0][:]
     if isinstance(sampling_data_list[0], np.ndarray):
       merged_data = merged_data.astype(object)
     for index in range(len(merged_data)):
-      merged_data[index] = _calculate_confidence_interval(
+      merged_data[index] = _calculate_t_distribution(
           [data[index] for data in sampling_data_list], unsampled_data[index])
     return merged_data
   else:
@@ -237,18 +235,13 @@ def _calculate_confidence_interval(
     ]
     n_samples = len(sampling_data_list)
     if n_samples:
-      confidence = 0.95
       sample_mean = mean(sampling_data_list)
-      std_err = sem(sampling_data_list)
-      t_stat = t.ppf((1 + confidence) / 2, n_samples - 1)
-      upper_bound = sample_mean + t_stat * std_err
-      lower_bound = sample_mean - t_stat * std_err
-      # Set [mean, lower_bound, upper_bound] for each metric component.
-      return types.ValueWithConfidenceInterval(sample_mean, lower_bound,
-                                               upper_bound, unsampled_data)
+      sample_std = np.std(sampling_data_list, ddof=1)
+      return types.ValueWithTDistribution(sample_mean, sample_std,
+                                          n_samples - 1, unsampled_data)
     else:
-      return types.ValueWithConfidenceInterval(
-          float('nan'), float('nan'), float('nan'), float('nan'))
+      return types.ValueWithTDistribution(
+          float('nan'), float('nan'), -1, float('nan'))
 
 
 def _add_metric_variables(  # pylint: disable=invalid-name

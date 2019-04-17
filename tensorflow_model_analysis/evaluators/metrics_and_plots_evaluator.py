@@ -25,6 +25,7 @@ import numpy as np
 import six
 import tensorflow as tf
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import aggregate
 from tensorflow_model_analysis.evaluators import evaluator
@@ -150,15 +151,17 @@ def _convert_slice_metrics(
     if hasattr(post_export_metric, 'populate_stats_and_pop'):
       post_export_metric.populate_stats_and_pop(slice_metrics_copy,
                                                 metrics_for_slice.metrics)
-
   for name, value in slice_metrics_copy.items():
-    if isinstance(value, types.ValueWithConfidenceInterval):
-      # Convert to a bounded value.
-      metrics_for_slice.metrics[name].bounded_value.value.value = value.value
+    if isinstance(value, types.ValueWithTDistribution):
+      # Convert to a bounded value. 95% confidence level is computed here.
+      # Will populate t distribution value instead after migration.
+      sample_mean, lower_bound, upper_bound = math_util.calculate_confidence_interval(
+          value)
+      metrics_for_slice.metrics[name].bounded_value.value.value = sample_mean
       metrics_for_slice.metrics[
-          name].bounded_value.lower_bound.value = value.lower_bound
+          name].bounded_value.lower_bound.value = lower_bound
       metrics_for_slice.metrics[
-          name].bounded_value.upper_bound.value = value.upper_bound
+          name].bounded_value.upper_bound.value = upper_bound
       metrics_for_slice.metrics[name].bounded_value.methodology = (
           metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
     elif isinstance(value, (six.binary_type, six.text_type)):
@@ -202,7 +205,6 @@ def _serialize_metrics(
 
   # Convert the slice metrics.
   _convert_slice_metrics(slice_metrics, post_export_metrics, result)
-
   return result.SerializeToString()
 
 

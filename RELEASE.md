@@ -58,6 +58,7 @@
 *   Depends on `protobuf>=3.7,<4`.
 *   Depends on `scipy==1.1.0`.
 *   Add support for multiple plots in a single evaluation.
+*   Add support for changeable confidence levels.
 
 ## Breaking changes
 *   Post export metrics for precision_recall_at_k were split into separate

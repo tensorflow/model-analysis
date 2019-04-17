@@ -40,26 +40,32 @@ TensorValueMaybeDict = Union[TensorValue, DictOfTensorValue]
 MetricVariablesType = List[Any]
 
 
-class ValueWithConfidenceInterval(
-    NamedTuple('ValueWithConfidenceInterval', [
-        ('value', float),
-        ('lower_bound', float),
-        ('upper_bound', float),
+class ValueWithTDistribution(
+    NamedTuple('ValueWithTDistribution', [
+        ('sample_mean', float),
+        ('sample_standard_deviation', float),
+        ('sample_degrees_of_freedom', int),
         ('unsampled_value', float),
     ])):
-  """Represents a value with mean, upper, and lower bound."""
+  r"""Represents the t-distribution value.
+
+  It includes sample_mean, sample_standard_deviation,
+  sample_degrees_of_freedom. And also unsampled_value is also stored here to
+  record the value calculated without bootstrapping.
+  The sample_standard_deviation is calculated as:
+  \sqrt{ \frac{1}{N-1} \sum_{i=1}^{N}{(x_i - \bar{x})^2} }
+  """
 
   def __new__(
       cls,
-      value: float,
-      lower_bound: Optional[float] = None,
-      upper_bound: Optional[float] = None,
+      sample_mean: float,
+      sample_standard_deviation: Optional[float] = None,
+      sample_degrees_of_freedom: Optional[int] = None,
       unsampled_value: Optional[float] = None,
   ):
-    # Add bounds checking?
-    return super(ValueWithConfidenceInterval, cls).__new__(
-        cls, value, lower_bound, upper_bound, unsampled_value)
-
+    return super(ValueWithTDistribution,
+                 cls).__new__(cls, sample_mean, sample_standard_deviation,
+                              sample_degrees_of_freedom, unsampled_value)
 
 # AddMetricsCallback should have the following prototype:
 #   def add_metrics_callback(features_dict, predictions_dict, labels_dict):

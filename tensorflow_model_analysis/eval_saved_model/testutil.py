@@ -42,15 +42,15 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
   def _makeExample(self, **kwargs) -> example_pb2.Example:
     return util.make_example(**kwargs)
 
-  def assertHasKeyWithIntervalValueAlmostEqual(
+  def assertHasKeyWithTDistributionAlmostEqual(
       self,
-      d: Dict[Text, types.ValueWithConfidenceInterval],
+      d: Dict[Text, types.ValueWithTDistribution],
       key: Text,
       value: float,
       places: int = 5) -> None:
 
     self.assertIn(key, d)
-    self.assertTrue(isinstance(d[key], types.ValueWithConfidenceInterval))
+    self.assertIsInstance(d[key], types.ValueWithTDistribution)
     self.assertAlmostEqual(
         d[key].unsampled_value, value, places=places, msg='key %s' % key)
 
@@ -70,13 +70,13 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
       self.assertHasKeyWithValueAlmostEqual(got_values_dict, key,
                                             expected_value, places)
 
-  def assertDictElementsWithIntervalsAlmostEqual(
+  def assertDictElementsWithTDistributionAlmostEqual(
       self,
-      got_values_dict: Dict[Text, types.ValueWithConfidenceInterval],
+      got_values_dict: Dict[Text, types.ValueWithTDistribution],
       expected_values_dict: Dict[Text, float],
       places: int = 5) -> None:
     for key, expected_value in expected_values_dict.items():
-      self.assertHasKeyWithIntervalValueAlmostEqual(got_values_dict, key,
+      self.assertHasKeyWithTDistributionAlmostEqual(got_values_dict, key,
                                                     expected_value, places)
 
   def assertDictMatrixRowsAlmostEqual(

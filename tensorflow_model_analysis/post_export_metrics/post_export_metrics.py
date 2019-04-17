@@ -27,11 +27,12 @@ import abc
 import numpy as np
 from six import with_metaclass
 import tensorflow as tf
+from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
-from typing import Any, Dict, List, Optional, Text, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Text, Tuple, Type
 
 from tensorflow.python.estimator.canned import prediction_keys
 from tensorflow.python.ops import metrics_impl
@@ -169,25 +170,27 @@ def _populate_to_auc_bounded_value_and_pop(
   """
   riemann_sum_lower_bound = combined_metrics.pop(
       metric_keys.lower_bound_key(metric_key))
-  if isinstance(riemann_sum_lower_bound, types.ValueWithConfidenceInterval):
+  if isinstance(riemann_sum_lower_bound, types.ValueWithTDistribution):
     riemann_sum_lower_bound = riemann_sum_lower_bound.unsampled_value
   output_metrics[metric_key].bounded_value.lower_bound.value = (
       riemann_sum_lower_bound)
+
   riemann_sum_upper_bound = combined_metrics.pop(
       metric_keys.upper_bound_key(metric_key))
-  if isinstance(riemann_sum_upper_bound, types.ValueWithConfidenceInterval):
+  if isinstance(riemann_sum_upper_bound, types.ValueWithTDistribution):
     riemann_sum_upper_bound = riemann_sum_upper_bound.unsampled_value
   output_metrics[metric_key].bounded_value.upper_bound.value = (
       riemann_sum_upper_bound)
+
   output_metrics[metric_key].bounded_value.methodology = (
       metrics_pb2.BoundedValue.RIEMANN_SUM)
 
   value = combined_metrics.pop(metric_key)
-  if isinstance(value, types.ValueWithConfidenceInterval):
+  if isinstance(value, types.ValueWithTDistribution):
     # Currently taking the computed mean value, conserving legacy functionality.
     # TODO(raz): Need to determine how best to handle confidence interval in
     # this case.
-    value = value.value
+    value = value.unsampled_value
   output_metrics[metric_key].bounded_value.value.value = value
 
 
@@ -240,10 +243,12 @@ def _additional_prediction_keys(keys: List[Text],
 def _populate_bounded_value(metric, value):
   """Populates metric with given value based on its type."""
   bounded_value = metric.bounded_value
-  if isinstance(value, types.ValueWithConfidenceInterval):
-    bounded_value.lower_bound.value = value.lower_bound
-    bounded_value.upper_bound.value = value.upper_bound
-    bounded_value.value.value = value.value
+  if isinstance(value, types.ValueWithTDistribution):
+    sample_mean, lower_bound, upper_bound = math_util.calculate_confidence_interval(
+        value)
+    bounded_value.lower_bound.value = lower_bound
+    bounded_value.upper_bound.value = upper_bound
+    bounded_value.value.value = sample_mean
     bounded_value.methodology = metrics_pb2.BoundedValue.POISSON_BOOTSTRAP
   else:
     bounded_value.value.value = value
@@ -522,7 +527,7 @@ class _ExampleCount(_PostExportMetric):
                             ) -> None:
     count_result = combine_metrics.pop(
         self._metric_key(metric_keys.EXAMPLE_COUNT))
-    if isinstance(count_result, types.ValueWithConfidenceInterval):
+    if isinstance(count_result, types.ValueWithTDistribution):
       # We do not want to display confidence interval bounds on known
       # quantities such as ExampleCount, so we use the calculated value
       # without sampling.
@@ -573,7 +578,7 @@ class _ExampleWeight(_PostExportMetric):
                             ) -> None:
     weight_result = combine_metrics.pop(
         self._metric_key(metric_keys.EXAMPLE_WEIGHT))
-    if isinstance(weight_result, types.ValueWithConfidenceInterval):
+    if isinstance(weight_result, types.ValueWithTDistribution):
       # We do not want to display confidence interval bounds on known
       # quantities such as ExampleWeight, so we use the calculated value
       # without sampling.
@@ -760,15 +765,15 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
         matrices, [float('-inf')] + list(boundaries),
         list(boundaries) + [float('inf')]):
       total_pred, total_label, total_weight = matrix_row
-      if isinstance(lower_threshold, types.ValueWithConfidenceInterval):
+      if isinstance(lower_threshold, types.ValueWithTDistribution):
         lower_threshold = lower_threshold.unsampled_value
-      if isinstance(upper_threshold, types.ValueWithConfidenceInterval):
+      if isinstance(upper_threshold, types.ValueWithTDistribution):
         upper_threshold = upper_threshold.unsampled_value
-      if isinstance(total_weight, types.ValueWithConfidenceInterval):
+      if isinstance(total_weight, types.ValueWithTDistribution):
         total_weight = total_weight.unsampled_value
-      if isinstance(total_pred, types.ValueWithConfidenceInterval):
+      if isinstance(total_pred, types.ValueWithTDistribution):
         total_pred = total_pred.unsampled_value
-      if isinstance(total_label, types.ValueWithConfidenceInterval):
+      if isinstance(total_label, types.ValueWithTDistribution):
         total_label = total_label.unsampled_value
       # TODO(ckuhn): Figure out how this should work with uncertainty calculated
       # using the Poisson bootstrap method.
@@ -979,24 +984,36 @@ def _set_output_matrix_field(matrix_entry, output_matrix, field_name):
   """Sets bounded and double values for a component of a confusion matrix.
 
   This is a convenience function to handle setting both value types in the
-  confusion matrix proto. We want to migrate to using just the bounded value
-  in the UI and analysis, but for some time will be needing to populate both.
-  This also handles both scalar values and ValuesWithConfidenceInterval.
+  confusion matrix proto. We want to migrate to using just the t-distribution
+  value in the UI and analysis, but for some time will be needing to populate
+  both. This also handles both scalar values and ValueWithTDistribution.
 
   Args:
     matrix_entry: The original value from the metric ops.
     output_matrix: The ConfusionMatrixAtThreshold proto to populate.
     field_name: The name of the double_value field to set.
   """
+  # Set TDistributionValue fields.
+  t_distribution_value = getattr(output_matrix,
+                                 't_distribution_%s' % field_name)
   bounded_value = getattr(output_matrix, 'bounded_%s' % field_name)
-  if isinstance(matrix_entry, types.ValueWithConfidenceInterval):
-    bounded_value.value.value = matrix_entry.value
-    bounded_value.lower_bound.value = matrix_entry.lower_bound
-    bounded_value.upper_bound.value = matrix_entry.upper_bound
+  if isinstance(matrix_entry, types.ValueWithTDistribution):
+    t_distribution_value.sample_mean.value = matrix_entry.sample_mean
+    t_distribution_value.sample_standard_deviation.value = matrix_entry.sample_standard_deviation
+    t_distribution_value.sample_degrees_of_freedom.value = matrix_entry.sample_degrees_of_freedom
+    t_distribution_value.unsampled_value.value = matrix_entry.unsampled_value
+    setattr(output_matrix, field_name, matrix_entry.unsampled_value)
+    # Also populate the BoundedValue for migration purpose only.
+    # Will remove these after migration finished.
+    sample_mean, lower_bound, upper_bound = math_util.calculate_confidence_interval(
+        matrix_entry)
+    bounded_value.value.value = sample_mean
+    bounded_value.lower_bound.value = lower_bound
+    bounded_value.upper_bound.value = upper_bound
     bounded_value.methodology = metrics_pb2.BoundedValue.POISSON_BOOTSTRAP
-    setattr(output_matrix, field_name, matrix_entry[0])
   else:
     bounded_value.value.value = matrix_entry
+    t_distribution_value.unsampled_value.value = matrix_entry
     setattr(output_matrix, field_name, matrix_entry)
 
 
@@ -1053,7 +1070,7 @@ class _ConfusionMatrixAtThresholds(_ConfusionMatrixBasedMetric):
           (len(matrices), len(thresholds)))
 
     for threshold, matrix in zip(thresholds, matrices):
-      if isinstance(threshold, types.ValueWithConfidenceInterval):
+      if isinstance(threshold, types.ValueWithTDistribution):
         threshold = threshold.unsampled_value
       (output_metrics[self._metric_key(
           metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS)]
@@ -1137,9 +1154,8 @@ class _AucPlots(_ConfusionMatrixBasedMetric):
       matrix = output_plots[self._metric_key(
           metric_keys.DEFAULT_PREFIX
       )].confusion_matrix_at_thresholds.matrices.add()
-      if isinstance(threshold, types.ValueWithConfidenceInterval):
+      if isinstance(threshold, types.ValueWithTDistribution):
         threshold = threshold.unsampled_value
-      matrix.threshold = threshold
       matrix.CopyFrom(_create_confusion_matrix_proto(matrix_row, threshold))
 
 
@@ -1447,18 +1463,26 @@ class _PrecisionRecallAtK(_PostExportMetric):
     cutoff_column = table[:, 0]
     value_column = table[:, 1]
     for cutoff, value in zip(cutoff_column, value_column):
-      if isinstance(cutoff, types.ValueWithConfidenceInterval):
-        cutoff = cutoff.unsampled_value
       row = output_metrics[self._metric_key(
           self._metric_name)].value_at_cutoffs.values.add()
-      row.cutoff = int(cutoff)
-      if isinstance(value, types.ValueWithConfidenceInterval):
-        row.value = value.value
-        row.bounded_value.value.value = value.value
-        row.bounded_value.upper_bound.value = value.upper_bound
-        row.bounded_value.lower_bound.value = value.lower_bound
+      if isinstance(cutoff, types.ValueWithTDistribution):
+        row.cutoff = int(cutoff.unsampled_value)
+      else:
+        row.cutoff = int(cutoff)
+      if isinstance(value, types.ValueWithTDistribution):
+        row.t_distribution_value.sample_mean.value = value.sample_mean
+        row.t_distribution_value.sample_standard_deviation.value = value.sample_standard_deviation
+        row.t_distribution_value.sample_degrees_of_freedom.value = value.sample_degrees_of_freedom
+        row.t_distribution_value.unsampled_value.value = value.unsampled_value
+        sample_mean, lower_bound, upper_bound = math_util.calculate_confidence_interval(
+            value)
+        row.value = sample_mean
+        row.bounded_value.value.value = sample_mean
+        row.bounded_value.upper_bound.value = upper_bound
+        row.bounded_value.lower_bound.value = lower_bound
       else:
         row.value = value
+        row.t_distribution_value.unsampled_value.value = value
         row.bounded_value.value.value = value
 
 
@@ -1645,11 +1669,9 @@ class _MeanAbsoluteError(_PostExportMetric):
 
     return {self._metric_key(metric_keys.MEAN_ABSOLUTE_ERROR): metric_ops}
 
-  def populate_stats_and_pop(
-      self,
-      combine_metrics: Dict[Text, Union[types
-                                        .ValueWithConfidenceInterval, float]],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
+                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
+                            ) -> None:
     metric_key = self._metric_key(metric_keys.MEAN_ABSOLUTE_ERROR)
     metric_value = combine_metrics[metric_key]
     _populate_bounded_value(output_metrics[metric_key], metric_value)

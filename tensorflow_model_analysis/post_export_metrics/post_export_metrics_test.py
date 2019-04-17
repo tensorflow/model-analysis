@@ -52,8 +52,10 @@ _MAGIC_SEED = 857586
 
 class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
-  num_bootstrap_samples = 1  # Set to number > 1 to test uncertainty.
-  deterministic_test_seed = _MAGIC_SEED
+  def setUp(self):
+    self.num_bootstrap_samples = 1  # Set to number > 1 to test uncertainty.
+    self.deterministic_test_seed = _MAGIC_SEED
+    super(testutil.TensorflowModelAnalysisTest, self).setUp()
 
   def _getEvalExportDir(self):
     return os.path.join(self._getTempDir(), 'eval_export_dir')
@@ -61,7 +63,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
   def _runTestWithCustomCheck(self,
                               examples,
                               eval_export_dir,
-                              metrics,
+                              metrics_callbacks,
                               custom_metrics_check=None,
                               custom_plots_check=None):
     # make sure we are doing some checks
@@ -69,7 +71,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                     custom_plots_check is not None)
     serialized_examples = [ex.SerializeToString() for ex in examples]
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=eval_export_dir, add_metrics_callbacks=metrics)
+        eval_saved_model_path=eval_export_dir,
+        add_metrics_callbacks=metrics_callbacks)
     extractors = model_eval_lib.default_extractors(
         eval_shared_model=eval_shared_model)
     with beam.Pipeline() as pipeline:
@@ -489,36 +492,56 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             value_at_cutoffs {
               values {
                 cutoff: 0
-                value: 0.44444444
+                value: 0.4444444
                 bounded_value {
                   value {
+                    value: 0.4444444
+                  }
+                }
+                t_distribution_value {
+                  unsampled_value {
                     value: 0.4444444
                   }
                 }
               }
               values {
                 cutoff: 1
-                value: 0.66666666
+                value: 0.6666667
                 bounded_value {
                   value {
-                    value: 0.66666666
+                    value: 0.6666667
+                  }
+                }
+                t_distribution_value {
+                  unsampled_value {
+                    value: 0.6666667
                   }
                 }
               }
               values {
                 cutoff: 2
                 value: 0.33333333
-               bounded_value {
+                bounded_value {
                   value {
+                    value: 0.33333333
+                  }
+                }
+                t_distribution_value {
+                  unsampled_value {
                     value: 0.33333333
                   }
                 }
               }
               values {
                 cutoff: 3
-                value: 0.44444444
+                value: 0.4444444
                 bounded_value {
                   value {
+                    value: 0.4444444
+                  }
+                }
+                t_distribution_value {
+                  unsampled_value {
                     value: 0.4444444
                   }
                 }
@@ -528,6 +551,11 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                 value: 0.44444444
                 bounded_value {
                   value {
+                    value: 0.4444444
+                  }
+                }
+                t_distribution_value {
+                  unsampled_value {
                     value: 0.4444444
                   }
                 }
@@ -547,12 +575,22 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                     value: 1.0
                   }
                 }
+                t_distribution_value {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
               }
               values {
                 cutoff: 1
                 value: 0.5
                 bounded_value {
                   value {
+                    value: 0.5
+                  }
+                }
+                t_distribution_value {
+                  unsampled_value {
                     value: 0.5
                   }
                 }
@@ -565,6 +603,11 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                     value: 0.5
                   }
                 }
+                t_distribution_value {
+                  unsampled_value {
+                    value: 0.5
+                  }
+                }
               }
               values {
                 cutoff: 3
@@ -574,12 +617,22 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                     value: 1.0
                   }
                 }
+                t_distribution_value {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
               }
               values {
                 cutoff: 5
                 value: 1.0
                 bounded_value {
                   value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_value {
+                  unsampled_value {
                     value: 1.0
                   }
                 }
@@ -689,11 +742,12 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         expected_precision = [
             4.0 / 9.0, 2.0 / 3.0, 2.0 / 6.0, 4.0 / 9.0, 4.0 / 9.0
         ]
-        self.assertSequenceAlmostEqual([cutoff.value for cutoff in cutoffs],
-                                       expected_cutoffs)
-        self.assertSequenceAlmostEqual([prec.value for prec in precision],
-                                       expected_precision,
-                                       delta=0.2)
+        self.assertSequenceAlmostEqual(
+            [cutoff.unsampled_value for cutoff in cutoffs], expected_cutoffs)
+        self.assertSequenceAlmostEqual(
+            [prec.unsampled_value for prec in precision],
+            expected_precision,
+            delta=0.2)
 
         self.assertIn(metric_keys.RECALL_AT_K, value)
         recall_table = value[metric_keys.RECALL_AT_K]
@@ -703,9 +757,9 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         expected_recall = [
             4.0 / 4.0, 2.0 / 4.0, 2.0 / 4.0, 4.0 / 4.0, 4.0 / 4.0
         ]
-        self.assertSequenceAlmostEqual([cutoff.value for cutoff in cutoffs],
-                                       expected_cutoffs)
-        self.assertSequenceAlmostEqual([rec.value for rec in recall],
+        self.assertSequenceAlmostEqual(
+            [cutoff.unsampled_value for cutoff in cutoffs], expected_cutoffs)
+        self.assertSequenceAlmostEqual([rec.unsampled_value for rec in recall],
                                        expected_recall,
                                        delta=0.2)
 
@@ -722,11 +776,17 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
           expected_value = expected_precision[expected_cutoffs.index(v.cutoff)]
           self.assertAlmostEqual(v.value, expected_value, delta=0.2)
           self.assertAlmostEqual(
-              v.bounded_value.value.value, expected_value, delta=0.2)
+              v.t_distribution_value.sample_mean.value,
+              expected_value,
+              delta=0.2)
           self.assertAlmostEqual(
-              v.bounded_value.upper_bound.value, expected_value, delta=0.4)
+              v.t_distribution_value.sample_degrees_of_freedom.value,
+              self.num_bootstrap_samples - 1,
+              delta=1)
           self.assertAlmostEqual(
-              v.bounded_value.lower_bound.value, expected_value, delta=0.4)
+              v.t_distribution_value.sample_standard_deviation.value,
+              0,
+              delta=0.1)
 
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
         recall_metric.populate_stats_and_pop(value, output_metrics)
@@ -738,11 +798,17 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
           expected_value = expected_recall[expected_cutoffs.index(v.cutoff)]
           self.assertAlmostEqual(v.value, expected_value, delta=0.2)
           self.assertAlmostEqual(
-              v.bounded_value.value.value, expected_value, delta=0.2)
+              v.t_distribution_value.sample_mean.value,
+              expected_value,
+              delta=0.2)
           self.assertAlmostEqual(
-              v.bounded_value.upper_bound.value, expected_value, delta=0.4)
+              v.t_distribution_value.sample_degrees_of_freedom.value,
+              self.num_bootstrap_samples - 1,
+              delta=1)
           self.assertAlmostEqual(
-              v.bounded_value.lower_bound.value, expected_value, delta=0.4)
+              v.t_distribution_value.sample_standard_deviation.value,
+              0,
+              delta=0.1)
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -914,7 +980,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(prediction=-9.0, label=-8.0),
         # This goes in bucket 1: [0, 0.00100)
         self._makeExample(prediction=0.00000, label=1.00000),
-        # These three go in bucket 1: [0.00100, 0.00110)
+        # These three go in bucket 11: [0.00100, 0.00110)
         self._makeExample(prediction=0.00100, label=1.00100),
         self._makeExample(prediction=0.00101, label=1.00101),
         self._makeExample(prediction=0.00102, label=1.00102),
@@ -1012,30 +1078,33 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual((), slice_key)
         self.assertIn(metric_keys.CALIBRATION_PLOT_MATRICES, value)
         buckets = value[metric_keys.CALIBRATION_PLOT_MATRICES]
-        self.assertSequenceAlmostEqual([item.value for item in buckets[0]],
-                                       [-19.0, -17.0, 2.0],
-                                       delta=2)
-        self.assertSequenceAlmostEqual([item.value for item in buckets[1]],
-                                       [0.0, 1.0, 1.0],
-                                       delta=2)
-        self.assertSequenceAlmostEqual([item.value for item in buckets[11]],
-                                       [0.00303, 3.00303, 3.0],
-                                       delta=2)
-        self.assertSequenceAlmostEqual([item.value for item in buckets[10000]],
-                                       [1.99997, 3.99997, 2.0],
-                                       delta=2)
-        self.assertSequenceAlmostEqual([item.value for item in buckets[10001]],
-                                       [28.0, 32.0, 4.0],
-                                       delta=2)
+        self.assertSequenceAlmostEqual(
+            [item.unsampled_value for item in buckets[0]], [-19.0, -17.0, 2.0],
+            delta=2)
+        self.assertSequenceAlmostEqual(
+            [item.unsampled_value for item in buckets[1]], [0.0, 1.0, 1.0],
+            delta=2)
+        self.assertSequenceAlmostEqual(
+            [item.unsampled_value for item in buckets[11]],
+            [0.00303, 3.00303, 3.0],
+            delta=2)
+        self.assertSequenceAlmostEqual(
+            [item.unsampled_value for item in buckets[10000]],
+            [1.99997, 3.99997, 2.0],
+            delta=2)
+        self.assertSequenceAlmostEqual(
+            [item.unsampled_value for item in buckets[10001]],
+            [28.0, 32.0, 4.0],
+            delta=2)
         self.assertIn(metric_keys.CALIBRATION_PLOT_BOUNDARIES, value)
         boundaries = value[metric_keys.CALIBRATION_PLOT_BOUNDARIES]
-        self.assertAlmostEqual(0.0, boundaries[0].value)
-        self.assertAlmostEqual(0.001, boundaries[10].value)
-        self.assertAlmostEqual(0.005, boundaries[50].value)
-        self.assertAlmostEqual(0.010, boundaries[100].value)
-        self.assertAlmostEqual(0.100, boundaries[1000].value)
-        self.assertAlmostEqual(0.800, boundaries[8000].value)
-        self.assertAlmostEqual(1.000, boundaries[10000].value)
+        self.assertAlmostEqual(0.0, boundaries[0].unsampled_value)
+        self.assertAlmostEqual(0.001, boundaries[10].unsampled_value)
+        self.assertAlmostEqual(0.005, boundaries[50].unsampled_value)
+        self.assertAlmostEqual(0.010, boundaries[100].unsampled_value)
+        self.assertAlmostEqual(0.100, boundaries[1000].unsampled_value)
+        self.assertAlmostEqual(0.800, boundaries[8000].unsampled_value)
+        self.assertAlmostEqual(1.000, boundaries[10000].unsampled_value)
         plot_data = metrics_for_slice_pb2.PlotsForSlice().plots
         calibration_plot.populate_plots_and_pop(value, plot_data)
         self.assertProtoEquals(
@@ -1217,6 +1286,33 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             bounded_recall {
               value {
               }
+            }
+            t_distribution_false_negatives {
+              unsampled_value {
+                value: 3.0
+              }
+            }
+            t_distribution_true_negatives {
+              unsampled_value {
+                value: 2.0
+              }
+            }
+            t_distribution_false_positives {
+              unsampled_value {
+              }
+            }
+            t_distribution_true_positives {
+              unsampled_value {
+              }
+            }
+            t_distribution_precision {
+              unsampled_value {
+                value: nan
+              }
+            }
+            t_distribution_recall {
+              unsampled_value {
+              }
             }""", plot_data['post_export_metrics']
             .confusion_matrix_at_thresholds.matrices[10001])
       except AssertionError as err:
@@ -1255,28 +1351,30 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         #     +      | 0.7  | TP    | TP  | FN  | FN  | FN
         #     -      | 0.8  | FP    | FP  | FP  | TN  | TN
         #     +      | 1.0  | TP    | TP  | TP  | TP  | FN
-        self.assertSequenceAlmostEqual([matrix.value for matrix in matrices[0]],
-                                       [0, 0, 2, 3, 3.0 / 5.0, 1.0])
-        self.assertSequenceAlmostEqual([matrix.value for matrix in matrices[1]],
-                                       [1, 1, 1, 2, 2.0 / 3.0, 2.0 / 3.0])
         self.assertSequenceAlmostEqual(
-            [matrix.value for matrix in matrices[7001]],
+            [matrix.sample_mean for matrix in matrices[0]],
+            [0, 0, 2, 3, 3.0 / 5.0, 1.0])
+        self.assertSequenceAlmostEqual(
+            [matrix.sample_mean for matrix in matrices[1]],
+            [1, 1, 1, 2, 2.0 / 3.0, 2.0 / 3.0])
+        self.assertSequenceAlmostEqual(
+            [matrix.sample_mean for matrix in matrices[7001]],
             [2, 1, 1, 1, 1.0 / 2.0, 1.0 / 3.0])
         self.assertSequenceAlmostEqual(
-            [matrix.value for matrix in matrices[8001]],
+            [matrix.sample_mean for matrix in matrices[8001]],
             [2, 2, 0, 1, 1.0 / 1.0, 1.0 / 3.0])
         self.assertSequenceAlmostEqual(
-            [matrix.value for matrix in matrices[10001]],
+            [matrix.sample_mean for matrix in matrices[10001]],
             [3, 2, 0, 0, float('nan'), 0.0])
         self.assertIn(metric_keys.AUC_PLOTS_THRESHOLDS, value)
         thresholds = value[metric_keys.AUC_PLOTS_THRESHOLDS]
-        self.assertAlmostEqual(0.0, thresholds[1].value)
-        self.assertAlmostEqual(0.001, thresholds[11].value)
-        self.assertAlmostEqual(0.005, thresholds[51].value)
-        self.assertAlmostEqual(0.010, thresholds[101].value)
-        self.assertAlmostEqual(0.100, thresholds[1001].value)
-        self.assertAlmostEqual(0.800, thresholds[8001].value)
-        self.assertAlmostEqual(1.000, thresholds[10001].value)
+        self.assertAlmostEqual(0.0, thresholds[1].sample_mean)
+        self.assertAlmostEqual(0.001, thresholds[11].sample_mean)
+        self.assertAlmostEqual(0.005, thresholds[51].sample_mean)
+        self.assertAlmostEqual(0.010, thresholds[101].sample_mean)
+        self.assertAlmostEqual(0.100, thresholds[1001].sample_mean)
+        self.assertAlmostEqual(0.800, thresholds[8001].sample_mean)
+        self.assertAlmostEqual(1.000, thresholds[10001].sample_mean)
         plot_data = metrics_for_slice_pb2.PlotsForSlice().plots
         auc_plots.populate_plots_and_pop(value, plot_data)
         self.assertProtoEquals(
@@ -1349,6 +1447,79 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
               value {
               }
               methodology: POISSON_BOOTSTRAP
+            }
+            t_distribution_false_negatives {
+              sample_mean {
+                value: 3.0
+              }
+              sample_standard_deviation {
+              }
+              sample_degrees_of_freedom {
+                value: 2
+              }
+              unsampled_value {
+                value: 3.0
+              }
+            }
+            t_distribution_true_negatives {
+              sample_mean {
+                value: 2.0
+              }
+              sample_standard_deviation {
+              }
+              sample_degrees_of_freedom {
+                value: 2
+              }
+              unsampled_value {
+                value: 2.0
+              }
+            }
+            t_distribution_false_positives {
+              sample_mean {
+              }
+              sample_standard_deviation {
+              }
+              sample_degrees_of_freedom {
+                value: 2
+              }
+              unsampled_value {
+              }
+            }
+            t_distribution_true_positives {
+                sample_mean {
+              }
+              sample_standard_deviation {
+              }
+              sample_degrees_of_freedom {
+                value: 2
+              }
+              unsampled_value {
+              }
+            }
+            t_distribution_precision {
+              sample_mean {
+                value: nan
+              }
+              sample_standard_deviation {
+                value: nan
+              }
+              sample_degrees_of_freedom {
+                value: -1
+              }
+              unsampled_value {
+                value: nan
+              }
+            }
+            t_distribution_recall {
+              sample_mean {
+              }
+              sample_standard_deviation {
+              }
+              sample_degrees_of_freedom {
+                value: 2
+              }
+              unsampled_value {
+              }
             }""", plot_data['post_export_metrics']
             .confusion_matrix_at_thresholds.matrices[10001])
       except AssertionError as err:
@@ -1464,28 +1635,30 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES,
                       value)
         matrices = value[metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES]
-        self.assertSequenceAlmostEqual([matrix.value for matrix in matrices[0]],
-                                       [0.0, 0.0, 3.0, 7.0, 7.0 / 10.0, 1.0])
         self.assertSequenceAlmostEqual(
-            [matrix.value for matrix in matrices[1]],
+            [matrix.unsampled_value for matrix in matrices[0]],
+            [0.0, 0.0, 3.0, 7.0, 7.0 / 10.0, 1.0])
+        self.assertSequenceAlmostEqual(
+            [matrix.unsampled_value for matrix in matrices[1]],
             [1.0, 1.0, 2.0, 6.0, 6.0 / 8.0, 6.0 / 7.0])
         self.assertSequenceAlmostEqual(
-            [matrix.value for matrix in matrices[2]],
+            [matrix.unsampled_value for matrix in matrices[2]],
             [4.0, 1.0, 2.0, 3.0, 3.0 / 5.0, 3.0 / 7.0])
-        self.assertSequenceAlmostEqual([matrix.value for matrix in matrices[3]],
-                                       [4.0, 3.0, 0.0, 3.0, 1.0, 3.0 / 7.0])
         self.assertSequenceAlmostEqual(
-            [matrix.value for matrix in matrices[4]],
+            [matrix.unsampled_value for matrix in matrices[3]],
+            [4.0, 3.0, 0.0, 3.0, 1.0, 3.0 / 7.0])
+        self.assertSequenceAlmostEqual(
+            [matrix.unsampled_value for matrix in matrices[4]],
             [7.0, 3.0, 0.0, 0.0, float('nan'), 0.0])
         self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS,
                       value)
         thresholds = value[
             metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS]
-        self.assertAlmostEqual(-1e-6, thresholds[0].value)
-        self.assertAlmostEqual(0.0, thresholds[1].value)
-        self.assertAlmostEqual(0.7, thresholds[2].value, places=5)
-        self.assertAlmostEqual(0.8, thresholds[3].value)
-        self.assertAlmostEqual(1.0, thresholds[4].value)
+        self.assertAlmostEqual(-1e-6, thresholds[0].unsampled_value)
+        self.assertAlmostEqual(0.0, thresholds[1].unsampled_value)
+        self.assertAlmostEqual(0.7, thresholds[2].unsampled_value, places=5)
+        self.assertAlmostEqual(0.8, thresholds[3].unsampled_value)
+        self.assertAlmostEqual(1.0, thresholds[4].unsampled_value)
         # Test serialization!
       except AssertionError as err:
         raise util.BeamAssertException(err)
@@ -1589,6 +1762,36 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                     value: 1.0
                   }
                 }
+                t_distribution_false_negatives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_true_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_false_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_true_positives {
+                  unsampled_value {
+                    value: 2.0
+                  }
+                }
+                t_distribution_precision {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_recall {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
               }
               matrices {
                 threshold: 0.75
@@ -1628,6 +1831,36 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                     value: 0.5
                   }
                 }
+                t_distribution_false_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_true_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_false_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_true_positives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_precision {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_recall {
+                  unsampled_value {
+                    value: 0.5
+                  }
+                }
               }
               matrices {
                 threshold: 1.00
@@ -1664,6 +1897,36 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                 }
                 bounded_recall {
                   value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_false_negatives {
+                  unsampled_value {
+                    value: 2.0
+                  }
+                }
+                t_distribution_true_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_false_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_true_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_precision {
+                  unsampled_value {
+                    value: nan
+                  }
+                }
+                t_distribution_recall {
+                  unsampled_value {
                     value: 0.0
                   }
                 }
@@ -2117,6 +2380,34 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
               value: 1.0
             }
           }
+          t_distribution_false_negatives {
+            unsampled_value {
+            }
+          }
+          t_distribution_true_negatives {
+            unsampled_value {
+            }
+          }
+          t_distribution_false_positives {
+            unsampled_value {
+              value: 1.0
+            }
+          }
+          t_distribution_true_positives {
+            unsampled_value {
+              value: 1.0
+            }
+          }
+          t_distribution_precision {
+            unsampled_value {
+              value: 0.5
+            }
+          }
+          t_distribution_recall {
+            unsampled_value {
+              value: 1.0
+            }
+          }
         }
       }
       confusion_matrix_at_thresholds {
@@ -2153,6 +2444,34 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
           }
           bounded_recall {
             value {
+              value: 1.0
+            }
+          }
+          t_distribution_false_negatives {
+            unsampled_value {
+            }
+          }
+          t_distribution_true_negatives {
+            unsampled_value {
+            }
+          }
+          t_distribution_false_positives {
+            unsampled_value {
+              value: 1.0
+            }
+          }
+          t_distribution_true_positives {
+            unsampled_value {
+              value: 1.0
+            }
+          }
+          t_distribution_precision {
+            unsampled_value {
+              value: 0.5
+            }
+          }
+          t_distribution_recall {
+            unsampled_value {
               value: 1.0
             }
           }
@@ -2193,6 +2512,32 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             value {
             }
           }
+          t_distribution_false_negatives {
+            unsampled_value {
+              value: 1.0
+            }
+          }
+          t_distribution_true_negatives {
+            unsampled_value {
+            }
+          }
+          t_distribution_false_positives {
+            unsampled_value {
+              value: 1.0
+            }
+          }
+          t_distribution_true_positives {
+            unsampled_value {
+            }
+          }
+          t_distribution_precision {
+            unsampled_value {
+            }
+          }
+          t_distribution_recall {
+            unsampled_value {
+            }
+          }
         }
       }
       confusion_matrix_at_thresholds {
@@ -2228,6 +2573,32 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
           }
           bounded_recall {
             value {
+            }
+          }
+          t_distribution_false_negatives {
+            unsampled_value {
+              value: 1.0
+            }
+          }
+          t_distribution_true_negatives {
+            unsampled_value {
+              value: 1.0
+            }
+          }
+          t_distribution_false_positives {
+            unsampled_value {
+            }
+          }
+          t_distribution_true_positives {
+            unsampled_value {
+            }
+          }
+          t_distribution_precision {
+            unsampled_value {
+            }
+          }
+          t_distribution_recall {
+            unsampled_value {
             }
           }
        }
@@ -2382,7 +2753,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual((), slice_key)
 
         self.assertIn(metric_key, value)
-        self.assertAlmostEqual(value[metric_key].value, 0.4, delta=0.2)
+        self.assertAlmostEqual(value[metric_key].sample_mean, 0.4, delta=0.2)
 
         # Check serialization too.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics

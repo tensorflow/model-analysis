@@ -70,18 +70,18 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
         [1, 0, 2, 6, 0.75, 0.85714287],
         [4, 0, 2, 3, 0.60000002, 0.42857143],
     ])
-    result = aggregate._calculate_confidence_interval(sampling_data_list,
-                                                      unsampled_data)
-    print(result)
+    result = aggregate._calculate_t_distribution(sampling_data_list,
+                                                 unsampled_data)
     self.assertIsInstance(result, np.ndarray)
     self.assertEqual(result.shape, (5, 6))
-    self.assertAlmostEqual(result[0][0].value, 3.5, delta=0.1)
-    self.assertAlmostEqual(result[0][0].lower_bound, -40.97, delta=0.1)
-    self.assertAlmostEqual(result[0][0].upper_bound, 47.97, delta=0.1)
+    self.assertAlmostEqual(result[0][0].sample_mean, 3.5, delta=0.1)
+    self.assertAlmostEqual(
+        result[0][0].sample_standard_deviation, 4.94, delta=0.1)
+    self.assertEqual(result[0][0].sample_degrees_of_freedom, 1)
     self.assertEqual(result[0][0].unsampled_value, 4.0)
-    self.assertAlmostEqual(result[0][4].value, 0.77, delta=0.1)
-    self.assertTrue(np.isnan(result[0][4].lower_bound))
-    self.assertTrue(np.isnan(result[0][4].upper_bound))
+    self.assertAlmostEqual(result[0][4].sample_mean, 0.77, delta=0.1)
+    self.assertTrue(np.isnan(result[0][4].sample_standard_deviation))
+    self.assertEqual(result[0][4].sample_degrees_of_freedom, 0)
     self.assertEqual(result[0][4].unsampled_value, 1.0)
 
     sampling_data_list = [
@@ -90,14 +90,20 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
         np.array([1, float('nan')])
     ]
     unsampled_data = np.array([1, 2])
-    result = aggregate._calculate_confidence_interval(sampling_data_list,
-                                                      unsampled_data)
+    result = aggregate._calculate_t_distribution(sampling_data_list,
+                                                 unsampled_data)
     self.assertIsInstance(result, np.ndarray)
     self.assertEqual(result.tolist(), [
-        types.ValueWithConfidenceInterval(
-            value=1.0, lower_bound=1.0, upper_bound=1.0, unsampled_value=1),
-        types.ValueWithConfidenceInterval(
-            value=2.0, lower_bound=2.0, upper_bound=2.0, unsampled_value=2)
+        types.ValueWithTDistribution(
+            sample_mean=1.0,
+            sample_standard_deviation=0.0,
+            sample_degrees_of_freedom=2,
+            unsampled_value=1),
+        types.ValueWithTDistribution(
+            sample_mean=2.0,
+            sample_standard_deviation=0.0,
+            sample_degrees_of_freedom=1,
+            unsampled_value=2)
     ])
 
   def testAggregateOverallSlice(self):
@@ -265,38 +271,56 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
               desired_batch_size=3,
               num_bootstrap_samples=10))
 
+      def assert_almost_equal_to_value_with_t_distribution(
+          target,
+          unsampled_value,
+          sample_mean,
+          sample_standard_deviation,
+          sample_degrees_of_freedom,
+          delta=1):
+        self.assertEqual(target.unsampled_value, unsampled_value)
+        self.assertAlmostEqual(target.sample_mean, sample_mean, delta=delta)
+        self.assertAlmostEqual(
+            target.sample_standard_deviation,
+            sample_standard_deviation,
+            delta=delta)
+        # The possion resampling could return [0, 0, ... ], which will reduce
+        # the number of samples.
+        self.assertLessEqual(target.sample_degrees_of_freedom,
+                             sample_degrees_of_freedom)
+
       def check_overall_slice(slices):
         my_dict = slices[()]
-        self.assertAlmostEqual(3.75, my_dict['my_mean_age'].value, delta=1)
-        self.assertAlmostEqual(3.75, my_dict['my_mean_age'].unsampled_value)
-        for value in my_dict['accuracy']:
-          self.assertAlmostEqual(1.0, value)
-        for value in my_dict['label/mean']:
-          self.assertAlmostEqual(0.5, value, delta=0.5)
-        for value in my_dict['my_mean_age_times_label']:
-          self.assertAlmostEqual(2.5, value, delta=2.5)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['my_mean_age'], 3.75, 3.64, 0.34, 9)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['accuracy'], 1.0, 1.0, 0, 9)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['label/mean'], 0.5, 0.59, 0.29, 9)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['my_mean_age_times_label'], 1.75, 2.15, 1.06, 9)
 
       def check_english_slice(slices):
         my_dict = slices[(('language', 'english'))]
-        self.assertAlmostEqual(3.5, my_dict['my_mean_age'].value, delta=1)
-        self.assertAlmostEqual(3.5, my_dict['my_mean_age'].unsampled_value)
-        for value in my_dict['accuracy']:
-          self.assertAlmostEqual(1.0, value)
-        for value in my_dict['label/mean']:
-          self.assertAlmostEqual(1.0, value)
-        for value in my_dict['my_mean_age_times_label']:
-          self.assertAlmostEqual(3.5, value, delta=1)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['my_mean_age'], 3.5, 3.18, 0.28, 9)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['accuracy'], 1.0, 1.0, 0, 9)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['label/mean'], 1.0, 1.0, 0, 9)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['my_mean_age_times_label'], 3.5, 3.18, 0.28, 9)
 
       def check_chinese_slice(slices):
         my_dict = slices[(('language', 'chinese'))]
-        self.assertAlmostEqual(4.0, my_dict['my_mean_age'].value, delta=1)
-        self.assertAlmostEqual(4.0, my_dict['my_mean_age'].unsampled_value)
-        for value in my_dict['accuracy']:
-          self.assertAlmostEqual(1.0, value)
-        for value in my_dict['label/mean']:
-          self.assertAlmostEqual(0, value)
-        for value in my_dict['my_mean_age_times_label']:
-          self.assertAlmostEqual(0, value)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['my_mean_age'], 4.0, 4.12, 0.83, 9)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['accuracy'], 1.0, 1.0, 0, 9)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['label/mean'], 0, 0, 0, 9)
+        assert_almost_equal_to_value_with_t_distribution(
+            my_dict['my_mean_age_times_label'], 0, 0, 0, 9)
 
       def check_result(got):
         self.assertEqual(3, len(got), 'got: %s' % got)

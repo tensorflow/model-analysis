@@ -219,6 +219,36 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                     value: 1.0
                   }
                 }
+                t_distribution_false_negatives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_true_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_true_positives {
+                  unsampled_value {
+                    value: 2.0
+                  }
+                }
+                t_distribution_false_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_precision {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_recall {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
               }
               matrices {
                 threshold: 0.75
@@ -255,6 +285,36 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                 }
                 bounded_recall {
                   value {
+                    value: 0.5
+                  }
+                }
+                t_distribution_false_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_true_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_true_positives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_false_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_precision {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_recall {
+                  unsampled_value {
                     value: 0.5
                   }
                 }
@@ -297,6 +357,36 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                     value: 0.0
                   }
                 }
+                t_distribution_false_negatives {
+                  unsampled_value {
+                    value: 2.0
+                  }
+                }
+                t_distribution_true_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_true_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_false_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_precision {
+                  unsampled_value {
+                    value: nan
+                  }
+                }
+                t_distribution_recall {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
               }
             }
           }
@@ -313,7 +403,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
   def testSerializeMetricsRanges(self):
     slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
     slice_metrics = {
-        'accuracy': types.ValueWithConfidenceInterval(0.8, 0.7, 0.9),
+        'accuracy': types.ValueWithTDistribution(0.8, 0.1, 9, 0.8),
         metric_keys.AUPRC: 0.1,
         metric_keys.lower_bound_key(metric_keys.AUPRC): 0.05,
         metric_keys.upper_bound_key(metric_keys.AUPRC): 0.17,
@@ -345,10 +435,10 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                 value: 0.8
               }
               lower_bound {
-                value: 0.7
+                value: 0.7284643
               }
               upper_bound {
-                value: 0.9
+                value: 0.8715357
               }
               methodology: POISSON_BOOTSTRAP
             }
@@ -503,10 +593,10 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
     slice_key = _make_slice_key()
     slice_metrics = {
         'one_dim':
-            types.ValueWithConfidenceInterval(2.0, 1.0, 3.0),
+            types.ValueWithTDistribution(2.0, 1.0, 3, 2.0),
         'nans':
-            types.ValueWithConfidenceInterval(
-                float('nan'), float('nan'), float('nan')),
+            types.ValueWithTDistribution(
+                float('nan'), float('nan'), -1, float('nan')),
     }
     expected_metrics_for_slice = text_format.Parse(
         """
@@ -519,10 +609,10 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                 value: 2.0
               }
               lower_bound {
-                value: 1.0
+                value: 0.4087768
               }
               upper_bound {
-                value: 3.0
+                value: 3.5912232
               }
               methodology: POISSON_BOOTSTRAP
             }
@@ -798,7 +888,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             second_slice = (('slice_key', b'second_slice'),)
             self.assertItemsEqual(
                 list(slices.keys()), [overall_slice, first_slice, second_slice])
-            self.assertDictElementsWithIntervalsAlmostEqual(
+            self.assertDictElementsWithTDistributionAlmostEqual(
                 slices[overall_slice], {
                     'accuracy': 0.4,
                     'label/mean': 0.6,
@@ -806,7 +896,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                     'my_mean_age_times_label': 2.6,
                     'added_example_count': 5.0
                 })
-            self.assertDictElementsWithIntervalsAlmostEqual(
+            self.assertDictElementsWithTDistributionAlmostEqual(
                 slices[first_slice], {
                     'accuracy': 1.0,
                     'label/mean': 0.5,
@@ -814,7 +904,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                     'my_mean_age_times_label': 1.5,
                     'added_example_count': 2.0
                 })
-            self.assertDictElementsWithIntervalsAlmostEqual(
+            self.assertDictElementsWithTDistributionAlmostEqual(
                 slices[second_slice], {
                     'accuracy': 0.0,
                     'label/mean': 2.0 / 3.0,
