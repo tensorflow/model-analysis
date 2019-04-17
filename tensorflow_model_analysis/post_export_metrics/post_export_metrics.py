@@ -32,7 +32,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
-from typing import Any, Dict, List, Optional, Text, Tuple, Type
+from typing import Any, Dict, List, Optional, Text, Tuple, Type, Callable
 
 from tensorflow.python.estimator.canned import prediction_keys
 from tensorflow.python.ops import metrics_impl
@@ -1598,8 +1598,92 @@ class _RecallAtK(_PrecisionRecallAtK):
                  self).populate_stats_and_pop(combine_metrics, output_metrics)
 
 
+class _TFMetricBaseClass(_PostExportMetric):
+  """Base class to compute different tf.metrics.
+
+  Check https://www.tensorflow.org/api_docs/python/tf/metrics for the list of
+  all the tf.metrics which can be computed using this base class.
+  """
+
+  _example_weight_key = ...  # type: Text
+  _target_prediction_keys = ...  # type: List[Text]
+  _labels_key = ...  # type: Text
+  _metric_tag = None  # type: Text
+  _tensor_index = ...  # type: int
+
+  def __init__(
+      self,
+      metric_name: Text,
+      metric_fn: Callable[[
+          types.TensorType, types.TensorType, types.TensorType
+      ], Tuple[types.TensorOrOperationType, types.TensorOrOperationType]],
+      example_weight_key: Optional[Text] = None,
+      target_prediction_keys: Optional[List[Text]] = None,
+      labels_key: Optional[Text] = None,
+      metric_tag: Optional[Text] = None,
+      tensor_index: Optional[int] = None):
+    """Initiates the base metric class.
+
+    Labels and predictions can take any of the float values.
+
+    Args:
+      metric_name: Name of the metric to be computed.
+      metric_fn: TF metric fn to calculate the metric. This function should
+      take three arguments, specifically in following order: 1. label tensor 2.
+        prediction tensor 3. weight tensor
+      example_weight_key: The key of the example weight column in the features
+        dict. If None, all predictions are given a weight of 1.0.
+      target_prediction_keys: Optional acceptable keys in predictions_dict in
+        descending order of precedence.
+      labels_key: Optionally, the key from labels_dict to use.
+      metric_tag: If provided, a custom metric tag. Only necessary to
+        disambiguate instances of the same metric on different predictions or
+        for readability concerns in tool output.
+      tensor_index: Optional index to specify class predictions to calculate
+        metrics on in the case of multi-class models.
+    """
+    self._metric_name = metric_name
+    self._metric_fn = metric_fn
+    self._example_weight_key = example_weight_key
+    super(_TFMetricBaseClass, self).__init__(
+        target_prediction_keys,
+        labels_key,
+        metric_tag,
+        tensor_index=tensor_index)
+
+  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
+                          predictions_dict: types.TensorTypeMaybeDict,
+                          labels_dict: types.TensorTypeMaybeDict) -> None:
+    _check_weight_present(features_dict, self._example_weight_key)
+    self._get_labels_and_predictions(predictions_dict, labels_dict)
+
+  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
+                     predictions_dict: types.TensorTypeMaybeDict,
+                     labels_dict: types.TensorTypeMaybeDict
+                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+    predictions, labels = self._get_labels_and_predictions(
+        predictions_dict, labels_dict)
+    prediction_tensor = _flatten_to_one_dim(tf.cast(predictions, tf.float64))
+    label_tensor = _flatten_to_one_dim(tf.cast(labels, tf.float64))
+    squeezed_weights = tf.ones_like(prediction_tensor)
+    if self._example_weight_key:
+      squeezed_weights = _flatten_to_one_dim(
+          tf.cast(features_dict[self._example_weight_key], tf.float64))
+    metric_fn = self._metric_fn(label_tensor, prediction_tensor,
+                                squeezed_weights)
+
+    return {self._metric_key(self._metric_name): metric_fn}
+
+  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
+                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
+                            ) -> None:
+    metric_key = self._metric_key(self._metric_name)
+    metric_value = combine_metrics[metric_key]
+    _populate_bounded_value(output_metrics[metric_key], metric_value)
+
+
 @_export('mean_absolute_error')
-class _MeanAbsoluteError(_PostExportMetric):
+class _MeanAbsoluteError(_TFMetricBaseClass):
   """Computes the mean absolute error between the labels and predictions.
 
   The tf.metrics.mean_absolute_error function used to compute mean absolute
@@ -1639,39 +1723,110 @@ class _MeanAbsoluteError(_PostExportMetric):
     """
     self._example_weight_key = example_weight_key
     super(_MeanAbsoluteError, self).__init__(
+        metric_keys.MEAN_ABSOLUTE_ERROR,
+        tf.metrics.mean_absolute_error,
+        example_weight_key,
         target_prediction_keys,
         labels_key,
         metric_tag,
         tensor_index=tensor_index)
 
-  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
-                          predictions_dict: types.TensorTypeMaybeDict,
-                          labels_dict: types.TensorTypeMaybeDict) -> None:
-    _check_weight_present(features_dict, self._example_weight_key)
-    self._get_labels_and_predictions(predictions_dict, labels_dict)
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
-    predictions, labels = self._get_labels_and_predictions(
-        predictions_dict, labels_dict)
-    prediction_tensor = _flatten_to_one_dim(tf.cast(predictions, tf.float64))
-    label_tensor = _flatten_to_one_dim(tf.cast(labels, tf.float64))
-    squeezed_weights = tf.ones_like(prediction_tensor)
-    if self._example_weight_key:
-      squeezed_weights = _flatten_to_one_dim(
-          tf.cast(features_dict[self._example_weight_key], tf.float64))
-    metric_ops = tf.metrics.mean_absolute_error(
-        labels=label_tensor,
-        predictions=prediction_tensor,
-        weights=squeezed_weights)
+@_export('mean_squared_error')
+class _MeanSquaredError(_TFMetricBaseClass):
+  """Computes the mean squared error between the labels and predictions.
 
-    return {self._metric_key(metric_keys.MEAN_ABSOLUTE_ERROR): metric_ops}
+  The tf.metrics.mean_squared_error function used to compute mean squared
+  error creates two local variables, total and count that are used to compute
+  the mean squared error. This average is weighted by weights, and it is
+  ultimately returned as mean_squared_error: an idempotent operation that
+  simply divides total by count.
+  """
 
-  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
-                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
-                            ) -> None:
-    metric_key = self._metric_key(metric_keys.MEAN_ABSOLUTE_ERROR)
-    metric_value = combine_metrics[metric_key]
-    _populate_bounded_value(output_metrics[metric_key], metric_value)
+  _example_weight_key = ...  # type: Text
+  _target_prediction_keys = ...  # type: List[Text]
+  _labels_key = ...  # type: Text
+  _metric_tag = None  # type: Text
+  _tensor_index = ...  # type: int
+
+  def __init__(self,
+               example_weight_key: Optional[Text] = None,
+               target_prediction_keys: Optional[List[Text]] = None,
+               labels_key: Optional[Text] = None,
+               metric_tag: Optional[Text] = None,
+               tensor_index: Optional[int] = None):
+    """Creates a metric that computes mean squared error.
+
+    Labels and predictions can take any of the float values.
+
+    Args:
+      example_weight_key: The key of the example weight column in the features
+        dict. If None, all predictions are given a weight of 1.0.
+      target_prediction_keys: Optional acceptable keys in predictions_dict in
+        descending order of precedence.
+      labels_key: Optionally, the key from labels_dict to use.
+      metric_tag: If provided, a custom metric tag. Only necessary to
+        disambiguate instances of the same metric on different predictions or
+        for readability concerns in tool output.
+      tensor_index: Optional index to specify class predictions to calculate
+        metrics on in the case of multi-class models.
+    """
+    self._example_weight_key = example_weight_key
+    super(_MeanSquaredError, self).__init__(
+        metric_keys.MEAN_SQUARED_ERROR,
+        tf.metrics.mean_squared_error,
+        example_weight_key,
+        target_prediction_keys,
+        labels_key,
+        metric_tag,
+        tensor_index=tensor_index)
+
+
+@_export('root_mean_squared_error')
+class _RootMeanSquaredError(_TFMetricBaseClass):
+  """Computes the root mean squared error between the labels and predictions.
+
+  The tf.metrics.root_mean_squared_error function used to compute root mean
+  absolute error creates two local variables, total and count that are used to
+  compute the root mean squared error. This average is weighted by weights, and
+  it is ultimately returned as root_mean_squared_error: an idempotent operation
+  that simply divides total by count.
+  """
+
+  _example_weight_key = ...  # type: Text
+  _target_prediction_keys = ...  # type: List[Text]
+  _labels_key = ...  # type: Text
+  _metric_tag = None  # type: Text
+  _tensor_index = ...  # type: int
+
+  def __init__(self,
+               example_weight_key: Optional[Text] = None,
+               target_prediction_keys: Optional[List[Text]] = None,
+               labels_key: Optional[Text] = None,
+               metric_tag: Optional[Text] = None,
+               tensor_index: Optional[int] = None):
+    """Creates a metric that computes root mean squared error.
+
+    Labels and predictions can take any of the float values.
+
+    Args:
+      example_weight_key: The key of the example weight column in the features
+        dict. If None, all predictions are given a weight of 1.0.
+      target_prediction_keys: Optional acceptable keys in predictions_dict in
+        descending order of precedence.
+      labels_key: Optionally, the key from labels_dict to use.
+      metric_tag: If provided, a custom metric tag. Only necessary to
+        disambiguate instances of the same metric on different predictions or
+        for readability concerns in tool output.
+      tensor_index: Optional index to specify class predictions to calculate
+        metrics on in the case of multi-class models.
+    """
+    self._example_weight_key = example_weight_key
+    super(_RootMeanSquaredError, self).__init__(
+        metric_keys.ROOT_MEAN_SQUARED_ERROR,
+        tf.metrics.root_mean_squared_error,
+        example_weight_key,
+        target_prediction_keys,
+        labels_key,
+        metric_tag,
+        tensor_index=tensor_index)

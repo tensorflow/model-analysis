@@ -21,6 +21,8 @@
 *   Added support for squared pearson correlation (R squared) post export
     metric.
 *   Added support for mean absolute error post export metric.
+*   Added support for mean squared error and root mean squared error post export
+    metric.
 
 ## Bug fixes and other changes
 *   Cast / convert labels for precision / recall at K so that they work even if

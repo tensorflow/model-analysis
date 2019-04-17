@@ -86,6 +86,8 @@ AUPRC = base_key('auprc')
 PRECISION_AT_K = base_key('precision_at_k')
 RECALL_AT_K = base_key('recall_at_k')
 MEAN_ABSOLUTE_ERROR = base_key('mean_absolute_error')
+MEAN_SQUARED_ERROR = base_key('mean_squared_error')
+ROOT_MEAN_SQUARED_ERROR = base_key('root_mean_squared_error')
 
 # Suffixes of keys where the corresponding values are results for plots
 _PLOT_SUFFIXES = [
