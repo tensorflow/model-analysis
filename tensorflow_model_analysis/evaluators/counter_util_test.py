@@ -46,12 +46,10 @@ class CounterUtilTest(tf.test.TestCase):
     result = pipeline.run()
     metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
         constants.METRICS_NAMESPACE).with_name('metric_computed_auc')
-    actual_metrics = result.metrics().query(
-        filter=metric_filter)['gauges'][0].committed
-    print(actual_metrics)
+    actual_metrics_count = result.metrics().query(
+        filter=metric_filter)['counters'][0].committed
 
-    actual_metrics_count = actual_metrics.value
-    self.assertEqual(actual_metrics_count, 1)
+    self.assertEqual(actual_metrics_count, 3)
 
 
 if __name__ == '__main__':

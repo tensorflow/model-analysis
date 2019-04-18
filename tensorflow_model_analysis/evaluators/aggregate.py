@@ -516,6 +516,7 @@ class _ExtractOutputDoFn(beam.DoFn):
     # misbehaving.
     self._num_bootstrap_empties = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_bootstrap_empties')
+    self._counters_incremented = False
 
   def start_bundle(self) -> None:
     # There's no initialisation method for CombineFns.
@@ -524,8 +525,10 @@ class _ExtractOutputDoFn(beam.DoFn):
     # of eval_saved_model.
     # TODO(ihchen): Update all callers and make this an error condition to not
     # have construct_fn specified.
-    counter_util.update_beam_counters(
-        self._eval_shared_model.add_metrics_callbacks)
+    if not self._counters_incremented:
+      self._counters_incremented = True
+      counter_util.update_beam_counters(
+          self._eval_shared_model.add_metrics_callbacks)
     if self._eval_shared_model.construct_fn is None:
       construct_fn = dofn.make_construct_fn(
           eval_saved_model_path=self._eval_shared_model.model_path,

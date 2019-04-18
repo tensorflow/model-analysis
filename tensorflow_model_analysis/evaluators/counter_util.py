@@ -27,6 +27,6 @@ def update_beam_counters(metrics_callbacks):
   """To update beam counters for all the metrics computed."""
   for callback in metrics_callbacks:
     if hasattr(callback, 'name'):
-      metrics_counter = beam.metrics.Metrics.gauge(
+      metrics_counter = beam.metrics.Metrics.counter(
           constants.METRICS_NAMESPACE, 'metric_computed_%s' % callback.name)
-      metrics_counter.set(1)
+      metrics_counter.inc(1)
