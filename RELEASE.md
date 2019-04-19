@@ -6,12 +6,14 @@
 *   Added an `adapt_to_remove_metrics` function to `tfma.exporter` which can be
     used to remove metrics incompatible with TFMA (e.g. `py_func` or streaming
     metrics) before exporting the TFMA EvalSavedModel.
+*   Added support for passing sparse int64 tensors to precision/recall@k.
 
 ## Bug fixes and other changes
 
 *   Upgraded codebase for 2.0 compatibility.
 
 ## Breaking changes
+
 *   Removed uses of deprecated tf.contrib packages (where possible).
 
 ## Deprecations

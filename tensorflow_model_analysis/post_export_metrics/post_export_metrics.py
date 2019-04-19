@@ -1338,11 +1338,11 @@ class _PrecisionRecallAtK(_PostExportMetric):
   should NOT, for instance, produce 2 classes on one example and 4 classes on
   another example.
 
-  Labels should be a string Tensor, or a SparseTensor whose dense form is
-  a string Tensor whose entries are the corresponding labels. Note that the
-  values of the CLASSES in the predictions and that of labels will be compared
-  directly, so they should come from the "same vocabulary", so if predictions
-  are class IDs, then labels should be class IDs, and so on.
+  Labels should be a Tensor, or a SparseTensor whose dense form is a Tensor
+  whose entries are the corresponding labels. Note that the values of the
+  CLASSES in the predictions and that of labels will be compared directly, so
+  they should come from the "same vocabulary", so if predictions are class IDs,
+  then labels should be class IDs, and so on.
   """
 
   _target_prediction_keys = ...  # type: List[Text]
@@ -1430,7 +1430,10 @@ class _PrecisionRecallAtK(_PostExportMetric):
     if self._labels_key:
       labels = labels_dict[self._labels_key]
     if isinstance(labels_dict, tf.SparseTensor):
-      labels = tf.sparse.to_dense(labels_dict, default_value='')
+      if labels.dtype == tf.string:
+        labels = tf.sparse.to_dense(labels_dict, default_value='')
+      else:
+        labels = tf.sparse.to_dense(labels_dict)
 
     # Expand dims if necessary.
     labels = tf.cond(
@@ -1504,11 +1507,11 @@ class _PrecisionAtK(_PrecisionRecallAtK):
   should NOT, for instance, produce 2 classes on one example and 4 classes on
   another example.
 
-  Labels should be a string Tensor, or a SparseTensor whose dense form is
-  a string Tensor whose entries are the corresponding labels. Note that the
-  values of the CLASSES in the predictions and that of labels will be compared
-  directly, so they should come from the "same vocabulary", so if predictions
-  are class IDs, then labels should be class IDs, and so on.
+  Labels should be a Tensor, or a SparseTensor whose dense form is a Tensor
+  whose entries are the corresponding labels. Note that the values of the
+  CLASSES in the predictions and that of labels will be compared directly, so
+  they should come from the "same vocabulary", so if predictions are class IDs,
+  then labels should be class IDs, and so on.
   """
 
   def __init__(self,
@@ -1560,11 +1563,11 @@ class _RecallAtK(_PrecisionRecallAtK):
   should NOT, for instance, produce 2 classes on one example and 4 classes on
   another example.
 
-  Labels should be a string Tensor, or a SparseTensor whose dense form is
-  a string Tensor whose entries are the corresponding labels. Note that the
-  values of the CLASSES in the predictions and that of labels will be compared
-  directly, so they should come from the "same vocabulary", so if predictions
-  are class IDs, then labels should be class IDs, and so on.
+  Labels should be a Tensor, or a SparseTensor whose dense form is a Tensor
+  whose entries are the corresponding labels. Note that the values of the
+  CLASSES in the predictions and that of labels will be compared directly, so
+  they should come from the "same vocabulary", so if predictions are class IDs,
+  then labels should be class IDs, and so on.
   """
 
   def __init__(self,
