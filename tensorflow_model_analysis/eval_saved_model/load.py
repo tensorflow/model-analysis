@@ -92,8 +92,8 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
   def _check_version(self, version_node: types.TensorType):
     version = self._session.run(version_node)
     if not version:
-      raise ValueError(
-          'invalid TFMA version in graph (at path %s)' % self._path)
+      raise ValueError('invalid TFMA version in graph (at path %s)' %
+                       self._path)
     # We don't actually do any checking for now, since we don't have any
     # compatibility issues.
 
@@ -102,8 +102,8 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     version = meta_graph_def.collection_def.get(
         encoding.TFMA_VERSION_COLLECTION)
     if version is None:
-      raise ValueError(
-          'could not find TFMA version in graph (at path %s)' % self._path)
+      raise ValueError('could not find TFMA version in graph (at path %s)' %
+                       self._path)
     # We don't actually do any checking for now, since we don't have any
     # compatibility issues.
 
@@ -146,7 +146,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
         one input; or there was a signature output with the metric prefix but an
         unrecognised suffix.
     """
-    meta_graph_def = tf.saved_model.loader.load(
+    meta_graph_def = tf.compat.v1.saved_model.loader.load(
         self._session, [constants.EVAL_TAG], self._path)
 
     with self._graph.as_default():

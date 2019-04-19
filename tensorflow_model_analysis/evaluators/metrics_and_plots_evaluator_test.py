@@ -51,7 +51,7 @@ def _addExampleCountMetricCallback(  # pylint: disable=invalid-name
   del labels_dict
   metric_ops = {}
   value_op, update_op = metric_fns.total(
-      tf.shape(predictions_dict['logits'])[0])
+      tf.shape(input=predictions_dict['logits'])[0])
   metric_ops['added_example_count'] = (value_op, update_op)
   return metric_ops
 
@@ -65,15 +65,18 @@ def _addPyFuncMetricCallback(  # pylint: disable=invalid-name
       initial_value=0.0,
       dtype=tf.float64,
       trainable=False,
-      collections=[tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES],
+      collections=[
+          tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+          tf.compat.v1.GraphKeys.LOCAL_VARIABLES
+      ],
       validate_shape=True,
       name='total')
 
   def my_func(x):
     return np.sum(x, dtype=np.float64)
 
-  update_op = tf.assign_add(total_value,
-                            tf.py_func(my_func, [labels_dict], tf.float64))
+  update_op = tf.compat.v1.assign_add(
+      total_value, tf.compat.v1.py_func(my_func, [labels_dict], tf.float64))
   value_op = tf.identity(total_value)
   metric_ops = {}
   metric_ops['py_func_label_sum'] = (value_op, update_op)
@@ -825,8 +828,8 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           except AssertionError as err:
             # This function is redefined every iteration, so it will have the
             # right value of batch_size.
-            raise util.BeamAssertException(
-                'batch_size = %d, error: %s' % (batch_size, err))  # pylint: disable=cell-var-from-loop
+            raise util.BeamAssertException('batch_size = %d, error: %s' %
+                                           (batch_size, err))  # pylint: disable=cell-var-from-loop
 
         util.assert_that(metrics, check_result, label='metrics')
         util.assert_that(plots, util.is_empty(), label='plots')
@@ -921,8 +924,8 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           except AssertionError as err:
             # This function is redefined every iteration, so it will have the
             # right value of batch_size.
-            raise util.BeamAssertException(
-                'batch_size = %d, error: %s' % (batch_size, err))  # pylint: disable=cell-var-from-loop
+            raise util.BeamAssertException('batch_size = %d, error: %s' %
+                                           (batch_size, err))  # pylint: disable=cell-var-from-loop
 
         util.assert_that(metrics, check_result, label='metrics')
 
@@ -1098,9 +1101,9 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           self.assertDictMatrixRowsAlmostEqual(
               got_values_dict=value,
               expected_values_dict={
-                  metric_keys.AUC_PLOTS_MATRICES: [(8001, [
-                      2, 1, 0, 1, 1.0 / 1.0, 1.0 / 3.0
-                  ])],
+                  metric_keys.AUC_PLOTS_MATRICES: [
+                      (8001, [2, 1, 0, 1, 1.0 / 1.0, 1.0 / 3.0])
+                  ],
               })
         except AssertionError as err:
           raise util.BeamAssertException(err)

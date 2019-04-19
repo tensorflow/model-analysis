@@ -43,7 +43,8 @@ def simple_linear_classifier(export_path, eval_export_path):
       [tf.feature_column.categorical_column_with_hash_bucket('slice_key', 100)])
 
   classifier = tf.estimator.LinearClassifier(
-      feature_columns=util.linear_columns())
+      feature_columns=util.linear_columns(),
+      loss_reduction=tf.compat.v1.losses.Reduction.SUM)
   classifier = tf.estimator.add_metrics(classifier,
                                         util.classifier_extra_metrics)
   classifier.train(

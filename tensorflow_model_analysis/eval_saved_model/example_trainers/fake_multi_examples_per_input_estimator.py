@@ -52,13 +52,13 @@ def _indices_from_example_count(example_count):
     intra_input_index = i means it is the i-th among all the examples from
     the same input.
   """
-  total_num_examples = tf.reduce_sum(example_count)
+  total_num_examples = tf.reduce_sum(input_tensor=example_count)
   example_indices = tf.range(total_num_examples)
   input_limits = tf.cumsum(example_count)
   index_less_than_limit = (
       tf.expand_dims(example_indices, 0) >= tf.expand_dims(input_limits, 1))
   input_index = tf.reduce_sum(
-      tf.cast(index_less_than_limit, dtype=tf.int32), axis=0)
+      input_tensor=tf.cast(index_less_than_limit, dtype=tf.int32), axis=0)
 
   offset = tf.cumsum(
       tf.concat([tf.constant([0], tf.int32), example_count], axis=0)[:-1])
@@ -68,8 +68,8 @@ def _indices_from_example_count(example_count):
 
 def _parse_csv(rows_string_tensor):
   """Takes the string input tensor and returns a dict of rank-2 tensors."""
-  example_count = tf.decode_csv(
-      rows_string_tensor,
+  example_count = tf.io.decode_csv(
+      records=rows_string_tensor,
       record_defaults=[tf.constant([0], dtype=tf.int32, shape=None)])[0]
 
   input_index, intra_input_index = _indices_from_example_count(example_count)
@@ -89,7 +89,8 @@ def _parse_csv(rows_string_tensor):
 
 def _eval_input_receiver_fn():
   """Eval input receiver function."""
-  csv_row = tf.placeholder(dtype=tf.string, shape=[None], name='input_csv_row')
+  csv_row = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_csv_row')
   features = _parse_csv(csv_row)
   receiver_tensors = {'examples': csv_row}
 
@@ -102,7 +103,8 @@ def _eval_input_receiver_fn():
 
 def _legacy_eval_input_receiver_fn():
   """Legacy eval input receiver function."""
-  csv_row = tf.placeholder(dtype=tf.string, shape=[None], name='input_csv_row')
+  csv_row = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_csv_row')
   features = _parse_csv(csv_row)
   receiver_tensors = {'examples': csv_row}
 
@@ -124,7 +126,8 @@ def _legacy_eval_input_receiver_fn():
 
 def _bad_eval_input_receiver_fn_misaligned_input_refs():
   """A bad eval input receiver function capturing a misaligned input_refs."""
-  csv_row = tf.placeholder(dtype=tf.string, shape=[None], name='input_csv_row')
+  csv_row = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_csv_row')
   features = _parse_csv(csv_row)
   receiver_tensors = {'examples': csv_row}
 
@@ -139,7 +142,8 @@ def _bad_eval_input_receiver_fn_misaligned_input_refs():
 
 def _bad_eval_input_receiver_fn_out_of_range_input_refs():
   """A bad eval input receiver function (input_refs has out-of-range index)."""
-  csv_row = tf.placeholder(dtype=tf.string, shape=[None], name='input_csv_row')
+  csv_row = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_csv_row')
   features = _parse_csv(csv_row)
   receiver_tensors = {'examples': csv_row}
 
@@ -152,7 +156,8 @@ def _bad_eval_input_receiver_fn_out_of_range_input_refs():
 
 def _serving_input_receiver_fn():
   """Serving input receiver function."""
-  csv_row = tf.placeholder(dtype=tf.string, shape=[None], name='input_csv_row')
+  csv_row = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_csv_row')
   features = _parse_csv(csv_row)
   receiver_tensors = {'examples': csv_row}
   return tf.estimator.export.ServingInputReceiver(
@@ -162,9 +167,9 @@ def _serving_input_receiver_fn():
 def _train_input_fn():
   """Train input function."""
   features = (
-      tf.data.Dataset.from_tensors(tf.constant(
-          ['3', '0', '1',
-           '2'])).repeat().map(_parse_csv).make_one_shot_iterator().get_next())
+      tf.compat.v1.data.make_one_shot_iterator(
+          tf.data.Dataset.from_tensors(tf.constant(
+              ['3', '0', '1', '2'])).repeat().map(_parse_csv)).get_next())
 
   return features, features['input_index']
 
@@ -180,15 +185,15 @@ def _model_fn(features, labels, mode, params):
         mode=mode,
         predictions=predictions,
         export_outputs={
-            tf.saved_model.signature_constants
-            .DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+            tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
                 tf.estimator.export.RegressionOutput(predictions)
         })
 
-  loss = tf.losses.mean_squared_error(features['example_count'], labels)
-  train_op = tf.assign_add(tf.train.get_global_step(), 1)
+  loss = tf.compat.v1.losses.mean_squared_error(features['example_count'],
+                                                labels)
+  train_op = tf.compat.v1.assign_add(tf.compat.v1.train.get_global_step(), 1)
   eval_metric_ops = {
-      metric_keys.MetricKeys.LOSS_MEAN: tf.metrics.mean(loss),
+      metric_keys.MetricKeys.LOSS_MEAN: tf.compat.v1.metrics.mean(loss),
   }
 
   return tf.estimator.EstimatorSpec(

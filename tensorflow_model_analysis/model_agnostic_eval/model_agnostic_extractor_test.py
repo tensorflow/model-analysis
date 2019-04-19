@@ -49,10 +49,10 @@ class ModelAgnosticExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       # Set up a config to bucket our example keys.
       feature_map = {
-          'age': tf.FixedLenFeature([], tf.float32),
-          'language': tf.VarLenFeature(tf.string),
-          'probabilities': tf.FixedLenFeature([2], tf.float32),
-          'label': tf.FixedLenFeature([], tf.float32)
+          'age': tf.io.FixedLenFeature([], tf.float32),
+          'language': tf.io.VarLenFeature(tf.string),
+          'probabilities': tf.io.FixedLenFeature([2], tf.float32),
+          'label': tf.io.FixedLenFeature([], tf.float32)
       }
       model_agnostic_config = agnostic_predict.ModelAgnosticConfig(
           label_keys=['label'],

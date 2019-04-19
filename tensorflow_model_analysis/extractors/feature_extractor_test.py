@@ -68,7 +68,7 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
         },
         's': {
             encoding.NODE_SUFFIX:
-                tf.SparseTensorValue(
+                tf.compat.v1.SparseTensorValue(
                     indices=[[0, 5], [1, 2], [3, 6]],
                     values=[100., 200., 300.],
                     dense_shape=[4, 10])
@@ -140,7 +140,7 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
         },
         's': {
             encoding.NODE_SUFFIX:
-                tf.SparseTensorValue(
+                tf.compat.v1.SparseTensorValue(
                     indices=[[0, 5], [1, 2], [3, 6]],
                     values=[100., 200., 300.],
                     dense_shape=[4, 10])

@@ -180,8 +180,9 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
 
       test_input = (
           create_test_input(predict_result_english_slice, [(
-              ('language', 'english'))]) + create_test_input(
-                  predict_result_chinese_slice, [(('language', 'chinese'))]) +
+              ('language', 'english'))]) +
+          create_test_input(predict_result_chinese_slice, [(
+              ('language', 'chinese'))]) +
           # Overall slice
           create_test_input(
               predict_result_english_slice + predict_result_chinese_slice,

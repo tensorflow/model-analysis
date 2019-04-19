@@ -59,9 +59,9 @@ def ModelAgnosticGetFPLFeedConfig(
 
   for key, value in model_agnostic_config.feature_spec.items():
     placeholder = None
-    if isinstance(value, tf.FixedLenFeature):
+    if isinstance(value, tf.io.FixedLenFeature):
       placeholder = (constants.PLACEHOLDER, value.dtype)
-    elif isinstance(value, tf.VarLenFeature):
+    elif isinstance(value, tf.io.VarLenFeature):
       placeholder = (constants.SPARSE_PLACEHOLDER, value.dtype)
     else:
       raise ValueError('Unsupported type %s in feature_spec.' % value)

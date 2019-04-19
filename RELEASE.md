@@ -9,6 +9,8 @@
 
 ## Bug fixes and other changes
 
+*   Upgraded codebase for 2.0 compatibility.
+
 ## Breaking changes
 *   Removed uses of deprecated tf.contrib packages (where possible).
 

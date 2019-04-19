@@ -43,7 +43,8 @@ def simple_linear_regressor(export_path, eval_export_path):
       [tf.feature_column.categorical_column_with_hash_bucket('slice_key', 100)])
 
   regressor = tf.estimator.LinearRegressor(
-      feature_columns=util.linear_columns())
+      feature_columns=util.linear_columns(),
+      loss_reduction=tf.compat.v1.losses.Reduction.SUM)
   regressor = tf.estimator.add_metrics(regressor, util.regressor_extra_metrics)
   regressor.train(
       input_fn=util.make_regressor_input_fn(

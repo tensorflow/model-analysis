@@ -57,18 +57,18 @@ def simple_fixed_prediction_estimator_no_labels(
           mode=mode,
           predictions=predictions_dict,
           export_outputs={
-              tf.saved_model.signature_constants
-              .DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+              tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
                   tf.estimator.export.RegressionOutput(predictions)
           })
 
     # We use create a nonsensical loss that is easy to compute:
     # loss = mean(predictions^2) and export it as as the average loss for
     # testing that the metrics are computed correctly.
-    loss = tf.losses.mean_squared_error(predictions, tf.zeros_like(predictions))
-    train_op = tf.assign_add(tf.train.get_global_step(), 1)
+    loss = tf.compat.v1.losses.mean_squared_error(predictions,
+                                                  tf.zeros_like(predictions))
+    train_op = tf.compat.v1.assign_add(tf.compat.v1.train.get_global_step(), 1)
     eval_metric_ops = {
-        metric_keys.MetricKeys.LOSS_MEAN: tf.metrics.mean(loss),
+        metric_keys.MetricKeys.LOSS_MEAN: tf.compat.v1.metrics.mean(loss),
     }
 
     return tf.estimator.EstimatorSpec(
@@ -87,9 +87,9 @@ def simple_fixed_prediction_estimator_no_labels(
   estimator = tf.estimator.Estimator(model_fn=model_fn)
   estimator.train(input_fn=train_input_fn, steps=1)
 
-  feature_spec = {'prediction': tf.FixedLenFeature([1], dtype=tf.float32)}
+  feature_spec = {'prediction': tf.io.FixedLenFeature([1], dtype=tf.float32)}
   eval_feature_spec = {
-      'prediction': tf.FixedLenFeature([1], dtype=tf.float32),
+      'prediction': tf.io.FixedLenFeature([1], dtype=tf.float32),
   }
 
   return util.export_model_and_eval_model(

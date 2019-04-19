@@ -95,7 +95,7 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
                      'examples.')
 
   if input_refs is None:
-    input_refs = tf.range(tf.size(list(receiver_tensors.values())[0]))
+    input_refs = tf.range(tf.size(input=list(receiver_tensors.values())[0]))
 
   updated_receiver_tensors = {}
 
@@ -195,7 +195,7 @@ def _LegacyEvalInputReceiver(  # pylint: disable=invalid-name
         features=wrapped_features, receiver_tensors=receiver_tensors)
 
   if input_refs is None:
-    input_refs = tf.range(tf.size(receiver_tensors['examples']))
+    input_refs = tf.range(tf.size(input=receiver_tensors['examples']))
   # Note that in the collection we store the unwrapped versions, because
   # we want to feed the unwrapped versions.
   _add_tfma_collections(features, labels, input_refs)
@@ -219,18 +219,18 @@ def _add_tfma_collections(features: types.TensorTypeMaybeDict,
   """
   # Clear existing collections first, in case the EvalInputReceiver was called
   # multiple times.
-  del tf.get_collection_ref(
+  del tf.compat.v1.get_collection_ref(
       encoding.with_suffix(encoding.FEATURES_COLLECTION,
                            encoding.KEY_SUFFIX))[:]
-  del tf.get_collection_ref(
+  del tf.compat.v1.get_collection_ref(
       encoding.with_suffix(encoding.FEATURES_COLLECTION,
                            encoding.NODE_SUFFIX))[:]
-  del tf.get_collection_ref(
+  del tf.compat.v1.get_collection_ref(
       encoding.with_suffix(encoding.LABELS_COLLECTION, encoding.KEY_SUFFIX))[:]
-  del tf.get_collection_ref(
+  del tf.compat.v1.get_collection_ref(
       encoding.with_suffix(encoding.LABELS_COLLECTION, encoding.NODE_SUFFIX))[:]
-  del tf.get_collection_ref(encoding.EXAMPLE_REF_COLLECTION)[:]
-  del tf.get_collection_ref(encoding.TFMA_VERSION_COLLECTION)[:]
+  del tf.compat.v1.get_collection_ref(encoding.EXAMPLE_REF_COLLECTION)[:]
+  del tf.compat.v1.get_collection_ref(encoding.TFMA_VERSION_COLLECTION)[:]
 
   for feature_name, feature_node in features.items():
     _encode_and_add_to_node_collection(encoding.FEATURES_COLLECTION,
@@ -246,20 +246,21 @@ def _add_tfma_collections(features: types.TensorTypeMaybeDict,
                                          label_node)
   # Previously input_refs was called example_ref. This code is being deprecated
   # so it was not renamed.
-  example_ref_collection = tf.get_collection_ref(
+  example_ref_collection = tf.compat.v1.get_collection_ref(
       encoding.EXAMPLE_REF_COLLECTION)
   example_ref_collection.append(encoding.encode_tensor_node(input_refs))
 
-  tf.add_to_collection(encoding.TFMA_VERSION_COLLECTION, version.VERSION_STRING)
+  tf.compat.v1.add_to_collection(encoding.TFMA_VERSION_COLLECTION,
+                                 version.VERSION_STRING)
 
 
 def _encode_and_add_to_node_collection(collection_prefix: Text,
                                        key: types.FPLKeyType,
                                        node: types.TensorType) -> None:
-  tf.add_to_collection(
+  tf.compat.v1.add_to_collection(
       encoding.with_suffix(collection_prefix, encoding.KEY_SUFFIX),
       encoding.encode_key(key))
-  tf.add_to_collection(
+  tf.compat.v1.add_to_collection(
       encoding.with_suffix(collection_prefix, encoding.NODE_SUFFIX),
       encoding.encode_tensor_node(node))
 
@@ -287,9 +288,10 @@ def build_parsing_eval_input_receiver_fn(
   def eval_input_receiver_fn():
     """An input_fn that expects a serialized tf.Example."""
     # Note it's *required* that the batch size should be variable for TFMA.
-    serialized_tf_example = tf.placeholder(
+    serialized_tf_example = tf.compat.v1.placeholder(
         dtype=tf.string, shape=[None], name='input_example_tensor')
-    features = tf.parse_example(serialized_tf_example, feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_tf_example, features=feature_spec)
     labels = None if label_key is None else features[label_key]
     return EvalInputReceiver(
         features=features,

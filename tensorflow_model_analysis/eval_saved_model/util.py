@@ -33,9 +33,9 @@ def default_dict_key(prefix: Text) -> Text:
   return util.KEY_SEPARATOR + prefix
 
 
-def extract_tensor_maybe_dict(
-    prefix: Text,
-    dict_of_tensors: types.DictOfTensorType) -> types.TensorTypeMaybeDict:
+def extract_tensor_maybe_dict(prefix: Text,
+                              dict_of_tensors: types.DictOfTensorType
+                             ) -> types.TensorTypeMaybeDict:
   """Returns tensor if single entry under default key else returns dict."""
   default_key = default_dict_key(prefix)
   if list(dict_of_tensors.keys()) == [default_key]:
@@ -137,8 +137,8 @@ def make_example(**kwargs) -> example_pb2.Example:
             'field %s was a list, but the first element had '
             'unknown type %s' % key, type(value[0]))
     else:
-      raise TypeError(
-          'unrecognised type for field %s: type %s' % (key, type(value)))
+      raise TypeError('unrecognised type for field %s: type %s' %
+                      (key, type(value)))
   return result
 
 
@@ -235,7 +235,8 @@ def _dense_concat_rows(arrays: List[np.ndarray]) -> np.ndarray:
 
 
 def _sparse_concat_rows(
-    sparse_tensor_values: List[tf.SparseTensorValue]) -> tf.SparseTensorValue:
+    sparse_tensor_values: List[tf.compat.v1.SparseTensorValue]
+) -> tf.compat.v1.SparseTensorValue:
   """Concat a list of SparseTensorValues along rows.
 
   This is similar to (but not the same as)
@@ -317,7 +318,7 @@ def _sparse_concat_rows(
   dense_shape_max[0] = len(sparse_tensor_values)
 
   # pylint: disable=g-long-ternary
-  return tf.SparseTensorValue(
+  return tf.compat.v1.SparseTensorValue(
       indices=(np.array(indices, dtype=empty_indices_with_shape.dtype)
                if indices else empty_indices_with_shape),
       values=(np.array(values, dtype=empty_values_with_shape.dtype)
@@ -326,8 +327,8 @@ def _sparse_concat_rows(
   # pylint: enable=g-long-ternary
 
 
-def _sparse_slice_rows(
-    sparse_tensor_value: tf.SparseTensorValue) -> List[tf.SparseTensorValue]:
+def _sparse_slice_rows(sparse_tensor_value: tf.compat.v1.SparseTensorValue
+                      ) -> List[tf.compat.v1.SparseTensorValue]:
   """Returns a list of single rows of a SparseTensorValue.
 
   This is equivalent to:
@@ -401,7 +402,7 @@ def _sparse_slice_rows(
 
     # pylint: disable=g-long-ternary
     result.append(
-        tf.SparseTensorValue(
+        tf.compat.v1.SparseTensorValue(
             indices=(np.array(indices, dtype=empty_indices_with_shape.dtype)
                      if indices else empty_indices_with_shape),
             values=(np.array(values, dtype=empty_values_with_shape.dtype)
@@ -412,8 +413,8 @@ def _sparse_slice_rows(
   return result
 
 
-def split_tensor_value(
-    tensor_value: types.TensorValue) -> List[types.TensorValue]:
+def split_tensor_value(tensor_value: types.TensorValue
+                      ) -> List[types.TensorValue]:
   """Split a single batch of Tensor values into a list of Tensor values.
 
   Args:
@@ -426,7 +427,7 @@ def split_tensor_value(
   Raises:
     TypeError: tensor_value had unknown type.
   """
-  if isinstance(tensor_value, tf.SparseTensorValue):
+  if isinstance(tensor_value, tf.compat.v1.SparseTensorValue):
     return _sparse_slice_rows(tensor_value)
   elif isinstance(tensor_value, np.ndarray):
     if tensor_value.shape[0] != 0:
@@ -440,8 +441,8 @@ def split_tensor_value(
                     (type(tensor_value), tensor_value))
 
 
-def merge_tensor_values(
-    tensor_values: List[types.TensorValue]) -> Optional[types.TensorValue]:
+def merge_tensor_values(tensor_values: List[types.TensorValue]
+                       ) -> Optional[types.TensorValue]:
   """Merge a list of Tensor values into a single batch of Tensor values.
 
   Args:
@@ -460,13 +461,13 @@ def merge_tensor_values(
   if not tensor_values:
     return None
 
-  if isinstance(tensor_values[0], tf.SparseTensorValue):
+  if isinstance(tensor_values[0], tf.compat.v1.SparseTensorValue):
     # Check batch sizes.
     for tensor_value in tensor_values:
       if tensor_value.dense_shape[0] > 1:
-        raise ValueError(
-            'expecting SparseTensor to be for only 1 example. '
-            'but got dense_shape %s instead' % tensor_value.dense_shape)
+        raise ValueError('expecting SparseTensor to be for only 1 example. '
+                         'but got dense_shape %s instead' %
+                         tensor_value.dense_shape)
     return _sparse_concat_rows(tensor_values)
   elif isinstance(tensor_values[0], np.ndarray):
     return _dense_concat_rows(tensor_values)

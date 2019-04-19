@@ -49,20 +49,20 @@ def simple_custom_estimator(export_path, eval_export_path):
               'score': tf.estimator.export.RegressionOutput(predictions)
           })
 
-    loss = tf.losses.mean_squared_error(labels, predictions)
+    loss = tf.compat.v1.losses.mean_squared_error(labels, predictions)
     eval_metric_ops = {
         'mean_absolute_error':
-            tf.metrics.mean_absolute_error(
+            tf.compat.v1.metrics.mean_absolute_error(
                 tf.cast(labels, tf.float64), tf.cast(predictions, tf.float64)),
         'mean_prediction':
-            tf.metrics.mean(predictions),
+            tf.compat.v1.metrics.mean(predictions),
         'mean_label':
-            tf.metrics.mean(labels),
+            tf.compat.v1.metrics.mean(labels),
     }
 
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+    optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=0.001)
     train_op = optimizer.minimize(
-        loss=loss, global_step=tf.train.get_global_step())
+        loss=loss, global_step=tf.compat.v1.train.get_global_step())
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
@@ -79,23 +79,25 @@ def simple_custom_estimator(export_path, eval_export_path):
 
   def serving_input_receiver_fn():
     """Serving input receiver function."""
-    serialized_tf_example = tf.placeholder(
+    serialized_tf_example = tf.compat.v1.placeholder(
         dtype=tf.string, shape=[None], name='input_example_tensor')
-    feature_spec = {'age': tf.FixedLenFeature([1], dtype=tf.float32)}
+    feature_spec = {'age': tf.io.FixedLenFeature([1], dtype=tf.float32)}
     receiver_tensors = {'examples': serialized_tf_example}
-    features = tf.parse_example(serialized_tf_example, feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_tf_example, features=feature_spec)
     return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
 
   def eval_input_receiver_fn():
     """Eval input receiver function."""
-    serialized_tf_example = tf.placeholder(
+    serialized_tf_example = tf.compat.v1.placeholder(
         dtype=tf.string, shape=[None], name='input_example_tensor')
     feature_spec = {
-        'age': tf.FixedLenFeature([1], dtype=tf.float32),
-        'label': tf.FixedLenFeature([1], dtype=tf.float32)
+        'age': tf.io.FixedLenFeature([1], dtype=tf.float32),
+        'label': tf.io.FixedLenFeature([1], dtype=tf.float32)
     }
     receiver_tensors = {'examples': serialized_tf_example}
-    features = tf.parse_example(serialized_tf_example, feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_tf_example, features=feature_spec)
 
     return export.EvalInputReceiver(
         features=features,

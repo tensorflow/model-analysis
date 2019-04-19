@@ -36,14 +36,15 @@ def build_parsing_eval_input_receiver_fn(feature_spec, label_key):
   def eval_input_receiver_fn():
     """An input_fn that expects a serialized tf.Example."""
     # Note it's *required* that the batch size should be variable for TFMA.
-    serialized_tf_example = tf.placeholder(
+    serialized_tf_example = tf.compat.v1.placeholder(
         dtype=tf.string, shape=[None], name='input_example_tensor')
-    features = tf.parse_example(serialized_tf_example, feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_tf_example, features=feature_spec)
     labels = None if label_key is None else features[label_key]
 
     if isinstance(labels, tf.SparseTensor):
       # This bit here is why a custom eval_input_receiver_fn is specified.
-      labels = tf.sparse_tensor_to_dense(labels, default_value=-1)
+      labels = tf.sparse.to_dense(labels, default_value=-1)
 
     return export.EvalInputReceiver(
         features=features,
@@ -54,19 +55,21 @@ def build_parsing_eval_input_receiver_fn(feature_spec, label_key):
 
 
 def get_simple_dnn_classifier_and_metadata(n_classes=2):
+  """Returns metadata for creating simple DNN classifier."""
   feature_spec = tf.feature_column.make_parse_example_spec(
       feature_columns=util.dnn_columns(True, n_classes=n_classes))
   classifier = tf.estimator.DNNClassifier(
       hidden_units=[4],
       feature_columns=util.dnn_columns(False),
-      n_classes=n_classes)
+      n_classes=n_classes,
+      loss_reduction=tf.compat.v1.losses.Reduction.SUM)
   classifier = tf.estimator.add_metrics(classifier,
                                         util.classifier_extra_metrics)
   return {
       'estimator':
           classifier,
-      'serving_input_receiver_fn': (
-          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      'serving_input_receiver_fn':
+          (tf.estimator.export.build_parsing_serving_input_receiver_fn(
               tf.feature_column.make_parse_example_spec(
                   util.dnn_columns(False)))),
       'eval_input_receiver_fn':

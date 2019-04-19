@@ -29,18 +29,20 @@ def total(values: types.TensorType
          ) -> Tuple[types.TensorType, types.TensorType]:
   """Metric to compute the running total of a value."""
 
-  with tf.variable_scope('total', values):
+  with tf.compat.v1.variable_scope('total', values):
     values = tf.cast(values, tf.float64)
     total_value = tf.Variable(
         initial_value=0.0,
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True,
         name='total')
-    update_op = tf.assign_add(total_value, tf.reduce_sum(values))
+    update_op = tf.compat.v1.assign_add(total_value,
+                                        tf.reduce_sum(input_tensor=values))
     value_op = tf.identity(total_value)
     return value_op, update_op
 
@@ -50,8 +52,8 @@ def squared_pearson_correlation(predictions: types.TensorType,
                                 weights: Optional[types.TensorType] = None
                                ) -> Tuple[types.TensorType, types.TensorType]:
   """Metric to compute the squared pearson correlation (R squared)."""
-  with tf.variable_scope('squared_pearson_correlation',
-                         [predictions, labels, weights]):
+  with tf.compat.v1.variable_scope('squared_pearson_correlation',
+                                   [predictions, labels, weights]):
     weighted_predictions = tf.multiply(predictions, weights)
     weighted_labels = tf.multiply(labels, weights)
 
@@ -60,42 +62,49 @@ def squared_pearson_correlation(predictions: types.TensorType,
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True,
         name='regression_error')
 
-    update_regression_error_op = tf.assign_add(
+    update_regression_error_op = tf.compat.v1.assign_add(
         regression_error,
         tf.reduce_sum(
-            tf.square(tf.subtract(weighted_labels, weighted_predictions))))
+            input_tensor=tf.square(
+                tf.subtract(weighted_labels, weighted_predictions))))
 
     total_error = tf.Variable(
         initial_value=0.0,
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True,
         name='total_error')
 
-    update_total_error_op = tf.assign_add(
+    update_total_error_op = tf.compat.v1.assign_add(
         total_error,
         tf.reduce_sum(
-            tf.square(
-                tf.subtract(weighted_labels, tf.reduce_mean(weighted_labels)))))
+            input_tensor=tf.square(
+                tf.subtract(weighted_labels,
+                            tf.reduce_mean(input_tensor=weighted_labels)))))
+
+    div_op = tf.math.divide
+    if hasattr(tf.math, 'divide_no_nan'):
+      div_op = tf.math.divide_no_nan
 
     def r_squared(_, regression_error, total_error):
       return tf.subtract(
-          tf.cast(1.0, tf.float64), tf.div_no_nan(regression_error,
-                                                  total_error))
+          tf.cast(1.0, tf.float64), div_op(regression_error, total_error))
 
     value_op = tf.distribute.get_replica_context().merge_call(
         r_squared, args=(regression_error, total_error))
     update_op = tf.subtract(
         tf.cast(1.0, tf.float64),
-        tf.div_no_nan(update_regression_error_op, update_total_error_op))
+        div_op(update_regression_error_op, update_total_error_op))
     return value_op, update_op
 
 
@@ -146,7 +155,7 @@ def calibration_plot(predictions: types.TensorType,
   """
   # pyformat: enable
 
-  with tf.variable_scope('calibration_plot', [predictions, labels]):
+  with tf.compat.v1.variable_scope('calibration_plot', [predictions, labels]):
     predictions_f64 = tf.cast(predictions, tf.float64)
     labels_f64 = tf.cast(labels, tf.float64)
     # Ensure that we don't mistakenly use the non-casted versions.
@@ -157,7 +166,8 @@ def calibration_plot(predictions: types.TensorType,
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True,
         name='prediction_bucket_counts')
@@ -166,7 +176,8 @@ def calibration_plot(predictions: types.TensorType,
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True,
         name='label_bucket_counts')
@@ -175,7 +186,8 @@ def calibration_plot(predictions: types.TensorType,
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True,
         name='weight_bucket_counts')
@@ -192,17 +204,17 @@ def calibration_plot(predictions: types.TensorType,
     else:
       weights_f64 = tf.ones_like(indices, dtype=tf.float64)
 
-    update_prediction_buckets_op = tf.scatter_add(prediction_bucket_counts,
-                                                  indices,
-                                                  predictions_f64 * weights_f64)
-    update_label_buckets_op = tf.scatter_add(label_bucket_counts, indices,
-                                             labels_f64 * weights_f64)
-    update_weight_buckets_op = tf.scatter_add(weight_bucket_counts, indices,
-                                              weights_f64)
+    update_prediction_buckets_op = tf.compat.v1.scatter_add(
+        prediction_bucket_counts, indices, predictions_f64 * weights_f64)
+    update_label_buckets_op = tf.compat.v1.scatter_add(label_bucket_counts,
+                                                       indices,
+                                                       labels_f64 * weights_f64)
+    update_weight_buckets_op = tf.compat.v1.scatter_add(weight_bucket_counts,
+                                                        indices, weights_f64)
     update_op = tf.group(update_prediction_buckets_op, update_label_buckets_op,
                          update_weight_buckets_op)
     value_op = tf.transpose(
-        tf.stack([
+        a=tf.stack([
             prediction_bucket_counts, label_bucket_counts, weight_bucket_counts
         ]))
 
@@ -261,7 +273,7 @@ def _precision_recall_at_k(classes: types.TensorType,
   else:
     scope = 'recall_at_k'
 
-  with tf.variable_scope(scope, [classes, scores, labels]):
+  with tf.compat.v1.variable_scope(scope, [classes, scores, labels]):
 
     # Predicted positive.
     predicted_positives = tf.Variable(
@@ -269,7 +281,8 @@ def _precision_recall_at_k(classes: types.TensorType,
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True,
         name='predicted_positives')
@@ -280,7 +293,8 @@ def _precision_recall_at_k(classes: types.TensorType,
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True,
         name='true_positives')
@@ -291,7 +305,8 @@ def _precision_recall_at_k(classes: types.TensorType,
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True,
         name='actual_positives')
@@ -299,7 +314,7 @@ def _precision_recall_at_k(classes: types.TensorType,
     if weights is not None:
       weights_f64 = tf.cast(weights, tf.float64)
     else:
-      weights_f64 = tf.ones(tf.shape(labels)[0], tf.float64)
+      weights_f64 = tf.ones(tf.shape(input=labels)[0], tf.float64)
 
   def compute_batch_stats(classes: np.ndarray, scores: np.ndarray,
                           labels: np.ndarray,
@@ -371,20 +386,21 @@ def _precision_recall_at_k(classes: types.TensorType,
   # pytype: enable=unsupported-operands
   if precision and recall:
     value_op = tf.transpose(
-        tf.stack([cutoffs, precision_op, recall_op], axis=0))
+        a=tf.stack([cutoffs, precision_op, recall_op], axis=0))
   elif precision:
-    value_op = tf.transpose(tf.stack([cutoffs, precision_op], axis=0))
+    value_op = tf.transpose(a=tf.stack([cutoffs, precision_op], axis=0))
   else:
-    value_op = tf.transpose(tf.stack([cutoffs, recall_op], axis=0))
+    value_op = tf.transpose(a=tf.stack([cutoffs, recall_op], axis=0))
 
   true_positives_update, predicted_positives_update, actual_positives_update = (
-      tf.py_func(compute_batch_stats, [classes, scores, labels, weights_f64],
-                 [tf.float64, tf.float64, tf.float64]))
+      tf.compat.v1.py_func(compute_batch_stats,
+                           [classes, scores, labels, weights_f64],
+                           [tf.float64, tf.float64, tf.float64]))
 
   update_op = tf.group(
-      tf.assign_add(true_positives, true_positives_update),
-      tf.assign_add(predicted_positives, predicted_positives_update),
-      tf.assign_add(actual_positives, actual_positives_update))
+      tf.compat.v1.assign_add(true_positives, true_positives_update),
+      tf.compat.v1.assign_add(predicted_positives, predicted_positives_update),
+      tf.compat.v1.assign_add(actual_positives, actual_positives_update))
 
   return value_op, update_op
 

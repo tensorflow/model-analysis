@@ -78,10 +78,10 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
 # protobuf.python.google.internal.containers.MessageMap[Union[str, unicode],
 # metrics_for_slice_pb2.MetricValue]], while the metrics type isn't visible to
 # this module.
-def load_and_deserialize_metrics(
-    path: Text) -> List[Tuple[slicer.SliceKeyType, Any]]:
+def load_and_deserialize_metrics(path: Text
+                                ) -> List[Tuple[slicer.SliceKeyType, Any]]:
   result = []
-  for record in tf.python_io.tf_record_iterator(path):
+  for record in tf.compat.v1.python_io.tf_record_iterator(path):
     metrics_for_slice = metrics_for_slice_pb2.MetricsForSlice.FromString(record)
     result.append((
         slicer.deserialize_slice_key(metrics_for_slice.slice_key),  # pytype: disable=wrong-arg-types
@@ -89,11 +89,11 @@ def load_and_deserialize_metrics(
   return result
 
 
-def load_and_deserialize_plots(
-    path: Text) -> List[Tuple[slicer.SliceKeyType, Any]]:
+def load_and_deserialize_plots(path: Text
+                              ) -> List[Tuple[slicer.SliceKeyType, Any]]:
   """Returns deserialized plots loaded from given path."""
   result = []
-  for record in tf.python_io.tf_record_iterator(path):
+  for record in tf.compat.v1.python_io.tf_record_iterator(path):
     plots_for_slice = metrics_for_slice_pb2.PlotsForSlice.FromString(record)
     if plots_for_slice.HasField('plot_data'):
       if plots_for_slice.plots:
@@ -109,8 +109,8 @@ def load_and_deserialize_plots(
   return result
 
 
-def _convert_to_array_value(
-    array: np.ndarray) -> metrics_for_slice_pb2.ArrayValue:
+def _convert_to_array_value(array: np.ndarray
+                           ) -> metrics_for_slice_pb2.ArrayValue:
   """Converts NumPy array to ArrayValue."""
   result = metrics_for_slice_pb2.ArrayValue()
   result.shape[:] = array.shape
@@ -180,9 +180,9 @@ def _convert_slice_metrics(
         metrics_for_slice.metrics[name].unknown_type.error = e.message
 
 
-def _serialize_metrics(
-    metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
-    post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
+def _serialize_metrics(metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
+                       post_export_metrics: List[types.AddMetricsCallbackType]
+                      ) -> bytes:
   """Converts the given slice metrics into serialized proto MetricsForSlice.
 
   Args:
@@ -230,9 +230,9 @@ def _convert_slice_plots(
             ]))
 
 
-def _serialize_plots(
-    plots: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
-    post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
+def _serialize_plots(plots: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
+                     post_export_metrics: List[types.AddMetricsCallbackType]
+                    ) -> bytes:
   """Converts the given slice plots into serialized proto PlotsForSlice..
 
   Args:

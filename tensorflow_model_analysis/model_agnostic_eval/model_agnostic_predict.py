@@ -143,7 +143,7 @@ class ModelAgnosticPredict(object):
 
   def __init__(self, model_agnostic_config: ModelAgnosticConfig):
     self._graph = tf.Graph()
-    self._session = tf.Session(graph=self._graph)
+    self._session = tf.compat.v1.Session(graph=self._graph)
     self._config = model_agnostic_config
     try:
       self._create_graph()
@@ -158,13 +158,14 @@ class ModelAgnosticPredict(object):
     feature spec.
     """
     with self._graph.as_default():
-      serialized_example = tf.placeholder(dtype=tf.string)
-      features = tf.parse_example(serialized_example, self._config.feature_spec)
+      serialized_example = tf.compat.v1.placeholder(dtype=tf.string)
+      features = tf.io.parse_example(
+          serialized=serialized_example, features=self._config.feature_spec)
       self._get_features_fn = self._session.make_callable(
           fetches=features, feed_list=[serialized_example])
 
-  def get_fpls_from_examples(
-      self, input_example_bytes_list: List[bytes]) -> List[Any]:
+  def get_fpls_from_examples(self, input_example_bytes_list: List[bytes]
+                            ) -> List[Any]:
     """Generates FPLs from serialized examples using a ModelAgnostic graph.
 
     Args:

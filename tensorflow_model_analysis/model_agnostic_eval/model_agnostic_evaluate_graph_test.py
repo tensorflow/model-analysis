@@ -48,7 +48,7 @@ def add_mean_callback(features_dict, predictions_dict, labels_dict):
 
   # Adding a tf.metrics metric.
   all_values = list(labels_dict.values()) + list(predictions_dict.values())
-  metric_ops['tf_metric_mean'] = tf.metrics.mean(all_values)
+  metric_ops['tf_metric_mean'] = tf.compat.v1.metrics.mean(all_values)
 
   # Defining and adding a py_func metric
   # Note that for py_func metrics, you must still store the metric state in
@@ -57,7 +57,10 @@ def add_mean_callback(features_dict, predictions_dict, labels_dict):
       initial_value=0.0,
       dtype=tf.float64,
       trainable=False,
-      collections=[tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES],
+      collections=[
+          tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+          tf.compat.v1.GraphKeys.LOCAL_VARIABLES
+      ],
       validate_shape=True,
       name='total_label')
 
@@ -65,8 +68,8 @@ def add_mean_callback(features_dict, predictions_dict, labels_dict):
     return np.sum(x, dtype=np.float64)
 
   value_op = tf.identity(total_label)
-  update_op = tf.assign_add(total_label,
-                            tf.py_func(my_func, [all_values], tf.float64))
+  update_op = tf.compat.v1.assign_add(
+      total_label, tf.compat.v1.py_func(my_func, [all_values], tf.float64))
 
   metric_ops['py_func_total_label'] = value_op, update_op
 
@@ -85,7 +88,7 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
         },
         'language': {
             encoding.NODE_SUFFIX:
-                tf.SparseTensorValue(
+                tf.compat.v1.SparseTensorValue(
                     indices=np.array([[0, 0]]),
                     values=np.array(['english']),
                     dense_shape=np.array([1, 1]))
@@ -114,10 +117,10 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
 
     # Set up a model agnostic config so we can get the FPLConfig.
     feature_map = {
-        'age': tf.FixedLenFeature([], tf.float32),
-        'language': tf.VarLenFeature(tf.string),
-        'predictions': tf.FixedLenFeature([], tf.float32),
-        'labels': tf.FixedLenFeature([], tf.float32)
+        'age': tf.io.FixedLenFeature([], tf.float32),
+        'language': tf.io.VarLenFeature(tf.string),
+        'predictions': tf.io.FixedLenFeature([], tf.float32),
+        'labels': tf.io.FixedLenFeature([], tf.float32)
     }
 
     model_agnostic_config = agnostic_predict.ModelAgnosticConfig(
@@ -193,11 +196,11 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
 
     # Set up a model agnostic config so we can get the FPLConfig.
     feature_map = {
-        'age': tf.FixedLenFeature([], tf.float32),
-        'prediction': tf.FixedLenFeature([], tf.int64),
-        'prediction_2': tf.FixedLenFeature([], tf.int64),
-        'label': tf.FixedLenFeature([], tf.int64),
-        'label_2': tf.FixedLenFeature([], tf.int64)
+        'age': tf.io.FixedLenFeature([], tf.float32),
+        'prediction': tf.io.FixedLenFeature([], tf.int64),
+        'prediction_2': tf.io.FixedLenFeature([], tf.int64),
+        'label': tf.io.FixedLenFeature([], tf.int64),
+        'label_2': tf.io.FixedLenFeature([], tf.int64)
     }
 
     model_agnostic_config = agnostic_predict.ModelAgnosticConfig(
@@ -243,10 +246,10 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
 
       # Set up a config to bucket our example keys.
       feature_map = {
-          'age': tf.FixedLenFeature([], tf.float32),
-          'language': tf.VarLenFeature(tf.string),
-          'probabilities': tf.FixedLenFeature([], tf.float32),
-          'labels': tf.FixedLenFeature([], tf.float32)
+          'age': tf.io.FixedLenFeature([], tf.float32),
+          'language': tf.io.VarLenFeature(tf.string),
+          'probabilities': tf.io.FixedLenFeature([], tf.float32),
+          'labels': tf.io.FixedLenFeature([], tf.float32)
       }
 
       model_agnostic_config = agnostic_predict.ModelAgnosticConfig(

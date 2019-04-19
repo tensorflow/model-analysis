@@ -36,7 +36,7 @@ def simple_multi_head(export_path, eval_export_path):
 
   def eval_input_receiver_fn():
     """Eval input receiver function."""
-    serialized_tf_example = tf.placeholder(
+    serialized_tf_example = tf.compat.v1.placeholder(
         dtype=tf.string, shape=[None], name='input_example_tensor')
 
     language = tf.feature_column.categorical_column_with_vocabulary_list(
@@ -100,10 +100,10 @@ def simple_multi_head(export_path, eval_export_path):
   estimator = tf.estimator.DNNLinearCombinedEstimator(
       head=combined_head,
       dnn_feature_columns=[],
-      dnn_optimizer=tf.train.AdagradOptimizer(learning_rate=0.01),
+      dnn_optimizer=tf.compat.v1.train.AdagradOptimizer(learning_rate=0.01),
       dnn_hidden_units=[],
       linear_feature_columns=[language, age],
-      linear_optimizer=tf.train.FtrlOptimizer(learning_rate=0.05))
+      linear_optimizer=tf.compat.v1.train.FtrlOptimizer(learning_rate=0.05))
   estimator.train(input_fn=input_fn, steps=1000)
 
   return util.export_model_and_eval_model(

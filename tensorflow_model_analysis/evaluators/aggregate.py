@@ -75,8 +75,8 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
   if not num_bootstrap_samples:
     num_bootstrap_samples = 1
   if num_bootstrap_samples < 1:
-    raise ValueError(
-        'num_bootstrap_samples should be > 0, got %d' % num_bootstrap_samples)
+    raise ValueError('num_bootstrap_samples should be > 0, got %d' %
+                     num_bootstrap_samples)
 
   if num_bootstrap_samples > 1:
     slice_result_sampled = slice_result | 'FanoutBootstrap' >> beam.ParDo(
@@ -377,8 +377,8 @@ class _AggregateCombineFn(beam.CombineFn):
           self._eval_shared_model.shared_handle.acquire(
               self._eval_shared_model.construct_fn(self._model_load_seconds)))
 
-  def _poissonify(
-      self, accumulator: _AggState) -> List[types.FeaturesPredictionsLabels]:
+  def _poissonify(self, accumulator: _AggState
+                 ) -> List[types.FeaturesPredictionsLabels]:
     # pylint: disable=line-too-long
     """Creates a bootstrap resample of the data in an accumulator.
 
@@ -468,8 +468,8 @@ class _AggregateCombineFn(beam.CombineFn):
     self._num_compacts.inc(1)
     return accumulator
 
-  def extract_output(
-      self, accumulator: _AggState) -> Optional[types.MetricVariablesType]:
+  def extract_output(self, accumulator: _AggState
+                    ) -> Optional[types.MetricVariablesType]:
     # It's possible that the accumulator has not been fully flushed, if it was
     # not produced by a call to compact (which is not guaranteed across all Beam
     # Runners), so we defensively flush it here again, before we extract data

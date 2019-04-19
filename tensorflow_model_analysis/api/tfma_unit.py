@@ -187,9 +187,9 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
             eval_saved_model_path, serialized_examples),
         expected_values_dict=expected_metrics)
 
-  def _computeMetricsWithoutBeam(
-      self, eval_saved_model_path: Text,
-      serialized_examples: List[bytes]) -> Dict[Text, Any]:
+  def _computeMetricsWithoutBeam(self, eval_saved_model_path: Text,
+                                 serialized_examples: List[bytes]
+                                ) -> Dict[Text, Any]:
     """Computes metrics in-memory using the low-level APIs without Beam.
 
     Args:
@@ -206,9 +206,9 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         eval_saved_model.as_features_predictions_labels(fetched_list))
     return eval_saved_model.get_metric_values()
 
-  def _computeMetricsWithoutBeamNoBatching(
-      self, eval_saved_model_path: Text,
-      serialized_examples: List[bytes]) -> Dict[Text, Any]:
+  def _computeMetricsWithoutBeamNoBatching(self, eval_saved_model_path: Text,
+                                           serialized_examples: List[bytes]
+                                          ) -> Dict[Text, Any]:
     """Computes metrics in-memory using the low-level APIs without Beam.
 
     This is the non-batched version of computeMetricsWithoutBeam. This can be

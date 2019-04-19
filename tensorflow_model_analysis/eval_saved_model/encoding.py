@@ -88,8 +88,8 @@ def encode_key(key: types.FPLKeyType) -> bytes:
   elif isinstance(key, six.binary_type) or isinstance(key, six.text_type):
     return b'$Bytes$' + tf.compat.as_bytes(key)
   else:
-    raise TypeError(
-        'key has unrecognised type: type: %s, value %s' % (type(key), key))
+    raise TypeError('key has unrecognised type: type: %s, value %s' %
+                    (type(key), key))
 
 
 def decode_key(encoded_key: bytes) -> types.FPLKeyType:
@@ -138,7 +138,7 @@ def encode_tensor_node(node: types.TensorType) -> any_pb2.Any:
     Any proto wrapping a TensorInfo.
   """
   any_buf = any_pb2.Any()
-  tensor_info = tf.saved_model.utils.build_tensor_info(node)
+  tensor_info = tf.compat.v1.saved_model.utils.build_tensor_info(node)
   any_buf.Pack(tensor_info)
   return any_buf
 
@@ -159,4 +159,5 @@ def decode_tensor_node(graph: tf.Graph,
   """
   tensor_info = meta_graph_pb2.TensorInfo()
   encoded_tensor_node.Unpack(tensor_info)
-  return tf.saved_model.utils.get_tensor_from_tensor_info(tensor_info, graph)
+  return tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(
+      tensor_info, graph)

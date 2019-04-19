@@ -87,12 +87,12 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
   """Trains and exports a fake_sequence_to_prediction model."""
 
   input_feature_spec = {
-      'values_t1': tf.VarLenFeature(dtype=tf.float32),
-      'values_t2': tf.VarLenFeature(dtype=tf.float32),
-      'values_t3': tf.VarLenFeature(dtype=tf.float32)
+      'values_t1': tf.io.VarLenFeature(dtype=tf.float32),
+      'values_t2': tf.io.VarLenFeature(dtype=tf.float32),
+      'values_t3': tf.io.VarLenFeature(dtype=tf.float32)
   }
   label_feature_spec = dict(input_feature_spec)
-  label_feature_spec['label'] = tf.FixedLenFeature([1], dtype=tf.float32)
+  label_feature_spec['label'] = tf.io.FixedLenFeature([1], dtype=tf.float32)
 
   def _make_embedding_and_sparse_values(features):
     """Make "embedding" and "sparse_values" features."""
@@ -103,12 +103,13 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
     # Create a three-dimensional "embedding" based on the value of the feature
     # The embedding is simply [1, 1, 1] * feature_value
     # (or [0, 0, 0] if the feature is missing).
-    batch_size = tf.cast(tf.shape(features['values_t1'])[0], dtype=tf.int64)
+    batch_size = tf.cast(
+        tf.shape(input=features['values_t1'])[0], dtype=tf.int64)
 
     ones = tf.ones(shape=[embedding_dim])
-    dense_t1 = tf.sparse_tensor_to_dense(features['values_t1'])
-    dense_t2 = tf.sparse_tensor_to_dense(features['values_t2'])
-    dense_t3 = tf.sparse_tensor_to_dense(features['values_t3'])
+    dense_t1 = tf.sparse.to_dense(features['values_t1'])
+    dense_t2 = tf.sparse.to_dense(features['values_t2'])
+    dense_t3 = tf.sparse.to_dense(features['values_t3'])
     embedding_t1 = ones * dense_t1
     embedding_t2 = ones * dense_t2
     embedding_t3 = ones * dense_t3
@@ -128,8 +129,8 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
     sparse_total_elems = batch_size * sparse_dims * sparse_timesteps
     seq = tf.range(0, sparse_total_elems, dtype=tf.int64)
     batch_num = seq % batch_size
-    timestep = tf.div(seq, batch_size * sparse_dims)
-    offset = tf.div(seq, batch_size) % sparse_dims
+    timestep = tf.compat.v1.div(seq, batch_size * sparse_dims)
+    offset = tf.compat.v1.div(seq, batch_size) % sparse_dims
     sparse_indices = tf.stack([batch_num, timestep, offset], axis=1)
     features['sparse_values'] = tf.SparseTensor(
         indices=sparse_indices,
@@ -139,7 +140,7 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
   def model_fn(features, labels, mode, params):
     """Model function for custom estimator."""
     del params
-    dense_values = tf.sparse_tensor_to_dense(
+    dense_values = tf.sparse.to_dense(
         features['sparse_values'], validate_indices=False)
     a = tf.Variable(1.0, dtype=tf.float32, name='a')
     b = tf.Variable(2.0, dtype=tf.float32, name='b')
@@ -148,12 +149,12 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
     e = tf.Variable(5.0, dtype=tf.float32, name='e')
     f = tf.Variable(6.0, dtype=tf.float32, name='f')
     predictions = (
-        a * tf.reduce_sum(features['embedding'][:, 0, :], axis=1) +
-        b * tf.reduce_sum(features['embedding'][:, 1, :], axis=1) +
-        c * tf.reduce_sum(features['embedding'][:, 2, :], axis=1) +
-        d * tf.reduce_sum(dense_values[:, 0, :], axis=1) +
-        e * tf.reduce_sum(dense_values[:, 1, :], axis=1) +
-        f * tf.reduce_sum(dense_values[:, 2, :], axis=1))
+        a * tf.reduce_sum(input_tensor=features['embedding'][:, 0, :], axis=1) +
+        b * tf.reduce_sum(input_tensor=features['embedding'][:, 1, :], axis=1) +
+        c * tf.reduce_sum(input_tensor=features['embedding'][:, 2, :], axis=1) +
+        d * tf.reduce_sum(input_tensor=dense_values[:, 0, :], axis=1) +
+        e * tf.reduce_sum(input_tensor=dense_values[:, 1, :], axis=1) +
+        f * tf.reduce_sum(input_tensor=dense_values[:, 2, :], axis=1))
 
     if mode == tf.estimator.ModeKeys.PREDICT:
       return tf.estimator.EstimatorSpec(
@@ -163,12 +164,13 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
               'score': tf.estimator.export.RegressionOutput(predictions)
           })
 
-    loss = tf.losses.mean_squared_error(labels,
-                                        tf.expand_dims(predictions, axis=-1))
+    loss = tf.compat.v1.losses.mean_squared_error(
+        labels, tf.expand_dims(predictions, axis=-1))
 
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.0001)
+    optimizer = tf.compat.v1.train.GradientDescentOptimizer(
+        learning_rate=0.0001)
     train_op = optimizer.minimize(
-        loss=loss, global_step=tf.train.get_global_step())
+        loss=loss, global_step=tf.compat.v1.train.get_global_step())
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
@@ -176,10 +178,10 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
         train_op=train_op,
         eval_metric_ops={
             'mean_squared_error':
-                tf.metrics.mean_squared_error(
+                tf.compat.v1.metrics.mean_squared_error(
                     labels, tf.expand_dims(predictions, axis=-1)),
             'mean_prediction':
-                tf.metrics.mean(predictions),
+                tf.compat.v1.metrics.mean(predictions),
         },
         predictions=predictions)
 
@@ -201,10 +203,10 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
       if values_t3 is not None:
         args['values_t3'] = float(values_t3)
         effective_t3 = values_t3
-      label = (3 * effective_t1 + 6 * effective_t2 + 9 * effective_t3 +
-               4 * (effective_t1 + effective_t1**2 + effective_t1**3) +
-               5 * (effective_t2 + effective_t2**2 + effective_t2**3) +
-               6 * (effective_t3 + effective_t3**2 + effective_t3**3))
+      label = (3 * effective_t1 + 6 * effective_t2 + 9 * effective_t3 + 4 *
+               (effective_t1 + effective_t1**2 + effective_t1**3) + 5 *
+               (effective_t2 + effective_t2**2 + effective_t2**3) + 6 *
+               (effective_t3 + effective_t3**2 + effective_t3**3))
       args['label'] = float(label)
       return util.make_example(**args)
 
@@ -218,26 +220,29 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
         make_example_with_label(values_t1=2.0, values_t2=3.0, values_t3=5.0),
     ]
     serialized_examples = [x.SerializeToString() for x in examples]
-    features = tf.parse_example(serialized_examples, label_feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_examples, features=label_feature_spec)
     _make_embedding_and_sparse_values(features)
     label = features.pop('label')
     return features, label
 
   def serving_input_receiver_fn():
     """Serving input receiver function."""
-    serialized_tf_example = tf.placeholder(
+    serialized_tf_example = tf.compat.v1.placeholder(
         dtype=tf.string, shape=[None], name='input_example_tensor')
     receiver_tensors = {'examples': serialized_tf_example}
-    features = tf.parse_example(serialized_tf_example, input_feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_tf_example, features=input_feature_spec)
     _make_embedding_and_sparse_values(features)
     return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
 
   def eval_input_receiver_fn():
     """Eval input receiver function."""
-    serialized_tf_example = tf.placeholder(
+    serialized_tf_example = tf.compat.v1.placeholder(
         dtype=tf.string, shape=[None], name='input_example_tensor')
     receiver_tensors = {'examples': serialized_tf_example}
-    features = tf.parse_example(serialized_tf_example, label_feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_tf_example, features=label_feature_spec)
     _make_embedding_and_sparse_values(features)
 
     return export.EvalInputReceiver(

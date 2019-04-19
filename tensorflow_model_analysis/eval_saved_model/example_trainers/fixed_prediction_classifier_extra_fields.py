@@ -43,20 +43,20 @@ def simple_fixed_prediction_classifier_extra_fields(export_path,
   serving_input_receiver_fn = (
       tf.estimator.export.build_parsing_serving_input_receiver_fn(
           feature_spec={
-              'classes': tf.VarLenFeature(dtype=tf.string),
-              'scores': tf.VarLenFeature(dtype=tf.float32)
+              'classes': tf.io.VarLenFeature(dtype=tf.string),
+              'scores': tf.io.VarLenFeature(dtype=tf.float32)
           }))
   eval_input_receiver_fn = export.build_parsing_eval_input_receiver_fn(
       feature_spec={
-          'classes': tf.VarLenFeature(dtype=tf.string),
-          'scores': tf.VarLenFeature(dtype=tf.float32),
-          'labels': tf.VarLenFeature(dtype=tf.string),
-          'fixed_float': tf.FixedLenFeature([1], dtype=tf.float32),
-          'fixed_string': tf.FixedLenFeature([1], dtype=tf.string),
-          'fixed_int': tf.FixedLenFeature([1], dtype=tf.int64),
-          'var_float': tf.VarLenFeature(dtype=tf.float32),
-          'var_string': tf.VarLenFeature(dtype=tf.string),
-          'var_int': tf.VarLenFeature(dtype=tf.int64),
+          'classes': tf.io.VarLenFeature(dtype=tf.string),
+          'scores': tf.io.VarLenFeature(dtype=tf.float32),
+          'labels': tf.io.VarLenFeature(dtype=tf.string),
+          'fixed_float': tf.io.FixedLenFeature([1], dtype=tf.float32),
+          'fixed_string': tf.io.FixedLenFeature([1], dtype=tf.string),
+          'fixed_int': tf.io.FixedLenFeature([1], dtype=tf.int64),
+          'var_float': tf.io.VarLenFeature(dtype=tf.float32),
+          'var_string': tf.io.VarLenFeature(dtype=tf.string),
+          'var_int': tf.io.VarLenFeature(dtype=tf.int64),
       },
       label_key='labels')
 

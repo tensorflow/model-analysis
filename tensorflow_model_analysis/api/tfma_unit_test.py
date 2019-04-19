@@ -175,7 +175,7 @@ class TFMAUnitTest(tfma_unit.TestCase):
     def add_metrics(features, predictions, labels):
       del features
       metric_ops = {
-          'mae': tf.metrics.mean_absolute_error(labels, predictions),
+          'mae': tf.compat.v1.metrics.mean_absolute_error(labels, predictions),
       }
       return metric_ops
 

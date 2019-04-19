@@ -62,12 +62,13 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
         dtype=tf.float64,
         trainable=False,
         collections=[
-            tf.GraphKeys.METRIC_VARIABLES, tf.GraphKeys.LOCAL_VARIABLES
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
         ],
         validate_shape=True)
 
     with tf.control_dependencies([target]):
-      update_op = tf.assign_add(total_value, increment)
+      update_op = tf.compat.v1.assign_add(total_value, increment)
     value_op = tf.identity(total_value)
     return value_op, update_op
 
@@ -84,19 +85,19 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
           mode=mode,
           predictions=predictions_dict,
           export_outputs={
-              tf.saved_model.signature_constants
-              .DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+              tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
                   tf.estimator.export.RegressionOutput(predictions)
           })
 
-    loss = tf.losses.mean_squared_error(predictions, labels['actual_label'])
-    train_op = tf.assign_add(tf.train.get_global_step(), 1)
+    loss = tf.compat.v1.losses.mean_squared_error(predictions,
+                                                  labels['actual_label'])
+    train_op = tf.compat.v1.assign_add(tf.compat.v1.train.get_global_step(), 1)
 
     eval_metric_ops = {}
     if mode == tf.estimator.ModeKeys.EVAL:
       eval_metric_ops = {
           metric_keys.MetricKeys.LOSS_MEAN:
-              tf.metrics.mean(loss),
+              tf.compat.v1.metrics.mean(loss),
           'control_dependency_on_fixed_float':
               control_dependency_metric(1.0, features['fixed_float']),
           # Introduce a direct dependency on the values Tensor. If we
@@ -131,16 +132,16 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
         'actual_label': tf.constant([[1.0], [2.0], [3.0], [4.0]])
     }
 
-  feature_spec = {'prediction': tf.FixedLenFeature([1], dtype=tf.float32)}
+  feature_spec = {'prediction': tf.io.FixedLenFeature([1], dtype=tf.float32)}
   eval_feature_spec = {
-      'prediction': tf.FixedLenFeature([1], dtype=tf.float32),
-      'label': tf.FixedLenFeature([1], dtype=tf.float32),
-      'fixed_float': tf.FixedLenFeature([1], dtype=tf.float32),
-      'fixed_string': tf.FixedLenFeature([1], dtype=tf.string),
-      'fixed_int': tf.FixedLenFeature([1], dtype=tf.int64),
-      'var_float': tf.VarLenFeature(dtype=tf.float32),
-      'var_string': tf.VarLenFeature(dtype=tf.string),
-      'var_int': tf.VarLenFeature(dtype=tf.int64),
+      'prediction': tf.io.FixedLenFeature([1], dtype=tf.float32),
+      'label': tf.io.FixedLenFeature([1], dtype=tf.float32),
+      'fixed_float': tf.io.FixedLenFeature([1], dtype=tf.float32),
+      'fixed_string': tf.io.FixedLenFeature([1], dtype=tf.string),
+      'fixed_int': tf.io.FixedLenFeature([1], dtype=tf.int64),
+      'var_float': tf.io.VarLenFeature(dtype=tf.float32),
+      'var_string': tf.io.VarLenFeature(dtype=tf.string),
+      'var_int': tf.io.VarLenFeature(dtype=tf.int64),
   }
 
   estimator = tf.estimator.Estimator(model_fn=model_fn)
@@ -148,9 +149,10 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
 
   def eval_input_receiver_fn():
     """An input_fn that expects a serialized tf.Example."""
-    serialized_tf_example = tf.placeholder(
+    serialized_tf_example = tf.compat.v1.placeholder(
         dtype=tf.string, shape=[None], name='input_example_tensor')
-    features = tf.parse_example(serialized_tf_example, eval_feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_tf_example, features=eval_feature_spec)
     labels = {'actual_label': features['label'], 'var_int': features['var_int']}
     return export.EvalInputReceiver(
         features=features,

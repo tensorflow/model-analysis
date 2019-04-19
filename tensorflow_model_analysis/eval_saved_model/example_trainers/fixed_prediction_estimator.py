@@ -63,15 +63,14 @@ def get_simple_fixed_prediction_estimator_and_metadata(
           mode=mode,
           predictions=predictions_dict,
           export_outputs={
-              tf.saved_model.signature_constants
-              .DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+              tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
                   tf.estimator.export.RegressionOutput(predictions)
           })
 
-    loss = tf.losses.mean_squared_error(predictions, labels)
-    train_op = tf.assign_add(tf.train.get_global_step(), 1)
+    loss = tf.compat.v1.losses.mean_squared_error(predictions, labels)
+    train_op = tf.compat.v1.assign_add(tf.compat.v1.train.get_global_step(), 1)
     eval_metric_ops = {
-        metric_keys.MetricKeys.LOSS_MEAN: tf.metrics.mean(loss),
+        metric_keys.MetricKeys.LOSS_MEAN: tf.compat.v1.metrics.mean(loss),
     }
 
     return tf.estimator.EstimatorSpec(
@@ -89,17 +88,17 @@ def get_simple_fixed_prediction_estimator_and_metadata(
 
   estimator = tf.estimator.Estimator(model_fn=model_fn)
 
-  feature_spec = {'prediction': tf.FixedLenFeature([1], dtype=tf.float32)}
+  feature_spec = {'prediction': tf.io.FixedLenFeature([1], dtype=tf.float32)}
   eval_feature_spec = {
-      'prediction': tf.FixedLenFeature([1], dtype=tf.float32),
-      'label': tf.FixedLenFeature([1], dtype=tf.float32),
+      'prediction': tf.io.FixedLenFeature([1], dtype=tf.float32),
+      'label': tf.io.FixedLenFeature([1], dtype=tf.float32),
   }
 
   return {
       'estimator':
           estimator,
-      'serving_input_receiver_fn': (
-          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      'serving_input_receiver_fn':
+          (tf.estimator.export.build_parsing_serving_input_receiver_fn(
               feature_spec)),
       'eval_input_receiver_fn':
           export.build_parsing_eval_input_receiver_fn(

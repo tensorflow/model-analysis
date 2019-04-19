@@ -35,8 +35,8 @@ def model_fn(features, labels, mode, params):
   """Model function for custom estimator."""
   del labels
   del params
-  classes = tf.sparse_tensor_to_dense(features['classes'], default_value='?')
-  scores = tf.sparse_tensor_to_dense(features['scores'], default_value=0.0)
+  classes = tf.sparse.to_dense(features['classes'], default_value='?')
+  scores = tf.sparse.to_dense(features['scores'], default_value=0.0)
 
   predictions = {
       prediction_keys.PredictionKeys.LOGITS: scores,
@@ -49,17 +49,16 @@ def model_fn(features, labels, mode, params):
         mode=mode,
         predictions=predictions,
         export_outputs={
-            tf.saved_model.signature_constants
-            .DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+            tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
                 tf.estimator.export.ClassificationOutput(
                     scores=scores, classes=classes),
         })
 
   # Note that this is always going to be 0.
-  loss = tf.losses.mean_squared_error(scores, tf.ones_like(scores))
-  train_op = tf.assign_add(tf.train.get_global_step(), 1)
+  loss = tf.compat.v1.losses.mean_squared_error(scores, tf.ones_like(scores))
+  train_op = tf.compat.v1.assign_add(tf.compat.v1.train.get_global_step(), 1)
   eval_metric_ops = {
-      metric_keys.MetricKeys.LOSS_MEAN: tf.metrics.mean(loss),
+      metric_keys.MetricKeys.LOSS_MEAN: tf.compat.v1.metrics.mean(loss),
   }
 
   return tf.estimator.EstimatorSpec(
@@ -103,14 +102,14 @@ def simple_fixed_prediction_classifier(export_path, eval_export_path):
   serving_input_receiver_fn = (
       tf.estimator.export.build_parsing_serving_input_receiver_fn(
           feature_spec={
-              'classes': tf.VarLenFeature(dtype=tf.string),
-              'scores': tf.VarLenFeature(dtype=tf.float32)
+              'classes': tf.io.VarLenFeature(dtype=tf.string),
+              'scores': tf.io.VarLenFeature(dtype=tf.float32)
           }))
   eval_input_receiver_fn = export.build_parsing_eval_input_receiver_fn(
       feature_spec={
-          'classes': tf.VarLenFeature(dtype=tf.string),
-          'scores': tf.VarLenFeature(dtype=tf.float32),
-          'labels': tf.VarLenFeature(dtype=tf.string),
+          'classes': tf.io.VarLenFeature(dtype=tf.string),
+          'scores': tf.io.VarLenFeature(dtype=tf.float32),
+          'labels': tf.io.VarLenFeature(dtype=tf.string),
       },
       label_key='labels')
 

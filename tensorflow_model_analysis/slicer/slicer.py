@@ -228,8 +228,8 @@ class SingleSliceSpec(object):
       yield tuple(sorted(self._value_matches + list(column_part)))
 
 
-def serialize_slice_key(
-    slice_key: SliceKeyType) -> metrics_for_slice_pb2.SliceKey:
+def serialize_slice_key(slice_key: SliceKeyType
+                       ) -> metrics_for_slice_pb2.SliceKey:
   """Converts SliceKeyType to SliceKey proto.
 
   Args:
@@ -253,14 +253,14 @@ def serialize_slice_key(
     elif isinstance(val, float):
       single_slice_key.float_value = val
     else:
-      raise TypeError(
-          'unrecognized type of type %s, value %s' % (type(val), val))
+      raise TypeError('unrecognized type of type %s, value %s' %
+                      (type(val), val))
 
   return result
 
 
-def deserialize_slice_key(
-    slice_key: metrics_for_slice_pb2.SliceKey) -> SliceKeyType:
+def deserialize_slice_key(slice_key: metrics_for_slice_pb2.SliceKey
+                         ) -> SliceKeyType:
   """Converts SliceKey proto to SliceKeyType.
 
   Args:
@@ -281,15 +281,15 @@ def deserialize_slice_key(
     elif elem.HasField('float_value'):
       value = elem.float_value
     else:
-      raise TypeError(
-          'unrecognized type of type %s, value %s' % (type(elem), elem))
+      raise TypeError('unrecognized type of type %s, value %s' %
+                      (type(elem), elem))
     result.append((elem.column, value))
   return tuple(result)
 
 
-def get_slices_for_features_dict(
-    features_dict: types.DictOfFetchedTensorValues,
-    slice_spec: List[SingleSliceSpec]) -> Iterable[SliceKeyType]:
+def get_slices_for_features_dict(features_dict: types.DictOfFetchedTensorValues,
+                                 slice_spec: List[SingleSliceSpec]
+                                ) -> Iterable[SliceKeyType]:
   """Generates the slice keys appropriate for the given features dictionary.
 
   Args:

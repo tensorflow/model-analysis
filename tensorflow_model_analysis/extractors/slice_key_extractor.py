@@ -33,9 +33,9 @@ from typing import List, Optional
 SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSliceKeys'
 
 
-def SliceKeyExtractor(
-    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-    materialize: Optional[bool] = True) -> extractor.Extractor:
+def SliceKeyExtractor(slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+                      materialize: Optional[bool] = True
+                     ) -> extractor.Extractor:
   """Creates an extractor for extracting slice keys.
 
   The incoming Extracts must contain a FeaturesPredictionsLabels extract keyed

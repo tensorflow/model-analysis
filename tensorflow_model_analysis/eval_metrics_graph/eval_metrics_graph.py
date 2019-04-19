@@ -70,7 +70,7 @@ class EvalMetricsGraph(object):
     function _construct_graph.
     """
     self._graph = tf.Graph()
-    self._session = tf.Session(graph=self._graph)
+    self._session = tf.compat.v1.Session(graph=self._graph)
 
     # Variables that need to be populated.
 
@@ -184,7 +184,8 @@ class EvalMetricsGraph(object):
 
     # Update metric variables incrementally with only the new elements in the
     # metric_variables collection.
-    collection = self._graph.get_collection(tf.GraphKeys.METRIC_VARIABLES)
+    collection = self._graph.get_collection(
+        tf.compat.v1.GraphKeys.METRIC_VARIABLES)
     collection = collection[len(self._metric_variable_nodes):]
 
     # Note that this is a node_list - it's not something that TFMA
@@ -195,15 +196,17 @@ class EvalMetricsGraph(object):
     for node in collection:
       self._metric_variable_nodes.append(node)
       with self._graph.as_default():
-        placeholder = tf.placeholder(dtype=node.dtype, shape=node.get_shape())
+        placeholder = tf.compat.v1.placeholder(
+            dtype=node.dtype, shape=node.get_shape())
         self._metric_variable_placeholders.append(placeholder)
-        self._metric_variable_assign_ops.append(tf.assign(node, placeholder))
+        self._metric_variable_assign_ops.append(
+            tf.compat.v1.assign(node, placeholder))
 
     with self._graph.as_default():
       self._all_metric_variable_assign_ops = tf.group(
           *self._metric_variable_assign_ops)
       self._all_metric_update_ops = tf.group(*self._metric_update_ops)
-      self._reset_variables_op = tf.local_variables_initializer()
+      self._reset_variables_op = tf.compat.v1.local_variables_initializer()
       self._session.run(self._reset_variables_op)
 
     self._perform_metrics_update_fn = self._session.make_callable(
@@ -236,17 +239,19 @@ class EvalMetricsGraph(object):
       return list(itertools.chain.from_iterable(target))
 
     def log_list(name: Text, target: List[Any]) -> None:
-      tf.logging.info('%s = [', name)
+      tf.compat.v1.logging.info('%s = [', name)
       for elem_type, elem_name in flatten(
           [create_tuple_list(x) for x in target]):
-        tf.logging.info('(\'%s\', \'%s\'),', elem_type, elem_name)
-      tf.logging.info(']')
+        tf.compat.v1.logging.info('(\'%s\', \'%s\'),', elem_type, elem_name)
+      tf.compat.v1.logging.info(']')
 
-    tf.logging.info('-------------------- fetches and feeds information')
+    tf.compat.v1.logging.info(
+        '-------------------- fetches and feeds information')
     log_list('fetches', fetches)
-    tf.logging.info('')
+    tf.compat.v1.logging.info('')
     log_list('feed_list', feed_list)
-    tf.logging.info('-------------------- end fetches and feeds information')
+    tf.compat.v1.logging.info(
+        '-------------------- end fetches and feeds information')
 
   def get_features_predictions_labels_dicts(
       self) -> Tuple[types.TensorTypeMaybeDict, types.TensorTypeMaybeDict, types
@@ -343,8 +348,8 @@ class EvalMetricsGraph(object):
     result = self._session.run(fetches=self._metric_variable_nodes)
     return result
 
-  def _create_feed_for_metric_variables(
-      self, metric_variable_values: List[Any]) -> Dict[types.TensorType, Any]:
+  def _create_feed_for_metric_variables(self, metric_variable_values: List[Any]
+                                       ) -> Dict[types.TensorType, Any]:
     """Returns a feed dict for feeding metric variables values to set them.
 
     Args:

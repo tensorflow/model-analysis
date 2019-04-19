@@ -66,7 +66,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
 
   def _writeTFExamplesToTFRecords(self, examples):
     data_location = os.path.join(self._getTempDir(), 'input_data.rio')
-    with tf.python_io.TFRecordWriter(data_location) as writer:
+    with tf.io.TFRecordWriter(data_location) as writer:
       for example in examples:
         writer.write(example.SerializeToString())
     return data_location
@@ -298,7 +298,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertEqual(len(eval_result.plots), 1)
     slice_key, plots = eval_result.plots[0]
     self.assertEqual((), slice_key)
-    tf.logging.info(plots.keys())
+    tf.compat.v1.logging.info(plots.keys())
     self.assertDictElementsAlmostEqual(
         plots['post_export_metrics']['confusionMatrixAtThresholds']['matrices']
         [8001], expected_matrix)

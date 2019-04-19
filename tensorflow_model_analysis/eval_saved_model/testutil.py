@@ -134,8 +134,8 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
           self.assertAlmostEqual(a, b, msg=msg, places=places)
 
   def assertSparseTensorValueEqual(
-      self, expected_sparse_tensor_value: tf.SparseTensorValue,
-      got_sparse_tensor_value: tf.SparseTensorValue) -> None:
+      self, expected_sparse_tensor_value: tf.compat.v1.SparseTensorValue,
+      got_sparse_tensor_value: tf.compat.v1.SparseTensorValue) -> None:
     self.assertAllEqual(expected_sparse_tensor_value.indices,
                         got_sparse_tensor_value.indices)
     self.assertAllEqual(expected_sparse_tensor_value.values,
@@ -150,26 +150,28 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     self.assertEqual(expected_sparse_tensor_value.dense_shape.dtype,
                      got_sparse_tensor_value.dense_shape.dtype)
 
-  def createTestEvalSharedModel(
-      self,
-      eval_saved_model_path: Text,
-      add_metrics_callbacks: Optional[List[
-          types.AddMetricsCallbackType]] = None,
-      include_default_metrics: Optional[bool] = True,
-      example_weight_key: Optional[Text] = None,
-      additional_fetches: Optional[List[Text]] = None) -> types.EvalSharedModel:
+  def createTestEvalSharedModel(self,
+                                eval_saved_model_path: Text,
+                                add_metrics_callbacks: Optional[List[
+                                    types.AddMetricsCallbackType]] = None,
+                                include_default_metrics: Optional[bool] = True,
+                                example_weight_key: Optional[Text] = None,
+                                additional_fetches: Optional[List[Text]] = None
+                               ) -> types.EvalSharedModel:
 
     return types.EvalSharedModel(
         model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks,
         example_weight_key=example_weight_key,
-        construct_fn=dofn.make_construct_fn(
-            eval_saved_model_path, add_metrics_callbacks,
-            include_default_metrics, additional_fetches))
+        construct_fn=dofn.make_construct_fn(eval_saved_model_path,
+                                            add_metrics_callbacks,
+                                            include_default_metrics,
+                                            additional_fetches))
 
-  def predict_injective_single_example(
-      self, eval_saved_model: load.EvalSavedModel,
-      raw_example_bytes: bytes) -> types.FeaturesPredictionsLabels:
+  def predict_injective_single_example(self,
+                                       eval_saved_model: load.EvalSavedModel,
+                                       raw_example_bytes: bytes
+                                      ) -> types.FeaturesPredictionsLabels:
     """Run predict for a single example for a injective model.
 
     Args:

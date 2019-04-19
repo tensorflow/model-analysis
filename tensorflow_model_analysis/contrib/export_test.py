@@ -48,8 +48,9 @@ class ExportTest(testutil.TensorflowModelAnalysisTest):
             estimator_metadata['serving_input_receiver_fn']))
 
     graph = tf.Graph()
-    sess = tf.Session(graph=graph)
-    tf.saved_model.loader.load(sess, [constants.EVAL_TAG], eval_export_dir)
+    sess = tf.compat.v1.Session(graph=graph)
+    tf.compat.v1.saved_model.loader.load(sess, [constants.EVAL_TAG],
+                                         eval_export_dir)
 
     feature_metadata = export.load_and_resolve_feature_metadata(
         eval_export_dir, graph)

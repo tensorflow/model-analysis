@@ -38,7 +38,7 @@ def get_feature_value(fpl: types.FeaturesPredictionsLabels,
                       feature_key: Text) -> Any:
   """Helper to get value from FPL dict."""
   node_value = fpl.features[feature_key][encoding.NODE_SUFFIX]
-  if isinstance(node_value, tf.SparseTensorValue):
+  if isinstance(node_value, tf.compat.v1.SparseTensorValue):
     return node_value.values
   return node_value
 
@@ -48,7 +48,7 @@ def _set_feature_value(features: types.DictOfFetchedTensorValues,
                        feature_value: Any) -> types.DictOfFetchedTensorValues:
   """Helper to set feature in FPL dict."""
   if not isinstance(feature_value, np.ndarray) and not isinstance(
-      feature_value, tf.SparseTensorValue):
+      feature_value, tf.compat.v1.SparseTensorValue):
     feature_value = np.array([feature_value])
   features[feature_key] = {encoding.NODE_SUFFIX: feature_value}
   return features  # pytype: disable=bad-return-type

@@ -59,7 +59,8 @@ def make_regressor_input_fn(feature_spec):
             util.make_example(age=40.0, language='chinese', label=120.0)
         ]
     ]
-    features = tf.parse_example(serialized_examples, feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_examples, features=feature_spec)
     labels = features.pop('label')
     return features, labels
 
@@ -95,10 +96,11 @@ def make_classifier_input_fn(feature_spec, n_classes=2):
             util.make_example(age=4.0, language='chinese', label=chinese_label)
         ]
     ]
-    features = tf.parse_example(serialized_examples, feature_spec)
+    features = tf.io.parse_example(
+        serialized=serialized_examples, features=feature_spec)
     labels = features.pop('label')
     if n_classes > 2:
-      labels = tf.sparse_tensor_to_dense(labels, default_value=-1)
+      labels = tf.sparse.to_dense(labels, default_value=-1)
 
     return features, labels
 
@@ -149,27 +151,36 @@ def dnn_columns(include_label_column=False, n_classes=2):
 
 def regressor_extra_metrics(features, labels, predictions):
   return {
-      'my_mean_prediction': tf.metrics.mean(predictions['predictions']),
-      'my_mean_age': tf.metrics.mean(features['age']),
-      'my_mean_label': tf.metrics.mean(labels),
-      'my_mean_age_times_label': tf.metrics.mean(labels * features['age']),
+      'my_mean_prediction':
+          tf.compat.v1.metrics.mean(predictions['predictions']),
+      'my_mean_age':
+          tf.compat.v1.metrics.mean(features['age']),
+      'my_mean_label':
+          tf.compat.v1.metrics.mean(labels),
+      'my_mean_age_times_label':
+          tf.compat.v1.metrics.mean(labels * features['age']),
   }
 
 
 def classifier_extra_metrics(features, labels, predictions):
+  """Returns extra metrics to use with classifier."""
   if 'logistic' in predictions:
     return {
-        'my_mean_prediction': tf.metrics.mean(predictions['logistic']),
-        'my_mean_age': tf.metrics.mean(features['age']),
-        'my_mean_label': tf.metrics.mean(labels),
-        'my_mean_age_times_label': tf.metrics.mean(labels * features['age']),
+        'my_mean_prediction':
+            tf.compat.v1.metrics.mean(predictions['logistic']),
+        'my_mean_age':
+            tf.compat.v1.metrics.mean(features['age']),
+        'my_mean_label':
+            tf.compat.v1.metrics.mean(labels),
+        'my_mean_age_times_label':
+            tf.compat.v1.metrics.mean(labels * features['age']),
     }
   # Logistic won't be present in multiclass cases.
   return {
       'mean_english_prediction':
-          tf.metrics.mean(predictions['probabilities'][0]),
+          tf.compat.v1.metrics.mean(predictions['probabilities'][0]),
       'my_mean_age':
-          tf.metrics.mean(features['age']),
+          tf.compat.v1.metrics.mean(features['age']),
   }
 
 

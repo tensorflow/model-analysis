@@ -96,8 +96,8 @@ class ModelAgnosticEvaluateGraph(eval_metrics_graph.EvalMetricsGraph):
     # numpy array for dense Tensor, SparseTensorValue for SparseTensor
     (tensor_type, dtype) = fpl_feed
     if tensor_type == constants.PLACEHOLDER:
-      return tf.placeholder(dtype=dtype)
-    return tf.sparse_placeholder(dtype=dtype)
+      return tf.compat.v1.placeholder(dtype=dtype)
+    return tf.compat.v1.sparse_placeholder(dtype=dtype)
 
   def _create_infeed_ops(self):
     """Instantiates the infeed ops to read in FPLs.

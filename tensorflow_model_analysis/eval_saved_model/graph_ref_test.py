@@ -33,7 +33,8 @@ class GraphRefTest(tf.test.TestCase):
     signature_def = meta_graph_pb2.SignatureDef()
 
     def make_tensor_info(name):
-      return tf.saved_model.utils.build_tensor_info(tf.constant(0.0, name=name))
+      return tf.compat.v1.saved_model.utils.build_tensor_info(
+          tf.constant(0.0, name=name))
 
     # Test for single entry (non-dict) tensors.
     signature_def.inputs['labels'].CopyFrom(make_tensor_info('labels'))

@@ -112,7 +112,7 @@ def _serialize_eval_config(eval_config: EvalConfig) -> bytes:
 
 def load_eval_config(output_path: Text) -> EvalConfig:
   serialized_record = six.next(
-      tf.python_io.tf_record_iterator(
+      tf.compat.v1.python_io.tf_record_iterator(
           os.path.join(output_path, _EVAL_CONFIG_FILE)))
   final_dict = pickle.loads(serialized_record)
   _check_version(final_dict, output_path)
@@ -657,8 +657,8 @@ def run_model_analysis(
   # Get working_dir ready.
   if output_path is None:
     output_path = tempfile.mkdtemp()
-  if not tf.gfile.Exists(output_path):
-    tf.gfile.MakeDirs(output_path)
+  if not tf.io.gfile.exists(output_path):
+    tf.io.gfile.makedirs(output_path)
 
   with beam.Pipeline(options=pipeline_options) as p:
     if file_format == 'tfrecords':

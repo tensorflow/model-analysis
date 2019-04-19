@@ -292,7 +292,7 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
 
     def make_multi_hot_labels():
       """Converts class index labels to mutli-hot vector."""
-      tf.logging.info(
+      tf.compat.v1.logging.info(
           'Labels has unknown static shape in dimension 1, indicating a class '
           'index tensor. '
           'Trying to transform labels into one_hot labels for analysis.')
@@ -300,7 +300,7 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
       # classes in predictions > 1.
       predictions_tensor.shape.assert_has_rank(2)
       assert_op = tf.Assert(
-          tf.greater_equal(tf.shape(predictions_tensor)[1], 1), [
+          tf.greater_equal(tf.shape(input=predictions_tensor)[1], 1), [
               'For multi-hot labels, predictions_tensor should have more than '
               'one class. predictions_tensor was:', predictions_tensor
           ])
@@ -309,11 +309,11 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
         # Result has shape [batch_size, max_num_classes_in_batch, depth]
         one_hots_per_class = tf.one_hot(
             indices=labels_tensor,
-            depth=tf.shape(predictions_tensor)[1],
+            depth=tf.shape(input=predictions_tensor)[1],
             axis=-1)
         # Sum one-hot vectors to make a multi-hot vector representing all
         # classes.
-        return tf.reduce_sum(one_hots_per_class, axis=1)
+        return tf.reduce_sum(input_tensor=one_hots_per_class, axis=1)
 
     labels_tensor.shape.assert_has_rank(2)
     if (labels_tensor.shape[1].value is None or
@@ -322,11 +322,14 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
 
     assert_op = tf.Assert(
         tf.reduce_all(
-            tf.equal(tf.shape(predictions_tensor), tf.shape(labels_tensor))), [
-                'Predictions and labels tensors should have the same shape. ',
-                'predictions_tensor: ', predictions_tensor, 'labels_tensor: ',
-                labels_tensor
-            ])
+            input_tensor=tf.equal(
+                tf.shape(input=predictions_tensor), tf.shape(
+                    input=labels_tensor))),
+        [
+            'Predictions and labels tensors should have the same shape. ',
+            'predictions_tensor: ', predictions_tensor, 'labels_tensor: ',
+            labels_tensor
+        ])
     with tf.control_dependencies([assert_op]):
       predictions_for_class = predictions_tensor[:, self._tensor_index]
       labels_for_class = tf.cast(labels_tensor[:, self._tensor_index],
@@ -494,32 +497,34 @@ class _ExampleCount(_PostExportMetric):
       # in alphabetical order if the predictions dict is non-empty.
       # If the predictions dict is empty, try the labels dict.
       # If that is empty too, default to the empty Tensor.
-      tf.logging.info(
+      tf.compat.v1.logging.info(
           'ExampleCount post export metric: could not find any of '
           'the standard keys in predictions_dict (keys were: %s)',
           predictions_dict.keys())
       if predictions_dict is not None and predictions_dict.keys():
         first_key = sorted(predictions_dict.keys())[0]
         ref_tensor = predictions_dict[first_key]
-        tf.logging.info('Using the first key from predictions_dict: %s',
-                        first_key)
+        tf.compat.v1.logging.info(
+            'Using the first key from predictions_dict: %s', first_key)
       elif labels_dict is not None:
         if types.is_tensor(labels_dict):
           ref_tensor = labels_dict
-          tf.logging.info('Using the labels Tensor')
+          tf.compat.v1.logging.info('Using the labels Tensor')
         elif labels_dict.keys():
           first_key = sorted(labels_dict.keys())[0]
           ref_tensor = labels_dict[first_key]
-          tf.logging.info('Using the first key from labels_dict: %s', first_key)
+          tf.compat.v1.logging.info('Using the first key from labels_dict: %s',
+                                    first_key)
 
       if ref_tensor is None:
-        tf.logging.info('Could not find a reference Tensor for example count. '
-                        'Defaulting to the empty Tensor.')
+        tf.compat.v1.logging.info(
+            'Could not find a reference Tensor for example count. '
+            'Defaulting to the empty Tensor.')
         ref_tensor = tf.constant([])
 
     return {
         self._metric_key(metric_keys.EXAMPLE_COUNT):
-            metrics.total(tf.shape(ref_tensor)[0])
+            metrics.total(tf.shape(input=ref_tensor)[0])
     }
 
   def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
@@ -798,7 +803,7 @@ def _flatten_to_one_dim(tensor):
   # We use this instead of squeeze so we don't squeeze out a Tensor with
   # shape [0]. Squeezing a Tensor with shape [0] results in a shape of [],
   # which makes concat unhappy.
-  return tf.reshape(tensor, [tf.size(tensor)])
+  return tf.reshape(tensor, [tf.size(input=tensor)])
 
 
 def _create_predictions_labels_weights_for_fractional_labels(
@@ -830,9 +835,9 @@ def _create_predictions_labels_weights_for_fractional_labels(
       'metrics you have configured are compatible with your model type, e.g. '
       'you should not configure AUC for a regression model.')
   with tf.control_dependencies([
-      tf.assert_greater_equal(
+      tf.compat.v1.assert_greater_equal(
           label_tensor, np.float64(0.0), message=assert_message),
-      tf.assert_less_equal(
+      tf.compat.v1.assert_less_equal(
           label_tensor, np.float64(1.0), message=assert_message)
   ]):
     return (
@@ -926,7 +931,7 @@ class _ConfusionMatrixBasedMetric(_PostExportMetric):
     # [ fn@threshold_k tn@threshold_k ... recall@threshold_k ]
     #
     value_op = tf.transpose(
-        tf.stack([
+        a=tf.stack([
             values['fn'], values['tn'], values['fp'], values['tp'],
             values['precision'], values['recall']
         ]))
@@ -1255,21 +1260,21 @@ class _Auc(_PostExportMetric):
         _create_predictions_labels_weights_for_fractional_labels(
             predictions, labels, weights))
 
-    value_ops, value_update = tf.metrics.auc(
+    value_ops, value_update = tf.compat.v1.metrics.auc(
         labels=labels,
         predictions=predictions,
         weights=weights,
         num_thresholds=self._num_buckets + 1,
         curve=self._curve,
         summation_method='careful_interpolation')
-    lower_bound_ops, lower_bound_update = tf.metrics.auc(
+    lower_bound_ops, lower_bound_update = tf.compat.v1.metrics.auc(
         labels=labels,
         predictions=predictions,
         weights=weights,
         num_thresholds=self._num_buckets + 1,
         curve=self._curve,
         summation_method='minoring')
-    upper_bound_ops, upper_bound_update = tf.metrics.auc(
+    upper_bound_ops, upper_bound_update = tf.compat.v1.metrics.auc(
         labels=labels,
         predictions=predictions,
         weights=weights,
@@ -1310,12 +1315,13 @@ def _class_ids(probabilities: tf.Tensor) -> tf.Tensor:
     Class IDs for N classes (i.e. [[0, 1, ..., n-1], ...] with shape
     [batch, n_classes]).
   """
-  n_classes = tf.cast(tf.shape(probabilities)[-1], tf.int64)
+  n_classes = tf.cast(tf.shape(input=probabilities)[-1], tf.int64)
   # Tensor representing shape of class_ids expanded by batch dims: [1,n_classes]
   expanded_dims = tf.concat(
-      [tf.ones_like(tf.shape(probabilities))[:-1], [n_classes]], axis=0)
+      [tf.ones_like(tf.shape(input=probabilities))[:-1], [n_classes]], axis=0)
   # Tensor for multiplying tiles by batch size. Shape should be [batch_size,1]
-  batch_multiplier = tf.concat([tf.shape(probabilities)[:-1], [1]], axis=0)
+  batch_multiplier = tf.concat([tf.shape(input=probabilities)[:-1], [1]],
+                               axis=0)
   # Batches of [0, ..., n_classes]
   return tf.tile(
       input=tf.reshape(tensor=tf.range(n_classes), shape=expanded_dims),
@@ -1424,12 +1430,13 @@ class _PrecisionRecallAtK(_PostExportMetric):
     if self._labels_key:
       labels = labels_dict[self._labels_key]
     if isinstance(labels_dict, tf.SparseTensor):
-      labels = tf.sparse_tensor_to_dense(labels_dict, default_value='')
+      labels = tf.sparse.to_dense(labels_dict, default_value='')
 
     # Expand dims if necessary.
     labels = tf.cond(
-        tf.equal(tf.rank(labels),
-                 1), lambda: tf.expand_dims(labels, -1), lambda: labels)
+        pred=tf.equal(tf.rank(labels), 1),
+        true_fn=lambda: tf.expand_dims(labels, -1),
+        false_fn=lambda: labels)
 
     classes = _get_target_tensor(predictions_dict, self._classes_keys)
     scores = _get_target_tensor(predictions_dict, self._probabilities_keys)
@@ -1441,9 +1448,9 @@ class _PrecisionRecallAtK(_PostExportMetric):
     if labels.dtype == tf.int64:
       classes = tf.cond(
           # Match only when classes has a single item (i.e. argmax).
-          tf.equal(tf.shape(classes)[-1], 1),
-          lambda: tf.as_string(_class_ids(scores)),
-          lambda: classes)
+          pred=tf.equal(tf.shape(input=classes)[-1], 1),
+          true_fn=lambda: tf.as_string(_class_ids(scores)),
+          false_fn=lambda: classes)
 
     labels = _cast_or_convert(labels, classes.dtype)
 
@@ -1724,7 +1731,7 @@ class _MeanAbsoluteError(_TFMetricBaseClass):
     self._example_weight_key = example_weight_key
     super(_MeanAbsoluteError, self).__init__(
         metric_keys.MEAN_ABSOLUTE_ERROR,
-        tf.metrics.mean_absolute_error,
+        tf.compat.v1.metrics.mean_absolute_error,
         example_weight_key,
         target_prediction_keys,
         labels_key,

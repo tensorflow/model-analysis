@@ -161,7 +161,7 @@ class MetaFeatureExtractorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(metrics, check_result)
 
   def testGetSparseTensorValue(self):
-    sparse_tensor_value = tf.SparseTensorValue(
+    sparse_tensor_value = tf.compat.v1.SparseTensorValue(
         indices=[[0, 0, 0], [0, 1, 0], [0, 1, 1]],
         values=['', 'one', 'two'],
         dense_shape=[1, 2, 2])

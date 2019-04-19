@@ -36,11 +36,11 @@ class ExportTest(testutil.TensorflowModelAnalysisTest):
     graph = tf.Graph()
     features1 = {'apple': tf.constant(1.0), 'banana': tf.constant(2.0)}
     labels1 = tf.constant(3.0)
-    receiver_tensors1 = {'examples': tf.placeholder(tf.string)}
+    receiver_tensors1 = {'examples': tf.compat.v1.placeholder(tf.string)}
 
     features2 = {'cherry': tf.constant(3.0)}
     labels2 = {'alpha': tf.constant(4.0), 'bravo': tf.constant(5.0)}
-    receiver_tensors2 = {'examples': tf.placeholder(tf.string)}
+    receiver_tensors2 = {'examples': tf.compat.v1.placeholder(tf.string)}
 
     with graph.as_default():
       export.EvalInputReceiver(
@@ -57,14 +57,18 @@ class ExportTest(testutil.TensorflowModelAnalysisTest):
       label_nodes_collection_name = encoding.with_suffix(
           encoding.LABELS_COLLECTION, encoding.NODE_SUFFIX)
 
-      self.assertEqual(2, len(tf.get_collection(feature_keys_collection_name)))
-      self.assertEqual(2, len(tf.get_collection(feature_nodes_collection_name)))
-      self.assertEqual(1, len(tf.get_collection(label_keys_collection_name)))
-      self.assertEqual(1, len(tf.get_collection(label_nodes_collection_name)))
-      self.assertEqual(1, len(
-          tf.get_collection(encoding.EXAMPLE_REF_COLLECTION)))
-      self.assertEqual(1,
-                       len(tf.get_collection(encoding.TFMA_VERSION_COLLECTION)))
+      self.assertEqual(
+          2, len(tf.compat.v1.get_collection(feature_keys_collection_name)))
+      self.assertEqual(
+          2, len(tf.compat.v1.get_collection(feature_nodes_collection_name)))
+      self.assertEqual(
+          1, len(tf.compat.v1.get_collection(label_keys_collection_name)))
+      self.assertEqual(
+          1, len(tf.compat.v1.get_collection(label_nodes_collection_name)))
+      self.assertEqual(
+          1, len(tf.compat.v1.get_collection(encoding.EXAMPLE_REF_COLLECTION)))
+      self.assertEqual(
+          1, len(tf.compat.v1.get_collection(encoding.TFMA_VERSION_COLLECTION)))
 
       # Call again with a different set of features, labels and receiver
       # tensors, check that the latest call overrides the earlier one.
@@ -76,14 +80,18 @@ class ExportTest(testutil.TensorflowModelAnalysisTest):
           features=features2,
           labels=labels2,
           receiver_tensors=receiver_tensors2)
-      self.assertEqual(1, len(tf.get_collection(feature_keys_collection_name)))
-      self.assertEqual(1, len(tf.get_collection(feature_nodes_collection_name)))
-      self.assertEqual(2, len(tf.get_collection(label_keys_collection_name)))
-      self.assertEqual(2, len(tf.get_collection(label_nodes_collection_name)))
-      self.assertEqual(1, len(
-          tf.get_collection(encoding.EXAMPLE_REF_COLLECTION)))
-      self.assertEqual(1,
-                       len(tf.get_collection(encoding.TFMA_VERSION_COLLECTION)))
+      self.assertEqual(
+          1, len(tf.compat.v1.get_collection(feature_keys_collection_name)))
+      self.assertEqual(
+          1, len(tf.compat.v1.get_collection(feature_nodes_collection_name)))
+      self.assertEqual(
+          2, len(tf.compat.v1.get_collection(label_keys_collection_name)))
+      self.assertEqual(
+          2, len(tf.compat.v1.get_collection(label_nodes_collection_name)))
+      self.assertEqual(
+          1, len(tf.compat.v1.get_collection(encoding.EXAMPLE_REF_COLLECTION)))
+      self.assertEqual(
+          1, len(tf.compat.v1.get_collection(encoding.TFMA_VERSION_COLLECTION)))
 
 
 if __name__ == '__main__':

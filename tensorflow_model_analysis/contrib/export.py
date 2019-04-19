@@ -136,8 +136,8 @@ def _observe_dnn_model(output_dict: Dict[Text, Any]):
   feature_column_v2.DenseFeatures.call = old_dense_features_call
 
 
-def _serialize_feature_column(
-    feature_column: feature_column_v2.FeatureColumn) -> Dict[Text, Any]:
+def _serialize_feature_column(feature_column: feature_column_v2.FeatureColumn
+                             ) -> Dict[Text, Any]:
   """Serialize the given feature column into a dictionary."""
   if not hasattr(feature_column, '_is_v2_column'):
     raise ValueError('feature_column does not has _is_v2_column attribute')
@@ -220,10 +220,12 @@ def _serialize_feature_metadata_for_model(
   associated_tensors = []
   for k, v in cols_to_output_tensors.items():
     feature_columns.append(_serialize_feature_column(k))
-    associated_tensors.append(tf.saved_model.utils.build_tensor_info(v))
+    associated_tensors.append(
+        tf.compat.v1.saved_model.utils.build_tensor_info(v))
 
   serialized_features_dict = {
-      k: tf.saved_model.utils.build_tensor_info(v) for k, v in features.items()
+      k: tf.compat.v1.saved_model.utils.build_tensor_info(v)
+      for k, v in features.items()
   }
 
   return {
@@ -281,8 +283,8 @@ def export_eval_savedmodel_with_feature_metadata(
   # doesn't seem to be a nice way to do this given how we are monkey-patching
   # to observe/capture the information we need.
   if not export_path:
-    raise ValueError(
-        'export appears to have failed. export_path was: %s' % export_path)
+    raise ValueError('export appears to have failed. export_path was: %s' %
+                     export_path)
 
   output_path = feature_metadata_path(export_path)
   assets_extra_path = os.path.dirname(output_path)
@@ -295,8 +297,8 @@ def export_eval_savedmodel_with_feature_metadata(
   return export_path
 
 
-def deserialize_feature_metadata(
-    serialized_feature_metadata: bytes) -> Dict[Text, Any]:
+def deserialize_feature_metadata(serialized_feature_metadata: bytes
+                                ) -> Dict[Text, Any]:
   """Deserialize serialized feature metadata blob.
 
   Args:
@@ -375,11 +377,11 @@ def load_and_resolve_feature_metadata(eval_saved_model_path: bytes,
 
   # Resolve Tensors in graph
   result['associated_tensors'] = [
-      tf.saved_model.get_tensor_from_tensor_info(tensor_info, graph)
+      tf.compat.v1.saved_model.get_tensor_from_tensor_info(tensor_info, graph)
       for tensor_info in result['associated_tensors']
   ]
   result['features'] = {
-      k: tf.saved_model.get_tensor_from_tensor_info(v, graph)
+      k: tf.compat.v1.saved_model.get_tensor_from_tensor_info(v, graph)
       for k, v in result['features'].items()
   }
 

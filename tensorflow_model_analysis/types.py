@@ -33,7 +33,7 @@ DictOfTensorType = Dict[Text, TensorType]
 TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
 
 # Value of a Tensor fetched using session.run.
-TensorValue = Union[tf.SparseTensorValue, np.ndarray]
+TensorValue = Union[tf.compat.v1.SparseTensorValue, np.ndarray]
 DictOfTensorValue = Dict[Text, TensorValue]
 TensorValueMaybeDict = Union[TensorValue, DictOfTensorValue]
 
@@ -187,6 +187,7 @@ class EvalSharedModel(
       add_metrics_callbacks = []
     if not shared_handle:
       shared_handle = shared.Shared()
-    return super(EvalSharedModel, cls).__new__(
-        cls, model_path, add_metrics_callbacks, include_default_metrics,
-        example_weight_key, additional_fetches, shared_handle, construct_fn)
+    return super(EvalSharedModel,
+                 cls).__new__(cls, model_path, add_metrics_callbacks,
+                              include_default_metrics, example_weight_key,
+                              additional_fetches, shared_handle, construct_fn)

@@ -57,7 +57,7 @@ class SliceAccessor(object):
       raise KeyError('key %s not found' % key)
 
     value = feature['node']
-    if isinstance(value, tf.SparseTensorValue):
+    if isinstance(value, tf.compat.v1.SparseTensorValue):
       return value.values.tolist()
     if not isinstance(value, np.ndarray):
       raise ValueError(

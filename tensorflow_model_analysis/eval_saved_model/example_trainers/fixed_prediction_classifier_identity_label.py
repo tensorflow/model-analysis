@@ -43,16 +43,16 @@ def simple_fixed_prediction_classifier_identity_label(export_path,
   serving_input_receiver_fn = (
       tf.estimator.export.build_parsing_serving_input_receiver_fn(
           feature_spec={
-              'classes': tf.VarLenFeature(dtype=tf.string),
-              'scores': tf.VarLenFeature(dtype=tf.float32)
+              'classes': tf.io.VarLenFeature(dtype=tf.string),
+              'scores': tf.io.VarLenFeature(dtype=tf.float32)
           }))
   eval_input_receiver_fn = export.build_parsing_eval_input_receiver_fn(
       feature_spec={
-          'classes': tf.VarLenFeature(dtype=tf.string),
-          'scores': tf.VarLenFeature(dtype=tf.float32),
-          'label': tf.FixedLenFeature([1], dtype=tf.int64),
-          'language': tf.FixedLenFeature([1], dtype=tf.string),
-          'age': tf.FixedLenFeature([1], dtype=tf.float32),
+          'classes': tf.io.VarLenFeature(dtype=tf.string),
+          'scores': tf.io.VarLenFeature(dtype=tf.float32),
+          'label': tf.io.FixedLenFeature([1], dtype=tf.int64),
+          'language': tf.io.FixedLenFeature([1], dtype=tf.string),
+          'age': tf.io.FixedLenFeature([1], dtype=tf.float32),
       },
       label_key='label')
 

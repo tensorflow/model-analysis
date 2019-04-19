@@ -82,7 +82,7 @@ def _AugmentExtracts(data: Dict[Text, Any], prefix: Text, excludes: List[bytes],
     else:
       col_name = util.compound_key([prefix, name])
 
-    if isinstance(val, tf.SparseTensorValue):
+    if isinstance(val, tf.compat.v1.SparseTensorValue):
       extracts[col_name] = types.MaterializedColumn(
           name=col_name, value=val.values[0:_MAX_SPARSE_FEATURES_PER_COLUMN])
 
@@ -116,11 +116,11 @@ def _ParseExample(extracts: types.Extracts) -> None:
     extracts[key] = types.MaterializedColumn(name=key, value=values)
 
 
-def _MaterializeFeatures(
-    extracts: types.Extracts,
-    additional_extracts: Optional[List[Text]] = None,
-    excludes: Optional[List[bytes]] = None,
-    source: int = constants.FEATURES_PREDICTIONS_LABELS_KEY) -> types.Extracts:
+def _MaterializeFeatures(extracts: types.Extracts,
+                         additional_extracts: Optional[List[Text]] = None,
+                         excludes: Optional[List[bytes]] = None,
+                         source: int = constants.FEATURES_PREDICTIONS_LABELS_KEY
+                        ) -> types.Extracts:
   """Converts FeaturesPredictionsLabels into MaterializedColumn in the extract.
 
   It must be the case that the PredictExtractor was called before calling this

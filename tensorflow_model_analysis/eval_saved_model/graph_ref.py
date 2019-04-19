@@ -102,8 +102,8 @@ def extract_signature_inputs_or_outputs_with_prefix(
 
 # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
 def load_legacy_inputs(
-    meta_graph_def: tf.MetaGraphDef,
-    signature_def: tf.MetaGraphDef.SignatureDefEntry,
+    meta_graph_def: tf.compat.v1.MetaGraphDef,
+    signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
     graph: tf.Graph) -> Tuple[Dict[Text, types.TensorType], types.TensorType]:
   """Loads legacy inputs.
 
@@ -115,7 +115,7 @@ def load_legacy_inputs(
   Returns:
     Tuple of (inputs_map, input_refs_node)
   """
-  input_node = tf.saved_model.utils.get_tensor_from_tensor_info(
+  input_node = tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(
       list(signature_def.inputs.values())[0], graph)
   try:
     input_refs_node = get_node_in_graph(meta_graph_def,
@@ -127,7 +127,7 @@ def load_legacy_inputs(
     # len(input_example)).
     # TODO(b/117519999): Remove this backwards-compatibility shim once all
     # exported EvalSavedModels have ExampleRef.
-    input_refs_node = tf.range(tf.size(input_node))
+    input_refs_node = tf.range(tf.size(input=input_node))
   inputs_map = collections.OrderedDict(
       {list(signature_def.inputs.keys())[0]: input_node})
   return (inputs_map, input_refs_node)
@@ -135,7 +135,7 @@ def load_legacy_inputs(
 
 # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
 def load_legacy_features_and_labels(
-    meta_graph_def: tf.MetaGraphDef, graph: tf.Graph
+    meta_graph_def: tf.compat.v1.MetaGraphDef, graph: tf.Graph
 ) -> Tuple[Dict[Text, types.TensorType], Dict[Text, types.TensorType]]:
   """Loads legacy features and labels nodes.
 
@@ -167,7 +167,7 @@ def load_legacy_features_and_labels(
 
 
 def load_tfma_version(
-    signature_def: tf.MetaGraphDef.SignatureDefEntry,
+    signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
     graph: tf.Graph,
 ) -> types.TensorType:
   """Loads TFMA version information from signature_def.inputs.
@@ -183,14 +183,14 @@ def load_tfma_version(
     ValueError: If version not found signature_def.inputs.
   """
   if constants.SIGNATURE_DEF_TFMA_VERSION_KEY not in signature_def.inputs:
-    raise ValueError(
-        'tfma version not found in signature_def: %s' % signature_def)
-  return tf.saved_model.utils.get_tensor_from_tensor_info(
+    raise ValueError('tfma version not found in signature_def: %s' %
+                     signature_def)
+  return tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(
       signature_def.inputs[constants.SIGNATURE_DEF_TFMA_VERSION_KEY], graph)
 
 
 def load_inputs(
-    signature_def: tf.MetaGraphDef.SignatureDefEntry,
+    signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
     graph: tf.Graph,
 ) -> Tuple[Dict[Text, types.TensorType], types.TensorType]:
   """Loads input nodes from signature_def.inputs.
@@ -212,19 +212,19 @@ def load_inputs(
   inputs_map = collections.OrderedDict()
   # Sort by key name so stable ordering is used when passing to feed_list.
   for k in sorted(inputs.keys()):
-    inputs_map[k] = tf.saved_model.utils.get_tensor_from_tensor_info(
+    inputs_map[k] = tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(
         inputs[k], graph)
 
   if constants.SIGNATURE_DEF_INPUT_REFS_KEY not in signature_def.inputs:
     raise ValueError('no input_refs found in signature_def: %s' % signature_def)
-  input_refs_node = tf.saved_model.utils.get_tensor_from_tensor_info(
+  input_refs_node = tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(
       signature_def.inputs[constants.SIGNATURE_DEF_INPUT_REFS_KEY], graph)
   return (inputs_map, input_refs_node)
 
 
 def load_additional_inputs(
     prefix: Text,
-    signature_def: tf.MetaGraphDef.SignatureDefEntry,
+    signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
     graph: tf.Graph,
 ) -> Dict[Text, types.TensorType]:
   """Loads additional input tensors from signature_def.inputs.
@@ -241,11 +241,12 @@ def load_additional_inputs(
   tensors = collections.OrderedDict()
   for k, v in extract_signature_inputs_or_outputs_with_prefix(
       prefix, signature_def.inputs, util.default_dict_key(prefix)).items():
-    tensors[k] = tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
+    tensors[k] = tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(
+        v, graph)
   return tensors
 
 
-def load_predictions(signature_def: tf.MetaGraphDef.SignatureDefEntry,
+def load_predictions(signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
                      graph: tf.Graph) -> Dict[Text, types.TensorType]:
   """Loads prediction nodes from signature_def.outputs.
 
@@ -265,14 +266,15 @@ def load_predictions(signature_def: tf.MetaGraphDef.SignatureDefEntry,
   for k, v in predictions.items():
     # Extract to dictionary with a single key for consistency with
     # how features and labels are extracted.
-    predictions_map[k] = tf.saved_model.utils.get_tensor_from_tensor_info(
-        v, graph)
+    predictions_map[
+        k] = tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(
+            v, graph)
   return predictions_map
 
 
-def load_metrics(
-    signature_def: tf.MetaGraphDef.SignatureDefEntry,
-    graph: tf.Graph) -> Dict[types.FPLKeyType, Dict[Text, types.TensorType]]:
+def load_metrics(signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
+                 graph: tf.Graph
+                ) -> Dict[types.FPLKeyType, Dict[Text, types.TensorType]]:
   """Loads metric nodes from signature_def.outputs.
 
   Args:
@@ -286,7 +288,7 @@ def load_metrics(
       constants.METRICS_NAME, signature_def.outputs)
   metrics_map = collections.defaultdict(dict)
   for k, v in metrics.items():
-    node = tf.saved_model.utils.get_tensor_from_tensor_info(v, graph)
+    node = tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(v, graph)
 
     if k.endswith('/' + constants.METRIC_VALUE_SUFFIX):
       key = k[:-len(constants.METRIC_VALUE_SUFFIX) - 1]

@@ -35,7 +35,7 @@ class SliceAccessorTest(tf.test.TestCase):
     dense_single = tf.constant([7.0])
     bad_dense = tf.constant([[1.0, 2.0], [3.0, 4.0]])
     squeeze_needed = tf.constant([[2.0]])
-    sess = tf.Session()
+    sess = tf.compat.v1.Session()
     (sparse_value, dense_value, dense_single_value, bad_dense_value,
      squeeze_needed_value) = sess.run(
          fetches=[sparse, dense, dense_single, bad_dense, squeeze_needed])

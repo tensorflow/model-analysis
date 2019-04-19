@@ -45,13 +45,14 @@ def simple_csv_linear_classifier(export_path, eval_export_path):
     # [['csv,line,1'], ['csv,line,2']] which after parsing will result in a
     # tuple of tensors: [['csv'], ['csv']], [['line'], ['line']], [[1], [2]]
     row_columns = tf.expand_dims(rows_string_tensor, -1)
-    columns = tf.decode_csv(row_columns, record_defaults=csv_column_defaults)
+    columns = tf.io.decode_csv(
+        records=row_columns, record_defaults=csv_column_defaults)
     features = dict(zip(csv_columns, columns))
     return features
 
   def eval_input_receiver_fn():
     """Eval input receiver function."""
-    csv_row = tf.placeholder(
+    csv_row = tf.compat.v1.placeholder(
         dtype=tf.string, shape=[None], name='input_csv_row')
     features = parse_csv(csv_row)
     receiver_tensors = {'examples': csv_row}
@@ -79,7 +80,9 @@ def simple_csv_linear_classifier(export_path, eval_export_path):
   all_features = [age, language]
   feature_spec = tf.feature_column.make_parse_example_spec(all_features)
 
-  classifier = tf.estimator.LinearClassifier(feature_columns=all_features)
+  classifier = tf.estimator.LinearClassifier(
+      feature_columns=all_features,
+      loss_reduction=tf.compat.v1.losses.Reduction.SUM)
   classifier.train(input_fn=input_fn, steps=1000)
 
   return util.export_model_and_eval_model(

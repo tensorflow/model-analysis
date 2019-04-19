@@ -40,13 +40,13 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
     # Test no prediction keys.
     feature_map = {
         'age':
-            tf.FixedLenFeature([], tf.int64),
+            tf.io.FixedLenFeature([], tf.int64),
         'language':
-            tf.VarLenFeature(tf.string),
+            tf.io.VarLenFeature(tf.string),
         'probabilities':
-            tf.FixedLenFeature([2], tf.int64, default_value=[9, 9]),
+            tf.io.FixedLenFeature([2], tf.int64, default_value=[9, 9]),
         'label':
-            tf.FixedLenFeature([], tf.int64)
+            tf.io.FixedLenFeature([], tf.int64)
     }
 
     with self.assertRaisesRegexp(
@@ -93,19 +93,19 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
     # entire FPLs will fail in numpy comparison.
     expected_age = [np.array([0]), np.array([1]), np.array([2]), np.array([3])]
     expected_language = [
-        tf.SparseTensorValue(
+        tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 0]]),
             values=np.array([b'english'], dtype=np.object),
             dense_shape=np.array([1, 1])),
-        tf.SparseTensorValue(
+        tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 0]]),
             values=np.array([b'chinese'], dtype=np.object),
             dense_shape=np.array([1, 1])),
-        tf.SparseTensorValue(
+        tf.compat.v1.SparseTensorValue(
             indices=np.array([], dtype=np.int64).reshape([0, 2]),
             values=np.array([], dtype=np.object),
             dense_shape=np.array([1, 0])),
-        tf.SparseTensorValue(
+        tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 0]]),
             values=np.array([b'chinese'], dtype=np.object),
             dense_shape=np.array([1, 1]))
@@ -129,13 +129,13 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
     # Set up a config to bucket our example keys.
     feature_map = {
         'age':
-            tf.FixedLenFeature([1], tf.int64, default_value=[3]),
+            tf.io.FixedLenFeature([1], tf.int64, default_value=[3]),
         'language':
-            tf.VarLenFeature(tf.string),
+            tf.io.VarLenFeature(tf.string),
         'probabilities':
-            tf.FixedLenFeature([2], tf.float32, default_value=[0.5, 0.5]),
+            tf.io.FixedLenFeature([2], tf.float32, default_value=[0.5, 0.5]),
         'label':
-            tf.FixedLenFeature([], tf.int64)
+            tf.io.FixedLenFeature([], tf.int64)
     }
     model_agnostic_config = model_agnostic_predict.ModelAgnosticConfig(
         label_keys=['label'],
