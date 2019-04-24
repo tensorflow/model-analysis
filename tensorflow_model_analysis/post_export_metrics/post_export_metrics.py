@@ -1784,7 +1784,7 @@ class _MeanSquaredError(_TFMetricBaseClass):
     self._example_weight_key = example_weight_key
     super(_MeanSquaredError, self).__init__(
         metric_keys.MEAN_SQUARED_ERROR,
-        tf.metrics.mean_squared_error,
+        tf.compat.v1.metrics.mean_squared_error,
         example_weight_key,
         target_prediction_keys,
         labels_key,
@@ -1834,7 +1834,7 @@ class _RootMeanSquaredError(_TFMetricBaseClass):
     self._example_weight_key = example_weight_key
     super(_RootMeanSquaredError, self).__init__(
         metric_keys.ROOT_MEAN_SQUARED_ERROR,
-        tf.metrics.root_mean_squared_error,
+        tf.compat.v1.metrics.root_mean_squared_error,
         example_weight_key,
         target_prediction_keys,
         labels_key,
