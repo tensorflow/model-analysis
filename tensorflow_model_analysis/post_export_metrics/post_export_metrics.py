@@ -315,6 +315,11 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
         # classes.
         return tf.reduce_sum(input_tensor=one_hots_per_class, axis=1)
 
+    if len(labels_tensor.shape) == 1:
+      # To use binarized labels the current code assumes the dimensions must be
+      # (N,1) instead of (N). However, most labels are passed as (N) so this
+      # automatically expands if needed.
+      labels_tensor = tf.expand_dims(labels_tensor, 1)
     labels_tensor.shape.assert_has_rank(2)
     if (labels_tensor.shape[1].value is None or
         labels_tensor.shape[1].value == 1 and self._tensor_index is not None):

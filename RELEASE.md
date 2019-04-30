@@ -7,6 +7,8 @@
     used to remove metrics incompatible with TFMA (e.g. `py_func` or streaming
     metrics) before exporting the TFMA EvalSavedModel.
 *   Added support for passing sparse int64 tensors to precision/recall@k.
+*   Added support for binarization of multiclass metrics that use labels of the
+    from (N) in addition to (N, 1).
 
 ## Bug fixes and other changes
 
