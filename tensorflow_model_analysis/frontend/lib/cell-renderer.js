@@ -515,7 +515,8 @@ const rendererMap = {};
 /**
  * An array of objects where field check is a method that returns boolean and
  * the field type is the corresponding type if check returns true.
- * @type {!Array<{type: string, check:function((number|string|?Object)):boolean}>}
+ * @type {!Array<{type: string,
+ *     check:function((number|string|?Object)):boolean}>}
  */
 const typeCheckers = [];
 
@@ -778,6 +779,8 @@ registerOverrideRenderer(Constants.MetricValueFormat.FLOAT, renderFloat);
 registerOverrideRenderer(Constants.MetricValueFormat.INT64, renderInt64);
 registerOverrideRenderer(Constants.MetricValueFormat.HTML, renderString);
 registerOverrideRenderer(Constants.MetricValueFormat.STRING, renderString);
+registerOverrideRenderer(
+    Constants.MetricValueFormat.VALUE_AT_CUTOFFS, renderValueAtCutoffs);
 
 goog.exportSymbol(
     'tfma.CellRenderer.renderValueWithFormatOverride',
