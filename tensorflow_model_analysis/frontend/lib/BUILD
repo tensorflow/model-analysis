@@ -211,7 +211,7 @@ closure_js_binary(
     name = "js-lib-bin",
     defs = [
         # Wrap the compiled js in an anonymous function to avoid name collision.
-        "--output_wrapper=\"(function() {%output%})()\"",
+        "--output_wrapper=\"(function() {%output%})();\"",
     ],
     entry_points = [
         "tfma.Data",
