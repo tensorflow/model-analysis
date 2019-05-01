@@ -548,8 +548,8 @@ class _ExtractOutputDoFn(beam.DoFn):
   ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
     (slice_key, metric_variables) = element
     if metric_variables:
-      self._eval_saved_model.set_metric_variables(metric_variables)
-      result = self._eval_saved_model.get_metric_values()
+      result = self._eval_saved_model.metrics_set_variables_and_get_values(
+          metric_variables)
 
       # If slice key contains uncertainty sample ID, remove it from the key.
       if len(slice_key) and _SAMPLE_ID in slice_key[0]:

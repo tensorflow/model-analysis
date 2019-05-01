@@ -33,6 +33,7 @@ from __future__ import print_function
 
 import abc
 import itertools
+import threading
 # Standard Imports
 import tensorflow as tf
 
@@ -72,6 +73,20 @@ class EvalMetricsGraph(object):
     self._graph = tf.Graph()
     self._session = tf.compat.v1.Session(graph=self._graph)
 
+    # This lock is for  multi-threaded contexts where multiple threads
+    # share the same EvalSavedModel.
+    #
+    # Locking is required in the case where there are multiple threads using
+    # the same EvalMetricsGraph. Because the metrics variables are part of the
+    # session, and all threads share the same session, without a lock, the
+    # "reset-update-get" steps may not be atomic and there can be races.
+    #
+    # Having each thread have its own session would also work, but would
+    # require a bigger refactor.
+    # TODO(b/131727905): Investigate whether it's possible / better to have
+    # each thread have its own session.
+    self._lock = threading.Lock()
+
     # Variables that need to be populated.
 
     # The names of the metric.
@@ -95,11 +110,12 @@ class EvalMetricsGraph(object):
     self._predictions_map = {}
     self._labels_map = {}
 
-    # Ops to update/reset all metric variables.
+    # Ops to set/update/reset all metric variables.
+    self._all_metric_variable_assign_ops = None
     self._all_metric_update_ops = None
     self._reset_variables_op = None
 
-    # Callables to perform the above ops.
+    # Callable to perform metric update.
     self._perform_metrics_update_fn = None
 
     try:
@@ -304,13 +320,15 @@ class EvalMetricsGraph(object):
       self,
       features_predictions_labels: types.FeaturesPredictionsLabels) -> None:
     """Run a single metrics update step a single FPL."""
-    self._perform_metrics_update_list([features_predictions_labels])
+    with self._lock:
+      self._perform_metrics_update_list([features_predictions_labels])
 
   def _perform_metrics_update_list(
       self,
       features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
   ) -> None:
     """Run a metrics update on a list of FPLs."""
+    # Lock should be acquired before calling this function.
     feed_list = self._create_feed_for_features_predictions_labels_list(
         features_predictions_labels_list)
     try:
@@ -337,16 +355,21 @@ class EvalMetricsGraph(object):
       features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
   ) -> List[Any]:
     """Run the metrics reset, update, get operations on a list of FPLs."""
-    # Note that due to tf op reordering issues on some hardware, DO NOT merge
-    # these operations into a single atomic reset_update_get operation.
-    self.reset_metric_variables()
-    self._perform_metrics_update_list(features_predictions_labels_list)
-    return self.get_metric_variables()
+    with self._lock:
+      # Note that due to tf op reordering issues on some hardware, DO NOT merge
+      # these operations into a single atomic reset_update_get operation.
+      self._reset_metric_variables()
+      self._perform_metrics_update_list(features_predictions_labels_list)
+      return self._get_metric_variables()
+
+  def _get_metric_variables(self) -> List[Any]:
+    # Lock should be acquired before calling this function.
+    return self._session.run(fetches=self._metric_variable_nodes)
 
   def get_metric_variables(self) -> List[Any]:
     """Returns a list containing the metric variable values."""
-    result = self._session.run(fetches=self._metric_variable_nodes)
-    return result
+    with self._lock:
+      return self._get_metric_variables()
 
   def _create_feed_for_metric_variables(self, metric_variable_values: List[Any]
                                        ) -> Dict[types.TensorType, Any]:
@@ -366,18 +389,40 @@ class EvalMetricsGraph(object):
       result[node] = value
     return result
 
-  def set_metric_variables(self, metric_variable_values: List[Any]) -> None:
-    """Set metric variable values to the given values."""
-    self._session.run(
+  def _set_metric_variables(self, metric_variable_values: List[Any]) -> None:
+    # Lock should be acquired before calling this function.
+    return self._session.run(
         fetches=self._all_metric_variable_assign_ops,
         feed_dict=self._create_feed_for_metric_variables(
             metric_variable_values))
 
+  def set_metric_variables(self, metric_variable_values: List[Any]) -> None:
+    """Set metric variable values to the given values."""
+    with self._lock:
+      self._set_metric_variables(metric_variable_values)
+
+  def _reset_metric_variables(self) -> None:
+    # Lock should be acquired before calling this function.
+    self._session.run(self._reset_variables_op)
+
   def reset_metric_variables(self) -> None:
     """Reset metric variable values to their initial values."""
-    self._session.run(self._reset_variables_op)
+    with self._lock:
+      self._reset_metric_variables()
+
+  def _get_metric_values(self) -> Dict[Text, Any]:
+    # Lock should be acquired before calling this function.
+    metric_values = self._session.run(fetches=self._metric_value_ops)
+    return dict(zip(self._metric_names, metric_values))
 
   def get_metric_values(self) -> Dict[Text, Any]:
     """Retrieve metric values."""
-    metric_values = self._session.run(fetches=self._metric_value_ops)
-    return dict(zip(self._metric_names, metric_values))
+    with self._lock:
+      return self._get_metric_values()
+
+  def metrics_set_variables_and_get_values(self,
+                                           metric_variable_values: List[Any]
+                                          ) -> Dict[Text, Any]:
+    with self._lock:
+      self._set_metric_variables(metric_variable_values)
+      return self._get_metric_values()

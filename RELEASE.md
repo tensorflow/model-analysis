@@ -13,6 +13,9 @@
 ## Bug fixes and other changes
 
 *   Upgraded codebase for 2.0 compatibility.
+*   Make metrics-related operations thread-safe by wrapping them with locks.
+    This eliminates race conditions that were previously possible in
+    multi-threaded runners which could result in incorrect metric values.
 
 ## Breaking changes
 
