@@ -257,7 +257,7 @@ setup_args = {
     # protobuf) with TF.
     'install_requires': [
         # Sort alphabetically
-        'apache-beam[gcp]>=2.11,<3',
+        'apache-beam[gcp]>=2.12,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.14.5,<2',
