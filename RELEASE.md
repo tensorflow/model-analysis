@@ -16,6 +16,7 @@
 *   Make metrics-related operations thread-safe by wrapping them with locks.
     This eliminates race conditions that were previously possible in
     multi-threaded runners which could result in incorrect metric values.
+*   Depends on `apache-beam[gcp]>=2.12,<3`.
 
 ## Breaking changes
 
