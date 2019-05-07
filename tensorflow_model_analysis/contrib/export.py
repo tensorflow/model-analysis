@@ -207,6 +207,15 @@ def _serialize_feature_column(feature_column: feature_column_v2.FeatureColumn
         'categorical_column':
             _serialize_feature_column(feature_column.categorical_column)
     }
+  elif isinstance(feature_column, feature_column_v2.IndicatorColumn):
+    return {
+        'type':
+            'IndicatorColumn',
+        'key':
+            feature_column.name,
+        'categorical_column':
+            _serialize_feature_column(feature_column.categorical_column)
+    }
   else:
     raise ValueError('unknown feature column, type %s, value %s' %
                      (type(feature_column), str(feature_column)))
