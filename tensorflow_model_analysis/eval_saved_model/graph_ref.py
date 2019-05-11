@@ -222,6 +222,26 @@ def load_inputs(
   return (inputs_map, input_refs_node)
 
 
+def load_iterator_initializer_name(
+    signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
+    graph: tf.Graph,
+) -> Optional[types.TensorType]:
+  """Loads iterator initializer name tensor from signature_def.inputs.
+
+  Args:
+    signature_def: SignatureDef to lookup initializer in.
+    graph: TensorFlow graph to lookup the initializer in.
+
+  Returns:
+    Tensor containing iterator initializer op name or None if not used.
+  """
+  if constants.SIGNATURE_DEF_ITERATOR_INITIALIZER_KEY in signature_def.inputs:
+    return tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(
+        signature_def.inputs[constants.SIGNATURE_DEF_ITERATOR_INITIALIZER_KEY],
+        graph)
+  return None
+
+
 def load_additional_inputs(
     prefix: Text,
     signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,

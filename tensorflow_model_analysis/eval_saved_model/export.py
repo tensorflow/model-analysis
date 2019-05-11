@@ -49,7 +49,8 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
     features: types.TensorTypeMaybeDict,
     labels: Optional[types.TensorTypeMaybeDict],
     receiver_tensors: types.TensorTypeMaybeDict,
-    input_refs: Optional[types.TensorType] = None) -> EvalInputReceiverType:
+    input_refs: Optional[types.TensorType] = None,
+    iterator_initializer: Optional[Text] = None) -> EvalInputReceiverType:
   """Returns an appropriate receiver for eval_input_receiver_fn.
 
   This is a wrapper around TensorFlow's InputReceiver that adds additional
@@ -80,21 +81,31 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
       'examples', which maps to the single input node that the receiver expects
       to be fed by default. Typically this is a placeholder expecting serialized
       `tf.Example` protos.
-    input_refs: Optional. A 1-D integer `Tensor` that is batch-aligned with
-      `features` and `labels` which is an index into
-      receiver_tensors['examples'] indicating where this slice of features /
-      labels came from. If not provided, defaults to range(0,
+    input_refs: Optional (unless iterator_initializer used). A 1-D integer
+      `Tensor` that is batch-aligned with `features` and `labels` which is an
+      index into receiver_tensors['examples'] indicating where this slice of
+      features / labels came from. If not provided, defaults to range(0,
       len(receiver_tensors['examples'])).
+    iterator_initializer: Optional name of tf.compat.v1.data.Iterator
+      initializer used when the inputs are fed using an iterator. This is
+      intended to be used by models that cannot handle a single large input due
+      to memory resource constraints. For example, a model that takes a
+      tf.train.SequenceExample record as input but only processes smaller
+      batches of examples within the overall sequence at a time. The caller is
+      responsible for setting the input_refs appropriately (i.e. all examples
+      belonging to the same tf.train.Sequence should have the same input_ref).
 
   Raises:
     ValueError: receiver_tensors did not contain exactly one key named
-      "examples".
+      "examples" or iterator_initializer used without input_refs.
   """
   if list(receiver_tensors.keys()) != ['examples']:
     raise ValueError('receiver_tensors must contain exactly one key named '
                      'examples.')
 
   if input_refs is None:
+    if iterator_initializer is not None:
+      raise ValueError('input_refs is required if iterator_initializer is used')
     input_refs = tf.range(tf.size(input=list(receiver_tensors.values())[0]))
 
   updated_receiver_tensors = {}
@@ -112,6 +123,10 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
     add_tensors(constants.LABELS_NAME, labels)
   updated_receiver_tensors[constants.SIGNATURE_DEF_INPUT_REFS_KEY] = (
       input_refs)
+  if iterator_initializer:
+    updated_receiver_tensors[
+        constants.SIGNATURE_DEF_ITERATOR_INITIALIZER_KEY] = (
+            tf.constant(iterator_initializer))
   updated_receiver_tensors[constants.SIGNATURE_DEF_TFMA_VERSION_KEY] = (
       tf.constant(version.VERSION_STRING))
 

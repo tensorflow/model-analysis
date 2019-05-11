@@ -107,6 +107,13 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     # We don't actually do any checking for now, since we don't have any
     # compatibility issues.
 
+  def _get_op_from_tensor(self, op_name_tensor: types.TensorType):
+    """Returns the operation based on name stored in a tensor."""
+    if op_name_tensor is None:
+      return None
+    op_name = self._session.run(op_name_tensor).decode('utf-8')
+    return self._graph.get_operation_by_name(op_name)
+
   def _iterate_fpl_maps_in_canonical_order(
       self
   ) -> Generator[Tuple[Text, types.FPLKeyType, types.TensorType], None, None]:
@@ -157,6 +164,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
                          'was %s' % (constants.EVAL_TAG, signature_def))
 
       self._additional_fetches_map = {}
+      iterator_initializer = None
 
       # If features and labels are not stored in the signature_def.inputs then
       # only a single input will be present. We will use this as our flag to
@@ -184,6 +192,9 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
             self._additional_fetches_map[prefix] = (
                 graph_ref.load_additional_inputs(prefix, signature_def,
                                                  self._graph))
+        iterator_initializer = self._get_op_from_tensor(
+            graph_ref.load_iterator_initializer_name(signature_def,
+                                                     self._graph))
 
       self._predictions_map = graph_ref.load_predictions(
           signature_def, self._graph)
@@ -222,10 +233,24 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
       # metrics_reset_update_get is updated in register_additional_metric_ops.
       # Repeated calls to a callable made using make_callable are faster than
       # doing repeated calls to session.run.
-      self._predict_list_fn = self._session.make_callable(
-          fetches=(self._features_map, self._predictions_map, self._labels_map,
-                   self._input_refs_node, self._additional_fetches_map),
-          feed_list=list(self._input_map.values()))
+      if iterator_initializer:
+        # When iterator is used, the initializer is used to feed the inputs. The
+        # values are then fetched by repeated calls to the predict_list_fn until
+        # OutOfRange is thrown.
+        self._iterator_initializer_fn = self._session.make_callable(
+            fetches=(iterator_initializer),
+            feed_list=list(self._input_map.values()))
+        self._predict_list_fn = self._session.make_callable(
+            fetches=(self._features_map, self._predictions_map,
+                     self._labels_map, self._input_refs_node,
+                     self._additional_fetches_map))
+      else:
+        self._iterator_initializer_fn = None
+        self._predict_list_fn = self._session.make_callable(
+            fetches=(self._features_map, self._predictions_map,
+                     self._labels_map, self._input_refs_node,
+                     self._additional_fetches_map),
+            feed_list=list(self._input_map.values()))
 
   def get_features_predictions_labels_dicts(
       self) -> Tuple[types.TensorTypeMaybeDict, types.TensorTypeMaybeDict, types
@@ -304,50 +329,62 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     else:
       input_args = [inputs]
 
-    (features, predictions, labels, input_refs,
-     additional_fetches) = self._predict_list_fn(*input_args)
-
-    all_fetches = additional_fetches
-    all_fetches[constants.FEATURES_NAME] = features
-    all_fetches[constants.LABELS_NAME] = labels
-    all_fetches[constants.PREDICTIONS_NAME] = predictions
-
-    # TODO(cyfoo): Optimise this.
-    split_fetches = {}
-    for group, tensors in all_fetches.items():
-      split_tensors = {}
-      for key in tensors:
-        split_tensors[key] = util.split_tensor_value(tensors[key])
-      split_fetches[group] = split_tensors
+    if self._iterator_initializer_fn:
+      self._iterator_initializer_fn(*input_args)
+      input_args = []
 
     result = []
 
-    if (not isinstance(input_refs, np.ndarray) or input_refs.ndim != 1 or
-        not np.issubdtype(input_refs.dtype, np.integer)):
-      raise ValueError(
-          'input_refs should be an 1-D array of integers. input_refs was {}.'
-          .format(input_refs))
+    while True:
+      try:
+        (features, predictions, labels, input_refs,
+         additional_fetches) = self._predict_list_fn(*input_args)
 
-    for group, tensors in split_fetches.items():
-      for result_key, split_values in tensors.items():
-        if len(split_values) != input_refs.shape[0]:
-          raise ValueError(
-              'input_refs should be batch-aligned with fetched values; {} key '
-              '{} had {} slices but input_refs had batch size of {}'.format(
-                  group, result_key, len(split_values), input_refs.shape[0]))
+        all_fetches = additional_fetches
+        all_fetches[constants.FEATURES_NAME] = features
+        all_fetches[constants.LABELS_NAME] = labels
+        all_fetches[constants.PREDICTIONS_NAME] = predictions
 
-    for i, input_ref in enumerate(input_refs):
-      if input_ref < 0 or input_ref >= len(inputs):
-        raise ValueError('An index in input_refs is out of range: {} vs {}; '
-                         'inputs: {}'.format(input_ref, len(inputs), inputs))
-      values = {}
-      for group, split_tensors in split_fetches.items():
-        tensor_values = {}
-        for key, split_value in split_tensors.items():
-          tensor_values[key] = split_value[i]
-        values[group] = util.extract_tensor_maybe_dict(group, tensor_values)
+        # TODO(cyfoo): Optimise this.
+        split_fetches = {}
+        for group, tensors in all_fetches.items():
+          split_tensors = {}
+          for key in tensors:
+            split_tensors[key] = util.split_tensor_value(tensors[key])
+          split_fetches[group] = split_tensors
 
-      result.append(FetchedTensorValues(input_ref=input_ref, values=values))
+        if (not isinstance(input_refs, np.ndarray) or input_refs.ndim != 1 or
+            not np.issubdtype(input_refs.dtype, np.integer)):
+          raise ValueError('input_refs should be an 1-D array of integers. '
+                           'input_refs was {}.'.format(input_refs))
+
+        for group, tensors in split_fetches.items():
+          for result_key, split_values in tensors.items():
+            if len(split_values) != input_refs.shape[0]:
+              raise ValueError(
+                  'input_refs should be batch-aligned with fetched values; '
+                  '{} key {} had {} slices but input_refs had batch size of '
+                  '{}'.format(group, result_key, len(split_values),
+                              input_refs.shape[0]))
+
+        for i, input_ref in enumerate(input_refs):
+          if input_ref < 0 or input_ref >= len(inputs):
+            raise ValueError(
+                'An index in input_refs is out of range: {} vs {}; '
+                'inputs: {}'.format(input_ref, len(inputs), inputs))
+          values = {}
+          for group, split_tensors in split_fetches.items():
+            tensor_values = {}
+            for key, split_value in split_tensors.items():
+              tensor_values[key] = split_value[i]
+            values[group] = util.extract_tensor_maybe_dict(group, tensor_values)
+
+          result.append(FetchedTensorValues(input_ref=input_ref, values=values))
+
+        if self._iterator_initializer_fn is None:
+          break
+      except tf.errors.OutOfRangeError:
+        break
 
     return result
 

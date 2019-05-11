@@ -18,6 +18,7 @@ EVAL_SAVED_MODEL_TAG = 'eval_saved_model'
 
 SIGNATURE_DEF_INPUTS_PREFIX = 'inputs'
 SIGNATURE_DEF_INPUT_REFS_KEY = 'input_refs'
+SIGNATURE_DEF_ITERATOR_INITIALIZER_KEY = 'iterator_initializer'
 SIGNATURE_DEF_TFMA_VERSION_KEY = 'tfma/version'
 
 FEATURES_NAME = 'features'

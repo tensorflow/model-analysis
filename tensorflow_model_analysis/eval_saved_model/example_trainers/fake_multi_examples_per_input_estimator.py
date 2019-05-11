@@ -101,6 +101,23 @@ def _eval_input_receiver_fn():
       input_refs=features['input_index'])
 
 
+def _eval_input_receiver_using_iterator_fn():
+  """Eval input receiver function using an iterator."""
+  csv_row = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_csv_row')
+  iterator = tf.compat.v1.data.Dataset.from_tensors(
+      csv_row).make_initializable_iterator()
+  features = _parse_csv(iterator.get_next())
+  receiver_tensors = {'examples': csv_row}
+
+  return export.EvalInputReceiver(
+      features=features,
+      labels=features['input_index'],
+      receiver_tensors=receiver_tensors,
+      input_refs=features['input_index'],
+      iterator_initializer=iterator.initializer.name)
+
+
 def _legacy_eval_input_receiver_fn():
   """Legacy eval input receiver function."""
   csv_row = tf.compat.v1.placeholder(
@@ -204,15 +221,20 @@ def _model_fn(features, labels, mode, params):
       eval_metric_ops=eval_metric_ops)
 
 
-def fake_multi_examples_per_input_estimator(export_path, eval_export_path):
+def fake_multi_examples_per_input_estimator(export_path,
+                                            eval_export_path,
+                                            use_iterator=False):
   """Trains and exports a model that treats 1 input as 0 to n examples ."""
   estimator = tf.estimator.Estimator(model_fn=_model_fn)
   estimator.train(input_fn=_train_input_fn, steps=1)
 
+  eval_input_receiver_fn = _eval_input_receiver_fn
+  if use_iterator:
+    eval_input_receiver_fn = _eval_input_receiver_using_iterator_fn
   return util.export_model_and_eval_model(
       estimator=estimator,
       serving_input_receiver_fn=_serving_input_receiver_fn,
-      eval_input_receiver_fn=_eval_input_receiver_fn,
+      eval_input_receiver_fn=eval_input_receiver_fn,
       export_path=export_path,
       eval_export_path=eval_export_path)
 

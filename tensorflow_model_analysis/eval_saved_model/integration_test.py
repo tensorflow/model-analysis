@@ -294,7 +294,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     })
 
   # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
-  def _sharedTestForPredictListMultipleExamplesPerInputModel(self, use_legacy):
+  def _sharedTestForPredictListMultipleExamplesPerInputModel(
+      self, use_legacy, use_iterator):
     temp_eval_export_dir = self._getEvalExportDir()
     if use_legacy:
       _, eval_export_dir = (
@@ -304,7 +305,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     else:
       _, eval_export_dir = (
           fake_multi_examples_per_input_estimator
-          .fake_multi_examples_per_input_estimator(None, temp_eval_export_dir))
+          .fake_multi_examples_per_input_estimator(None, temp_eval_export_dir,
+                                                   use_iterator))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
     fetched_list = eval_saved_model.predict_list([b'0', b'1', b'3', b'0', b'2'])
@@ -347,10 +349,13 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
   # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
   def testLegacyPredictListMultipleExamplesPerInputModel(self):
-    self._sharedTestForPredictListMultipleExamplesPerInputModel(True)
+    self._sharedTestForPredictListMultipleExamplesPerInputModel(True, False)
 
   def testPredictListMultipleExamplesPerInputModel(self):
-    self._sharedTestForPredictListMultipleExamplesPerInputModel(False)
+    self._sharedTestForPredictListMultipleExamplesPerInputModel(False, False)
+
+  def testPredictListMultipleExamplesPerInputModelUsingIterator(self):
+    self._sharedTestForPredictListMultipleExamplesPerInputModel(False, True)
 
   def testPredictListMultipleExamplesPerInputModelNoExampleInInput(self):
     temp_eval_export_dir = self._getEvalExportDir()

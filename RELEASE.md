@@ -9,6 +9,7 @@
 *   Added support for passing sparse int64 tensors to precision/recall@k.
 *   Added support for binarization of multiclass metrics that use labels of the
     from (N) in addition to (N, 1).
+*   Added support for using iterators with EvalInputReceiver.
 
 ## Bug fixes and other changes
 
