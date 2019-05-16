@@ -15,16 +15,17 @@
  */
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-nb-slicing-metrics-template.html.js';
-
+import {SelectEventMixin} from '../tfma-nb-event-mixin/tfma-nb-event-mixin.js';
 import '../tfma-slicing-metrics-browser/tfma-slicing-metrics-browser.js';
 
 /**
  * tfma-nb-slicing-metrics provides a wrapper for tfma-slicing-metrics-browser
  * in the notebook environment. It performs the necessary data transformation.
- *
+ * @extends HTMLElement
  * @polymer
  */
-export class NotebookSlicingMetricsWrapper extends PolymerElement {
+export class NotebookSlicingMetricsWrapper extends SelectEventMixin
+(PolymerElement) {
   constructor() {
     super();
   }

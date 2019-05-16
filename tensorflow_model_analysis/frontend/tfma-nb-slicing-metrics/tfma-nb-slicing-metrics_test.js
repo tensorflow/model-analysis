@@ -111,12 +111,46 @@ suite('tests', () => {
       setTimeout(checkBrowser, 0);
     };
     const checkBrowser = () => {
-      const browser = element.shadowRoot.querySelector('tfma-slicing-metrics-browser');
+      const browser =
+          element.shadowRoot.querySelector('tfma-slicing-metrics-browser');
       assert.equal(browser.weightedExamplesColumn, newWeightColumn);
       const data = browser.data;
       assert.equal(data[0]['metrics'][newWeightColumn], 1);
       done();
     };
     run(changeWeightColumn);
+  });
+
+  test('SelectRowTriggersTfmaEvent', done => {
+    let table;
+    let eventType;
+    let eventDetail;
+    const waitTillReady = () => {
+      const browser =
+          element.shadowRoot.querySelector('tfma-slicing-metrics-browser');
+      table = browser.shadowRoot.querySelector('tfma-metrics-table');
+      table.addEventListener('google-chart-ready', readyCallback);
+    };
+    const readyCallback = () => {
+      table.removeEventListener('google-chart-ready', readyCallback);
+      setTimeout(selectRow, 1);
+    };
+    const selectRow = () => {
+      element.addEventListener('tfma-event', e => {
+        eventType = e.detail['type'];
+        eventDetail = e.detail['detail'];
+      });
+
+      table.selection = [{'row': 2}];
+      setTimeout(verify, 1);
+    };
+    const verify = () => {
+      assert.equal(eventType, 'slice-selected');
+      assert.equal(eventDetail['sliceName'], 'col');
+      assert.equal(eventDetail['sliceValue'], 3);
+
+      done();
+    };
+    run(waitTillReady);
   });
 });

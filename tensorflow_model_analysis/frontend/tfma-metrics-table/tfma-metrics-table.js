@@ -185,7 +185,7 @@ export class MetricsTable extends PolymerElement {
       const styleCount = styles.length;
       for (let i = 0; i < styleCount; i++) {
         const sheet = styles[i].sheet;
-        const rulesCount = sheet.rules.length;
+        const rulesCount = sheet && sheet.rules.length || 0;
         for (let j = 0; j < rulesCount; j++) {
           const cssText = sheet.rules[j].cssText;
           cssRules.push(cssText.replace(hackPrefixRegEx, ''));
