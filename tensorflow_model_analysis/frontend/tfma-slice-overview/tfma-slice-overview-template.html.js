@@ -47,7 +47,9 @@ template.innerHTML = `
     </paper-listbox>
   </paper-dropdown-menu>
 </div>
-<google-chart-loader id="loader" packages="[[chartPackages_]]"></google-chart-loader>
+<google-chart-loader id="loader" packages="[[chartPackages_]]"
+                     on-google-chart-select="handleSelect_">
+</google-chart-loader>
 <div id="chart"></div>
 `;
 export {template};

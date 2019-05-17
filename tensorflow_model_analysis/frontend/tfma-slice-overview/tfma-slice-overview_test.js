@@ -368,6 +368,29 @@ suite('tests', () => {
     run(METRIC2, data, checkNanForMissing);
   });
 
+  test('FireSelectEventWhenSelectionChanged', done => {
+    const sliceToSelect = 'col:2';
+    let selectedSlice;
+    const setUpListener = () => {
+      element.addEventListener(tfma.Event.SELECT, (event) => {
+        selectedSlice = event.detail;
+      });
+
+      setTimeout(select, 0);
+    };
+    const select = () => {
+      element.selectedSlice_ = sliceToSelect;
+      element.$['loader'].dispatchEvent(new Event('google-chart-select'));
+      setTimeout(verify, 0);
+    };
+    const verify = () => {
+      assert.equal(selectedSlice, sliceToSelect);
+      done();
+    };
+
+    runWithDefaultData(setUpListener);
+  });
+
   /**
    * @param {function()} cb
    */

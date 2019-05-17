@@ -54,7 +54,7 @@ export class SliceOverview extends PolymerElement {
     return {
       /**
        * The tfma.Data instance.
-       * @type {tfma.Data}
+       * @type {!tfma.TableProviderExt}
        */
       slices: {type: Object},
 
@@ -112,6 +112,12 @@ export class SliceOverview extends PolymerElement {
        * @private {!google.visualization.DataView|undefined}
        */
       dataView_: {type: Object},
+
+      /**
+       * The selected slice.
+       * @private {string}
+       */
+      selectedSlice_: {type: String, observer: 'selectedSliceChanged_'},
     };
   }
 
@@ -207,9 +213,47 @@ export class SliceOverview extends PolymerElement {
 
     // Start loading the visualization API and instantiate a column chart
     // object as soon as we can.
-    this.$.loader.create('column', this.$.chart)
-        .then(chart => this.chart_ = chart);
+    this.$.loader.create('column', this.$.chart).then(chart => {
+      this.chart_ = chart;
+      this.$.loader.fireOnChartEvent(chart, 'select');
+    });
     this.displayed = this.getBoundingClientRect().width > 0;
+  }
+
+  /**
+   * Event handler for google-chart-select.
+   * @private
+   */
+  handleSelect_() {
+    let selectedSlice = '';
+    const selection = this.chart_.getSelection();
+    if (selection.length) {
+      const table = this.slices.getDataTable();
+      const selectedRow = selection[0]['row'];
+      selectedSlice = table[selectedRow][0];
+      this.dispatchEvent(new CustomEvent(
+          tfma.Event.SELECT,
+          {detail: selectedSlice, composed: true, bubbles: true}));
+    }
+    this.selectedSlice_ = /** @type{string} */ (selectedSlice);
+  }
+
+  /**
+   * Observer for property selectedSlice.
+   * @param {string} selectedSlice
+   * @private
+   */
+  selectedSliceChanged_(selectedSlice) {
+    const selection = [];
+    if (selectedSlice) {
+      const table = this.slices.getDataTable();
+      for (let i = table.length - 1; i >= 0; i--) {
+        if (table[i][0] == selectedSlice) {
+          selection.push({'row': i, 'column': 1});
+        }
+      }
+    }
+    this.chart_.setSelection(selection);
   }
 }
 

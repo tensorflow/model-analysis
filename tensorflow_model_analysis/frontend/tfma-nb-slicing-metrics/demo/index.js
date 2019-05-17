@@ -111,7 +111,7 @@
   view.addEventListener('tfma-event', (e) => {
     const detail = e.detail;
     document.getElementById('selection').textContent =
-        'Event type: ' + detail['type ']+
+        'Event type: ' + detail['type']+
         '\nEvent detail: ' + JSON.stringify(detail['detail']);
   });
 })();

@@ -66,10 +66,17 @@ export const SelectEventMixin = (baseClass) => class extends baseClass {
   handleSelect_(selectEvent) {
     const eventSource = selectEvent['path'] && selectEvent['path'][0];
     if (eventSource) {
+      let selectedSlice;
       if (eventSource.tagName == 'TFMA-METRICS-TABLE') {
         const selectedRow = eventSource['selection'][0]['row'];
         const tableData = eventSource['data']['getDataTable']();
-        const selectedSlice = tableData[selectedRow][0].split(':');
+        selectedSlice = tableData[selectedRow][0];
+      } else if (eventSource.tagName == 'TFMA-SLICE-OVERVIEW') {
+        selectedSlice = selectEvent['detail'];
+      }
+
+      if (selectedSlice) {
+        selectedSlice = selectedSlice.split(':');
         const sliceName = selectedSlice[0];
         const sliceValue = selectedSlice[1];
         dispatch(
