@@ -16,12 +16,14 @@
 import tensorflow_model_analysis.notebook.jupyter.tfma_widget as tfma_widget
 
 
-def render_slicing_metrics(data, config):
+def render_slicing_metrics(data, config, event_handlers=None):
   """Renders the slicing metrics view in Jupyter.
 
   Args:
     data: A list of dictionary containing metrics for correpsonding slices.
     config: A dictionary of the configuration.
+    event_handlers: A dictionary of where keys are event types and values are
+      event handlers.
 
   Returns:
     A SlicingMetricsViewer.
@@ -29,6 +31,7 @@ def render_slicing_metrics(data, config):
   view = tfma_widget.SlicingMetricsViewer()
   view.data = data
   view.config = config
+  view.event_handlers = event_handlers
 
   return view
 

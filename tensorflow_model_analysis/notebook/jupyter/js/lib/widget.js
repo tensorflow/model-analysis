@@ -62,6 +62,7 @@ const SlicingMetricsModel = widgets.DOMWidgetModel.extend({
     _view_module_version: VIEW_VERSION,
     config: {},
     data: [],
+    js_events: [],
   })
 });
 
@@ -71,6 +72,10 @@ const SlicingMetricsView = widgets.DOMWidgetView.extend({
 
     this.view_ = document.createElement(SLICING_METRICS_ELEMENT_NAME);
     this.el.appendChild(this.view_);
+
+    this.view_.addEventListener('tfma-event', (e) => {
+      handleTfmaEvent(e, this);
+    });
 
     delayedRender(() => {
       this.configChanged_();
@@ -156,6 +161,20 @@ const PlotView = widgets.DOMWidgetView.extend({
     this.view_.config = this.model.get('config');
   },
 });
+
+/**
+ * Handler for events of type "tfma-event" for the given view element.
+ * @param {!Event} tfmaEvent
+ * @param {!Element} view
+ */
+const handleTfmaEvent = (tfmaEvent, view) => {
+  const model = view.model;
+  const jsEvents = model.get('js_events').slice();
+  const detail = tfmaEvent.detail;
+  jsEvents.push({'name': detail.type, 'detail': detail.detail});
+  model.set('js_events', jsEvents);
+  view.touch();
+};
 
 module.exports = {
   [PLOT_MODEL_NAME]: PlotModel,

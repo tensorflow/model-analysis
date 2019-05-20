@@ -15,6 +15,7 @@
 import ipywidgets as widgets
 from traitlets import Dict
 from traitlets import List
+from traitlets import observe
 from traitlets import Unicode
 
 
@@ -29,6 +30,22 @@ class SlicingMetricsViewer(widgets.DOMWidget):
   _model_module_version = Unicode('^0.1.0').tag(sync=True)
   data = List([]).tag(sync=True)
   config = Dict(dict()).tag(sync=True)
+
+  # Used for handling on the js side.
+  event_handlers = {}
+  js_events = List([]).tag(sync=True)
+
+  @observe('js_events')
+  def _handle_js_events(self, change):
+    if self.js_events:
+      if self.event_handlers:
+        for event in self.js_events:
+          event_name = event['name']
+          if event_name in self.event_handlers:
+            self.event_handlers[event_name](event['detail'])
+
+      # clears the event queue.
+      self.js_events = []
 
 
 @widgets.register
