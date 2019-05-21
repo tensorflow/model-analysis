@@ -16,23 +16,18 @@
 # Standard __future__ imports
 
 from tensorflow_model_analysis.notebook.colab import util
-from typing import Any, Callable, Dict, List, Optional, Text, Union
+from typing import Any, Dict, List, Text, Union
 
 
-def render_slicing_metrics(
-    data: List[Dict[Text, Union[Dict[Text, Any], Text]]],
-    config: Dict[Text, Text],
-    event_handlers: Optional[
-        Callable[[Dict[Text, Union[Text, float]]], None]] = None) -> None:
+def render_slicing_metrics(data: List[Dict[Text, Union[Dict[Text, Any], Text]]],
+                           config: Dict[Text, Text]) -> None:
   """Renders the slicing metrics view in Colab.
 
   Args:
     data: A list of dictionary containing metrics for correpsonding slices.
     config: A dictionary of the configuration.
-    event_handlers: event handlers
   """
-  util.render_component(
-      'tfma-nb-slicing-metrics', data, config, event_handlers=event_handlers)
+  util.render_component('tfma-nb-slicing-metrics', data, config)
 
 
 def render_time_series(
@@ -47,9 +42,9 @@ def render_time_series(
   util.render_component('tfma-nb-time-series', data, config)
 
 
-def render_plot(data: Dict[Text, List[Union[Text, float, List[float]]]],
-                config: Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text]]
-               ) -> None:
+def render_plot(
+    data: Dict[Text, List[Union[Text, float, List[float]]]],
+    config: Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text]]) -> None:
   """Renders the plot view in Colab.
 
   Args:
