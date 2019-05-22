@@ -334,7 +334,7 @@ def export_eval_savedmodel(
     eval_input_receiver_fn: Eval input receiver function.
     serving_input_receiver_fn: (Optional) Serving input receiver function. We
       recommend that you provide this as well, so that the exported SavedModel
-      also contains the serving graph. If not privded, the serving graph will
+      also contains the serving graph. If not provided, the serving graph will
       not be included in the exported SavedModel.
     assets_extra: An optional dict specifying how to populate the assets.extra
       directory within the exported SavedModel.  Each key should give the
