@@ -22,14 +22,17 @@ from tensorflow_model_analysis.api import model_eval_lib
 import tensorflow_model_analysis.notebook.visualization as visualization
 from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
 from tensorflow_model_analysis.view import util
-from typing import Optional, Text
+from typing import Callable, Dict, Optional, Text, Union
 
 
-def render_slicing_metrics(result: model_eval_lib.EvalResult,
-                           slicing_column: Optional[Text] = None,
-                           slicing_spec: Optional[SingleSliceSpec] = None,
-                           weighted_example_column: Text = None
-                          ) -> Optional[visualization.SlicingMetricsViewer]:
+def render_slicing_metrics(
+    result: model_eval_lib.EvalResult,
+    slicing_column: Optional[Text] = None,
+    slicing_spec: Optional[SingleSliceSpec] = None,
+    weighted_example_column: Text = None,
+    event_handlers: Optional[
+        Callable[[Dict[Text, Union[Text, float]]], None]] = None,
+) -> Optional[visualization.SlicingMetricsViewer]:  # pytype: disable=invalid-annotation
   """Renders the slicing metrics view as widget.
 
   Args:
@@ -40,6 +43,7 @@ def render_slicing_metrics(result: model_eval_lib.EvalResult,
     weighted_example_column: Override for the weighted example column. This can
       be used when different weights are applied in different aprts of the model
       (eg: multi-head).
+    event_handlers: The event handlers
 
   Returns:
     A SlicingMetricsViewer object if in Jupyter notebook; None if in Colab.
@@ -48,13 +52,14 @@ def render_slicing_metrics(result: model_eval_lib.EvalResult,
                                   slicing_spec)
   config = util.get_slicing_config(result.config, weighted_example_column)
 
-  return visualization.render_slicing_metrics(data, config)
+  return visualization.render_slicing_metrics(
+      data, config, event_handlers=event_handlers)
 
 
 def render_time_series(results: model_eval_lib.EvalResults,
                        slice_spec: Optional[SingleSliceSpec] = None,
                        display_full_path: bool = False
-                      ) -> Optional[visualization.TimeSeriesViewer]:
+                      ) -> Optional[visualization.TimeSeriesViewer]:  # pytype: disable=invalid-annotation
   """Renders the time series view as widget.
 
   Args:
@@ -80,7 +85,7 @@ def render_plot(
     result: model_eval_lib.EvalResult,
     slicing_spec: Optional[SingleSliceSpec] = None,
     label: Optional[Text] = None,
-) -> Optional[visualization.PlotViewer]:
+) -> Optional[visualization.PlotViewer]:  # pytype: disable=invalid-annotation
   """Renders the plot view as widget.
 
   Args:
