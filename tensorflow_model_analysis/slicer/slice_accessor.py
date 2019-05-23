@@ -63,6 +63,7 @@ class SliceAccessor(object):
       raise ValueError(
           'feature had unsupported type: key: %s, value: %s, type: %s' %
           (key, value, type(value)))
+    # TODO(b/133113963): Consider changing to flatten so works with 2-D data.
     squeezed_value = np.squeeze(value)
     if squeezed_value.ndim > 1:
       raise ValueError(
@@ -70,8 +71,8 @@ class SliceAccessor(object):
           'not. value was %s' % (key, value))
     if squeezed_value.ndim == 1:
       # For the multivalent columns, the squeezed values are in 1D arrays.
-      # Convert the array to a list.
-      return squeezed_value.tolist()
+      # Convert the array to a list of unique values.
+      return np.unique(squeezed_value).tolist()
     else:  # squeezed_value.ndim == 0
       # For the univalent columns, we get a scalar after squeezing, which we
       # wrap in an list.
