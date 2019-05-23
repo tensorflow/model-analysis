@@ -32,8 +32,6 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer
 from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
-_SAMPLE_ID = '___SAMPLE_ID'
-
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(
@@ -46,7 +44,7 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
     num_bootstrap_samples: Optional[int] = 1,
-    random_seed: Optional[int] = None,
+    random_seed_for_testing: Optional[int] = None,
 ) -> beam.pvalue.PCollection:
   """PTransform for computing, aggregating and combining metrics.
 
@@ -61,7 +59,8 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
       bootstrap method. To calculate standard errors, num_bootstrap_samples
       should be 20 or more in order to provide useful data. More is better, but
       you pay a performance cost.
-    random_seed: Seed to use for testing, because nondeterministic tests stink.
+    random_seed_for_testing: Seed to use for unit testing, because
+      nondeterministic tests stink. Each partition will use this value + i.
 
   Returns:
     DoOutputsTuple. The tuple entries are
@@ -71,17 +70,12 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
   # TODO(ckuhn): Remove this workaround per discussions in CL/227944001
   slice_result.element_type = beam.typehints.Any
 
-  compute_with_sampling = False
   if not num_bootstrap_samples:
     num_bootstrap_samples = 1
+  # TODO(ckuhn): Cap the number of bootstrap samples at 20.
   if num_bootstrap_samples < 1:
     raise ValueError('num_bootstrap_samples should be > 0, got %d' %
                      num_bootstrap_samples)
-
-  if num_bootstrap_samples > 1:
-    slice_result_sampled = slice_result | 'FanoutBootstrap' >> beam.ParDo(
-        _FanoutBootstrapFn(num_bootstrap_samples))
-    compute_with_sampling = True
 
   output_results = (
       slice_result
@@ -92,51 +86,32 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
               compute_with_sampling=False))
       | 'InterpretOutput' >> beam.ParDo(
           _ExtractOutputDoFn(eval_shared_model=eval_shared_model)))
-  if compute_with_sampling:
+  if num_bootstrap_samples > 1:
+    multicombine = []
+    for i in range(num_bootstrap_samples):
+      multicombine.append(
+          slice_result
+          | 'CombinePerSliceWithSamples%d' % i >> beam.CombinePerKey(
+              _AggregateCombineFn(
+                  eval_shared_model=eval_shared_model,
+                  desired_batch_size=desired_batch_size,
+                  compute_with_sampling=True,
+                  seed_for_testing=None if random_seed_for_testing is None else
+                  random_seed_for_testing + i))
+          | 'InterpretSampledOutput%d' % i >> beam.ParDo(
+              _ExtractOutputDoFn(eval_shared_model=eval_shared_model)))
     output_results = (
-        slice_result_sampled
-        | 'CombinePerSliceWithSamples' >> beam.CombinePerKey(
-            _AggregateCombineFn(
-                eval_shared_model=eval_shared_model,
-                desired_batch_size=desired_batch_size,
-                compute_with_sampling=True,
-                seed_for_testing=random_seed))
-        | 'InterpretSampledOutput' >> beam.ParDo(
-            _ExtractOutputDoFn(eval_shared_model=eval_shared_model))
-        | beam.GroupByKey()
-        | beam.ParDo(_MergeBootstrap(), beam.pvalue.AsIter(output_results)))
+        multicombine
+        | 'FlattenBootstrapPartitions' >> beam.Flatten()
+        | 'GroupBySlice' >> beam.GroupByKey()
+        | 'MergeBootstrap' >> beam.ParDo(_MergeBootstrap(),
+                                         beam.pvalue.AsIter(output_results)))
   # Separate metrics and plots.
   return (output_results
-          | beam.ParDo(_SeparateMetricsAndPlotsFn()).with_outputs(
-              _SeparateMetricsAndPlotsFn.OUTPUT_TAG_PLOTS,
-              main=_SeparateMetricsAndPlotsFn.OUTPUT_TAG_METRICS))
-
-
-@beam.typehints.with_input_types(
-    beam.typehints.Tuple[slicer.BeamSliceKeyType, slicer.BeamExtractsType])
-@beam.typehints.with_output_types(
-    beam.typehints.Tuple[slicer.BeamSliceKeyType, slicer.BeamExtractsType])
-class _FanoutBootstrapFn(beam.DoFn):
-  """For each bootstrap sample you want, we fan out an additional slice."""
-
-  def __init__(self, num_bootstrap_samples: int):
-    self._num_bootstrap_samples = num_bootstrap_samples
-
-  def process(
-      self, element: Tuple[slicer.SliceKeyType, types.Extracts]
-  ) -> Generator[Tuple[slicer.SliceKeyType, types.Extracts], None, None]:
-    slice_key, value = element
-    for i in range(0, self._num_bootstrap_samples):
-      # Prepend the sample ID to the original slice key.
-      slice_key_as_list = list(slice_key)
-      slice_key_as_list.insert(0, (_SAMPLE_ID, i))
-      augmented_slice_key = tuple(slice_key_as_list)
-      # This fans out the pipeline, but because we are reducing in a
-      # CombinePerKey, we shouldn't have to deal with a great increase in
-      # network traffic.
-      # TODO(b/120421778): Create benchmarks to better understand performance
-      # implications and tradeoffs.
-      yield (augmented_slice_key, value)
+          | 'SeparateMetricsAndPlots' >> beam.ParDo(
+              _SeparateMetricsAndPlotsFn()).with_outputs(
+                  _SeparateMetricsAndPlotsFn.OUTPUT_TAG_PLOTS,
+                  main=_SeparateMetricsAndPlotsFn.OUTPUT_TAG_METRICS))
 
 
 class _MergeBootstrap(beam.DoFn):
@@ -347,6 +322,7 @@ class _AggregateCombineFn(beam.CombineFn):
       self._desired_batch_size = self._DEFAULT_DESIRED_BATCH_SIZE
 
     self._compute_with_sampling = compute_with_sampling
+    self._random_state = np.random.RandomState(seed_for_testing)
 
     # Metrics.
     self._combine_batch_size = beam.metrics.Metrics.distribution(
@@ -386,7 +362,12 @@ class _AggregateCombineFn(beam.CombineFn):
     times, that number of times is drawn from Poisson(1).
     See
     http://www.unofficialgoogledatascience.com/2015/08/an-introduction-to-poisson-bootstrap26.html
-    for a detailed explanation of the technique.
+    for a detailed explanation of the technique. This will work technically with
+    small or empty batches but as the technique is an approximation, the
+    approximation gets better as the number of examples gets larger. If the
+    results themselves are empty TFMA will reject the sample. For any samples of
+    a reasonable size, the chances of this are exponentially tiny. See "The
+    mathematical fine print" section of the blog post linked above.
 
     Args:
       accumulator: Accumulator containing FPLs from a sample
@@ -394,12 +375,9 @@ class _AggregateCombineFn(beam.CombineFn):
     Returns:
       A list of FPLs representing a bootstrap resample of the accumulator items.
     """
-    if self._seed_for_testing:
-      np.random.seed(self._seed_for_testing)
-
     result = []
     if accumulator.fpls:
-      poisson_counts = np.random.poisson(1, len(accumulator.fpls))
+      poisson_counts = self._random_state.poisson(1, len(accumulator.fpls))
       for i, fpl in enumerate(accumulator.fpls):
         result.extend([fpl] * poisson_counts[i])
     return result
@@ -550,14 +528,10 @@ class _ExtractOutputDoFn(beam.DoFn):
     if metric_variables:
       result = self._eval_saved_model.metrics_set_variables_and_get_values(
           metric_variables)
-
-      # If slice key contains uncertainty sample ID, remove it from the key.
-      if len(slice_key) and _SAMPLE_ID in slice_key[0]:
-        slice_key = slice_key[1:]
       yield (slice_key, result)
     else:
       # Increase a counter for empty bootstrap samples. When sampling is not
-      # enabled, this should never be exected. The slice extractor/fanout only
-      # emits slices that match examples, and if the slice matches examples, it
-      # will never be empty.
+      # enabled, this should never be exected. This should only occur when the
+      # slice sizes are incredibly small, and seeing large values of this
+      # counter is a sign that something has gone wrong.
       self._num_bootstrap_empties.inc(1)
