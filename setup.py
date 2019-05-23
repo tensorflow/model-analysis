@@ -165,8 +165,6 @@ class NPM(Command):
       os.path.join(here, 'tensorflow_model_analysis', 'static', 'index.js'),
       os.path.join(here, 'tensorflow_model_analysis', 'static',
                    'vulcanized_tfma.js'),
-      os.path.join(here, 'tensorflow_model_analysis', 'static',
-                   'vulcanized_template.html'),
   ]
 
   def initialize_options(self):
@@ -250,7 +248,6 @@ setup_args = {
         'tensorflow_model_analysis/static/extension.js',
         'tensorflow_model_analysis/static/index.js',
         'tensorflow_model_analysis/static/index.js.map',
-        'tensorflow_model_analysis/static/vulcanized_template.html',
         'tensorflow_model_analysis/static/vulcanized_tfma.js',
     ]),],
     # Make sure to sync the versions of common dependencies (numpy, six, and
