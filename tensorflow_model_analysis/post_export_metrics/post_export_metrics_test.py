@@ -76,7 +76,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     extractors = model_eval_lib.default_extractors(
         eval_shared_model=eval_shared_model)
     with beam.Pipeline() as pipeline:
-      metrics, plots = (
+      (metrics, plots), _ = (
           pipeline
           | 'Create' >> beam.Create(serialized_examples)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()

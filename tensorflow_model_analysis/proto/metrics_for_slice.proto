@@ -184,7 +184,12 @@ message MetricValue {
 
     RatioValue ratio_value = 8 [deprecated = true];
 
-    // Next tag = 10;
+    // This field will contain a generic message to be used to communicate any
+    // extra information, such as in a scenario when no data is aggregated for a
+    // small data slice due to privacy concerns.
+    string debug_message = 10;
+
+    // Next tag = 11;
   }
 }
 
@@ -228,6 +233,11 @@ message PlotData {
   CalibrationHistogramBuckets calibration_histogram_buckets = 1;
   // For auc curve and auprc curve.
   ConfusionMatrixAtThresholds confusion_matrix_at_thresholds = 2;
+
+  // This field will contain a generic message to be used to communicate any
+  // extra information, such as in a scenario when no data is aggregated for a
+  // small data slice due to privacy concerns.
+  string debug_message = 3;
 }
 
 message PlotsForSlice {

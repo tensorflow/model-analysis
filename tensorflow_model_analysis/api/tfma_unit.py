@@ -283,7 +283,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
-      metrics, _ = (
+      (metrics, _), _ = (
           pipeline
           | 'CreateExamples' >> beam.Create(serialized_examples)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
@@ -371,7 +371,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         eval_shared_model=eval_shared_model, slice_spec=slice_spec)
 
     # pylint: disable=no-value-for-parameter
-    metrics, _ = (
+    (metrics, _), _ = (
         examples_pcollection
         | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
         | 'Extract' >> Extract(extractors=extractors)

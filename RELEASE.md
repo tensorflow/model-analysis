@@ -34,6 +34,8 @@
 *   Added support for mean absolute error post export metric.
 *   Added support for mean squared error and root mean squared error post export
     metric.
+*   Added support for not computing metrics for slices with less than a given
+    number of examples.
 
 ## Bug fixes and other changes
 *   Cast / convert labels for precision / recall at K so that they work even if

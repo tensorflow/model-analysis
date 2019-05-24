@@ -33,7 +33,15 @@ from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
-from typing import Any, Dict, List, Optional, Text, Tuple
+from typing import Any, Dict, List, Optional, Text, Tuple, Generator
+
+# Error metric key that will be used to communicate any extra information, such
+# as in a scenario when no data is aggregated for a small slice due to privacy
+# concerns.
+_ERROR_METRIC_KEY = 'error'
+_EMPTY_SLICE_ERROR_MESSAGE = (
+    'Example count for this slice key is lower than '
+    'the minimum required value: %s. No data is aggregated for this slice.')
 
 
 def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
@@ -43,7 +51,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     plots_key: Text = constants.PLOTS_KEY,
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     num_bootstrap_samples: Optional[int] = 1,
-) -> evaluator.Evaluator:
+    k_anonymization_count: int = 1) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -55,6 +63,10 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     num_bootstrap_samples: Number of bootstrap samples to draw. If more than 1,
       confidence intervals will be computed for metrics. Suggested value is at
       least 20.
+    k_anonymization_count: If the number of examples in a specific slice is less
+      than k_anonymization_count, then an error will be returned for that slice.
+      This will be useful to ensure privacy by not displaying the aggregated
+      data for smaller number of examples.
 
   Returns:
     Evaluator for evaluating metrics and plots. The output will be stored under
@@ -69,7 +81,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           desired_batch_size=desired_batch_size,
           metrics_key=metrics_key,
           plots_key=plots_key,
-          num_bootstrap_samples=num_bootstrap_samples))
+          num_bootstrap_samples=num_bootstrap_samples,
+          k_anonymization_count=k_anonymization_count))
   # pylint: enable=no-value-for-parameter
 
 
@@ -200,6 +213,15 @@ def _serialize_metrics(metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
   result = metrics_for_slice_pb2.MetricsForSlice()
   slice_key, slice_metrics = metrics
 
+  if _ERROR_METRIC_KEY in slice_metrics:
+    tf.logging.warning('Error for slice: %s with error message: %s ', slice_key,
+                       slice_metrics[_ERROR_METRIC_KEY])
+    metrics = metrics_for_slice_pb2.MetricsForSlice()
+    metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+    metrics.metrics[_ERROR_METRIC_KEY].debug_message = slice_metrics[
+        _ERROR_METRIC_KEY]
+    return metrics.SerializeToString()
+
   # Convert the slice key.
   result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
@@ -245,6 +267,15 @@ def _serialize_plots(plots: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
   """
   result = metrics_for_slice_pb2.PlotsForSlice()
   slice_key, slice_plots = plots
+
+  if _ERROR_METRIC_KEY in slice_plots:
+    tf.logging.warning('Error for slice: %s with error message: %s ', slice_key,
+                       slice_plots[_ERROR_METRIC_KEY])
+    metrics = metrics_for_slice_pb2.PlotsForSlice()
+    metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+    metrics.plots[_ERROR_METRIC_KEY].debug_message = slice_plots[
+        _ERROR_METRIC_KEY]
+    return metrics.SerializeToString()
 
   # Convert the slice key.
   result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
@@ -292,8 +323,8 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
     num_bootstrap_samples: Optional[int] = 1,
-    random_seed: Optional[int] = None,
-) -> beam.pvalue.DoOutputsTuple:
+    random_seed: Optional[int] = None
+) -> Tuple[beam.pvalue.DoOutputsTuple, beam.pvalue.PCollection]:
   """Computes metrics and plots using the EvalSavedModel.
 
   Args:
@@ -311,18 +342,26 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     random_seed: Provide for deterministic tests only.
 
   Returns:
-    DoOutputsTuple. The tuple entries are
-    PCollection of (slice key, metrics) and
-    PCollection of (slice key, plot metrics).
+    Tuple of Tuple[PCollection of (slice key, metrics),
+    PCollection of (slice key, plot metrics)] and
+    PCollection of (slice_key and its example count).
   """
   # pylint: disable=no-value-for-parameter
-  return (
+  slices = (
       extracts
 
       # Input: one example at a time, with slice keys in extracts.
       # Output: one fpl example per slice key (notice that the example turns
       #         into n, replicated once per applicable slice key)
-      | 'FanoutSlices' >> slicer.FanoutSlices()
+      | 'FanoutSlices' >> slicer.FanoutSlices())
+
+  slices_count = (
+      slices
+      | 'ExtractSliceKeys' >> beam.Keys()
+      | 'CountPerSliceKey' >> beam.combiners.Count.PerElement())
+
+  aggregated_metrics = (
+      slices
 
       # Each slice key lands on one shard where metrics are computed for all
       # examples in that shard -- the "map" and "reduce" parts of the
@@ -334,6 +373,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
           desired_batch_size=desired_batch_size,
           num_bootstrap_samples=num_bootstrap_samples,
           random_seed=random_seed))
+  return (aggregated_metrics, slices_count)
   # pylint: enable=no-value-for-parameter
 
 
@@ -346,7 +386,8 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     desired_batch_size: Optional[int] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
-    num_bootstrap_samples: Optional[int] = 1) -> evaluator.Evaluation:
+    num_bootstrap_samples: Optional[int] = 1,
+    k_anonymization_count: int = 1) -> evaluator.Evaluation:
   """Evaluates metrics and plots using the EvalSavedModel.
 
   Args:
@@ -364,13 +405,17 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     num_bootstrap_samples: Number of bootstrap samples to draw. If more than 1,
       confidence intervals will be computed for metrics. Suggested value is at
       least 20.
+    k_anonymization_count: If the number of examples in a specific slice is less
+      than k_anonymization_count, then an error will be returned for that slice.
+      This will be useful to ensure privacy by not displaying the aggregated
+      data for smaller number of examples.
 
   Returns:
     Evaluation containing serialized protos keyed by 'metrics' and 'plots'.
   """
 
   # pylint: disable=no-value-for-parameter
-  metrics, plots = (
+  (metrics, plots), slices_count = (
       extracts
       | 'Filter' >> extractor.Filter(include=[
           constants.FEATURES_PREDICTIONS_LABELS_KEY,
@@ -380,6 +425,17 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
           eval_shared_model,
           desired_batch_size,
           num_bootstrap_samples=num_bootstrap_samples))
+
+  if k_anonymization_count > 1:
+    metrics = (
+        metrics
+        | 'FilterMetricsForSmallSlices' >> _FilterOutSlices(
+            slices_count, k_anonymization_count))
+    plots = (
+        plots
+        | 'FilterPlotsForSmallSlices' >> _FilterOutSlices(
+            slices_count, k_anonymization_count))
+
   metrics, plots = (
       (metrics, plots)
       | 'SerializeMetricsAndPlots' >> SerializeMetricsAndPlots(
@@ -387,3 +443,66 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
   # pylint: enable=no-value-for-parameter
 
   return {metrics_key: metrics, plots_key: plots}
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(
+    beam.typehints.Tuple[slicer.BeamSliceKeyType, slicer.BeamExtractsType])
+@beam.typehints.with_output_types(
+    beam.typehints.Tuple[slicer.BeamSliceKeyType, slicer.BeamExtractsType])
+def _FilterOutSlices(  # pylint: disable=invalid-name
+    values: beam.pvalue.PCollection, slices_count: beam.pvalue.PCollection,
+    k_anonymization_count: int) -> beam.pvalue.PCollection:
+  """Filter out slices with examples count lower than k_anonymization_count.
+
+  Since we might filter out certain slices to preserve privacy in the case of
+  small slices, to make end users aware of this, we will append filtered out
+  slice keys with empty data, and a debug message explaining the omission.
+
+  Args:
+    values: PCollection of aggregated data keyed at slice_key
+    slices_count: PCollection of slice keys and their example count.
+    k_anonymization_count: If the number of examples in a specific slice is less
+      than k_anonymization_count, then an error will be returned for that slice.
+      This will be useful to ensure privacy by not displaying the aggregated
+      data for smaller number of examples.
+
+  Returns:
+    A PCollection keyed at all the possible slice_key and aggregated data for
+    slice keys with example count more than k_anonymization_count and error
+    message for filtered out slices.
+  """
+
+  class FilterOutSmallSlicesDoFn(beam.DoFn):
+    """DoFn to filter out small slices.
+
+    For slices (excluding overall slice) with examples count lower than
+    k_anonymization_count, it adds an error message.
+
+    Args:
+      element: Tuple containing slice key and a dictionary containing
+        corresponding elements from merged pcollections.
+
+    Returns:
+      PCollection of (slice_key, aggregated_data or error message)
+    """
+
+    def process(
+        self, element: Tuple[slicer.SliceKeyType, Dict[Text, Any]]
+    ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
+      (slice_key, value) = element
+      if value['values']:
+        if (not slice_key or value['slices_count'][0] >= k_anonymization_count):
+          yield (slice_key, value['values'][0])
+        else:
+          yield (slice_key, {
+              _ERROR_METRIC_KEY:
+                  (_EMPTY_SLICE_ERROR_MESSAGE % str(k_anonymization_count))
+          })
+
+  return ({
+      'values': values,
+      'slices_count': slices_count
+  }
+          | 'CoGroupingSlicesCountAndAggregatedData' >> beam.CoGroupByKey()
+          | 'FilterOutSmallSlices' >> beam.ParDo(FilterOutSmallSlicesDoFn()))

@@ -274,7 +274,8 @@ def default_extractors(  # pylint: disable=invalid-name
 def default_evaluators(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
-    num_bootstrap_samples: Optional[int] = None) -> List[evaluator.Evaluator]:
+    num_bootstrap_samples: Optional[int] = None,
+    k_anonymization_count: int = 1) -> List[evaluator.Evaluator]:
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
@@ -283,12 +284,17 @@ def default_evaluators(  # pylint: disable=invalid-name
     num_bootstrap_samples: Number of bootstrap samples to draw. If more than 1,
       confidence intervals will be computed for metrics. Suggested value is at
       least 20.
+    k_anonymization_count: If the number of examples in a specific slice is less
+      than k_anonymization_count, then an error will be returned for that slice.
+      This will be useful to ensure privacy by not displaying the aggregated
+      data for smaller number of examples.
   """
   return [
       metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
           eval_shared_model,
           desired_batch_size,
-          num_bootstrap_samples=num_bootstrap_samples)
+          num_bootstrap_samples=num_bootstrap_samples,
+          k_anonymization_count=k_anonymization_count)
   ]
 
 
@@ -479,7 +485,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     evaluators: Optional[List[evaluator.Evaluator]] = None,
     writers: Optional[List[writer.Writer]] = None,
     write_config: Optional[bool] = True,
-    num_bootstrap_samples: Optional[int] = 1) -> beam.pvalue.PDone:
+    num_bootstrap_samples: Optional[int] = 1,
+    k_anonymization_count: int = 1) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -533,6 +540,10 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     write_config: True to write the config along with the results.
     num_bootstrap_samples: Optional, set to at least 20 in order to calculate
       metrics with confidence intervals.
+    k_anonymization_count: If the number of examples in a specific slice is less
+      than k_anonymization_count, then an error will be returned for that slice.
+      This will be useful to ensure privacy by not displaying the aggregated
+      data for smaller number of examples.
 
   Raises:
     ValueError: If matching Extractor not found for an Evaluator.
@@ -551,7 +562,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     evaluators = default_evaluators(
         eval_shared_model=eval_shared_model,
         desired_batch_size=desired_batch_size,
-        num_bootstrap_samples=num_bootstrap_samples)
+        num_bootstrap_samples=num_bootstrap_samples,
+        k_anonymization_count=k_anonymization_count)
 
   for v in evaluators:
     evaluator.verify_evaluator(v, extractors)
@@ -602,6 +614,7 @@ def run_model_analysis(
     write_config: Optional[bool] = True,
     pipeline_options: Optional[Any] = None,
     num_bootstrap_samples: Optional[int] = 1,
+    k_anonymization_count: int = 1,
 ) -> EvalResult:
   """Runs TensorFlow model analysis.
 
@@ -646,6 +659,10 @@ def run_model_analysis(
       whether to run directly.
     num_bootstrap_samples: Optional, set to at least 20 in order to calculate
       metrics with confidence intervals.
+    k_anonymization_count: If the number of examples in a specific slice is less
+      than k_anonymization_count, then an error will be returned for that slice.
+      This will be useful to ensure privacy by not displaying the aggregated
+      data for smaller number of examples.
 
   Returns:
     An EvalResult that can be used with the TFMA visualization functions.
@@ -682,7 +699,8 @@ def run_model_analysis(
             evaluators=evaluators,
             writers=writers,
             write_config=write_config,
-            num_bootstrap_samples=num_bootstrap_samples))
+            num_bootstrap_samples=num_bootstrap_samples,
+            k_anonymization_count=k_anonymization_count))
     # pylint: enable=no-value-for-parameter
 
   eval_result = load_eval_result(output_path=output_path)

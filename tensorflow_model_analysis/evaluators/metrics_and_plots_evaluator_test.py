@@ -166,6 +166,24 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         expected_plot_data,
         metrics_for_slice_pb2.PlotsForSlice.FromString(serialized))
 
+  def testSerializePlots_emptyPlot(self):
+    slice_key = _make_slice_key('fruit', 'apple')
+    tfma_plots = {
+        metrics_and_plots_evaluator._ERROR_METRIC_KEY: 'error_message'
+    }
+
+    calibration_plot = (
+        post_export_metrics.calibration_plot_and_prediction_histogram())
+    actual_plot = metrics_and_plots_evaluator._serialize_plots(
+        (slice_key, tfma_plots), [calibration_plot])
+    expected_plot = metrics_for_slice_pb2.PlotsForSlice()
+    expected_plot.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+    expected_plot.plots[metrics_and_plots_evaluator
+                        ._ERROR_METRIC_KEY].debug_message = 'error_message'
+    self.assertProtoEquals(
+        expected_plot,
+        metrics_for_slice_pb2.PlotsForSlice.FromString(actual_plot))
+
   def testSerializeConfusionMatrices(self):
     slice_key = _make_slice_key()
 
@@ -570,6 +588,25 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         expected_metrics_for_slice,
         metrics_for_slice_pb2.MetricsForSlice.FromString(got))
 
+  def testSerializeMetrics_emptyMetrics(self):
+    slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
+    slice_metrics = {
+        metrics_and_plots_evaluator._ERROR_METRIC_KEY: 'error_message'
+    }
+
+    actual_metrics = metrics_and_plots_evaluator._serialize_metrics(
+        (slice_key, slice_metrics),
+        [post_export_metrics.auc(),
+         post_export_metrics.auc(curve='PR')])
+
+    expected_metrics = metrics_for_slice_pb2.MetricsForSlice()
+    expected_metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+    expected_metrics.metrics[metrics_and_plots_evaluator
+                             ._ERROR_METRIC_KEY].debug_message = 'error_message'
+    self.assertProtoEquals(
+        expected_metrics,
+        metrics_for_slice_pb2.MetricsForSlice.FromString(actual_metrics))
+
   def testStringMetrics(self):
     slice_key = _make_slice_key()
     slice_metrics = {
@@ -713,7 +750,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      metrics, _ = (
+      (metrics, _), _ = (
           pipeline
           | 'Create' >> beam.Create([
               example1.SerializeToString(),
@@ -773,7 +810,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         example5 = self._makeExample(
             age=5.0, language='chinese', label=1.0, slice_key='second_slice')
 
-        metrics, plots = (
+        (metrics, plots), _ = (
             pipeline
             | 'Create' >> beam.Create([
                 example1.SerializeToString(),
@@ -783,7 +820,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                 example5.SerializeToString(),
             ])
             | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
-            | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
+            | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint:disable=no-value-for-parameter
             | 'ComputeMetricsAndPlots' >>
             metrics_and_plots_evaluator.ComputeMetricsAndPlots(
                 eval_shared_model=eval_shared_model,
@@ -863,7 +900,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         example5 = self._makeExample(
             age=5.0, language='chinese', label=1.0, slice_key='second_slice')
 
-        metrics, _ = (
+        (metrics, _), _ = (
             pipeline
             | 'Create' >> beam.Create([
                 example1.SerializeToString(),
@@ -955,7 +992,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      metrics, plots = (
+      (metrics, plots), _ = (
           pipeline
           | 'Create' >> beam.Create([
               example1.SerializeToString(),
@@ -1014,7 +1051,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
       example1 = self._makeExample(prediction=1.0)
       example2 = self._makeExample(prediction=2.0)
 
-      metrics, plots = (
+      (metrics, plots), _ = (
           pipeline
           | 'Create' >> beam.Create([
               example1.SerializeToString(),
@@ -1065,7 +1102,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(prediction=0.8, label=1.0)
       example4 = self._makeExample(prediction=1.0, label=1.0)
 
-      metrics, plots = (
+      (metrics, plots), _ = (
           pipeline
           | 'Create' >> beam.Create([
               example1.SerializeToString(),
@@ -1109,6 +1146,35 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           raise util.BeamAssertException(err)
 
       util.assert_that(plots, check_plots, label='plots')
+
+  def testFilterOutSlices(self):
+    slice_key_1 = (('slice_key', 'slice1'),)
+    slice_key_2 = (('slice_key', 'slice2'),)
+    slice_key_3 = (('slice_key', 'slice3'),)
+
+    values_list = [(slice_key_1, {
+        'val11': 'val12'
+    }), (slice_key_2, {
+        'val21': 'val22'
+    })]
+    slice_counts_list = [(slice_key_1, 2), (slice_key_2, 1), (slice_key_3, 0)]
+
+    expected_output = []
+    expected_output.append(values_list[0])
+    expected_output.append((slice_key_2, {
+        metrics_and_plots_evaluator._ERROR_METRIC_KEY:
+            (metrics_and_plots_evaluator._EMPTY_SLICE_ERROR_MESSAGE % str(2))
+    }))
+
+    with beam.Pipeline() as pipeline:
+      slice_counts_pcoll = (
+          pipeline | 'CreateSliceCountsPColl' >> beam.Create(slice_counts_list))
+      output_dict = (
+          pipeline
+          | 'CreateValuesPColl' >> beam.Create(values_list)
+          | 'FilterOutSlices' >> metrics_and_plots_evaluator._FilterOutSlices(
+              slice_counts_pcoll, k_anonymization_count=2))
+      util.assert_that(output_dict, util.equal_to(expected_output))
 
 
 if __name__ == '__main__':

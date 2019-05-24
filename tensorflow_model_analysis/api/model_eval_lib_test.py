@@ -123,7 +123,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=3.0, language='english', label=1.0),
         self._makeExample(age=3.0, language='chinese', label=0.0),
         self._makeExample(age=4.0, language='english', label=1.0),
-        self._makeExample(age=5.0, language='chinese', label=1.0)
+        self._makeExample(age=5.0, language='chinese', label=1.0),
+        self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slice_spec = [slicer.SingleSliceSpec(columns=['language'])]
@@ -131,10 +132,19 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         model_eval_lib.default_eval_shared_model(
             eval_saved_model_path=model_location, example_weight_key='age'),
         data_location,
-        slice_spec=slice_spec)
+        slice_spec=slice_spec,
+        k_anonymization_count=2)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
+        (('language', b'hindi'),): {
+            u'error': {
+                'debugMessage':
+                    u'Example count for this slice key is lower than the '
+                    u'minimum required value: 2. No data is aggregated for '
+                    u'this slice.'
+            },
+        },
         (('language', b'chinese'),): {
             'accuracy': {
                 'doubleValue': 0.5
@@ -177,7 +187,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=3.0, language='english', label=1.0),
         self._makeExample(age=3.0, language='chinese', label=0.0),
         self._makeExample(age=4.0, language='english', label=1.0),
-        self._makeExample(age=5.0, language='chinese', label=1.0)
+        self._makeExample(age=5.0, language='chinese', label=1.0),
+        self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slice_spec = [slicer.SingleSliceSpec(columns=['language'])]
@@ -186,10 +197,19 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             eval_saved_model_path=model_location, example_weight_key='age'),
         data_location,
         slice_spec=slice_spec,
-        num_bootstrap_samples=20)
+        num_bootstrap_samples=20,
+        k_anonymization_count=2)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
+        (('language', b'hindi'),): {
+            u'error': {
+                'debugMessage':
+                    u'Example count for this slice key is lower than the '
+                    u'minimum required value: 2. No data is aggregated for '
+                    u'this slice.'
+            },
+        },
         (('language', b'chinese'),): {
             metric_keys.EXAMPLE_WEIGHT: {
                 'doubleValue': 8.0

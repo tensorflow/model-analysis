@@ -278,7 +278,7 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
               .ModelAgnosticGetFPLFeedConfig(model_agnostic_config)))
 
       # Run our pipeline doing Extract -> Slice -> Fanout -> Calculate Metrics.
-      metrics, _ = (
+      (metrics, _), _ = (
           pipeline
           | 'Create Examples' >> beam.Create(serialized_examples)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
