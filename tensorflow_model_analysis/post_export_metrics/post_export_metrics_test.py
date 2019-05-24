@@ -85,7 +85,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
           metrics_and_plots_evaluator.ComputeMetricsAndPlots(
               eval_shared_model=eval_shared_model,
               num_bootstrap_samples=self.num_bootstrap_samples,
-              random_seed=self.deterministic_test_seed))
+              random_seed_for_testing=self.deterministic_test_seed))
       if custom_metrics_check is not None:
         util.assert_that(metrics, custom_metrics_check, label='metrics')
       if custom_plots_check is not None:
@@ -777,16 +777,16 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
           self.assertAlmostEqual(v.value, expected_value, delta=0.2)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_mean.value,
-              expected_value,
+              0.44999999999999996,
               delta=0.2)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_degrees_of_freedom.value,
               self.num_bootstrap_samples - 1,
-              delta=1)
+              delta=2)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_standard_deviation.value,
-              0,
-              delta=0.1)
+              0.296148111092581,
+              delta=0.2)
 
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
         recall_metric.populate_stats_and_pop(value, output_metrics)
@@ -798,17 +798,15 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
           expected_value = expected_recall[expected_cutoffs.index(v.cutoff)]
           self.assertAlmostEqual(v.value, expected_value, delta=0.2)
           self.assertAlmostEqual(
-              v.t_distribution_value.sample_mean.value,
-              expected_value,
-              delta=0.2)
+              v.t_distribution_value.sample_mean.value, 0.5, delta=0.5)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_degrees_of_freedom.value,
               self.num_bootstrap_samples - 1,
-              delta=1)
+              delta=2)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_standard_deviation.value,
               0,
-              delta=0.1)
+              delta=0.5)
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -1351,21 +1349,25 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         #     +      | 0.7  | TP    | TP  | FN  | FN  | FN
         #     -      | 0.8  | FP    | FP  | FP  | TN  | TN
         #     +      | 1.0  | TP    | TP  | TP  | TP  | FN
+        # Note that values tested here are deterministic because of the use of a
+        # consistent seed. Changing this seed or the way in which the poisson
+        # sampling will change these values.
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[0]],
-            [0, 0, 2, 3, 3.0 / 5.0, 1.0])
+            [0.0, 0.0, 1.3333334, 1.6666666, 0.64444447, 1.0])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[1]],
-            [1, 1, 1, 2, 2.0 / 3.0, 2.0 / 3.0])
+            [0.66666669, 0.66666669, 0.66666669, 1.0, 0.58333337, 0.55555558])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[7001]],
-            [2, 1, 1, 1, 1.0 / 2.0, 1.0 / 3.0])
+            [1.0, 0.66666669, 0.66666669, 0.66666669, 0.5, 0.44444445])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[8001]],
-            [2, 2, 0, 1, 1.0 / 1.0, 1.0 / 3.0])
+            [1.0, 1.3333334, 0.0, 0.66666669, 1.0, 0.44444445])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[10001]],
-            [3, 2, 0, 0, float('nan'), 0.0])
+            [1.6666666, 1.3333334, 0.0, 0.0,
+             float('nan'), 0.0])
         self.assertIn(metric_keys.AUC_PLOTS_THRESHOLDS, value)
         thresholds = value[metric_keys.AUC_PLOTS_THRESHOLDS]
         self.assertAlmostEqual(0.0, thresholds[1].sample_mean)
@@ -1387,25 +1389,25 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             recall: 0.0
             bounded_false_negatives {
               lower_bound {
-                value: 3.0
+                value: -1.2017685
               }
               upper_bound {
-                value: 3.0
+                value: 4.5351017
               }
               value {
-                value: 3.0
+                value: 1.6666666
               }
               methodology: POISSON_BOOTSTRAP
             }
             bounded_true_negatives {
               lower_bound {
-                value: 2.0
+                value: -1.5351017
               }
               upper_bound {
-                value: 2.0
+                value: 4.2017685
               }
               value {
-                value: 2.0
+                value: 1.3333334
               }
               methodology: POISSON_BOOTSTRAP
             }
@@ -1450,9 +1452,10 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             }
             t_distribution_false_negatives {
               sample_mean {
-                value: 3.0
+                value: 1.6666666
               }
               sample_standard_deviation {
+                value: 1.1547005
               }
               sample_degrees_of_freedom {
                 value: 2
@@ -1463,9 +1466,10 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             }
             t_distribution_true_negatives {
               sample_mean {
-                value: 2.0
+                value: 1.3333334
               }
               sample_standard_deviation {
+                value: 1.1547005
               }
               sample_degrees_of_freedom {
                 value: 2
@@ -2916,11 +2920,17 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         mean_squared_error_metric.populate_stats_and_pop(value, output_metrics)
         actual_metric_value = output_metrics[metric_key]
         self.assertAlmostEqual(
-            actual_metric_value.bounded_value.value.value, 0.3, delta=0.2)
+            actual_metric_value.bounded_value.value.value,
+            0.4161369204521179,
+            delta=0.01)
         self.assertAlmostEqual(
-            actual_metric_value.bounded_value.upper_bound.value, 0.3, delta=0.2)
+            actual_metric_value.bounded_value.upper_bound.value,
+            0.5227398817322649,
+            delta=0.01)
         self.assertAlmostEqual(
-            actual_metric_value.bounded_value.lower_bound.value, 0.3, delta=0.2)
+            actual_metric_value.bounded_value.lower_bound.value,
+            0.30953395219801283,
+            delta=0.01)
 
       except AssertionError as err:
         raise util.BeamAssertException(err)
@@ -3076,11 +3086,11 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         error_metric.populate_stats_and_pop(value, output_metrics)
         actual_metric_value = output_metrics[metric_key]
         self.assertAlmostEqual(
-            actual_metric_value.bounded_value.value.value, 0.5, delta=0.2)
+            actual_metric_value.bounded_value.value.value, 0.62417656, places=5)
         self.assertAlmostEqual(
-            actual_metric_value.bounded_value.upper_bound.value, 0.5, delta=0.2)
+            actual_metric_value.bounded_value.upper_bound.value, 0.8, delta=0.1)
         self.assertAlmostEqual(
-            actual_metric_value.bounded_value.lower_bound.value, 0.5, delta=0.2)
+            actual_metric_value.bounded_value.lower_bound.value, 0.5, delta=0.1)
 
       except AssertionError as err:
         raise util.BeamAssertException(err)

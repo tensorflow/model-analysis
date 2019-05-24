@@ -324,7 +324,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
     num_bootstrap_samples: Optional[int] = 1,
-    random_seed: Optional[int] = None
+    random_seed_for_testing: Optional[int] = None
 ) -> Tuple[beam.pvalue.DoOutputsTuple, beam.pvalue.PCollection]:
   """Computes metrics and plots using the EvalSavedModel.
 
@@ -340,7 +340,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     desired_batch_size: Optional batch size for batching in Aggregate.
     num_bootstrap_samples: Set to value > 1 to run metrics analysis over
       multiple bootstrap samples and compute uncertainty intervals.
-    random_seed: Provide for deterministic tests only.
+    random_seed_for_testing: Provide for deterministic tests only.
 
   Returns:
     Tuple of Tuple[PCollection of (slice key, metrics),
@@ -379,7 +379,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
           eval_shared_model=eval_shared_model,
           desired_batch_size=desired_batch_size,
           num_bootstrap_samples=num_bootstrap_samples,
-          random_seed=random_seed))
+          random_seed_for_testing=random_seed_for_testing))
   return (aggregated_metrics, slices_count)
   # pylint: enable=no-value-for-parameter
 
