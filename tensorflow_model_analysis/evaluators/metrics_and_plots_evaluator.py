@@ -28,6 +28,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import aggregate
+from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
@@ -346,6 +347,12 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     PCollection of (slice key, plot metrics)] and
     PCollection of (slice_key and its example count).
   """
+
+  _ = (
+      extracts.pipeline
+      | counter_util.IncrementMetricsComputationCounters(
+          eval_shared_model.add_metrics_callbacks))
+
   # pylint: disable=no-value-for-parameter
   slices = (
       extracts

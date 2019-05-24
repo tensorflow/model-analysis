@@ -26,22 +26,12 @@ from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 
 
-class FakePTransform(beam.PTransform):
-
-  def _counter_inc(self, data):
-    auc = post_export_metrics.auc()
-    counter_util.update_beam_counters([auc])
-    return
-
-  def expand(self, data):
-    return data | 'Input' >> beam.Map(self._counter_inc)
-
-
 class CounterUtilTest(tf.test.TestCase):
 
   def testMetricComputedBeamCounter(self):
     with beam.Pipeline() as pipeline:
-      _ = pipeline | beam.Create([1, 2, 3]) | 'Fake' >> FakePTransform()
+      auc = post_export_metrics.auc()
+      _ = pipeline | counter_util.IncrementMetricsComputationCounters([auc])
 
     result = pipeline.run()
     metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
@@ -49,7 +39,7 @@ class CounterUtilTest(tf.test.TestCase):
     actual_metrics_count = result.metrics().query(
         filter=metric_filter)['counters'][0].committed
 
-    self.assertEqual(actual_metrics_count, 3)
+    self.assertEqual(actual_metrics_count, 1)
 
 
 if __name__ == '__main__':

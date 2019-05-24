@@ -21,12 +21,26 @@ from __future__ import print_function
 import apache_beam as beam
 
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
+from typing import List
 
 
-def update_beam_counters(metrics_callbacks):
-  """To update beam counters for all the metrics computed."""
-  for callback in metrics_callbacks:
-    if hasattr(callback, 'name'):
-      metrics_counter = beam.metrics.Metrics.counter(
-          constants.METRICS_NAMESPACE, 'metric_computed_%s' % callback.name)
-      metrics_counter.inc(1)
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.Pipeline)
+@beam.typehints.with_output_types(beam.pvalue.PDone)
+def IncrementMetricsComputationCounters(
+    pipeline: beam.Pipeline,
+    metrics_callbacks: List[types.AddMetricsCallbackType]):
+  """To track count of all the metrics being computed using TFMA."""
+
+  def _MakeAndIncrementCounters(_):
+    for callback in metrics_callbacks:
+      if hasattr(callback, 'name'):
+        metrics_counter = beam.metrics.Metrics.counter(
+            constants.METRICS_NAMESPACE, 'metric_computed_%s' % callback.name)
+        metrics_counter.inc(1)
+
+  return (pipeline
+          | 'CreateNone' >> beam.Create([None])
+          | 'IncrementMetricsComputationCounters' >>
+          beam.Map(_MakeAndIncrementCounters))
