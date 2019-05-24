@@ -10,8 +10,6 @@
 *   Added support for binarization of multiclass metrics that use labels of the
     from (N) in addition to (N, 1).
 *   Added support for using iterators with EvalInputReceiver.
-*   Improved performance of confidence interval computations by modifying the
-    pipeline shape.
 
 ## Bug fixes and other changes
 
