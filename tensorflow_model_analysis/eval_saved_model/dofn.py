@@ -63,11 +63,20 @@ class EvalSavedModelDoFn(beam.DoFn):
         constants.METRICS_NAMESPACE, 'model_load_seconds')
 
   def start_bundle(self):
-    construct_fn = make_construct_fn(
-        self._eval_shared_model.model_path,
-        self._eval_shared_model.add_metrics_callbacks,
-        self._eval_shared_model.include_default_metrics,
-        self._eval_shared_model.additional_fetches)
+    # Default to eval_saved_model dofn to preserve legacy assumption
+    # of eval_saved_model.
+    #
+    # TODO(b/133761055): Update all callers and make this an error condition to
+    # not have construct_fn specified.
+    if self._eval_shared_model.construct_fn is None:
+      construct_fn = make_construct_fn(
+          self._eval_shared_model.model_path,
+          self._eval_shared_model.add_metrics_callbacks,
+          self._eval_shared_model.include_default_metrics,
+          self._eval_shared_model.additional_fetches)
+    else:
+      construct_fn = self._eval_shared_model.construct_fn
+
     self._eval_saved_model = (
         self._eval_shared_model.shared_handle.acquire(
             construct_fn(self._model_load_seconds)))

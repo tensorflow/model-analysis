@@ -359,7 +359,8 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 
       # Input: one example at a time, with slice keys in extracts.
       # Output: one fpl example per slice key (notice that the example turns
-      #         into n, replicated once per applicable slice key)
+      #         into n logical examples, references to which are replicated once
+      #         per applicable slice key).
       | 'FanoutSlices' >> slicer.FanoutSlices())
 
   slices_count = (
@@ -370,9 +371,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   aggregated_metrics = (
       slices
 
-      # Each slice key lands on one shard where metrics are computed for all
-      # examples in that shard -- the "map" and "reduce" parts of the
-      # computation happen within this shard.
+      # Metrics are computed per slice key.
       # Output: Multi-outputs, a dict of slice key to computed metrics, and
       # plots if applicable.
       | 'ComputePerSliceMetrics' >> aggregate.ComputePerSliceMetrics(

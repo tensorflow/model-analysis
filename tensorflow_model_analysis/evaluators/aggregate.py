@@ -66,7 +66,7 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
     PCollection of (slice key, metrics) and
     PCollection of (slice key, plot metrics).
   """
-  # TODO(ckuhn): Remove this workaround per discussions in CL/227944001
+  # TODO(b/123516222): Remove this workaround per discussions in CL/227944001
   slice_result.element_type = beam.typehints.Any
 
   if not num_bootstrap_samples:
@@ -334,23 +334,24 @@ class _AggregateCombineFn(beam.CombineFn):
   def _start_bundle(self) -> None:
     # There's no initialisation method for CombineFns.
     # See BEAM-3736: Add SetUp() and TearDown() for CombineFns.
+
     # Default to eval_saved_model dofn to preserve legacy assumption
     # of eval_saved_model.
-    # TODO(ihchen): Update all callers and make this an error condition to not
-    # have construct_fn specified.
+    #
+    # TODO(b/133761055): Update all callers and make this an error condition to
+    # not have construct_fn specified.
     if self._eval_shared_model.construct_fn is None:
       construct_fn = dofn.make_construct_fn(
-          eval_saved_model_path=self._eval_shared_model.model_path,
-          add_metrics_callbacks=self._eval_shared_model.add_metrics_callbacks,
-          include_default_metrics=True,
-          additional_fetches=None)
-      self._eval_metrics_graph = (
-          self._eval_shared_model.shared_handle.acquire(
-              construct_fn(self._model_load_seconds)))
+          self._eval_shared_model.model_path,
+          self._eval_shared_model.add_metrics_callbacks,
+          self._eval_shared_model.include_default_metrics,
+          self._eval_shared_model.additional_fetches)
     else:
-      self._eval_metrics_graph = (
-          self._eval_shared_model.shared_handle.acquire(
-              self._eval_shared_model.construct_fn(self._model_load_seconds)))
+      construct_fn = self._eval_shared_model.construct_fn
+
+    self._eval_metrics_graph = (
+        self._eval_shared_model.shared_handle.acquire(
+            construct_fn(self._model_load_seconds)))
 
   def _poissonify(self, accumulator: _AggState
                  ) -> List[types.FeaturesPredictionsLabels]:
@@ -455,6 +456,9 @@ class _AggregateCombineFn(beam.CombineFn):
     return accumulator.metric_variables
 
 
+# TODO(b/123516222)): Add input typehints. Similarly elsewhere that it applies.
+# No typehint for output type, since it's a multi-output DoFn result that
+# Beam doesn't support typehints for yet (BEAM-3280).
 class _SeparateMetricsAndPlotsFn(beam.DoFn):
   """Separates metrics and plots into two separate PCollections."""
   OUTPUT_TAG_METRICS = 'tag_metrics'
@@ -478,42 +482,19 @@ class _SeparateMetricsAndPlotsFn(beam.DoFn):
 @beam.typehints.with_input_types(
     beam.typehints.Tuple[slicer.BeamSliceKeyType, beam.typehints
                          .List[beam.typehints.Any]])
-# No typehint for output type, since it's a multi-output DoFn result that
-# Beam doesn't support typehints for yet (BEAM-3280).
-class _ExtractOutputDoFn(beam.DoFn):
+# TODO(b/123516222)): Add output typehints. Similarly elsewhere that it applies.
+class _ExtractOutputDoFn(dofn.EvalSavedModelDoFn):
   """A DoFn that extracts the metrics output."""
 
   def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
-    self._eval_shared_model = eval_shared_model
-    self._model_load_seconds = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'model_load_seconds')
+    super(_ExtractOutputDoFn, self).__init__(eval_shared_model)
+
     # This keeps track of the number of times the poisson bootstrap encounters
     # an empty set of elements for a slice sample. Should be extremely rare in
     # practice, keeping this counter will help us understand if something is
     # misbehaving.
     self._num_bootstrap_empties = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_bootstrap_empties')
-
-  def start_bundle(self) -> None:
-    # There's no initialisation method for CombineFns.
-    # See BEAM-3736: Add SetUp() and TearDown() for CombineFns.
-    # Default to eval_saved_model dofn to preserve legacy assumption
-    # of eval_saved_model.
-    # TODO(ihchen): Update all callers and make this an error condition to not
-    # have construct_fn specified.
-    if self._eval_shared_model.construct_fn is None:
-      construct_fn = dofn.make_construct_fn(
-          eval_saved_model_path=self._eval_shared_model.model_path,
-          add_metrics_callbacks=self._eval_shared_model.add_metrics_callbacks,
-          include_default_metrics=True,
-          additional_fetches=None)
-      self._eval_saved_model = (
-          self._eval_shared_model.shared_handle.acquire(
-              construct_fn(self._model_load_seconds)))
-    else:
-      self._eval_saved_model = (
-          self._eval_shared_model.shared_handle.acquire(
-              self._eval_shared_model.construct_fn(self._model_load_seconds)))
 
   def process(
       self, element: Tuple[slicer.SliceKeyType, types.MetricVariablesType]
