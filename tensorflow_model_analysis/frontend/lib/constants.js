@@ -64,6 +64,7 @@ const MetricValueFormat = {
 
 /** @enum {string}*/
 const PlotTypes = {
+  ACCURACY_CHARTS: 'accuracyPrecisionRecallF1Charts',
   CALIBRATION_PLOT: 'calibrationPlot',
   MACRO_PRECISION_RECALL_CURVE: 'macroPrecisionRecallCurve',
   MICRO_PRECISION_RECALL_CURVE: 'microPrecisionRecallCurve',
@@ -196,6 +197,7 @@ goog.exportSymbol('tfma.PlotHighlight.WEIGHTS', PlotHighlight.WEIGHTS);
 goog.exportSymbol('tfma.PlotScale.LINEAR', PlotScale.LINEAR);
 goog.exportSymbol('tfma.PlotScale.LOG', PlotScale.LOG);
 
+goog.exportSymbol('tfma.PlotTypes.ACCURACY_CHARTS', PlotTypes.ACCURACY_CHARTS);
 goog.exportSymbol(
     'tfma.PlotTypes.CALIBRATION_PLOT', PlotTypes.CALIBRATION_PLOT);
 goog.exportSymbol(

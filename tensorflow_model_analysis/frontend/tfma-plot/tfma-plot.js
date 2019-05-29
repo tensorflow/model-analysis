@@ -20,6 +20,7 @@ import '@polymer/iron-pages/iron-pages.js';
 import '@polymer/paper-button/paper-button.js';
 import '@polymer/paper-spinner/paper-spinner.js';
 import '@polymer/paper-tabs/paper-tabs.js';
+import '../tfma-accuracy-charts/tfma-accuracy-charts.js';
 import '../tfma-calibration-plot/tfma-calibration-plot.js';
 import '../tfma-precision-recall-curve/tfma-precision-recall-curve.js';
 import '../tfma-prediction-distribution/tfma-prediction-distribution.js';

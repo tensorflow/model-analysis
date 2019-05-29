@@ -196,6 +196,7 @@ testSuite({
         [
           Constants.PlotTypes.PRECISION_RECALL_CURVE,
           Constants.PlotTypes.ROC_CURVE,
+          Constants.PlotTypes.ACCURACY_CHARTS,
         ],
         entry.plots.types);
     assertEquals(1.75, entry.plots.foo);

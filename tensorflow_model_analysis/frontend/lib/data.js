@@ -384,11 +384,12 @@ function preprocessMaybeAddPlotData(data, metricsFieldKey, plotDataGetter) {
   const supportedPlotTypes = [
     {
       type: Constants.PlotTypes.CALIBRATION_PLOT,
-      additional: Constants.PlotTypes.PREDICTION_DISTRIBUTION
+      additional: [Constants.PlotTypes.PREDICTION_DISTRIBUTION]
     },
     {
       type: Constants.PlotTypes.PRECISION_RECALL_CURVE,
-      additional: Constants.PlotTypes.ROC_CURVE
+      additional:
+          [Constants.PlotTypes.ROC_CURVE, Constants.PlotTypes.ACCURACY_CHARTS]
     },
     {
       type: Constants.PlotTypes.MACRO_PRECISION_RECALL_CURVE,
@@ -407,7 +408,9 @@ function preprocessMaybeAddPlotData(data, metricsFieldKey, plotDataGetter) {
         if (evaluation['plot'][plot.type]) {
           plotsToShow.push(plot.type);
           if (plot.additional) {
-            plotsToShow.push(plot.additional);
+            plot.additional.forEach(additionalPlot => {
+              plotsToShow.push(additionalPlot);
+            });
           }
         }
       });

@@ -326,6 +326,7 @@ tfma.PlotScale = {
  * @enum {string}
  */
 tfma.PlotTypes = {
+  ACCURACY_CHARTS: '',
   CALIBRATION_PLOT: '',
   PREDICTION_DISTRIBUTION: '',
   MACRO_PRECISION_RECALL_CURVE: '',
