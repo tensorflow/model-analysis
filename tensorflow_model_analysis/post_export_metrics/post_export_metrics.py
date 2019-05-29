@@ -232,7 +232,7 @@ def _additional_prediction_keys(keys: List[Text],
   """
   additional_keys = []
   for key in keys:
-    if tensor_index:
+    if tensor_index is not None:
       suffix = '_%d' % tensor_index
       if metric_tag.endswith(suffix):
         additional_keys.append('%s/%s' % (metric_tag[:-len(suffix)], key))
