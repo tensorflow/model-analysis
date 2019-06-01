@@ -111,6 +111,14 @@ template.innerHTML = `
         <tfma-roc-curve data="[[precisionRecallCurveData_]]">
         </tfma-roc-curve>
       </div>
+      <div name="[[tabNames_.Gain]]" class="center">
+        <tfma-gain-chart data="[[precisionRecallCurveData_]]">
+        </tfma-gain-chart>
+      </div>
+      <div name="[[tabNames_.Accuracy]]" class="center">
+        <tfma-accuracy-charts data="[[precisionRecallCurveData_]]">
+        </tfma-accuracy-charts>
+      </div>
     </iron-pages>
     <paper-spinner id="spinner" active="[[loading]]"></paper-spinner>
     <div>

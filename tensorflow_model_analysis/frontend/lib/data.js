@@ -388,8 +388,10 @@ function preprocessMaybeAddPlotData(data, metricsFieldKey, plotDataGetter) {
     },
     {
       type: Constants.PlotTypes.PRECISION_RECALL_CURVE,
-      additional:
-          [Constants.PlotTypes.ROC_CURVE, Constants.PlotTypes.ACCURACY_CHARTS]
+      additional: [
+        Constants.PlotTypes.ROC_CURVE, Constants.PlotTypes.ACCURACY_CHARTS,
+        Constants.PlotTypes.GAIN_CHART
+      ]
     },
     {
       type: Constants.PlotTypes.MACRO_PRECISION_RECALL_CURVE,

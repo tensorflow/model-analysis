@@ -22,12 +22,15 @@ import '@polymer/paper-spinner/paper-spinner.js';
 import '@polymer/paper-tabs/paper-tabs.js';
 import '../tfma-accuracy-charts/tfma-accuracy-charts.js';
 import '../tfma-calibration-plot/tfma-calibration-plot.js';
+import '../tfma-gain-chart/tfma-gain-chart.js';
 import '../tfma-precision-recall-curve/tfma-precision-recall-curve.js';
 import '../tfma-prediction-distribution/tfma-prediction-distribution.js';
 import '../tfma-roc-curve/tfma-roc-curve.js';
 
 const TABS = {
+  ACCURACY_CHARTS: 'acc',
   CALIBRATION_PLOT: 'cp',
+  GAIN_CHART: 'gain',
   MACRO_PRECISION_RECALL: 'mapr',
   MICRO_PRECISION_RECALL: 'mipr',
   PRECISION_RECALL: 'pr',
@@ -36,12 +39,20 @@ const TABS = {
   WEIGHTED_PRECISION_RECALL: 'wpr',
 };
 
-const SUPPORTED_VISUALIZATION_ = {
+const SUPPORTED_VISUALIZATION = {
+  [tfma.PlotTypes.ACCURACY_CHARTS]: {
+    type: TABS.ACCURACY_CHARTS,
+    text: 'Acc/P/R/F1',
+  },
   [tfma.PlotTypes.CALIBRATION_PLOT]:
       {type: TABS.CALIBRATION_PLOT, text: 'Calibration Plot'},
   [tfma.PlotTypes.PRECISION_RECALL_CURVE]: {
     type: TABS.PRECISION_RECALL,
     text: 'Precision-Recall Curve',
+  },
+  [tfma.PlotTypes.GAIN_CHART]: {
+    type: TABS.GAIN_CHART,
+    text: 'Gain',
   },
   [tfma.PlotTypes.MACRO_PRECISION_RECALL_CURVE]: {
     type: TABS.MACRO_PRECISION_RECALL,
@@ -140,7 +151,9 @@ export class Plot extends PolymerElement {
       tabNames_: {
         type: Object,
         value: {
+          'Accuracy': TABS.ACCURACY_CHARTS,
           'Calibration': TABS.CALIBRATION_PLOT,
+          'Gain': TABS.GAIN_CHART,
           'Prediction': TABS.PREDICTION_DISTRIBUTION,
           'Macro': TABS.MACRO_PRECISION_RECALL,
           'Micro': TABS.MICRO_PRECISION_RECALL,
@@ -284,7 +297,7 @@ export class Plot extends PolymerElement {
    */
   initialTypeChanged_(initialType) {
     if (initialType) {
-      this.selectedTab_ = SUPPORTED_VISUALIZATION_[initialType].type;
+      this.selectedTab_ = SUPPORTED_VISUALIZATION[initialType].type;
     }
   }
 
@@ -325,8 +338,8 @@ export class Plot extends PolymerElement {
   computeAvailableTabs_(availableTypes) {
     const supported = [];
     availableTypes.forEach((type) => {
-      if (SUPPORTED_VISUALIZATION_[type]) {
-        supported.push(SUPPORTED_VISUALIZATION_[type]);
+      if (SUPPORTED_VISUALIZATION[type]) {
+        supported.push(SUPPORTED_VISUALIZATION[type]);
       }
     });
     return supported;
