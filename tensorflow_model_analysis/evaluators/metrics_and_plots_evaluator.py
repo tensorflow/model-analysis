@@ -149,7 +149,7 @@ def _convert_to_array_value(array: np.ndarray
   return result
 
 
-def _convert_slice_metrics(
+def convert_slice_metrics(
     slice_metrics: Dict[Text, Any],
     post_export_metrics: List[types.AddMetricsCallbackType],
     metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice) -> None:
@@ -227,7 +227,7 @@ def _serialize_metrics(metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
   result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   # Convert the slice metrics.
-  _convert_slice_metrics(slice_metrics, post_export_metrics, result)
+  convert_slice_metrics(slice_metrics, post_export_metrics, result)
   return result.SerializeToString()
 
 

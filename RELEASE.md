@@ -12,6 +12,8 @@
 *   Added support for using iterators with EvalInputReceiver.
 *   Improved performance of confidence interval computations by modifying the
     pipeline shape.
+*   Added QueryBasedMetricsEvaluator which supports computing query-based
+    metrics (e.g. normalized discounted cumulative gain).
 
 ## Bug fixes and other changes
 
