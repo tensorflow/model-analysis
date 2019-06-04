@@ -21,28 +21,17 @@ from __future__ import print_function
 # Standard Imports
 
 import apache_beam as beam
-import numpy as np
-import six
-import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import aggregate
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
-from tensorflow_model_analysis.proto import metrics_for_slice_pb2
+from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer
-from typing import Any, Dict, List, Optional, Text, Tuple, Generator
-
-# Error metric key that will be used to communicate any extra information, such
-# as in a scenario when no data is aggregated for a small slice due to privacy
-# concerns.
-_ERROR_METRIC_KEY = 'error'
-_EMPTY_SLICE_ERROR_MESSAGE = (
-    'Example count for this slice key is lower than '
-    'the minimum required value: %s. No data is aggregated for this slice.')
+from tensorflow_model_analysis.writers import metrics_and_plots_serialization
+from typing import Any, Dict, Optional, Text, Tuple, Generator
 
 
 def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
@@ -52,7 +41,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     plots_key: Text = constants.PLOTS_KEY,
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     num_bootstrap_samples: Optional[int] = 1,
-    k_anonymization_count: int = 1) -> evaluator.Evaluator:
+    k_anonymization_count: int = 1,
+    serialize=False) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -68,6 +58,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
       than k_anonymization_count, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
       data for smaller number of examples.
+    serialize: If true, serialize the metrics to protos as part of the
+      evaluation as well.
 
   Returns:
     Evaluator for evaluating metrics and plots. The output will be stored under
@@ -83,236 +75,9 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           metrics_key=metrics_key,
           plots_key=plots_key,
           num_bootstrap_samples=num_bootstrap_samples,
-          k_anonymization_count=k_anonymization_count))
+          k_anonymization_count=k_anonymization_count,
+          serialize=serialize))
   # pylint: enable=no-value-for-parameter
-
-
-# The desired output type is
-# List[Tuple[slicer.SliceKeyType,
-# protobuf.python.google.internal.containers.MessageMap[Union[str, unicode],
-# metrics_for_slice_pb2.MetricValue]], while the metrics type isn't visible to
-# this module.
-def load_and_deserialize_metrics(path: Text
-                                ) -> List[Tuple[slicer.SliceKeyType, Any]]:
-  result = []
-  for record in tf.compat.v1.python_io.tf_record_iterator(path):
-    metrics_for_slice = metrics_for_slice_pb2.MetricsForSlice.FromString(record)
-    result.append((
-        slicer.deserialize_slice_key(metrics_for_slice.slice_key),  # pytype: disable=wrong-arg-types
-        metrics_for_slice.metrics))
-  return result
-
-
-def load_and_deserialize_plots(path: Text
-                              ) -> List[Tuple[slicer.SliceKeyType, Any]]:
-  """Returns deserialized plots loaded from given path."""
-  result = []
-  for record in tf.compat.v1.python_io.tf_record_iterator(path):
-    plots_for_slice = metrics_for_slice_pb2.PlotsForSlice.FromString(record)
-    if plots_for_slice.HasField('plot_data'):
-      if plots_for_slice.plots:
-        raise RuntimeError('Both plots and plot_data are set.')
-
-      # For backward compatibility, plots data geneated with old code are added
-      # to the plots map with default key empty string.
-      plots_for_slice.plots[''].CopyFrom(plots_for_slice.plot_data)
-
-    result.append((
-        slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
-        plots_for_slice.plots))
-  return result
-
-
-def _convert_to_array_value(array: np.ndarray
-                           ) -> metrics_for_slice_pb2.ArrayValue:
-  """Converts NumPy array to ArrayValue."""
-  result = metrics_for_slice_pb2.ArrayValue()
-  result.shape[:] = array.shape
-  if array.dtype == 'int32':
-    result.data_type = metrics_for_slice_pb2.ArrayValue.INT32
-    result.int32_values[:] = array.flatten()
-  elif array.dtype == 'int64':
-    result.data_type = metrics_for_slice_pb2.ArrayValue.INT64
-    result.int64_values[:] = array.flatten()
-  elif array.dtype == 'float32':
-    result.data_type = metrics_for_slice_pb2.ArrayValue.FLOAT32
-    result.float32_values[:] = array.flatten()
-  elif array.dtype == 'float64':
-    result.data_type = metrics_for_slice_pb2.ArrayValue.FLOAT64
-    result.float64_values[:] = array.flatten()
-  else:
-    # For all other types, cast to string and convert to bytes.
-    result.data_type = metrics_for_slice_pb2.ArrayValue.BYTES
-    result.bytes_values[:] = [
-        tf.compat.as_bytes(x) for x in array.astype(six.text_type).flatten()
-    ]
-  return result
-
-
-def convert_slice_metrics(
-    slice_metrics: Dict[Text, Any],
-    post_export_metrics: List[types.AddMetricsCallbackType],
-    metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice) -> None:
-  """Converts slice_metrics into the given metrics_for_slice proto."""
-
-  slice_metrics_copy = slice_metrics.copy()
-  # Prevent further references to this, so we don't accidentally mutate it.
-  del slice_metrics
-
-  # Convert the metrics from post_export_metrics to the structured output if
-  # defined.
-  for post_export_metric in post_export_metrics:
-    if hasattr(post_export_metric, 'populate_stats_and_pop'):
-      post_export_metric.populate_stats_and_pop(slice_metrics_copy,
-                                                metrics_for_slice.metrics)
-  for name, value in slice_metrics_copy.items():
-    if isinstance(value, types.ValueWithTDistribution):
-      # Convert to a bounded value. 95% confidence level is computed here.
-      # Will populate t distribution value instead after migration.
-      sample_mean, lower_bound, upper_bound = math_util.calculate_confidence_interval(
-          value)
-      metrics_for_slice.metrics[name].bounded_value.value.value = sample_mean
-      metrics_for_slice.metrics[
-          name].bounded_value.lower_bound.value = lower_bound
-      metrics_for_slice.metrics[
-          name].bounded_value.upper_bound.value = upper_bound
-      metrics_for_slice.metrics[name].bounded_value.methodology = (
-          metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
-    elif isinstance(value, (six.binary_type, six.text_type)):
-      # Convert textual types to string metrics.
-      metrics_for_slice.metrics[name].bytes_value = value
-    elif isinstance(value, np.ndarray):
-      # Convert NumPy arrays to ArrayValue.
-      metrics_for_slice.metrics[name].array_value.CopyFrom(
-          _convert_to_array_value(value))
-    else:
-      # We try to convert to float values.
-      try:
-        metrics_for_slice.metrics[name].double_value.value = float(value)
-      except (TypeError, ValueError) as e:
-        metrics_for_slice.metrics[name].unknown_type.value = str(value)
-        metrics_for_slice.metrics[name].unknown_type.error = e.message
-
-
-def _serialize_metrics(metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
-                       post_export_metrics: List[types.AddMetricsCallbackType]
-                      ) -> bytes:
-  """Converts the given slice metrics into serialized proto MetricsForSlice.
-
-  Args:
-    metrics: The slice metrics.
-    post_export_metrics: A list of metric callbacks. This should be the same
-      list as the one passed to tfma.Evaluate().
-
-  Returns:
-    The serialized proto MetricsForSlice.
-
-  Raises:
-    TypeError: If the type of the feature value in slice key cannot be
-      recognized.
-  """
-  result = metrics_for_slice_pb2.MetricsForSlice()
-  slice_key, slice_metrics = metrics
-
-  if _ERROR_METRIC_KEY in slice_metrics:
-    tf.logging.warning('Error for slice: %s with error message: %s ', slice_key,
-                       slice_metrics[_ERROR_METRIC_KEY])
-    metrics = metrics_for_slice_pb2.MetricsForSlice()
-    metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
-    metrics.metrics[_ERROR_METRIC_KEY].debug_message = slice_metrics[
-        _ERROR_METRIC_KEY]
-    return metrics.SerializeToString()
-
-  # Convert the slice key.
-  result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
-
-  # Convert the slice metrics.
-  convert_slice_metrics(slice_metrics, post_export_metrics, result)
-  return result.SerializeToString()
-
-
-def _convert_slice_plots(
-    slice_plots: Dict[Text, Any],
-    post_export_metrics: List[types.AddMetricsCallbackType],
-    plot_data: Dict[Text, metrics_for_slice_pb2.PlotData]):
-  """Converts slice_plots into the given plot_data proto."""
-  slice_plots_copy = slice_plots.copy()
-  # Prevent further references to this, so we don't accidentally mutate it.
-  del slice_plots
-
-  for post_export_metric in post_export_metrics:
-    if hasattr(post_export_metric, 'populate_plots_and_pop'):
-      post_export_metric.populate_plots_and_pop(slice_plots_copy, plot_data)
-  if slice_plots_copy:
-    raise NotImplementedError(
-        'some plots were not converted or popped. keys: %s. post_export_metrics'
-        'were: %s' % (
-            slice_plots_copy.keys(),
-            [
-                x.name for x in post_export_metrics  # pytype: disable=attribute-error
-            ]))
-
-
-def _serialize_plots(plots: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
-                     post_export_metrics: List[types.AddMetricsCallbackType]
-                    ) -> bytes:
-  """Converts the given slice plots into serialized proto PlotsForSlice..
-
-  Args:
-    plots: The slice plots.
-    post_export_metrics: A list of metric callbacks. This should be the same
-      list as the one passed to tfma.Evaluate().
-
-  Returns:
-    The serialized proto PlotsForSlice.
-  """
-  result = metrics_for_slice_pb2.PlotsForSlice()
-  slice_key, slice_plots = plots
-
-  if _ERROR_METRIC_KEY in slice_plots:
-    tf.logging.warning('Error for slice: %s with error message: %s ', slice_key,
-                       slice_plots[_ERROR_METRIC_KEY])
-    metrics = metrics_for_slice_pb2.PlotsForSlice()
-    metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
-    metrics.plots[_ERROR_METRIC_KEY].debug_message = slice_plots[
-        _ERROR_METRIC_KEY]
-    return metrics.SerializeToString()
-
-  # Convert the slice key.
-  result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
-
-  # Convert the slice plots.
-  _convert_slice_plots(slice_plots, post_export_metrics, result.plots)  # pytype: disable=wrong-arg-types
-
-  return result.SerializeToString()
-
-
-# No typehint for input or output, since it's a multi-output DoFn result that
-# Beam doesn't support typehints for yet (BEAM-3280).
-class SerializeMetricsAndPlots(beam.PTransform):  # pylint: disable=invalid-name
-  """Converts metrics and plots into serialized protos."""
-
-  def __init__(self, post_export_metrics: List[types.AddMetricsCallbackType]):
-    self._post_export_metrics = post_export_metrics
-
-  def expand(
-      self,
-      metrics_and_plots: Tuple[beam.pvalue.PCollection, beam.pvalue.PCollection]
-  ):
-    """Converts the given metrics_and_plots into serialized proto.
-
-    Args:
-      metrics_and_plots: A Tuple of (slice metrics, slice plots).
-
-    Returns:
-      A Tuple of PCollection of Serialized proto MetricsForSlice.
-    """
-    metrics, plots = metrics_and_plots
-    metrics = metrics | 'SerializeMetrics' >> beam.Map(
-        _serialize_metrics, post_export_metrics=self._post_export_metrics)
-    plots = plots | 'SerializePlots' >> beam.Map(
-        _serialize_plots, post_export_metrics=self._post_export_metrics)
-    return (metrics, plots)
 
 
 @beam.ptransform_fn
@@ -370,7 +135,6 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 
   aggregated_metrics = (
       slices
-
       # Metrics are computed per slice key.
       # Output: Multi-outputs, a dict of slice key to computed metrics, and
       # plots if applicable.
@@ -393,7 +157,8 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
     num_bootstrap_samples: Optional[int] = 1,
-    k_anonymization_count: int = 1) -> evaluator.Evaluation:
+    k_anonymization_count: int = 1,
+    serialize: bool = False) -> evaluator.Evaluation:
   """Evaluates metrics and plots using the EvalSavedModel.
 
   Args:
@@ -415,9 +180,12 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
       than k_anonymization_count, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
       data for smaller number of examples.
+    serialize: If true, serialize the metrics to protos as part of the
+      evaluation as well.
 
   Returns:
-    Evaluation containing serialized protos keyed by 'metrics' and 'plots'.
+    Evaluation containing metrics and plots dictionaries keyed by 'metrics'
+    and 'plots'.
   """
 
   # pylint: disable=no-value-for-parameter
@@ -442,10 +210,12 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
         | 'FilterPlotsForSmallSlices' >> _FilterOutSlices(
             slices_count, k_anonymization_count))
 
-  metrics, plots = (
-      (metrics, plots)
-      | 'SerializeMetricsAndPlots' >> SerializeMetricsAndPlots(
-          post_export_metrics=eval_shared_model.add_metrics_callbacks))
+  if serialize:
+    metrics, plots = (
+        (metrics, plots)
+        | 'SerializeMetricsAndPlots' >>
+        metrics_and_plots_serialization.SerializeMetricsAndPlots(
+            post_export_metrics=eval_shared_model.add_metrics_callbacks))
   # pylint: enable=no-value-for-parameter
 
   return {metrics_key: metrics, plots_key: plots}
@@ -502,8 +272,10 @@ def _FilterOutSlices(  # pylint: disable=invalid-name
           yield (slice_key, value['values'][0])
         else:
           yield (slice_key, {
-              _ERROR_METRIC_KEY:
-                  (_EMPTY_SLICE_ERROR_MESSAGE % str(k_anonymization_count))
+              metric_keys.ERROR_METRIC:
+                  'Example count for this slice key is lower than '
+                  'the minimum required value: %d. No data is aggregated for '
+                  'this slice.' % k_anonymization_count
           })
 
   return ({

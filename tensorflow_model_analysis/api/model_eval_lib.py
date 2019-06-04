@@ -40,6 +40,8 @@ from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_model_analysis.validators import validator
+from tensorflow_model_analysis.writers import metrics_and_plots_serialization
+from tensorflow_model_analysis.writers import metrics_and_plots_writer
 from tensorflow_model_analysis.writers import writer
 from typing import Any, Dict, List, NamedTuple, Optional, Text, Tuple, Union
 
@@ -183,10 +185,12 @@ def load_eval_results(output_paths: List[Text], mode: Text) -> EvalResults:
 
 def load_eval_result(output_path: Text) -> EvalResult:
   """Creates an EvalResult object for use with the visualization functions."""
-  metrics_proto_list = metrics_and_plots_evaluator.load_and_deserialize_metrics(
-      path=os.path.join(output_path, _METRICS_OUTPUT_FILE))
-  plots_proto_list = metrics_and_plots_evaluator.load_and_deserialize_plots(
-      path=os.path.join(output_path, _PLOTS_OUTPUT_FILE))
+  metrics_proto_list = (
+      metrics_and_plots_serialization.load_and_deserialize_metrics(
+          path=os.path.join(output_path, _METRICS_OUTPUT_FILE)))
+  plots_proto_list = (
+      metrics_and_plots_serialization.load_and_deserialize_plots(
+          path=os.path.join(output_path, _PLOTS_OUTPUT_FILE)))
 
   slicing_metrics = [(key, _convert_proto_map_to_dict(metrics_data))
                      for key, metrics_data in metrics_proto_list]
@@ -298,26 +302,22 @@ def default_evaluators(  # pylint: disable=invalid-name
   ]
 
 
-def default_writers(output_path: Text) -> List[writer.Writer]:  # pylint: disable=invalid-name
+def default_writers(eval_shared_model: types.EvalSharedModel,
+                    output_path: Text) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
 
   Args:
+    eval_shared_model: Shared model parameters for EvalSavedModel.
     output_path: Path to store results files under.
   """
-  writers = []
-  output = {
+  output_paths = {
       constants.METRICS_KEY: os.path.join(output_path, _METRICS_OUTPUT_FILE),
       constants.PLOTS_KEY: os.path.join(output_path, _PLOTS_OUTPUT_FILE)
   }
-  for (key, output_file) in output.items():
-    writers.append(
-        writer.Writer(
-            stage_name='WriteTFRecord(%s)' % output_file,
-            ptransform=writer.Write(
-                key=key,
-                ptransform=beam.io.WriteToTFRecord(
-                    file_path_prefix=output_file, shard_name_template=''))))
-  return writers
+  return [
+      metrics_and_plots_writer.MetricsAndPlotsWriter(
+          eval_shared_model=eval_shared_model, output_paths=output_paths)
+  ]
 
 
 # The input type is a MessageMap where the keys are strings and the values are
@@ -406,22 +406,84 @@ def ExtractAndEvaluate(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection, extractors: List[extractor.Extractor],
     evaluators: List[evaluator.Evaluator]):
   """Performs Extractions and Evaluations in provided order."""
-  # TODO(b/120629430): Add support for merging outputs.
+  # evaluation[k] = list of values for k
   evaluation = {}
+
+  def update(evaluation: Dict[Text, Any], new_evaluation: Dict[Text, Any]):
+    for k, v in new_evaluation.items():
+      if k not in evaluation:
+        evaluation[k] = []
+      evaluation[k].append(v)
+    return evaluation
+
   # Run evaluators that run before extraction (i.e. that only require
   # the incoming input extract added by ReadInputs)
   for v in evaluators:
     if not v.run_after:
-      evaluation.update(extracts | v.stage_name >> v.ptransform)
+      update(evaluation, extracts | v.stage_name >> v.ptransform)
   for x in extractors:
     extracts = (extracts | x.stage_name >> x.ptransform)
     for v in evaluators:
       if v.run_after == x.stage_name:
-        evaluation.update(extracts | v.stage_name >> v.ptransform)
+        update(evaluation, extracts | v.stage_name >> v.ptransform)
   for v in evaluators:
     if v.run_after == extractor.LAST_EXTRACTOR_STAGE_NAME:
-      evaluation.update(extracts | v.stage_name >> v.ptransform)
-  return evaluation
+      update(evaluation, extracts | v.stage_name >> v.ptransform)
+
+  # Merge multi-valued keys if necessary.
+  result = {}
+  for k, v in evaluation.items():
+    if len(v) == 1:
+      result[k] = v[0]
+      continue
+
+    # Note that we assume that if a key is multivalued, its values are
+    # dictionaries with disjoint keys. The combined value will simply be the
+    # disjoint union of all the dictionaries.
+    result[k] = (
+        v
+        | 'FlattenEvaluationOutput(%s)' % k >> beam.Flatten()
+        | 'CombineEvaluationOutput(%s)' % k >> beam.CombinePerKey(
+            _CombineEvaluationDictionariesFn()))
+
+  return result
+
+
+class _CombineEvaluationDictionariesFn(beam.CombineFn):
+  """CombineFn to combine dictionaries generated by different evaluators."""
+
+  def create_accumulator(self) -> Dict[Text, Any]:
+    return {}
+
+  def _merge(self, accumulator: Dict[Text, Any],
+             output_dict: Dict[Text, Any]) -> None:
+    intersection = set(accumulator) & set(output_dict)
+    if intersection:
+      raise ValueError(
+          'Dictionaries generated by different evaluators should have '
+          'different keys, but keys %s appeared in the output of multiple '
+          'evaluators' % intersection)
+    accumulator.update(output_dict)
+
+  def add_input(self, accumulator: Dict[Text, Any],
+                output_dict: Dict[Text, Any]) -> Dict[Text, Any]:
+    if not isinstance(output_dict, dict):
+      raise TypeError(
+          'for outputs written to by multiple evaluators, the outputs must all '
+          'be dictionaries, but got output of type %s, value %s' %
+          (type(output_dict), str(output_dict)))
+    self._merge(accumulator, output_dict)
+    return accumulator
+
+  def merge_accumulators(self, accumulators: List[Dict[Text, Any]]
+                        ) -> Dict[Text, Any]:
+    result = self.create_accumulator()
+    for acc in accumulators:
+      self._merge(result, acc)
+    return result
+
+  def extract_output(self, accumulator: Dict[Text, Any]) -> Dict[Text, Any]:
+    return accumulator
 
 
 @beam.ptransform_fn
@@ -569,7 +631,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     evaluator.verify_evaluator(v, extractors)
 
   if not writers:
-    writers = default_writers(output_path=output_path)
+    writers = default_writers(
+        eval_shared_model=eval_shared_model, output_path=output_path)
 
   data_location = '<user provided PCollection>'
   if display_only_data_location is not None:

@@ -14,6 +14,7 @@
     pipeline shape.
 *   Added QueryBasedMetricsEvaluator which supports computing query-based
     metrics (e.g. normalized discounted cumulative gain).
+*   Added support for merging metrics produced by different evaluators.
 
 ## Bug fixes and other changes
 
@@ -26,6 +27,8 @@
 ## Breaking changes
 
 *   Removed uses of deprecated tf.contrib packages (where possible).
+*   `tfma.default_writers` now requires the `eval_saved_model` to be passed as
+    an argument.
 
 ## Deprecations
 

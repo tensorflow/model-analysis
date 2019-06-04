@@ -30,8 +30,8 @@ Extracts = Dict[Text, Any]
 
 # Evaluation represents the output from evaluating extracts at
 # particular point in the pipeline. The evaluation outputs are
-# keyed by their associated output type. For example, the serialized
-# protos from evaluating metrics and plots will be stored under
+# keyed by their associated output type. For example, the metric / plot
+# dictionaries from evaluating metrics and plots will be stored under
 # "metrics" and "plots" respectively.
 Evaluation = Dict[Text, beam.pvalue.PCollection]
 ```
@@ -97,7 +97,7 @@ defined as follows:
 # produces an Evaluation as output. A typical example of an evaluator
 # is the MetricsAndPlotsEvaluator that takes the 'features', 'labels',
 # and 'predictions' extracts from the PredictExtractor and evaluates
-# them using post export metrics to produce serialized metrics and plots.
+# them using post export metrics to produce metrics and plots dictionaries.
 Evaluator = NamedTuple('Evaluator', [
   ('stage_name', Text),
   ('run_after', Text),              # Extractor.stage_name
@@ -113,16 +113,17 @@ incoming features, labels, and predictions and runs them through
 actual metrics and plots evaluation.
 
 Also note that an evaluator can produce any output it wants. In the case of the
-`tfma.evaluators.MetricsAndPlotsEvaluator` the output is in the form of
-serialized protos.
+`tfma.evaluators.MetricsAndPlotsEvaluator` the output is in the form of metrics
+and plots dictionaries (these are later converted to serialized protos for
+output by `tfma.writers.MetricsAndPlotsWriter`)
 
 ## Write Results
 
 The `WriteResults` stage is where the evaluation output gets written out to
 disk. WriteResults uses writers to write out the data based on the output keys.
 For example, an `tfma.evaluators.Evaluation` may contain keys for 'metrics' and
-'plots'. These would then be associated with the serialized protos called
-'metrics' and 'plots'. The writers specify how to write out each file:
+'plots'. These would then be associated with the metrics and plots dictionaries
+called 'metrics' and 'plots'. The writers specify how to write out each file:
 
 ```python
 # A writer is a PTransform that takes evaluation output as input and
@@ -132,11 +133,15 @@ Writer = NamedTuple('Writer', [
   ('ptransform', beam.PTransform)])    # Evaluation -> PDone
 ```
 
-Since the `tfma.evaluators.Evaluation` passed to the writers contains the output
-for all of the evaluators combined, a `tfma.writers.Write` helper transform is
-provided that writers can use in their `ptransform` implementations to select
-the appropriate `beam.PCollection`s based on an output key (see below for an
-example).
+We provide a `tfma.writers.MetricsAndPlotsWriter` that converts the metrics and
+plots dictionaries to serialized protos and writes them to disk.
+
+If you wish to use a different serialization format, you can create a custom
+writer and use that instead. Since the `tfma.evaluators.Evaluation` passed to
+the writers contains the output for all of the evaluators combined, a
+`tfma.writers.Write` helper transform is provided that writers can use in their
+`ptransform` implementations to select the appropriate `beam.PCollection`s based
+on an output key (see below for an example).
 
 # Customization
 
@@ -252,8 +257,8 @@ Extracts {
 # In: SliceKeyExtractor Extracts
 # Out:
 Evaluation {
-  'metrics': PCollection[bytes]     # Serialized proto
-  'plots': PCollection[bytes]       # Serialized proto
+  'metrics': PCollection[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]  # Tuples of (slice key, dictionary from metric key to metric values)
+  'plots': PCollection[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]  # Tuples of (slice key, dictionary from plot key to plot values)
 }
 ```
 
@@ -272,8 +277,8 @@ Evaluation {
 ```python
 # In:
 Evaluation {
-  'metrics': PCollection[bytes]     # Serialized proto
-  'plots': PCollection[bytes]       # Serialized proto
+  'metrics': PCollection[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]  # Tuples of (slice key, dictionary from metric key to metric values)
+  'plots': PCollection[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]  # Tuples of (slice key, dictionary from plot key to plot values)
   'analysis': PCollection[Extracts] # Final Extracts
 }
 # Out: metrics, plots, and analysis files

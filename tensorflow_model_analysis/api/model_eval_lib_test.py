@@ -22,9 +22,7 @@ import tempfile
 
 # Standard Imports
 
-import apache_beam as beam
 import tensorflow as tf
-from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_linear_classifier
@@ -32,23 +30,12 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import custom_e
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
+from tensorflow_model_analysis.evaluators import query_based_metrics_evaluator
+from tensorflow_model_analysis.evaluators.query_metrics import ndcg
+from tensorflow_model_analysis.evaluators.query_metrics import query_statistics
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
-from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
-
-from google.protobuf import text_format
-
-
-def _make_slice_key(*args):
-  if len(args) % 2 != 0:
-    raise ValueError('number of arguments should be even')
-
-  result = []
-  for i in range(0, len(args), 2):
-    result.append((args[i], args[i + 1]))
-
-  return tuple(result)
 
 
 class EvaluateTest(testutil.TensorflowModelAnalysisTest):
@@ -85,14 +72,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self.assertIn(k, m)
         self.assertDictElementsAlmostEqual(m[k], expected_value[s][k])
 
-  def assertSliceMetricsAlmostEqual(self, expected_metrics, got_metrics):
+  def assertSliceMetricsEqual(self, expected_metrics, got_metrics):
     self.assertItemsEqual(
         list(expected_metrics.keys()),
         list(got_metrics.keys()),
         msg='keys do not match. expected_metrics: %s, got_metrics: %s' %
         (expected_metrics, got_metrics))
     for key in expected_metrics.keys():
-      self.assertAlmostEqual(
+      self.assertProtoEquals(
           expected_metrics[key],
           got_metrics[key],
           msg='value for key %s does not match' % key)
@@ -114,7 +101,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
 
   def assertSliceMetricsListEqual(self, expected_list, got_list):
     self.assertSliceListEqual(expected_list, got_list,
-                              self.assertSliceMetricsAlmostEqual)
+                              self.assertSliceMetricsEqual)
 
   def testRunModelAnalysis(self):
     model_location = self._exportEvalSavedModel(
@@ -138,7 +125,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # pipeline works.
     expected = {
         (('language', b'hindi'),): {
-            u'error': {
+            u'__ERROR__': {
                 'debugMessage':
                     u'Example count for this slice key is lower than the '
                     u'minimum required value: 2. No data is aggregated for '
@@ -180,6 +167,68 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
+  def testRunModelAnalysisWithQueryExtractor(self):
+    model_location = self._exportEvalSavedModel(
+        linear_classifier.simple_linear_classifier)
+    examples = [
+        self._makeExample(age=3.0, language='english', label=1.0),
+        self._makeExample(age=3.0, language='chinese', label=0.0),
+        self._makeExample(age=4.0, language='english', label=0.0),
+        self._makeExample(age=5.0, language='chinese', label=1.0)
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    slice_spec = [slicer.SingleSliceSpec()]
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location, example_weight_key='age')
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_shared_model=eval_shared_model,
+        data_location=data_location,
+        slice_spec=slice_spec,
+        evaluators=[
+            metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
+                eval_shared_model),
+            query_based_metrics_evaluator.QueryBasedMetricsEvaluator(
+                query_id='language',
+                prediction_key='logistic',
+                combine_fns=[
+                    query_statistics.QueryStatisticsCombineFn(),
+                    ndcg.NdcgMetricCombineFn(
+                        at_vals=[1], gain_key='label', weight_key='')
+                ]),
+        ])
+    # We only check some of the metrics to ensure that the end-to-end
+    # pipeline works.
+    expected = {
+        (): {
+            'post_export_metrics/total_queries': {
+                'doubleValue': 2.0
+            },
+            'post_export_metrics/min_documents': {
+                'doubleValue': 2.0
+            },
+            'post_export_metrics/max_documents': {
+                'doubleValue': 2.0
+            },
+            'post_export_metrics/total_documents': {
+                'doubleValue': 4.0
+            },
+            'post_export_metrics/ndcg@1': {
+                'doubleValue': 0.5
+            },
+            'post_export_metrics/example_weight': {
+                'doubleValue': 15.0
+            },
+            'post_export_metrics/example_count': {
+                'doubleValue': 4.0
+            },
+        }
+    }
+    self.assertEqual(eval_result.config.model_location, model_location)
+    self.assertEqual(eval_result.config.data_location, data_location)
+    self.assertEqual(eval_result.config.slice_spec, slice_spec)
+    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
+    self.assertFalse(eval_result.plots)
+
   def testRunModelAnalysisWithUncertainty(self):
     model_location = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
@@ -203,7 +252,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # pipeline works.
     expected = {
         (('language', b'hindi'),): {
-            u'error': {
+            u'__ERROR__': {
                 'debugMessage':
                     u'Example count for this slice key is lower than the '
                     u'minimum required value: 2. No data is aggregated for '
@@ -446,154 +495,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     serialized = model_eval_lib._serialize_eval_config(eval_config)
     deserialized = pickle.loads(serialized)
     got_eval_config = deserialized[model_eval_lib._EVAL_CONFIG_KEY]
-    self.assertEqual(eval_config, got_eval_config)
-
-  def testSerializeDeserializeToFile(self):
-    metrics_slice_key = _make_slice_key('fruit', b'pear', 'animal', b'duck')
-    metrics_for_slice = text_format.Parse(
-        """
-        slice_key {
-          single_slice_keys {
-            column: "fruit"
-            bytes_value: "pear"
-          }
-          single_slice_keys {
-            column: "animal"
-            bytes_value: "duck"
-          }
-        }
-        metrics {
-          key: "accuracy"
-          value {
-            double_value {
-              value: 0.8
-            }
-          }
-        }
-        metrics {
-          key: "example_weight"
-          value {
-            double_value {
-              value: 10.0
-            }
-          }
-        }
-        metrics {
-          key: "auc"
-          value {
-            bounded_value {
-              lower_bound {
-                value: 0.1
-              }
-              upper_bound {
-                value: 0.3
-              }
-              value {
-                value: 0.2
-              }
-            }
-          }
-        }
-        metrics {
-          key: "auprc"
-          value {
-            bounded_value {
-              lower_bound {
-                value: 0.05
-              }
-              upper_bound {
-                value: 0.17
-              }
-              value {
-                value: 0.1
-              }
-            }
-          }
-        }""", metrics_for_slice_pb2.MetricsForSlice())
-    plots_for_slice = text_format.Parse(
-        """
-        slice_key {
-          single_slice_keys {
-            column: "fruit"
-            bytes_value: "peach"
-          }
-          single_slice_keys {
-            column: "animal"
-            bytes_value: "cow"
-          }
-        }
-        plots {
-          key: ''
-          value {
-            calibration_histogram_buckets {
-              buckets {
-                lower_threshold_inclusive: -inf
-                upper_threshold_exclusive: 0.0
-                num_weighted_examples { value: 0.0 }
-                total_weighted_label { value: 0.0 }
-                total_weighted_refined_prediction { value: 0.0 }
-              }
-              buckets {
-                lower_threshold_inclusive: 0.0
-                upper_threshold_exclusive: 0.5
-                num_weighted_examples { value: 1.0 }
-                total_weighted_label { value: 1.0 }
-                total_weighted_refined_prediction { value: 0.3 }
-              }
-              buckets {
-                lower_threshold_inclusive: 0.5
-                upper_threshold_exclusive: 1.0
-                num_weighted_examples { value: 1.0 }
-                total_weighted_label { value: 0.0 }
-                total_weighted_refined_prediction { value: 0.7 }
-              }
-              buckets {
-                lower_threshold_inclusive: 1.0
-                upper_threshold_exclusive: inf
-                num_weighted_examples { value: 0.0 }
-                total_weighted_label { value: 0.0 }
-                total_weighted_refined_prediction { value: 0.0 }
-              }
-            }
-          }
-        }""", metrics_for_slice_pb2.PlotsForSlice())
-    plots_slice_key = _make_slice_key('fruit', b'peach', 'animal', b'cow')
-    eval_config = model_eval_lib.EvalConfig(
-        model_location='/path/to/model',
-        data_location='/path/to/data',
-        slice_spec=[
-            slicer.SingleSliceSpec(
-                features=[('age', 5), ('gender', 'f')], columns=['country']),
-            slicer.SingleSliceSpec(
-                features=[('age', 6), ('gender', 'm')], columns=['interest'])
-        ],
-        example_weight_metric_key='key')
-
-    output_path = self._getTempDir()
-    with beam.Pipeline() as pipeline:
-      metrics = (
-          pipeline
-          | 'CreateMetrics' >> beam.Create(
-              [metrics_for_slice.SerializeToString()]))
-      plots = (
-          pipeline
-          | 'CreatePlots' >> beam.Create([plots_for_slice.SerializeToString()]))
-      evaluation = {constants.METRICS_KEY: metrics, constants.PLOTS_KEY: plots}
-      _ = (
-          evaluation
-          | 'WriteResults' >> model_eval_lib.WriteResults(
-              writers=model_eval_lib.default_writers(output_path=output_path)))
-      _ = pipeline | model_eval_lib.WriteEvalConfig(eval_config, output_path)
-
-    metrics = metrics_and_plots_evaluator.load_and_deserialize_metrics(
-        path=os.path.join(output_path, model_eval_lib._METRICS_OUTPUT_FILE))
-    plots = metrics_and_plots_evaluator.load_and_deserialize_plots(
-        path=os.path.join(output_path, model_eval_lib._PLOTS_OUTPUT_FILE))
-    self.assertSliceMetricsListEqual(
-        [(metrics_slice_key, metrics_for_slice.metrics)], metrics)
-    self.assertSlicePlotsListEqual([(plots_slice_key, plots_for_slice.plots)],
-                                   plots)
-    got_eval_config = model_eval_lib.load_eval_config(output_path)
     self.assertEqual(eval_config, got_eval_config)
 
 

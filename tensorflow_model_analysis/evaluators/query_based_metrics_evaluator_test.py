@@ -35,9 +35,6 @@ from tensorflow_model_analysis.evaluators.query_metrics import ndcg
 from tensorflow_model_analysis.evaluators.query_metrics import query_statistics
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
-from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-
-from google.protobuf import text_format
 
 
 class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
@@ -152,42 +149,25 @@ class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
       def check_metrics(got):
         try:
           self.assertEqual(1, len(got), 'got: %s' % got)
-          got_metrics_for_slice = (
-              metrics_for_slice_pb2.MetricsForSlice.FromString(got[0]))
-          expected_metrics_for_slice = text_format.Parse(
-              """
-              slice_key {}
-              metrics {
-                key: "post_export_metrics/total_queries"
-                value { double_value { value: 3.0 } }
-              }
-              metrics {
-                key: "post_export_metrics/total_documents"
-                value { double_value { value: 6.0 } }
-              }
-              metrics {
-                key: "post_export_metrics/min_documents"
-                value { double_value { value: 1.0 } }
-              }
-              metrics {
-                key: "post_export_metrics/max_documents"
-                value { double_value { value: 3.0 } }
-              }
-              metrics {
-                key: "post_export_metrics/ndcg@1"
-                value { double_value { value: 0.9166667 } }
-              }
-              metrics {
-                key: "post_export_metrics/ndcg@2"
-                value { double_value { value: 0.9766198 } }
-              }
-              metrics {
-                key: "post_export_metrics/average_min_label_position/__labels"
-                value { double_value { value: 0.6666667 } }
-              }
-              """, metrics_for_slice_pb2.MetricsForSlice())
-          self.assertProtoEquals(expected_metrics_for_slice,
-                                 got_metrics_for_slice)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertDictElementsAlmostEqual(
+              got_metrics, {
+                  'post_export_metrics/total_queries':
+                      3.0,
+                  'post_export_metrics/total_documents':
+                      6.0,
+                  'post_export_metrics/min_documents':
+                      1.0,
+                  'post_export_metrics/max_documents':
+                      3.0,
+                  'post_export_metrics/ndcg@1':
+                      0.9166667,
+                  'post_export_metrics/ndcg@2':
+                      0.9766198,
+                  'post_export_metrics/average_min_label_position/__labels':
+                      0.6666667,
+              })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

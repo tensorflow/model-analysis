@@ -58,6 +58,9 @@ def lower_bound_key(key: Text) -> Text:
   return key + '/lower_bound'
 
 
+# Not actually for any metric, just used for communicating errors.
+ERROR_METRIC = '__ERROR__'
+
 EXAMPLE_WEIGHT = base_key('example_weight')
 EXAMPLE_COUNT = base_key('example_count')
 SQUARED_PEARSON_CORRELATION = base_key('squared_pearson_correlation')

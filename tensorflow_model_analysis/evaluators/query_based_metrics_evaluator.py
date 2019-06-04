@@ -29,12 +29,9 @@ from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_m
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util as eval_saved_model_util
 from tensorflow_model_analysis.evaluators import evaluator
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
-from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-from tensorflow_model_analysis.slicer import slicer
 from typing import Any, Dict, List, Optional, Text, Tuple
 
 
@@ -72,15 +69,6 @@ def QueryBasedMetricsEvaluator(  # pylint: disable=invalid-name
   # pylint: enable=no-value-for-parameter
 
 
-def _serialize_metrics(metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]]
-                      ) -> bytes:
-  slice_key, slice_metrics = metrics
-  result = metrics_for_slice_pb2.MetricsForSlice()
-  result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
-  metrics_and_plots_evaluator.convert_slice_metrics(slice_metrics, [], result)
-  return result.SerializeToString()
-
-
 class CreateQueryExamples(beam.CombineFn):
   """CombineFn to create query examples for each query id.
 
@@ -116,7 +104,7 @@ class CreateQueryExamples(beam.CombineFn):
   def extract_output(self,
                      accumulator: List[types.Extracts]) -> query_types.QueryFPL:
 
-    def fpl_from_extracts(extract: types.Extracts) -> query_types.FPL:
+    def fpl_from_extracts(extract: types.Extracts) -> query_types.FPL:  # pylint: disable=invalid-name
       """Make an FPL from an extract."""
 
       fpl = extract[constants.FEATURES_PREDICTIONS_LABELS_KEY]
@@ -248,7 +236,7 @@ def EvaluateQueryBasedMetrics(  # pylint: disable=invalid-name
     metrics_key: Name to use for metrics key in Evaluation output.
 
   Returns:
-    Evaluation containing serialized protos keyed by 'metrics'.
+    Evaluation containing metrics dictionaries keyed by 'metrics'.
   """
 
   # pylint: disable=no-value-for-parameter
@@ -261,8 +249,7 @@ def EvaluateQueryBasedMetrics(  # pylint: disable=invalid-name
       | 'ComputeQueryBasedMetrics' >> ComputeQueryBasedMetrics(
           query_id=query_id,
           combine_fns=combine_fns,
-          prediction_key=prediction_key)
-      | 'SerializeQueryBasedMetrics' >> beam.Map(_serialize_metrics))
+          prediction_key=prediction_key))
   # pylint: enable=no-value-for-parameter
 
   return {metrics_key: metrics}
