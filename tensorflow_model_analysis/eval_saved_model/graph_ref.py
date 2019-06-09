@@ -60,7 +60,7 @@ def extract_signature_inputs_or_outputs_with_prefix(
       <prefix>_extrastuff
       <prefix>morestuff
   will map to dictionary elements like so:
-      {<prefix: value1, <prefix>_extrastuff: value2, <prefix>morestuff: value3}
+      {<prefix>: value1, <prefix>_extrastuff: value2, <prefix>morestuff: value3}
 
   Args:
     prefix: Prefix to extract
