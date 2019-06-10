@@ -39,7 +39,8 @@ suite('tests', () => {
         'threshold': -Infinity
       }
     ];
-    const chartData = element.shadowRoot.querySelector('google-chart').data;
+    const chartData =
+        element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
     assert.equal(4, chartData.length);
     assert.deepEqual(
         chartData[0], ['FPR', 'TPR', {'type': 'string', 'role': 'tooltip'}]);

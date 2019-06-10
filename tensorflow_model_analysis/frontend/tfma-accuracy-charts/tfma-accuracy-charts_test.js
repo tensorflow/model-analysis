@@ -30,7 +30,8 @@ suite('tests', () => {
         'threshold': -Infinity
       }
     ];
-    const chartData = element.shadowRoot.querySelector('google-chart').data;
+    const chartData =
+        element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
     assert.equal(chartData.length, 4);
     assert.deepEqual(chartData[0], [
       'Threshold', 'Accuracy', {'type': 'string', 'role': 'tooltip'},
@@ -63,7 +64,8 @@ suite('tests', () => {
     element.data = [
       {'precision': 'NaN', 'recall': 'Infinity', 'threshold': 1},
     ];
-    const chartData = element.shadowRoot.querySelector('google-chart').data;
+    const chartData =
+        element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
     assert.equal(chartData.length, 2);
     assert.deepEqual(chartData[1], [
       1, 0, 'Accuracy: 0.00000, threshold: 1.00000', NaN,

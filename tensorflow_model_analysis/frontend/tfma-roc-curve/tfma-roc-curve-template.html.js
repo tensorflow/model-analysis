@@ -15,6 +15,7 @@
  */
 const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
 template.innerHTML = `
-<google-chart type="line" data="[[plotData_]]" options="[[options_]]"></google-chart>
+<tfma-google-chart-wrapper type="line" data="[[plotData_]]" options="[[options_]]">
+</tfma-google-chart-wrapper>
 `;
 export {template};

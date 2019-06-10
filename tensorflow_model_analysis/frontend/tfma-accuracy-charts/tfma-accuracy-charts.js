@@ -16,7 +16,7 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-accuracy-charts-template.html.js';
 
-import '@org_googlewebcomponents_google_chart/google-chart/google-chart.js';
+import '../tfma-google-chart-wrapper/tfma-google-chart-wrapper.js';
 
 /**
  * tfma-accuracy-charts renders accuracy precision, recall and F1 Score in one

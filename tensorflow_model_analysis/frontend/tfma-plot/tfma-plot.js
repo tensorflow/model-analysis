@@ -164,13 +164,6 @@ export class Plot extends PolymerElement {
       },
 
       /**
-       * The selected page.
-       * @type {!Element|undefined}
-       * @private
-       */
-      selectedPage_: {type: Object, observer: 'selectedPageChanged_'},
-
-      /**
        * The data used by the calibration plot.
        * @type {!Array<!Object>}
        * @private
@@ -222,6 +215,7 @@ export class Plot extends PolymerElement {
    * Extracts an array of calibration data out of the raw data.
    * @param {?Object} data
    * @return {!Array<!Object>}
+   * @private
    */
   computeCalibrationData_(data) {
     const plotData = data && data['plotData'] || {};
@@ -236,6 +230,7 @@ export class Plot extends PolymerElement {
    * Extracts an array of precision recall curve data out of the raw data.
    * @param {?Object} data
    * @return {!Array<!Object>}
+   * @private
    */
   computePrecisionRecallCurveData_(data) {
     return this.getMatricesForPRCurve_(
@@ -261,6 +256,7 @@ export class Plot extends PolymerElement {
    * data.
    * @param {?Object} data
    * @return {!Array<!Object>}
+   * @private
    */
   computeMacroPrecisionRecallCurveData_(data) {
     return this.getMatricesForPRCurve_(
@@ -272,6 +268,7 @@ export class Plot extends PolymerElement {
    * data.
    * @param {?Object} data
    * @return {!Array<!Object>}
+   * @private
    */
   computeMicroPrecisionRecallCurveData_(data) {
     return this.getMatricesForPRCurve_(
@@ -283,6 +280,7 @@ export class Plot extends PolymerElement {
    * raw data.
    * @param {?Object} data
    * @return {!Array<!Object>}
+   * @private
    */
   computeWeightedPrecisionRecallCurveData_(data) {
     return this.getMatricesForPRCurve_(
@@ -330,7 +328,7 @@ export class Plot extends PolymerElement {
   }
 
   /**
-   * @param {!Array<tfma.PlotTypes>} availableTypes
+   * @param {!Array<!tfma.PlotTypes>} availableTypes
    * @return {!Array<!Object>} An aray of configuration for each type of plot
    *     specified.
    * @private
@@ -343,21 +341,6 @@ export class Plot extends PolymerElement {
       }
     });
     return supported;
-  }
-
-  /**
-   * Observer for property selectedPage_. Makes sure the newly selected page
-   * is properly rendered by calling redraw on all google-chart under it.
-   * @param {!Element|undefined} page
-   * @private
-   */
-  selectedPageChanged_(page) {
-    if (page) {
-      const charts = page.querySelectorAll('google-chart');
-      for (let i = charts.length - 1, chart; chart = charts[i]; i--) {
-        chart.redraw();
-      }
-    }
   }
 }
 

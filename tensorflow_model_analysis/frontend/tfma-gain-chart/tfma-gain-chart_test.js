@@ -86,7 +86,8 @@ suite('tests', () => {
       }
     ];
     element.steps = 4;
-    const chartData = element.shadowRoot.querySelector('google-chart').data;
+    const chartData =
+        element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
     assert.equal(chartData.length, 6);
 
     assert.deepEqual(

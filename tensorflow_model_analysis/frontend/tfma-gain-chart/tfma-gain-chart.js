@@ -16,7 +16,7 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-gain-chart-template.html.js';
 
-import '@org_googlewebcomponents_google_chart/google-chart/google-chart.js';
+import '../tfma-google-chart-wrapper/tfma-google-chart-wrapper.js';
 
 /**
  * tfma-gain-chart renders cumulative gain in a plot.

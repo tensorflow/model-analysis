@@ -81,8 +81,7 @@ template.innerHTML = `
     </div>
   </div>
   <div id="plots-container">
-    <iron-pages id="plots" attr-for-selected="name" selected="{{selectedTab_}}"
-                selected-item="{{selectedPage_}}">
+    <iron-pages id="plots" attr-for-selected="name" selected="{{selectedTab_}}">
       <div name="[[tabNames_.Calibration]]" class="center">
         <tfma-calibration-plot buckets="[[calibrationData_]]" bucket-size="0.01">
         </tfma-calibration-plot>

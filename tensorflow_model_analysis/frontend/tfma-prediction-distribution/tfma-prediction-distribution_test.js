@@ -24,7 +24,8 @@ suite('tests', () => {
       {'numWeightedExamples': 4, 'totalWeightedRefinedPrediction': 0.2 * 4},
       {'numWeightedExamples': 7, 'totalWeightedRefinedPrediction': 0.8 * 7}
     ];
-    const chartData = element.shadowRoot.querySelector('google-chart').data;
+    const chartData =
+        element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
     assert.equal(chartData.length, 5);
     assert.deepEqual(
         chartData[0],
@@ -49,7 +50,8 @@ suite('tests', () => {
       {'numWeightedExamples': 2, 'totalWeightedRefinedPrediction': 0},
       {'numWeightedExamples': 1, 'totalWeightedRefinedPrediction': 1}
     ];
-    const chartData = element.shadowRoot.querySelector('google-chart').data;
+    const chartData =
+        element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
     assert.equal(chartData.length, 3);
     assert.deepEqual(
         chartData[0],
