@@ -29,6 +29,7 @@ import tensorflow as tf
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.contrib import model_eval_lib as contrib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
@@ -74,7 +75,8 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
   def testBuildAnalysisTable(self):
     model_location = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
-    eval_shared_model = types.EvalSharedModel(model_path=model_location)
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location)
 
     example1 = self._makeExample(
         age=3.0, language='english', label=1.0, slice_key='first_slice')
@@ -132,7 +134,8 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
   def testBuildAnalysisTableWithSlices(self):
     model_location = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
-    eval_shared_model = types.EvalSharedModel(model_path=model_location)
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location)
 
     example1 = self._makeExample(
         age=3.0, language='english', label=1.0, slice_key='first_slice')

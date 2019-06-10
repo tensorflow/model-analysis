@@ -30,7 +30,7 @@ from apache_beam.testing import util
 import tensorflow as tf
 
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fake_multi_examples_per_input_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
@@ -46,8 +46,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
         None, temp_eval_export_dir)
-    eval_shared_model = types.EvalSharedModel(model_path=eval_export_dir)
-
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=eval_export_dir)
     with beam.Pipeline() as pipeline:
       examples = [
           self._makeExample(age=3.0, language='english', label=1.0),
@@ -92,7 +92,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     _, eval_export_dir = (
         fake_multi_examples_per_input_estimator
         .fake_multi_examples_per_input_estimator(None, temp_eval_export_dir))
-    eval_shared_model = types.EvalSharedModel(model_path=eval_export_dir)
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=eval_export_dir)
 
     # The trailing zeros make an "empty" output batch.
     raw_example_bytes = ['0', '3', '1', '0', '2', '0', '0', '0', '0']

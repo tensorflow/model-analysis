@@ -23,6 +23,7 @@ import tempfile
 # Standard Imports
 
 import tensorflow as tf
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_linear_classifier
@@ -102,6 +103,24 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
   def assertSliceMetricsListEqual(self, expected_list, got_list):
     self.assertSliceListEqual(expected_list, got_list,
                               self.assertSliceMetricsEqual)
+
+  def testNoConstructFn(self):
+    model_location = self._exportEvalSavedModel(
+        linear_classifier.simple_linear_classifier)
+    examples = [self._makeExample(age=3.0, language='english', label=1.0)]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    # No construct_fn should fail when Beam attempts to call the construct_fn.
+    eval_shared_model = types.EvalSharedModel(model_path=model_location)
+    with self.assertRaisesRegexp(TypeError,
+                                 '\'NoneType\' object is not callable'):
+      model_eval_lib.run_model_analysis(
+          eval_shared_model=eval_shared_model, data_location=data_location)
+
+    # Using the default_eval_shared_model should pass as it has a construct_fn.
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location)
+    model_eval_lib.run_model_analysis(
+        eval_shared_model=eval_shared_model, data_location=data_location)
 
   def testRunModelAnalysis(self):
     model_location = self._exportEvalSavedModel(

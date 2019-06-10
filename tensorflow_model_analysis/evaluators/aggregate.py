@@ -334,24 +334,9 @@ class _AggregateCombineFn(beam.CombineFn):
   def _start_bundle(self) -> None:
     # There's no initialisation method for CombineFns.
     # See BEAM-3736: Add SetUp() and TearDown() for CombineFns.
-
-    # Default to eval_saved_model dofn to preserve legacy assumption
-    # of eval_saved_model.
-    #
-    # TODO(b/133761055): Update all callers and make this an error condition to
-    # not have construct_fn specified.
-    if self._eval_shared_model.construct_fn is None:
-      construct_fn = dofn.make_construct_fn(
-          self._eval_shared_model.model_path,
-          self._eval_shared_model.add_metrics_callbacks,
-          self._eval_shared_model.include_default_metrics,
-          self._eval_shared_model.additional_fetches)
-    else:
-      construct_fn = self._eval_shared_model.construct_fn
-
     self._eval_metrics_graph = (
         self._eval_shared_model.shared_handle.acquire(
-            construct_fn(self._model_load_seconds)))
+            self._eval_shared_model.construct_fn(self._model_load_seconds)))
 
   def _poissonify(self, accumulator: _AggState
                  ) -> List[types.FeaturesPredictionsLabels]:
