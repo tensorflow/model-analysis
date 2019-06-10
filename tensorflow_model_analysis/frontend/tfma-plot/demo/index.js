@@ -93,4 +93,24 @@
     tfma.PlotTypes.PREDICTION_DISTRIBUTION
   ];
   error.initialType = tfma.PlotTypes.CALIBRATION_PLOT;
+
+  const flatView = document.getElementById('flat');
+  flatView.availableTypes = [
+    tfma.PlotTypes.ACCURACY_CHARTS,
+    tfma.PlotTypes.GAIN_CHART,
+    tfma.PlotTypes.PREDICTION_DISTRIBUTION,
+    tfma.PlotTypes.ROC_CURVE,
+    tfma.PlotTypes.CALIBRATION_PLOT,
+    tfma.PlotTypes.PRECISION_RECALL_CURVE,
+  ];
+  flatView.initialType = tfma.PlotTypes.PRECISION_RECALL_CURVE;
+  flatView.loading = false;
+
+
+  flatView.data = {
+    'plotData': {
+      'bucketByRefinedPrediction': {'buckets': input},
+      'binaryClassificationByThreshold': {'matrices': precisionRecallCurveInput}
+    }
+  };
 })();

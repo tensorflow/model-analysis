@@ -18,6 +18,7 @@ import {template} from './tfma-plot-template.html.js';
 
 import '@polymer/iron-pages/iron-pages.js';
 import '@polymer/paper-button/paper-button.js';
+import '@polymer/paper-checkbox/paper-checkbox.js';
 import '@polymer/paper-spinner/paper-spinner.js';
 import '@polymer/paper-tabs/paper-tabs.js';
 import '../tfma-accuracy-charts/tfma-accuracy-charts.js';
@@ -39,40 +40,52 @@ const TABS = {
   WEIGHTED_PRECISION_RECALL: 'wpr',
 };
 
+const TITLES = {
+  ACCURACY_CHARTS: 'Acc/P/R/F1',
+  CALIBRATION_PLOT: 'Calibration Plot',
+  GAIN_CHART: 'Gain',
+  MACRO_PRECISION_RECALL: 'Macro PR Curve',
+  MICRO_PRECISION_RECALL: 'Micro PR Curve',
+  PRECISION_RECALL: 'Precision-Recall Curve',
+  PREDICTION_DISTRIBUTION: 'Prediction Distribution',
+  ROC: 'ROC Curve',
+  WEIGHTED_PRECISION_RECALL: 'Weighted PR Curve',
+};
+
 const SUPPORTED_VISUALIZATION = {
-  [tfma.PlotTypes.ACCURACY_CHARTS]: {
-    type: TABS.ACCURACY_CHARTS,
-    text: 'Acc/P/R/F1',
-  },
   [tfma.PlotTypes.CALIBRATION_PLOT]:
-      {type: TABS.CALIBRATION_PLOT, text: 'Calibration Plot'},
+      {type: TABS.CALIBRATION_PLOT, text: TITLES.CALIBRATION_PLOT},
   [tfma.PlotTypes.PRECISION_RECALL_CURVE]: {
     type: TABS.PRECISION_RECALL,
-    text: 'Precision-Recall Curve',
-  },
-  [tfma.PlotTypes.GAIN_CHART]: {
-    type: TABS.GAIN_CHART,
-    text: 'Gain',
+    text: TITLES.PRECISION_RECALL,
   },
   [tfma.PlotTypes.MACRO_PRECISION_RECALL_CURVE]: {
     type: TABS.MACRO_PRECISION_RECALL,
-    text: 'Macro PR Curve',
+    text: TITLES.MACRO_PRECISION_RECALL,
   },
   [tfma.PlotTypes.MICRO_PRECISION_RECALL_CURVE]: {
     type: TABS.MICRO_PRECISION_RECALL,
-    text: 'Micro PR Curve',
+    text: TITLES.MICRO_PRECISION_RECALL,
   },
   [tfma.PlotTypes.WEIGHTED_PRECISION_RECALL_CURVE]: {
     type: TABS.WEIGHTED_PRECISION_RECALL,
-    text: 'Weighted PR Curve',
+    text: TITLES.WEIGHTED_PRECISION_RECALL,
   },
   [tfma.PlotTypes.PREDICTION_DISTRIBUTION]: {
     type: TABS.PREDICTION_DISTRIBUTION,
-    text: 'Prediction Distribution',
+    text: TITLES.PREDICTION_DISTRIBUTION,
   },
   [tfma.PlotTypes.ROC_CURVE]: {
     type: TABS.ROC,
-    text: 'ROC Curve',
+    text: TITLES.ROC,
+  },
+  [tfma.PlotTypes.ACCURACY_CHARTS]: {
+    type: TABS.ACCURACY_CHARTS,
+    text: TITLES.ACCURACY_CHARTS,
+  },
+  [tfma.PlotTypes.GAIN_CHART]: {
+    type: TABS.GAIN_CHART,
+    text: TITLES.GAIN_CHART,
   },
 };
 
@@ -164,6 +177,26 @@ export class Plot extends PolymerElement {
       },
 
       /**
+       * A map of all chart titles.
+       * @type {!Object<string>}
+       * @private
+       */
+      chartTitles_: {
+        type: Object,
+        value: {
+          'Accuracy': TITLES.ACCURACY_CHARTS,
+          'Calibration': TITLES.CALIBRATION_PLOT,
+          'Gain': TITLES.GAIN_CHART,
+          'Prediction': TITLES.PREDICTION_DISTRIBUTION,
+          'Macro': TITLES.MACRO_PRECISION_RECALL,
+          'Micro': TITLES.MICRO_PRECISION_RECALL,
+          'Precision': TITLES.PRECISION_RECALL,
+          'ROC': TITLES.ROC,
+          'Weighted': TITLES.WEIGHTED_PRECISION_RECALL,
+        }
+      },
+
+      /**
        * The data used by the calibration plot.
        * @type {!Array<!Object>}
        * @private
@@ -208,7 +241,41 @@ export class Plot extends PolymerElement {
         type: Array,
         computed: 'computeWeightedPrecisionRecallCurveData_(data)'
       },
+
+      /**
+       * Whether the component should be rendered in flat layout. When in flat
+       * layout, the user cannot go back to tabbed view.
+       * @type {boolean}
+       */
+      flat: {type: Boolean, value: false, observer: 'flatChanged_'},
+
+      /**
+       * Whether to show all charts at once.
+       * @private {boolean}
+       */
+      showAll_: {type: Boolean, value: false, notify: true},
+
+
+      /**
+       * A map of charts where the key is the name attribute that is also used
+       * for tab selection.
+       * @private {!Object<!Element>}
+       */
+      chartsMap_: {type: Object},
     };
+  }
+
+  /** @override */
+  connectedCallback() {
+    super.connectedCallback();
+    if (!this.chartsMap_) {
+      // Build charts map the first time the component is added to the dom tree.
+      this.chartsMap_ = this.buildChartsMap_();
+    }
+  }
+
+  static get observers() {
+    return ['layoutCharts_(chartsMap_, showAll_, availableTabs_)'];
   }
 
   /**
@@ -341,6 +408,63 @@ export class Plot extends PolymerElement {
       }
     });
     return supported;
+  }
+
+  /**
+   * Observer for the property flat.
+   * @param {boolean} flat
+   * @private
+   */
+  flatChanged_(flat) {
+    if (flat) {
+      // Show all plots if the component is in the flat view.
+      this.showAll_ = true;
+    }
+  }
+
+  /**
+   * Builds a map where charts are keyed off of their name property.
+   * @return {!Object<!Element>}
+   * @private
+   */
+  buildChartsMap_() {
+    return Array.from(this.$['plots'].querySelectorAll('.plot-holder'))
+        .reduce((acc, chart) => {
+          acc[chart.name] = chart;
+          return acc;
+        }, {});
+  }
+
+  /**
+   * Lays out the charts based on the input. If showing all components at once,
+   * filter and sort the charts to show based on the tabs. Otherwise, show the
+   * charts in tabbed view.
+   * @param {!Object<!Element>} charts
+   * @param {boolean} showAll
+   * @param {!Array<!Object>} tabs
+   * @private
+   */
+  layoutCharts_(charts, showAll, tabs) {
+    if (!charts || !tabs) {
+      return;
+    }
+
+    if (showAll) {
+      const flatViewContainer = this.$['flat-view-container'];
+      while (flatViewContainer.lastChild) {
+        flatViewContainer.removeChild(flatViewContainer.lastChild);
+      }
+      tabs.forEach(tab => {
+        flatViewContainer.appendChild(charts[tab.type]);
+      });
+    } else {
+      const tabbedViewContainer = this.$['plots'];
+      for (let chartName in charts) {
+        tabbedViewContainer.appendChild(charts[chartName]);
+      }
+    }
+
+    this.dispatchEvent(new CustomEvent('iron-resize'));
   }
 }
 
