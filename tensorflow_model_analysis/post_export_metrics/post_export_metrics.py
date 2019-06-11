@@ -85,12 +85,8 @@ def _export(name: Text):
         """This actual callback that goes into add_metrics_callbacks."""
         metric = cls(*args, **kwargs)
         metric.check_compatibility(features_dict, predictions_dict, labels_dict)
-        metric_ops = {}
-        for key, value in (metric.get_metric_ops(features_dict,
-                                                 predictions_dict,
-                                                 labels_dict).items()):
-          metric_ops[key] = value
-        return metric_ops
+        return metric.get_metric_ops(features_dict, predictions_dict,
+                                     labels_dict)
 
       # We store the metric's export name in the .name property of the callback.
       callback.name = name
