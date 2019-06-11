@@ -34,6 +34,9 @@ from tensorflow_model_analysis.writers import metrics_and_plots_serialization
 from typing import Any, Dict, Optional, Text, Tuple, Generator
 
 
+# TODO(mdreves): Perhaps keep this as the only public method and privatize
+# several other PTransforms and functions in this modoule (and other parts of
+# TFMA).
 def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
@@ -77,7 +80,6 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           num_bootstrap_samples=num_bootstrap_samples,
           k_anonymization_count=k_anonymization_count,
           serialize=serialize))
-  # pylint: enable=no-value-for-parameter
 
 
 @beam.ptransform_fn
@@ -112,16 +114,21 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     PCollection of (slice key, plot metrics)] and
     PCollection of (slice_key and its example count).
   """
+  # pylint: disable=no-value-for-parameter
 
   _ = (
       extracts.pipeline
       | counter_util.IncrementMetricsComputationCounters(
           eval_shared_model.add_metrics_callbacks))
 
-  # pylint: disable=no-value-for-parameter
   slices = (
       extracts
-
+      # Downstream computation only cares about FPLs, so we prune before fanout.
+      # Note that fanout itself will prune the slice keys.
+      | 'PruneExtracts' >> extractor.Filter(include=[
+          constants.FEATURES_PREDICTIONS_LABELS_KEY,
+          constants.SLICE_KEY_TYPES_KEY
+      ])
       # Input: one example at a time, with slice keys in extracts.
       # Output: one fpl example per slice key (notice that the example turns
       #         into n logical examples, references to which are replicated once
@@ -143,8 +150,8 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
           desired_batch_size=desired_batch_size,
           num_bootstrap_samples=num_bootstrap_samples,
           random_seed_for_testing=random_seed_for_testing))
+
   return (aggregated_metrics, slices_count)
-  # pylint: enable=no-value-for-parameter
 
 
 @beam.ptransform_fn
@@ -187,14 +194,10 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     Evaluation containing metrics and plots dictionaries keyed by 'metrics'
     and 'plots'.
   """
-
   # pylint: disable=no-value-for-parameter
+
   (metrics, plots), slices_count = (
       extracts
-      | 'Filter' >> extractor.Filter(include=[
-          constants.FEATURES_PREDICTIONS_LABELS_KEY,
-          constants.SLICE_KEY_TYPES_KEY
-      ])
       | 'ComputeMetricsAndPlots' >> ComputeMetricsAndPlots(
           eval_shared_model,
           desired_batch_size,
@@ -216,16 +219,13 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
         | 'SerializeMetricsAndPlots' >>
         metrics_and_plots_serialization.SerializeMetricsAndPlots(
             post_export_metrics=eval_shared_model.add_metrics_callbacks))
-  # pylint: enable=no-value-for-parameter
 
   return {metrics_key: metrics, plots_key: plots}
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(
-    beam.typehints.Tuple[slicer.BeamSliceKeyType, slicer.BeamExtractsType])
-@beam.typehints.with_output_types(
-    beam.typehints.Tuple[slicer.BeamSliceKeyType, slicer.BeamExtractsType])
+@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
+@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, types.Extracts])
 def _FilterOutSlices(  # pylint: disable=invalid-name
     values: beam.pvalue.PCollection, slices_count: beam.pvalue.PCollection,
     k_anonymization_count: int) -> beam.pvalue.PCollection:

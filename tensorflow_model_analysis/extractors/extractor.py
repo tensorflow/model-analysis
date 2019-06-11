@@ -18,8 +18,6 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-import copy
-
 import apache_beam as beam
 from tensorflow_model_analysis import types
 from typing import List, NamedTuple, Optional, Text
@@ -62,19 +60,18 @@ def Filter(extracts: beam.pvalue.PCollection,
   if include and exclude:
     raise ValueError('only one of include or exclude should be used.')
 
+  # Make into sets for lookup efficiency.
+  include = frozenset(include or [])
+  exclude = frozenset(exclude or [])
+
   def filter_extracts(extracts: types.Extracts) -> types.Extracts:  # pylint: disable=invalid-name
     """Filters extracts."""
     if not include and not exclude:
       return extracts
-    if include:
-      filtered = {}
-      for key in extracts:
-        if key in include:
-          filtered[key] = extracts[key]
-    if exclude:
-      filtered = copy.copy(extracts)
-      for key in exclude:
-        del filtered[key]
-    return filtered
+    elif include:
+      return {k: v for k, v in extracts.items() if k in include}
+    else:
+      assert exclude
+      return {k: v for k, v in extracts.items() if k not in exclude}
 
   return extracts | beam.Map(filter_extracts)

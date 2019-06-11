@@ -32,7 +32,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slice_accessor
-from typing import Generator, Iterable, List, Optional, Text, Tuple, Union
+from typing import Callable, Generator, Iterable, List, Optional, Text, Tuple, Union
 
 # FeatureValueType represents a value that a feature could take.
 FeatureValueType = Union[bytes, int, float]  # pylint: disable=invalid-name
@@ -47,15 +47,6 @@ SingletonSliceKeyType = Tuple[Text, FeatureValueType]  # pylint: disable=invalid
 SliceKeyType = Union[Tuple[()], Tuple[SingletonSliceKeyType, ...]]  # pylint: disable=invalid-name
 
 OVERALL_SLICE_NAME = 'Overall'
-
-# For use in Beam type annotations, because Beam's support for Python types
-# in Beam type annotations is not complete.
-BeamSliceKeyType = beam.typehints.Union[  # pylint: disable=invalid-name
-    beam.typehints.Tuple[beam.typehints.Tuple[(
-    )], beam.typehints.Union[bytes, int, float]],
-    beam.typehints.Tuple[beam.typehints.Tuple[Text, beam.typehints
-                                              .Union[bytes, int, float]], ...]]
-BeamExtractsType = beam.typehints.Dict[Text, beam.typehints.Any]  # pylint: disable=invalid-name
 
 
 class SingleSliceSpec(object):
@@ -356,40 +347,32 @@ def stringify_slice_key(slice_key: SliceKeyType) -> Text:
 
 
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(
-    beam.typehints.Tuple[BeamSliceKeyType, BeamExtractsType])
+@beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
 class _FanoutSlicesDoFn(beam.DoFn):
   """A DoFn that performs per-slice key fanout prior to computing aggregates."""
 
-  def __init__(self, include_slice_keys_in_output):
+  def __init__(self, key_filter_fn: Callable[[Text], bool]):
     self._num_slices_generated_per_instance = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'num_slices_generated_per_instance')
     self._post_slice_num_instances = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'post_slice_num_instances')
-    self._include_slice_keys_in_output = include_slice_keys_in_output
+    self._key_filter_fn = key_filter_fn
 
   def process(self, element: types.Extracts
-             ) -> Generator[Tuple[SliceKeyType, types.Extracts], None, None]:
-    filtered = {}
-    for key in element:
-      if not self._include_slice_keys_in_output and key in (
-          constants.SLICE_KEY_TYPES_KEY, constants.SLICE_KEYS_KEY):
-        continue
-      filtered[key] = element[key]
-    slice_count = 0
-    for slice_key in element.get(constants.SLICE_KEY_TYPES_KEY):
-      slice_count += 1
-      yield (slice_key, filtered)
-
-    self._num_slices_generated_per_instance.update(slice_count)
-    self._post_slice_num_instances.inc(slice_count)
+             ) -> List[Tuple[SliceKeyType, types.Extracts]]:
+    key_filter_fn = self._key_filter_fn  # Local cache.
+    filtered = {k: v for k, v in element.items() if key_filter_fn(k)}
+    result = [(slice_key, filtered)
+              for slice_key in element.get(constants.SLICE_KEY_TYPES_KEY)]
+    self._num_slices_generated_per_instance.update(len(result))
+    self._post_slice_num_instances.inc(len(result))
+    return result
 
 
 # TODO(cyfoo): Possibly introduce the same telemetry in Lantern to help with
 # evaluating importance of b/111353165 based on actual Lantern usage data.
 @beam.ptransform_fn
-@beam.typehints.with_input_types(
-    beam.typehints.Tuple[BeamSliceKeyType, types.Extracts])
+@beam.typehints.with_input_types(Tuple[SliceKeyType, types.Extracts])
 @beam.typehints.with_output_types(int)
 def _TrackDistinctSliceKeys(  # pylint: disable=invalid-name
     slice_keys_and_values: beam.pvalue.PCollection) -> beam.pvalue.PCollection:
@@ -410,14 +393,18 @@ def _TrackDistinctSliceKeys(  # pylint: disable=invalid-name
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(
-    beam.typehints.Tuple[BeamSliceKeyType, types.Extracts])  # pylint: disable=invalid-name
+@beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
 def FanoutSlices(pcoll: beam.pvalue.PCollection,
                  include_slice_keys_in_output: Optional[bool] = False
                 ) -> beam.pvalue.PCollection:  # pylint: disable=invalid-name
-  """Fan out extracts based on the slice keys (with slice keys removed)."""
-  result = pcoll | 'DoSlicing' >> beam.ParDo(
-      _FanoutSlicesDoFn(include_slice_keys_in_output))
+  """Fan out extracts based on slice keys (slice keys removed by default)."""
+  if include_slice_keys_in_output:
+    key_filter_fn = lambda k: True
+  else:
+    pruned_keys = (constants.SLICE_KEY_TYPES_KEY, constants.SLICE_KEYS_KEY)
+    key_filter_fn = lambda k: k not in pruned_keys
+
+  result = pcoll | 'DoSlicing' >> beam.ParDo(_FanoutSlicesDoFn(key_filter_fn))
 
   # pylint: disable=no-value-for-parameter
   _ = result | 'TrackDistinctSliceKeys' >> _TrackDistinctSliceKeys()

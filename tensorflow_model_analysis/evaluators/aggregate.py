@@ -21,7 +21,6 @@ from __future__ import print_function
 # Standard Imports
 import apache_beam as beam
 import numpy as np
-from scipy import mean
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
@@ -33,11 +32,8 @@ from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, 
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(
-    beam.typehints.Tuple[slicer.BeamSliceKeyType, slicer.BeamExtractsType])
-@beam.typehints.with_output_types(
-    beam.typehints.Tuple[slicer.BeamSliceKeyType, beam.typehints
-                         .List[beam.typehints.Any]])
+@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
+@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, List[Any]])
 def ComputePerSliceMetrics(  # pylint: disable=invalid-name
     slice_result: beam.pvalue.PCollection,
     eval_shared_model: types.EvalSharedModel,
@@ -209,7 +205,7 @@ def _calculate_t_distribution(
     ]
     n_samples = len(sampling_data_list)
     if n_samples:
-      sample_mean = mean(sampling_data_list)
+      sample_mean = np.mean(sampling_data_list)
       sample_std = np.std(sampling_data_list, ddof=1)
       return types.ValueWithTDistribution(sample_mean, sample_std,
                                           n_samples - 1, unsampled_data)
@@ -269,8 +265,8 @@ class _AggState(object):
                                                   metric_variables)
 
 
-@beam.typehints.with_input_types(slicer.BeamExtractsType)
-@beam.typehints.with_output_types(beam.typehints.List[beam.typehints.Any])
+@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_output_types(List[Any])
 class _AggregateCombineFn(beam.CombineFn):
   """Aggregate combine function.
 
@@ -464,9 +460,7 @@ class _SeparateMetricsAndPlotsFn(beam.DoFn):
       yield beam.pvalue.TaggedOutput(self.OUTPUT_TAG_PLOTS, (slice_key, plots))  # pytype: disable=bad-return-type
 
 
-@beam.typehints.with_input_types(
-    beam.typehints.Tuple[slicer.BeamSliceKeyType, beam.typehints
-                         .List[beam.typehints.Any]])
+@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, List[Any]])
 # TODO(b/123516222)): Add output typehints. Similarly elsewhere that it applies.
 class _ExtractOutputDoFn(dofn.EvalSavedModelDoFn):
   """A DoFn that extracts the metrics output."""
