@@ -79,15 +79,8 @@ export class PrecisionRecallCurve extends PolymerElement {
         [['Recall', 'Precision', {'type': 'string', 'role': 'tooltip'}]];
     data.forEach((entry) => {
       const threshold = Math.max(0, Math.min(1, entry['threshold'] || 0));
-      // Due to potential division by zero, precision and recall can be NaN or
-      // Infinity. These values are cannot be serialized as valid json. To
-      // handle these cases, assume NaN and Infinity are converted to strings,
-      // "NaN" and "Infinity" and use parseFloat to get back to NaN and
-      // Infinity.
-      const recall =
-          parseFloat(tfma.CellRenderer.extractFloatValue(entry, 'recall') || 0);
-      const precision = parseFloat(
-          tfma.CellRenderer.extractFloatValue(entry, 'precision') || 0);
+      const recall = tfma.CellRenderer.extractFloatValue(entry, 'recall');
+      const precision = tfma.CellRenderer.extractFloatValue(entry, 'precision');
       const tooltip = 'Prediction threshold: ' + threshold.toFixed(5) +
           '\nRecall: ' + recall.toFixed(5) +
           '\nPrecision: ' + precision.toFixed(5);

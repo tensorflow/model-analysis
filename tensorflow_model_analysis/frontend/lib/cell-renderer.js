@@ -238,10 +238,14 @@ function extractFloatValue(data, key) {
   const boundedKey = BOUNDED_VALUE_METRIC_NAME_PREFIX_ +
       key.charAt(0).toUpperCase() + key.slice(1);
   const boundedValue = data[boundedKey];
-  return (goog.isDef(boundedValue) ?
+  const value = (goog.isDef(boundedValue) ?
               boundedValue[BoundedValueFieldNames.VALUE] :
               data[key]) ||
       0;
+  // Since NaN and Infinity is not in JSON spec, they are serialized as strings
+  // when sent to the client side. When that happens, we need to parse them as
+  // float to restore them.
+  return typeof value == 'string' ? parseFloat(value) : value;
 }
 
 /**

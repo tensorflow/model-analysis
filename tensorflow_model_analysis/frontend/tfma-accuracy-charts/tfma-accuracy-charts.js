@@ -84,17 +84,9 @@ export class AccuracyPrecisionRecallF1 extends PolymerElement {
     ]];
     data.forEach((entry) => {
       const threshold = Math.max(0, Math.min(1, entry['threshold'] || 0));
-      // Due to potential division by zero, precision and recall can be NaN or
-      // Infinity. These values are cannot be serialized as valid json. To
-      // handle these cases, assume NaN and Infinity are converted to strings,
-      // "NaN" and "Infinity" and use parseFloat to get back to NaN and
-      // Infinity.
-      const accuracy = parseFloat(
-          tfma.CellRenderer.extractFloatValue(entry, 'accuracy') || 0);
-      const recall =
-          parseFloat(tfma.CellRenderer.extractFloatValue(entry, 'recall') || 0);
-      const precision = parseFloat(
-          tfma.CellRenderer.extractFloatValue(entry, 'precision') || 0);
+      const accuracy = tfma.CellRenderer.extractFloatValue(entry, 'accuracy');
+      const recall = tfma.CellRenderer.extractFloatValue(entry, 'recall');
+      const precision = tfma.CellRenderer.extractFloatValue(entry, 'precision');
       const f1 = 2 * recall * precision / (recall + precision);
 
       const makeTooltip = (name, value) => name + ': ' + value.toFixed(5) +

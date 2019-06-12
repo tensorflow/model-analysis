@@ -462,6 +462,13 @@ testSuite({
     };
     assertEquals(0, CellRenderer.extractFloatValue(data, 'no-match'));
   },
+
+  testExtractFloatValueForNaN() {
+    const data = {
+      'metric': 'NaN',
+    };
+    assertNaN(CellRenderer.extractFloatValue(data, 'metric'));
+  },
 });
 
 

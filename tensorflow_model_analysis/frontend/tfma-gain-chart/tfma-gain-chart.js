@@ -101,23 +101,25 @@ export class GainChart extends PolymerElement {
       [0, 0, 0, 'Origin']
     ];
 
-    const extract = (entry, key) =>
-        parseFloat(tfma.CellRenderer.extractFloatValue(entry, key) || 0);
     const totalPositives =
-        extract(data[0], 'truePositives') + extract(data[0], 'falseNegatives');
-    const totalCount = totalPositives + extract(data[0], 'trueNegatives') +
-        extract(data[0], 'falsePositives');
+        tfma.CellRenderer.extractFloatValue(data[0], 'truePositives') +
+        tfma.CellRenderer.extractFloatValue(data[0], 'falseNegatives');
+    const totalCount = totalPositives +
+        tfma.CellRenderer.extractFloatValue(data[0], 'trueNegatives') +
+        tfma.CellRenderer.extractFloatValue(data[0], 'falsePositives');
     const stepSize = totalCount / steps;
     let currentStep = Math.round(stepSize);
 
     for (let i = 0; i < data.length; i++) {
       const entry = data[i];
-      const truePositives = extract(entry, 'truePositives');
-      const totalPredictedPositives =
-          truePositives + extract(entry, 'falsePositives');
+      const truePositives =
+          tfma.CellRenderer.extractFloatValue(entry, 'truePositives');
+      const totalPredictedPositives = truePositives +
+          tfma.CellRenderer.extractFloatValue(entry, 'falsePositives');
 
       if (totalPredictedPositives >= currentStep) {
-        const threshold = extract(entry, 'threshold');
+        const threshold =
+            tfma.CellRenderer.extractFloatValue(entry, 'threshold');
         const percentile = totalPredictedPositives / totalCount * 100;
 
         plotData.push([
