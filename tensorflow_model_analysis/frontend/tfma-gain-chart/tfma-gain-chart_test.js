@@ -92,23 +92,23 @@ suite('tests', () => {
 
     assert.deepEqual(
         chartData[0],
-        ['Percentile', '', 'Gain', {'type': 'string', 'role': 'tooltip'}]);
+        ['Percentile', '', {'type': 'string', 'role': 'tooltip'}, 'Gain', {'type': 'string', 'role': 'tooltip'}]);
 
-    assert.deepEqual(chartData[1], [0, 0, 0, 'Origin']);
+    assert.deepEqual(chartData[1], [0, 0, 'Random', 0, 'Origin']);
     assert.deepEqual(chartData[2], [
-      25, 25, 26.25,
+      25, 25, 'Random', 26.25,
       'True Positives: 63\nPredicted Positives: 70\nThreshold: 0.75000\nPercentile: 25'
     ]);
     assert.deepEqual(chartData[3], [
-      50, 50, 52.5,
+      50, 50, 'Random', 52.5,
       'True Positives: 126\nPredicted Positives: 140\nThreshold: 0.37500\nPercentile: 50'
     ]);
     assert.deepEqual(chartData[4], [
-      75, 75, 78.75,
+      75, 75, 'Random', 78.75,
       'True Positives: 189\nPredicted Positives: 210\nThreshold: 0.25000\nPercentile: 75'
     ]);
     assert.deepEqual(chartData[5], [
-      100, 100, 100,
+      100, 100, 'Random', 100,
       'True Positives: 240\nPredicted Positives: 280\nThreshold: 0.12500\nPercentile: 100'
     ]);
   });

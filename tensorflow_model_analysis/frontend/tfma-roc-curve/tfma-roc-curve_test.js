@@ -42,16 +42,21 @@ suite('tests', () => {
     const chartData =
         element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
     assert.equal(4, chartData.length);
-    assert.deepEqual(
-        chartData[0], ['FPR', 'TPR', {'type': 'string', 'role': 'tooltip'}]);
-    assert.deepEqual(
-        chartData[1],
-        [0, 0, 'Prediction threshold: 1.00000\nFPR: 0.00000\nTPR: 0.00000']);
+    assert.deepEqual(chartData[0], [
+      'FPR', '', {'type': 'string', 'role': 'tooltip'}, 'TPR',
+      {'type': 'string', 'role': 'tooltip'}
+    ]);
+    assert.deepEqual(chartData[1], [
+      0, 0, 'Random', 0,
+      'Prediction threshold: 1.00000\nFPR: 0.00000\nTPR: 0.00000'
+    ]);
     assert.deepEqual(chartData[2], [
-      0.5, 0.75, 'Prediction threshold: 0.50000\nFPR: 0.50000\nTPR: 0.75000'
+      0.5, 0.5, 'Random', 0.75,
+      'Prediction threshold: 0.50000\nFPR: 0.50000\nTPR: 0.75000'
     ]);
     assert.deepEqual(chartData[3], [
-      0.875, 0.875, 'Prediction threshold: 0.00000\nFPR: 0.87500\nTPR: 0.87500'
+      0.875, 0.875, 'Random', 0.875,
+      'Prediction threshold: 0.00000\nFPR: 0.87500\nTPR: 0.87500'
     ]);
   });
 });

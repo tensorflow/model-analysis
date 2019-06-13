@@ -54,7 +54,13 @@ export class RocCurve extends PolymerElement {
           'legend': {'position': 'bottom'},
           'hAxis': {'title': 'False Positive Rate'},
           'vAxis': {'title': 'True Positive Rate'},
-          'series': {0: {'visibleInLegend': false}},
+          'series': {
+            0: {
+              'lineDashStyle': [3, 2],
+              'visibleInLegend': false,
+            },
+            1: {'visibleInLegend': false},
+          },
           'explorer':
               {actions: ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
         }
@@ -75,7 +81,10 @@ export class RocCurve extends PolymerElement {
    * @private
    */
   computePlotData_(data) {
-    const plotData = [['FPR', 'TPR', {'type': 'string', 'role': 'tooltip'}]];
+    const plotData = [[
+      'FPR', '', {'type': 'string', 'role': 'tooltip'}, 'TPR',
+      {'type': 'string', 'role': 'tooltip'}
+    ]];
     data.forEach((entry) => {
       const threshold = Math.max(0, Math.min(1, entry['threshold'] || 0));
       const truePositives =
@@ -92,7 +101,10 @@ export class RocCurve extends PolymerElement {
       const tooltip = 'Prediction threshold: ' + threshold.toFixed(5) +
           '\nFPR: ' + falsePositiveRate.toFixed(5) +
           '\nTPR: ' + truePositiveRate.toFixed(5);
-      plotData.push([falsePositiveRate, truePositiveRate, tooltip]);
+      plotData.push([
+        falsePositiveRate, falsePositiveRate, 'Random', truePositiveRate,
+        tooltip
+      ]);
     });
     return plotData;
   }

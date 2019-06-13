@@ -61,9 +61,8 @@ export class GainChart extends PolymerElement {
               {'actions': ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
           'series': {
             0: {
-              'enableInteractivity': false,
-              'tooltip': 'none',
-              'visibleInLegend': false
+            'lineDashStyle': [3, 2],
+              'visibleInLegend': false,
             },
             1: {'visibleInLegend': false},
           },
@@ -95,10 +94,11 @@ export class GainChart extends PolymerElement {
       [
         'Percentile',
         '',
+        {'type': 'string', 'role': 'tooltip'},
         'Gain',
         {'type': 'string', 'role': 'tooltip'},
       ],
-      [0, 0, 0, 'Origin']
+      [0, 0, 'Random', 0, 'Origin']
     ];
 
     const totalPositives =
@@ -125,6 +125,7 @@ export class GainChart extends PolymerElement {
         plotData.push([
           percentile,
           percentile,
+          'Random',
           truePositives / totalPositives * 100,
           'True Positives: ' + truePositives + '\nPredicted Positives: ' +
               totalPredictedPositives + '\nThreshold: ' + threshold.toFixed(5) +
