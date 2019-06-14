@@ -28,7 +28,9 @@ from typing import List, Optional, Text
 def make_construct_fn(  # pylint: disable=invalid-name
     eval_saved_model_path: Text,
     add_metrics_callbacks: List[types.AddMetricsCallbackType],
-    include_default_metrics: bool, additional_fetches: Optional[List[Text]]):
+    include_default_metrics: bool,
+    additional_fetches: Optional[List[Text]],
+    blacklist_feature_fetches: Optional[List[Text]] = None):
   """Returns construct function for Shared for constructing EvalSavedModel."""
 
   def construct_fn(model_load_seconds: beam.metrics.metricbase.Distribution):
@@ -40,7 +42,8 @@ def make_construct_fn(  # pylint: disable=invalid-name
       result = load.EvalSavedModel(
           eval_saved_model_path,
           include_default_metrics,
-          additional_fetches=additional_fetches)
+          additional_fetches=additional_fetches,
+          blacklist_feature_fetches=blacklist_feature_fetches)
       if add_metrics_callbacks:
         result.register_add_metric_callbacks(add_metrics_callbacks)
       result.graph_finalize()

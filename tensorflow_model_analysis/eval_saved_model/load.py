@@ -65,7 +65,8 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
   def __init__(self,
                path: Text,
                include_default_metrics: Optional[bool] = True,
-               additional_fetches: Optional[List[Text]] = None):
+               additional_fetches: Optional[List[Text]] = None,
+               blacklist_feature_fetches: Optional[List[Text]] = None):
     """Initializes EvalSavedModel.
 
     Args:
@@ -75,6 +76,10 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
         signature_def.inputs that should be fetched at prediction time. The
         "features" and "labels" tensors are handled automatically and should not
         be included in this list.
+      blacklist_feature_fetches: List of tensor names in the features dictionary
+        which should be excluded from the fetches request. This is useful in
+        scenarios where features are large (e.g. images) and can lead to
+        excessive memory use if stored.
 
     Raises:
       ValueError: If "features" or "labels" included in additional_fetches.
@@ -87,6 +92,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
       if constants.LABELS_NAME in additional_fetches:
         raise ValueError('additional_fetches should not contain "labels"')
     self._additional_fetches = additional_fetches
+    self._blacklist_feature_fetches = blacklist_feature_fetches
     super(EvalSavedModel, self).__init__()
 
   def _check_version(self, version_node: types.TensorType):
@@ -185,6 +191,9 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
             signature_def, self._graph)
         self._features_map = graph_ref.load_additional_inputs(
             constants.FEATURES_NAME, signature_def, self._graph)
+        if self._blacklist_feature_fetches:
+          for feature_name in self._blacklist_feature_fetches:
+            self._features_map.pop(feature_name, None)
         self._labels_map = graph_ref.load_additional_inputs(
             constants.LABELS_NAME, signature_def, self._graph)
         if self._additional_fetches:

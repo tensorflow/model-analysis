@@ -207,7 +207,9 @@ def default_eval_shared_model(
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
     include_default_metrics: Optional[bool] = True,
     example_weight_key: Optional[Text] = None,
-    additional_fetches: Optional[List[Text]] = None) -> types.EvalSharedModel:
+    additional_fetches: Optional[List[Text]] = None,
+    blacklist_feature_fetches: Optional[List[Text]] = None
+) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
 
   Args:
@@ -223,6 +225,10 @@ def default_eval_shared_model(
       signature_def.inputs that should be fetched at prediction time. The
       "features" and "labels" tensors are handled automatically and should not
       be included.
+    blacklist_feature_fetches: List of tensor names in the features dictionary
+      which should be excluded from the fetches request. This is useful in
+      scenarios where features are large (e.g. images) and can lead to excessive
+      memory use if stored.
   """
   # Always compute example weight and example count.
   # PyType doesn't know about the magic exports we do in post_export_metrics.
@@ -250,7 +256,8 @@ def default_eval_shared_model(
           eval_saved_model_path,
           add_metrics_callbacks,
           include_default_metrics,
-          additional_fetches=additional_fetches))
+          additional_fetches=additional_fetches,
+          blacklist_feature_fetches=blacklist_feature_fetches))
 
 
 def default_extractors(  # pylint: disable=invalid-name

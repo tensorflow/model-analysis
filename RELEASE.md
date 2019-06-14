@@ -15,6 +15,7 @@
 *   Added QueryBasedMetricsEvaluator which supports computing query-based
     metrics (e.g. normalized discounted cumulative gain).
 *   Added support for merging metrics produced by different evaluators.
+*   Added support for blacklisting specified features from fetches.
 
 ## Bug fixes and other changes
 

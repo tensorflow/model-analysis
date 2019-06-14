@@ -23,6 +23,7 @@ from __future__ import print_function
 import os
 # Standard Imports
 
+from absl.testing import parameterized
 import apache_beam as beam
 
 from apache_beam.testing import util
@@ -37,17 +38,23 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_c
 from tensorflow_model_analysis.extractors import predict_extractor
 
 
-class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
+class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
+                           parameterized.TestCase):
 
   def _getEvalExportDir(self):
     return os.path.join(self._getTempDir(), 'eval_export_dir')
 
-  def testPredict(self):
+  @parameterized.parameters(
+      {'features_blacklist': None},
+      {'features_blacklist': ['age']},
+  )
+  def testPredict(self, features_blacklist):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
         None, temp_eval_export_dir)
     eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=eval_export_dir)
+        eval_saved_model_path=eval_export_dir,
+        blacklist_feature_fetches=features_blacklist)
     with beam.Pipeline() as pipeline:
       examples = [
           self._makeExample(age=3.0, language='english', label=1.0),
@@ -68,15 +75,18 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(4, len(got), 'got: %s' % got)
+          self.assertLen(got, 4)
           for item in got:
-            self.assertTrue(constants.FEATURES_PREDICTIONS_LABELS_KEY in item)
+            self.assertIn(constants.FEATURES_PREDICTIONS_LABELS_KEY, item)
             fpl = item[constants.FEATURES_PREDICTIONS_LABELS_KEY]
             # Verify fpl contains features, probabilities, and correct labels.
-            self.assertIn('language', fpl.features)
-            self.assertIn('age', fpl.features)
-            self.assertIn('label', fpl.features)
-            self.assertIn('probabilities', fpl.predictions)
+            blacklisted_features = set(features_blacklist or [])
+            expected_features = (
+                set(['language', 'age', 'label']) - blacklisted_features)
+            for feature in expected_features:
+              self.assertIn(feature, fpl.features)
+            for feature in blacklisted_features:
+              self.assertNotIn(feature, fpl.features)
             self.assertAlmostEqual(fpl.features['label'],
                                    fpl.labels['__labels'])
 
@@ -100,12 +110,12 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
     def check_result(got):
       try:
-        self.assertEqual(6, len(got), 'got: %s' % got)
+        self.assertLen(got, 6)
         self.assertEqual(['3', '3', '3', '1', '2', '2'],
                          [extracts[constants.INPUT_KEY] for extracts in got])
 
         for item in got:
-          self.assertTrue(constants.FEATURES_PREDICTIONS_LABELS_KEY in item)
+          self.assertIn(constants.FEATURES_PREDICTIONS_LABELS_KEY, item)
           fpl = item[constants.FEATURES_PREDICTIONS_LABELS_KEY]
           self.assertIn('input_index', fpl.features)
           self.assertIn('example_count', fpl.features)
