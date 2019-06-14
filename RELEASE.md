@@ -25,6 +25,7 @@
     multi-threaded runners which could result in incorrect metric values.
 *   Depends on `apache-beam[gcp]>=2.12,<3`.
 *   More flexible `FanoutSlices`.
+*   Limit the number of sampling buckets to 20.
 
 
 ## Breaking changes

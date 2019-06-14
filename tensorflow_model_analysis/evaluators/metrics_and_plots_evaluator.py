@@ -43,7 +43,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
-    num_bootstrap_samples: Optional[int] = 1,
+    compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
     serialize=False) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
@@ -54,9 +54,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
     run_after: Extractor to run after (None means before any extractors).
-    num_bootstrap_samples: Number of bootstrap samples to draw. If more than 1,
-      confidence intervals will be computed for metrics. Suggested value is at
-      least 20.
+    compute_confidence_intervals: Whether or not to compute confidence
+      intervals.
     k_anonymization_count: If the number of examples in a specific slice is less
       than k_anonymization_count, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
@@ -77,7 +76,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           desired_batch_size=desired_batch_size,
           metrics_key=metrics_key,
           plots_key=plots_key,
-          num_bootstrap_samples=num_bootstrap_samples,
+          compute_confidence_intervals=compute_confidence_intervals,
           k_anonymization_count=k_anonymization_count,
           serialize=serialize))
 
@@ -90,7 +89,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
-    num_bootstrap_samples: Optional[int] = 1,
+    compute_confidence_intervals: Optional[bool] = False,
     random_seed_for_testing: Optional[int] = None
 ) -> Tuple[beam.pvalue.DoOutputsTuple, beam.pvalue.PCollection]:
   """Computes metrics and plots using the EvalSavedModel.
@@ -105,7 +104,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       additional metrics (see EvalSharedModel for more information on how to
       configure additional metrics).
     desired_batch_size: Optional batch size for batching in Aggregate.
-    num_bootstrap_samples: Set to value > 1 to run metrics analysis over
+    compute_confidence_intervals: Set to True to run metrics analysis over
       multiple bootstrap samples and compute uncertainty intervals.
     random_seed_for_testing: Provide for deterministic tests only.
 
@@ -148,7 +147,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       | 'ComputePerSliceMetrics' >> aggregate.ComputePerSliceMetrics(
           eval_shared_model=eval_shared_model,
           desired_batch_size=desired_batch_size,
-          num_bootstrap_samples=num_bootstrap_samples,
+          compute_confidence_intervals=compute_confidence_intervals,
           random_seed_for_testing=random_seed_for_testing))
 
   return (aggregated_metrics, slices_count)
@@ -163,7 +162,7 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     desired_batch_size: Optional[int] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
-    num_bootstrap_samples: Optional[int] = 1,
+    compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
     serialize: bool = False) -> evaluator.Evaluation:
   """Evaluates metrics and plots using the EvalSavedModel.
@@ -180,9 +179,8 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     desired_batch_size: Optional batch size for batching in Aggregate.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
-    num_bootstrap_samples: Number of bootstrap samples to draw. If more than 1,
-      confidence intervals will be computed for metrics. Suggested value is at
-      least 20.
+    compute_confidence_intervals: Whether or not to compute confidence
+      intervals.
     k_anonymization_count: If the number of examples in a specific slice is less
       than k_anonymization_count, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
@@ -201,7 +199,7 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
       | 'ComputeMetricsAndPlots' >> ComputeMetricsAndPlots(
           eval_shared_model,
           desired_batch_size,
-          num_bootstrap_samples=num_bootstrap_samples))
+          compute_confidence_intervals=compute_confidence_intervals))
 
   if k_anonymization_count > 1:
     metrics = (

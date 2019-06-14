@@ -44,17 +44,15 @@ from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
-# Seed that returns '1' for the first 14 calls to Poisson(1). This means that
-# the bootstrap samples generated for small test sets should a) be deterministic
-# and b) match the values seen when not computing uncertainty.
-_MAGIC_SEED = 857586
+
+_TEST_SEED = 857586
 
 
 class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
-    self.num_bootstrap_samples = 1  # Set to number > 1 to test uncertainty.
-    self.deterministic_test_seed = _MAGIC_SEED
+    self.compute_confidence_intervals = False
+    self.deterministic_test_seed = _TEST_SEED
     super(testutil.TensorflowModelAnalysisTest, self).setUp()
 
   def _getEvalExportDir(self):
@@ -84,7 +82,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
           | 'ComputeMetricsAndPlots' >>
           metrics_and_plots_evaluator.ComputeMetricsAndPlots(
               eval_shared_model=eval_shared_model,
-              num_bootstrap_samples=self.num_bootstrap_samples,
+              compute_confidence_intervals=self.compute_confidence_intervals,
               random_seed_for_testing=self.deterministic_test_seed))
       if custom_metrics_check is not None:
         util.assert_that(metrics, custom_metrics_check, label='metrics')
@@ -176,7 +174,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     ], expected_values_dict)
 
   def testPostExportMetricsLinearClassifierWithUncertainty(self):
-    self.num_bootstrap_samples = 10
+    self.compute_confidence_intervals = True
     self.deterministic_test_seed = None  # Explicitly disable determinism.
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
@@ -699,7 +697,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         custom_metrics_check=check_result)
 
   def testPrecisionRecallAtKUnweightedWithUncertainty(self):
-    self.num_bootstrap_samples = 10
+    self.compute_confidence_intervals = True
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_classifier.simple_fixed_prediction_classifier(
@@ -777,11 +775,11 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
           self.assertAlmostEqual(v.value, expected_value, delta=0.2)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_mean.value,
-              0.44999999999999996,
-              delta=0.2)
+              0.7008333333333333,
+              delta=0.5)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_degrees_of_freedom.value,
-              self.num_bootstrap_samples - 1,
+              19,
               delta=2)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_standard_deviation.value,
@@ -801,7 +799,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
               v.t_distribution_value.sample_mean.value, 0.5, delta=0.5)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_degrees_of_freedom.value,
-              self.num_bootstrap_samples - 1,
+              19,
               delta=2)
           self.assertAlmostEqual(
               v.t_distribution_value.sample_standard_deviation.value,
@@ -1040,7 +1038,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         custom_plots_check=check_result)
 
   def testCalibrationPlotAndPredictionHistogramUnweightedWithUncertainty(self):
-    self.num_bootstrap_samples = 10
+    self.compute_confidence_intervals = True
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
@@ -1320,7 +1318,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         examples, eval_export_dir, [auc_plots], custom_plots_check=check_result)
 
   def testAucPlotsWithUncertainty(self):
-    self.num_bootstrap_samples = 3
+    self.compute_confidence_intervals = True
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
@@ -1354,19 +1352,19 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # sampling will change these values.
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[0]],
-            [0.0, 0.0, 1.3333334, 1.6666666, 0.64444447, 1.0])
+            [0.0, 0.0, 2.6500001, 3.0, 0.54976189, 1.0])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[1]],
-            [0.66666669, 0.66666669, 0.66666669, 1.0, 0.58333337, 0.55555558])
+            [1.05, 1.15, 1.5, 1.95, 0.55438596, 0.64166665])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[7001]],
-            [1.0, 0.66666669, 0.66666669, 0.66666669, 0.5, 0.44444445])
+            [2.0999999, 1.15, 1.5, 0.89999998, 0.36574075, 0.33083338])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[8001]],
-            [1.0, 1.3333334, 0.0, 0.66666669, 1.0, 0.44444445])
+            [2.0999999, 2.6500001, 0.0, 0.89999998, 1.0, 0.33083335])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[10001]],
-            [1.6666666, 1.3333334, 0.0, 0.0,
+            [3.0, 2.6500001, 0.0, 0.0,
              float('nan'), 0.0])
         self.assertIn(metric_keys.AUC_PLOTS_THRESHOLDS, value)
         thresholds = value[metric_keys.AUC_PLOTS_THRESHOLDS]
@@ -1379,153 +1377,42 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertAlmostEqual(1.000, thresholds[10001].sample_mean)
         plot_data = metrics_for_slice_pb2.PlotsForSlice().plots
         auc_plots.populate_plots_and_pop(value, plot_data)
-        self.assertProtoEquals(
-            """threshold: 1.0
-            false_negatives: 3.0
-            true_negatives: 2.0
-            false_positives: 0.0
-            true_positives: 0.0
-            precision: nan
-            recall: 0.0
-            bounded_false_negatives {
-              lower_bound {
-                value: -1.2017685
-              }
-              upper_bound {
-                value: 4.5351017
-              }
-              value {
-                value: 1.6666666
-              }
-              methodology: POISSON_BOOTSTRAP
-            }
-            bounded_true_negatives {
-              lower_bound {
-                value: -1.5351017
-              }
-              upper_bound {
-                value: 4.2017685
-              }
-              value {
-                value: 1.3333334
-              }
-              methodology: POISSON_BOOTSTRAP
-            }
-            bounded_false_positives {
-              lower_bound {
-              }
-              upper_bound {
-              }
-              value {
-              }
-              methodology: POISSON_BOOTSTRAP
-            }
-            bounded_true_positives {
-              lower_bound {
-              }
-              upper_bound {
-              }
-              value {
-              }
-              methodology: POISSON_BOOTSTRAP
-            }
-            bounded_precision {
-              lower_bound {
-                value: nan
-              }
-              upper_bound {
-                value: nan
-              }
-              value {
-                value: nan
-              }
-              methodology: POISSON_BOOTSTRAP
-            }
-            bounded_recall {
-              lower_bound {
-              }
-              upper_bound {
-              }
-              value {
-              }
-              methodology: POISSON_BOOTSTRAP
-            }
-            t_distribution_false_negatives {
-              sample_mean {
-                value: 1.6666666
-              }
-              sample_standard_deviation {
-                value: 1.1547005
-              }
-              sample_degrees_of_freedom {
-                value: 2
-              }
-              unsampled_value {
-                value: 3.0
-              }
-            }
-            t_distribution_true_negatives {
-              sample_mean {
-                value: 1.3333334
-              }
-              sample_standard_deviation {
-                value: 1.1547005
-              }
-              sample_degrees_of_freedom {
-                value: 2
-              }
-              unsampled_value {
-                value: 2.0
-              }
-            }
-            t_distribution_false_positives {
-              sample_mean {
-              }
-              sample_standard_deviation {
-              }
-              sample_degrees_of_freedom {
-                value: 2
-              }
-              unsampled_value {
-              }
-            }
-            t_distribution_true_positives {
-                sample_mean {
-              }
-              sample_standard_deviation {
-              }
-              sample_degrees_of_freedom {
-                value: 2
-              }
-              unsampled_value {
-              }
-            }
-            t_distribution_precision {
-              sample_mean {
-                value: nan
-              }
-              sample_standard_deviation {
-                value: nan
-              }
-              sample_degrees_of_freedom {
-                value: -1
-              }
-              unsampled_value {
-                value: nan
-              }
-            }
-            t_distribution_recall {
-              sample_mean {
-              }
-              sample_standard_deviation {
-              }
-              sample_degrees_of_freedom {
-                value: 2
-              }
-              unsampled_value {
-              }
-            }""", plot_data['post_export_metrics']
-            .confusion_matrix_at_thresholds.matrices[10001])
+        # We're choosing to evaluate one of the buckets in the plot_data. This
+        # is primarily done to validate the serialization.
+        comparison_point = (
+            plot_data['post_export_metrics'].confusion_matrix_at_thresholds
+            .matrices[10001])
+        self.assertAlmostEqual(comparison_point.threshold, 1.0)
+        self.assertAlmostEqual(comparison_point.false_negatives, 3.0)
+        self.assertAlmostEqual(comparison_point.true_positives, 0.0)
+        self.assertAlmostEqual(comparison_point.true_negatives, 2.0)
+        self.assertTrue(np.isnan(comparison_point.precision))
+        self.assertAlmostEqual(comparison_point.recall, 0.0)
+        # Checks serialization of bounds.
+        self.assertAlmostEqual(
+            comparison_point.bounded_true_negatives.lower_bound.value,
+            1.84,
+            places=2)
+        self.assertAlmostEqual(
+            comparison_point.bounded_true_negatives.upper_bound.value,
+            3.46,
+            places=2)
+        self.assertAlmostEqual(
+            comparison_point.bounded_true_negatives.value.value, 2.65, places=2)
+        # Checks serialization of t-distribution.
+        self.assertAlmostEqual(
+            comparison_point.t_distribution_true_negatives.sample_mean.value,
+            2.65,
+            places=2)
+        self.assertAlmostEqual(
+            comparison_point.t_distribution_true_negatives
+            .sample_standard_deviation.value,
+            1.73,
+            places=2)
+        self.assertAlmostEqual(
+            comparison_point.t_distribution_true_negatives.unsampled_value
+            .value, 2.0)
+
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -1623,7 +1510,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         custom_metrics_check=check_result)
 
   def testConfusionMatrixAtThresholdsWeightedUncertainty(self):
-    self.num_bootstrap_samples = 10
+    self.compute_confidence_intervals = True
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator_extra_fields
@@ -2731,7 +2618,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     ], expected_values_dict)
 
   def testMeanAbsoluteErrorWithUncertainty(self):
-    self.num_bootstrap_samples = 20
+    self.compute_confidence_intervals = True
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
@@ -2888,7 +2775,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     ], expected_values_dict)
 
   def testMeanSquaredErrorWithUncertainty(self):
-    self.num_bootstrap_samples = 20
+    self.compute_confidence_intervals = True
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
@@ -3053,7 +2940,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     ], expected_values_dict)
 
   def testRootMeanSquaredErrorWithUncertainty(self):
-    self.num_bootstrap_samples = 20
+    self.compute_confidence_intervals = True
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(

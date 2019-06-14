@@ -265,8 +265,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             eval_saved_model_path=model_location, example_weight_key='age'),
         data_location,
         slice_spec=slice_spec,
-        num_bootstrap_samples=20,
+        compute_confidence_intervals=True,
         k_anonymization_count=2)
+
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {

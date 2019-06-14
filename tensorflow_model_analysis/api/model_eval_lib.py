@@ -79,8 +79,8 @@ class EvalConfig(
             ('slice_spec', Optional[List[slicer.SingleSliceSpec]]
             ),  # The corresponding slice spec
             ('example_weight_metric_key', Text),  # Deprecated
-            ('num_bootstrap_samples', int
-            ),  # Number of bootstrapping if calculating confidence is desired.
+            ('compute_confidence_intervals',
+             bool),  # Set to true in order to calculate confidence intervals.
         ])):
   """Config used for extraction and evaluation."""
 
@@ -89,10 +89,10 @@ class EvalConfig(
               data_location: Optional[Text] = None,
               slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
               example_weight_metric_key: Optional[Text] = None,
-              num_bootstrap_samples: Optional[int] = 1):
-    return super(EvalConfig,
-                 cls).__new__(cls, model_location, data_location, slice_spec,
-                              example_weight_metric_key, num_bootstrap_samples)
+              compute_confidence_intervals: Optional[bool] = False):
+    return super(EvalConfig, cls).__new__(cls, model_location, data_location,
+                                          slice_spec, example_weight_metric_key,
+                                          compute_confidence_intervals)
 
 
 def _check_version(raw_final_dict: Dict[Text, Any], path: Text):
@@ -285,16 +285,15 @@ def default_extractors(  # pylint: disable=invalid-name
 def default_evaluators(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
-    num_bootstrap_samples: Optional[int] = None,
+    compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1) -> List[evaluator.Evaluator]:
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
     eval_shared_model: Shared model parameters for EvalSavedModel.
     desired_batch_size: Optional batch size for batching in Aggregate.
-    num_bootstrap_samples: Number of bootstrap samples to draw. If more than 1,
-      confidence intervals will be computed for metrics. Suggested value is at
-      least 20.
+    compute_confidence_intervals: Whether or not to compute confidence
+      intervals.
     k_anonymization_count: If the number of examples in a specific slice is less
       than k_anonymization_count, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
@@ -304,7 +303,7 @@ def default_evaluators(  # pylint: disable=invalid-name
       metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
           eval_shared_model,
           desired_batch_size,
-          num_bootstrap_samples=num_bootstrap_samples,
+          compute_confidence_intervals=compute_confidence_intervals,
           k_anonymization_count=k_anonymization_count)
   ]
 
@@ -554,7 +553,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     evaluators: Optional[List[evaluator.Evaluator]] = None,
     writers: Optional[List[writer.Writer]] = None,
     write_config: Optional[bool] = True,
-    num_bootstrap_samples: Optional[int] = 1,
+    compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
 
@@ -607,8 +606,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       these will be added by calling the default_writers function. If no writers
       are provided, default_writers will be used.
     write_config: True to write the config along with the results.
-    num_bootstrap_samples: Optional, set to at least 20 in order to calculate
-      metrics with confidence intervals.
+    compute_confidence_intervals: If true, compute confidence intervals.
     k_anonymization_count: If the number of examples in a specific slice is less
       than k_anonymization_count, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
@@ -631,7 +629,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     evaluators = default_evaluators(
         eval_shared_model=eval_shared_model,
         desired_batch_size=desired_batch_size,
-        num_bootstrap_samples=num_bootstrap_samples,
+        compute_confidence_intervals=compute_confidence_intervals,
         k_anonymization_count=k_anonymization_count)
 
   for v in evaluators:
@@ -655,7 +653,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       data_location=data_location,
       slice_spec=slice_spec,
       example_weight_metric_key=example_weight_metric_key,
-      num_bootstrap_samples=num_bootstrap_samples)
+      compute_confidence_intervals=compute_confidence_intervals)
 
   # pylint: disable=no-value-for-parameter
   _ = (
@@ -683,7 +681,7 @@ def run_model_analysis(
     writers: Optional[List[writer.Writer]] = None,
     write_config: Optional[bool] = True,
     pipeline_options: Optional[Any] = None,
-    num_bootstrap_samples: Optional[int] = 1,
+    compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
 ) -> EvalResult:
   """Runs TensorFlow model analysis.
@@ -727,8 +725,7 @@ def run_model_analysis(
     write_config: True to write the config along with the results.
     pipeline_options: Optional arguments to run the Pipeline, for instance
       whether to run directly.
-    num_bootstrap_samples: Optional, set to at least 20 in order to calculate
-      metrics with confidence intervals.
+    compute_confidence_intervals: If true, compute confidence intervals.
     k_anonymization_count: If the number of examples in a specific slice is less
       than k_anonymization_count, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
@@ -769,7 +766,7 @@ def run_model_analysis(
             evaluators=evaluators,
             writers=writers,
             write_config=write_config,
-            num_bootstrap_samples=num_bootstrap_samples,
+            compute_confidence_intervals=compute_confidence_intervals,
             k_anonymization_count=k_anonymization_count))
     # pylint: enable=no-value-for-parameter
 

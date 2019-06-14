@@ -67,3 +67,5 @@ ANALYSIS_KEY = 'analysis'
 # Keys for validation alternatives
 BASELINE_KEY = 'baseline'
 CANDIDATE_KEY = 'candidate'
+
+NUM_BOOTSTRAP_SAMPLES = 20

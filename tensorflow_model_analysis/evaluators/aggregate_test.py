@@ -270,7 +270,7 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
           | 'ComputePerSliceMetrics' >> aggregate.ComputePerSliceMetrics(
               eval_shared_model=eval_shared_model,
               desired_batch_size=3,
-              num_bootstrap_samples=10))
+              compute_confidence_intervals=True))
 
       def assert_almost_equal_to_value_with_t_distribution(
           target,
@@ -293,35 +293,35 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       def check_overall_slice(slices):
         my_dict = slices[()]
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age'], 3.75, 3.64, 0.34, 9)
+            my_dict['my_mean_age'], 3.75, 3.64, 0.34, 19)
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['accuracy'], 1.0, 1.0, 0, 9)
+            my_dict['accuracy'], 1.0, 1.0, 0, 19)
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['label/mean'], 0.5, 0.59, 0.29, 9)
+            my_dict['label/mean'], 0.5, 0.59, 0.29, 19)
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age_times_label'], 1.75, 2.15, 1.06, 9)
+            my_dict['my_mean_age_times_label'], 1.75, 2.15, 1.06, 19)
 
       def check_english_slice(slices):
         my_dict = slices[(('language', 'english'))]
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age'], 3.5, 3.18, 0.28, 9)
+            my_dict['my_mean_age'], 3.5, 3.18, 0.28, 19)
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['accuracy'], 1.0, 1.0, 0, 9)
+            my_dict['accuracy'], 1.0, 1.0, 0, 19)
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['label/mean'], 1.0, 1.0, 0, 9)
+            my_dict['label/mean'], 1.0, 1.0, 0, 19)
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age_times_label'], 3.5, 3.18, 0.28, 9)
+            my_dict['my_mean_age_times_label'], 3.5, 3.18, 0.28, 19)
 
       def check_chinese_slice(slices):
         my_dict = slices[(('language', 'chinese'))]
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age'], 4.0, 4.12, 0.83, 9)
+            my_dict['my_mean_age'], 4.0, 4.12, 0.83, 19)
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['accuracy'], 1.0, 1.0, 0, 9)
+            my_dict['accuracy'], 1.0, 1.0, 0, 19)
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['label/mean'], 0, 0, 0, 9)
+            my_dict['label/mean'], 0, 0, 0, 19)
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age_times_label'], 0, 0, 0, 9)
+            my_dict['my_mean_age_times_label'], 0, 0, 0, 19)
 
       def check_result(got):
         self.assertEqual(3, len(got), 'got: %s' % got)

@@ -38,7 +38,7 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
     slice_result: beam.pvalue.PCollection,
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
-    num_bootstrap_samples: Optional[int] = 1,
+    compute_confidence_intervals: Optional[bool] = False,
     random_seed_for_testing: Optional[int] = None,
 ) -> beam.pvalue.PCollection:
   """PTransform for computing, aggregating and combining metrics.
@@ -47,13 +47,7 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
     slice_result: Incoming PCollection consisting of slice key and extracts.
     eval_shared_model: Shared model parameters for EvalSavedModel.
     desired_batch_size: Optional batch size for batching in Aggregate.
-    num_bootstrap_samples: Number of replicas to use in calculating uncertainty
-      using bootstrapping.  If 1 is provided (default), aggregate metrics will
-      be calculated with no uncertainty. If num_bootstrap_samples is > 0,
-      multiple samples of each slice will be calculated using the Poisson
-      bootstrap method. To calculate standard errors, num_bootstrap_samples
-      should be 20 or more in order to provide useful data. More is better, but
-      you pay a performance cost.
+    compute_confidence_intervals: Whether or not to compute per slice metrics.
     random_seed_for_testing: Seed to use for unit testing, because
       nondeterministic tests stink. Each partition will use this value + i.
 
@@ -65,13 +59,6 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
   # TODO(b/123516222): Remove this workaround per discussions in CL/227944001
   slice_result.element_type = beam.typehints.Any
 
-  if not num_bootstrap_samples:
-    num_bootstrap_samples = 1
-  # TODO(ckuhn): Cap the number of bootstrap samples at 20.
-  if num_bootstrap_samples < 1:
-    raise ValueError('num_bootstrap_samples should be > 0, got %d' %
-                     num_bootstrap_samples)
-
   output_results = (
       slice_result
       | 'CombinePerSlice' >> beam.CombinePerKey(
@@ -81,9 +68,9 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
               compute_with_sampling=False))
       | 'InterpretOutput' >> beam.ParDo(
           _ExtractOutputDoFn(eval_shared_model=eval_shared_model)))
-  if num_bootstrap_samples > 1:
+  if compute_confidence_intervals:
     multicombine = []
-    for i in range(num_bootstrap_samples):
+    for i in range(constants.NUM_BOOTSTRAP_SAMPLES):
       multicombine.append(
           slice_result
           | 'CombinePerSliceWithSamples%d' % i >> beam.CombinePerKey(

@@ -269,7 +269,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             metrics_and_plots_evaluator.ComputeMetricsAndPlots(
                 eval_shared_model=eval_shared_model,
                 desired_batch_size=batch_size,
-                num_bootstrap_samples=10))
+                compute_confidence_intervals=True))
 
         def check_result(got):
           try:
