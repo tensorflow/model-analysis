@@ -26,7 +26,7 @@
 *   Depends on `apache-beam[gcp]>=2.12,<3`.
 *   More flexible `FanoutSlices`.
 *   Limit the number of sampling buckets to 20.
-
+*   Improved performance in Confidence Interval computation.
 
 ## Breaking changes
 

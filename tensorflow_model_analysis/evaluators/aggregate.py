@@ -87,7 +87,7 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
         | 'FlattenBootstrapPartitions' >> beam.Flatten()
         | 'GroupBySlice' >> beam.GroupByKey()
         | 'MergeBootstrap' >> beam.ParDo(_MergeBootstrap(),
-                                         beam.pvalue.AsIter(output_results)))
+                                         beam.pvalue.AsDict(output_results)))
   # Separate metrics and plots.
   return (output_results
           | 'SeparateMetricsAndPlots' >> beam.ParDo(
@@ -101,7 +101,7 @@ class _MergeBootstrap(beam.DoFn):
 
   def process(
       self, element: Tuple[slicer.SliceKeyType, List[Dict[Text, Any]]],
-      unsampled_results: List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]
+      unsampled_results: Dict[slicer.SliceKeyType, Dict[Text, Any]]
   ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
     """Merge the bootstrap values.
 
@@ -140,13 +140,7 @@ class _MergeBootstrap(beam.DoFn):
           metrics_dict[metrics_name] = []
         metrics_dict[metrics_name].append(metric[metrics_name])
 
-    unsampled_metrics_dict = {}
-    for unsampled_slice_key, unsampled_metrics in unsampled_results:
-      # To find the corresponding unsampled metrics based on the slice_key of
-      # input element. If not found, the ValueError will be raised below.
-      if unsampled_slice_key == slice_key:
-        unsampled_metrics_dict = unsampled_metrics
-        break
+    unsampled_metrics_dict = unsampled_results.get(slice_key, {})
 
     # The key set of the two metrics dicts must be identical.
     if set(metrics_dict.keys()) != set(unsampled_metrics_dict.keys()):
