@@ -139,7 +139,7 @@ def convert_slice_metrics(
         metrics_for_slice.metrics[name].double_value.value = float(value)
       except (TypeError, ValueError) as e:
         metrics_for_slice.metrics[name].unknown_type.value = str(value)
-        metrics_for_slice.metrics[name].unknown_type.error = e.message
+        metrics_for_slice.metrics[name].unknown_type.error = e.message  # pytype: disable=attribute-error
 
 
 def _serialize_metrics(metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
