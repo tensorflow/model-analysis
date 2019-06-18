@@ -30,9 +30,10 @@ import six
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slice_accessor
-from typing import Callable, Generator, Iterable, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
 # FeatureValueType represents a value that a feature could take.
 FeatureValueType = Union[bytes, int, float]  # pylint: disable=invalid-name
@@ -411,3 +412,65 @@ def FanoutSlices(pcoll: beam.pvalue.PCollection,
   # pylint: enable=no-value-for-parameter
 
   return result
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(Tuple[SliceKeyType, types.Extracts])
+@beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
+def FilterOutSlices(  # pylint: disable=invalid-name
+    values: beam.pvalue.PCollection, slices_count: beam.pvalue.PCollection,
+    k_anonymization_count: int) -> beam.pvalue.PCollection:
+  """Filter out slices with examples count lower than k_anonymization_count.
+
+  Since we might filter out certain slices to preserve privacy in the case of
+  small slices, to make end users aware of this, we will append filtered out
+  slice keys with empty data, and a debug message explaining the omission.
+
+  Args:
+    values: PCollection of aggregated data keyed at slice_key
+    slices_count: PCollection of slice keys and their example count.
+    k_anonymization_count: If the number of examples in a specific slice is less
+      than k_anonymization_count, then an error will be returned for that slice.
+      This will be useful to ensure privacy by not displaying the aggregated
+      data for smaller number of examples.
+
+  Returns:
+    A PCollection keyed at all the possible slice_key and aggregated data for
+    slice keys with example count more than k_anonymization_count and error
+    message for filtered out slices.
+  """
+
+  class FilterOutSmallSlicesDoFn(beam.DoFn):
+    """DoFn to filter out small slices.
+
+    For slices (excluding overall slice) with examples count lower than
+    k_anonymization_count, it adds an error message.
+
+    Args:
+      element: Tuple containing slice key and a dictionary containing
+        corresponding elements from merged pcollections.
+
+    Returns:
+      PCollection of (slice_key, aggregated_data or error message)
+    """
+
+    def process(self, element: Tuple[SliceKeyType, Dict[Text, Any]]
+               ) -> Generator[Tuple[SliceKeyType, Dict[Text, Any]], None, None]:
+      (slice_key, value) = element
+      if value['values']:
+        if (not slice_key or value['slices_count'][0] >= k_anonymization_count):
+          yield (slice_key, value['values'][0])
+        else:
+          yield (slice_key, {
+              metric_keys.ERROR_METRIC:
+                  'Example count for this slice key is lower than '
+                  'the minimum required value: %d. No data is aggregated for '
+                  'this slice.' % k_anonymization_count
+          })
+
+  return ({
+      'values': values,
+      'slices_count': slices_count
+  }
+          | 'CoGroupingSlicesCountAndAggregatedData' >> beam.CoGroupByKey()
+          | 'FilterOutSmallSlices' >> beam.ParDo(FilterOutSmallSlicesDoFn()))

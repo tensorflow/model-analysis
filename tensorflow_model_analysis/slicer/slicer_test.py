@@ -28,6 +28,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
 
@@ -382,6 +383,40 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
           raise util.BeamAssertException(err)
 
       util.assert_that(metrics, check_result)
+
+  def testFilterOutSlices(self):
+    slice_key_1 = (('slice_key', 'slice1'),)
+    slice_key_2 = (('slice_key', 'slice2'),)
+    slice_key_3 = (('slice_key', 'slice3'),)
+
+    values_list = [(slice_key_1, {
+        'val11': 'val12'
+    }), (slice_key_2, {
+        'val21': 'val22'
+    })]
+    slice_counts_list = [(slice_key_1, 2), (slice_key_2, 1), (slice_key_3, 0)]
+
+    def check_output(got):
+      try:
+        self.assertEqual(2, len(got), 'got: %s' % got)
+        slices = {}
+        for (k, v) in got:
+          slices[k] = v
+
+        self.assertEqual(slices[slice_key_1], {'val11': 'val12'})
+        self.assertIn(metric_keys.ERROR_METRIC, slices[slice_key_2])
+      except AssertionError as err:
+        raise util.BeamAssertException(err)
+
+    with beam.Pipeline() as pipeline:
+      slice_counts_pcoll = (
+          pipeline | 'CreateSliceCountsPColl' >> beam.Create(slice_counts_list))
+      output_dict = (
+          pipeline
+          | 'CreateValuesPColl' >> beam.Create(values_list)
+          | 'FilterOutSlices' >> slicer.FilterOutSlices(
+              slice_counts_pcoll, k_anonymization_count=2))
+      util.assert_that(output_dict, check_output)
 
 
 if __name__ == '__main__':
