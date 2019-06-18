@@ -21,14 +21,13 @@ import os
 
 import apache_beam as beam
 from apache_beam.testing import util
-import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.evaluators import aggregate
+from tensorflow_model_analysis.evaluators import poisson_bootstrap
 
 
 def create_test_input(predict_list, slice_list):
@@ -45,66 +44,6 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
 
   def _getEvalExportDir(self):
     return os.path.join(self._getTempDir(), 'eval_export_dir')
-
-  def testCalculateConfidenceInterval(self):
-    sampling_data_list = [
-        np.array([
-            [0, 0, 2, 7, 0.77777779, 1],
-            [1, 0, 2, 6, 0.75, 0.85714287],
-            [4, 0, 2, 3, 0.60000002, 0.42857143],
-            [4, 2, 0, 3, 1, 0.42857143],
-            [7, 2, 0, 0, float('nan'), 0],
-        ]),
-        np.array([
-            [7, 2, 0, 0, float('nan'), 0],
-            [0, 0, 2, 7, 0.77777779, 1],
-            [1, 0, 2, 6, 0.75, 0.85714287],
-            [4, 0, 2, 3, 0.60000002, 0.42857143],
-            [4, 2, 0, 3, 1, 0.42857143],
-        ]),
-    ]
-    unsampled_data = np.array([
-        [4, 2, 0, 3, 1, 0.42857143],
-        [7, 2, 0, 0, float('nan'), 0],
-        [0, 0, 2, 7, 0.77777779, 1],
-        [1, 0, 2, 6, 0.75, 0.85714287],
-        [4, 0, 2, 3, 0.60000002, 0.42857143],
-    ])
-    result = aggregate._calculate_t_distribution(sampling_data_list,
-                                                 unsampled_data)
-    self.assertIsInstance(result, np.ndarray)
-    self.assertEqual(result.shape, (5, 6))
-    self.assertAlmostEqual(result[0][0].sample_mean, 3.5, delta=0.1)
-    self.assertAlmostEqual(
-        result[0][0].sample_standard_deviation, 4.94, delta=0.1)
-    self.assertEqual(result[0][0].sample_degrees_of_freedom, 1)
-    self.assertEqual(result[0][0].unsampled_value, 4.0)
-    self.assertAlmostEqual(result[0][4].sample_mean, 0.77, delta=0.1)
-    self.assertTrue(np.isnan(result[0][4].sample_standard_deviation))
-    self.assertEqual(result[0][4].sample_degrees_of_freedom, 0)
-    self.assertEqual(result[0][4].unsampled_value, 1.0)
-
-    sampling_data_list = [
-        np.array([1, 2]),
-        np.array([1, 2]),
-        np.array([1, float('nan')])
-    ]
-    unsampled_data = np.array([1, 2])
-    result = aggregate._calculate_t_distribution(sampling_data_list,
-                                                 unsampled_data)
-    self.assertIsInstance(result, np.ndarray)
-    self.assertEqual(result.tolist(), [
-        types.ValueWithTDistribution(
-            sample_mean=1.0,
-            sample_standard_deviation=0.0,
-            sample_degrees_of_freedom=2,
-            unsampled_value=1),
-        types.ValueWithTDistribution(
-            sample_mean=2.0,
-            sample_standard_deviation=0.0,
-            sample_degrees_of_freedom=1,
-            unsampled_value=2)
-    ])
 
   def testAggregateOverallSlice(self):
 
@@ -130,7 +69,7 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
               example4.SerializeToString()
           ]))
 
-      metrics, _ = (
+      metrics = (
           pipeline
           | 'CreateTestInput' >> beam.Create(
               create_test_input(predict_result, [()]))
@@ -188,7 +127,7 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
               predict_result_english_slice + predict_result_chinese_slice,
               [()]))
 
-      metrics, _ = (
+      metrics = (
           pipeline
           | 'CreateTestInput' >> beam.Create(test_input)
           | 'ComputePerSliceMetrics' >> aggregate.ComputePerSliceMetrics(
@@ -264,13 +203,15 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
           create_test_input(
               predict_result_english_slice + predict_result_chinese_slice,
               [()]))
-      metrics, _ = (
+      metrics = (
           pipeline
           | 'CreateTestInput' >> beam.Create(test_input)
-          | 'ComputePerSliceMetrics' >> aggregate.ComputePerSliceMetrics(
+          | 'ComputePerSliceMetrics' >>
+          poisson_bootstrap.ComputeWithConfidenceIntervals(
+              aggregate.ComputePerSliceMetrics,
+              num_bootstrap_samples=10,
               eval_shared_model=eval_shared_model,
-              desired_batch_size=3,
-              compute_confidence_intervals=True))
+              desired_batch_size=3))
 
       def assert_almost_equal_to_value_with_t_distribution(
           target,

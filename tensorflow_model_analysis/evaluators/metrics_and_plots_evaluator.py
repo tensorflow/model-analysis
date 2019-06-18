@@ -26,6 +26,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import aggregate
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.evaluators import evaluator
+from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
@@ -144,11 +145,18 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       # Metrics are computed per slice key.
       # Output: Multi-outputs, a dict of slice key to computed metrics, and
       # plots if applicable.
-      | 'ComputePerSliceMetrics' >> aggregate.ComputePerSliceMetrics(
+      | 'ComputePerSliceMetrics' >>
+      poisson_bootstrap.ComputeWithConfidenceIntervals(
+          aggregate.ComputePerSliceMetrics,
+          num_bootstrap_samples=(poisson_bootstrap.DEFAULT_NUM_BOOTSTRAP_SAMPLES
+                                 if compute_confidence_intervals else 1),
+          random_seed_for_testing=random_seed_for_testing,
           eval_shared_model=eval_shared_model,
-          desired_batch_size=desired_batch_size,
-          compute_confidence_intervals=compute_confidence_intervals,
-          random_seed_for_testing=random_seed_for_testing))
+          desired_batch_size=desired_batch_size)
+      | 'SeparateMetricsAndPlots' >> beam.ParDo(
+          _SeparateMetricsAndPlotsFn()).with_outputs(
+              _SeparateMetricsAndPlotsFn.OUTPUT_TAG_PLOTS,
+              main=_SeparateMetricsAndPlotsFn.OUTPUT_TAG_METRICS))
 
   return (aggregated_metrics, slices_count)
 
@@ -219,6 +227,29 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
             post_export_metrics=eval_shared_model.add_metrics_callbacks))
 
   return {metrics_key: metrics, plots_key: plots}
+
+
+# TODO(b/123516222)): Add input typehints. Similarly elsewhere that it applies.
+# No typehint for output type, since it's a multi-output DoFn result that
+# Beam doesn't support typehints for yet (BEAM-3280).
+class _SeparateMetricsAndPlotsFn(beam.DoFn):
+  """Separates metrics and plots into two separate PCollections."""
+  OUTPUT_TAG_METRICS = 'tag_metrics'
+  OUTPUT_TAG_PLOTS = 'tag_plots'
+
+  def process(self,
+              element: Tuple[slicer.SliceKeyType, types.MetricVariablesType]):
+    (slice_key, results) = element
+    slicing_metrics = {}
+    plots = {}
+    for k, v in results.items():  # pytype: disable=attribute-error
+      if metric_keys.is_plot_key(k):
+        plots[k] = v
+      else:
+        slicing_metrics[k] = v
+    yield (slice_key, slicing_metrics)
+    if plots:
+      yield beam.pvalue.TaggedOutput(self.OUTPUT_TAG_PLOTS, (slice_key, plots))  # pytype: disable=bad-return-type
 
 
 @beam.ptransform_fn

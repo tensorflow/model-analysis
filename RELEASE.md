@@ -27,6 +27,7 @@
 *   More flexible `FanoutSlices`.
 *   Limit the number of sampling buckets to 20.
 *   Improved performance in Confidence Interval computation.
+*   Refactored poisson bootstrap code to be re-usable in other evaluators.
 
 ## Breaking changes
 
