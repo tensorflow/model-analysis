@@ -27,7 +27,6 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_linear_classifier
-from tensorflow_model_analysis.eval_saved_model.example_trainers import custom_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
@@ -67,11 +66,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     return data_location
 
   def assertMetricsAlmostEqual(self, got_value, expected_value):
-    for (s, m) in got_value:
-      self.assertIn(s, expected_value)
-      for k in expected_value[s]:
-        self.assertIn(k, m)
-        self.assertDictElementsAlmostEqual(m[k], expected_value[s][k])
+    if got_value:
+      for (s, m) in got_value:
+        self.assertIn(s, expected_value)
+        for k in expected_value[s]:
+          self.assertIn(k, m)
+          self.assertDictElementsAlmostEqual(m[k], expected_value[s][k])
+    else:
+      # Only pass if expected_value also evaluates to False.
+      self.assertFalse(expected_value, msg='Actual value was empty.')
 
   def assertSliceMetricsEqual(self, expected_metrics, got_metrics):
     self.assertItemsEqual(
@@ -426,7 +429,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     model_location_1 = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
     model_location_2 = self._exportEvalSavedModel(
-        custom_estimator.simple_custom_estimator)
+        linear_classifier.simple_linear_classifier)
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0),
         self._makeExample(age=3.0, language='chinese', label=0.0),
@@ -442,7 +445,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # pipeline works.
     self.assertEqual(2, len(eval_results._results))
     expected_result_1 = {
-        (('language', 'english'),): {
+        (('language', b'english'),): {
             'my_mean_label': {
                 'doubleValue': 1.0
             },
@@ -452,8 +455,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         }
     }
     expected_result_2 = {
-        (('language', 'english'),): {
-            'mean_label': {
+        (('language', b'english'),): {
+            'my_mean_label': {
                 'doubleValue': 1.0
             },
             metric_keys.EXAMPLE_COUNT: {
@@ -483,14 +486,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected_result_1 = {
-        (('language', 'english'),): {
+        (('language', b'english'),): {
             metric_keys.EXAMPLE_COUNT: {
                 'doubleValue': 2.0
             },
         }
     }
     expected_result_2 = {
-        (('language', 'english'),): {
+        (('language', b'english'),): {
             metric_keys.EXAMPLE_COUNT: {
                 'doubleValue': 1.0
             },

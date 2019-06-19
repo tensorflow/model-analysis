@@ -193,8 +193,13 @@ class SingleSliceSpec(object):
     for (key, value) in self._features:
       if not accessor.has_key(key):
         return
+
       if value not in accessor.get(key):
-        return
+        if isinstance(value, str):
+          if value.encode() not in accessor.get(key):  # For Python3.
+            return
+        else:
+          return
 
     # Get all the column matches (where we're matching only the column).
     #

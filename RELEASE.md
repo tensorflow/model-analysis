@@ -29,6 +29,7 @@
 *   Improved performance in Confidence Interval computation.
 *   Refactored poisson bootstrap code to be re-usable in other evaluators.
 *   Refactored k-anonymity code to be re-usable in other evaluators.
+*   Fixed slicer feature string value handling in Python3.
 
 ## Breaking changes
 
