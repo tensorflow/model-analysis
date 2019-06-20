@@ -65,8 +65,8 @@ def get_slicing_metrics(
     else:
       raise ValueError('No slices found for %s' % slicing_spec)
   elif not slicing_column and not slicing_spec and slice_count > 1:
-    raise ValueError(
-        'More than one slice found for %s' % slicer.OVERALL_SLICE_NAME)
+    raise ValueError('More than one slice found for %s' %
+                     slicer.OVERALL_SLICE_NAME)
   else:
     return data
 
@@ -169,9 +169,9 @@ _SUPPORTED_PLOT_KEYS = {
 }
 
 
-def _replace_nan_with_none(
-    plot_data: Union[Dict[Text, Any], Text],
-    plot_keys: Dict[Text, Dict[Text, Text]]) -> Union[Dict[Text, Any], Text]:
+def _replace_nan_with_none(plot_data: Union[Dict[Text, Any], Text],
+                           plot_keys: Dict[Text, Dict[Text, Text]]
+                          ) -> Union[Dict[Text, Any], Text]:
   """Replaces all instances of nan with None in plot data.
 
   This is necessary for Colab integration where we serializes the data into json
@@ -296,14 +296,17 @@ def get_slicing_config(config: model_eval_lib.EvalConfig,
 
   Args:
     config: EvalConfig that contains example_weight_metric_key.
-    weighted_example_column_to_use: Override for weighetd example column in the
+    weighted_example_column_to_use: Override for weighted example column in the
       slicing metrics browser.
 
   Returns:
     A dictionary containing configuration of the slicing metrics evalaution.
   """
+  default_column = config.example_weight_metric_key
+  if not default_column or isinstance(default_column, dict):
+    default_column = config.example_count_metric_key
   return {
       'weightedExamplesColumn':
-          weighted_example_column_to_use if weighted_example_column_to_use else
-          config.example_weight_metric_key
+          weighted_example_column_to_use
+          if weighted_example_column_to_use else default_column
   }

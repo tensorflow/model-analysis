@@ -150,14 +150,14 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     self.assertEqual(expected_sparse_tensor_value.dense_shape.dtype,
                      got_sparse_tensor_value.dense_shape.dtype)
 
-  def createTestEvalSharedModel(self,
-                                eval_saved_model_path: Text,
-                                add_metrics_callbacks: Optional[List[
-                                    types.AddMetricsCallbackType]] = None,
-                                include_default_metrics: Optional[bool] = True,
-                                example_weight_key: Optional[Text] = None,
-                                additional_fetches: Optional[List[Text]] = None
-                               ) -> types.EvalSharedModel:
+  def createTestEvalSharedModel(
+      self,
+      eval_saved_model_path: Text,
+      add_metrics_callbacks: Optional[List[
+          types.AddMetricsCallbackType]] = None,
+      include_default_metrics: Optional[bool] = True,
+      example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
+      additional_fetches: Optional[List[Text]] = None) -> types.EvalSharedModel:
 
     return types.EvalSharedModel(
         model_path=eval_saved_model_path,

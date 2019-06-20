@@ -72,26 +72,32 @@ class EvalConfig(
     NamedTuple(
         'EvalConfig',
         [
-            ('model_location',
-             Text),  # The location of the model used for this evaluation
-            ('data_location',
-             Text),  # The location of the data used for this evaluation
-            ('slice_spec', Optional[List[slicer.SingleSliceSpec]]
-            ),  # The corresponding slice spec
-            ('example_weight_metric_key', Text),  # Deprecated
-            ('compute_confidence_intervals',
-             bool),  # Set to true in order to calculate confidence intervals.
+            # The location of the model used for this evaluation
+            ('model_location', Text),
+            # The location of the data used for this evaluation
+            ('data_location', Text),
+            # The corresponding slice spec
+            ('slice_spec', Optional[List[slicer.SingleSliceSpec]]),
+            # The example count metric key
+            ('example_count_metric_key', Text),
+            # The example weight metric key (or keys if multi-output model)
+            ('example_weight_metric_key', Union[Text, Dict[Text, Text]]),
+            # Set to true in order to calculate confidence intervals.
+            ('compute_confidence_intervals', bool),
         ])):
   """Config used for extraction and evaluation."""
 
-  def __new__(cls,
-              model_location: Text,
-              data_location: Optional[Text] = None,
-              slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-              example_weight_metric_key: Optional[Text] = None,
-              compute_confidence_intervals: Optional[bool] = False):
+  def __new__(
+      cls,
+      model_location: Text,
+      data_location: Optional[Text] = None,
+      slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+      example_count_metric_key: Optional[Text] = None,
+      example_weight_metric_key: Optional[Union[Text, Dict[Text, Text]]] = None,
+      compute_confidence_intervals: Optional[bool] = False):
     return super(EvalConfig, cls).__new__(cls, model_location, data_location,
-                                          slice_spec, example_weight_metric_key,
+                                          slice_spec, example_count_metric_key,
+                                          example_weight_metric_key,
                                           compute_confidence_intervals)
 
 
@@ -206,7 +212,7 @@ def default_eval_shared_model(
     eval_saved_model_path: Text,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
     include_default_metrics: Optional[bool] = True,
-    example_weight_key: Optional[Text] = None,
+    example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
     additional_fetches: Optional[List[Text]] = None,
     blacklist_feature_fetches: Optional[List[Text]] = None
 ) -> types.EvalSharedModel:
@@ -216,11 +222,12 @@ def default_eval_shared_model(
     eval_saved_model_path: Path to EvalSavedModel.
     add_metrics_callbacks: Optional list of callbacks for adding additional
       metrics to the graph (see EvalSharedModel for more information on how to
-      configure additional metrics). Metrics for example counts and example
-      weight will be added automatically.
+      configure additional metrics). Metrics for example count and example
+      weights will be added automatically.
     include_default_metrics: True to include the default metrics that are part
       of the saved model graph during evaluation.
-    example_weight_key: Deprecated.
+    example_weight_key: Example weight key (single-output model) or dict of
+      example weight keys (multi-output model) keyed by output name.
     additional_fetches: Prefixes of additional tensors stored in
       signature_def.inputs that should be fetched at prediction time. The
       "features" and "labels" tensors are handled automatically and should not
@@ -239,11 +246,16 @@ def default_eval_shared_model(
     add_metrics_callbacks = []
   example_count_callback = post_export_metrics.example_count()
   add_metrics_callbacks.append(example_count_callback)
-  # TODO(b/126924645): Remove
   if example_weight_key:
-    example_weight_callback = post_export_metrics.example_weight(
-        example_weight_key)
-    add_metrics_callbacks.append(example_weight_callback)
+    if isinstance(example_weight_key, dict):
+      for output_name, key in example_weight_key.items():
+        example_weight_callback = post_export_metrics.example_weight(
+            key, metric_tag=output_name)
+        add_metrics_callbacks.append(example_weight_callback)
+    else:
+      example_weight_callback = post_export_metrics.example_weight(
+          example_weight_key)
+      add_metrics_callbacks.append(example_weight_callback)
   # pytype: enable=module-attr
 
   return types.EvalSharedModel(
@@ -643,15 +655,21 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   if display_only_data_location is not None:
     data_location = display_only_data_location
 
-  # TODO(b/126924645): Remove
   example_weight_metric_key = metric_keys.EXAMPLE_COUNT
   if eval_shared_model.example_weight_key:
-    example_weight_metric_key = metric_keys.EXAMPLE_WEIGHT
+    if isinstance(eval_shared_model.example_weight_key, dict):
+      example_weight_metric_key = {}
+      for output_name in eval_shared_model.example_weight_key:
+        example_weight_metric_key[output_name] = metric_keys.tagged_key(
+            metric_keys.EXAMPLE_WEIGHT, output_name)
+    else:
+      example_weight_metric_key = metric_keys.EXAMPLE_WEIGHT
 
   eval_config = EvalConfig(
       model_location=eval_shared_model.model_path,
       data_location=data_location,
       slice_spec=slice_spec,
+      example_count_metric_key=metric_keys.EXAMPLE_COUNT,
       example_weight_metric_key=example_weight_metric_key,
       compute_confidence_intervals=compute_confidence_intervals)
 

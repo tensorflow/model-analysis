@@ -123,7 +123,7 @@ class EvalSharedModel(
             ('add_metrics_callbacks',
              List[Callable]),  # List[AnyMetricsCallbackType]
             ('include_default_metrics', bool),
-            ('example_weight_key', Text),
+            ('example_weight_key', Union[Text, Dict[Text, Text]]),
             ('additional_fetches', List[Text]),
             ('shared_handle', shared.Shared),
             ('construct_fn', Callable)
@@ -140,7 +140,8 @@ class EvalSharedModel(
       evaluation.
     include_default_metrics: True to include the default metrics that are part
       of the saved model graph during evaluation.
-    example_weight_key: Deprecated.
+    example_weight_key: Example weight key (single-output model) or dict of
+      example weight keys (multi-output model) keyed by output_name.
     additional_fetches: Prefixes of additional tensors stored in
       signature_def.inputs that should be fetched at prediction time. The
       "features" and "labels" tensors are handled automatically and should not
@@ -179,7 +180,7 @@ class EvalSharedModel(
       model_path: Optional[Text] = None,
       add_metrics_callbacks: Optional[List[AddMetricsCallbackType]] = None,
       include_default_metrics: Optional[bool] = True,
-      example_weight_key: Optional[Text] = None,
+      example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
       additional_fetches: Optional[List[Text]] = None,
       shared_handle: Optional[shared.Shared] = None,
       construct_fn: Optional[Callable[..., Any]] = None):
