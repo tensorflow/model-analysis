@@ -90,6 +90,11 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model, example2.SerializeToString())
     eval_saved_model.perform_metrics_update(features_predictions_labels)
 
+    example3 = self._makeMultiHeadExample('other')
+    features_predictions_labels = self.predict_injective_single_example(
+        eval_saved_model, example3.SerializeToString())
+    eval_saved_model.perform_metrics_update(features_predictions_labels)
+
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(
         metric_values, {
@@ -99,9 +104,9 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
             'auc/english_head': 1.0,
             'auc/chinese_head': 1.0,
             'auc/other_head': 1.0,
-            'label/mean/english_head': 0.5,
-            'label/mean/chinese_head': 0.5,
-            'label/mean/other_head': 0.0
+            'label/mean/english_head': 1.0 / 3.0,
+            'label/mean/chinese_head': 1.0 / 3.0,
+            'label/mean/other_head': 1.0 / 3.0
         })
 
   def testEvaluateExistingMetricsBasicForUnsupervisedModel(self):
@@ -560,6 +565,11 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model, example2.SerializeToString())
     eval_saved_model.perform_metrics_update(features_predictions_labels)
 
+    example3 = self._makeMultiHeadExample('other')
+    features_predictions_labels = self.predict_injective_single_example(
+        eval_saved_model, example3.SerializeToString())
+    eval_saved_model.perform_metrics_update(features_predictions_labels)
+
     metric_values = eval_saved_model.get_metric_values()
 
     # Check that the original metrics are still there.
@@ -571,9 +581,9 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
             'auc/english_head': 1.0,
             'auc/chinese_head': 1.0,
             'auc/other_head': 1.0,
-            'label/mean/english_head': 0.5,
-            'label/mean/chinese_head': 0.5,
-            'label/mean/other_head': 0.0
+            'label/mean/english_head': 1.0 / 3.0,
+            'label/mean/chinese_head': 1.0 / 3.0,
+            'label/mean/other_head': 1.0 / 3.0
         })
 
     # Check the added metrics.
@@ -583,7 +593,7 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     self.assertLess(metric_values['mean_absolute_error/english_head'], 0.3)
 
     self.assertHasKeyWithValueAlmostEqual(metric_values,
-                                          'example_count/english_head', 2.0)
+                                          'example_count/english_head', 3.0)
 
   def testEvaluateWithOnlyAdditionalMetricsBasic(self):
     temp_eval_export_dir = self._getEvalExportDir()

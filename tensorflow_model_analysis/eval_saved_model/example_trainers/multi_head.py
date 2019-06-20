@@ -30,8 +30,8 @@ import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
-from tensorflow_estimator.contrib.estimator.python.estimator import head  # pylint: disable=g-direct-tensorflow-import
-from tensorflow_estimator.contrib.estimator.python.estimator import multi_head  # pylint: disable=g-direct-tensorflow-import
+from tensorflow_estimator.python.estimator.head import binary_class_head  # pylint: disable=g-direct-tensorflow-import
+from tensorflow_estimator.python.estimator.head import multi_head  # pylint: disable=g-direct-tensorflow-import
 
 
 def simple_multi_head(export_path, eval_export_path):
@@ -91,11 +91,10 @@ def simple_multi_head(export_path, eval_export_path):
 
   # TODO(b/130299739): Update with tf.estimator.BinaryClassHead and
   #   tf.estimator.MultiHead
-  english_head = head.binary_classification_head(name='english_head')
-  chinese_head = head.binary_classification_head(name='chinese_head')
-  other_head = head.binary_classification_head(name='other_head')
-  combined_head = multi_head.multi_head(
-      [english_head, chinese_head, other_head])
+  english_head = binary_class_head.BinaryClassHead(name='english_head')
+  chinese_head = binary_class_head.BinaryClassHead(name='chinese_head')
+  other_head = binary_class_head.BinaryClassHead(name='other_head')
+  combined_head = multi_head.MultiHead([english_head, chinese_head, other_head])
 
   estimator = tf.estimator.DNNLinearCombinedEstimator(
       head=combined_head,
