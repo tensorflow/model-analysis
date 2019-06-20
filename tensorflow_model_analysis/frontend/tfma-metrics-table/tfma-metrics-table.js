@@ -287,7 +287,7 @@ export class MetricsTable extends PolymerElement {
 
   /**
    * Computes the data table.
-   * @param {!tfma.TableProviderExt} data
+   * @param {!tfma.TableProviderExt|undefined} data
    * @param {!Array<string>} metrics
    * @param {!Object<!tfma.MetricValueFormatSpec>} metricFormats
    * @param {!Object<string>} headerOverride
@@ -296,7 +296,7 @@ export class MetricsTable extends PolymerElement {
    * @private
    */
   computePlotData_(data, metrics, metricFormats, headerOverride, tableReady) {
-    if (!tableReady || !data.readyToRender()) {
+    if (!tableReady || !data || !data.readyToRender()) {
       // No need to compute plot data if the table is not ready since it will
       // likely get ignored.
       // The header must contain at least one string to make google-chart show
