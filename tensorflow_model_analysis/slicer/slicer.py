@@ -392,7 +392,7 @@ def _TrackDistinctSliceKeys(  # pylint: disable=invalid-name
 
   return (slice_keys_and_values
           | 'ExtractSliceKeys' >> beam.Keys()
-          | 'RemoveDuplicates' >> beam.RemoveDuplicates()
+          | 'RemoveDuplicates' >> beam.Distinct()
           | 'Size' >> beam.combiners.Count.Globally()
           | 'IncrementCounter' >> beam.Map(increment_counter))
 
