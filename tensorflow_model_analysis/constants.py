@@ -67,3 +67,5 @@ ANALYSIS_KEY = 'analysis'
 # Keys for validation alternatives
 BASELINE_KEY = 'baseline'
 CANDIDATE_KEY = 'candidate'
+
+MATERIALIZE_COLUMNS = 'materialize'

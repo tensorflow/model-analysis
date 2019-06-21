@@ -40,14 +40,16 @@ FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
 def FeatureExtractor(
     additional_extracts: Optional[List[Text]] = None,
     excludes: Optional[List[bytes]] = None,
-    extract_source: int = constants.FEATURES_PREDICTIONS_LABELS_KEY):
+    extract_source: Text = constants.FEATURES_PREDICTIONS_LABELS_KEY,
+    extract_dest: Text = constants.MATERIALIZE_COLUMNS):
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=FEATURE_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractFeatures(
           additional_extracts=additional_extracts,
           excludes=excludes,
-          source=extract_source))
+          source=extract_source,
+          dest=extract_dest))
   # pylint: enable=no-value-for-parameter
 
 
@@ -98,29 +100,43 @@ def _AugmentExtracts(data: Dict[Text, Any], prefix: Text, excludes: List[bytes],
           (name, val, type(val)))
 
 
-def _ParseExample(extracts: types.Extracts) -> None:
+def _ParseExample(extracts: types.Extracts,
+                  materialize_columns: bool = True) -> None:
   """Feature extraction from serialized tf.Example."""
   # Deserialize the example.
   example = tf.train.Example()
-  example.ParseFromString(extracts[constants.INPUT_KEY])
+  try:
+    example.ParseFromString(extracts[constants.INPUT_KEY])
+  except:  # pylint: disable=bare-except
+    tf.logging.warning('Could not parse tf.Example from the input source.')
+
+  features = {}
+  if constants.FEATURES_PREDICTIONS_LABELS_KEY in extracts:
+    features = extracts[constants.FEATURES_PREDICTIONS_LABELS_KEY].features
 
   for name in example.features.feature:
-    key = util.compound_key(['features', name])
-    value = example.features.feature[name]
-    if value.HasField('bytes_list'):
-      values = [v for v in value.bytes_list.value]
-    elif value.HasField('float_list'):
-      values = [v for v in value.float_list.value]
-    elif value.HasField('int64_list'):
-      values = [v for v in value.int64_list.value]
-    extracts[key] = types.MaterializedColumn(name=key, value=values)
+    if materialize_columns or name not in features:
+      key = util.compound_key(['features', name])
+      value = example.features.feature[name]
+      if value.HasField('bytes_list'):
+        values = [v for v in value.bytes_list.value]
+      elif value.HasField('float_list'):
+        values = [v for v in value.float_list.value]
+      elif value.HasField('int64_list'):
+        values = [v for v in value.int64_list.value]
+      if materialize_columns:
+        extracts[key] = types.MaterializedColumn(name=key, value=values)
+      if name not in features:
+        features[name] = {encoding.NODE_SUFFIX: np.array([values])}
 
 
-def _MaterializeFeatures(extracts: types.Extracts,
-                         additional_extracts: Optional[List[Text]] = None,
-                         excludes: Optional[List[bytes]] = None,
-                         source: int = constants.FEATURES_PREDICTIONS_LABELS_KEY
-                        ) -> types.Extracts:
+def _MaterializeFeatures(
+    extracts: types.Extracts,
+    additional_extracts: Optional[List[Text]] = None,
+    excludes: Optional[List[bytes]] = None,
+    source: Text = constants.FEATURES_PREDICTIONS_LABELS_KEY,
+    dest: Text = constants.MATERIALIZE_COLUMNS,
+) -> types.Extracts:
   """Converts FeaturesPredictionsLabels into MaterializedColumn in the extract.
 
   It must be the case that the PredictExtractor was called before calling this
@@ -134,6 +150,8 @@ def _MaterializeFeatures(extracts: types.Extracts,
       labels to exclude from materialization.
     source: Source for extracting features. Currently it supports extracting
       features from FPLs and input tf.Example protos.
+    dest: Destination for extracted features. Currently supported are adding
+      materialized columns, or the features dict of the FPLs.
 
   Returns:
     Returns Extracts (which is a shallow copy of the original Extracts, so the
@@ -175,7 +193,8 @@ def _MaterializeFeatures(extracts: types.Extracts,
     if not serialized_example:
       raise RuntimeError('tf.Example missing. Ensure extracts contain '
                          'serialized tf.Example.')
-    _ParseExample(result)
+    materialize_columns = (dest == constants.MATERIALIZE_COLUMNS)
+    _ParseExample(result, materialize_columns)
     return result
   else:
     raise RuntimeError('Unsupported feature extraction source.')
@@ -187,7 +206,8 @@ def _MaterializeFeatures(extracts: types.Extracts,
 def _ExtractFeatures(extracts: beam.pvalue.PCollection,
                      additional_extracts: Optional[List[Text]] = None,
                      excludes: Optional[List[bytes]] = None,
-                     source: int = constants.FEATURES_PREDICTIONS_LABELS_KEY
+                     source: Text = constants.FEATURES_PREDICTIONS_LABELS_KEY,
+                     dest: Text = constants.MATERIALIZE_COLUMNS
                     ) -> beam.pvalue.PCollection:
   """Builds MaterializedColumn extracts from FPL created in evaluate.Predict().
 
@@ -203,6 +223,8 @@ def _ExtractFeatures(extracts: beam.pvalue.PCollection,
       labels to exclude from materialization.
     source: Source for extracting features. Currently it supports extracting
       features from FPLs and input tf.Example protos.
+    dest: Destination for extracted features. Currently supported are adding
+      materialized columns, or the features dict of the FPLs.
 
   Returns:
     PCollection of Extracts
@@ -211,4 +233,5 @@ def _ExtractFeatures(extracts: beam.pvalue.PCollection,
       _MaterializeFeatures,
       additional_extracts=additional_extracts,
       excludes=excludes,
-      source=source)
+      source=source,
+      dest=dest)

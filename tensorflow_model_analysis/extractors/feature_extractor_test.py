@@ -102,6 +102,56 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
         result['features__s'],
         types.MaterializedColumn(name='features__s', value=[100., 200., 300.]))
 
+  def testAugmentFPLFromTfExample(self):
+    example1 = self._makeExample(
+        age=3.0, language='english', label=1.0, slice_key='first_slice', f=0.0)
+
+    features = {
+        'f': {
+            encoding.NODE_SUFFIX: np.array([1])
+        },
+        's': {
+            encoding.NODE_SUFFIX:
+                tf.compat.v1.SparseTensorValue(
+                    indices=[[0, 5], [1, 2], [3, 6]],
+                    values=[100., 200., 300.],
+                    dense_shape=[4, 10])
+        }
+    }
+    predictions = {'p': {encoding.NODE_SUFFIX: np.array([2])}}
+    labels = {'l': {encoding.NODE_SUFFIX: np.array([3])}}
+
+    extracts = {
+        constants.INPUT_KEY:
+            example1.SerializeToString(),
+        constants.FEATURES_PREDICTIONS_LABELS_KEY:
+            types.FeaturesPredictionsLabels(
+                input_ref=0,
+                features=features,
+                predictions=predictions,
+                labels=labels)
+    }
+    fpl = extracts[constants.FEATURES_PREDICTIONS_LABELS_KEY]
+    result = feature_extractor._MaterializeFeatures(
+        extracts,
+        source=constants.INPUT_KEY,
+        dest=constants.FEATURES_PREDICTIONS_LABELS_KEY)
+    self.assertIsInstance(result, dict)
+    self.assertEqual(result[constants.FEATURES_PREDICTIONS_LABELS_KEY],
+                     fpl)  # should still be there.
+    # Assert that materialized columns are not added.
+    self.assertNotIn('features__f', result)
+    self.assertNotIn('features__age', result)
+    # But that tf.Example features not present in FPL are.
+    self.assertEqual(fpl.features['age'],
+                     {encoding.NODE_SUFFIX: np.array([3.0])})
+    self.assertEqual(fpl.features['language'],
+                     {'node': np.array([['english']], dtype='|S7')})
+    self.assertEqual(fpl.features['slice_key'],
+                     {'node': np.array([['first_slice']], dtype='|S11')})
+    # And that features present in both are not overwritten by tf.Example value.
+    self.assertEqual(fpl.features['f'], {encoding.NODE_SUFFIX: np.array([1])})
+
   def testMaterializeFeaturesFromTfExample(self):
     example1 = self._makeExample(age=3.0, language='english', label=1.0)
 

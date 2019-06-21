@@ -23,6 +23,7 @@ import tempfile
 # Standard Imports
 
 import tensorflow as tf
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -33,6 +34,9 @@ from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.evaluators import query_based_metrics_evaluator
 from tensorflow_model_analysis.evaluators.query_metrics import ndcg
 from tensorflow_model_analysis.evaluators.query_metrics import query_statistics
+from tensorflow_model_analysis.extractors import feature_extractor
+from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.slicer import slicer
@@ -124,6 +128,87 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=model_location)
     model_eval_lib.run_model_analysis(
         eval_shared_model=eval_shared_model, data_location=data_location)
+
+  def testRunModelAnalysisExtraFieldsPlusFeatureExtraction(self):
+    model_location = self._exportEvalSavedModel(
+        linear_classifier.simple_linear_classifier)
+    examples = [
+        self._makeExample(age=3.0, language='english', label=1.0, my_slice='a'),
+        self._makeExample(age=3.0, language='chinese', label=0.0, my_slice='a'),
+        self._makeExample(age=4.0, language='english', label=1.0, my_slice='b'),
+        self._makeExample(age=5.0, language='chinese', label=1.0, my_slice='c'),
+        self._makeExample(age=5.0, language='hindi', label=1.0)
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    slice_spec = [slicer.SingleSliceSpec(columns=['my_slice'])]
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location, example_weight_key='age')
+    extractors_with_feature_extraction = [
+        predict_extractor.PredictExtractor(
+            eval_shared_model, desired_batch_size=3, materialize=False),
+        feature_extractor.FeatureExtractor(
+            extract_source=constants.INPUT_KEY,
+            extract_dest=constants.FEATURES_PREDICTIONS_LABELS_KEY),
+        slice_key_extractor.SliceKeyExtractor(slice_spec, materialize=False)
+    ]
+    eval_result = model_eval_lib.run_model_analysis(
+        model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'),
+        data_location,
+        extractors=extractors_with_feature_extraction,
+        slice_spec=slice_spec,
+        k_anonymization_count=1)
+    # We only check some of the metrics to ensure that the end-to-end
+    # pipeline works.
+    expected = {
+        (('my_slice', b'a'),): {
+            'accuracy': {
+                'doubleValue': 1.0
+            },
+            'my_mean_label': {
+                'doubleValue': 0.5
+            },
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 6.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
+        },
+        (('my_slice', b'b'),): {
+            'accuracy': {
+                'doubleValue': 1.0
+            },
+            'my_mean_label': {
+                'doubleValue': 1.0
+            },
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 4.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 1.0
+            },
+        },
+        (('my_slice', b'c'),): {
+            'accuracy': {
+                'doubleValue': 0.0
+            },
+            'my_mean_label': {
+                'doubleValue': 1.0
+            },
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 5.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 1.0
+            },
+        },
+    }
+    self.assertEqual(eval_result.config.model_location, model_location)
+    self.assertEqual(eval_result.config.data_location, data_location)
+    self.assertEqual(eval_result.config.slice_spec, slice_spec)
+    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
+    self.assertFalse(eval_result.plots)
 
   def testRunModelAnalysis(self):
     model_location = self._exportEvalSavedModel(

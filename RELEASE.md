@@ -16,6 +16,8 @@
     metrics (e.g. normalized discounted cumulative gain).
 *   Added support for merging metrics produced by different evaluators.
 *   Added support for blacklisting specified features from fetches.
+*   Added functionality to the FeatureExtractor to specify the features dict as
+    a possible destination.
 
 ## Bug fixes and other changes
 
