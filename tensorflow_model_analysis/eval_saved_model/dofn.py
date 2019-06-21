@@ -22,7 +22,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import load
 
-from typing import List, Optional, Text
+from typing import Callable, List, Optional, Text
 
 
 def make_construct_fn(  # pylint: disable=invalid-name
@@ -33,7 +33,7 @@ def make_construct_fn(  # pylint: disable=invalid-name
     blacklist_feature_fetches: Optional[List[Text]] = None):
   """Returns construct function for Shared for constructing EvalSavedModel."""
 
-  def construct_fn(model_load_seconds: beam.metrics.metricbase.Distribution):
+  def construct_fn(model_load_seconds_callback: Callable[[int], None]):
     """Thin wrapper for the actual construct to allow for metrics."""
 
     def construct():  # pylint: disable=invalid-name
@@ -48,7 +48,7 @@ def make_construct_fn(  # pylint: disable=invalid-name
         result.register_add_metric_callbacks(add_metrics_callbacks)
       result.graph_finalize()
       end_time = datetime.datetime.now()
-      model_load_seconds.update(int((end_time - start_time).total_seconds()))
+      model_load_seconds_callback(int((end_time - start_time).total_seconds()))
       return result
 
     return construct
@@ -57,18 +57,39 @@ def make_construct_fn(  # pylint: disable=invalid-name
 
 
 class EvalSavedModelDoFn(beam.DoFn):
-  """Abstract class for DoFns that load the EvalSavedModel and use it."""
+  """Abstract class for DoFns that loads the EvalSavedModel and uses it."""
 
   def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
     self._eval_shared_model = eval_shared_model
     self._eval_saved_model = None  # type: load.EvalSavedModel
-    self._model_load_seconds = beam.metrics.Metrics.distribution(
+    self._model_load_seconds = None
+    self._model_load_seconds_distribution = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'model_load_seconds')
 
+  def _set_model_load_seconds(self, model_load_seconds):
+    self._model_load_seconds = model_load_seconds
+
+  # TODO(yifanmai): Merge _setup_if_needed into setup
+  # after Beam dependency is upgraded to Beam 2.14.
+  def _setup_if_needed(self):
+    if self._eval_saved_model is None:
+      self._eval_saved_model = (
+          self._eval_shared_model.shared_handle.acquire(
+              self._eval_shared_model.construct_fn(
+                  self._set_model_load_seconds)))
+
+  def setup(self):
+    self._setup_if_needed()
+
   def start_bundle(self):
-    self._eval_saved_model = (
-        self._eval_shared_model.shared_handle.acquire(
-            self._eval_shared_model.construct_fn(self._model_load_seconds)))
+    self._setup_if_needed()
 
   def process(self, elem):
     raise NotImplementedError('not implemented')
+
+  def finish_bundle(self):
+    # Must update distribution in finish_bundle instead of setup
+    # because Beam metrics are not supported in setup.
+    if self._model_load_seconds is not None:
+      self._model_load_seconds_distribution.update(self._model_load_seconds)
+      self._model_load_seconds = None

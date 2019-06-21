@@ -114,12 +114,13 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
               ) -> None:
     self._model_agnostic_config = model_agnostic_config
     self._shared_handle = shared.Shared()
-    self._model_load_seconds = beam.metrics.Metrics.distribution(
+    self._model_agnostic_wrapper = None
+    self._model_load_seconds = None
+    self._model_load_seconds_distribution = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'model_load_seconds')
 
   def _make_construct_fn(  # pylint: disable=invalid-name
-      self, model_agnostic_config: agnostic_predict.ModelAgnosticConfig,
-      model_load_seconds: beam.metrics.metricbase.Distribution):
+      self, model_agnostic_config: agnostic_predict.ModelAgnosticConfig):
     """Returns construct func for Shared for constructing ModelAgnosticEval."""
 
     def construct():  # pylint: disable=invalid-name
@@ -128,15 +129,23 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
       model_agnostic_wrapper = agnostic_predict.ModelAgnosticPredict(
           model_agnostic_config)
       end_time = datetime.datetime.now()
-      model_load_seconds.update(int((end_time - start_time).total_seconds()))
+      self._model_load_seconds = int((end_time - start_time).total_seconds())
       return model_agnostic_wrapper
 
     return construct
 
+  # TODO(yifanmai): Merge _setup_if_needed into setup
+  # after Beam dependency is upgraded to Beam 2.14.
+  def _setup_if_needed(self):
+    if self._model_agnostic_wrapper is None:
+      self._model_agnostic_wrapper = self._shared_handle.acquire(
+          self._make_construct_fn(self._model_agnostic_config))
+
+  def setup(self):
+    self._setup_if_needed()
+
   def start_bundle(self):
-    self._model_agnostic_wrapper = self._shared_handle.acquire(
-        self._make_construct_fn(self._model_agnostic_config,
-                                self._model_load_seconds))
+    self._setup_if_needed()
 
   def process(self, element: List[types.Extracts]
              ) -> Generator[types.Extracts, None, None]:
@@ -149,6 +158,13 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
       element_copy = copy.copy(element[fpl.input_ref])
       element_copy[constants.FEATURES_PREDICTIONS_LABELS_KEY] = fpl
       yield element_copy
+
+  def finish_bundle(self):
+    # Must update distribution in finish_bundle instead of setup
+    # because Beam metrics are not supported in setup.
+    if self._model_load_seconds is not None:
+      self._model_load_seconds_distribution.update(self._model_load_seconds)
+      self._model_load_seconds = None
 
 
 @beam.ptransform_fn

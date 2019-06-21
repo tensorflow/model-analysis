@@ -183,7 +183,8 @@ class _AggregateCombineFn(beam.CombineFn):
     # See BEAM-3736: Add SetUp() and TearDown() for CombineFns.
     self._eval_metrics_graph = (
         self._eval_shared_model.shared_handle.acquire(
-            self._eval_shared_model.construct_fn(self._model_load_seconds)))
+            self._eval_shared_model.construct_fn(
+                self._model_load_seconds.update)))
 
   def _poissonify(self, accumulator: _AggState
                  ) -> List[types.FeaturesPredictionsLabels]:

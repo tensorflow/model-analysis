@@ -27,7 +27,6 @@ from __future__ import print_function
 
 import datetime
 # Standard Imports
-import apache_beam as beam
 import tensorflow as tf
 
 from tensorflow_model_analysis import constants
@@ -36,7 +35,7 @@ from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
 
-from typing import Any, Generator, List, Optional, Text, Tuple  # pytype: disable=not-supported-yet
+from typing import Any, Callable, Generator, List, Optional, Text, Tuple  # pytype: disable=not-supported-yet
 
 
 def make_construct_fn(  # pylint: disable=invalid-name
@@ -44,7 +43,7 @@ def make_construct_fn(  # pylint: disable=invalid-name
     fpl_feed_config: eval_metrics_graph.FPLFeedConfig):
   """Returns a construct fn for constructing the model agnostic eval graph."""
 
-  def construct_fn(model_load_seconds: beam.metrics.metricbase.Distribution):
+  def construct_fn(model_load_seconds_callback: Callable[[int], None]):
     """Thin wrapper for the actual construct to allow for metrics."""
 
     def construct():  # pylint: disable=invalid-name
@@ -53,7 +52,7 @@ def make_construct_fn(  # pylint: disable=invalid-name
       model_agnostic_eval = ModelAgnosticEvaluateGraph(add_metrics_callbacks,
                                                        fpl_feed_config)
       end_time = datetime.datetime.now()
-      model_load_seconds.update(int((end_time - start_time).total_seconds()))
+      model_load_seconds_callback(int((end_time - start_time).total_seconds()))
       return model_agnostic_eval
 
     return construct
