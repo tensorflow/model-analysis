@@ -54,14 +54,20 @@ def build_parsing_eval_input_receiver_fn(feature_spec, label_key):
   return eval_input_receiver_fn
 
 
-def get_simple_dnn_classifier_and_metadata(n_classes=2):
+def get_simple_dnn_classifier_and_metadata(n_classes=2, label_vocabulary=None):
   """Returns metadata for creating simple DNN classifier."""
-  feature_spec = tf.feature_column.make_parse_example_spec(
-      feature_columns=util.dnn_columns(True, n_classes=n_classes))
+  if label_vocabulary:
+    feature_spec = tf.feature_column.make_parse_example_spec(
+        feature_columns=util.dnn_columns(False, n_classes=n_classes))
+    feature_spec['label'] = tf.io.FixedLenFeature(shape=[1], dtype=tf.string)
+  else:
+    feature_spec = tf.feature_column.make_parse_example_spec(
+        feature_columns=util.dnn_columns(True, n_classes=n_classes))
   classifier = tf.estimator.DNNClassifier(
       hidden_units=[4],
       feature_columns=util.dnn_columns(False),
       n_classes=n_classes,
+      label_vocabulary=label_vocabulary,
       loss_reduction=tf.compat.v1.losses.Reduction.SUM)
   classifier = tf.estimator.add_metrics(classifier,
                                         util.classifier_extra_metrics)
@@ -73,20 +79,21 @@ def get_simple_dnn_classifier_and_metadata(n_classes=2):
               tf.feature_column.make_parse_example_spec(
                   util.dnn_columns(False)))),
       'eval_input_receiver_fn':
-          build_parsing_eval_input_receiver_fn(
-              tf.feature_column.make_parse_example_spec(
-                  util.dnn_columns(True, n_classes=n_classes)),
-              label_key='label'),
+          build_parsing_eval_input_receiver_fn(feature_spec, label_key='label'),
       'train_input_fn':
-          util.make_classifier_input_fn(feature_spec, n_classes),
+          util.make_classifier_input_fn(
+              feature_spec, n_classes, label_vocabulary=label_vocabulary),
   }
 
 
-def simple_dnn_classifier(export_path, eval_export_path, n_classes=2):
+def simple_dnn_classifier(export_path,
+                          eval_export_path,
+                          n_classes=2,
+                          label_vocabulary=None):
   """Trains and exports a simple DNN classifier."""
 
   estimator_metadata = get_simple_dnn_classifier_and_metadata(
-      n_classes=n_classes)
+      n_classes=n_classes, label_vocabulary=label_vocabulary)
   estimator_metadata['estimator'].train(
       input_fn=estimator_metadata['train_input_fn'], steps=1000)
 
