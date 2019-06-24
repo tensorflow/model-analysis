@@ -268,43 +268,6 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         post_export_metrics.example_weight('age'),
     ], expected_values_dict)
 
-  def testPostExportMetricsDNNClassifierWithLabels(self):
-    temp_eval_export_dir = self._getEvalExportDir()
-    _, eval_export_dir = dnn_classifier.simple_dnn_classifier(
-        None, temp_eval_export_dir, label_vocabulary=['a', 'b'])
-    examples = [
-        self._makeExample(age=3.0, language='english', label='b'),
-        self._makeExample(age=3.0, language='chinese', label='a'),
-        self._makeExample(age=4.0, language='english', label='b'),
-        self._makeExample(age=5.0, language='chinese', label='b')
-    ]
-    expected_values_dict = {
-        metric_keys.EXAMPLE_COUNT: 4.0,
-        metric_keys.EXAMPLE_WEIGHT: 15.0,
-        'label/mean': 3.0 / 4.0,
-    }
-
-    def check_result(got):  # pylint: disable=invalid-name
-      try:
-        self.assertEqual(1, len(got), 'got: %s' % got)
-        (slice_key, value) = got[0]
-        self.assertEqual((), slice_key)
-        self.assertDictElementsAlmostEqual(value, expected_values_dict)
-        # Check that AUC was calculated for each class. We can't check the exact
-        # values since we don't know the exact prediction of the model.
-        self.assertIn(metric_keys.AUC, value)
-      except AssertionError as err:
-        raise util.BeamAssertException(err)
-
-    self._runTestWithCustomCheck(
-        examples,
-        eval_export_dir, [
-            post_export_metrics.example_count(),
-            post_export_metrics.example_weight('age'),
-            post_export_metrics.auc(),
-        ],
-        custom_metrics_check=check_result)
-
   def testPostExportMetricsDNNClassifierMultiClass(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = dnn_classifier.simple_dnn_classifier(
@@ -314,49 +277,6 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=3.0, language='chinese', label=1),
         self._makeExample(age=4.0, language='english', label=0),
         self._makeExample(age=5.0, language='chinese', label=1),
-    ]
-    expected_values_dict = {
-        metric_keys.EXAMPLE_COUNT: 4.0,
-        metric_keys.EXAMPLE_WEIGHT: 15.0,
-    }
-
-    def check_result(got):  # pylint: disable=invalid-name
-      try:
-        self.assertEqual(1, len(got), 'got: %s' % got)
-        (slice_key, value) = got[0]
-        self.assertEqual((), slice_key)
-        self.assertDictElementsAlmostEqual(value, expected_values_dict)
-        # Check that AUC was calculated for each class. We can't check the exact
-        # values since we don't know the exact prediction of the model.
-        self.assertIn(metric_keys.tagged_key(metric_keys.AUC, 'english'), value)
-        self.assertIn(metric_keys.tagged_key(metric_keys.AUC, 'chinese'), value)
-        self.assertIn(metric_keys.tagged_key(metric_keys.AUC, 'other'), value)
-      except AssertionError as err:
-        raise util.BeamAssertException(err)
-
-    self._runTestWithCustomCheck(
-        examples,
-        eval_export_dir, [
-            post_export_metrics.example_count(),
-            post_export_metrics.example_weight('age'),
-            post_export_metrics.auc(tensor_index=0, metric_tag='english'),
-            post_export_metrics.auc(tensor_index=1, metric_tag='chinese'),
-            post_export_metrics.auc(tensor_index=2, metric_tag='other'),
-        ],
-        custom_metrics_check=check_result)
-
-  def testPostExportMetricsDNNClassifierMultiClassWithLabels(self):
-    temp_eval_export_dir = self._getEvalExportDir()
-    _, eval_export_dir = dnn_classifier.simple_dnn_classifier(
-        None,
-        temp_eval_export_dir,
-        n_classes=3,
-        label_vocabulary=['a', 'b', 'c'])
-    examples = [
-        self._makeExample(age=3.0, language='english', label='a'),
-        self._makeExample(age=3.0, language='chinese', label='b'),
-        self._makeExample(age=4.0, language='english', label='a'),
-        self._makeExample(age=5.0, language='chinese', label='b'),
     ]
     expected_values_dict = {
         metric_keys.EXAMPLE_COUNT: 4.0,

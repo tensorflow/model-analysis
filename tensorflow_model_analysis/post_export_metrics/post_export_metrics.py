@@ -250,35 +250,6 @@ def _populate_bounded_value(metric, value):
     bounded_value.value.value = value
 
 
-def _string_labels_to_class_ids(labels_tensor: tf.Tensor,
-                                classes_tensor: tf.Tensor) -> tf.Tensor:
-  """Converts string labels into class IDs."""
-  # Convert labels with shape (N) to (N, 1) if necessary
-  expanded_tensor = tf.cond(
-      pred=tf.equal(tf.rank(labels_tensor), 1),
-      true_fn=lambda: tf.expand_dims(labels_tensor, axis=-1),
-      false_fn=lambda: labels_tensor)
-  # Creates a one-hot vector of shape (N, n_classes). For example:
-  #   classes_tensor = [['a', 'b', 'c'], ['a', 'b', 'c']]
-  #   expanded_tensor = [['b'], ['a']]
-  #   onehot_tensor = [[0, 1, 0], [1, 0, 0]]
-  onehot_tensor = tf.where(
-      tf.equal(classes_tensor, expanded_tensor),
-      tf.ones(tf.shape(classes_tensor), dtype=tf.int64),
-      tf.zeros(tf.shape(classes_tensor), dtype=tf.int64))
-  # Convert one-hot vector from shape (N, n_classes) to (N, 1) if expanded
-  # shape was (N, 1).
-  labels_tensor = tf.cond(
-      pred=tf.equal(tf.shape(expanded_tensor)[1], 1),
-      true_fn=lambda: tf.argmax(onehot_tensor, axis=1),
-      false_fn=lambda: onehot_tensor)
-  # Convert (N, 1) tensor to (N) if original input was (N)
-  return tf.cond(
-      pred=tf.equal(tf.rank(labels_tensor), 1),
-      true_fn=lambda: tf.squeeze(labels_tensor),
-      false_fn=lambda: labels_tensor)
-
-
 class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
   """Abstract base class for post export metrics."""
 
@@ -316,7 +287,7 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     """Gets predictions and labels for the class at index self._tensor_index."""
 
     def make_multi_hot_labels():
-      """Converts class index labels to multi-hot vector."""
+      """Converts class index labels to mutli-hot vector."""
       tf.compat.v1.logging.info(
           'Labels has unknown static shape in dimension 1, indicating a class '
           'index tensor. '
@@ -340,14 +311,11 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
         # classes.
         return tf.reduce_sum(input_tensor=one_hots_per_class, axis=1)
 
-    # To use binarized labels the current code assumes the dimensions must be
-    # (N,1) instead of (N). However, most labels are passed as (N) so this
-    # automatically expands if needed.
-    labels_tensor = tf.cond(
-        pred=tf.equal(tf.rank(labels_tensor), 1),
-        true_fn=lambda: tf.expand_dims(labels_tensor, axis=1),
-        false_fn=lambda: labels_tensor)
-
+    if len(labels_tensor.shape) == 1:
+      # To use binarized labels the current code assumes the dimensions must be
+      # (N,1) instead of (N). However, most labels are passed as (N) so this
+      # automatically expands if needed.
+      labels_tensor = tf.expand_dims(labels_tensor, 1)
     labels_tensor.shape.assert_has_rank(2)
     if (labels_tensor.shape[1].value is None or
         labels_tensor.shape[1].value == 1 and self._tensor_index is not None):
@@ -384,15 +352,6 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     if labels_tensor is None:
       raise KeyError('Cannot find %s in labels_dict %s.' %
                      (self._labels_key, labels_dict))
-
-    # Convert string labels
-    if labels_tensor.dtype == tf.string:
-      classes_tensor = _get_target_tensor(
-          predictions_dict, [prediction_keys.PredictionKeys.ALL_CLASSES])
-      if classes_tensor is not None:
-        labels_tensor = _string_labels_to_class_ids(labels_tensor,
-                                                    classes_tensor)
-
     if self._tensor_index is None:
       return predictions_tensor, labels_tensor
 
@@ -713,8 +672,7 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
   """Plot metric for calibration plot and prediction histogram.
 
   Note that this metric is only applicable to models for which the predictions
-  and labels are in [0, 1] (string labels will be converted to 0 or 1 using
-  ALL_CLASSES tensor if present).
+  and labels are in [0, 1].
 
   The plot contains uniformly-sized buckets for predictions in [0, 1],
   and additional buckets for predictions less than 0 and greater than 1 at the
@@ -741,8 +699,7 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
       (c) a dict containing the PREDICTIONS key, where the prediction is
           in [0, 1]
 
-    Label should be a single float that is in [0, 1] (string labels will be
-    converted to 0 or 1 using ALL_CLASSES tensor if present).
+    Label should be a single float that is in [0, 1].
 
     Args:
       example_weight_key: The key of the example weight column in the features
@@ -918,8 +875,8 @@ class _ConfusionMatrixBasedMetric(_PostExportMetric):
       (c) a dict containing the PREDICTIONS key, where the prediction is
           in [0, 1]
 
-    Label should be a single float that is in [0, 1] (string labels will be
-    converted to 0 or 1 using ALL_CLASSES tensor if present).
+    Label should be a single float that is either exactly 0 or exactly 1
+    (soft labels, i.e. labels between 0 and 1 are *not* supported).
 
     Args:
       thresholds: List of thresholds to compute the confusion matrix at.
@@ -1151,8 +1108,8 @@ class _AucPlots(_ConfusionMatrixBasedMetric):
       (c) a dict containing the PREDICTIONS key, where the prediction is
           in [0, 1]
 
-    Label should be a single float that is in [0, 1] (string labels will be
-    converted to 0 or 1 using ALL_CLASSES tensor if present).
+    Label should be a single float that is either exactly 0 or exactly 1
+    (soft labels, i.e. labels between 0 and 1 are *not* supported).
 
     Args:
       example_weight_key: The key of the example weight column in the features
@@ -1239,8 +1196,8 @@ class _Auc(_PostExportMetric):
       (c) a dict containing the PREDICTIONS key, where the prediction is
           in [0, 1]
 
-    Label should be a single float that is in [0, 1] (string labels will be
-    converted to 0 or 1 using ALL_CLASSES tensor if present).
+    Label should be a single float that is either exactly 0 or exactly 1
+    (soft labels, i.e. labels between 0 and 1 are *not* supported).
 
     Args:
       example_weight_key: The key of the example weight column in the features
@@ -1377,16 +1334,16 @@ class _PrecisionRecallAtK(_PostExportMetric):
 
   Create a metric that computes precision or recall at K.
 
-  Predictions should be a dict containing the ALL_CLASSES key and PROBABILITIES
-  keys. Predictions should have the same size for all examples.  The model
+  Predictions should be a dict containing the CLASSES key and PROBABILITIES
+  keys. Predictions should have the same size for all examples. The model
   should NOT, for instance, produce 2 classes on one example and 4 classes on
   another example.
 
   Labels should be a Tensor, or a SparseTensor whose dense form is a Tensor
   whose entries are the corresponding labels. Note that the values of the
-  ALL_CLASSES in the predictions and that of labels will be compared directly,
-  so they should come from the "same vocabulary", so if predictions are class
-  IDs, then labels should be class IDs, and so on.
+  CLASSES in the predictions and that of labels will be compared directly, so
+  they should come from the "same vocabulary", so if predictions are class IDs,
+  then labels should be class IDs, and so on.
   """
 
   _target_prediction_keys = ...  # type: List[Text]
@@ -1423,15 +1380,10 @@ class _PrecisionRecallAtK(_PostExportMetric):
     self._metric_name = metric_name
     self._cutoffs = cutoffs
     self._example_weight_key = example_weight_key
+    classes_key = classes_key or prediction_keys.PredictionKeys.CLASSES
     probabilities_key = (
         probabilities_key or prediction_keys.PredictionKeys.PROBABILITIES)
-    if classes_key:
-      self._classes_keys = [classes_key]
-    else:
-      self._classes_keys = [
-          prediction_keys.PredictionKeys.ALL_CLASSES,
-          prediction_keys.PredictionKeys.CLASSES
-      ]
+    self._classes_keys = [classes_key]
     self._probabilities_keys = [probabilities_key]
     if metric_tag:
       self._classes_keys.extend(
@@ -1551,16 +1503,16 @@ class _PrecisionAtK(_PrecisionRecallAtK):
 
   Create a metric that computes precision at K.
 
-  Predictions should be a dict containing the ALL_CLASSES key and PROBABILITIES
-  keys. Predictions should have the same size for all examples.  The model
+  Predictions should be a dict containing the CLASSES key and PROBABILITIES
+  keys. Predictions should have the same size for all examples. The model
   should NOT, for instance, produce 2 classes on one example and 4 classes on
   another example.
 
   Labels should be a Tensor, or a SparseTensor whose dense form is a Tensor
   whose entries are the corresponding labels. Note that the values of the
-  ALL_CLASSES in the predictions and that of labels will be compared directly,
-  so they should come from the "same vocabulary", so if predictions are class
-  IDs, then labels should be class IDs, and so on.
+  CLASSES in the predictions and that of labels will be compared directly, so
+  they should come from the "same vocabulary", so if predictions are class IDs,
+  then labels should be class IDs, and so on.
   """
 
   def __init__(self,
@@ -1607,16 +1559,16 @@ class _RecallAtK(_PrecisionRecallAtK):
 
   Create a metric that computes recall at K.
 
-  Predictions should be a dict containing the ALL_CLASSES key and PROBABILITIES
+  Predictions should be a dict containing the CLASSES key and PROBABILITIES
   keys. Predictions should have the same size for all examples. The model
   should NOT, for instance, produce 2 classes on one example and 4 classes on
   another example.
 
   Labels should be a Tensor, or a SparseTensor whose dense form is a Tensor
   whose entries are the corresponding labels. Note that the values of the
-  ALL_CLASSES in the predictions and that of labels will be compared directly,
-  so they should come from the "same vocabulary", so if predictions are class
-  IDs, then labels should be class IDs, and so on.
+  CLASSES in the predictions and that of labels will be compared directly, so
+  they should come from the "same vocabulary", so if predictions are class IDs,
+  then labels should be class IDs, and so on.
   """
 
   def __init__(self,
