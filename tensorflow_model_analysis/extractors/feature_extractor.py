@@ -32,7 +32,7 @@ from tensorflow_model_analysis.extractors import extractor
 from typing import Any, Dict, List, Optional, Text
 
 # For now, we store only the first N sparse keys in our diagnostics table.
-_MAX_SPARSE_FEATURES_PER_COLUMN = 10
+_MAX_SPARSE_FEATURES_PER_COLUMN = 30
 
 FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
 
