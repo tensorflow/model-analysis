@@ -693,6 +693,7 @@ def run_model_analysis(
     data_location: Text,
     file_format: Text = 'tfrecords',
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+    desired_batch_size: Optional[int] = None,
     output_path: Optional[Text] = None,
     extractors: Optional[List[extractor.Extractor]] = None,
     evaluators: Optional[List[evaluator.Evaluator]] = None,
@@ -728,6 +729,8 @@ def run_model_analysis(
         "country:jp", and etc in results.
       - tfma.SingleSiceSpec(features=[('country', 'us')]): metrics are computed
         on slice "country:us".
+    desired_batch_size: Optional batch size for batching in Predict and
+      Aggregate.
     output_path: The directory to output metrics and results to. If None, we use
       a temporary directory.
     extractors: Optional list of Extractors to apply to Extracts. Typically
@@ -780,6 +783,7 @@ def run_model_analysis(
             output_path=output_path,
             display_only_data_location=data_location,
             slice_spec=slice_spec,
+            desired_batch_size=desired_batch_size,
             extractors=extractors,
             evaluators=evaluators,
             writers=writers,
