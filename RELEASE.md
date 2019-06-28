@@ -18,6 +18,8 @@
 *   Added support for blacklisting specified features from fetches.
 *   Added functionality to the FeatureExtractor to specify the features dict as
     a possible destination.
+*   Added support for label vocabularies for binary and multi-class estimators
+    that support the new ALL_CLASSES prediction output.
 
 ## Bug fixes and other changes
 
