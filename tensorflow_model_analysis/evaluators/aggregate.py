@@ -54,15 +54,24 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
   # TODO(b/123516222): Remove this workaround per discussions in CL/227944001
   slice_result.element_type = beam.typehints.Any
 
-  return (slice_result
-          | 'CombinePerSlice' >> beam.CombinePerKey(
-              _AggregateCombineFn(
-                  eval_shared_model=eval_shared_model,
-                  desired_batch_size=desired_batch_size,
-                  compute_with_sampling=compute_with_sampling,
-                  seed_for_testing=random_seed_for_testing))
-          | 'InterpretOutput' >> beam.ParDo(
-              _ExtractOutputDoFn(eval_shared_model=eval_shared_model)))
+  return (
+      slice_result
+      # _ModelLoadingIdentityFn loads the EvalSavedModel into memory
+      # under a shared handle that can be used by subsequent steps.
+      # Combiner lifting and producer-consumer fusion should ensure
+      # that these steps run in the same process and memory space.
+      # TODO(b/69566045): Remove _ModelLoadingIdentityFn and move model
+      # loading to CombineFn.setup after it is available in Beam.
+      | 'LoadModel' >> beam.ParDo(
+          _ModelLoadingIdentityFn(eval_shared_model=eval_shared_model))
+      | 'CombinePerSlice' >> beam.CombinePerKey(
+          _AggregateCombineFn(
+              eval_shared_model=eval_shared_model,
+              desired_batch_size=desired_batch_size,
+              compute_with_sampling=compute_with_sampling,
+              seed_for_testing=random_seed_for_testing))
+      | 'InterpretOutput' >> beam.ParDo(
+          _ExtractOutputDoFn(eval_shared_model=eval_shared_model)))
 
 
 def _add_metric_variables(  # pylint: disable=invalid-name
@@ -318,3 +327,13 @@ class _ExtractOutputDoFn(dofn.EvalSavedModelDoFn):
       # slice sizes are incredibly small, and seeing large values of this
       # counter is a sign that something has gone wrong.
       self._num_bootstrap_empties.inc(1)
+
+
+@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
+@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, types.Extracts])
+class _ModelLoadingIdentityFn(dofn.EvalSavedModelDoFn):
+  """A DoFn that loads the EvalSavedModel and returns the input unchanged."""
+
+  def process(self, element: Tuple[slicer.SliceKeyType, types.Extracts]
+             ) -> List[Tuple[slicer.SliceKeyType, types.Extracts]]:
+    return [element]
