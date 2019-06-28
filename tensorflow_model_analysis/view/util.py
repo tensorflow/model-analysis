@@ -99,7 +99,7 @@ def get_time_series(
     results: model_eval_lib.EvalResults, slicing_spec: slicer.SingleSliceSpec,
     display_full_path: bool
 ) -> List[Dict[Text, Union[Dict[Union[float, Text], Any], Text]]]:
-  """Uitl function that extracts time series data for the specified slice.
+  """Util function that extracts time series data for the specified slice.
 
   Args:
     results: A collection of EvalResult whose metrics should be visualized in a
