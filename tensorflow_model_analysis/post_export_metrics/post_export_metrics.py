@@ -1485,10 +1485,9 @@ class _PrecisionRecallAtK(_PostExportMetric):
         labels = tf.sparse.to_dense(labels_dict)
 
     # Expand dims if necessary.
-    labels = tf.cond(
-        pred=tf.equal(tf.rank(labels), 1),
-        true_fn=lambda: tf.expand_dims(labels, -1),
-        false_fn=lambda: labels)
+    labels = tf.case(
+        [(tf.equal(tf.rank(labels), 1), lambda: tf.expand_dims(labels, -1))],
+        default=lambda: labels)
 
     classes = _get_target_tensor(predictions_dict, self._classes_keys)
     scores = _get_target_tensor(predictions_dict, self._probabilities_keys)
@@ -1498,11 +1497,11 @@ class _PrecisionRecallAtK(_PostExportMetric):
     # string form, so we can automatically expand the classes to the full set
     # for matching the labels (see b/113170729).
     if labels.dtype == tf.int64:
-      classes = tf.cond(
+      classes = tf.case(
           # Match only when classes has a single item (i.e. argmax).
-          pred=tf.equal(tf.shape(input=classes)[-1], 1),
-          true_fn=lambda: tf.as_string(_class_ids(scores)),
-          false_fn=lambda: classes)
+          [(tf.equal(tf.shape(input=classes)[-1],
+                     1), lambda: tf.as_string(_class_ids(scores)))],
+          default=lambda: classes)
 
     labels = _cast_or_convert(labels, classes.dtype)
 
