@@ -15,7 +15,7 @@
  */
 const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
 template.innerHTML = `
-<tfma-google-chart-wrapper type="column" data="[[plotData_]]" options="[[options_]]">
+<tfma-google-chart-wrapper type="combo" data="[[plotData_]]" options="[[options_]]">
 </tfma-google-chart-wrapper>
 
 `;

@@ -55,8 +55,21 @@ export class PredicitonDistribution extends PolymerElement {
         type: Object,
         value: {
           'hAxis': {'title': 'Prediction'},
-          'vAxis': {'title': 'Count'},
-          'series': {0: {'visibleInLegend': false}},
+          'vAxes': {0: {'title': 'Positive'}, 1: {'title': 'Negative'}},
+          'series': {
+            0: {'visibleInLegend': false, 'targetAxisIndex': 2, 'type': 'bars'},
+            1: {
+              'visibleInLegend': true,
+              'targetAxisIndex': 0,
+              'type': 'scatter'
+            },
+            2: {
+              'visibleInLegend': true,
+              'targetAxisIndex': 1,
+              'type': 'scatter',
+              'pointShape': 'diamond'
+            },
+          },
           'explorer':
               {actions: ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
         }
@@ -82,12 +95,19 @@ export class PredicitonDistribution extends PolymerElement {
       return undefined;
     }
 
-    const plotData =
-        [['Prediction', 'Count', {'type': 'string', 'role': 'tooltip'}]];
+    const plotData = [[
+      'Prediction',
+      'Count',
+      {'type': 'string', 'role': 'tooltip'},
+      'Positive',
+      {'type': 'string', 'role': 'tooltip'},
+      'Negative',
+      {'type': 'string', 'role': 'tooltip'},
+    ]];
     let currentBucketCenter = bucketSize / 2;
     do {
       // Initialize histogram with center x and zero count.
-      plotData.push([currentBucketCenter, 0]);
+      plotData.push([currentBucketCenter, 0, '', 0, '', 0, '']);
       currentBucketCenter += bucketSize;
     } while (currentBucketCenter < 1);
 
@@ -98,11 +118,15 @@ export class PredicitonDistribution extends PolymerElement {
     data.forEach((entry) => {
       const weightedExamples = entry['numWeightedExamples'];
       if (weightedExamples) {
+        const totalLabel = entry['totalWeightedLabel'] || 0;
         const prediction =
             entry['totalWeightedRefinedPrediction'] / weightedExamples;
         const bucketIndex =
             Math.min(Math.trunc(prediction / bucketSize) + 1, maxIndex);
         plotData[bucketIndex][1] = plotData[bucketIndex][1] + weightedExamples;
+        plotData[bucketIndex][3] = plotData[bucketIndex][3] + totalLabel;
+        plotData[bucketIndex][5] =
+            plotData[bucketIndex][5] + weightedExamples - totalLabel;
       }
     });
 
@@ -110,8 +134,11 @@ export class PredicitonDistribution extends PolymerElement {
     let lowerBound = 0;
     let upperBound = bucketSize;
     for (let i = 1; i < plotData.length; i++) {
-      plotData[i][2] = plotData[i][1] + ' weighted example(s) between ' +
+      const boundText = ' example(s) between ' +
           lowerBound.toFixed(4) + ' and ' + upperBound.toFixed(4);
+      plotData[i][2] = plotData[i][1] + ' weighted' + boundText;
+      plotData[i][4] = plotData[i][3] + ' positive' + boundText;
+      plotData[i][6] = plotData[i][5] + ' negative' + boundText;
       lowerBound = upperBound;
       upperBound += bucketSize;
     }
