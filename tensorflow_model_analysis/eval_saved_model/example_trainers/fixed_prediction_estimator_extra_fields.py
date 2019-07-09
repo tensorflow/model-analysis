@@ -78,14 +78,22 @@ def simple_fixed_prediction_estimator_extra_fields(export_path,
 
   feature_spec = {'prediction': tf.io.FixedLenFeature([1], dtype=tf.float32)}
   eval_feature_spec = {
-      'prediction': tf.io.FixedLenFeature([1], dtype=tf.float32),
-      'label': tf.io.FixedLenFeature([1], dtype=tf.float32),
-      'fixed_float': tf.io.FixedLenFeature([1], dtype=tf.float32),
-      'fixed_string': tf.io.FixedLenFeature([1], dtype=tf.string),
-      'fixed_int': tf.io.FixedLenFeature([1], dtype=tf.int64),
-      'var_float': tf.io.VarLenFeature(dtype=tf.float32),
-      'var_string': tf.io.VarLenFeature(dtype=tf.string),
-      'var_int': tf.io.VarLenFeature(dtype=tf.int64),
+      'prediction':
+          tf.io.FixedLenFeature([1], dtype=tf.float32),
+      'label':
+          tf.io.FixedLenFeature([1], dtype=tf.float32),
+      'fixed_float':
+          tf.io.FixedLenFeature([1], dtype=tf.float32, default_value=0.0),
+      'fixed_string':
+          tf.io.FixedLenFeature([1], dtype=tf.string, default_value=''),
+      'fixed_int':
+          tf.io.FixedLenFeature([1], dtype=tf.int64, default_value=0),
+      'var_float':
+          tf.io.VarLenFeature(dtype=tf.float32),
+      'var_string':
+          tf.io.VarLenFeature(dtype=tf.string),
+      'var_int':
+          tf.io.VarLenFeature(dtype=tf.int64),
   }
 
   estimator = tf.estimator.Estimator(model_fn=model_fn)

@@ -80,6 +80,7 @@ FAIRNESS_CONFUSION_MATRIX_THESHOLDS = base_key(
     'fairness/confusion_matrix_at_thresholds/thresholds')
 FAIRNESS_CONFUSION_MATRIX = base_key(
     'fairness/confusion_matrix_at_thresholds')  # Output-only
+FAIRNESS_AUC = base_key('fairness/auc')
 _AUC_PLOTS_MATRICES_SUFFIX = 'auc_plots/matrices'
 AUC_PLOTS_MATRICES = base_key(_AUC_PLOTS_MATRICES_SUFFIX)
 _AUC_PLOTS_THRESHOLDS_SUFFIX = 'auc_plots/thresholds'

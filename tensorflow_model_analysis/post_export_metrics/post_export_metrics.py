@@ -135,14 +135,66 @@ def _get_target_tensor(maybe_dict: types.TensorTypeMaybeDict,
   return None
 
 
-def _check_weight_present(features_dict: types.TensorTypeMaybeDict,
-                          example_weight_key: Optional[Text] = None):
+def _check_feature_present(features_dict: types.TensorTypeMaybeDict,
+                           feature_key: Text):
   """Raise ValueError if the example weight is not present."""
-  if (example_weight_key is not None and
-      example_weight_key not in features_dict):
-    raise ValueError('example weight key %s not found in features_dict. '
-                     'features were: %s' %
-                     (example_weight_key, features_dict.keys()))
+  if (feature_key is not None and feature_key not in features_dict):
+    raise ValueError('feature key %s not found in features_dict. '
+                     'features were: %s' % (feature_key, features_dict.keys()))
+
+
+def _build_auc_metrics_ops(metric_key: Text, labels: types.TensorType,
+                           predictions: types.TensorType,
+                           weights: types.TensorType, num_thresholds: int,
+                           curve: Text):
+  """Build metric ops that compute the bounded AUC.
+
+  It uses 'careful_interpolation' summation for the metric value, and also
+  'minoring' and 'majoring' to generate the boundaries for the metric.
+
+  Args:
+    metric_key: The key of the metrics to be stored inside metrics ops
+      dictionary.
+    labels: The tensor indicates the label of the example.
+    predictions: The tensor indicates the prediction of the model.
+    weights: The weight tensor of the examples.
+    num_thresholds: The number of thresholds to use when discretizing the roc
+      curve.
+    curve: Specifies the name of the curve to be computed, 'ROC' [default] or
+      'PR' for the Precision-Recall-curve.
+
+  Returns:
+    A metric op dictionary that computes the bounded AUC.
+  """
+  value_ops, value_update = tf.compat.v1.metrics.auc(
+      labels=labels,
+      predictions=predictions,
+      weights=weights,
+      num_thresholds=num_thresholds,
+      curve=curve,
+      summation_method='careful_interpolation')
+  lower_bound_ops, lower_bound_update = tf.compat.v1.metrics.auc(
+      labels=labels,
+      predictions=predictions,
+      weights=weights,
+      num_thresholds=num_thresholds,
+      curve=curve,
+      summation_method='minoring')
+  upper_bound_ops, upper_bound_update = tf.compat.v1.metrics.auc(
+      labels=labels,
+      predictions=predictions,
+      weights=weights,
+      num_thresholds=num_thresholds,
+      curve=curve,
+      summation_method='majoring')
+
+  return {
+      metric_key: (value_ops, value_update),
+      metric_keys.lower_bound_key(metric_key):
+          (lower_bound_ops, lower_bound_update),
+      metric_keys.upper_bound_key(metric_key):
+          (upper_bound_ops, upper_bound_update),
+  }
 
 
 def _populate_to_auc_bounded_value_and_pop(
@@ -611,7 +663,7 @@ class _ExampleWeight(_PostExportMetric):
   def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
                           predictions_dict: types.TensorTypeMaybeDict,
                           labels_dict: types.TensorTypeMaybeDict) -> None:
-    _check_weight_present(features_dict, self._example_weight_key)
+    _check_feature_present(features_dict, self._example_weight_key)
 
   def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
                      predictions_dict: types.TensorTypeMaybeDict,
@@ -674,7 +726,7 @@ class _SquaredPearsonCorrelation(_PostExportMetric):
   def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
                           predictions_dict: types.TensorTypeMaybeDict,
                           labels_dict: types.TensorTypeMaybeDict) -> None:
-    _check_weight_present(features_dict, self._example_weight_key)
+    _check_feature_present(features_dict, self._example_weight_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
   def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
@@ -767,7 +819,7 @@ class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
   def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
                           predictions_dict: types.TensorTypeMaybeDict,
                           labels_dict: types.TensorTypeMaybeDict) -> None:
-    _check_weight_present(features_dict, self._example_weight_key)
+    _check_feature_present(features_dict, self._example_weight_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
   def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
@@ -944,7 +996,7 @@ class _ConfusionMatrixBasedMetric(_PostExportMetric):
   def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
                           predictions_dict: types.TensorTypeMaybeDict,
                           labels_dict: types.TensorTypeMaybeDict) -> None:
-    _check_weight_present(features_dict, self._example_weight_key)
+    _check_feature_present(features_dict, self._example_weight_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
   def joined_confusion_matrix_metric_ops(
@@ -1280,7 +1332,7 @@ class _Auc(_PostExportMetric):
   def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
                           predictions_dict: types.TensorTypeMaybeDict,
                           labels_dict: types.TensorTypeMaybeDict) -> None:
-    _check_weight_present(features_dict, self._example_weight_key)
+    _check_feature_present(features_dict, self._example_weight_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
   def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
@@ -1304,35 +1356,9 @@ class _Auc(_PostExportMetric):
         _create_predictions_labels_weights_for_fractional_labels(
             predictions, labels, weights))
 
-    value_ops, value_update = tf.compat.v1.metrics.auc(
-        labels=labels,
-        predictions=predictions,
-        weights=weights,
-        num_thresholds=self._num_buckets + 1,
-        curve=self._curve,
-        summation_method='careful_interpolation')
-    lower_bound_ops, lower_bound_update = tf.compat.v1.metrics.auc(
-        labels=labels,
-        predictions=predictions,
-        weights=weights,
-        num_thresholds=self._num_buckets + 1,
-        curve=self._curve,
-        summation_method='minoring')
-    upper_bound_ops, upper_bound_update = tf.compat.v1.metrics.auc(
-        labels=labels,
-        predictions=predictions,
-        weights=weights,
-        num_thresholds=self._num_buckets + 1,
-        curve=self._curve,
-        summation_method='majoring')
-
-    return {
-        self._metric_key(self._metric_name): (value_ops, value_update),
-        metric_keys.lower_bound_key(self._metric_key(self._metric_name)):
-            (lower_bound_ops, lower_bound_update),
-        metric_keys.upper_bound_key(self._metric_key(self._metric_name)):
-            (upper_bound_ops, upper_bound_update),
-    }
+    return _build_auc_metrics_ops(
+        self._metric_key(self._metric_name), labels, predictions, weights,
+        self._num_buckets + 1, self._curve)
 
   def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
                              output_metrics: Dict[Text, metrics_pb2.MetricValue]
@@ -1463,7 +1489,7 @@ class _PrecisionRecallAtK(_PostExportMetric):
     if not types.is_tensor(labels_dict):
       raise TypeError('labels_dict should be a tensor. labels_dict was: %s' %
                       labels_dict)
-    _check_weight_present(features_dict, self._example_weight_key)
+    _check_feature_present(features_dict, self._example_weight_key)
 
   def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
                      predictions_dict: types.TensorTypeMaybeDict,
@@ -1712,7 +1738,7 @@ class _TFMetricBaseClass(_PostExportMetric):
   def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
                           predictions_dict: types.TensorTypeMaybeDict,
                           labels_dict: types.TensorTypeMaybeDict) -> None:
-    _check_weight_present(features_dict, self._example_weight_key)
+    _check_feature_present(features_dict, self._example_weight_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
   def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
