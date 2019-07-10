@@ -15,6 +15,11 @@
  */
 const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
 template.innerHTML = `
+<style>
+  google-chart {
+    width: 100%;
+  }
+</style>
 <google-chart id="chart" type="[[type]]" data="[[data]]" options="[[options]]"></google-chart>
 `;
 export {template};

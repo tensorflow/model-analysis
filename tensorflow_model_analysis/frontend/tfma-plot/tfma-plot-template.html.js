@@ -84,6 +84,12 @@ template.innerHTML = `
     --paper-checkbox-size: 13px;
     margin: 0 12px 6px;
   }
+  #plots .plot-holder :nth-child(2) {
+    width: 100%;
+  }
+  #flat-view-container .plot-holder {
+    width: 400px;
+  }
 </style>
 <div style="position:relative">
   <div class="center">
