@@ -55,7 +55,10 @@ class SeriesData {
     this.evalRuns_ = this.helper_.sortEvalRuns(evalRuns, modelCentric);
   }
 
-  /** @override */
+  /**
+   * @override
+   * @suppress {missingProperties} getMetricValue is unknown on 'data'
+   */
   getLineChartData(metric) {
     const totalEntries = this.evalRuns_.length;
     return this.evalRuns_.map((evalRun, index) => {
@@ -98,7 +101,10 @@ class SeriesData {
     return typeof value == 'number' ? value : index;
   }
 
-  /** @override */
+  /**
+   * @override
+   * @suppress {missingProperties} getAllMetricValues is unknown on 'data'
+   */
   getDataTable() {
     const helper = this.helper_;
     return this.evalRuns_.map(evalRun => {
