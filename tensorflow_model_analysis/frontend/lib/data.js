@@ -374,57 +374,52 @@ function getAvailableMetrics(dataArrays, metricsFieldKey) {
   return metrics;
 }
 
-
 /**
- * @param {!Array<!Object>} data
- * @param {string} metricsFieldKey
- * @param {function(!Object):!Object} plotDataGetter
+ * @param {!Object} plotMap A map where the keys are the base plot types that we
+ *   have data for.
+ * @return {!Array<string>} An array of all plot types that we can support. Many
+ *   plot types shares the same data so with a base type, other plot types might
+ *   be supported.
  */
-function preprocessMaybeAddPlotData(data, metricsFieldKey, plotDataGetter) {
-  const supportedPlotTypes = [
-    {
-      type: Constants.PlotTypes.CALIBRATION_PLOT,
-      additional: [Constants.PlotTypes.PREDICTION_DISTRIBUTION]
-    },
-    {
-      type: Constants.PlotTypes.PRECISION_RECALL_CURVE,
-      additional: [
-        Constants.PlotTypes.ROC_CURVE, Constants.PlotTypes.ACCURACY_CHARTS,
-        Constants.PlotTypes.GAIN_CHART
-      ]
-    },
-    {
-      type: Constants.PlotTypes.MACRO_PRECISION_RECALL_CURVE,
-    },
-    {
-      type: Constants.PlotTypes.MICRO_PRECISION_RECALL_CURVE,
-    },
-    {
-      type: Constants.PlotTypes.WEIGHTED_PRECISION_RECALL_CURVE,
-    }
-  ];
-  data.forEach((evaluation) => {
-    if (evaluation[metricsFieldKey] && evaluation['plot']) {
-      const plotsToShow = [];
-      supportedPlotTypes.forEach((plot) => {
-        if (evaluation['plot'][plot.type]) {
-          plotsToShow.push(plot.type);
-          if (plot.additional) {
-            plot.additional.forEach(additionalPlot => {
-              plotsToShow.push(additionalPlot);
-            });
-          }
-        }
-      });
-      if (plotsToShow.length) {
-        const plotData = plotDataGetter(evaluation);
-        plotData['types'] = plotsToShow;
-        evaluation[metricsFieldKey]['plots'] = plotData;
+function getAvailablePlotTypes(plotMap) {
+  const plotsToShow = [];
+  if (plotMap) {
+    const supportedPlotTypes = [
+      {
+        type: Constants.PlotTypes.CALIBRATION_PLOT,
+        additional: [Constants.PlotTypes.PREDICTION_DISTRIBUTION]
+      },
+      {
+        type: Constants.PlotTypes.PRECISION_RECALL_CURVE,
+        additional: [
+          Constants.PlotTypes.ROC_CURVE, Constants.PlotTypes.ACCURACY_CHARTS,
+          Constants.PlotTypes.GAIN_CHART
+        ]
+      },
+      {
+        type: Constants.PlotTypes.MACRO_PRECISION_RECALL_CURVE,
+      },
+      {
+        type: Constants.PlotTypes.MICRO_PRECISION_RECALL_CURVE,
+      },
+      {
+        type: Constants.PlotTypes.WEIGHTED_PRECISION_RECALL_CURVE,
       }
-    }
-  });
-}
+    ];
 
+    supportedPlotTypes.forEach((plot) => {
+      if (plotMap[plot.type]) {
+        plotsToShow.push(plot.type);
+        if (plot.additional) {
+          plot.additional.forEach(additionalPlot => {
+            plotsToShow.push(additionalPlot);
+          });
+        }
+      }
+    });
+  }
+  return plotsToShow;
+}
 
 /**
  * Extracts the metric values from a map of
@@ -536,15 +531,14 @@ let SeriesValue;
 goog.exportSymbol('tfma.Data.build', build);
 goog.exportSymbol('tfma.Data.flattenMetrics', flattenMetrics);
 goog.exportSymbol('tfma.Data.getAvailableMetrics', getAvailableMetrics);
-goog.exportSymbol(
-    'tfma.Data.preprocessMaybeAddPlotData', preprocessMaybeAddPlotData);
+goog.exportSymbol('tfma.Data.getAvailablePlotTypes', getAvailablePlotTypes);
 
 exports = {
   build,
   util: {
     getAvailableMetrics,
     flattenMetrics,
-    preprocessMaybeAddPlotData,
+    getAvailablePlotTypes,
   },
   Data,
   Series,

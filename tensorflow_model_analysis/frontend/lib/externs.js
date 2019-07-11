@@ -176,12 +176,10 @@ tfma.Data.flattenMetrics = function(runs, metricsKey) {};
 tfma.Data.getAvailableMetrics = function(dataArrays, metricsFieldKey) {};
 
 /**
- * @param {!Array<!Object>} data
- * @param {string} metricsFieldKey
- * @param {function(!Object):!Object} plotDataGetter
+ * @param {!Object} plotData
+ * @return {!Array<string>}
  */
-tfma.Data.preprocessMaybeAddPlotData = function(
-    data, metricsFieldKey, plotDataGetter) {};
+tfma.Data.getAvailablePlotTypes = function(plotData) {};
 
 /**
  * @constructor

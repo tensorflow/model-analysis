@@ -17,7 +17,6 @@ goog.module('tfma.tests.DataTest');
 
 goog.setTestOnly();
 
-const Constants = goog.require('tfma.Constants');
 const Data = goog.require('tfma.Data');
 const testSuite = goog.require('goog.testing.testSuite');
 goog.require('goog.testing.jsunit');
@@ -171,112 +170,6 @@ testSuite({
     assertEquals(a, data.getMetricValue(SLICE, 'a'));
     assertEquals(b, data.getMetricValue(SLICE, 'b'));
     assertEquals(parseFloat(c), data.getMetricValue(SLICE, 'c'));
-  },
-
-  testDoNotAddPlotDataIfNotSet: function() {
-    const data = [{test: {prediction: 0.75, label: 1}}];
-    Data.util.preprocessMaybeAddPlotData(data, 'test', fail);
-
-    assertUndefined(data[0].test.plots);
-  },
-
-  testAddPlotDataForPrecisionRecallCurve: function() {
-    const getter = (evaluation) => {
-      return {foo: evaluation.test.prediction + evaluation.test.label};
-    };
-
-    const data = [
-      {test: {prediction: 0.75, label: 1}, plot: {precisionRecallCurve: true}}
-    ];
-    Data.util.preprocessMaybeAddPlotData(data, 'test', getter);
-
-    const entry = data[0].test;
-    assertNotUndefined(entry.plots);
-    assertArrayEquals(
-        [
-          Constants.PlotTypes.PRECISION_RECALL_CURVE,
-          Constants.PlotTypes.ROC_CURVE,
-          Constants.PlotTypes.ACCURACY_CHARTS,
-          Constants.PlotTypes.GAIN_CHART,
-        ],
-        entry.plots.types);
-    assertEquals(1.75, entry.plots.foo);
-  },
-
-  testAddPlotDataForCalibration: function() {
-    const getter = (evaluation) => {
-      return {foo: evaluation.test.prediction + evaluation.test.label};
-    };
-
-    const data =
-        [{test: {prediction: 0.75, label: 1}, plot: {calibrationPlot: true}}];
-    Data.util.preprocessMaybeAddPlotData(data, 'test', getter);
-
-    const entry = data[0].test;
-    assertNotUndefined(entry.plots);
-    assertArrayEquals(
-        [
-          Constants.PlotTypes.CALIBRATION_PLOT,
-          Constants.PlotTypes.PREDICTION_DISTRIBUTION
-        ],
-        entry.plots.types);
-    assertEquals(1.75, entry.plots.foo);
-  },
-
-  testAddPlotDataForMacroPrecisionRecallCurve: function() {
-    const data = [{test: {}, plot: {macroPrecisionRecallCurve: true}}];
-    Data.util.preprocessMaybeAddPlotData(data, 'test', () => {
-      return {};
-    });
-
-    const entry = data[0].test;
-    assertNotUndefined(entry.plots);
-    assertArrayEquals(
-        [
-          Constants.PlotTypes.MACRO_PRECISION_RECALL_CURVE,
-        ],
-        entry.plots.types);
-  },
-
-  testAddPlotDataForMicroPrecisionRecallCurve: function() {
-    const data = [{test: {}, plot: {microPrecisionRecallCurve: true}}];
-    Data.util.preprocessMaybeAddPlotData(data, 'test', () => {
-      return {};
-    });
-
-    const entry = data[0].test;
-    assertNotUndefined(entry.plots);
-    assertArrayEquals(
-        [
-          Constants.PlotTypes.MICRO_PRECISION_RECALL_CURVE,
-        ],
-        entry.plots.types);
-  },
-
-  testAddPlotDataForWeightedPrecisionRecallCurve: function() {
-    const data = [{test: {}, plot: {weightedPrecisionRecallCurve: true}}];
-    Data.util.preprocessMaybeAddPlotData(data, 'test', () => {
-      return {};
-    });
-
-    const entry = data[0].test;
-    assertNotUndefined(entry.plots);
-    assertArrayEquals(
-        [
-          Constants.PlotTypes.WEIGHTED_PRECISION_RECALL_CURVE,
-        ],
-        entry.plots.types);
-  },
-
-  testDoNotAddUnsupportedPlotData: function() {
-    const data =
-        [{test: {prediction: 0.75, label: 1}, plot: {unsupported: true}}];
-    Data.util.preprocessMaybeAddPlotData(data, 'test', () => {
-      fail('Call unexpected. Test failed');
-      return {};
-    });
-
-    assertUndefined(data[0].test.plots);
   },
 
   testFlattenMetrics: function() {

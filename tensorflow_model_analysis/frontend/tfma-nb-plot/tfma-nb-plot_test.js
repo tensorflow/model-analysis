@@ -79,6 +79,8 @@ suite('tests', () => {
         tfma.PlotTypes.PREDICTION_DISTRIBUTION,
         tfma.PlotTypes.PRECISION_RECALL_CURVE,
         tfma.PlotTypes.ROC_CURVE,
+        tfma.PlotTypes.ACCURACY_CHARTS,
+        tfma.PlotTypes.GAIN_CHART,
       ]);
       done();
     };

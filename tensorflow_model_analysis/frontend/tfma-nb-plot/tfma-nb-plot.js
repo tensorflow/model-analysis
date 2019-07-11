@@ -129,19 +129,16 @@ export class NotebookPlotWrapper extends PolymerElement {
    * @private
    */
   computeAvailableTypes_(plotData) {
-    const availableTypes = [];
-    const data = plotData && plotData['plotData'];
-    if (data) {
-      if (data[tfma.PlotDataFieldNames.CALIBRATION_DATA]) {
-        availableTypes.push(tfma.PlotTypes.CALIBRATION_PLOT);
-        availableTypes.push(tfma.PlotTypes.PREDICTION_DISTRIBUTION);
-      }
-      if (data[tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA]) {
-        availableTypes.push(tfma.PlotTypes.PRECISION_RECALL_CURVE);
-        availableTypes.push(tfma.PlotTypes.ROC_CURVE);
-      }
+    const data = plotData && plotData['plotData'] || {};
+    const plotMap = {};
+    if (data[tfma.PlotDataFieldNames.CALIBRATION_DATA]) {
+      plotMap[tfma.PlotTypes.CALIBRATION_PLOT] = 1;
     }
-    return availableTypes;
+    if (data[tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA]) {
+      plotMap[tfma.PlotTypes.PRECISION_RECALL_CURVE] = 1;
+    }
+
+    return tfma.Data.getAvailablePlotTypes(plotMap);
   }
 
   /**

@@ -15,6 +15,11 @@
  */
 const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
 template.innerHTML = `
+<style>
+  tfma-plot {
+    width: 100%;
+  }
+</style>
 <tfma-plot data="[[plotData_]]" available-types="[[availableTypes_]]" heading="[[heading_]]"
            initial-type="[[initialType_]]">
 </tfma-plot>
