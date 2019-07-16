@@ -37,7 +37,9 @@ from typing import Callable, Dict, Optional, Text, Union
 from tensorflow.python.estimator.export import export as export_lib
 
 # TODO(b/110472071): Temporary for tf.contrib.learn Estimator support only.
-IS_TF_1 = hasattr(tf, '__version__') and tf.__version__[0] == '1'
+IS_TF_1 = (
+    hasattr(tf, 'version') and hasattr(tf.version, 'VERSION') and
+    tf.version.VERSION[0] == '1')
 
 # Return type of EvalInputReceiver function.
 EvalInputReceiverType = Union[  # pylint: disable=invalid-name
