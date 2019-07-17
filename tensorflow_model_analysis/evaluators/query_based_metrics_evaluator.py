@@ -175,7 +175,7 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
       missing_query_id_counter.inc()
       return None
     feature_value = features[query_id][encoding.NODE_SUFFIX]
-    if isinstance(feature_value, tf.SparseTensorValue):
+    if isinstance(feature_value, tf.compat.v1.SparseTensorValue):
       feature_value = feature_value.values
     if feature_value.size != 1:
       raise ValueError('Query ID feature "%s" should have exactly 1 value, but '

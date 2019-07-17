@@ -105,8 +105,8 @@ def _eval_input_receiver_using_iterator_fn():
   """Eval input receiver function using an iterator."""
   csv_row = tf.compat.v1.placeholder(
       dtype=tf.string, shape=[None], name='input_csv_row')
-  iterator = tf.compat.v1.data.Dataset.from_tensors(
-      csv_row).make_initializable_iterator()
+  iterator = tf.compat.v1.data.make_initializable_iterator(
+      tf.compat.v1.data.Dataset.from_tensors(csv_row))
   features = _parse_csv(iterator.get_next())
   receiver_tensors = {'examples': csv_row}
 

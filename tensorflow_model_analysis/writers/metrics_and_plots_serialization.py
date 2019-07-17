@@ -163,8 +163,9 @@ def _serialize_metrics(metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
   slice_key, slice_metrics = metrics
 
   if metric_keys.ERROR_METRIC in slice_metrics:
-    tf.logging.warning('Error for slice: %s with error message: %s ', slice_key,
-                       slice_metrics[metric_keys.ERROR_METRIC])
+    tf.compat.v1.logging.warning('Error for slice: %s with error message: %s ',
+                                 slice_key,
+                                 slice_metrics[metric_keys.ERROR_METRIC])
     metrics = metrics_for_slice_pb2.MetricsForSlice()
     metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
     metrics.metrics[metric_keys.ERROR_METRIC].debug_message = slice_metrics[
@@ -218,8 +219,9 @@ def _serialize_plots(plots: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
   slice_key, slice_plots = plots
 
   if metric_keys.ERROR_METRIC in slice_plots:
-    tf.logging.warning('Error for slice: %s with error message: %s ', slice_key,
-                       slice_plots[metric_keys.ERROR_METRIC])
+    tf.compat.v1.logging.warning('Error for slice: %s with error message: %s ',
+                                 slice_key,
+                                 slice_plots[metric_keys.ERROR_METRIC])
     metrics = metrics_for_slice_pb2.PlotsForSlice()
     metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
     metrics.plots[metric_keys.ERROR_METRIC].debug_message = slice_plots[

@@ -108,7 +108,8 @@ def _ParseExample(extracts: types.Extracts,
   try:
     example.ParseFromString(extracts[constants.INPUT_KEY])
   except:  # pylint: disable=bare-except
-    tf.logging.warning('Could not parse tf.Example from the input source.')
+    tf.compat.v1.logging.warning(
+        'Could not parse tf.Example from the input source.')
 
   features = {}
   if constants.FEATURES_PREDICTIONS_LABELS_KEY in extracts:

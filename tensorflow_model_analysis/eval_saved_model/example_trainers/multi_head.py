@@ -96,7 +96,7 @@ def simple_multi_head(export_path, eval_export_path):
   other_head = binary_class_head.BinaryClassHead(name='other_head')
   combined_head = multi_head.MultiHead([english_head, chinese_head, other_head])
 
-  estimator = tf.estimator.DNNLinearCombinedEstimator(
+  estimator = tf.compat.v1.estimator.DNNLinearCombinedEstimator(
       head=combined_head,
       dnn_feature_columns=[],
       dnn_optimizer=tf.compat.v1.train.AdagradOptimizer(learning_rate=0.01),

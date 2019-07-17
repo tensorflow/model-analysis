@@ -312,7 +312,7 @@ def _string_labels_to_class_ids(labels_tensor: tf.Tensor,
   #     classes_table = lookup_ops.index_table_from_tensor(
   #        vocabulary_list=classes, name='class_id_lookup')
   #     ...
-  shape = tf.shape(labels_tensor)
+  shape = tf.shape(input=labels_tensor)
   # Convert labels with shape (N) to (N, 1) if necessary
   expanded_tensor = tf.case([(tf.equal(tf.rank(labels_tensor), 1),
                               lambda: tf.expand_dims(labels_tensor, axis=-1))],
@@ -321,14 +321,14 @@ def _string_labels_to_class_ids(labels_tensor: tf.Tensor,
   #   classes_tensor = [['a', 'b', 'c'], ['a', 'b', 'c']]
   #   expanded_tensor = [['b'], ['a']]
   #   onehot_tensor = [[0, 1, 0], [1, 0, 0]]
-  onehot_tensor = tf.where(
+  onehot_tensor = tf.compat.v1.where(
       tf.equal(classes_tensor, expanded_tensor),
-      tf.ones(tf.shape(classes_tensor), dtype=tf.int64),
-      tf.zeros(tf.shape(classes_tensor), dtype=tf.int64))
+      tf.ones(tf.shape(input=classes_tensor), dtype=tf.int64),
+      tf.zeros(tf.shape(input=classes_tensor), dtype=tf.int64))
   # Convert one-hot vector from shape (N, n_classes) to (N, 1) if expanded
   # shape was (N, 1).
-  labels_tensor = tf.case([(tf.equal(tf.shape(expanded_tensor)[1], 1),
-                            lambda: tf.argmax(onehot_tensor, axis=1))],
+  labels_tensor = tf.case([(tf.equal(tf.shape(input=expanded_tensor)[1], 1),
+                            lambda: tf.argmax(input=onehot_tensor, axis=1))],
                           default=lambda: onehot_tensor)
   # Convert (N, 1) tensor to (N) if original input was (N)
   return tf.reshape(labels_tensor, shape)
