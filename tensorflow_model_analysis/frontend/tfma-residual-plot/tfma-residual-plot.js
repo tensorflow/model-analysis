@@ -108,9 +108,13 @@ export class ResidualPlot extends PolymerElement {
     for (let i = 0; i < data.length; i++) {
       const entry = data[i];
       const count = entry['numWeightedExamples'] || 0;
-      const upperBound = entry['upperThresholdExclusive'] || 0;
-      const lowerBound = entry['lowerThresholdInclusive'] || 0;
-      const label = (upperBound + lowerBound) / 2;
+      const upperBound = parseFloat(entry['upperThresholdExclusive'] || 0);
+      const lowerBound = parseFloat(entry['lowerThresholdInclusive'] || 0);
+      // We assume only one of upperBound and lowerBound can be infinite. When
+      // that happens, use the other value as the label.
+      const label = isFinite(upperBound) ?
+          (isFinite(lowerBound) ? (upperBound + lowerBound) / 2 : upperBound) :
+          lowerBound;
       const prediction =
           count ? entry['totalWeightedRefinedPrediction'] / count : 0;
       const residual = count ? label - prediction : 0;
@@ -124,7 +128,7 @@ export class ResidualPlot extends PolymerElement {
         'Residual is ' + residual.toFixed(tfma.FLOATING_POINT_PRECISION) +
             ' for label in ' + predictionRange,
         0,
-        'Prediciton range is ' + predictionRange,
+        'Prediction range is ' + predictionRange,
         count,
         'There are ' + count + ' example(s) for label in ' + predictionRange,
       ]);
