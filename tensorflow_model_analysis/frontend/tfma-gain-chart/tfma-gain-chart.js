@@ -101,17 +101,27 @@ export class GainChart extends PolymerElement {
       [0, 0, 'Random', 0, 'Origin']
     ];
 
+    // Create a copy of the input data and sort it by threshold in decreasing
+    // order.
+    const sortedData = data.slice().sort((entry1, entry2) => {
+      const threshold1 =
+          tfma.CellRenderer.extractFloatValue(entry1, 'threshold');
+      const threshold2 =
+          tfma.CellRenderer.extractFloatValue(entry2, 'threshold');
+      return threshold2 - threshold1;
+    });
+
     const totalPositives =
-        tfma.CellRenderer.extractFloatValue(data[0], 'truePositives') +
-        tfma.CellRenderer.extractFloatValue(data[0], 'falseNegatives');
+        tfma.CellRenderer.extractFloatValue(sortedData[0], 'truePositives') +
+        tfma.CellRenderer.extractFloatValue(sortedData[0], 'falseNegatives');
     const totalCount = totalPositives +
-        tfma.CellRenderer.extractFloatValue(data[0], 'trueNegatives') +
-        tfma.CellRenderer.extractFloatValue(data[0], 'falsePositives');
+        tfma.CellRenderer.extractFloatValue(sortedData[0], 'trueNegatives') +
+        tfma.CellRenderer.extractFloatValue(sortedData[0], 'falsePositives');
     const stepSize = totalCount / steps;
     let currentStep = Math.round(stepSize);
 
-    for (let i = 0; i < data.length; i++) {
-      const entry = data[i];
+    for (let i = 0; i < sortedData.length; i++) {
+      const entry = sortedData[i];
       const truePositives =
           tfma.CellRenderer.extractFloatValue(entry, 'truePositives');
       const totalPredictedPositives = truePositives +
