@@ -44,7 +44,7 @@ def simple_linear_classifier(export_path, eval_export_path):
 
   classifier = tf.estimator.LinearClassifier(
       feature_columns=util.linear_columns(),
-      loss_reduction=tf.compat.v1.losses.Reduction.SUM)
+      loss_reduction=tf.losses.Reduction.SUM)
   classifier = tf.estimator.add_metrics(classifier,
                                         util.classifier_extra_metrics)
   classifier.train(

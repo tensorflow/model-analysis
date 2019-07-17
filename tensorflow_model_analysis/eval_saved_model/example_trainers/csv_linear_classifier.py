@@ -81,8 +81,7 @@ def simple_csv_linear_classifier(export_path, eval_export_path):
   feature_spec = tf.feature_column.make_parse_example_spec(all_features)
 
   classifier = tf.estimator.LinearClassifier(
-      feature_columns=all_features,
-      loss_reduction=tf.compat.v1.losses.Reduction.SUM)
+      feature_columns=all_features, loss_reduction=tf.losses.Reduction.SUM)
   classifier.train(input_fn=input_fn, steps=1000)
 
   return util.export_model_and_eval_model(

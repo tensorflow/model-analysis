@@ -38,7 +38,7 @@ def simple_dnn_regressor(export_path, eval_export_path):
   regressor = tf.estimator.DNNRegressor(
       hidden_units=[4],
       feature_columns=util.dnn_columns(False),
-      loss_reduction=tf.compat.v1.losses.Reduction.SUM)
+      loss_reduction=tf.losses.Reduction.SUM)
   regressor = tf.estimator.add_metrics(regressor, util.regressor_extra_metrics)
   regressor.train(
       input_fn=util.make_regressor_input_fn(feature_spec), steps=3000)

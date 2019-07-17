@@ -54,8 +54,7 @@ def simple_linear_classifier_multivalent(export_path, eval_export_path):
                                                                 [label])
 
   classifier = tf.estimator.LinearClassifier(
-      feature_columns=all_features,
-      loss_reduction=tf.compat.v1.losses.Reduction.SUM)
+      feature_columns=all_features, loss_reduction=tf.losses.Reduction.SUM)
   classifier.train(input_fn=input_fn, steps=5000)
 
   return util.export_model_and_eval_model(

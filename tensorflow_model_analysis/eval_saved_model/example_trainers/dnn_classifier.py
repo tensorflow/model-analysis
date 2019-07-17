@@ -68,7 +68,7 @@ def get_simple_dnn_classifier_and_metadata(n_classes=2, label_vocabulary=None):
       feature_columns=util.dnn_columns(False),
       n_classes=n_classes,
       label_vocabulary=label_vocabulary,
-      loss_reduction=tf.compat.v1.losses.Reduction.SUM)
+      loss_reduction=tf.losses.Reduction.SUM)
   classifier = tf.estimator.add_metrics(classifier,
                                         util.classifier_extra_metrics)
   return {
