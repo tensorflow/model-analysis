@@ -26,6 +26,7 @@ import '../tfma-calibration-plot/tfma-calibration-plot.js';
 import '../tfma-gain-chart/tfma-gain-chart.js';
 import '../tfma-precision-recall-curve/tfma-precision-recall-curve.js';
 import '../tfma-prediction-distribution/tfma-prediction-distribution.js';
+import '../tfma-residual-plot/tfma-residual-plot.js';
 import '../tfma-roc-curve/tfma-roc-curve.js';
 
 const TABS = {
@@ -36,6 +37,7 @@ const TABS = {
   MICRO_PRECISION_RECALL: 'mipr',
   PRECISION_RECALL: 'pr',
   PREDICTION_DISTRIBUTION: 'pd',
+  RESIDUAL_PLOT: 'res',
   ROC: 'roc',
   WEIGHTED_PRECISION_RECALL: 'wpr',
 };
@@ -48,6 +50,7 @@ const TITLES = {
   MICRO_PRECISION_RECALL: 'Micro PR Curve',
   PRECISION_RECALL: 'Precision-Recall Curve',
   PREDICTION_DISTRIBUTION: 'Prediction Distribution',
+  RESIDUAL_PLOT: 'Residual Plot',
   ROC: 'ROC Curve',
   WEIGHTED_PRECISION_RECALL: 'Weighted PR Curve',
 };
@@ -74,6 +77,10 @@ const SUPPORTED_VISUALIZATION = {
   [tfma.PlotTypes.PREDICTION_DISTRIBUTION]: {
     type: TABS.PREDICTION_DISTRIBUTION,
     text: TITLES.PREDICTION_DISTRIBUTION,
+  },
+  [tfma.PlotTypes.RESIDUAL_PLOT]: {
+    type: TABS.RESIDUAL_PLOT,
+    text: TITLES.RESIDUAL_PLOT,
   },
   [tfma.PlotTypes.ROC_CURVE]: {
     type: TABS.ROC,
@@ -171,6 +178,7 @@ export class Plot extends PolymerElement {
           'Macro': TABS.MACRO_PRECISION_RECALL,
           'Micro': TABS.MICRO_PRECISION_RECALL,
           'Precision': TABS.PRECISION_RECALL,
+          'Residual': TABS.RESIDUAL_PLOT,
           'ROC': TABS.ROC,
           'Weighted': TABS.WEIGHTED_PRECISION_RECALL,
         }
@@ -191,6 +199,7 @@ export class Plot extends PolymerElement {
           'Macro': TITLES.MACRO_PRECISION_RECALL,
           'Micro': TITLES.MICRO_PRECISION_RECALL,
           'Precision': TITLES.PRECISION_RECALL,
+          'Residual': TITLES.RESIDUAL_PLOT,
           'ROC': TITLES.ROC,
           'Weighted': TITLES.WEIGHTED_PRECISION_RECALL,
         }

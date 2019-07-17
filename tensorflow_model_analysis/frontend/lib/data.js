@@ -387,7 +387,10 @@ function getAvailablePlotTypes(plotMap) {
     const supportedPlotTypes = [
       {
         type: Constants.PlotTypes.CALIBRATION_PLOT,
-        additional: [Constants.PlotTypes.PREDICTION_DISTRIBUTION]
+        additional: [
+          Constants.PlotTypes.RESIDUAL_PLOT,
+          Constants.PlotTypes.PREDICTION_DISTRIBUTION,
+        ]
       },
       {
         type: Constants.PlotTypes.PRECISION_RECALL_CURVE,

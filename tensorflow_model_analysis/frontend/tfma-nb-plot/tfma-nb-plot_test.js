@@ -76,6 +76,7 @@ suite('tests', () => {
       });
       assert.deepEqual(element.availableTypes_, [
         tfma.PlotTypes.CALIBRATION_PLOT,
+        tfma.PlotTypes.RESIDUAL_PLOT,
         tfma.PlotTypes.PREDICTION_DISTRIBUTION,
         tfma.PlotTypes.PRECISION_RECALL_CURVE,
         tfma.PlotTypes.ROC_CURVE,

@@ -111,6 +111,11 @@ template.innerHTML = `
         <tfma-calibration-plot buckets="[[calibrationData_]]" bucket-size="0.01">
         </tfma-calibration-plot>
       </div>
+      <div name="[[tabNames_.Residual]]" class="plot-holder">
+        <span class="title">[[chartTitles_.Residual]]</span>
+        <tfma-residual-plot data="[[calibrationData_]]">
+        </tfma-residual-plot>
+      </div>
       <div name="[[tabNames_.Macro]]" class="plot-holder">
         <span class="title">[[chartTitles_.Macro]]</span>
         <tfma-precision-recall-curve id="mapr" data="[[macroPrecisionRecallCurveData_]]">

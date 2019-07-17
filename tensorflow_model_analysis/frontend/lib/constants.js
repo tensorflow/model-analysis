@@ -71,6 +71,7 @@ const PlotTypes = {
   MICRO_PRECISION_RECALL_CURVE: 'microPrecisionRecallCurve',
   PREDICTION_DISTRIBUTION: 'predictionDistribution',
   PRECISION_RECALL_CURVE: 'precisionRecallCurve',
+  RESIDUAL_PLOT: 'residualPlot',
   ROC_CURVE: 'rocCurve',
   WEIGHTED_PRECISION_RECALL_CURVE: 'weightedPrecisionRecallCurve',
 };
@@ -213,6 +214,7 @@ goog.exportSymbol(
     PlotTypes.PREDICTION_DISTRIBUTION);
 goog.exportSymbol(
     'tfma.PlotTypes.PRECISION_RECALL_CURVE', PlotTypes.PRECISION_RECALL_CURVE);
+goog.exportSymbol('tfma.PlotTypes.RESIDUAL_PLOT', PlotTypes.RESIDUAL_PLOT);
 goog.exportSymbol('tfma.PlotTypes.ROC_CURVE', PlotTypes.ROC_CURVE);
 goog.exportSymbol(
     'tfma.PlotTypes.WEIGHTED_PRECISION_RECALL_CURVE',
