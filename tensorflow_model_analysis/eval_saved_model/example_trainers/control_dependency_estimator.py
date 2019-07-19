@@ -57,7 +57,7 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
       value_op, update_op for the metric.
     """
 
-    total_value = tf.Variable(
+    total_value = tf.compat.v1.Variable(
         initial_value=0.0,
         dtype=tf.float64,
         trainable=False,

@@ -56,7 +56,7 @@ def _addPyFuncMetricCallback(  # pylint: disable=invalid-name
   del features_dict
   del predictions_dict
 
-  total_value = tf.Variable(
+  total_value = tf.compat.v1.Variable(
       initial_value=0.0,
       dtype=tf.float64,
       trainable=False,

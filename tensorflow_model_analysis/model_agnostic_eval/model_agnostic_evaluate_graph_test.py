@@ -53,7 +53,7 @@ def add_mean_callback(features_dict, predictions_dict, labels_dict):
   # Defining and adding a py_func metric
   # Note that for py_func metrics, you must still store the metric state in
   # tf.Variables.
-  total_label = tf.Variable(
+  total_label = tf.compat.v1.Variable(
       initial_value=0.0,
       dtype=tf.float64,
       trainable=False,

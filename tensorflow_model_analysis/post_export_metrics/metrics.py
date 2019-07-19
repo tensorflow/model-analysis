@@ -31,7 +31,7 @@ def total(values: types.TensorType
 
   with tf.compat.v1.variable_scope('total', values):
     values = tf.cast(values, tf.float64)
-    total_value = tf.Variable(
+    total_value = tf.compat.v1.Variable(
         initial_value=0.0,
         dtype=tf.float64,
         trainable=False,
@@ -57,7 +57,7 @@ def squared_pearson_correlation(predictions: types.TensorType,
     weighted_predictions = tf.multiply(predictions, weights)
     weighted_labels = tf.multiply(labels, weights)
 
-    regression_error = tf.Variable(
+    regression_error = tf.compat.v1.Variable(
         initial_value=0.0,
         dtype=tf.float64,
         trainable=False,
@@ -74,7 +74,7 @@ def squared_pearson_correlation(predictions: types.TensorType,
             input_tensor=tf.square(
                 tf.subtract(weighted_labels, weighted_predictions))))
 
-    total_error = tf.Variable(
+    total_error = tf.compat.v1.Variable(
         initial_value=0.0,
         dtype=tf.float64,
         trainable=False,
@@ -161,7 +161,7 @@ def calibration_plot(predictions: types.TensorType,
     # Ensure that we don't mistakenly use the non-casted versions.
     del predictions, labels
 
-    prediction_bucket_counts = tf.Variable(
+    prediction_bucket_counts = tf.compat.v1.Variable(
         initial_value=[0.0] * (num_buckets + 2),
         dtype=tf.float64,
         trainable=False,
@@ -171,7 +171,7 @@ def calibration_plot(predictions: types.TensorType,
         ],
         validate_shape=True,
         name='prediction_bucket_counts')
-    label_bucket_counts = tf.Variable(
+    label_bucket_counts = tf.compat.v1.Variable(
         initial_value=[0.0] * (num_buckets + 2),
         dtype=tf.float64,
         trainable=False,
@@ -181,7 +181,7 @@ def calibration_plot(predictions: types.TensorType,
         ],
         validate_shape=True,
         name='label_bucket_counts')
-    weight_bucket_counts = tf.Variable(
+    weight_bucket_counts = tf.compat.v1.Variable(
         initial_value=[0.0] * (num_buckets + 2),
         dtype=tf.float64,
         trainable=False,
@@ -276,7 +276,7 @@ def _precision_recall_at_k(classes: types.TensorType,
   with tf.compat.v1.variable_scope(scope, [classes, scores, labels]):
 
     # Predicted positive.
-    predicted_positives = tf.Variable(
+    predicted_positives = tf.compat.v1.Variable(
         initial_value=[0.0] * num_cutoffs,
         dtype=tf.float64,
         trainable=False,
@@ -288,7 +288,7 @@ def _precision_recall_at_k(classes: types.TensorType,
         name='predicted_positives')
 
     # Predicted positive, label positive.
-    true_positives = tf.Variable(
+    true_positives = tf.compat.v1.Variable(
         initial_value=[0.0] * num_cutoffs,
         dtype=tf.float64,
         trainable=False,
@@ -300,7 +300,7 @@ def _precision_recall_at_k(classes: types.TensorType,
         name='true_positives')
 
     # Label positive.
-    actual_positives = tf.Variable(
+    actual_positives = tf.compat.v1.Variable(
         initial_value=0.0,
         dtype=tf.float64,
         trainable=False,
