@@ -51,7 +51,7 @@ export class ResidualPlot extends PolymerElement {
       options_: {
         type: Object,
         value: {
-          'legend': {'textStyle': {'fontSize': 9}, 'position': 'top'},
+          'legend': {'position': 'top'},
           'hAxis': {'title': 'Label'},
           'vAxes': {0: {'title': 'Residual'}, 1: {'title': 'Sample Count'}},
           'series': {

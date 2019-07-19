@@ -88,7 +88,7 @@ template.innerHTML = `
     width: 100%;
   }
   #flat-view-container .plot-holder {
-    width: 400px;
+    width: 480px;
   }
 </style>
 <div style="position:relative">
