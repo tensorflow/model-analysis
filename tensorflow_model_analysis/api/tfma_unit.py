@@ -201,9 +201,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       Metrics computed by TFMA using your model on the given examples.
     """
     eval_saved_model = load.EvalSavedModel(eval_saved_model_path)
-    fetched_list = eval_saved_model.predict_list(serialized_examples)
-    eval_saved_model.metrics_reset_update_get_list(
-        eval_saved_model.as_features_predictions_labels(fetched_list))
+    eval_saved_model.metrics_reset_update_get_list(serialized_examples)
     return eval_saved_model.get_metric_values()
 
   def _computeMetricsWithoutBeamNoBatching(self, eval_saved_model_path: Text,
@@ -227,9 +225,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     eval_saved_model = load.EvalSavedModel(eval_saved_model_path)
 
     for example in serialized_examples:
-      for fpl in eval_saved_model.as_features_predictions_labels(
-          eval_saved_model.predict(example)):
-        eval_saved_model.perform_metrics_update(fpl)
+      eval_saved_model.metrics_reset_update_get_list([example])
     return eval_saved_model.get_metric_values()
 
   def assertMetricsComputedWithBeamAre(

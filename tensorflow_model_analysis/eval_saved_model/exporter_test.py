@@ -61,10 +61,8 @@ class ExporterTest(testutil.TensorflowModelAnalysisTest):
 
     # Check the eval graph.
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    example1 = self._makeExample(prediction=0.9, label=0.0)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeExample(prediction=0.9, label=0.0).SerializeToString()
+    eval_saved_model.metrics_reset_update_get(example1)
 
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(metric_values, {'average_loss': 0.81})
@@ -113,10 +111,8 @@ class ExporterTest(testutil.TensorflowModelAnalysisTest):
 
     # Check the eval graph.
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    example1 = self._makeExample(prediction=0.9, label=0.0)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeExample(prediction=0.9, label=0.0).SerializeToString()
+    eval_saved_model.metrics_reset_update_get(example1)
 
     metric_values = eval_saved_model.get_metric_values()
     self.assertNotIn('average_loss', metric_values)

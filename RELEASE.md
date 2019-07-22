@@ -20,6 +20,8 @@
     a possible destination.
 *   Added support for label vocabularies for binary and multi-class estimators
     that support the new ALL_CLASSES prediction output.
+*   Move example parsing in aggregation into the graph for performance
+    improvements.
 
 ## Bug fixes and other changes
 

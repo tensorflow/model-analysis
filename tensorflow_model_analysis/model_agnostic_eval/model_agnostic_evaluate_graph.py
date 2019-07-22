@@ -31,6 +31,7 @@ import tensorflow as tf
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis import util as general_util
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
@@ -79,6 +80,26 @@ class ModelAgnosticEvaluateGraph(eval_metrics_graph.EvalMetricsGraph):
       # Create the infeed ops.
       self._create_infeed_ops()
       self.register_add_metric_callbacks(self._add_metrics_callbacks)
+
+  # TODO(ckuhn): Remove need to create feeds here too.
+  def _perform_metrics_update_list(
+      self, features_predictions_labels_list: List[Any]) -> None:
+    """Run a metrics update on a list of FPLs."""
+    # Lock should be acquired before calling this function.
+    feed_list = self._create_feed_for_features_predictions_labels_list(
+        features_predictions_labels_list)
+    try:
+      self._perform_metrics_update_fn(*feed_list)
+    except (RuntimeError, TypeError, ValueError,
+            tf.errors.OpError) as exception:
+      feed_dict = dict(
+          zip(self._perform_metrics_update_fn_feed_list_keys, feed_list))
+      self._log_debug_message_for_tracing_feed_errors(
+          fetches=[self._all_metric_update_ops] + self._metric_variable_nodes,
+          feed_list=self._perform_metrics_update_fn_feed_list)
+      general_util.reraise_augmented(
+          exception, 'features_predictions_labels_list = %s, feed_dict = %s' %
+          (features_predictions_labels_list, feed_dict))
 
   def _iterate_fpl_maps_in_canonical_order(
       self

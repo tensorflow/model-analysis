@@ -118,6 +118,8 @@ class EvalMetricsGraph(object):
     # Callable to perform metric update.
     self._perform_metrics_update_fn = None
 
+    self._input_map = None
+
     try:
       self._construct_graph()
     except (RuntimeError, TypeError, ValueError,
@@ -316,33 +318,18 @@ class EvalMetricsGraph(object):
   ) -> List[types.TensorValue]:
     raise NotImplementedError
 
-  def perform_metrics_update(
-      self,
-      features_predictions_labels: types.FeaturesPredictionsLabels) -> None:
-    """Run a single metrics update step a single FPL."""
-    with self._lock:
-      self._perform_metrics_update_list([features_predictions_labels])
-
-  def _perform_metrics_update_list(
-      self,
-      features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
-  ) -> None:
-    """Run a metrics update on a list of FPLs."""
-    # Lock should be acquired before calling this function.
-    feed_list = self._create_feed_for_features_predictions_labels_list(
-        features_predictions_labels_list)
+  def _perform_metrics_update_list(self, examples_list: List[Any]) -> None:
+    """Run a metrics update on a list of examples."""
     try:
-      self._perform_metrics_update_fn(*feed_list)
+      perform_metrics_update_fn = self._session.make_callable(
+          fetches=self._all_metric_update_ops,
+          feed_list=list(self._input_map.values()))
+      perform_metrics_update_fn(*[examples_list])
+
     except (RuntimeError, TypeError, ValueError,
             tf.errors.OpError) as exception:
-      feed_dict = dict(
-          zip(self._perform_metrics_update_fn_feed_list_keys, feed_list))
-      self._log_debug_message_for_tracing_feed_errors(
-          fetches=[self._all_metric_update_ops] + self._metric_variable_nodes,
-          feed_list=self._perform_metrics_update_fn_feed_list)
-      general_util.reraise_augmented(
-          exception, 'features_predictions_labels_list = %s, feed_dict = %s' %
-          (features_predictions_labels_list, feed_dict))
+      general_util.reraise_augmented(exception,
+                                     'raw_input = %s' % (examples_list))
 
   def metrics_reset_update_get(
       self, features_predictions_labels: types.FeaturesPredictionsLabels
@@ -350,16 +337,14 @@ class EvalMetricsGraph(object):
     """Run the metrics reset, update, get operations on a single FPL."""
     return self.metrics_reset_update_get_list([features_predictions_labels])
 
-  def metrics_reset_update_get_list(
-      self,
-      features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
-  ) -> List[Any]:
+  def metrics_reset_update_get_list(self,
+                                    examples_list: List[bytes]) -> List[Any]:
     """Run the metrics reset, update, get operations on a list of FPLs."""
     with self._lock:
       # Note that due to tf op reordering issues on some hardware, DO NOT merge
       # these operations into a single atomic reset_update_get operation.
       self._reset_metric_variables()
-      self._perform_metrics_update_list(features_predictions_labels_list)
+      self._perform_metrics_update_list(examples_list)
       return self._get_metric_variables()
 
   def _get_metric_variables(self) -> List[Any]:

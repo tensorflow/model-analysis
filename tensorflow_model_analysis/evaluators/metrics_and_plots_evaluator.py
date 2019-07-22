@@ -127,7 +127,8 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       # Note that fanout itself will prune the slice keys.
       | 'PruneExtracts' >> extractor.Filter(include=[
           constants.FEATURES_PREDICTIONS_LABELS_KEY,
-          constants.SLICE_KEY_TYPES_KEY
+          constants.SLICE_KEY_TYPES_KEY,
+          constants.INPUT_KEY,
       ])
       # Input: one example at a time, with slice keys in extracts.
       # Output: one fpl example per slice key (notice that the example turns

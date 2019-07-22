@@ -23,7 +23,6 @@ import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.evaluators import aggregate
@@ -34,9 +33,7 @@ def create_test_input(predict_list, slice_list):
   results = []
   for entry in predict_list:
     for slice_key in slice_list:
-      results.append((slice_key, {
-          constants.FEATURES_PREDICTIONS_LABELS_KEY: entry
-      }))
+      results.append((slice_key, {constants.INPUT_KEY: entry}))
   return results
 
 
@@ -51,7 +48,6 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
         None, temp_eval_export_dir)
 
-    eval_saved_model = load.EvalSavedModel(eval_export_dir)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir)
 
@@ -61,13 +57,12 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      predict_result = eval_saved_model.as_features_predictions_labels(
-          eval_saved_model.predict_list([
-              example1.SerializeToString(),
-              example2.SerializeToString(),
-              example3.SerializeToString(),
-              example4.SerializeToString()
-          ]))
+      predict_result = ([
+          example1.SerializeToString(),
+          example2.SerializeToString(),
+          example3.SerializeToString(),
+          example4.SerializeToString()
+      ])
 
       metrics = (
           pipeline
@@ -95,7 +90,6 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
         None, temp_eval_export_dir)
 
-    eval_saved_model = load.EvalSavedModel(eval_export_dir)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir)
 
@@ -105,17 +99,15 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      predict_result_english_slice = (
-          eval_saved_model.as_features_predictions_labels(
-              eval_saved_model.predict_list(
-                  [example1.SerializeToString(),
-                   example3.SerializeToString()])))
+      predict_result_english_slice = ([
+          example1.SerializeToString(),
+          example3.SerializeToString()
+      ])
 
-      predict_result_chinese_slice = (
-          eval_saved_model.as_features_predictions_labels(
-              eval_saved_model.predict_list(
-                  [example2.SerializeToString(),
-                   example4.SerializeToString()])))
+      predict_result_chinese_slice = ([
+          example2.SerializeToString(),
+          example4.SerializeToString()
+      ])
 
       test_input = (
           create_test_input(predict_result_english_slice, [(
@@ -172,7 +164,6 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
         None, temp_eval_export_dir)
 
-    eval_saved_model = load.EvalSavedModel(eval_export_dir)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir)
 
@@ -182,17 +173,15 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      predict_result_english_slice = (
-          eval_saved_model.as_features_predictions_labels(
-              eval_saved_model.predict_list(
-                  [example1.SerializeToString(),
-                   example3.SerializeToString()])))
+      predict_result_english_slice = ([
+          example1.SerializeToString(),
+          example3.SerializeToString()
+      ])
 
-      predict_result_chinese_slice = (
-          eval_saved_model.as_features_predictions_labels(
-              eval_saved_model.predict_list(
-                  [example2.SerializeToString(),
-                   example4.SerializeToString()])))
+      predict_result_chinese_slice = ([
+          example2.SerializeToString(),
+          example4.SerializeToString()
+      ])
 
       test_input = (
           create_test_input(predict_result_english_slice, [(

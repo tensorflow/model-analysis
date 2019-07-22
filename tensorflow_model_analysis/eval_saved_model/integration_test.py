@@ -80,20 +80,12 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
                                                       temp_eval_export_dir)
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    example1 = self._makeMultiHeadExample('english')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeMultiHeadExample('english').SerializeToString()
+    example2 = self._makeMultiHeadExample('chinese').SerializeToString()
+    example3 = self._makeMultiHeadExample('other').SerializeToString()
 
-    example2 = self._makeMultiHeadExample('chinese')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
-
-    example3 = self._makeMultiHeadExample('other')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example3.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    eval_saved_model.metrics_reset_update_get_list(
+        [example1, example2, example3])
 
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(
@@ -119,16 +111,9 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
                                                      temp_eval_export_dir))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    example1 = self._makeExample(prediction=1.0)
-
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
-
-    example2 = self._makeExample(prediction=0.0)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeExample(prediction=1.0).SerializeToString()
+    example2 = self._makeExample(prediction=0.0).SerializeToString()
+    eval_saved_model.metrics_reset_update_get_list([example1, example2])
 
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(metric_values, {
@@ -150,7 +135,7 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         fixed_int=2,
         var_float=10.0,
         var_string='banana',
-        var_int=20)
+        var_int=20).SerializeToString()
     example2 = self._makeExample(
         prediction=0.1,
         label=0.0,
@@ -159,24 +144,18 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         fixed_int=6,
         var_float=50.0,
         var_string='berry',
-        var_int=60)
+        var_int=60).SerializeToString()
 
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
-
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
-
+    eval_saved_model.metrics_reset_update_get_list([example1, example2])
     metric_values = eval_saved_model.get_metric_values()
+
     self.assertDictElementsAlmostEqual(
         metric_values, {
-            'control_dependency_on_fixed_float': 2.0,
-            'control_dependency_on_var_float': 20.0,
-            'control_dependency_on_actual_label': 200.0,
-            'control_dependency_on_var_int_label': 2000.0,
-            'control_dependency_on_prediction': 20000.0,
+            'control_dependency_on_fixed_float': 1.0,
+            'control_dependency_on_var_float': 10.0,
+            'control_dependency_on_actual_label': 100.0,
+            'control_dependency_on_var_int_label': 1000.0,
+            'control_dependency_on_prediction': 10000.0,
         })
 
   def testPredictList(self):
@@ -191,13 +170,14 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     example3 = self._makeExample(animals=['cat', 'dog'], label=1.0)
     example4 = self._makeExample(label=0.0)
 
+    examples_list = [
+        example1.SerializeToString(),
+        example2.SerializeToString(),
+        example3.SerializeToString(),
+        example4.SerializeToString()
+    ]
     features_predictions_labels_list = self.predict_injective_example_list(
-        eval_saved_model, [
-            example1.SerializeToString(),
-            example2.SerializeToString(),
-            example3.SerializeToString(),
-            example4.SerializeToString()
-        ])
+        eval_saved_model, examples_list)
 
     # Check that SparseFeatures were correctly populated.
     self.assertAllEqual(
@@ -217,8 +197,7 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         features_predictions_labels_list[3].features['animals'][
             encoding.NODE_SUFFIX].values)
 
-    eval_saved_model.metrics_reset_update_get_list(
-        features_predictions_labels_list)
+    eval_saved_model.metrics_reset_update_get_list(examples_list)
     metric_values = eval_saved_model.get_metric_values()
 
     self.assertDictElementsAlmostEqual(metric_values, {
@@ -242,13 +221,14 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     example4 = self._makeExample(
         values_t1=5.0, values_t2=7.0, values_t3=11.0, label=156.0 + 11393.0)
 
+    examples_list = [
+        example1.SerializeToString(),
+        example2.SerializeToString(),
+        example3.SerializeToString(),
+        example4.SerializeToString()
+    ]
     features_predictions_labels_list = self.predict_injective_example_list(
-        eval_saved_model, [
-            example1.SerializeToString(),
-            example2.SerializeToString(),
-            example3.SerializeToString(),
-            example4.SerializeToString()
-        ])
+        eval_saved_model, examples_list)
 
     self.assertAllEqual(
         np.array([[[1, 1, 1], [0, 0, 0], [0, 0, 0]]], dtype=np.float64),
@@ -289,8 +269,7 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         to_dense(features_predictions_labels_list[3].features['sparse_values'][
             encoding.NODE_SUFFIX]))
 
-    eval_saved_model.metrics_reset_update_get_list(
-        features_predictions_labels_list)
+    eval_saved_model.metrics_reset_update_get_list(examples_list)
     metric_values = eval_saved_model.get_metric_values()
 
     self.assertDictElementsAlmostEqual(metric_values, {
@@ -467,7 +446,12 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         np.array([[400, 401, 0, 0]]),
         fpl_list2[1].predictions['probabilities'][encoding.NODE_SUFFIX])
 
-    eval_saved_model.metrics_reset_update_get_list(fpl_list1 + fpl_list2)
+    eval_saved_model.metrics_reset_update_get_list([
+        example1.SerializeToString(),
+        example2.SerializeToString(),
+        example3.SerializeToString(),
+        example4.SerializeToString()
+    ])
     metric_values = eval_saved_model.get_metric_values()
 
     self.assertDictElementsAlmostEqual(
@@ -484,13 +468,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
             None, temp_eval_export_dir))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, '3.0,english,1.0')
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
-
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, '3.0,chinese,0.0')
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    eval_saved_model.metrics_reset_update_get_list(
+        ['3.0,english,1.0', '3.0,chinese,0.0'])
 
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(metric_values, {
@@ -508,16 +487,13 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     example1.features.feature['age'].float_list.value[:] = [1.0]
     example1.features.feature['label'].float_list.value[:] = [3.0]
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
 
     example2 = example_pb2.Example()
     example2.features.feature['age'].float_list.value[:] = [2.0]
     example2.features.feature['label'].float_list.value[:] = [7.0]
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    eval_saved_model.metrics_reset_update_get_list(
+        [example1.SerializeToString(),
+         example2.SerializeToString()])
 
     metric_values = eval_saved_model.get_metric_values()
 
@@ -555,20 +531,11 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
 
-    example1 = self._makeMultiHeadExample('english')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
-
-    example2 = self._makeMultiHeadExample('chinese')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
-
-    example3 = self._makeMultiHeadExample('other')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example3.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeMultiHeadExample('english').SerializeToString()
+    example2 = self._makeMultiHeadExample('chinese').SerializeToString()
+    example3 = self._makeMultiHeadExample('other').SerializeToString()
+    eval_saved_model.metrics_reset_update_get_list(
+        [example1, example2, example3])
 
     metric_values = eval_saved_model.get_metric_values()
 
@@ -617,15 +584,9 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
 
-    example1 = self._makeMultiHeadExample('english')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
-
-    example2 = self._makeMultiHeadExample('chinese')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeMultiHeadExample('english').SerializeToString()
+    example2 = self._makeMultiHeadExample('chinese').SerializeToString()
+    eval_saved_model.metrics_reset_update_get_list([example1, example2])
 
     metric_values = eval_saved_model.get_metric_values()
 
@@ -665,10 +626,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
 
-    example1 = self._makeMultiHeadExample('english')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeMultiHeadExample('english').SerializeToString()
+    eval_saved_model.metrics_reset_update_get_list([example1])
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(
         metric_values, {
@@ -679,10 +638,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         })
     metric_variables = eval_saved_model.get_metric_variables()
 
-    example2 = self._makeMultiHeadExample('chinese')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example2 = self._makeMultiHeadExample('chinese').SerializeToString()
+    eval_saved_model.metrics_reset_update_get_list([example1, example2])
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(
         metric_values, {
@@ -719,10 +676,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
 
-    example1 = self._makeMultiHeadExample('english')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeMultiHeadExample('english').SerializeToString()
+    eval_saved_model.metrics_reset_update_get(example1)
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(
         metric_values, {
@@ -733,10 +688,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         })
     eval_saved_model.reset_metric_variables()
 
-    example2 = self._makeMultiHeadExample('chinese')
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example2 = self._makeMultiHeadExample('chinese').SerializeToString()
+    eval_saved_model.metrics_reset_update_get(example2)
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(
         metric_values, {
@@ -762,23 +715,14 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
       eval_saved_model.register_additional_metric_ops(metric_ops)
 
-    example1 = self._makeMultiHeadExample('english')
-    features_predictions_labels1 = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    metric_variables1 = eval_saved_model.metrics_reset_update_get(
-        features_predictions_labels1)
+    example1 = self._makeMultiHeadExample('english').SerializeToString()
+    metric_variables1 = eval_saved_model.metrics_reset_update_get(example1)
 
-    example2 = self._makeMultiHeadExample('chinese')
-    features_predictions_labels2 = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    metric_variables2 = eval_saved_model.metrics_reset_update_get(
-        features_predictions_labels2)
+    example2 = self._makeMultiHeadExample('chinese').SerializeToString()
+    metric_variables2 = eval_saved_model.metrics_reset_update_get(example2)
 
-    example3 = self._makeMultiHeadExample('other')
-    features_predictions_labels3 = self.predict_injective_single_example(
-        eval_saved_model, example3.SerializeToString())
-    metric_variables3 = eval_saved_model.metrics_reset_update_get(
-        features_predictions_labels3)
+    example3 = self._makeMultiHeadExample('other').SerializeToString()
+    metric_variables3 = eval_saved_model.metrics_reset_update_get(example3)
 
     eval_saved_model.set_metric_variables(metric_variables1)
     metric_values1 = eval_saved_model.get_metric_values()
@@ -810,10 +754,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
             'example_count/english_head': 1.0
         })
 
-    eval_saved_model.metrics_reset_update_get_list([
-        features_predictions_labels1, features_predictions_labels2,
-        features_predictions_labels3
-    ])
+    eval_saved_model.metrics_reset_update_get_list(
+        [example1, example2, example3])
     metric_values_combined = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(
         metric_values_combined, {
@@ -830,14 +772,10 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
     example1 = self._makeExample(age=3.0, language='english', label=1.0)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
-
     example2 = self._makeExample(age=2.0, language='chinese', label=0.0)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    eval_saved_model.metrics_reset_update_get_list(
+        [example1.SerializeToString(),
+         example2.SerializeToString()])
 
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(
@@ -866,10 +804,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
     # Check the eval graph.
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    example1 = self._makeExample(prediction=0.9, label=0.0)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeExample(prediction=0.9, label=0.0).SerializeToString()
+    eval_saved_model.metrics_reset_update_get(example1)
 
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(metric_values, {'average_loss': 0.81})
@@ -890,15 +826,12 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         None, temp_eval_export_dir)
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    example1 = self._makeExample(age=3.0, language='english', label=1.0)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example1.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example1 = self._makeExample(
+        age=3.0, language='english', label=1.0).SerializeToString()
 
-    example2 = self._makeExample(age=2.0, language='chinese', label=0.0)
-    features_predictions_labels = self.predict_injective_single_example(
-        eval_saved_model, example2.SerializeToString())
-    eval_saved_model.perform_metrics_update(features_predictions_labels)
+    example2 = self._makeExample(
+        age=2.0, language='chinese', label=0.0).SerializeToString()
+    eval_saved_model.metrics_reset_update_get_list([example1, example2])
 
     metric_values = eval_saved_model.get_metric_values()
     self.assertDictElementsAlmostEqual(
