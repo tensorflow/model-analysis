@@ -27,7 +27,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.slicer import slicer
-from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple
+from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
 
 @beam.ptransform_fn
@@ -101,7 +101,8 @@ class _AggState(object):
 
   def __init__(self):
     self.metric_variables = None  # type: Optional[types.MetricVariablesType]
-    self.inputs = []  # type: List[Any]
+    self.inputs = [
+    ]  # type: List[Union[bytes, types.FeaturesPredictionsLabels]]
 
   def copy_from(  # pylint: disable=invalid-name
       self, other: '_AggState') -> None:

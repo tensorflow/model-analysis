@@ -105,7 +105,8 @@ class EvalMetricsGraph(object):
     self._perform_metrics_update_fn_feed_list = []
     self._perform_metrics_update_fn_feed_list_keys = []
 
-    # Dict that maps Features Predictions Label keys to their tensors.
+    # OrderedDicts that map features, predictions, and labels keys to their
+    # tensors.
     self._features_map = {}
     self._predictions_map = {}
     self._labels_map = {}
@@ -118,6 +119,8 @@ class EvalMetricsGraph(object):
     # Callable to perform metric update.
     self._perform_metrics_update_fn = None
 
+    # OrderedDict produced by graph_ref's load_(legacy_)inputs, mapping input
+    # key to tensor value.
     self._input_map = None
 
     try:
@@ -321,10 +324,7 @@ class EvalMetricsGraph(object):
   def _perform_metrics_update_list(self, examples_list: List[Any]) -> None:
     """Run a metrics update on a list of examples."""
     try:
-      perform_metrics_update_fn = self._session.make_callable(
-          fetches=self._all_metric_update_ops,
-          feed_list=list(self._input_map.values()))
-      perform_metrics_update_fn(*[examples_list])
+      self._perform_metrics_update_fn(*[examples_list])
 
     except (RuntimeError, TypeError, ValueError,
             tf.errors.OpError) as exception:

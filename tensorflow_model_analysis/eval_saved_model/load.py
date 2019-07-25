@@ -213,15 +213,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
       # We need to save this because we need to update the
       # metrics_reset_update_get_fn when additional metric ops are registered
       # (the feed_list will stay the same though).
-      feed_list = []
-      feed_list_keys = []
-      for which_map, key, map_dict in (
-          self._iterate_fpl_maps_in_canonical_order()):
-        feed_list.append(map_dict)
-        feed_list_keys.append((which_map, key))
-      self._perform_metrics_update_fn_feed_list = feed_list
-      # We also keep the associated keys for better error messages.
-      self._perform_metrics_update_fn_feed_list_keys = feed_list_keys
+      self._perform_metrics_update_fn_feed_list = list(self._input_map.values())
 
       self._metric_names = []
       self._metric_value_ops = []

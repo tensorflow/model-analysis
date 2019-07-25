@@ -125,6 +125,8 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       extracts
       # Downstream computation only cares about FPLs, so we prune before fanout.
       # Note that fanout itself will prune the slice keys.
+      # TODO(b/130032676, b/111353165): Prune FPLs to contain only the necessary
+      # set for the calculation of post_export_metrics if possible.
       | 'PruneExtracts' >> extractor.Filter(include=[
           constants.FEATURES_PREDICTIONS_LABELS_KEY,
           constants.SLICE_KEY_TYPES_KEY,
