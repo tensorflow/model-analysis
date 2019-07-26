@@ -766,7 +766,7 @@ def run_model_analysis(
     if file_format == 'tfrecords':
       data = p | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
           file_pattern=data_location,
-          compression_type=beam.io.filesystem.CompressionTypes.UNCOMPRESSED)
+          compression_type=beam.io.filesystem.CompressionTypes.AUTO)
     elif file_format == 'text':
       data = p | 'ReadFromText' >> beam.io.textio.ReadFromText(data_location)
     else:
