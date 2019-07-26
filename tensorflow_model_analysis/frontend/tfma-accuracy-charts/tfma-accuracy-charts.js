@@ -84,7 +84,11 @@ export class AccuracyPrecisionRecallF1 extends PolymerElement {
     ]];
     data.forEach((entry) => {
       const threshold = Math.max(0, Math.min(1, entry['threshold'] || 0));
-      const accuracy = tfma.CellRenderer.extractFloatValue(entry, 'accuracy');
+      const tp = tfma.CellRenderer.extractFloatValue(entry, 'truePositives');
+      const tn = tfma.CellRenderer.extractFloatValue(entry, 'trueNegatives');
+      const fp = tfma.CellRenderer.extractFloatValue(entry, 'falsePositives');
+      const fn = tfma.CellRenderer.extractFloatValue(entry, 'falseNegatives');
+      const accuracy = (tp + tn) / (tp + tn + fp + fn);
       const recall = tfma.CellRenderer.extractFloatValue(entry, 'recall');
       const precision = tfma.CellRenderer.extractFloatValue(entry, 'precision');
       const f1 = 2 * recall * precision / (recall + precision);

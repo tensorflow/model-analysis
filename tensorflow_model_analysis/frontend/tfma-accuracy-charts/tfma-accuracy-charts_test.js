@@ -20,13 +20,29 @@ suite('tests', () => {
       {
         'precision': 0.75,
         'recall': 0.125,
-        'accuracy': 0.7,
-        'threshold': Infinity
+        'threshold': Infinity,
+        'truePositives': 3,
+        'trueNegatives': 4,
+        'falsePositives': 2,
+        'falseNegatives': 1,
       },
-      {'precision': 0.625, 'recall': 0.25, 'accuracy': 0.6, 'threshold': 0.5}, {
+      {
+        'precision': 0.625,
+        'recall': 0.25,
+        'accuracy': 0.6,
+        'threshold': 0.5,
+        'truePositives': 3,
+        'trueNegatives': 3,
+        'falsePositives': 3,
+        'falseNegatives': 1,
+      },
+      {
         'precision': 0.5,
         'recall': 0.375,
-        'accuracy': 0.5,
+        'truePositives': 3,
+        'trueNegatives': 2,
+        'falsePositives': 4,
+        'falseNegatives': 1,
         'threshold': -Infinity
       }
     ];
@@ -62,7 +78,12 @@ suite('tests', () => {
   test('handleNaNAndInfinity', () => {
     const element = fixture('charts');
     element.data = [
-      {'precision': 'NaN', 'recall': 'Infinity', 'threshold': 1},
+      {
+        'precision': 'NaN',
+        'recall': 'Infinity',
+        'threshold': 1,
+        'falsePositives': 1,
+      },
     ];
     const chartData =
         element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;

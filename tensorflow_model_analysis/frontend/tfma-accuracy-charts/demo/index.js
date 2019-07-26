@@ -19,7 +19,10 @@
   let precision = 1;
   for (let i = 0; i <= 128; i++) {
     input.push({
-      'accuracy': 1 - (1 - precision) / 2,
+      'truePositives': Math.random(),
+      'trueNegatives': Math.random(),
+      'falsePositives': Math.random(),
+      'falseNegatives': Math.random(),
       'precision': precision,
       'recall': i / 128,
       'threshold': (128 - i) / 128,
