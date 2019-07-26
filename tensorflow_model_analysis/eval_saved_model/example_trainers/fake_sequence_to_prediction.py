@@ -137,9 +137,9 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
         values=sparse_values,
         dense_shape=[batch_size, sparse_timesteps, sparse_dims])
 
-  def model_fn(features, labels, mode, params):
+  def model_fn(features, labels, mode, config):
     """Model function for custom estimator."""
-    del params
+    del config
     dense_values = tf.sparse.to_dense(
         features['sparse_values'], validate_indices=False)
     a = tf.Variable(1.0, dtype=tf.float32, name='a')

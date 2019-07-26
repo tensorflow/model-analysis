@@ -34,9 +34,9 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 def simple_custom_estimator(export_path, eval_export_path):
   """Trains and exports a simple custom estimator."""
 
-  def model_fn(features, labels, mode, params):
+  def model_fn(features, labels, mode, config):
     """Model function for custom estimator."""
-    del params
+    del config
     m = tf.Variable(0.0, dtype=tf.float32, name='m')
     c = tf.Variable(0.0, dtype=tf.float32, name='c')
     predictions = m * features['age'] + c

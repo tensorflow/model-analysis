@@ -191,10 +191,10 @@ def _train_input_fn():
   return features, features['input_index']
 
 
-def _model_fn(features, labels, mode, params):
+def _model_fn(features, labels, mode, config):
   """Model function for custom estimator."""
 
-  del params  # Unused.
+  del config  # Unused.
 
   predictions = tf.cast(features['input_index'], tf.float32)
   if mode == tf.estimator.ModeKeys.PREDICT:

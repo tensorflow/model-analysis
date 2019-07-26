@@ -63,20 +63,20 @@ class EncodingTest(tf.test.TestCase):
           values=tf.compat.v1.placeholder(tf.int64),
           dense_shape=tf.compat.v1.placeholder(tf.int64))
 
-    test_cases = [
-        example, features['age'], features['gender'], features['varstr'],
-        features['varint'], features['varfloat'], features[u'unicode\u1234'],
-        constant, sparse
-    ]
-    for tensor in test_cases:
-      got_tensor = encoding.decode_tensor_node(
-          g, encoding.encode_tensor_node(tensor))
-      if isinstance(tensor, tf.SparseTensor):
-        self.assertEqual(tensor.indices, got_tensor.indices)
-        self.assertEqual(tensor.values, got_tensor.values)
-        self.assertEqual(tensor.dense_shape, got_tensor.dense_shape)
-      else:
-        self.assertEqual(tensor, got_tensor)
+      test_cases = [
+          example, features['age'], features['gender'], features['varstr'],
+          features['varint'], features['varfloat'], features[u'unicode\u1234'],
+          constant, sparse
+      ]
+      for tensor in test_cases:
+        got_tensor = encoding.decode_tensor_node(
+            g, encoding.encode_tensor_node(tensor))
+        if isinstance(tensor, tf.SparseTensor):
+          self.assertEqual(tensor.indices, got_tensor.indices)
+          self.assertEqual(tensor.values, got_tensor.values)
+          self.assertEqual(tensor.dense_shape, got_tensor.dense_shape)
+        else:
+          self.assertEqual(tensor, got_tensor)
 
 
 if __name__ == '__main__':

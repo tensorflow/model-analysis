@@ -158,15 +158,15 @@ class EvalMetricsGraph(object):
         callback.
 
     """
-    features_dict, predictions_dict, labels_dict = (
-        self.get_features_predictions_labels_dicts())
-    features_dict = util.wrap_tensor_or_dict_of_tensors_in_identity(
-        features_dict)
-    predictions_dict = util.wrap_tensor_or_dict_of_tensors_in_identity(
-        predictions_dict)
-    labels_dict = util.wrap_tensor_or_dict_of_tensors_in_identity(labels_dict)
-
     with self._graph.as_default():
+      features_dict, predictions_dict, labels_dict = (
+          self.get_features_predictions_labels_dicts())
+      features_dict = util.wrap_tensor_or_dict_of_tensors_in_identity(
+          features_dict)
+      predictions_dict = util.wrap_tensor_or_dict_of_tensors_in_identity(
+          predictions_dict)
+      labels_dict = util.wrap_tensor_or_dict_of_tensors_in_identity(labels_dict)
+
       metric_ops = {}
       for add_metrics_callback in add_metrics_callbacks:
         new_metric_ops = add_metrics_callback(features_dict, predictions_dict,

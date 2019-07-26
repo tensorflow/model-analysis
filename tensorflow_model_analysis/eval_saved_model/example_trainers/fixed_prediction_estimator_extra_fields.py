@@ -38,9 +38,9 @@ def simple_fixed_prediction_estimator_extra_fields(export_path,
                                                    include_metrics=True):
   """Exports a simple fixed prediction estimator that parses extra fields."""
 
-  def model_fn(features, labels, mode, params):
+  def model_fn(features, labels, mode, config):
     """Model function for custom estimator."""
-    del params
+    del config
     predictions = features['prediction']
     predictions_dict = {
         prediction_keys.PredictionKeys.PREDICTIONS: predictions,

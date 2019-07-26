@@ -401,8 +401,10 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
       # automatically expands if needed.
       labels_tensor = tf.expand_dims(labels_tensor, 1)
     labels_tensor.shape.assert_has_rank(2)
-    if (labels_tensor.shape[1].value is None or
-        labels_tensor.shape[1].value == 1 and self._tensor_index is not None):
+    dim_1 = labels_tensor.shape[1]
+    if isinstance(dim_1, tf.compat.v1.Dimension):
+      dim_1 = dim_1.value
+    if (dim_1 is None or dim_1 == 1 and self._tensor_index is not None):
       labels_tensor = make_multi_hot_labels()
 
     assert_op = tf.Assert(

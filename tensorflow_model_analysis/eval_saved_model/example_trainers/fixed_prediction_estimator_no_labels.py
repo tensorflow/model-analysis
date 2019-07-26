@@ -38,9 +38,9 @@ def simple_fixed_prediction_estimator_no_labels(
     output_prediction_key=prediction_keys.PredictionKeys.PREDICTIONS):
   """Exports a simple fixed prediction estimator with no labels."""
 
-  def model_fn(features, mode, params):
+  def model_fn(features, mode, config):
     """Model function for custom estimator."""
-    del params
+    del config
     predictions = features['prediction']
 
     if output_prediction_key is not None:

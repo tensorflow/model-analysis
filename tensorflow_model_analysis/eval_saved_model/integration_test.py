@@ -227,55 +227,56 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
         example3.SerializeToString(),
         example4.SerializeToString()
     ]
-    features_predictions_labels_list = self.predict_injective_example_list(
-        eval_saved_model, examples_list)
 
-    self.assertAllEqual(
-        np.array([[[1, 1, 1], [0, 0, 0], [0, 0, 0]]], dtype=np.float64),
-        features_predictions_labels_list[0].features['embedding'][
-            encoding.NODE_SUFFIX])
-    self.assertAllEqual(
-        np.array([[[0, 0, 0], [3, 3, 3], [0, 0, 0]]], dtype=np.float64),
-        features_predictions_labels_list[1].features['embedding'][
-            encoding.NODE_SUFFIX])
-    self.assertAllEqual(
-        np.array([[[2, 2, 2], [0, 0, 0], [5, 5, 5]]], dtype=np.float64),
-        features_predictions_labels_list[2].features['embedding'][
-            encoding.NODE_SUFFIX])
-    self.assertAllEqual(
-        np.array([[[5, 5, 5], [7, 7, 7], [11, 11, 11]]], dtype=np.float64),
-        features_predictions_labels_list[3].features['embedding'][
-            encoding.NODE_SUFFIX])
+    with tf.compat.v1.Session() as sess:
+      features_predictions_labels_list = self.predict_injective_example_list(
+          eval_saved_model, examples_list)
 
-    def to_dense(sparse_tensor_value):
-      sess = tf.compat.v1.Session()
-      return sess.run(tf.sparse.to_dense(sparse_tensor_value))
+      self.assertAllEqual(
+          np.array([[[1, 1, 1], [0, 0, 0], [0, 0, 0]]], dtype=np.float64),
+          features_predictions_labels_list[0].features['embedding'][
+              encoding.NODE_SUFFIX])
+      self.assertAllEqual(
+          np.array([[[0, 0, 0], [3, 3, 3], [0, 0, 0]]], dtype=np.float64),
+          features_predictions_labels_list[1].features['embedding'][
+              encoding.NODE_SUFFIX])
+      self.assertAllEqual(
+          np.array([[[2, 2, 2], [0, 0, 0], [5, 5, 5]]], dtype=np.float64),
+          features_predictions_labels_list[2].features['embedding'][
+              encoding.NODE_SUFFIX])
+      self.assertAllEqual(
+          np.array([[[5, 5, 5], [7, 7, 7], [11, 11, 11]]], dtype=np.float64),
+          features_predictions_labels_list[3].features['embedding'][
+              encoding.NODE_SUFFIX])
 
-    self.assertAllEqual(
-        np.array([[[1, 1, 1], [0, 0, 0], [0, 0, 0]]], dtype=np.float64),
-        to_dense(features_predictions_labels_list[0].features['sparse_values'][
-            encoding.NODE_SUFFIX]))
-    self.assertAllEqual(
-        np.array([[[0, 0, 0], [3, 9, 27], [0, 0, 0]]], dtype=np.float64),
-        to_dense(features_predictions_labels_list[1].features['sparse_values'][
-            encoding.NODE_SUFFIX]))
-    self.assertAllEqual(
-        np.array([[[2, 4, 8], [0, 0, 0], [5, 25, 125]]], dtype=np.float64),
-        to_dense(features_predictions_labels_list[2].features['sparse_values'][
-            encoding.NODE_SUFFIX]))
-    self.assertAllEqual(
-        np.array([[[5, 25, 125], [7, 49, 343], [11, 121, 1331]]],
-                 dtype=np.float64),
-        to_dense(features_predictions_labels_list[3].features['sparse_values'][
-            encoding.NODE_SUFFIX]))
+      def to_dense(sparse_tensor_value):
+        return sess.run(tf.sparse.to_dense(sparse_tensor_value))
 
-    eval_saved_model.metrics_reset_update_get_list(examples_list)
-    metric_values = eval_saved_model.get_metric_values()
+      self.assertAllEqual(
+          np.array([[[1, 1, 1], [0, 0, 0], [0, 0, 0]]], dtype=np.float64),
+          to_dense(features_predictions_labels_list[0].features['sparse_values']
+                   [encoding.NODE_SUFFIX]))
+      self.assertAllEqual(
+          np.array([[[0, 0, 0], [3, 9, 27], [0, 0, 0]]], dtype=np.float64),
+          to_dense(features_predictions_labels_list[1].features['sparse_values']
+                   [encoding.NODE_SUFFIX]))
+      self.assertAllEqual(
+          np.array([[[2, 4, 8], [0, 0, 0], [5, 25, 125]]], dtype=np.float64),
+          to_dense(features_predictions_labels_list[2].features['sparse_values']
+                   [encoding.NODE_SUFFIX]))
+      self.assertAllEqual(
+          np.array([[[5, 25, 125], [7, 49, 343], [11, 121, 1331]]],
+                   dtype=np.float64),
+          to_dense(features_predictions_labels_list[3].features['sparse_values']
+                   [encoding.NODE_SUFFIX]))
 
-    self.assertDictElementsAlmostEqual(metric_values, {
-        'mean_squared_error': 0.0,
-        'mean_prediction': 3203.5,
-    })
+      eval_saved_model.metrics_reset_update_get_list(examples_list)
+      metric_values = eval_saved_model.get_metric_values()
+
+      self.assertDictElementsAlmostEqual(metric_values, {
+          'mean_squared_error': 0.0,
+          'mean_prediction': 3203.5,
+      })
 
   # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
   def _sharedTestForPredictListMultipleExamplesPerInputModel(

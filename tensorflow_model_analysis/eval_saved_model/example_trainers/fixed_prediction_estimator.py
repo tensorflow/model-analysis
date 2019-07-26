@@ -44,9 +44,9 @@ def get_simple_fixed_prediction_estimator_and_metadata(
     serving_input_receiver_fn, train_input_fn and model_fn.
   """
 
-  def model_fn(features, labels, mode, params):
+  def model_fn(features, labels, mode, config):
     """Model function for custom estimator."""
-    del params
+    del config
     predictions = features['prediction']
 
     if output_prediction_key is not None:

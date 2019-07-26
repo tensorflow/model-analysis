@@ -31,10 +31,10 @@ from tensorflow.python.estimator.canned import metric_keys
 from tensorflow.python.estimator.canned import prediction_keys
 
 
-def model_fn(features, labels, mode, params):
+def model_fn(features, labels, mode, config):
   """Model function for custom estimator."""
   del labels
-  del params
+  del config
   classes = tf.sparse.to_dense(features['classes'], default_value='?')
   scores = tf.sparse.to_dense(features['scores'], default_value=0.0)
 

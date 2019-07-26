@@ -68,13 +68,13 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
         validate_shape=True)
 
     with tf.control_dependencies([target]):
-      update_op = tf.compat.v1.assign_add(total_value, increment)
+      update_op = tf.identity(tf.compat.v1.assign_add(total_value, increment))
     value_op = tf.identity(total_value)
     return value_op, update_op
 
-  def model_fn(features, labels, mode, params):
+  def model_fn(features, labels, mode, config):
     """Model function for custom estimator."""
-    del params
+    del config
     predictions = features['prediction']
     predictions_dict = {
         prediction_keys.PredictionKeys.PREDICTIONS: predictions,

@@ -34,15 +34,15 @@ class ExportTest(testutil.TensorflowModelAnalysisTest):
 
   def testMultipleCallsToEvalInputReceiver(self):
     graph = tf.Graph()
-    features1 = {'apple': tf.constant(1.0), 'banana': tf.constant(2.0)}
-    labels1 = tf.constant(3.0)
-    receiver_tensors1 = {'examples': tf.compat.v1.placeholder(tf.string)}
-
-    features2 = {'cherry': tf.constant(3.0)}
-    labels2 = {'alpha': tf.constant(4.0), 'bravo': tf.constant(5.0)}
-    receiver_tensors2 = {'examples': tf.compat.v1.placeholder(tf.string)}
-
     with graph.as_default():
+      features1 = {'apple': tf.constant(1.0), 'banana': tf.constant(2.0)}
+      labels1 = tf.constant(3.0)
+      receiver_tensors1 = {'examples': tf.compat.v1.placeholder(tf.string)}
+
+      features2 = {'cherry': tf.constant(3.0)}
+      labels2 = {'alpha': tf.constant(4.0), 'bravo': tf.constant(5.0)}
+      receiver_tensors2 = {'examples': tf.compat.v1.placeholder(tf.string)}
+
       export.EvalInputReceiver(
           features=features1,
           labels=labels1,

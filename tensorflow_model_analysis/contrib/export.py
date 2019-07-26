@@ -81,10 +81,10 @@ def _make_observing_model_call(old_call_fn: Callable[..., Any], key: Text,
                                output_dict: Dict[Text, Any]):
   """Returns a a function that wraps <Model>.__call__ and observes arguments.
 
-  The returned function can be used to replace _DNNModel.__call__ and
-  LinearModel.__call__ so we can observe the Keras Model. Note that the wrapper
-  function is "observer-only" - it wraps around the old_call_fn and observes
-  its arguments.
+  The returned function can be used to replace _DNNModel.__call__,
+  _DNNModelV2.__call__, and LinearModel.__call__ so we can observe the Keras
+  Model. Note that the wrapper function is "observer-only" - it wraps around the
+  old_call_fn and observes its arguments.
 
   Args:
     old_call_fn: The old __call__ function.
@@ -125,6 +125,10 @@ def _observe_dnn_model(output_dict: Dict[Text, Any]):
   dnn._DNNModel.call = _make_observing_model_call(  # pylint: disable=protected-access
       old_dnn_model_call, 'dnn_model', output_dict)
 
+  old_dnn_model_v2_call = dnn._DNNModelV2.call  # pylint: disable=protected-access
+  dnn._DNNModelV2.call = _make_observing_model_call(  # pylint: disable=protected-access
+      old_dnn_model_v2_call, 'dnn_model', output_dict)
+
   # This is a contextmanager, meant to be used in a with statement like
   # with _observe_dnn_model(output_dict):
   #   ...
@@ -133,6 +137,7 @@ def _observe_dnn_model(output_dict: Dict[Text, Any]):
   yield
 
   dnn._DNNModel.call = old_dnn_model_call  # pylint: disable=protected-access
+  dnn._DNNModelV2.call = old_dnn_model_v2_call  # pylint: disable=protected-access
   feature_column_v2.DenseFeatures.call = old_dense_features_call
 
 
