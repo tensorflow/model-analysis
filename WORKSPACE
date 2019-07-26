@@ -14,8 +14,8 @@ http_archive(
 )
 
 bind(
-  name = "zlib",
-  actual = "@net_zlib//:zlib",
+    name = "zlib",
+    actual = "@net_zlib//:zlib",
 )
 
 http_archive(
@@ -23,9 +23,9 @@ http_archive(
     sha256 = "5ed12bcfa923c94fb0d0654cf7ca3939491fd1513b1bdbe39eaed566e478e3a3",
     strip_prefix = "rules_webtesting-afa8c4435ed8fd832046dab807ef998a26779ecb",
     urls = [
-         "http://mirror.tensorflow.org/github.com/bazelbuild/rules_webtesting/archive/afa8c4435ed8fd832046dab807ef998a26779ecb.zip",
-    	 "https://github.com/bazelbuild/rules_webtesting/archive/afa8c4435ed8fd832046dab807ef998a26779ecb.zip"  # 0.3.1
-    ],  
+        "http://mirror.tensorflow.org/github.com/bazelbuild/rules_webtesting/archive/afa8c4435ed8fd832046dab807ef998a26779ecb.zip",
+        "https://github.com/bazelbuild/rules_webtesting/archive/afa8c4435ed8fd832046dab807ef998a26779ecb.zip",  # 0.3.1
+    ],
 )
 
 load("@io_bazel_rules_webtesting//web:repositories.bzl", "web_test_repositories")
@@ -43,6 +43,7 @@ http_archive(
 )
 
 load("@io_bazel_rules_closure//closure:defs.bzl", "closure_repositories")
+
 closure_repositories()
 
 http_archive(
@@ -53,8 +54,10 @@ http_archive(
 )
 
 load("@org_tensorflow_tensorboard//third_party:workspace.bzl", "tensorboard_workspace")
+
 tensorboard_workspace()
 
 load("//third_party:workspace.bzl", "tensorflow_model_analysis_workspace")
+
 # Please add all new dependencies in workspace.bzl.
 tensorflow_model_analysis_workspace()
