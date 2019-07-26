@@ -37,6 +37,7 @@
 *   Refactored k-anonymity code to be re-usable in other evaluators.
 *   Fixed slicer feature string value handling in Python3.
 *   Added support for example weight keys for multi-output models.
+*   Added option to set the desired batch size when calling run_model_analysis.
 *   Changed TFRecord compression type from UNCOMPRESSED to AUTO.
 
 ## Breaking changes

@@ -698,6 +698,7 @@ def run_model_analysis(
     evaluators: Optional[List[evaluator.Evaluator]] = None,
     writers: Optional[List[writer.Writer]] = None,
     write_config: Optional[bool] = True,
+    desired_batch_size: Optional[int] = None,
     pipeline_options: Optional[Any] = None,
     compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
@@ -741,6 +742,8 @@ def run_model_analysis(
       these will be added by calling the default_writers function. If no writers
       are provided, default_writers will be used.
     write_config: True to write the config along with the results.
+    desired_batch_size: Optional batch size for batching in Predict and
+      Aggregate.
     pipeline_options: Optional arguments to run the Pipeline, for instance
       whether to run directly.
     compute_confidence_intervals: If true, compute confidence intervals.
@@ -784,6 +787,7 @@ def run_model_analysis(
             evaluators=evaluators,
             writers=writers,
             write_config=write_config,
+            desired_batch_size=desired_batch_size,
             compute_confidence_intervals=compute_confidence_intervals,
             k_anonymization_count=k_anonymization_count))
     # pylint: enable=no-value-for-parameter
