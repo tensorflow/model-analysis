@@ -89,10 +89,12 @@ runner, it's mainly for local, small-scale experimentation. For example:
 # This assumes your data is a TFRecords file containing records in the format
 # your model is expecting, e.g. tf.train.Example if you're using
 # tf.parse_example in your model.
+eval_shared_model = tfma.default_eval_shared_model(
+    eval_saved_model_path='/path/to/eval/saved/model')
 eval_result = tfma.run_model_analysis(
-  model_location='/path/to/eval/saved/model',
-  data_location='/path/to/file/containing/tfrecords',
-  file_format='tfrecords')
+    eval_shared_model=eval_shared_model,
+    data_location='/path/to/file/containing/tfrecords',
+    file_format='tfrecords')
 
 tfma.view.render_slicing_metrics(eval_result)
 ```
