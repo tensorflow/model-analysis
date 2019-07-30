@@ -413,17 +413,3 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
               predictions=fpl_dict(fetched, constants.PREDICTIONS_NAME),
               labels=fpl_dict(fetched, constants.LABELS_NAME)))
     return fpls
-
-  def _create_feed_for_features_predictions_labels_list(
-      self,
-      features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
-  ) -> List[types.TensorValue]:
-    """Create feed list for feeding a list of features, predictions, labels."""
-    result = []
-    for which_map, key, _ in self._iterate_fpl_maps_in_canonical_order():
-      result.append(
-          util.merge_tensor_values([
-              getattr(fpl, which_map)[key][encoding.NODE_SUFFIX]
-              for fpl in features_predictions_labels_list
-          ]))
-    return result

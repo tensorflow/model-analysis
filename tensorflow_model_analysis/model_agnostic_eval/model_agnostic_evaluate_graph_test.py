@@ -25,7 +25,6 @@ import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
-from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import slice_key_extractor
@@ -79,41 +78,17 @@ def add_mean_callback(features_dict, predictions_dict, labels_dict):
 class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
 
   def testEvaluateGraph(self):
-    # Create some FPLs. The Features aren't terribly useful for these metrics.
-    # Just make sure they can be processed correctly by the feed/feedlist
-    # generation logic by having one dense tensor and one sparse tensor.
-    features = {
-        'age': {
-            encoding.NODE_SUFFIX: np.array([1])
-        },
-        'language': {
-            encoding.NODE_SUFFIX:
-                tf.compat.v1.SparseTensorValue(
-                    indices=np.array([[0, 0]]),
-                    values=np.array(['english']),
-                    dense_shape=np.array([1, 1]))
-        }
-    }
-    predictions = {'predictions': {encoding.NODE_SUFFIX: np.array([2])}}
     # Have 3 labels of values 3, 23, 16 and predictions of values 2, 2, 2.
     # This should give sum = 48 and mean = 8.
-    labels = {'labels': {encoding.NODE_SUFFIX: np.array([3])}}
-    labels_2 = {'labels': {encoding.NODE_SUFFIX: np.array([23])}}
-    labels_3 = {'labels': {encoding.NODE_SUFFIX: np.array([16])}}
-
-    # Compile the actual FPLs
-    fpl = types.FeaturesPredictionsLabels(
-        input_ref=0, features=features, predictions=predictions, labels=labels)
-    fpl_2 = types.FeaturesPredictionsLabels(
-        input_ref=0,
-        features=features,
-        predictions=predictions,
-        labels=labels_2)
-    fpl_3 = types.FeaturesPredictionsLabels(
-        input_ref=0,
-        features=features,
-        predictions=predictions,
-        labels=labels_3)
+    examples = [
+        self._makeExample(
+            age=3.0, language='english', predictions=2.0, labels=3.0),
+        self._makeExample(
+            age=3.0, language='chinese', predictions=2.0, labels=23.0),
+        self._makeExample(
+            age=4.0, language='english', predictions=2.0, labels=16.0),
+    ]
+    serialized_examples = [e.SerializeToString() for e in examples]
 
     # Set up a model agnostic config so we can get the FPLConfig.
     feature_map = {
@@ -130,10 +105,8 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
 
     # Create a Model Anostic Evaluate graph handler and feed in the FPL list.
     evaluate_graph = model_agnostic_evaluate_graph.ModelAgnosticEvaluateGraph(
-        [add_mean_callback],
-        model_agnostic_extractor.ModelAgnosticGetFPLFeedConfig(
-            model_agnostic_config))
-    evaluate_graph.metrics_reset_update_get_list([fpl, fpl_2, fpl_3])
+        [add_mean_callback], model_agnostic_config)
+    evaluate_graph.metrics_reset_update_get_list(serialized_examples)
     outputs = evaluate_graph.get_metric_values()
 
     # Verify that we got the right metrics out.
@@ -143,56 +116,19 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
 
   def testEvaluateMultiLabelsPredictions(self):
     # Test case where we have multiple labels/predictions
-    features = {'age': {encoding.NODE_SUFFIX: np.array([1])}}
-    predictions = {
-        'prediction': {
-            encoding.NODE_SUFFIX: np.array([2])
-        },
-        'prediction_2': {
-            encoding.NODE_SUFFIX: np.array([4])
-        }
-    }
     # Have 6 labels of values 3, 5, 23, 12, 16, 31 and
     # 6 predictions of values 2, 2, 2, 4, 4, 4
     # This should give sum = 108 and mean = 9.
-    labels = {
-        'label': {
-            encoding.NODE_SUFFIX: np.array([3])
-        },
-        'label_2': {
-            encoding.NODE_SUFFIX: np.array([5])
-        }
-    }
-    labels_2 = {
-        'label': {
-            encoding.NODE_SUFFIX: np.array([23])
-        },
-        'label_2': {
-            encoding.NODE_SUFFIX: np.array([12])
-        }
-    }
-    labels_3 = {
-        'label': {
-            encoding.NODE_SUFFIX: np.array([16])
-        },
-        'label_2': {
-            encoding.NODE_SUFFIX: np.array([31])
-        }
-    }
 
-    # Compile the actual FPLs
-    fpl = types.FeaturesPredictionsLabels(
-        input_ref=0, features=features, predictions=predictions, labels=labels)
-    fpl_2 = types.FeaturesPredictionsLabels(
-        input_ref=0,
-        features=features,
-        predictions=predictions,
-        labels=labels_2)
-    fpl_3 = types.FeaturesPredictionsLabels(
-        input_ref=0,
-        features=features,
-        predictions=predictions,
-        labels=labels_3)
+    examples = [
+        self._makeExample(
+            age=1.0, prediction=2, prediction_2=4, label=3, label_2=5),
+        self._makeExample(
+            age=1.0, prediction=2, prediction_2=4, label=23, label_2=12),
+        self._makeExample(
+            age=1.0, prediction=2, prediction_2=4, label=16, label_2=31),
+    ]
+    serialized_examples = [e.SerializeToString() for e in examples]
 
     # Set up a model agnostic config so we can get the FPLConfig.
     feature_map = {
@@ -210,10 +146,8 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
 
     # Create a Model Anostic Evaluate graph handler and feed in the FPL list.
     evaluate_graph = model_agnostic_evaluate_graph.ModelAgnosticEvaluateGraph(
-        [add_mean_callback],
-        model_agnostic_extractor.ModelAgnosticGetFPLFeedConfig(
-            model_agnostic_config))
-    evaluate_graph.metrics_reset_update_get_list([fpl, fpl_2, fpl_3])
+        [add_mean_callback], model_agnostic_config)
+    evaluate_graph.metrics_reset_update_get_list(serialized_examples)
     outputs = evaluate_graph.get_metric_values()
 
     # Verify that we got the right metrics out.
@@ -274,8 +208,7 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
           add_metrics_callbacks=[add_mean_callback],
           construct_fn=model_agnostic_evaluate_graph.make_construct_fn(
               add_metrics_callbacks=[add_mean_callback],
-              fpl_feed_config=model_agnostic_extractor
-              .ModelAgnosticGetFPLFeedConfig(model_agnostic_config)))
+              config=model_agnostic_config))
 
       # Run our pipeline doing Extract -> Slice -> Fanout -> Calculate Metrics.
       (metrics, _), _ = (

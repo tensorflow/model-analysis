@@ -157,9 +157,6 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
         serialized_examples):
       element_copy = copy.copy(element[fpl.input_ref])
       element_copy[constants.FEATURES_PREDICTIONS_LABELS_KEY] = fpl
-      # TODO(ckuhn): Modify model agnostic predict/evaluate to operate without
-      # extra Python operations.
-      element_copy[constants.INPUT_KEY] = fpl
       yield element_copy
 
   def finish_bundle(self):

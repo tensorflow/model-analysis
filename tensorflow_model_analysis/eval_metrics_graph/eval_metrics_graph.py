@@ -40,7 +40,6 @@ import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util as general_util
 from tensorflow_model_analysis.eval_saved_model import constants
-from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
 from typing import Any, Dict, List, NamedTuple, Text, Tuple
 
@@ -288,11 +287,11 @@ class EvalMetricsGraph(object):
     """
     features = {}
     for key, value in self._features_map.items():
-      features[key] = value[encoding.NODE_SUFFIX]
+      features[key] = value
 
     predictions = {}
     for key, value in self._predictions_map.items():
-      predictions[key] = value[encoding.NODE_SUFFIX]
+      predictions[key] = value
     # Unnest if it wasn't a dictionary to begin with.
     default_predictions_key = util.default_dict_key(constants.PREDICTIONS_NAME)
     if list(predictions.keys()) == [default_predictions_key]:
@@ -300,26 +299,13 @@ class EvalMetricsGraph(object):
 
     labels = {}
     for key, value in self._labels_map.items():
-      labels[key] = value[encoding.NODE_SUFFIX]
+      labels[key] = value
     # Unnest if it wasn't a dictionary to begin with.
     default_labels_key = util.default_dict_key(constants.LABELS_NAME)
     if list(labels.keys()) == [default_labels_key]:
       labels = labels[default_labels_key]
 
     return (features, predictions, labels)
-
-  def _create_feed_for_features_predictions_labels(
-      self, features_predictions_labels: types.FeaturesPredictionsLabels
-  ) -> List[types.TensorValue]:
-    return self._create_feed_for_features_predictions_labels_list(
-        [features_predictions_labels])
-
-  @abc.abstractmethod
-  def _create_feed_for_features_predictions_labels_list(
-      self,
-      features_predictions_labels_list: List[types.FeaturesPredictionsLabels]
-  ) -> List[types.TensorValue]:
-    raise NotImplementedError
 
   def _perform_metrics_update_list(self, examples_list: List[Any]) -> None:
     """Run a metrics update on a list of examples."""
