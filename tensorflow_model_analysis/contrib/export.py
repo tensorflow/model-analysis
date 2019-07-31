@@ -31,6 +31,7 @@ from tensorflow_model_analysis import util as tfma_util
 
 from typing import Any, Callable, Dict, Optional, Text
 
+from tensorflow.python.feature_column import dense_features  # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.feature_column import feature_column_v2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_estimator.python.estimator.canned import dnn
 
@@ -117,8 +118,8 @@ def _observe_dnn_model(output_dict: Dict[Text, Any]):
     Nothing.
   """
 
-  old_dense_features_call = feature_column_v2.DenseFeatures.call
-  feature_column_v2.DenseFeatures.call = _make_observing_layer_call(
+  old_dense_features_call = dense_features.DenseFeatures.call
+  dense_features.DenseFeatures.call = _make_observing_layer_call(
       old_dense_features_call, 'dnn_model', output_dict)
 
   old_dnn_model_call = dnn._DNNModel.call  # pylint: disable=protected-access
@@ -138,7 +139,7 @@ def _observe_dnn_model(output_dict: Dict[Text, Any]):
 
   dnn._DNNModel.call = old_dnn_model_call  # pylint: disable=protected-access
   dnn._DNNModelV2.call = old_dnn_model_v2_call  # pylint: disable=protected-access
-  feature_column_v2.DenseFeatures.call = old_dense_features_call
+  dense_features.DenseFeatures.call = old_dense_features_call
 
 
 def _serialize_feature_column(feature_column: feature_column_v2.FeatureColumn
