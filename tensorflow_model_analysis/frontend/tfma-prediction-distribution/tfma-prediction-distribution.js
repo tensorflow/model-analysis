@@ -57,15 +57,15 @@ export class PredicitonDistribution extends PolymerElement {
           'hAxis': {'title': 'Prediction'},
           'vAxes': {0: {'title': 'Positive'}, 1: {'title': 'Negative'}},
           'series': {
-            0: {'visibleInLegend': false, 'targetAxisIndex': 2, 'type': 'bars'},
+            0: {'visibleInLegend': false, 'type': 'bars'},
             1: {
               'visibleInLegend': true,
-              'targetAxisIndex': 0,
+              'targetAxisIndex': 1,
               'type': 'scatter'
             },
             2: {
               'visibleInLegend': true,
-              'targetAxisIndex': 1,
+              'targetAxisIndex': 0,
               'type': 'scatter',
               'pointShape': 'diamond'
             },
