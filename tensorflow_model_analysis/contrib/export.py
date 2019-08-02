@@ -31,7 +31,12 @@ from tensorflow_model_analysis import util as tfma_util
 
 from typing import Any, Callable, Dict, Optional, Text
 
-from tensorflow.python.feature_column import dense_features  # pylint: disable=g-direct-tensorflow-import
+# pylint: disable=g-import-not-at-top,g-statement-before-imports
+try:
+  # Remove this after dense_features becomes available in TF.
+  from tensorflow.python.feature_column import dense_features  # pylint: disable=g-direct-tensorflow-import
+except ImportError:
+  pass
 from tensorflow.python.feature_column import feature_column_v2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_estimator.python.estimator.canned import dnn
 
@@ -104,6 +109,14 @@ def _make_observing_model_call(old_call_fn: Callable[..., Any], key: Text,
   return observing_call
 
 
+def _get_dense_features_module():
+  """Returns the module that contains DenseFeatures class."""
+  try:
+    return dense_features
+  except:  # pylint: disable=bare-except
+    return feature_column_v2
+
+
 @contextlib.contextmanager
 def _observe_dnn_model(output_dict: Dict[Text, Any]):
   """Observe feature and feature metadata from DNN models.
@@ -118,8 +131,9 @@ def _observe_dnn_model(output_dict: Dict[Text, Any]):
     Nothing.
   """
 
-  old_dense_features_call = dense_features.DenseFeatures.call
-  dense_features.DenseFeatures.call = _make_observing_layer_call(
+  dense_feature_module = _get_dense_features_module()
+  old_dense_features_call = dense_feature_module.DenseFeatures.call
+  dense_feature_module.DenseFeatures.call = _make_observing_layer_call(
       old_dense_features_call, 'dnn_model', output_dict)
 
   old_dnn_model_call = dnn._DNNModel.call  # pylint: disable=protected-access
@@ -139,7 +153,7 @@ def _observe_dnn_model(output_dict: Dict[Text, Any]):
 
   dnn._DNNModel.call = old_dnn_model_call  # pylint: disable=protected-access
   dnn._DNNModelV2.call = old_dnn_model_v2_call  # pylint: disable=protected-access
-  dense_features.DenseFeatures.call = old_dense_features_call
+  dense_feature_module.DenseFeatures.call = old_dense_features_call
 
 
 def _serialize_feature_column(feature_column: feature_column_v2.FeatureColumn
