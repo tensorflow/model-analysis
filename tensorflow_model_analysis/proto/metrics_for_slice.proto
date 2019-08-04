@@ -21,6 +21,17 @@ import "google/protobuf/wrappers.proto";
 // This proto is copied into PerformanceStatistics because of b/110954446.
 // LINT.IfChange
 
+// A metric key uniquely identifies a metric.
+message MetricKey {
+  // Name of the metric ('auc', etc).
+  string name = 1;
+  // Optional output name associated with metric (for multi-output models).
+  string output_name = 2;
+  // Optional class ID associated with metric (if metric is associated with a
+  // specific class in a multi-class model).
+  google.protobuf.Int32Value class_id = 3;
+}
+
 // The value will be converted into an error message if we do not know its type.
 message UnknownType {
   string error = 1;
@@ -211,10 +222,17 @@ message SliceKey {
 message MetricsForSlice {
   // The slice key for the metrics.
   SliceKey slice_key = 1;
-  // A map to store metrics. Currently we convert the post_export_metric
+  // Metric keys.
+  repeated MetricKey metric_keys = 51;
+  // Metric values (must align with metric_keys).
+  repeated MetricValue metric_values = 52;
+
+  // DEPRECATED
+
+  //A map to store metrics. Currently we convert the post_export_metric
   // provided by TFMA to its appropriate type for better visualization, and map
   // all other metrics to DoubleValue type.
-  map<string, MetricValue> metrics = 2;
+  map<string, MetricValue> metrics = 2 [deprecated=true];
 }
 
 message CalibrationHistogramBuckets {
@@ -226,6 +244,15 @@ message CalibrationHistogramBuckets {
     google.protobuf.DoubleValue total_weighted_refined_prediction = 5;
   }
   repeated Bucket buckets = 1;
+}
+
+// A plot key uniquely identifies a set of PlotData.
+message PlotKey {
+  // Optional output name associated with plot (for multi-output models).
+  string output_name = 2;
+  // Optional class ID associated with plot (if plot is associated with a
+  // specific class in a multi-class model).
+  google.protobuf.Int32Value class_id = 3;
 }
 
 message PlotData {
@@ -243,6 +270,13 @@ message PlotData {
 message PlotsForSlice {
   // The slice key for the metrics.
   SliceKey slice_key = 1;
+  // Plot keys.
+  repeated PlotKey plot_keys = 8;
+  // Plot values (must align with plot_keys).
+  repeated PlotData plot_values = 9;
+
+  // DEPRECATED
+
   // The plot data--deprecated please use 'plots' instead.
   PlotData plot_data = 2 [deprecated = true];
 
@@ -252,7 +286,7 @@ message PlotsForSlice {
   // multihead model or for the same class in the case of multiclass. For
   // example, the key can be of the form 'post_export_metrics/head_name' for a
   // multihead model.
-  map<string, PlotData> plots = 3;
+  map<string, PlotData> plots = 3 [deprecated = true];
 }
 
 // LINT.ThenChange(
