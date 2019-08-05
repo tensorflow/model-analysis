@@ -52,7 +52,8 @@ class SingleSeriesGraphData {
   applyThreshold(columnName, threshold) {
     return this.tfmaData_.filter((dataSeries) => {
       const value = this.tfmaData_.getMetricValue(
-          dataSeries.getFeatureString(), columnName);
+                        dataSeries.getFeatureString(), columnName) ||
+          0;
       return value >= threshold;
     });
   }

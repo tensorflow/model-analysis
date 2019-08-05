@@ -39,6 +39,17 @@ testSuite({
     assertArrayEquals(['col:3', 3, 6, 9], table[1]);
   },
 
+  testSingleSeriesThresholdShowAllWhenThresholdUndefined: function() {
+    const singleGraphData =
+        new SingleSeriesGraphData(METRICS, DEFAULT_JSON_DATA);
+    const filteredData = singleGraphData.applyThreshold('k', 0);
+    const table = filteredData.getDataTable('');
+    assertEquals(3, table.length);
+    assertArrayEquals(['col:1', 1, 4, 7], table[0]);
+    assertArrayEquals(['col:2', 2, 5, 8], table[1]);
+    assertArrayEquals(['col:3', 3, 6, 9], table[2]);
+  },
+
   testSingleSeriesGetColumnSteppingInfo: function() {
     const minFoo = 1;
     const maxFoo = 2;
