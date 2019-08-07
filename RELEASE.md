@@ -1,4 +1,4 @@
-# Current version (not yet released; still in development)
+# Current version 0.14.0
 
 ## Major Features and Improvements
 
@@ -29,7 +29,6 @@
 *   Make metrics-related operations thread-safe by wrapping them with locks.
     This eliminates race conditions that were previously possible in
     multi-threaded runners which could result in incorrect metric values.
-*   Depends on `apache-beam[gcp]>=2.12,<3`.
 *   More flexible `FanoutSlices`.
 *   Limit the number of sampling buckets to 20.
 *   Improved performance in Confidence Interval computation.
@@ -39,12 +38,17 @@
 *   Added support for example weight keys for multi-output models.
 *   Added option to set the desired batch size when calling run_model_analysis.
 *   Changed TFRecord compression type from UNCOMPRESSED to AUTO.
+*   Depends on `apache-beam[gcp]>=2.14,<3`.
+*   Depends on `numpy>=1.16,<2`.
+*   Depends on `protobuf>=3.7,<4`.
+*   Depends on `scipy==1.1.0`.
 
 ## Breaking changes
 
 *   Removed uses of deprecated tf.contrib packages (where possible).
 *   `tfma.default_writers` now requires the `eval_saved_model` to be passed as
     an argument.
+*   Requires pre-installed TensorFlow >=1.14,<2.
 
 ## Deprecations
 

@@ -62,7 +62,8 @@ combinations may also work.
 
 |tensorflow-model-analysis                                                           |tensorflow    |apache-beam[gcp]|
 |------------------------------------------------------------------------------------|--------------|----------------|
-|[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md)|nightly (1.x) |2.11.0          |
+|[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md)|nightly (1.x) |2.14.0          |
+|[0.14.0](https://github.com/tensorflow/model-analysis/blob/v0.14.0/RELEASE.md)      |1.14          |2.14.0          |
 |[0.13.1](https://github.com/tensorflow/model-analysis/blob/v0.13.1/RELEASE.md)      |1.13          |2.11.0          |
 |[0.13.0](https://github.com/tensorflow/model-analysis/blob/v0.13.0/RELEASE.md)      |1.13          |2.11.0          |
 |[0.12.1](https://github.com/tensorflow/model-analysis/blob/v0.12.1/RELEASE.md)      |1.12          |2.10.0          |

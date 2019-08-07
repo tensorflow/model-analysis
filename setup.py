@@ -254,10 +254,10 @@ setup_args = {
     # protobuf) with TF.
     'install_requires': [
         # Sort alphabetically
-        'apache-beam[gcp]>=2.12,<3',
+        'apache-beam[gcp]>=2.14,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
-        'numpy>=1.14.5,<2',
+        'numpy>=1.16,<2',
         'protobuf>=3.7,<4',
         # TODO(b/126957988): Stop pinning scipy when possible.
         'scipy==1.1.0',
@@ -265,13 +265,13 @@ setup_args = {
         # Note: try version 1.10 if error "metaclass conflict: the
         # metaclass of a derived class must be a (non-strict) subclass of the
         # metaclasses of all its bases" occurred in future.
-        'six>=1.9,<2',
+        'six>=1.10,<2',
         # TODO(xinzha): Uncomment this once TF can automatically select between
         # CPU and GPU installation.
-        # 'tensorflow>=1.13,<2',
+        # 'tensorflow>=1.14,<2',
         # TODO(b/68765743): replace it with tfx-base after it's available
         # (b/72384547)
-        'tensorflow-transform>=0.13,<1',
+        'tensorflow-transform>=0.14,<1',
     ],
     'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     'packages': find_packages(),
@@ -297,10 +297,8 @@ setup_args = {
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
-        # TODO(b/125613675): Once Beam supports Python 3.6 and 3.7, uncomment
-        # these lines.
-        # 'Programming Language :: Python :: 3.6',
-        # 'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Mathematics',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
