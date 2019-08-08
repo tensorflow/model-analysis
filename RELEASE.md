@@ -32,6 +32,7 @@
     that support the new ALL_CLASSES prediction output.
 *   Move example parsing in aggregation into the graph for performance
     improvements in both standard and model_agnostic evaluation modes.
+*   Created separate ModelLoader type for loading the EvalSavedModel.
 
 ## Bug fixes and other changes
 

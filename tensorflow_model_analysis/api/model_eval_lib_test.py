@@ -118,8 +118,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     data_location = self._writeTFExamplesToTFRecords(examples)
     # No construct_fn should fail when Beam attempts to call the construct_fn.
     eval_shared_model = types.EvalSharedModel(model_path=model_location)
-    with self.assertRaisesRegexp(TypeError,
-                                 '\'NoneType\' object is not callable'):
+    with self.assertRaisesRegexp(AttributeError,
+                                 '\'NoneType\' object has no attribute'):
       model_eval_lib.run_model_analysis(
           eval_shared_model=eval_shared_model, data_location=data_location)
 

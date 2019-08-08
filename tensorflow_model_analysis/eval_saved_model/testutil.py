@@ -21,8 +21,8 @@ from __future__ import print_function
 import math
 import tempfile
 import tensorflow as tf
+from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import util
 from typing import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
@@ -152,21 +152,27 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
 
   def createTestEvalSharedModel(
       self,
-      eval_saved_model_path: Text,
+      model_path: Optional[Text] = None,
+      eval_saved_model_path: Optional[Text] = None,
       add_metrics_callbacks: Optional[List[
           types.AddMetricsCallbackType]] = None,
       include_default_metrics: Optional[bool] = True,
       example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
-      additional_fetches: Optional[List[Text]] = None) -> types.EvalSharedModel:
+      additional_fetches: Optional[List[Text]] = None,
+      tag: Text = tf.saved_model.SERVING) -> types.EvalSharedModel:
 
     return types.EvalSharedModel(
-        model_path=eval_saved_model_path,
+        model_path if model_path else eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks,
         example_weight_key=example_weight_key,
-        construct_fn=dofn.make_construct_fn(eval_saved_model_path,
-                                            add_metrics_callbacks,
-                                            include_default_metrics,
-                                            additional_fetches))
+        model_loader=types.ModelLoader(
+            construct_fn=model_util.model_construct_fn(
+                model_path=model_path,
+                eval_saved_model_path=eval_saved_model_path,
+                add_metrics_callbacks=add_metrics_callbacks,
+                include_default_metrics=include_default_metrics,
+                additional_fetches=additional_fetches,
+                tag=tag)))
 
   def predict_injective_single_example(self,
                                        eval_saved_model: load.EvalSavedModel,

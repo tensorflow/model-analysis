@@ -64,6 +64,8 @@ from tensorflow_model_analysis.eval_saved_model import exporter
 
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 
+from tensorflow_model_analysis.model_util import model_construct_fn
+
 from tensorflow_model_analysis.types import AddMetricsCallbackType
 from tensorflow_model_analysis.types import EvalSharedModel
 from tensorflow_model_analysis.types import Extracts
@@ -71,6 +73,7 @@ from tensorflow_model_analysis.types import Extracts
 from tensorflow_model_analysis.types import FeaturesPredictionsLabels
 # TODO(b/120222218): Remove after passing of native FPL supported.
 from tensorflow_model_analysis.types import MaterializedColumn
+from tensorflow_model_analysis.types import ModelLoader
 from tensorflow_model_analysis.types import TensorType
 from tensorflow_model_analysis.types import TensorTypeMaybeDict
 

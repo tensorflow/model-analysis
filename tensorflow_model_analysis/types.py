@@ -115,6 +115,50 @@ def is_tensor(obj):
   return isinstance(obj, tf.Tensor) or isinstance(obj, tf.SparseTensor)
 
 
+class ModelTypes(object):
+  """Instances of different model types.
+
+  Not all instances are supported for all configurations.
+
+  Attributes:
+    saved_model: Saved model.
+    keras_model: Keras model.
+    eval_saved_model: EvalSavedModel model.
+  """
+  # C++ APIs need the __weakref__ to be set.
+  __slots__ = ['saved_model', 'keras_model', 'eval_saved_model', '__weakref__']
+
+  def __init__(self,
+               saved_model: Optional[Any] = None,
+               keras_model: Optional[tf.keras.Model] = None,
+               eval_saved_model: Optional[Any] = None):
+    self.saved_model = saved_model
+    self.keras_model = keras_model
+    self.eval_saved_model = eval_saved_model
+
+
+class ModelLoader(
+    NamedTuple('ModelLoader', [('shared_handle', shared.Shared),
+                               ('construct_fn', Callable)])):
+  """Model loader is responsible for loading shared model types.
+
+  Attributes:
+    shared_handle: Optional handle to a shared.Shared object for sharing the
+      in-memory model within / between stages. Used in combination with the
+      construct_fn to load the ModelTypes for the shared model.
+    construct_fn: A callable which creates a construct function to load the
+      ModelTypes instance. Callable takes a beam.metrics distribution to track
+      model load times.
+  """
+
+  def __new__(cls,
+              shared_handle: Optional[shared.Shared] = None,
+              construct_fn: Optional[Callable[..., Any]] = None):
+    if not shared_handle:
+      shared_handle = shared.Shared()
+    return super(ModelLoader, cls).__new__(cls, shared_handle, construct_fn)
+
+
 class EvalSharedModel(
     NamedTuple(
         'EvalSharedModel',
@@ -125,8 +169,7 @@ class EvalSharedModel(
             ('include_default_metrics', bool),
             ('example_weight_key', Union[Text, Dict[Text, Text]]),
             ('additional_fetches', List[Text]),
-            ('shared_handle', shared.Shared),
-            ('construct_fn', Callable)
+            ('model_loader', ModelLoader),
         ])):
   # pyformat: disable
   """Shared model used during extraction and evaluation.
@@ -146,11 +189,7 @@ class EvalSharedModel(
       signature_def.inputs that should be fetched at prediction time. The
       "features" and "labels" tensors are handled automatically and should not
       be included in this list.
-    shared_handle: Optional handle to a shared.Shared object for sharing the
-      in-memory model within / between stages.
-    construct_fn: A callable which creates a construct function
-      to set up the tensorflow graph. Callable takes a beam.metrics distribution
-      to track graph construction time.
+    model_loader: Model loader.
 
   More details on add_metrics_callbacks:
 
@@ -182,13 +221,16 @@ class EvalSharedModel(
       include_default_metrics: Optional[bool] = True,
       example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
       additional_fetches: Optional[List[Text]] = None,
-      shared_handle: Optional[shared.Shared] = None,
+      model_loader: Optional[ModelLoader] = None,
       construct_fn: Optional[Callable[..., Any]] = None):
     if not add_metrics_callbacks:
       add_metrics_callbacks = []
-    if not shared_handle:
-      shared_handle = shared.Shared()
+    if model_loader and construct_fn:
+      raise ValueError(
+          'only one of model_loader or construct_fn should be used')
+    if construct_fn:
+      model_loader = ModelLoader(construct_fn=construct_fn)
     return super(EvalSharedModel,
                  cls).__new__(cls, model_path, add_metrics_callbacks,
                               include_default_metrics, example_weight_key,
-                              additional_fetches, shared_handle, construct_fn)
+                              additional_fetches, model_loader)

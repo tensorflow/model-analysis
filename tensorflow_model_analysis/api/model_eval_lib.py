@@ -28,9 +28,9 @@ import apache_beam as beam
 import six
 import tensorflow as tf
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import version as tfma_version
-from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import extractor
@@ -264,12 +264,13 @@ def default_eval_shared_model(
       include_default_metrics=include_default_metrics,
       example_weight_key=example_weight_key,
       additional_fetches=additional_fetches,
-      construct_fn=dofn.make_construct_fn(
-          eval_saved_model_path,
-          add_metrics_callbacks,
-          include_default_metrics,
-          additional_fetches=additional_fetches,
-          blacklist_feature_fetches=blacklist_feature_fetches))
+      model_loader=types.ModelLoader(
+          construct_fn=model_util.model_construct_fn(
+              eval_saved_model_path=eval_saved_model_path,
+              add_metrics_callbacks=add_metrics_callbacks,
+              include_default_metrics=include_default_metrics,
+              additional_fetches=additional_fetches,
+              blacklist_feature_fetches=blacklist_feature_fetches)))
 
 
 def default_extractors(  # pylint: disable=invalid-name

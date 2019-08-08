@@ -23,9 +23,9 @@ import apache_beam as beam
 import numpy as np
 
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
-from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.slicer import slicer
 from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
@@ -127,7 +127,7 @@ class _AggState(object):
 
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(List[Any])
-class _AggregateCombineFn(beam.CombineFn):
+class _AggregateCombineFn(model_util.CombineFnWithModel):
   """Aggregate combine function.
 
   This function really does three things:
@@ -165,9 +165,9 @@ class _AggregateCombineFn(beam.CombineFn):
                desired_batch_size: Optional[int] = None,
                compute_with_sampling: Optional[bool] = False,
                seed_for_testing: Optional[int] = None) -> None:
-    self._eval_shared_model = eval_shared_model
-    self._eval_metrics_graph = None  # type: eval_metrics_graph.EvalMetricsGraph
+    super(_AggregateCombineFn, self).__init__(eval_shared_model.model_loader)
     self._seed_for_testing = seed_for_testing
+    self._eval_metrics_graph = None  # type: eval_metrics_graph.EvalMetricsGraph
     # We really want the batch size to be adaptive like it is in
     # beam.BatchElements(), but there isn't an easy way to make it so.
     # TODO(b/73789023): Figure out how to make this batch size dynamic.
@@ -182,18 +182,8 @@ class _AggregateCombineFn(beam.CombineFn):
     # Metrics.
     self._combine_batch_size = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'combine_batch_size')
-    self._model_load_seconds = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'model_load_seconds')
     self._num_compacts = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_compacts')
-
-  def _start_bundle(self) -> None:
-    # There's no initialisation method for CombineFns.
-    # See BEAM-3736: Add SetUp() and TearDown() for CombineFns.
-    self._eval_metrics_graph = (
-        self._eval_shared_model.shared_handle.acquire(
-            self._eval_shared_model.construct_fn(
-                self._model_load_seconds.update)))
 
   def _poissonify(self, accumulator: _AggState) -> List[bytes]:
     # pylint: disable=line-too-long
@@ -237,7 +227,10 @@ class _AggregateCombineFn(beam.CombineFn):
     """
 
     if self._eval_metrics_graph is None:
-      self._start_bundle()
+      self._setup_if_needed()
+      if self._loaded_models.eval_saved_model is None:
+        raise ValueError('ModelLoader does not support eval_saved_model.')
+      self._eval_metrics_graph = self._loaded_models.eval_saved_model
     batch_size = len(accumulator.inputs)
     if force or batch_size >= self._desired_batch_size:
       if accumulator.inputs:
@@ -301,11 +294,11 @@ class _AggregateCombineFn(beam.CombineFn):
 @beam.typehints.with_input_types(beam.typehints.KV[slicer.SliceKeyType,
                                                    List[Any]])
 # TODO(b/123516222)): Add output typehints. Similarly elsewhere that it applies.
-class _ExtractOutputDoFn(dofn.EvalSavedModelDoFn):
+class _ExtractOutputDoFn(model_util.DoFnWithModel):
   """A DoFn that extracts the metrics output."""
 
   def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
-    super(_ExtractOutputDoFn, self).__init__(eval_shared_model)
+    super(_ExtractOutputDoFn, self).__init__(eval_shared_model.model_loader)
 
     # This keeps track of the number of times the poisson bootstrap encounters
     # an empty set of elements for a slice sample. Should be extremely rare in
@@ -319,7 +312,8 @@ class _ExtractOutputDoFn(dofn.EvalSavedModelDoFn):
   ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
     (slice_key, metric_variables) = element
     if metric_variables:
-      result = self._eval_saved_model.metrics_set_variables_and_get_values(
+      eval_saved_model = self._loaded_models.eval_saved_model
+      result = eval_saved_model.metrics_set_variables_and_get_values(
           metric_variables)
       yield (slice_key, result)
     else:
@@ -334,8 +328,12 @@ class _ExtractOutputDoFn(dofn.EvalSavedModelDoFn):
 @beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
 @beam.typehints.with_output_types(beam.typehints.KV[slicer.SliceKeyType,
                                                     types.Extracts])
-class _ModelLoadingIdentityFn(dofn.EvalSavedModelDoFn):
+class _ModelLoadingIdentityFn(model_util.DoFnWithModel):
   """A DoFn that loads the EvalSavedModel and returns the input unchanged."""
+
+  def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
+    super(_ModelLoadingIdentityFn,
+          self).__init__(eval_shared_model.model_loader)
 
   def process(self, element: Tuple[slicer.SliceKeyType, types.Extracts]
              ) -> List[Tuple[slicer.SliceKeyType, types.Extracts]]:

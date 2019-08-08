@@ -24,9 +24,9 @@ import copy
 import apache_beam as beam
 
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
-from tensorflow_model_analysis.eval_saved_model import dofn
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import feature_extractor
 from typing import Generator, List, Optional
@@ -66,11 +66,11 @@ def PredictExtractor(eval_shared_model: types.EvalSharedModel,
 
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
-class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
+class _TFMAPredictionDoFn(model_util.DoFnWithModel):
   """A DoFn that loads the model and predicts."""
 
   def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
-    super(_TFMAPredictionDoFn, self).__init__(eval_shared_model)
+    super(_TFMAPredictionDoFn, self).__init__(eval_shared_model.model_loader)
     self._predict_batch_size = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'predict_batch_size')
     self._num_instances = beam.metrics.Metrics.counter(
@@ -84,10 +84,12 @@ class _TFMAPredictionDoFn(dofn.EvalSavedModelDoFn):
     serialized_examples = [x[constants.INPUT_KEY] for x in element]
 
     # Compute FeaturesPredictionsLabels for each serialized_example
-    for fetched in self._eval_saved_model.predict_list(serialized_examples):
+    for fetched in self._loaded_models.eval_saved_model.predict_list(
+        serialized_examples):
       element_copy = copy.copy(element[fetched.input_ref])
       element_copy[constants.FEATURES_PREDICTIONS_LABELS_KEY] = (
-          self._eval_saved_model.as_features_predictions_labels([fetched])[0])
+          self._loaded_models.eval_saved_model.as_features_predictions_labels(
+              [fetched])[0])
       for key in fetched.values:
         if key in (eval_saved_model_constants.FEATURES_NAME,
                    eval_saved_model_constants.LABELS_NAME,
