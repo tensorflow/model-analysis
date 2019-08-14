@@ -238,9 +238,9 @@ function extractFloatValue(data, key) {
   const boundedKey = BOUNDED_VALUE_METRIC_NAME_PREFIX_ +
       key.charAt(0).toUpperCase() + key.slice(1);
   const boundedValue = data[boundedKey];
-  const value = (goog.isDef(boundedValue) ?
-              boundedValue[BoundedValueFieldNames.VALUE] :
-              data[key]) ||
+  const value =
+      (boundedValue !== undefined ? boundedValue[BoundedValueFieldNames.VALUE] :
+                                    data[key]) ||
       0;
   // Since NaN and Infinity is not in JSON spec, they are serialized as strings
   // when sent to the client side. When that happens, we need to parse them as
@@ -564,7 +564,7 @@ function registerRenderer(type, renderer, typeChecker) {
  * @return {!TableProvider.GvizCell} The rendered cell.
  */
 function renderValue(value) {
-  if (goog.isDefAndNotNull(value)) {
+  if (value != null) {
     const renderer = rendererMap[getValueType(value)];
     return renderer ? renderer(value) :
                       renderUnsupported(/** @type {!Object} */ (value));
@@ -595,7 +595,7 @@ function getValueType(value) {
  */
 function isScalarInValue(value) {
   const scalar = value[BoundedValueFieldNames.VALUE];
-  return goog.isDef(scalar) && goog.isNumber(scalar) &&
+  return scalar !== undefined && typeof scalar === 'number' &&
       (Object.keys(/** @type{!Object} */ (value)).length === 1);
 }
 
@@ -604,9 +604,9 @@ function isScalarInValue(value) {
  * @return {boolean} Returns true if the given value represents a bounded value.
  */
 function isBoundedValue(value) {
-  return !!value && goog.isDef(value[BoundedValueFieldNames.LOWER_BOUND]) &&
-      goog.isDef(value[BoundedValueFieldNames.UPPER_BOUND]) &&
-      goog.isDef(value[BoundedValueFieldNames.VALUE]);
+  return !!value && value[BoundedValueFieldNames.LOWER_BOUND] !== undefined &&
+      value[BoundedValueFieldNames.UPPER_BOUND] !== undefined &&
+      value[BoundedValueFieldNames.VALUE] !== undefined;
 }
 
 /**
@@ -614,9 +614,9 @@ function isBoundedValue(value) {
  * @return {boolean} Returns true if the given value represents a ratio value.
  */
 function isRatioValue(value) {
-  return !!value && goog.isDef(value[RatioValueFieldNames.NUMERATOR]) &&
-      goog.isDef(value[RatioValueFieldNames.DENOMINATOR]) &&
-      goog.isDef(value[RatioValueFieldNames.RATIO]);
+  return !!value && value[RatioValueFieldNames.NUMERATOR] !== undefined &&
+      value[RatioValueFieldNames.DENOMINATOR] !== undefined &&
+      value[RatioValueFieldNames.RATIO] !== undefined;
 }
 
 /**
@@ -654,8 +654,7 @@ function isValueAtCutoffs(value) {
   return value && value[ValueAtCutoffsFieldNames.VALUES] &&
       checkRepeatedMetric(
              value[ValueAtCutoffsFieldNames.VALUES],
-             item =>
-                 goog.isDefAndNotNull(item[ValueAtCutoffsFieldNames.CUTOFF]));
+             item => item[ValueAtCutoffsFieldNames.CUTOFF] != null);
 }
 
 
@@ -666,38 +665,29 @@ function isValueAtCutoffs(value) {
  */
 function isConfusionMatrixAtThresholds(value) {
   const hasMatrixData = (item) =>
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.FALSE_NEGATIVES]) &&
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.FALSE_POSITIVES]) &&
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.PRECISION]) &&
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.RECALL]) &&
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.TRUE_NEGATIVES]) &&
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.TRUE_POSITIVES]);
+      item[ConfusionMatrixAtThresholdsFieldNames.FALSE_NEGATIVES] != null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.FALSE_POSITIVES] != null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.PRECISION] != null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.RECALL] != null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.TRUE_NEGATIVES] != null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.TRUE_POSITIVES] != null;
   const hasMatrixDataWithConfidenceInterval = (item) =>
-      goog.isDefAndNotNull(item[ConfusionMatrixAtThresholdsFieldNames
-                                    .BOUNDED_FALSE_NEGATIVES]) &&
-      goog.isDefAndNotNull(item[ConfusionMatrixAtThresholdsFieldNames
-                                    .BOUNDED_FALSE_POSITIVES]) &&
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_PRECISION]) &&
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_RECALL]) &&
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_TRUE_NEGATIVES]) &&
-      goog.isDefAndNotNull(
-          item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_TRUE_POSITIVES]);
+      item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_FALSE_NEGATIVES] !=
+          null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_FALSE_POSITIVES] !=
+          null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_PRECISION] != null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_RECALL] != null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_TRUE_NEGATIVES] !=
+          null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_TRUE_POSITIVES] !=
+          null;
 
   return value && value[ConfusionMatrixAtThresholdsFieldNames.MATRICES] &&
       checkRepeatedMetric(
              value[ConfusionMatrixAtThresholdsFieldNames.MATRICES],
-             item =>
-                 goog.isDefAndNotNull(
-                     item[ConfusionMatrixAtThresholdsFieldNames.THRESHOLD]) &&
+             item => item[ConfusionMatrixAtThresholdsFieldNames.THRESHOLD] !=
+                     null &&
                  (hasMatrixData(item) ||
                   hasMatrixDataWithConfidenceInterval(item)));
 }
@@ -708,13 +698,13 @@ function isConfusionMatrixAtThresholds(value) {
  *     representation of ArrayValue.
  */
 function isArrayValue(value) {
-  return goog.isDef(value[ArrayValueFieldNames.SHAPE]) &&
-      goog.isDef(value[ArrayValueFieldNames.DATA_TYPE]) &&
-      (goog.isDef(value[ArrayValueFieldNames.BYTES_VALUES]) ||
-       goog.isDef(value[ArrayValueFieldNames.INT32_VALUES]) ||
-       goog.isDef(value[ArrayValueFieldNames.INT64_VALUES]) ||
-       goog.isDef(value[ArrayValueFieldNames.FLOAT32_VALUES]) ||
-       goog.isDef(value[ArrayValueFieldNames.FLOAT64_VALUES]));
+  return value[ArrayValueFieldNames.SHAPE] !== undefined &&
+      value[ArrayValueFieldNames.DATA_TYPE] !== undefined &&
+      (value[ArrayValueFieldNames.BYTES_VALUES] !== undefined ||
+       value[ArrayValueFieldNames.INT32_VALUES] !== undefined ||
+       value[ArrayValueFieldNames.INT64_VALUES] !== undefined ||
+       value[ArrayValueFieldNames.FLOAT32_VALUES] !== undefined ||
+       value[ArrayValueFieldNames.FLOAT64_VALUES] !== undefined);
 }
 
 // Registers all built-in renderers.
@@ -760,7 +750,7 @@ function registerOverrideRenderer(formatOverrideType, renderer) {
  * @return {!TableProvider.GvizCell}
  */
 function renderValueWithFormatOverride(value, opt_tableProvider, opt_override) {
-  if (goog.isDefAndNotNull(value)) {
+  if (value != null) {
     if (opt_tableProvider && opt_override) {
       try {
         return overrideRendererMap[opt_override.type](

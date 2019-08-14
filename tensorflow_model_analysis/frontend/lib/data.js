@@ -189,13 +189,13 @@ class Data {
    * @export
    */
   getMetricValue(feature, metric) {
-    if (!goog.isDef(this.cachedNumericalMetricValue_[feature][metric])) {
+    if (this.cachedNumericalMetricValue_[feature][metric] === undefined) {
       const metricIndex = this.getMetricIndex(metric);
       let value = this.getAllMetricValues(feature)[metricIndex];
-      value = goog.isDefAndNotNull(value) ? value : NaN;
+      value = value != null ? value : NaN;
       if (goog.isObject(value)) {
         value = CellRenderer.renderValue(value)['v'];
-      } else if (goog.isString(value)) {
+      } else if (typeof value === 'string') {
         value = parseFloat(value);
       }
       this.cachedNumericalMetricValue_[feature][metric] = value;
@@ -324,8 +324,8 @@ function buildSeriesFromJson(metrics, values, slice) {
   const metricValuesList = metrics.map((metric) => {
     // Compute calibration from label and prediction if both are available.
     if (metric == Constants.Column.CALIBRATION &&
-        goog.isDef(values['averageLabel']) &&
-        goog.isDef(values['averageRefinedPrediction'])) {
+        values['averageLabel'] !== undefined &&
+        values['averageRefinedPrediction'] !== undefined) {
       return values['averageRefinedPrediction'] / values['averageLabel'];
     }
     return values[metric];

@@ -139,10 +139,10 @@ function regroupBucketToEntries(buckets, bucketSize, useLogScale) {
    */
   const entries = [];
   buckets.forEach(bucket => {
-    if (goog.isDefAndNotNull(bucket[FieldNames.LABEL]) &&
-        goog.isDefAndNotNull(bucket[FieldNames.PREDICTION]) &&
-        goog.isDefAndNotNull(bucket[FieldNames.WEIGHTS]) &&
-        goog.isDefAndNotNull(bucket[FieldNames.UPPER_THRESHOLD])) {
+    if (bucket[FieldNames.LABEL] != null &&
+        bucket[FieldNames.PREDICTION] != null &&
+        bucket[FieldNames.WEIGHTS] != null &&
+        bucket[FieldNames.UPPER_THRESHOLD] != null) {
       labelSum += bucket[FieldNames.LABEL];
       predictionSum += bucket[FieldNames.PREDICTION];
       weightSum += bucket[FieldNames.WEIGHTS];
