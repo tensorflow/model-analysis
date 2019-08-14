@@ -283,6 +283,18 @@ tfma.MetricValueFormatSpec.prototype.type;
  */
 tfma.MetricValueFormatSpec.prototype.transform;
 
+/** @type {string} */
+tfma.METRICS_MAP;
+
+/** @type {string} */
+tfma.METRIC_KEYS;
+
+/** @type {string} */
+tfma.METRIC_VALUES;
+
+/** @type {string} */
+tfma.NO_CLASS_ID;
+
 /**
  * @enum {string}
  */
@@ -342,6 +354,12 @@ tfma.PlotTypes = {
 tfma.PlotDataDisplay = {
   EXAMPLES_MAX_STEP: 0
 };
+
+/** @type {string} */
+tfma.PLOT_KEYS;
+
+/** @type {string} */
+tfma.PLOT_VALUES
 
 /**
  * @constructor
@@ -516,3 +534,23 @@ tfma.SeriesDataHelper.EvalRun.prototype.data;
  * @constructor
  */
 tfma.SingleSeriesGraphData = function(metrics, data) {};
+
+/**
+ * @const
+ */
+tfma.Util = {};
+
+/**
+ * @param {!Object} configs
+ * @return {!Array<!Object>}
+ */
+tfma.Util.createConfigsList = function(configs) {};
+
+/**
+ * @param {!Object} metrics
+ * @param {!Array<!Object>} configsList
+ * @param {!Object<string>=} blacklist
+ * @return {!Object}
+ */
+tfma.Util.mergeMetricsForSelectedConfigsList = function(
+    metrics, configsList, blacklist) {};

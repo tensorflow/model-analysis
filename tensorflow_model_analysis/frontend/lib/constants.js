@@ -62,6 +62,18 @@ const MetricValueFormat = {
   VALUE_AT_CUTOFFS: 'valueAtCutoffs',
 };
 
+/** @type {string} */
+const METRICS_MAP = 'metricsMap';
+
+/** @type {string} */
+const METRIC_KEYS = 'metricKeys';
+
+/** @type {string} */
+const METRIC_VALUES = 'metricValues';
+
+/** @type {string} */
+const NO_CLASS_ID = 'nci';
+
 /** @enum {string}*/
 const PlotTypes = {
   ACCURACY_CHARTS: 'accuracyPrecisionRecallF1Charts',
@@ -124,6 +136,12 @@ const PlotDataDisplay = {
   EXAMPLES_MAX_STEP: 10
 };
 
+/** @type {string} */
+const PLOT_KEYS = 'plotKeys';
+
+/** @type {string} */
+const PLOT_VALUES = 'plotValues';
+
 /**
  * @typedef {
  *   function((string|number|!Object),(string|number|!Object)):(number|string|!Object)
@@ -167,6 +185,14 @@ goog.exportSymbol('tfma.MetricValueFormat.ROW_ID', MetricValueFormat.ROW_ID);
 goog.exportSymbol(
     'tfma.MetricValueFormat.VALUE_AT_CUTOFFS',
     MetricValueFormat.VALUE_AT_CUTOFFS);
+
+goog.exportSymbol('tfma.METRICS_MAP', METRICS_MAP);
+
+goog.exportSymbol('tfma.METRIC_KEYS', METRIC_KEYS);
+
+goog.exportSymbol('tfma.METRIC_VALUES', METRIC_VALUES);
+
+goog.exportSymbol('tfma.NO_CLASS_ID', NO_CLASS_ID);
 
 goog.exportSymbol(
     'tfma.PlotDataFieldNames.CALIBRATION_BUCKETS',
@@ -223,6 +249,10 @@ goog.exportSymbol(
 goog.exportSymbol('tfma.PlotDataDisplay.EXAMPLES_MAX_STEP',
     PlotDataDisplay.EXAMPLES_MAX_STEP);
 
+goog.exportSymbol('tfma.PLOT_KEYS', PLOT_KEYS);
+
+goog.exportSymbol('tfma.PLOT_VALUES', PLOT_VALUES);
+
 exports = {
   Column,
   Event,
@@ -230,10 +260,16 @@ exports = {
   MetricValueFormat,
   MetricValueFormatSpec,
   MetricValueTransformer,
+  METRIC_KEYS,
+  METRIC_VALUES,
+  METRICS_MAP,
+  NO_CLASS_ID,
   PlotDataFieldNames,
   PlotFit,
   PlotHighlight,
   PlotScale,
   PlotTypes,
   PlotDataDisplay,
+  PLOT_KEYS,
+  PLOT_VALUES,
 };
