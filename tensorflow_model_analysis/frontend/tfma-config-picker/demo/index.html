@@ -1,0 +1,66 @@
+<!--
+Copyright 2018 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<html>
+  <body>
+    <h1>
+      Multi-output, multi-class
+    </h1>
+    <div>
+      <tfma-config-picker id=picker1></tfma-config-picker>
+      <div id="picker1-output">
+      </div>
+      <div>
+        Select an output and the class id selector will appear.
+      </div>
+    </div>
+    <h1>
+      Multi-output
+    </h1>
+    <div>
+      <tfma-config-picker id=picker2></tfma-config-picker>
+      <div id="picker2-output">
+      </div>
+      <div>
+        Both outputs are not multiclass. If only one of them is selected, the no class id will be
+        automaticalyl selected and the class id selector will not be visible. If both outputs are
+        selected, the class id selector will become visible.
+      </div>
+    </div>
+    <h1>
+      Multi-class
+    </h1>
+    <div>
+      <tfma-config-picker id=picker3></tfma-config-picker>
+      <div id="picker3-output">
+      </div>
+      <div>
+        Since there is only one output, it should be selected automatically and we should see the
+        class selector by default.
+      </div>
+    </div>
+    <h1>
+      Single-output
+    </h1>
+    <div>
+      <tfma-config-picker id=picker4></tfma-config-picker>
+      <div id="picker4-output">
+      </div>
+      <div>
+        Since there is only one output and no class, both should be selected automatically.
+      </div>
+    </div>
+  </body>
+</html>
