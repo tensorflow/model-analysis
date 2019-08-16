@@ -15,6 +15,7 @@
  */
 /**
  * @externs
+ * @suppress {duplicate}
  */
 var Plottable = {};
 
