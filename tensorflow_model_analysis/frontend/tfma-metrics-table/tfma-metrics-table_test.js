@@ -17,7 +17,10 @@ goog.module('tfma.MetricsHistogramTest');
 
 const TestUtil = goog.require('tfma.TestUtil');
 
-suite('tests', () => {
+suite('tests', function() {
+  // TODO(b/139550472): Revert to default timeout once fixed.
+  this.timeout(20000);
+
   /** @const {number} */
   const INITIALIZATION_TIMEOUT_MS = 2000;
 
@@ -50,7 +53,9 @@ suite('tests', () => {
     element.metrics = testData.getMetrics();
     element.data = testData;
     table = element.$.table;
-    setTimeout(cb, INITIALIZATION_TIMEOUT_MS);
+    table.addEventListener('google-chart-ready', () => {
+      setTimeout(cb, INITIALIZATION_TIMEOUT_MS);
+    }, {once: true});
   }
 
   test('ComponentSetup', done => {

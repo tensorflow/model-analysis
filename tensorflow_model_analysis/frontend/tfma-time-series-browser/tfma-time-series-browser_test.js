@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-suite('tests', () => {
+suite('tests', function() {
+  // TODO(b/139550472): Revert to default timeout once fixed.
+  this.timeout(20000);
+
   /**
    * Test component element.
    * @type {!Element}
@@ -43,12 +46,10 @@ suite('tests', () => {
         ],
         true);
 
-    let cbPending = true;
+    let cbPending = 2;
     element.addEventListener('google-chart-ready', () => {
-      if (cbPending) {
-        cb();
-        cbPending = false;
-      }
+      cbPending--;
+      if (cbPending === 0) cb();
     });
   };
 
