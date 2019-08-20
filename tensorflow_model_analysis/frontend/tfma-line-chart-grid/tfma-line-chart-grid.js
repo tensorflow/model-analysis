@@ -204,10 +204,13 @@ export class LineChartGrid extends PolymerElement {
    * Computes the chart data for the named metric using the given provider.
    * @param {string} metric
    * @param {!tfma.LineChartProvider} provider
-   * @return {!Array<!Object>}
+   * @return {!Array<!Object>|undefined}
    * @private
    */
   computeChartData_(metric, provider) {
+    if (!provider) {
+      return undefined;
+    }
     const lineChartData = provider.getLineChartData(metric);
     return [
       [

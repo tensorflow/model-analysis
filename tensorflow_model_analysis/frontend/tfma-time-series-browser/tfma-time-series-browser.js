@@ -115,12 +115,12 @@ export class TimeSeriesBrowser extends PolymerElement {
 
   /**
    * Computes the metrics available in all models.
-   * @param {!tfma.SeriesData} seriesData
+   * @param {!tfma.SeriesData|undefined} seriesData
    * @return {!Array<string>}
    * @private
    */
   computeMetrics_(seriesData) {
-    return seriesData.getMetrics();
+    return seriesData ? seriesData.getMetrics() : [];
   }
 
   /**
