@@ -56,8 +56,7 @@ export class AccuracyPrecisionRecallF1 extends PolymerElement {
           'legend': {'textStyle': {'fontSize': 9}},
           'hAxis': {'title': 'Thresholds'},
           'vAxis': {'title': 'Accuracy / Precision / Recall / F1'},
-          'explorer':
-              {actions: ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
+          'explorer': {actions: ['dragToZoom', 'rightClickToReset']},
         }
       },
 

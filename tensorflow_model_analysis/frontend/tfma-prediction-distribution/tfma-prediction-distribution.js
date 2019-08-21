@@ -70,8 +70,7 @@ export class PredicitonDistribution extends PolymerElement {
               'pointShape': 'diamond'
             },
           },
-          'explorer':
-              {actions: ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
+          'explorer': {actions: ['dragToZoom', 'rightClickToReset']},
         }
       },
 

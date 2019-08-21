@@ -61,8 +61,7 @@ export class RocCurve extends PolymerElement {
             },
             1: {'visibleInLegend': false},
           },
-          'explorer':
-              {actions: ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
+          'explorer': {actions: ['dragToZoom', 'rightClickToReset']},
         }
       },
 

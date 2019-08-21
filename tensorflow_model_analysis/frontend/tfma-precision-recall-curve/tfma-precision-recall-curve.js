@@ -55,8 +55,7 @@ export class PrecisionRecallCurve extends PolymerElement {
           'hAxis': {'title': 'Recall'},
           'vAxis': {'title': 'Precision'},
           'series': {0: {'visibleInLegend': false}},
-          'explorer':
-              {actions: ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
+          'explorer': {actions: ['dragToZoom', 'rightClickToReset']},
         }
       },
 

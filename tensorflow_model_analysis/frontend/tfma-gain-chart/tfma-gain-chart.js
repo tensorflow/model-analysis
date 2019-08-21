@@ -57,11 +57,10 @@ export class GainChart extends PolymerElement {
           'legend': {'textStyle': {'fontSize': 9}},
           'hAxis': {'title': 'Percentile'},
           'vAxis': {'title': 'Gain'},
-          'explorer':
-              {'actions': ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
+          'explorer': {'actions': ['dragToZoom', 'rightClickToReset']},
           'series': {
             0: {
-            'lineDashStyle': [3, 2],
+              'lineDashStyle': [3, 2],
               'visibleInLegend': false,
             },
             1: {'visibleInLegend': false},

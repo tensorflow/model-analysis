@@ -69,8 +69,7 @@ export class ResidualPlot extends PolymerElement {
               'pointShape': 'diamond',
             },
           },
-          'explorer':
-              {'actions': ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
+          'explorer': {'actions': ['dragToZoom', 'rightClickToReset']},
         },
       },
 

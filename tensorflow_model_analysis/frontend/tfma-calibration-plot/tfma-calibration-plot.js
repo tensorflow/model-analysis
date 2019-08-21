@@ -158,8 +158,7 @@ export class CalibrationPlot extends PolymerElement {
       'colorAxis':
           {'colors': ['#F0F0F0', '#0A47A4'], 'minValue': 0, 'maxValue': 10},
       'sizeAxis': {'minValue': 0, 'maxValue': 0.5, 'minSize': 2, 'maxSize': 12},
-      'explorer':
-          {'actions': ['dragToPan', 'scrollToZoom', 'rightClickToReset']},
+      'explorer': {'actions': ['dragToZoom', 'rightClickToReset']},
     };
 
     if (scale == tfma.PlotScale.LOG) {
