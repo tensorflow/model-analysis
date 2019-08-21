@@ -284,9 +284,10 @@ def deserialize_slice_key(slice_key: metrics_for_slice_pb2.SliceKey
   return tuple(result)
 
 
-def get_slices_for_features_dict(features_dict: types.DictOfFetchedTensorValues,
-                                 slice_spec: List[SingleSliceSpec]
-                                ) -> Iterable[SliceKeyType]:
+def get_slices_for_features_dict(
+    features_dict: Union[types.DictOfTensorValue,
+                         types.DictOfFetchedTensorValues],
+    slice_spec: List[SingleSliceSpec]) -> Iterable[SliceKeyType]:
   """Generates the slice keys appropriate for the given features dictionary.
 
   Args:

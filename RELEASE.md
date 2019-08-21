@@ -4,6 +4,9 @@
 
 ## Bug fixes and other changes
 
+*   Added support for slicing on native dicts of features in addition to FPL
+    types.
+
 ## Breaking changes
 
 ## Deprecations

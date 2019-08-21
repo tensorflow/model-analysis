@@ -32,7 +32,8 @@ from typing import List, Text, Union
 class SliceAccessor(object):
   """Wrapper around features dict for accessing keys and values for slicing."""
 
-  def __init__(self, features_dict: types.DictOfFetchedTensorValues):
+  def __init__(self, features_dict: Union[types.DictOfTensorValue,
+                                          types.DictOfFetchedTensorValues]):
     self._features_dict = features_dict
 
   def has_key(self, key: Text):
@@ -52,13 +53,16 @@ class SliceAccessor(object):
       ValueError: A dense feature was not a 1D array.
       ValueError: The feature had an unknown type.
     """
-    feature = self._features_dict.get(key)
-    if feature is None:
+    value = self._features_dict.get(key)
+    if value is None:
       raise KeyError('key %s not found' % key)
 
-    value = feature['node']
+    if isinstance(value, dict) and 'node' in value:
+      # Backwards compatibility for features that were stored as FPL types
+      # instead of native dicts.
+      value = value['node']
     if isinstance(value, tf.compat.v1.SparseTensorValue):
-      return value.values.tolist()
+      return value.values.tolist()  # pytype: disable=attribute-error
     if not isinstance(value, np.ndarray):
       raise ValueError(
           'feature had unsupported type: key: %s, value: %s, type: %s' %
