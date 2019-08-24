@@ -63,9 +63,6 @@ const MetricValueFormat = {
 };
 
 /** @type {string} */
-const METRICS_MAP = 'metricsMap';
-
-/** @type {string} */
 const METRIC_KEYS = 'metricKeys';
 
 /** @type {string} */
@@ -186,8 +183,6 @@ goog.exportSymbol(
     'tfma.MetricValueFormat.VALUE_AT_CUTOFFS',
     MetricValueFormat.VALUE_AT_CUTOFFS);
 
-goog.exportSymbol('tfma.METRICS_MAP', METRICS_MAP);
-
 goog.exportSymbol('tfma.METRIC_KEYS', METRIC_KEYS);
 
 goog.exportSymbol('tfma.METRIC_VALUES', METRIC_VALUES);
@@ -262,7 +257,6 @@ exports = {
   MetricValueTransformer,
   METRIC_KEYS,
   METRIC_VALUES,
-  METRICS_MAP,
   NO_CLASS_ID,
   PlotDataFieldNames,
   PlotFit,

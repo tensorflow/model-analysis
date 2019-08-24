@@ -284,9 +284,6 @@ tfma.MetricValueFormatSpec.prototype.type;
 tfma.MetricValueFormatSpec.prototype.transform;
 
 /** @type {string} */
-tfma.METRICS_MAP;
-
-/** @type {string} */
 tfma.METRIC_KEYS;
 
 /** @type {string} */

@@ -50,32 +50,30 @@ const metric5 = {
 };
 
 const TEST_DATA = {
-  [Constants.METRICS_MAP]: {
-    [output1]: {
-      [class1]: {
-        auc: 0.81,
-        complex: metric1,
-      },
+  [output1]: {
+    [class1]: {
+      auc: 0.81,
+      complex: metric1,
     },
-    [output2]: {
-      [class2]: {
-        auc: 0.82,
-        complex: metric2,
-      },
-      [class3]: {
-        auc: 0.83,
-        complex: metric3,
-      },
-      [Constants.NO_CLASS_ID]: {
-        auc: 0.80,
-        complex: metric4,
-      }
+  },
+  [output2]: {
+    [class2]: {
+      auc: 0.82,
+      complex: metric2,
     },
-    '': {
-      [Constants.NO_CLASS_ID]: {
-        auc: 0.84,
-        complex: metric5,
-      },
+    [class3]: {
+      auc: 0.83,
+      complex: metric3,
+    },
+    [Constants.NO_CLASS_ID]: {
+      auc: 0.80,
+      complex: metric4,
+    }
+  },
+  '': {
+    [Constants.NO_CLASS_ID]: {
+      auc: 0.84,
+      complex: metric5,
     },
   },
 };

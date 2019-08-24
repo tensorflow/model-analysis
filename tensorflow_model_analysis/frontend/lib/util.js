@@ -62,28 +62,25 @@ function buildPrefix(config) {
 }
 
 /**
- * @param {!Object} metrics The object containing metrics to be merged. We
- *     assume it contains a field named metricsMap where each level of the
- * nested structure corresponds to one field in the metric key like output name
- * and class id. eg:
+ * @param {!Object} metricsMap The object containing metrics to be merged. We
+ *     assume each level of the nested structure corresponds to one field in the
+ *     metric key like output name and class id. eg:
  * {
- *   metricsMap: {
- *     output1: {
- *       class1: {
- *         auc: 0.81,
- *         accuracy: 0.71,
- *         ...
- *       },
+ *   output1: {
+ *     class1: {
+ *       auc: 0.81,
+ *       accuracy: 0.71,
+ *       ...
  *     },
- *     output2: {
- *       class1: {
- *         auc: 0.82,
- *         accuracy: 0.72,
- *         ...
- *       }
- *     },
- *     ...
- *   }
+ *   },
+ *   output2: {
+ *     class1: {
+ *       auc: 0.82,
+ *       accuracy: 0.72,
+ *       ...
+ *     }
+ *   },
+ *   ...
  * }
  * @param {!Array<!ConfigListItem>} configsList The list of configs to use.
  * @param {!Object<string>=} blacklist The metrics to omit in the merged result.
@@ -97,8 +94,8 @@ function buildPrefix(config) {
  *   ...
  * }
  */
-function mergeMetricsForSelectedConfigsList(metrics, configsList, blacklist) {
-  const metricsMap = metrics[Constants.METRICS_MAP] || {};
+function mergeMetricsForSelectedConfigsList(
+    metricsMap, configsList, blacklist) {
   // Only add prefix if there are more than on config selected.
   const addPrefix = configsList.length > 1;
   const noBlacklist = !blacklist;
