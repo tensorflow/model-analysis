@@ -22,7 +22,7 @@ import inspect
 import sys
 import traceback
 import six
-from typing import List, Optional, Text
+from typing import Any, Dict, List, Optional, Text
 
 # Separator used when combining multiple layers of Extracts keys into a single
 # string. Normally we would like to use '.' or '/' as a separator, but the
@@ -78,6 +78,73 @@ def create_keys_key(key: Text) -> Text:
 def create_values_key(key: Text) -> Text:
   """Creates secondary key representing sparse values associated with key."""
   return '_'.join([key, VALUES_SUFFIX])
+
+
+def get_by_keys(data: Dict[Text, Any],
+                keys: List[Any],
+                default_value=None,
+                optional: bool = False) -> Any:
+  """Returns value with given key(s) in (possibly multi-level) dict.
+
+  The keys represent multiple levels of indirection into the data. For example
+  if 3 keys are passed then the data is expected to be a dict of dict of dict.
+  For compatibily with data that uses prefixing to create separate the keys in a
+  single dict, lookups will also be searched for under the keys separated by
+  '/'. For example, the keys 'head1' and 'probabilities' could be stored in a
+  a single dict as 'head1/probabilties'.
+
+  Args:
+    data: Dict to get value from.
+    keys: Sequence of keys to lookup in data. None keys will be ignored.
+    default_value: Default value if not found.
+    optional: Whether the key is optional or not. If default value is None and
+      optional is False then a ValueError will be raised if key not found.
+
+  Raises:
+    ValueError: If (non-optional) key is not found.
+  """
+  if not keys:
+    raise ValueError('no keys provided to get_by_keys: %d' % data)
+
+  format_keys = lambda keys: '->'.join([str(k) for k in keys if k is not None])
+
+  value = data
+  keys_matched = 0
+  for i, key in enumerate(keys):
+    if key is None:
+      keys_matched += 1
+      continue
+
+    if not isinstance(value, dict):
+      raise ValueError('expected dict for "%s" but found %s: %s' %
+                       (format_keys(keys[:i + 1]), type(value), data))
+
+    if key in value:
+      value = value[key]
+      keys_matched += 1
+      continue
+
+    # If values have prefixes matching the key, return those values (stripped
+    # of the prefix) instead.
+    prefix_matches = {}
+    for k, v in value.items():
+      if k.startswith(key + '/'):
+        prefix_matches[k[len(key) + 1:]] = v
+    if prefix_matches:
+      value = prefix_matches
+      keys_matched += 1
+      continue
+
+    break
+
+  if keys_matched < len(keys) or isinstance(value, dict) and not value:
+    if default_value is not None:
+      return default_value
+    if optional:
+      return None
+    raise ValueError('"%s" key not found (or value is empty dict): %s' %
+                     (format_keys(keys[:keys_matched + 1]), data))
+  return value
 
 
 def reraise_augmented(exception: Exception, additional_message: Text) -> None:

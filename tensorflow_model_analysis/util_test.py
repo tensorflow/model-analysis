@@ -38,6 +38,71 @@ class UtilTest(tf.test.TestCase):
     self.assertEqual('a__b', util.compound_key(['a', 'b']))
     self.assertEqual('a__b____c__d', util.compound_key(['a', 'b__c', 'd']))
 
+  def testGetByKeys(self):
+    self.assertEqual([1], util.get_by_keys({'labels': [1]}, ['labels']))
+
+  def testGetByKeysMissingAndDefault(self):
+    self.assertEqual('a', util.get_by_keys({}, ['labels'], default_value='a'))
+    self.assertEqual(
+        'a', util.get_by_keys({'labels': {}}, ['labels'], default_value='a'))
+
+  def testGetByKeysMissingAndOptional(self):
+    self.assertEqual(None, util.get_by_keys({}, ['labels'], optional=True))
+    self.assertEqual(
+        None, util.get_by_keys({'labels': {}}, ['labels'], optional=True))
+
+  def testGetByKeysMissingAndNonOptional(self):
+    with self.assertRaisesRegexp(ValueError, 'not found'):
+      util.get_by_keys({}, ['labels'])
+    with self.assertRaisesRegexp(ValueError, 'not found'):
+      util.get_by_keys({'labels': {}}, ['labels'])
+
+  def testGetByKeysWitMultiLevel(self):
+    self.assertEqual([1],
+                     util.get_by_keys({'predictions': {
+                         'output': [1]
+                     }}, ['predictions', 'output']))
+
+    self.assertEqual([1],
+                     util.get_by_keys(
+                         {'predictions': {
+                             'model': {
+                                 'output': [1],
+                             },
+                         }}, ['predictions', 'model', 'output']))
+
+  def testGetByKeysWithPrefix(self):
+    self.assertEqual({
+        'all_classes': ['a', 'b'],
+        'probabilities': [1]
+    },
+                     util.get_by_keys(
+                         {
+                             'predictions': {
+                                 'output/all_classes': ['a', 'b'],
+                                 'output/probabilities': [1],
+                             },
+                         }, ['predictions', 'output']))
+    self.assertEqual({
+        'all_classes': ['a', 'b'],
+        'probabilities': [1]
+    },
+                     util.get_by_keys(
+                         {
+                             'predictions': {
+                                 'model': {
+                                     'output/all_classes': ['a', 'b'],
+                                     'output/probabilities': [1],
+                                 },
+                             },
+                         }, ['predictions', 'model', 'output']))
+
+  def testGetByKeysMissingSecondaryKey(self):
+    with self.assertRaisesRegexp(ValueError, 'not found'):
+      util.get_by_keys({'predictions': {
+          'missing': [1]
+      }}, ['predictions', 'output'])
+
   def testKwargsOnly(self):
 
     @util.kwargs_only
