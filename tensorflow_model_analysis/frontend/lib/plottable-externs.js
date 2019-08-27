@@ -33,6 +33,12 @@ Plottable.Components.Group.prototype.componentAt = function(
     rowIndex, columnIndex) {};
 Plottable.Components.Group.prototype.components = function() {};
 /** @constructor */
+Plottable.Components.prototype.GuideLineLayer = function(orientation) {};
+Plottable.Components.prototype.GuideLineLayer.prototype.scale = function(
+    scale) {};
+Plottable.Components.prototype.GuideLineLayer.prototype.value = function(
+    value) {};
+/** @constructor */
 Plottable.Components.Table = function(list) {};
 Plottable.Components.Table.prototype.renderTo = function(target) {};
 Plottable.Components.Table.prototype.componentAt = function(
