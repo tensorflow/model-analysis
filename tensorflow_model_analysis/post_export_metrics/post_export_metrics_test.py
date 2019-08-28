@@ -192,7 +192,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     def check_result(got):  # pylint: disable=invalid-name
       try:
         self.assertEqual(1, len(got), 'got: %s' % got)
-        (_, value) = got[0]
+        (slice_key, value) = got[0]
         self.assertIn(metric_keys.EXAMPLE_COUNT, value)
         count_values = value[metric_keys.EXAMPLE_COUNT]
         self.assertAlmostEqual(count_values.unsampled_value, 4.0)
@@ -200,8 +200,10 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         weight_values = value[metric_keys.EXAMPLE_WEIGHT]
         self.assertAlmostEqual(weight_values.unsampled_value, 15.0)
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        example_count_metric.populate_stats_and_pop(value, output_metrics)
-        example_weight_metric.populate_stats_and_pop(value, output_metrics)
+        example_count_metric.populate_stats_and_pop(slice_key, value,
+                                                    output_metrics)
+        example_weight_metric.populate_stats_and_pop(slice_key, value,
+                                                     output_metrics)
         self.assertProtoEquals(
             """
             double_value {
@@ -564,7 +566,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Note that we can't just make this a dict, since proto maps
         # allow uninitialized key access, i.e. they act like defaultdicts.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        precision_metric.populate_stats_and_pop(value, output_metrics)
+        precision_metric.populate_stats_and_pop(slice_key, value,
+                                                output_metrics)
         self.assertProtoEquals(
             """
             value_at_cutoffs {
@@ -641,7 +644,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             }
             """, output_metrics[metric_keys.PRECISION_AT_K])
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        recall_metric.populate_stats_and_pop(value, output_metrics)
+        recall_metric.populate_stats_and_pop(slice_key, value, output_metrics)
         self.assertProtoEquals(
             """
             value_at_cutoffs {
@@ -845,7 +848,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Note that we can't just make this a dict, since proto maps
         # allow uninitialized key access, i.e. they act like defaultdicts.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        precision_metric.populate_stats_and_pop(value, output_metrics)
+        precision_metric.populate_stats_and_pop(slice_key, value,
+                                                output_metrics)
         for v in output_metrics[
             metric_keys.PRECISION_AT_K].value_at_cutoffs.values:
           # Note that we can't check the exact values because of nondeterminism.
@@ -867,7 +871,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
               delta=0.2)
 
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        recall_metric.populate_stats_and_pop(value, output_metrics)
+        recall_metric.populate_stats_and_pop(slice_key, value, output_metrics)
         for v in output_metrics[
             metric_keys.RECALL_AT_K].value_at_cutoffs.values:
           # Note that we can't check the exact values because of nondeterminism.
@@ -1691,7 +1695,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # allow uninitialized key access, i.e. they act like defaultdicts.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
         confusion_matrix_at_thresholds_metric.populate_stats_and_pop(
-            value, output_metrics)
+            slice_key, value, output_metrics)
         self.assertProtoEquals(
             """
             confusion_matrix_at_thresholds {
@@ -2156,7 +2160,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Note that we can't just make this a dict, since proto maps
         # allow uninitialized key access, i.e. they act like defaultdicts.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        auc_metric.populate_stats_and_pop(value, output_metrics)
+        auc_metric.populate_stats_and_pop(slice_key, value, output_metrics)
         self.assertProtoEquals(
             """
             bounded_value {
@@ -2638,7 +2642,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Note that we can't just make this a dict, since proto maps
         # allow uninitialized key access, i.e. they act like defaultdicts.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        mean_absolute_error_metric.populate_stats_and_pop(value, output_metrics)
+        mean_absolute_error_metric.populate_stats_and_pop(
+            slice_key, value, output_metrics)
         self.assertProtoEquals(
             """
             bounded_value {
@@ -2728,7 +2733,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
         # Check serialization too.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        mean_absolute_error_metric.populate_stats_and_pop(value, output_metrics)
+        mean_absolute_error_metric.populate_stats_and_pop(
+            slice_key, value, output_metrics)
         actual_metric_value = output_metrics[metric_key]
         self.assertAlmostEqual(
             actual_metric_value.bounded_value.value.value, 0.4, delta=0.2)
@@ -2801,7 +2807,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Note that we can't just make this a dict, since proto maps
         # allow uninitialized key access, i.e. they act like defaultdicts.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        mean_squared_error_metric.populate_stats_and_pop(value, output_metrics)
+        mean_squared_error_metric.populate_stats_and_pop(
+            slice_key, value, output_metrics)
         self.assertProtoEquals(
             """
             bounded_value {
@@ -2884,7 +2891,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
         # Check serialization too.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        mean_squared_error_metric.populate_stats_and_pop(value, output_metrics)
+        mean_squared_error_metric.populate_stats_and_pop(
+            slice_key, value, output_metrics)
         actual_metric_value = output_metrics[metric_key]
         self.assertAlmostEqual(
             actual_metric_value.bounded_value.value.value,
@@ -2965,7 +2973,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Note that we can't just make this a dict, since proto maps
         # allow uninitialized key access, i.e. they act like defaultdicts.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        error_metric.populate_stats_and_pop(value, output_metrics)
+        error_metric.populate_stats_and_pop(slice_key, value, output_metrics)
         self.assertProtoEquals(
             """
             bounded_value {
@@ -3050,7 +3058,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
         # Check serialization too.
         output_metrics = metrics_for_slice_pb2.MetricsForSlice().metrics
-        error_metric.populate_stats_and_pop(value, output_metrics)
+        error_metric.populate_stats_and_pop(slice_key, value, output_metrics)
         actual_metric_value = output_metrics[metric_key]
         self.assertAlmostEqual(
             actual_metric_value.bounded_value.value.value, 0.62417656, places=5)

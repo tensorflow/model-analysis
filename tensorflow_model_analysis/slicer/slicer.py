@@ -30,7 +30,6 @@ import six
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slice_accessor
 from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
@@ -425,7 +424,8 @@ def FanoutSlices(pcoll: beam.pvalue.PCollection,
 @beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
 def FilterOutSlices(  # pylint: disable=invalid-name
     values: beam.pvalue.PCollection, slices_count: beam.pvalue.PCollection,
-    k_anonymization_count: int) -> beam.pvalue.PCollection:
+    k_anonymization_count: int,
+    error_metric_key: Text) -> beam.pvalue.PCollection:
   """Filter out slices with examples count lower than k_anonymization_count.
 
   Since we might filter out certain slices to preserve privacy in the case of
@@ -439,6 +439,7 @@ def FilterOutSlices(  # pylint: disable=invalid-name
       than k_anonymization_count, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
       data for smaller number of examples.
+    error_metric_key: The special metric key to indicate errors.
 
   Returns:
     A PCollection keyed at all the possible slice_key and aggregated data for
@@ -447,28 +448,33 @@ def FilterOutSlices(  # pylint: disable=invalid-name
   """
 
   class FilterOutSmallSlicesDoFn(beam.DoFn):
-    """DoFn to filter out small slices.
+    """DoFn to filter out small slices."""
 
-    For slices (excluding overall slice) with examples count lower than
-    k_anonymization_count, it adds an error message.
+    def __init__(self, error_metric_key: Text):
+      self.error_metric_key = error_metric_key
 
-    Args:
-      element: Tuple containing slice key and a dictionary containing
-        corresponding elements from merged pcollections.
+    def process(
+        self, element: Tuple[SliceKeyType, Dict[Text, Any]]
+    ) -> Generator[Tuple[SliceKeyType, Dict[Text, Any]], None, None]:
+      """Filter out small slices.
 
-    Returns:
-      PCollection of (slice_key, aggregated_data or error message)
-    """
+      For slices (excluding overall slice) with examples count lower than
+      k_anonymization_count, it adds an error message.
 
-    def process(self, element: Tuple[SliceKeyType, Dict[Text, Any]]
-               ) -> Generator[Tuple[SliceKeyType, Dict[Text, Any]], None, None]:
+      Args:
+        element: Tuple containing slice key and a dictionary containing
+          corresponding elements from merged pcollections.
+
+      Yields:
+        PCollection of (slice_key, aggregated_data or error message)
+      """
       (slice_key, value) = element
       if value['values']:
         if (not slice_key or value['slices_count'][0] >= k_anonymization_count):
           yield (slice_key, value['values'][0])
         else:
           yield (slice_key, {
-              metric_keys.ERROR_METRIC:
+              self.error_metric_key:
                   'Example count for this slice key is lower than '
                   'the minimum required value: %d. No data is aggregated for '
                   'this slice.' % k_anonymization_count
@@ -479,4 +485,5 @@ def FilterOutSlices(  # pylint: disable=invalid-name
       'slices_count': slices_count
   }
           | 'CoGroupingSlicesCountAndAggregatedData' >> beam.CoGroupByKey()
-          | 'FilterOutSmallSlices' >> beam.ParDo(FilterOutSmallSlicesDoFn()))
+          | 'FilterOutSmallSlices' >> beam.ParDo(
+              FilterOutSmallSlicesDoFn(error_metric_key)))

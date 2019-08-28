@@ -216,11 +216,11 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     metrics = (
         metrics
         | 'FilterMetricsForSmallSlices' >> slicer.FilterOutSlices(
-            slices_count, k_anonymization_count))
+            slices_count, k_anonymization_count, metric_keys.ERROR_METRIC))
     plots = (
         plots
         | 'FilterPlotsForSmallSlices' >> slicer.FilterOutSlices(
-            slices_count, k_anonymization_count))
+            slices_count, k_anonymization_count, metric_keys.ERROR_METRIC))
 
   if serialize:
     metrics, plots = (

@@ -98,7 +98,7 @@ def _convert_to_array_value(array: np.ndarray
 
 
 def convert_slice_metrics(
-    slice_metrics: Dict[Text, Any],
+    slice_key: slicer.SliceKeyType, slice_metrics: Dict[Text, Any],
     post_export_metrics: List[types.AddMetricsCallbackType],
     metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice) -> None:
   """Converts slice_metrics into the given metrics_for_slice proto."""
@@ -111,7 +111,7 @@ def convert_slice_metrics(
   # defined.
   for post_export_metric in post_export_metrics:
     if hasattr(post_export_metric, 'populate_stats_and_pop'):
-      post_export_metric.populate_stats_and_pop(slice_metrics_copy,
+      post_export_metric.populate_stats_and_pop(slice_key, slice_metrics_copy,
                                                 metrics_for_slice.metrics)
   for name, value in slice_metrics_copy.items():
     if isinstance(value, types.ValueWithTDistribution):
@@ -176,7 +176,7 @@ def _serialize_metrics(metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
   result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   # Convert the slice metrics.
-  convert_slice_metrics(slice_metrics, post_export_metrics, result)
+  convert_slice_metrics(slice_key, slice_metrics, post_export_metrics, result)
   return result.SerializeToString()
 
 

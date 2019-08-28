@@ -32,6 +32,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
+from tensorflow_model_analysis.slicer import slicer
 from typing import Any, Dict, List, Optional, Text, Tuple, Type, Callable
 
 from tensorflow.python.estimator.canned import prediction_keys
@@ -520,9 +521,9 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     """
     raise NotImplementedError('not implemented')
 
-  def populate_stats_and_pop(self, combined_metrics: Dict[Text, Any],
-                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
-                            ) -> None:
+  def populate_stats_and_pop(
+      self, slice_key: slicer.SliceKeyType, combined_metrics: Dict[Text, Any],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     """Converts the metric in `combined_metrics` to `output_metrics` and pops.
 
     Please override the method if the metric is NOT plot type and should be
@@ -532,6 +533,7 @@ class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
     converted into float values afterwards.
 
     Args:
+      slice_key: The name of slice.
       combined_metrics: The dict containing raw TFMA metrics.
       output_metrics: The dict where we convert the metrics to.
     """
@@ -623,9 +625,10 @@ class _ExampleCount(_PostExportMetric):
             metrics.total(tf.shape(input=ref_tensor)[0])
     }
 
-  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
-                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
-                            ) -> None:
+  def populate_stats_and_pop(
+      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,
+                                                                         Any],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     count_result = combine_metrics.pop(
         self._metric_key(metric_keys.EXAMPLE_COUNT))
     if isinstance(count_result, types.ValueWithTDistribution):
@@ -674,9 +677,10 @@ class _ExampleWeight(_PostExportMetric):
     value = features_dict[self._example_weight_key]
     return {self._metric_key(metric_keys.EXAMPLE_WEIGHT): metrics.total(value)}
 
-  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
-                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
-                            ) -> None:
+  def populate_stats_and_pop(
+      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,
+                                                                         Any],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     weight_result = combine_metrics.pop(
         self._metric_key(metric_keys.EXAMPLE_WEIGHT))
     if isinstance(weight_result, types.ValueWithTDistribution):
@@ -752,9 +756,10 @@ class _SquaredPearsonCorrelation(_PostExportMetric):
             metrics.squared_pearson_correlation(predictions, labels, weights)
     }
 
-  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
-                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
-                            ) -> None:
+  def populate_stats_and_pop(
+      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,
+                                                                         Any],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     r_squared = combine_metrics.pop(
         self._metric_key(metric_keys.SQUARED_PEARSON_CORRELATION))
     _populate_bounded_value(
@@ -1158,9 +1163,10 @@ class _ConfusionMatrixAtThresholds(_ConfusionMatrixBasedMetric):
     }
     # pyformat: enable
 
-  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
-                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
-                            ) -> None:
+  def populate_stats_and_pop(
+      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,
+                                                                         Any],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     matrices = combine_metrics.pop(
         self._metric_key(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES))
     thresholds = combine_metrics.pop(
@@ -1362,9 +1368,10 @@ class _Auc(_PostExportMetric):
         self._metric_key(self._metric_name), labels, predictions, weights,
         self._num_buckets + 1, self._curve)
 
-  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
-                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
-                            ) -> None:
+  def populate_stats_and_pop(
+      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,
+                                                                         Any],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     _populate_to_auc_bounded_value_and_pop(combine_metrics, output_metrics,
                                            self._metric_key(self._metric_name))
 
@@ -1542,9 +1549,10 @@ class _PrecisionRecallAtK(_PostExportMetric):
 
     return {self._metric_key(self._metric_name): metric_ops}
 
-  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
-                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
-                            ) -> None:
+  def populate_stats_and_pop(
+      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,
+                                                                         Any],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     table = combine_metrics.pop(self._metric_key(self._metric_name))
     cutoff_column = table[:, 0]
     value_column = table[:, 1]
@@ -1622,10 +1630,11 @@ class _PrecisionAtK(_PrecisionRecallAtK):
                          metric_tag, classes_key, probabilities_key)
 
   def populate_stats_and_pop(  # pylint: disable=useless-super-delegation
-      self, combine_metrics: Dict[Text, Any],
+      self, slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text, Any],
       output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     return super(_PrecisionAtK,
-                 self).populate_stats_and_pop(combine_metrics, output_metrics)
+                 self).populate_stats_and_pop(slice_key, combine_metrics,
+                                              output_metrics)
 
 
 @_export('recall_at_k')
@@ -1678,10 +1687,11 @@ class _RecallAtK(_PrecisionRecallAtK):
                          classes_key, probabilities_key)
 
   def populate_stats_and_pop(  # pylint: disable=useless-super-delegation
-      self, combine_metrics: Dict[Text, Any],
+      self, slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text, Any],
       output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     return super(_RecallAtK,
-                 self).populate_stats_and_pop(combine_metrics, output_metrics)
+                 self).populate_stats_and_pop(slice_key, combine_metrics,
+                                              output_metrics)
 
 
 class _TFMetricBaseClass(_PostExportMetric):
@@ -1760,9 +1770,10 @@ class _TFMetricBaseClass(_PostExportMetric):
 
     return {self._metric_key(self._metric_name): metric_fn}
 
-  def populate_stats_and_pop(self, combine_metrics: Dict[Text, Any],
-                             output_metrics: Dict[Text, metrics_pb2.MetricValue]
-                            ) -> None:
+  def populate_stats_and_pop(
+      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,
+                                                                         Any],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
     metric_key = self._metric_key(self._metric_name)
     metric_value = combine_metrics[metric_key]
     _populate_bounded_value(output_metrics[metric_key], metric_value)
