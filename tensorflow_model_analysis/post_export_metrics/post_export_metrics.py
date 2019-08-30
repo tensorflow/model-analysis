@@ -1513,11 +1513,11 @@ class _PrecisionRecallAtK(_PostExportMetric):
     labels = labels_dict
     if self._labels_key:
       labels = labels_dict[self._labels_key]
-    if isinstance(labels_dict, tf.SparseTensor):
+    if isinstance(labels, tf.SparseTensor):
       if labels.dtype == tf.string:
-        labels = tf.sparse.to_dense(labels_dict, default_value='')
+        labels = tf.sparse.to_dense(labels, default_value='')
       else:
-        labels = tf.sparse.to_dense(labels_dict)
+        labels = tf.sparse.to_dense(labels)
 
     # Expand dims if necessary.
     labels = tf.case(
