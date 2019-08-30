@@ -21,15 +21,26 @@ import "google/protobuf/wrappers.proto";
 // This proto is copied into PerformanceStatistics because of b/110954446.
 // LINT.IfChange
 
+// A multi-class key identifies a type of multi-class metric.
+message MultiClassKey {
+  oneof type {
+    // Specifies multi-class metric is for a specific class ID.
+    google.protobuf.Int32Value class_id = 1;
+    // Specifies multi-class metric is related to the kth predicted value.
+    google.protobuf.Int32Value k = 2;
+    // Specifies multi-class metric is related to the top-k predicted values.
+    google.protobuf.Int32Value top_k = 3;
+  }
+}
+
 // A metric key uniquely identifies a metric.
 message MetricKey {
   // Name of the metric ('auc', etc).
   string name = 1;
   // Optional output name associated with metric (for multi-output models).
   string output_name = 2;
-  // Optional class ID associated with metric (if metric is associated with a
-  // specific class in a multi-class model).
-  google.protobuf.Int32Value class_id = 3;
+  // Optional multi-class key associated with metric (for multi-class models).
+  MultiClassKey multi_class_key = 3;
 }
 
 // The value will be converted into an error message if we do not know its type.
@@ -250,9 +261,8 @@ message CalibrationHistogramBuckets {
 message PlotKey {
   // Optional output name associated with plot (for multi-output models).
   string output_name = 2;
-  // Optional class ID associated with plot (if plot is associated with a
-  // specific class in a multi-class model).
-  google.protobuf.Int32Value class_id = 3;
+  // Optional multi-class key associated with plot (for multi-class models).
+  MultiClassKey multi_class_key = 3;
 }
 
 message PlotData {
