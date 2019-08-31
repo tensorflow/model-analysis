@@ -68,9 +68,6 @@ const METRIC_KEYS = 'metricKeys';
 /** @type {string} */
 const METRIC_VALUES = 'metricValues';
 
-/** @type {string} */
-const NO_CLASS_ID = 'nci';
-
 /** @enum {string}*/
 const PlotTypes = {
   ACCURACY_CHARTS: 'accuracyPrecisionRecallF1Charts',
@@ -187,8 +184,6 @@ goog.exportSymbol('tfma.METRIC_KEYS', METRIC_KEYS);
 
 goog.exportSymbol('tfma.METRIC_VALUES', METRIC_VALUES);
 
-goog.exportSymbol('tfma.NO_CLASS_ID', NO_CLASS_ID);
-
 goog.exportSymbol(
     'tfma.PlotDataFieldNames.CALIBRATION_BUCKETS',
     PlotDataFieldNames.CALIBRATION_BUCKETS);
@@ -257,7 +252,6 @@ exports = {
   MetricValueTransformer,
   METRIC_KEYS,
   METRIC_VALUES,
-  NO_CLASS_ID,
   PlotDataFieldNames,
   PlotFit,
   PlotHighlight,

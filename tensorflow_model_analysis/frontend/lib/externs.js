@@ -289,9 +289,6 @@ tfma.METRIC_KEYS;
 /** @type {string} */
 tfma.METRIC_VALUES;
 
-/** @type {string} */
-tfma.NO_CLASS_ID;
-
 /**
  * @enum {string}
  */

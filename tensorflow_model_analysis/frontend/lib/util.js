@@ -15,8 +15,6 @@
  */
 goog.module('tfma.Util');
 
-const Constants = goog.require('tfma.Constants');
-
 /**
  * @typedef {{
  *   outputName: string,
@@ -43,15 +41,16 @@ function createConfigsList(configs) {
 
 /**
  * @param {!ConfigListItem} config
+ * @param {boolean} compact
  * @return {string} Builds the metric prefix for the given config.
  */
-function buildPrefix(config) {
+function buildPrefix(config, compact) {
   const prefixArray = [];
   if (config.outputName != '') {
     prefixArray.push(config.outputName);
   }
-  if (config.classId != Constants.NO_CLASS_ID) {
-    prefixArray.push(config.classId);
+  if (config.classId) {
+    prefixArray.push(compact ? config.classId.split(':')[1] : config.classId);
   }
   if (prefixArray.length) {
     // If we are adding prefix, add an empty string so that we add an extra
@@ -64,17 +63,17 @@ function buildPrefix(config) {
 /**
  * @param {!Object} metricsMap The object containing metrics to be merged. We
  *     assume each level of the nested structure corresponds to one field in the
- *     metric key like output name and class id. eg:
+ *     metric key like output name and multi-class key. eg:
  * {
  *   output1: {
- *     class1: {
+ *     classId:1: {
  *       auc: 0.81,
  *       accuracy: 0.71,
  *       ...
  *     },
  *   },
  *   output2: {
- *     class1: {
+ *     topK:3: {
  *       auc: 0.82,
  *       accuracy: 0.72,
  *       ...
@@ -89,8 +88,8 @@ function buildPrefix(config) {
  *     selected, a prefix containig the metric key will be added to help
  *     disambiguate which configuration the metric is for. eg:
  * {
- *   output1/class1/auc: 0.81,
- *   output2/class1/auc: 0.82,
+ *   output1/classId:1/auc: 0.81,
+ *   output2/topK:3/auc: 0.82,
  *   ...
  * }
  */
@@ -100,10 +99,20 @@ function mergeMetricsForSelectedConfigsList(
   const addPrefix = configsList.length > 1;
   const noBlacklist = !blacklist;
   const mergedMetrics = {};
+  const classIdPrefixUsed = {};
+  configsList.forEach(config => {
+    const classIdParts = config.classId.split(':');
+    if (classIdParts[0]) {
+      classIdPrefixUsed[classIdParts[0]] = 1;
+    }
+  });
+  // Use compact prefix if selected config have the same non-empty multi-class
+  // key. eg: all class id.
+  const useCompactPrefix = Object.keys(classIdPrefixUsed).length <= 1;
   configsList.forEach(config => {
     const outputMap = metricsMap[config.outputName] || {};
     const classResult = outputMap[config.classId] || {};
-    const prefix = addPrefix ? buildPrefix(config) : '';
+    const prefix = addPrefix ? buildPrefix(config, useCompactPrefix) : '';
     for (let metricName in classResult) {
       if (noBlacklist || !blacklist[metricName]) {
         mergedMetrics[prefix + metricName] = classResult[metricName];

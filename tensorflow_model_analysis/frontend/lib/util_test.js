@@ -17,7 +17,6 @@ goog.module('tfma.tests.UtilTest');
 
 goog.setTestOnly();
 
-const Constants = goog.require('tfma.Constants');
 const Util = goog.require('tfma.Util');
 const testSuite = goog.require('goog.testing.testSuite');
 goog.require('goog.testing.jsunit');
@@ -25,9 +24,9 @@ goog.require('goog.testing.jsunit');
 
 const output1 = 'output1';
 const output2 = 'output2';
-const class1 = 'class1';
-const class2 = 'class2';
-const class3 = 'class3';
+const class1 = 'classId:1';
+const class2 = 'classId:2';
+const top3 = 'topK:3';
 const metric1 = {
   some: 1,
   value: 2
@@ -61,17 +60,17 @@ const TEST_DATA = {
       auc: 0.82,
       complex: metric2,
     },
-    [class3]: {
+    [top3]: {
       auc: 0.83,
       complex: metric3,
     },
-    [Constants.NO_CLASS_ID]: {
+    '': {
       auc: 0.80,
       complex: metric4,
     }
   },
   '': {
-    [Constants.NO_CLASS_ID]: {
+    '': {
       auc: 0.84,
       complex: metric5,
     },
@@ -84,10 +83,10 @@ testSuite({
         [
           {outputName: output1, classId: class1},
           {outputName: output2, classId: class2},
-          {outputName: output2, classId: class3},
+          {outputName: output2, classId: top3},
         ],
         Util.createConfigsList(
-            {[output1]: [class1], [output2]: [class2, class3]}));
+            {[output1]: [class1], [output2]: [class2, top3]}));
   },
 
   testMergeMetricsForSelectedConfigsListNoPrefixIfOnlyOneConfigSelected: () => {
@@ -98,25 +97,64 @@ testSuite({
         Util.mergeMetricsForSelectedConfigsList(TEST_DATA, selectedConfigs));
   },
 
-  testMergeMetricsForSelectedConfigsListAddPrefixIfMoreTahnOneSelected: () => {
+  testMergeMetricsForSelectedConfigsListAddPrefixIfMoreThanOneSelected: () => {
     const selectedConfigs = [
       {outputName: output1, classId: class1},
-      {outputName: output2, classId: class3}
+      {outputName: output2, classId: top3}
     ];
     const class1Auc = output1 + '/' + class1 + '/' +
         'auc';
     const class1Complex = output1 + '/' + class1 + '/' +
         'complex';
-    const class3Auc = output2 + '/' + class3 + '/' +
+    const top3Auc = output2 + '/' + top3 + '/' +
         'auc';
-    const class3Complex = output2 + '/' + class3 + '/' +
+    const top3Complex = output2 + '/' + top3 + '/' +
         'complex';
     assertObjectEquals(
         {
           [class1Auc]: 0.81,
           [class1Complex]: metric1,
-          [class3Auc]: 0.83,
-          [class3Complex]: metric3,
+          [top3Auc]: 0.83,
+          [top3Complex]: metric3,
+        },
+        Util.mergeMetricsForSelectedConfigsList(TEST_DATA, selectedConfigs));
+  },
+
+  testMergeMetricsForSelectedConfigsListAddCompactPrefixIfSimilarSelected:
+      () => {
+        const selectedConfigs = [
+          {outputName: output1, classId: class1},
+          {outputName: output2, classId: class2}
+        ];
+        const class1Auc = output1 + '/1/auc';
+        const class1Complex = output1 + '/1/complex';
+        const class2Auc = output2 + '/2/auc';
+        const class2Complex = output2 + '/2/complex';
+        assertObjectEquals(
+            {
+              [class1Auc]: 0.81,
+              [class1Complex]: metric1,
+              [class2Auc]: 0.82,
+              [class2Complex]: metric2,
+            },
+            Util.mergeMetricsForSelectedConfigsList(
+                TEST_DATA, selectedConfigs));
+      },
+
+  testMergeMetricsForSelectedConfigsListAddCompactPrefixIfNoClassId: () => {
+    const selectedConfigs = [
+      {outputName: output1, classId: class1}, {outputName: output2, classId: ''}
+    ];
+    const class1Auc = output1 + '/1/auc';
+    const class1Complex = output1 + '/1/complex';
+    const class2Auc = output2 + '/auc';
+    const class2Complex = output2 + '/complex';
+    assertObjectEquals(
+        {
+          [class1Auc]: 0.81,
+          [class1Complex]: metric1,
+          [class2Auc]: 0.80,
+          [class2Complex]: metric4,
         },
         Util.mergeMetricsForSelectedConfigsList(TEST_DATA, selectedConfigs));
   },
@@ -124,25 +162,25 @@ testSuite({
   testMergeMetricsForSelectedConfigsListSkipsBlacklistedMetrics: () => {
     const selectedConfigs = [
       {outputName: output1, classId: class1},
-      {outputName: output2, classId: class3}
+      {outputName: output2, classId: top3}
     ];
     const class1Complex = output1 + '/' + class1 + '/' +
         'complex';
-    const class3Complex = output2 + '/' + class3 + '/' +
+    const top3Complex = output2 + '/' + top3 + '/' +
         'complex';
 
     assertObjectEquals(
         {
           [class1Complex]: metric1,
-          [class3Complex]: metric3,
+          [top3Complex]: metric3,
         },
         Util.mergeMetricsForSelectedConfigsList(
             TEST_DATA, selectedConfigs, {auc: 1}));
   },
 
-  testMergeMetricsForSelectedConfigsListSkipsOutputIfEmptys: () => {
+  testMergeMetricsForSelectedConfigsListSkipsOutputIfEmpty: () => {
     const selectedConfigs = [
-      {outputName: '', classId: Constants.NO_CLASS_ID},
+      {outputName: '', classId: ''},
       {outputName: output1, classId: class1},
     ];
 
@@ -151,10 +189,10 @@ testSuite({
     assertEquals(metric5, merged['complex']);
   },
 
-  testMergeMetricsForSelectedConfigsListSkipsOutputIfEmptys: () => {
+  testMergeMetricsForSelectedConfigsListSkipsClassIdIfEmpty: () => {
     const selectedConfigs = [
       {outputName: output1, classId: class1},
-      {outputName: output2, classId: Constants.NO_CLASS_ID},
+      {outputName: output2, classId: ''},
     ];
 
     const merged =

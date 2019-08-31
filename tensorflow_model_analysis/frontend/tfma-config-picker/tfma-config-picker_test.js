@@ -22,7 +22,7 @@ suite('tests', () => {
 
   test('testSingleOutputNoClass', done => {
     element = fixture('element');
-    const singleOutputNioClassConfig = {'': ['nci']};
+    const singleOutputNioClassConfig = {'': ['']};
     element.allConfigs = singleOutputNioClassConfig;
 
     const verifyNoDropdown = () => {
@@ -43,7 +43,7 @@ suite('tests', () => {
 
   test('testSingleOutputMultiClass', done => {
     element = fixture('element');
-    element.allConfigs = {'': ['0', '1', '2']};
+    element.allConfigs = {'': ['classId:0', 'classId:1', 'classId:2']};
     let dropdown;
 
     const verifyDropdownAvailable = () => {
@@ -61,7 +61,7 @@ suite('tests', () => {
     };
 
     const checkClass2Selected = () => {
-      assert.deepEqual(element.selectedConfigs, {'': ['2']});
+      assert.deepEqual(element.selectedConfigs, {'': ['classId:2']});
       setTimeout(chooseClass0, 0);
     };
 
@@ -71,7 +71,8 @@ suite('tests', () => {
     };
 
     const checkClass0Selected = () => {
-      assert.deepEqual(element.selectedConfigs, {'': ['2', '0']});
+      assert.deepEqual(
+          element.selectedConfigs, {'': ['classId:2', 'classId:0']});
       done();
     };
 
@@ -80,7 +81,7 @@ suite('tests', () => {
 
   test('testMultiOutputNoClass', done => {
     element = fixture('element');
-    element.allConfigs = {'output1': ['nci'], 'output2': ['nci']};
+    element.allConfigs = {'output1': [''], 'output2': ['']};
     let outputDropdown;
     let classIdsDropdown;
 
@@ -99,7 +100,7 @@ suite('tests', () => {
     };
 
     const checkOutput1Selected = () => {
-      assert.deepEqual(element.selectedConfigs, {'output1': ['nci']});
+      assert.deepEqual(element.selectedConfigs, {'output1': ['']});
       setTimeout(checkClassIdsDropdownNotAvailable, 1);
     };
 
@@ -133,7 +134,7 @@ suite('tests', () => {
     };
 
     const checkOutput2Selected = () => {
-      assert.deepEqual(element.selectedConfigs, {'output2': ['nci']});
+      assert.deepEqual(element.selectedConfigs, {'output2': ['']});
       done();
     };
 
@@ -143,8 +144,8 @@ suite('tests', () => {
   test('testMultiOutputMultiClass', done => {
     element = fixture('element');
     element.allConfigs = {
-      'output1': ['0', '1', '2'],
-      'output2': ['0', '2', '4']
+      'output1': ['classId:0', 'classId:1', 'classId:2'],
+      'output2': ['classId:0', 'classId:2', 'classId:4']
     };
     let outputDropdown;
     let classIdsDropdown;
@@ -171,7 +172,7 @@ suite('tests', () => {
     };
 
     const checkOutput1Class0Selected = () => {
-      assert.deepEqual(element.selectedConfigs, {'output1': ['0']});
+      assert.deepEqual(element.selectedConfigs, {'output1': ['classId:0']});
       setTimeout(selectOutput2Class2And4, 1);
     };
 
@@ -183,7 +184,8 @@ suite('tests', () => {
 
     const checkOutput2Class2And4Selected = () => {
       assert.deepEqual(
-          element.selectedConfigs, {'output1': ['0'], 'output2': ['2', '4']});
+          element.selectedConfigs,
+          {'output1': ['classId:0'], 'output2': ['classId:2', 'classId:4']});
       setTimeout(unselectOutput1, 1);
     };
 

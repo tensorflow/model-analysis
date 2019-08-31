@@ -165,10 +165,10 @@ export class ConfigPicker extends PolymerElement {
    */
   computeAvailableClasses_(availableCombos) {
     const maybeAddOutputPrefix = (combo) => combo.prependOutputName ?
-        (combo.outputName || 'Empty Output') + ', C: ' :
+        (combo.outputName || 'Empty Output') + ', ' :
         '';
     const determineClassIdToDisplay = (combo) =>
-        (combo.classId == tfma.NO_CLASS_ID ? 'No class' : combo.classId);
+        (combo.classId == '' ? 'No class' : combo.classId);
 
     return availableCombos.reduce((acc, combo) => {
       acc.push(maybeAddOutputPrefix(combo) + determineClassIdToDisplay(combo));
