@@ -33,9 +33,13 @@ suite('tests', () => {
           'modelIdentifier': 'a.model',
         },
         'metrics': {
-          'averageRefinedPrediction': {'doubleValue': 0.51},
-          'averageLabel': {'doubleValue': 0.61},
-          'weightedExamples': {'doubleValue': 10},
+          '': {
+            '': {
+              'averageRefinedPrediction': {'doubleValue': 0.51},
+              'averageLabel': {'doubleValue': 0.61},
+              'weightedExamples': {'doubleValue': 10},
+            },
+          },
         }
       },
       {
@@ -44,10 +48,14 @@ suite('tests', () => {
           'modelIdentifier': 'b.model',
         },
         'metrics': {
-          'averageRefinedPrediction': {'doubleValue': 0.52},
-          'averageLabel': {'doubleValue': 0.62},
-          'weightedExamples': {'doubleValue': 20},
-        }
+          '': {
+            '': {
+              'averageRefinedPrediction': {'doubleValue': 0.52},
+              'averageLabel': {'doubleValue': 0.62},
+              'weightedExamples': {'doubleValue': 20},
+            },
+          },
+        },
       },
       {
         'config': {
@@ -55,9 +63,13 @@ suite('tests', () => {
           'modelIdentifier': 'c.model',
         },
         'metrics': {
-          'averageRefinedPrediction': {'doubleValue': 0.53},
-          'averageLabel': {'doubleValue': 0.63},
-          'weightedExamples': {'doubleValue': 30},
+          '': {
+            '': {
+              'averageRefinedPrediction': {'doubleValue': 0.53},
+              'averageLabel': {'doubleValue': 0.63},
+              'weightedExamples': {'doubleValue': 30},
+            },
+          },
         },
       }
     ];

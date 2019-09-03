@@ -34,45 +34,159 @@ from tensorflow_model_analysis.slicer import slicer
 
 from typing import Any, Dict, List, Text, Tuple
 
+from google.protobuf import json_format
 
-# The desired output type is
-# List[Tuple[slicer.SliceKeyType,
-# protobuf.python.google.internal.containers.MessageMap[Union[str, unicode],
-# metrics_for_slice_pb2.MetricValue]], while the metrics type isn't visible to
-# this module.
-def load_and_deserialize_metrics(path: Text
-                                ) -> List[Tuple[slicer.SliceKeyType, Any]]:
+
+# The input proto_map is a google.protobuf.internal.containers.MessageMap where
+# the keys are strings and the values are some protocol buffer field. Note that
+# MessageMap is not a protobuf message, none of the exising utility methods work
+# on it. We must iterate over its values and call the utility function
+# individually.
+def _convert_proto_map_to_dict(proto_map: Any) -> Dict[Text, Dict[Text, Any]]:
+  """Converts a metric map (metrics in MetricsForSlice protobuf) into a dict.
+
+  Args:
+    proto_map: A protocol buffer MessageMap that has behaviors like dict. The
+      keys are strings while the values are protocol buffers. However, it is not
+      a protobuf message and cannot be passed into json_format.MessageToDict
+      directly. Instead, we must iterate over its values.
+
+  Returns:
+    A dict representing the proto_map. For example:
+    Assume myProto contains
+    {
+      metrics: {
+        key: 'double'
+        value: {
+          double_value: {
+            value: 1.0
+          }
+        }
+      }
+      metrics: {
+        key: 'bounded'
+        value: {
+          bounded_value: {
+            lower_bound: {
+              double_value: {
+                value: 0.8
+              }
+            }
+            upper_bound: {
+              double_value: {
+                value: 0.9
+              }
+            }
+            value: {
+              double_value: {
+                value: 0.86
+              }
+            }
+          }
+        }
+      }
+    }
+
+    The output of _convert_proto_map_to_dict(myProto.metrics) would be
+
+    {
+      'double': {
+        'doubleValue': 1.0,
+      },
+      'bounded': {
+        'boundedValue': {
+          'lowerBound': 0.8,
+          'upperBound': 0.9,
+          'value': 0.86,
+        },
+      },
+    }
+
+    Note that field names are converted to lowerCamelCase and the field value in
+    google.protobuf.DoubleValue is collapsed automatically.
+  """
+  return {k: json_format.MessageToDict(proto_map[k]) for k in proto_map}
+
+
+def _get_multi_class_key_id(multi_class_key):
+  if multi_class_key.HasField('class_id'):
+    return 'classId:' + str(multi_class_key.class_id)
+  elif multi_class_key.HasField('top_k'):
+    return 'topK:' + str(multi_class_key.top_k)
+  elif multi_class_key.HasField('k'):
+    return 'k:' + str(multi_class_key.k)
+
+
+def load_and_deserialize_metrics(
+    path: Text) -> List[Tuple[slicer.SliceKeyType, Any]]:
+  """Loads metrics from the given location and builds a metric map for it."""
   result = []
   for record in tf.compat.v1.python_io.tf_record_iterator(path):
     metrics_for_slice = metrics_for_slice_pb2.MetricsForSlice.FromString(record)
+
+    metrics_map = {}
+    if metrics_for_slice.metrics:
+      metrics_map[''] = {
+          '': _convert_proto_map_to_dict(metrics_for_slice.metrics)
+      }
+
+    if metrics_for_slice.metric_keys:
+      for key, value in zip(metrics_for_slice.metric_keys,
+                            metrics_for_slice.metric_values):
+        output_name = key.output_name
+        if output_name not in metrics_map:
+          metrics_map[output_name] = {}
+
+        multi_class_key_id = _get_multi_class_key_id(
+            key.multi_class_key) if key.HasField('multi_class_key') else ''
+        if multi_class_key_id not in metrics_map[output_name]:
+          metrics_map[output_name][multi_class_key_id] = {}
+        metric_name = key.name
+        metrics_map[output_name][multi_class_key_id][
+            metric_name] = json_format.MessageToDict(value)
+
     result.append((
         slicer.deserialize_slice_key(metrics_for_slice.slice_key),  # pytype: disable=wrong-arg-types
-        metrics_for_slice.metrics))
+        metrics_map))
   return result
 
 
-def load_and_deserialize_plots(path: Text
-                              ) -> List[Tuple[slicer.SliceKeyType, Any]]:
+def load_and_deserialize_plots(
+    path: Text) -> List[Tuple[slicer.SliceKeyType, Any]]:
   """Returns deserialized plots loaded from given path."""
   result = []
   for record in tf.compat.v1.python_io.tf_record_iterator(path):
     plots_for_slice = metrics_for_slice_pb2.PlotsForSlice.FromString(record)
-    if plots_for_slice.HasField('plot_data'):
-      if plots_for_slice.plots:
-        raise RuntimeError('Both plots and plot_data are set.')
+    plots_map = {}
+    if plots_for_slice.plots:
+      plot_dict = _convert_proto_map_to_dict(plots_for_slice.plots)
+      keys = list(plot_dict.keys())
+      # If there is only one label, choose it automatically.
+      plot_data = plot_dict[keys[0]] if len(keys) == 1 else plot_dict
+      plots_map[''] = {'': plot_data}
+    elif plots_for_slice.HasField('plot_data'):
+      plots_map[''] = {'': json_format.MessageToDict(plots_for_slice.plot_data)}
 
-      # For backward compatibility, plots data geneated with old code are added
-      # to the plots map with default key empty string.
-      plots_for_slice.plots[''].CopyFrom(plots_for_slice.plot_data)
+    if plots_for_slice.plot_keys:
+      for key, value in zip(plots_for_slice.plot_keys,
+                            plots_for_slice.plot_values):
+        output_name = key.output_name
+        if output_name not in plots_map:
+          plots_map[output_name] = {}
+        multi_class_key_id = _get_multi_class_key_id(
+            key.multi_class_key) if key.HasField('multi_class_key') else ''
+        plots_map[output_name][multi_class_key_id] = json_format.MessageToDict(
+            value)
 
     result.append((
         slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
-        plots_for_slice.plots))
+        plots_map))
+
   return result
 
 
-def _convert_to_array_value(array: np.ndarray
-                           ) -> metrics_for_slice_pb2.ArrayValue:
+def _convert_to_array_value(
+    array: np.ndarray) -> metrics_for_slice_pb2.ArrayValue:
   """Converts NumPy array to ArrayValue."""
   result = metrics_for_slice_pb2.ArrayValue()
   result.shape[:] = array.shape
@@ -142,9 +256,9 @@ def convert_slice_metrics(
         metrics_for_slice.metrics[name].unknown_type.error = e.message  # pytype: disable=attribute-error
 
 
-def _serialize_metrics(metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
-                       post_export_metrics: List[types.AddMetricsCallbackType]
-                      ) -> bytes:
+def _serialize_metrics(
+    metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
+    post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
   """Converts the given slice metrics into serialized proto MetricsForSlice.
 
   Args:
@@ -202,9 +316,9 @@ def _convert_slice_plots(
             ]))
 
 
-def _serialize_plots(plots: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
-                     post_export_metrics: List[types.AddMetricsCallbackType]
-                    ) -> bytes:
+def _serialize_plots(
+    plots: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
+    post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
   """Converts the given slice plots into serialized proto PlotsForSlice..
 
   Args:
@@ -285,10 +399,8 @@ class SerializeMetricsAndPlots(beam.PTransform):  # pylint: disable=invalid-name
   def __init__(self, post_export_metrics: List[types.AddMetricsCallbackType]):
     self._post_export_metrics = post_export_metrics
 
-  def expand(
-      self,
-      metrics_and_plots: Tuple[beam.pvalue.PCollection, beam.pvalue.PCollection]
-  ):
+  def expand(self, metrics_and_plots: Tuple[beam.pvalue.PCollection,
+                                            beam.pvalue.PCollection]):
     """Converts the given metrics_and_plots into serialized proto.
 
     Args:

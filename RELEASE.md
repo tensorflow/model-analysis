@@ -7,7 +7,13 @@
 *   Added support for slicing on native dicts of features in addition to FPL
     types.
 
+*   For multi-output and / or multi-class models, please provide output_name and
+    / or class_id to tfma.view.render_plot.
+
 ## Breaking changes
+
+*   tfma.EvalResult.slicing_metrics now contains nested dictionaries of output,
+    class id and then metric names.
 
 ## Deprecations
 

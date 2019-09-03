@@ -26,34 +26,46 @@ from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
 from tensorflow_model_analysis.view import util
 
 
+def _add_to_nested_dict(metrics):
+  return {
+      '': {
+          '': metrics,
+      },
+  }
+
+
 class UtilTest(testutil.TensorflowModelAnalysisTest):
   column_1 = 'col1'
   column_2 = 'col2'
 
-  metrics_a = {'a': 1, 'b': 2, 'example_weight': 3}
+  metrics_a = _add_to_nested_dict({'a': 1, 'b': 2, 'example_weight': 3})
   slice_a = 'a'
   column_a = column_1 + ':' + slice_a
   result_a = ([(column_1, slice_a)], metrics_a)
 
   slice_b = 'b'
-  metrics_b = {'a': 4, 'b': 5, 'example_weight': 6}
+  metrics_b = _add_to_nested_dict({'a': 4, 'b': 5, 'example_weight': 6})
   column_b = column_1 + ':' + slice_b
   result_b = ([(column_1, slice_b)], metrics_b)
 
   slice_c = 'c'
-  metrics_c = {'a': 1, 'b': 3, 'example_weight': 5}
+  metrics_c = _add_to_nested_dict({'a': 1, 'b': 3, 'example_weight': 5})
   column_c = column_2 + ':' + slice_c
   result_c = ([(column_2, slice_c)], metrics_c)
 
   slice_d = 'd'
-  metrics_d = {'a': 2, 'b': 4, 'example_weight': 6}
+  metrics_d = _add_to_nested_dict({'a': 2, 'b': 4, 'example_weight': 6})
   column_d = column_1 + '_X_' + column_2 + ':' + slice_a + '_X_' + slice_d
   result_d = ([(column_1, slice_a), (column_2, slice_d)], metrics_d)
 
-  metrics_aggregate = {'a': 10, 'b': 20, 'example_weight': 30}
+  metrics_aggregate = _add_to_nested_dict({
+      'a': 10,
+      'b': 20,
+      'example_weight': 30
+  })
   result_aggregate = ([], metrics_aggregate)
 
-  metrics_c2 = {'a': 11, 'b': 33, 'example_weight': 55}
+  metrics_c2 = _add_to_nested_dict({'a': 11, 'b': 33, 'example_weight': 55})
   result_c2 = ([(column_2, slice_c)], metrics_c2)
 
   data_location_1 = 'a.data'
@@ -68,17 +80,15 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
   key = 'plot_key'
 
   plots_data_a = {
-      key: {
-          'calibrationHistogramBuckets': {
-              'buckets': [{
-                  'v': 0
-              }, {
-                  'v': 1
-              }],
-          }
+      'calibrationHistogramBuckets': {
+          'buckets': [{
+              'v': 0
+          }, {
+              'v': 1
+          }],
       }
   }
-  plots_a = ([(column_1, slice_a)], plots_data_a)
+  plots_a = ([(column_1, slice_a)], _add_to_nested_dict(plots_data_a))
 
   plots_data_b = {
       key: {
@@ -93,7 +103,7 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
           }
       }
   }
-  plots_b = ([(column_1, slice_b)], plots_data_b)
+  plots_b = ([(column_1, slice_b)], _add_to_nested_dict(plots_data_b))
 
   plots_data_b2 = {
       key: {
@@ -104,20 +114,18 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
           }
       }
   }
-  plots_b2 = ([(column_1, slice_b)], plots_data_b)
+  plots_b2 = ([(column_1, slice_b)], _add_to_nested_dict(plots_data_b))
 
   plots_data_c = {
-      key: {
-          'calibrationHistogramBuckets': {
-              'buckets': [{
-                  'v': 0.5
-              }, {
-                  'v': 'NaN'
-              }],
-          }
+      'calibrationHistogramBuckets': {
+          'buckets': [{
+              'v': 0.5
+          }, {
+              'v': 'NaN'
+          }],
       }
   }
-  plots_c = ([(column_1, slice_c)], plots_data_c)
+  plots_c = ([(column_1, slice_c)], _add_to_nested_dict(plots_data_c))
 
   plots_data_c2 = {
       'label/head_a': {
@@ -135,7 +143,33 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
           }
       }
   }
-  plots_c2 = ([(column_2, slice_c)], plots_data_c2)
+  plots_c2 = ([(column_2, slice_c)], _add_to_nested_dict(plots_data_c2))
+
+  plots_data_0 = {
+      'calibrationHistogramBuckets': {
+          'buckets': [{
+              'v': 0
+          }, {
+              'v': 1
+          }],
+      }
+  }
+  plots_data_1 = {
+      'calibrationHistogramBuckets': {
+          'buckets': [{
+              'v': 0
+          }, {
+              'v': 1
+          }],
+      }
+  }
+  plots_multi_class = ([(column_2, slice_a)], {
+      '': {
+          'classId:0': plots_data_0,
+          'classId:1': plots_data_1
+      }
+  })
+  column_2a = column_2 + ':' + slice_a
 
   def _makeTestData(self):
     return [
@@ -150,6 +184,7 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         self.plots_b2,
         self.plots_c,
         self.plots_c2,
+        self.plots_multi_class,
     ]
 
   def _makeEvalResults(self):
@@ -305,8 +340,17 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         self._makeTestPlotsData(),
         SingleSliceSpec(features=[(self.column_1, self.slice_a)]))
 
-    self.assertEqual(data, self.plots_data_a[self.key])
+    self.assertEqual(data, self.plots_data_a)
     self.assertEqual(config['sliceName'], self.column_a)
+
+  def testGetPlotDataAndConfigForMultiClass(self):
+    data, config = util.get_plot_data_and_config(
+        self._makeTestPlotsData(),
+        SingleSliceSpec(features=[(self.column_2, self.slice_a)]),
+        class_id=0)
+
+    self.assertEqual(data, self.plots_data_0)
+    self.assertEqual(config['sliceName'], self.column_2a)
 
   def testRaisesErrorWhenNoMatchAvailableInPlotData(self):
     with self.assertRaises(ValueError):
@@ -362,6 +406,22 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
           self._makeTestPlotsData(),
           SingleSliceSpec(features=[(self.column_2, self.slice_c)]),
           label='head_')
+
+  def testRaiseErrorWhenBothLabelAndPlotKeyAreProvided(self):
+    with self.assertRaises(ValueError):
+      util.get_plot_data_and_config(
+          self._makeTestPlotsData(),
+          SingleSliceSpec(features=[(self.column_2, self.slice_c)]),
+          label='head_a',
+          output_name='')
+
+  def testRaiseErrorWhenMoreThanOneMultiClassKeyAreProvided(self):
+    with self.assertRaises(ValueError):
+      util.get_plot_data_and_config(
+          self._makeTestPlotsData(),
+          SingleSliceSpec(features=[(self.column_2, self.slice_c)]),
+          top_k=3,
+          class_id=0)
 
   def testGetSlicingConfig(self):
     eval_config = self._makeEvalConfig()

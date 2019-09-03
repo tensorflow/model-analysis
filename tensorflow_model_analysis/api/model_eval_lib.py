@@ -45,8 +45,6 @@ from tensorflow_model_analysis.writers import metrics_and_plots_writer
 from tensorflow_model_analysis.writers import writer
 from typing import Any, Dict, List, NamedTuple, Optional, Text, Tuple, Union
 
-from google.protobuf import json_format
-
 # File names for files written out to the result directory.
 _METRICS_OUTPUT_FILE = 'metrics'
 _PLOTS_OUTPUT_FILE = 'plots'
@@ -87,14 +85,15 @@ class EvalConfig(
         ])):
   """Config used for extraction and evaluation."""
 
-  def __new__(
-      cls,
-      model_location: Text,
-      data_location: Optional[Text] = None,
-      slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-      example_count_metric_key: Optional[Text] = None,
-      example_weight_metric_key: Optional[Union[Text, Dict[Text, Text]]] = None,
-      compute_confidence_intervals: Optional[bool] = False):
+  def __new__(cls,
+              model_location: Text,
+              data_location: Optional[Text] = None,
+              slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+              example_count_metric_key: Optional[Text] = None,
+              example_weight_metric_key: Optional[Union[Text,
+                                                        Dict[Text,
+                                                             Text]]] = None,
+              compute_confidence_intervals: Optional[bool] = False):
     return super(EvalConfig, cls).__new__(cls, model_location, data_location,
                                           slice_spec, example_count_metric_key,
                                           example_weight_metric_key,
@@ -127,9 +126,18 @@ def load_eval_config(output_path: Text) -> EvalConfig:
   return final_dict[_EVAL_CONFIG_KEY]
 
 
+# The field slicing_metrics is a nested dictionaries representing metrics for
+# different configuration as defined by MetricKey in metrics_for_slice.proto.
+# The levels corresponds to output name, class id, metric name and metric value
+# in this order. Note MetricValue uses oneof so metric values will always
+# contain only a single key representing the type in the oneof and the actual
+# metric value is in the value.
 EvalResult = NamedTuple(  # pylint: disable=invalid-name
     'EvalResult',
-    [('slicing_metrics', List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]),
+    [('slicing_metrics',
+      List[Tuple[slicer.SliceKeyType,
+                 Dict[Text, Dict[Text, Dict[Text, Dict[Text, Dict[Text,
+                                                                  Any]]]]]]]),
      ('plots', List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]),
      ('config', EvalConfig)])
 
@@ -198,14 +206,11 @@ def load_eval_result(output_path: Text) -> EvalResult:
       metrics_and_plots_serialization.load_and_deserialize_plots(
           path=os.path.join(output_path, _PLOTS_OUTPUT_FILE)))
 
-  slicing_metrics = [(key, _convert_proto_map_to_dict(metrics_data))
-                     for key, metrics_data in metrics_proto_list]
-  plots = [(key, _convert_proto_map_to_dict(plot_data))
-           for key, plot_data in plots_proto_list]
-
   eval_config = load_eval_config(output_path)
   return EvalResult(
-      slicing_metrics=slicing_metrics, plots=plots, config=eval_config)
+      slicing_metrics=metrics_proto_list,
+      plots=plots_proto_list,
+      config=eval_config)
 
 
 def default_eval_shared_model(
@@ -321,8 +326,9 @@ def default_evaluators(  # pylint: disable=invalid-name
   ]
 
 
-def default_writers(eval_shared_model: types.EvalSharedModel,
-                    output_path: Text) -> List[writer.Writer]:  # pylint: disable=invalid-name
+def default_writers(
+    eval_shared_model: types.EvalSharedModel,
+    output_path: Text) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
 
   Args:
@@ -337,76 +343,6 @@ def default_writers(eval_shared_model: types.EvalSharedModel,
       metrics_and_plots_writer.MetricsAndPlotsWriter(
           eval_shared_model=eval_shared_model, output_paths=output_paths)
   ]
-
-
-# The input type is a MessageMap where the keys are strings and the values are
-# some protocol buffer field. Note that MessageMap is not a protobuf message,
-# none of the exising utility methods work on it. We must iterate over its
-# values and call the utility function individually.
-def _convert_proto_map_to_dict(proto_map: Dict[Text, Any]) -> Dict[Text, Any]:
-  """Converts a metric map (metrics in MetricsForSlice protobuf) into a dict.
-
-  Args:
-    proto_map: A protocol buffer MessageMap that has behaviors like dict. The
-      keys are strings while the values are protocol buffers. However, it is not
-      a protobuf message and cannot be passed into json_format.MessageToDict
-      directly. Instead, we must iterate over its values.
-
-  Returns:
-    A dict representing the proto_map. For example:
-    Assume myProto contains
-    {
-      metrics: {
-        key: 'double'
-        value: {
-          double_value: {
-            value: 1.0
-          }
-        }
-      }
-      metrics: {
-        key: 'bounded'
-        value: {
-          bounded_value: {
-            lower_bound: {
-              double_value: {
-                value: 0.8
-              }
-            }
-            upper_bound: {
-              double_value: {
-                value: 0.9
-              }
-            }
-            value: {
-              double_value: {
-                value: 0.86
-              }
-            }
-          }
-        }
-      }
-    }
-
-    The output of _convert_proto_map_to_dict(myProto.metrics) would be
-
-    {
-      'double': {
-        'doubleValue': 1.0,
-      },
-      'bounded': {
-        'boundedValue': {
-          'lowerBound': 0.8,
-          'upperBound': 0.9,
-          'value': 0.86,
-        },
-      },
-    }
-
-    Note that field names are converted to lowerCamelCase and the field value in
-    google.protobuf.DoubleValue is collapsed automatically.
-  """
-  return {k: json_format.MessageToDict(proto_map[k]) for k in proto_map}
 
 
 @beam.ptransform_fn
@@ -494,8 +430,8 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
     self._merge(accumulator, output_dict)
     return accumulator
 
-  def merge_accumulators(self, accumulators: List[Dict[Text, Any]]
-                        ) -> Dict[Text, Any]:
+  def merge_accumulators(
+      self, accumulators: List[Dict[Text, Any]]) -> Dict[Text, Any]:
     result = self.create_accumulator()
     for acc in accumulators:
       self._merge(result, acc)
@@ -506,8 +442,8 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(
-    Union[evaluator.Evaluation, validator.Validation])
+@beam.typehints.with_input_types(Union[evaluator.Evaluation,
+                                       validator.Validation])
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def WriteResults(  # pylint: disable=invalid-name
     evaluation_or_validation: Union[evaluator.Evaluation, validator.Validation],

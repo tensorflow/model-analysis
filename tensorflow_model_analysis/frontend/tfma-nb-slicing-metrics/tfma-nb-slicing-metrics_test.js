@@ -17,40 +17,62 @@ suite('tests', () => {
   let element;
 
   /**
+   * Sets up the test fixture with given data and runs the test by calling the
+   * provided callback.
+   * @param {function()} cb
+   * @param {!Array<!Object>} data
+   */
+  function runWithData(cb, data) {
+    element = fixture('slicing-metrics');
+    element.data = data;
+    element.config = {'weightedExamplesColumn': 'weightedExamples'};
+    setTimeout(cb, 0);
+  }
+
+  /**
    * Sets up the test fixture and runs the test by calling the provided
    * callback.
    * @param {function()} cb
    */
   function run(cb) {
-    element = fixture('slicing-metrics');
-    element.data = [
+    runWithData(cb, [
       {
         'slice': 'col:1',
         'metrics': {
-          'averageRefinedPrediction': {'doubleValue': 0.51},
-          'averageLabel': {'doubleValue': 0.61},
-          'weightedExamples': {'doubleValue': 10},
+          '': {
+            '': {
+              'averageRefinedPrediction': {'doubleValue': 0.51},
+              'averageLabel': {'doubleValue': 0.61},
+              'weightedExamples': {'doubleValue': 10},
+            },
+          },
         },
       },
       {
         'slice': 'col:2',
         'metrics': {
-          'averageRefinedPrediction': {'doubleValue': 0.52},
-          'averageLabel': {'doubleValue': 0.62},
-          'weightedExamples': {'doubleValue': 20},
+          '': {
+            '': {
+              'averageRefinedPrediction': {'doubleValue': 0.52},
+              'averageLabel': {'doubleValue': 0.62},
+              'weightedExamples': {'doubleValue': 20},
+            },
+          },
         }
       },
       {
         'slice': 'col:3',
         'metrics': {
-          'averageRefinedPrediction': {'doubleValue': 0.53},
-          'averageLabel': {'doubleValue': 0.63},
-          'weightedExamples': {'doubleValue': 30},
+          '': {
+            '': {
+              'averageRefinedPrediction': {'doubleValue': 0.53},
+              'averageLabel': {'doubleValue': 0.63},
+              'weightedExamples': {'doubleValue': 30},
+            },
+          },
         },
       }
-    ];
-    element.config = {'weightedExamplesColumn': 'weightedExamples'};
-    setTimeout(cb, 0);
+    ]);
   }
 
   test('ParseData', done => {
@@ -152,5 +174,41 @@ suite('tests', () => {
       done();
     };
     run(waitTillReady);
+  });
+
+  test('choosesWeightColumnWhenMultipleConfigsAreSelected', done => {
+    const expectedWeightColumn = 'output1/0/weightedExamples';
+
+    const pickClassIds = () => {
+      const picker = element.shadowRoot.querySelector('tfma-config-picker');
+      const selector = picker.shadowRoot.querySelector('tfma-multi-select');
+      selector.selectIndex(1);
+      selector.selectIndex(0);
+      setTimeout(checkBrowser, 0);
+    };
+    const checkBrowser = () => {
+      const browser =
+          element.shadowRoot.querySelector('tfma-slicing-metrics-browser');
+      assert.equal(browser.weightedExamplesColumn, expectedWeightColumn);
+      done();
+    };
+
+    runWithData(pickClassIds, [{
+                  'slice': 'col:1',
+                  'metrics': {
+                    'output1': {
+                      'classId:0': {
+                        'averageRefinedPrediction': {'doubleValue': 0.51},
+                        'averageLabel': {'doubleValue': 0.61},
+                        'weightedExamples': {'doubleValue': 10},
+                      },
+                      'classId:1': {
+                        'averageRefinedPrediction': {'doubleValue': 0.52},
+                        'averageLabel': {'doubleValue': 0.62},
+                        'weightedExamples': {'doubleValue': 20},
+                      },
+                    },
+                  },
+                }]);
   });
 });

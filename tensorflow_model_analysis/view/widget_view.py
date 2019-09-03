@@ -84,6 +84,10 @@ def render_time_series(results: model_eval_lib.EvalResults,
 def render_plot(
     result: model_eval_lib.EvalResult,
     slicing_spec: Optional[SingleSliceSpec] = None,
+    output_name: Optional[Text] = None,
+    class_id: Optional[int] = None,
+    top_k: Optional[int] = None,
+    k: Optional[int] = None,
     label: Optional[Text] = None,
 ) -> Optional[visualization.PlotViewer]:  # pytype: disable=invalid-annotation
   """Renders the plot view as widget.
@@ -91,6 +95,10 @@ def render_plot(
   Args:
     result: An tfma.EvalResult.
     slicing_spec: The slicing spec to identify the slice. Show overall if unset.
+    output_name: A string representing the output name.
+    class_id: A number representing the class id if multi class.
+    top_k: The k used to compute prediction in the top k position.
+    k: The k used to compute prediciton at the kth position.
     label: A partial label used to match a set of plots in the results.
 
   Returns:
@@ -98,5 +106,6 @@ def render_plot(
   """
   slice_spec_to_use = slicing_spec if slicing_spec else SingleSliceSpec()
   data, config = util.get_plot_data_and_config(result.plots, slice_spec_to_use,
+                                               output_name, class_id, top_k, k,
                                                label)
   return visualization.render_plot(data, config)

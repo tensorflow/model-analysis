@@ -15,6 +15,9 @@
  */
 const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
 template.innerHTML = `
+<tfma-config-picker all-configs="[[availableConfigs_]]"
+                    selected-configs="{{selectedConfigs_}}">
+</tfma-config-picker>
 <tfma-time-series-browser series-data="[[seriesData_]]">
 </tfma-time-series-browser>
 `;

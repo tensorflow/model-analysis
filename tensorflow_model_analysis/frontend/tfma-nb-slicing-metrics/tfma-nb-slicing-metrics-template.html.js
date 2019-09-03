@@ -15,6 +15,9 @@
  */
 const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
 template.innerHTML = `
+<tfma-config-picker all-configs="[[availableConfigs_]]"
+                    selected-configs="{{selectedConfigs_}}">
+</tfma-config-picker>
 <tfma-slicing-metrics-browser data="[[browserData_]]" metrics="[[metrics_]]"
                               weighted-examples-column="[[weightColumn_]]">
 </tfma-slicing-metrics-browser>

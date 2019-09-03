@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
+import json
 import os
 
 from tensorflow_model_analysis.api import model_eval_lib
@@ -71,9 +72,10 @@ def get_slicing_metrics(
     return data
 
 
-def find_all_slices(results: List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]],
-                    slicing_spec: slicer.SingleSliceSpec
-                   ) -> List[Dict[Text, Union[Dict[Text, Any], Text]]]:
+def find_all_slices(
+    results: List[Tuple[slicer.SliceKeyType,
+                        Dict[Text, Any]]], slicing_spec: slicer.SingleSliceSpec
+) -> List[Dict[Text, Union[Dict[Text, Any], Text]]]:
   """Util function that extracts slicing metrics for the named column.
 
   Args:
@@ -169,9 +171,9 @@ _SUPPORTED_PLOT_KEYS = {
 }
 
 
-def _replace_nan_with_none(plot_data: Union[Dict[Text, Any], Text],
-                           plot_keys: Dict[Text, Dict[Text, Text]]
-                          ) -> Union[Dict[Text, Any], Text]:
+def _replace_nan_with_none(
+    plot_data: Union[Dict[Text, Any], Text],
+    plot_keys: Dict[Text, Dict[Text, Text]]) -> Union[Dict[Text, Any], Text]:
   """Replaces all instances of nan with None in plot data.
 
   This is necessary for Colab integration where we serializes the data into json
@@ -210,9 +212,13 @@ def _replace_nan_with_none(plot_data: Union[Dict[Text, Any], Text],
 def get_plot_data_and_config(
     results: List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]],
     slicing_spec: slicer.SingleSliceSpec,
+    output_name: Optional[Text] = None,
+    class_id: Optional[int] = None,
+    top_k: Optional[int] = None,
+    k: Optional[int] = None,
     label: Optional[Text] = None,
-) -> Tuple[Union[Dict[Text, Any], Text],
-           Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text]]]:
+) -> Tuple[Union[Dict[Text, Any], Text], Dict[Text, Union[Dict[Text, Dict[
+    Text, Text]], Text]]]:
   """Util function that extracts plot for a particular slice from the results.
 
   Args:
@@ -220,7 +226,12 @@ def get_plot_data_and_config(
       {metric_name, metric_value}).
     slicing_spec: The slicer.SingleSliceSpec to identify the slice to fetch plot
       for.
-    label: A partial label used to match a set of plots in the results.
+    output_name: The name of the output.
+    class_id: An int representing the class id if model is multi-class.
+    top_k: The k used to compute prediction in the top k position.
+    k: The k used to compute prediciton at the kth position.
+    label: A partial label used to match a set of plots in the results. This is
+      kept for backward compatibility.
 
   Returns:
     (plot_data, plot_config) for the specified slice.
@@ -235,6 +246,29 @@ def get_plot_data_and_config(
     multiple sets of plot while label is not provided; or label matches to more
     than one set of plots; or label does not match any set of plots.
   """
+  if label is not None and (output_name is not None or class_id is not None or
+                            top_k is not None or k is not None):
+    # Plot key (specified by output_name and class_id / top k / k) and label (
+    # for backward compatibiility only) should not be provided together.
+    raise ValueError('Do not specify both label and output_name / class_id')
+
+  multi_class_key_oneof_check = 0
+  multi_class_id = None
+
+  if class_id is not None:
+    multi_class_key_oneof_check = multi_class_key_oneof_check + 1
+    multi_class_id = 'classId:' + str(class_id)
+  if top_k is not None:
+    multi_class_key_oneof_check = multi_class_key_oneof_check + 1
+    multi_class_id = 'topK:' + str(top_k)
+  if k is not None:
+    multi_class_key_oneof_check = multi_class_key_oneof_check + 1
+    multi_class_id = 'k:' + str(k)
+  if multi_class_key_oneof_check > 1:
+    raise ValueError('Up to one of class_id, top_k and k can be provided.')
+
+  output_name = '' if output_name is None else output_name
+
   matching_slices = find_all_slices(results, slicing_spec)
   count = len(matching_slices)
 
@@ -250,48 +284,66 @@ def get_plot_data_and_config(
       'metricKeys': _SUPPORTED_PLOT_KEYS,
   }
 
-  plot_sets = list(target_slice['metrics'].items())  # pytype: disable=attribute-error
-
-  plot_sets_count = len(plot_sets)
-
-  if plot_sets_count == 0:
-    raise ValueError('No plot data found for the slice.')
-
-  plot_set = None
-
-  if not label:
-    if plot_sets_count == 1:
-      # If there is only one set of plot, label is not necessary and we simply
-      # return the only set of plots available.
-      plot_set = plot_sets[0][1]
+  if output_name not in target_slice['metrics']:
+    if output_name:
+      raise ValueError('No plot data found for output name %s.' % output_name)
     else:
-      # If more than one set of plots are available, ask the user to provide a
-      # label to help determine which set to return.
+      raise ValueError('No plot data found without output name.')
+
+  output = target_slice['metrics'][output_name]
+  class_id_to_use = (multi_class_id if multi_class_id is not None else '')
+
+  if class_id_to_use not in output:
+    if class_id is None:
       raise ValueError(
-          'More than one set of plots available. Please provide a partial '
-          'label for matching.')
-  else:
-    for (key, plots) in plot_sets:
+          'No plot data found for output name %s with no class id.' %
+          output_name)
+    else:
+      raise ValueError(
+          'No plot data found for output name %s with class id %d.' %
+          (output_name, class_id))
+
+  plot_data = target_slice['metrics'][output_name][class_id_to_use]
+
+  # Backward compatibility support for plot data stored in a map before the plot
+  # key was introduced.
+  if label is not None:
+    plot_set = None
+    for key in plot_data:
       if label in key:
         if not plot_set:
-          plot_set = plots
+          plot_set = plot_data[key]
         else:
           raise ValueError(
               'Label %s matches more than one key. Keys are %s. Please make it more specific.'
-              % (label, ', '.join([key for key, _ in plot_sets])))
+              % (label, ', '.join([key for key, _ in plot_data])))
+
     if not plot_set:
       raise ValueError(
           'Label %s does not match any key. Keys are %s. Please provide a new one.'
-          % (label, ', '.join([key for key, _ in plot_sets])))
+          % (label, ', '.join([key for key, _ in plot_data])))
+    plot_data = plot_set
+  else:
+    # Make sure that we are not looking at actual plot data instead of a map of
+    # plot.
+    contains_supported_plot_data = False
+    for key in plot_data:
+      for _, plot in _SUPPORTED_PLOT_KEYS.items():
+        contains_supported_plot_data = contains_supported_plot_data or plot[
+            'metricName'] == key
 
-  plot_data = _replace_nan_with_none(plot_set, _SUPPORTED_PLOT_KEYS)
+    if not contains_supported_plot_data:
+      raise ValueError('No plot data found. Maybe provide a label? %s' %
+                       json.dumps(plot_data))
+
+  plot_data = _replace_nan_with_none(plot_data, _SUPPORTED_PLOT_KEYS)
 
   return plot_data, plot_config  # pytype: disable=bad-return-type
 
 
-def get_slicing_config(config: model_eval_lib.EvalConfig,
-                       weighted_example_column_to_use: Text = None
-                      ) -> Dict[Text, Text]:
+def get_slicing_config(
+    config: model_eval_lib.EvalConfig,
+    weighted_example_column_to_use: Text = None) -> Dict[Text, Text]:
   """Util function that generates config for visualization.
 
   Args:

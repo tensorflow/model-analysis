@@ -16,6 +16,7 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-nb-slicing-metrics-template.html.js';
 import {SelectEventMixin} from '../tfma-nb-event-mixin/tfma-nb-event-mixin.js';
+import '../tfma-config-picker/tfma-config-picker.js';
 import '../tfma-slicing-metrics-browser/tfma-slicing-metrics-browser.js';
 
 /**
@@ -72,36 +73,72 @@ export class NotebookSlicingMetricsWrapper extends SelectEventMixin
        * @private {string}
        */
       weightColumn_: {type: String},
+
+      /**
+       * A map of all available configs.
+       * @private {!Object<!Array<string>>}}
+       */
+      availableConfigs_:
+          {type: Object, computed: 'computeAvailableConfigs_(data)'},
+
+      /**
+       * A map of all selected configs.
+       * @private {!Object<!Array<string>>}}
+       */
+      selectedConfigs_: {type: Object},
     };
   }
 
   static get observers() {
-    return ['setUp_(data, config)'];
+    return ['setUp_(data, config, selectedConfigs_)'];
   }
 
   /**
    * Sets up all fields based on data and config.
    * @param {!Array<{slice: string, metrics:!Object}>|undefined} data
    * @param {!Object|undefined} config
+   * @param {!Object<!Array<string>>} selectedConfigs
    * @private
    */
-  setUp_(data, config) {
-    if (!data || !config) {
+  setUp_(data, config, selectedConfigs) {
+    const configsList =
+        selectedConfigs ? tfma.Util.createConfigsList(selectedConfigs) : [];
+
+    if (!data || !config || !configsList.length) {
       return;
     }
+
+    const processedData = data.map(function(entry) {
+      return {
+        'slice': entry['slice'],
+        'metrics': tfma.Util.mergeMetricsForSelectedConfigsList(
+            entry['metrics'], configsList),
+      };
+    });
 
     // Note that tfma.Data.flattenMetrics modifies its input in place so we
     // compute the following in an observer instead of making them computed
     // properties.
-    tfma.Data.flattenMetrics(data, 'metrics');
+    tfma.Data.flattenMetrics(processedData, 'metrics');
 
-    const metrics = tfma.Data.getAvailableMetrics([data], 'metrics');
-    const weightColumn = config['weightedExamplesColumn'];
-    const absent = metrics.indexOf(weightColumn) < 0;
+    const metrics = tfma.Data.getAvailableMetrics([processedData], 'metrics');
+    let weightColumn = config['weightedExamplesColumn'];
+    // Look for exact match for weight column first.
+    let absent = metrics.indexOf(weightColumn) < 0;
+    if (absent) {
+      // If no exact match found, try look for match after removing the config
+      // prefix. We will use the first match.
+      metrics.forEach(metricName => {
+        if (absent && metricName.endsWith('/' + weightColumn)) {
+          weightColumn = metricName;
+          absent = false;
+        }
+      });
+    }
 
     // If the weight column is missing, set it to 1.
     if (absent) {
-      data.map(entry => {
+      processedData.map(entry => {
         entry['metrics'][weightColumn] = 1;
       });
       metrics.push(weightColumn);
@@ -109,7 +146,33 @@ export class NotebookSlicingMetricsWrapper extends SelectEventMixin
 
     this.weightColumn_ = weightColumn;
     this.metrics_ = metrics;
-    this.browserData_ = data;
+    this.browserData_ = processedData;
+  }
+
+  /**
+   * Constructs the map of available config where the key is the output name and
+   * the value is an array of class ids for that output.
+   * @param {!Array<!Object>} data
+   * @return {!Object<!Array<string>>}
+   * @private
+   */
+  computeAvailableConfigs_(data) {
+    const configsMap = {};
+    // Combines configs from different runs.
+    data.forEach(entry => {
+      const metricsMap = entry['metrics'];
+      Object.keys(metricsMap).forEach(outputName => {
+        const outputConfig = configsMap[outputName] || {};
+        Object.keys(metricsMap[outputName]).forEach(classId => {
+          outputConfig[classId] = 1;
+        });
+        configsMap[outputName] = outputConfig;
+      });
+    });
+    return Object.keys(configsMap).reduce((acc, outputName) => {
+      acc[outputName] = Object.keys(configsMap[outputName]).sort();
+      return acc;
+    }, {});
   }
 }
 

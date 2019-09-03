@@ -74,8 +74,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
       for (s, m) in got_value:
         self.assertIn(s, expected_value)
         for k in expected_value[s]:
-          self.assertIn(k, m)
-          self.assertDictElementsAlmostEqual(m[k], expected_value[s][k])
+          metrics = m['']['']
+          self.assertIn(k, metrics)
+          self.assertDictElementsAlmostEqual(metrics[k], expected_value[s][k])
     else:
       # Only pass if expected_value also evaluates to False.
       self.assertFalse(expected_value, msg='Actual value was empty.')
@@ -438,8 +439,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     slice_key, plots = eval_result.plots[0]
     self.assertEqual((), slice_key)
     self.assertDictElementsAlmostEqual(
-        plots['post_export_metrics']['confusionMatrixAtThresholds']['matrices']
-        [8001], expected_matrix)
+        plots['']['']['confusionMatrixAtThresholds']['matrices'][8001],
+        expected_matrix)
 
   def testRunModelAnalysisWithMultiplePlots(self):
     model_location = self._exportEvalSavedModel(
@@ -477,10 +478,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertEqual((), slice_key)
     tf.compat.v1.logging.info(plots.keys())
     self.assertDictElementsAlmostEqual(
-        plots['post_export_metrics']['confusionMatrixAtThresholds']['matrices']
-        [8001], expected_matrix)
+        plots['']['']['post_export_metrics']['confusionMatrixAtThresholds']
+        ['matrices'][8001], expected_matrix)
     self.assertDictElementsAlmostEqual(
-        plots['post_export_metrics/test']['confusionMatrixAtThresholds']
+        plots['']['']['post_export_metrics/test']['confusionMatrixAtThresholds']
         ['matrices'][8001], expected_matrix)
 
   def testRunModelAnalysisForCSVText(self):
