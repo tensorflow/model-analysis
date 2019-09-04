@@ -68,6 +68,12 @@ tfma.CellRenderer.renderValueWithFormatOverride = function(
     value, opt_tableProvider, opt_override) {};
 
 /**
+ * @param {number|!Object} value
+ * @return {number}
+ */
+tfma.CellRenderer.maybeExtractBoundedValue = function(value) {};
+
+/**
  * @param {!Object} value
  * @return {boolean}
  */

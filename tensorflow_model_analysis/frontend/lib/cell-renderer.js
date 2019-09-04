@@ -268,6 +268,24 @@ function createAttributeHtml(name, value) {
   return value ? name + '="' + googString.htmlEscape(value) + '"' : '';
 }
 
+
+/**
+ * Extracts the value from the value field of BoundedValue strcuture. If it's a
+ * number, just return it.
+ * @param {number|!Object} value Can be a number or BoundedValue.
+ * @return {number}
+ */
+function maybeExtractBoundedValue(value) {
+  let extractedValue = value;
+  if (isRatioValue(value)) {
+    extractedValue = value['ratio']['value'];
+  } else if (isBoundedValue(value)) {
+    extractedValue = value['value'];
+  }
+  return extractedValue;
+}
+
+
 /**
  * @param {!Object} value
  * @return {!TableProvider.GvizCell} A gviz cell for an
@@ -787,6 +805,9 @@ goog.exportSymbol(
 goog.exportSymbol('tfma.CellRenderer.isBoundedValue', isBoundedValue);
 goog.exportSymbol('tfma.CellRenderer.isRatioValue', isRatioValue);
 goog.exportSymbol('tfma.CellRenderer.extractFloatValue', extractFloatValue);
+goog.exportSymbol(
+    'tfma.CellRenderer.maybeExtractBoundedValue', maybeExtractBoundedValue);
+
 
 exports = {
   BoundedValue,
