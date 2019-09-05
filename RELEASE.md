@@ -2,6 +2,9 @@
 
 ## Major Features and Improvements
 
+*   Added V2 of PredictExtractor that uses TF 2.0 signature APIs and supports
+    keras models.
+
 ## Bug fixes and other changes
 
 *   Added support for slicing on native dicts of features in addition to FPL
