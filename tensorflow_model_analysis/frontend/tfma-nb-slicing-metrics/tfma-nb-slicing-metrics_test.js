@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-suite('tests', () => {
+suite('tests', function() {
+  // TODO(b/139550472): Revert to default timeout once fixed.
+  this.timeout(20000);
+
   let element;
 
   /**
