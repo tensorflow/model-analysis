@@ -37,6 +37,8 @@ message MultiClassKey {
 message MetricKey {
   // Name of the metric ('auc', etc).
   string name = 1;
+  // Optional model name associated with metric (if multi-model evaluation).
+  string model_name = 4;
   // Optional output name associated with metric (for multi-output models).
   string output_name = 2;
   // Optional multi-class key associated with metric (for multi-class models).

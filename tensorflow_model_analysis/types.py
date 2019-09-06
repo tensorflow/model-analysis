@@ -32,7 +32,6 @@ TensorOrOperationType = Union[TensorType, tf.Operation]
 DictOfTensorType = Dict[Text, TensorType]
 TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
 
-# Value of a Tensor fetched using session.run.
 TensorValue = Union[tf.compat.v1.SparseTensorValue, np.ndarray]
 DictOfTensorValue = Dict[Text, TensorValue]
 TensorValueMaybeDict = Union[TensorValue, DictOfTensorValue]
@@ -67,6 +66,7 @@ class ValueWithTDistribution(
                  cls).__new__(cls, sample_mean, sample_standard_deviation,
                               sample_degrees_of_freedom, unsampled_value)
 
+
 # AddMetricsCallback should have the following prototype:
 #   def add_metrics_callback(features_dict, predictions_dict, labels_dict):
 #
@@ -76,7 +76,9 @@ class ValueWithTDistribution(
 # Note that features_dict, predictions_dict and labels_dict are not
 # necessarily dictionaries - they might also be Tensors, depending on what the
 # model's eval_input_receiver_fn returns.
+# pyformat: disable
 AddMetricsCallbackType = Any
+# pyformat: enable
 
 # Type of keys we support for prediction, label and features dictionaries.
 FPLKeyType = Union[Text, Tuple[Text, ...]]
