@@ -181,27 +181,35 @@ def make_eval_results(results: List[EvalResult], mode: Text) -> EvalResults:
   return EvalResults(results, mode)
 
 
-def load_eval_results(output_paths: List[Text], mode: Text) -> EvalResults:
+def load_eval_results(output_paths: List[Text],
+                      mode: Text,
+                      model_name: Optional[Text] = None) -> EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:
     output_paths: A list of output paths of completed tfma runs.
     mode: The mode of the evaluation. Currently, tfma.DATA_CENTRIC_MODE and
       tfma.MODEL_CENTRIC_MODE are supported.
+    model_name: The name of the model if multiple models are evaluated together.
 
   Returns:
     An EvalResults containing the evaluation results serialized at output_paths.
     This can be used to construct a time series view.
   """
-  results = [load_eval_result(output_path) for output_path in output_paths]
+  results = [
+      load_eval_result(output_path, model_name=model_name)
+      for output_path in output_paths
+  ]
   return make_eval_results(results, mode)
 
 
-def load_eval_result(output_path: Text) -> EvalResult:
+def load_eval_result(output_path: Text,
+                     model_name: Optional[Text] = None) -> EvalResult:
   """Creates an EvalResult object for use with the visualization functions."""
   metrics_proto_list = (
       metrics_and_plots_serialization.load_and_deserialize_metrics(
-          path=os.path.join(output_path, _METRICS_OUTPUT_FILE)))
+          path=os.path.join(output_path, _METRICS_OUTPUT_FILE),
+          model_name=model_name))
   plots_proto_list = (
       metrics_and_plots_serialization.load_and_deserialize_plots(
           path=os.path.join(output_path, _PLOTS_OUTPUT_FILE)))
@@ -639,6 +647,7 @@ def run_model_analysis(
     pipeline_options: Optional[Any] = None,
     compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
+    model_name: Optional[Text] = None,
 ) -> EvalResult:
   """Runs TensorFlow model analysis.
 
@@ -688,6 +697,8 @@ def run_model_analysis(
       than k_anonymization_count, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
       data for smaller number of examples.
+    model_name: The name of the model to load the results for (if multi-model
+      evaluation).
 
   Returns:
     An EvalResult that can be used with the TFMA visualization functions.
@@ -729,7 +740,7 @@ def run_model_analysis(
             k_anonymization_count=k_anonymization_count))
     # pylint: enable=no-value-for-parameter
 
-  eval_result = load_eval_result(output_path=output_path)
+  eval_result = load_eval_result(output_path=output_path, model_name=model_name)
   return eval_result
 
 

@@ -32,7 +32,7 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
 
-from typing import Any, Dict, List, Text, Tuple
+from typing import Any, Dict, List, Optional, Text, Tuple
 
 from google.protobuf import json_format
 
@@ -118,32 +118,55 @@ def _get_multi_class_key_id(multi_class_key):
 
 
 def load_and_deserialize_metrics(
-    path: Text) -> List[Tuple[slicer.SliceKeyType, Any]]:
+    path: Text,
+    model_name: Optional[Text] = None) -> List[Tuple[slicer.SliceKeyType, Any]]:
   """Loads metrics from the given location and builds a metric map for it."""
   result = []
   for record in tf.compat.v1.python_io.tf_record_iterator(path):
     metrics_for_slice = metrics_for_slice_pb2.MetricsForSlice.FromString(record)
 
-    metrics_map = {}
+    model_metrics_map = {}
     if metrics_for_slice.metrics:
-      metrics_map[''] = {
-          '': _convert_proto_map_to_dict(metrics_for_slice.metrics)
+      model_metrics_map[''] = {
+          '': {
+              '': _convert_proto_map_to_dict(metrics_for_slice.metrics)
+          }
       }
 
     if metrics_for_slice.metric_keys:
       for key, value in zip(metrics_for_slice.metric_keys,
                             metrics_for_slice.metric_values):
-        output_name = key.output_name
-        if output_name not in metrics_map:
-          metrics_map[output_name] = {}
+        current_model_name = key.model_name
 
+        if current_model_name not in model_metrics_map:
+          model_metrics_map[current_model_name] = {}
+        output_name = key.output_name
+        if output_name not in model_metrics_map[current_model_name]:
+          model_metrics_map[current_model_name][output_name] = {}
+
+        multi_class_metrics_map = model_metrics_map[current_model_name][
+            output_name]
         multi_class_key_id = _get_multi_class_key_id(
             key.multi_class_key) if key.HasField('multi_class_key') else ''
-        if multi_class_key_id not in metrics_map[output_name]:
-          metrics_map[output_name][multi_class_key_id] = {}
+        if multi_class_key_id not in multi_class_metrics_map:
+          multi_class_metrics_map[multi_class_key_id] = {}
         metric_name = key.name
-        metrics_map[output_name][multi_class_key_id][
+        multi_class_metrics_map[multi_class_key_id][
             metric_name] = json_format.MessageToDict(value)
+
+    metrics_map = None
+    keys = list(model_metrics_map.keys())
+    if model_name in model_metrics_map:
+      # Use the provided model name if there is a match.
+      metrics_map = model_metrics_map[model_name]
+    elif model_name is None and len(keys) == 1:
+      # Show result of the only model if no model name is specified.
+      metrics_map = model_metrics_map[keys[0]]
+    else:
+      # No match found.
+      raise ValueError('Fail to find metrics for model name: %s . '
+                       'Available model names are [%s]' %
+                       (model_name, ', '.join(keys)))
 
     result.append((
         slicer.deserialize_slice_key(metrics_for_slice.slice_key),  # pytype: disable=wrong-arg-types
