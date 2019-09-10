@@ -131,26 +131,25 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
                 predictions=predictions,
                 labels=labels)
     }
-    fpl = extracts[constants.FEATURES_PREDICTIONS_LABELS_KEY]
     result = feature_extractor._MaterializeFeatures(
         extracts,
         source=constants.INPUT_KEY,
         dest=constants.FEATURES_PREDICTIONS_LABELS_KEY)
     self.assertIsInstance(result, dict)
-    self.assertEqual(result[constants.FEATURES_PREDICTIONS_LABELS_KEY],
-                     fpl)  # should still be there.
     # Assert that materialized columns are not added.
     self.assertNotIn('features__f', result)
     self.assertNotIn('features__age', result)
     # But that tf.Example features not present in FPL are.
-    self.assertEqual(fpl.features['age'],
+    result_fpl = result[constants.FEATURES_PREDICTIONS_LABELS_KEY]
+    self.assertEqual(result_fpl.features['age'],
                      {encoding.NODE_SUFFIX: np.array([3.0])})
-    self.assertEqual(fpl.features['language'],
+    self.assertEqual(result_fpl.features['language'],
                      {'node': np.array([['english']], dtype='|S7')})
-    self.assertEqual(fpl.features['slice_key'],
+    self.assertEqual(result_fpl.features['slice_key'],
                      {'node': np.array([['first_slice']], dtype='|S11')})
     # And that features present in both are not overwritten by tf.Example value.
-    self.assertEqual(fpl.features['f'], {encoding.NODE_SUFFIX: np.array([1])})
+    self.assertEqual(result_fpl.features['f'],
+                     {encoding.NODE_SUFFIX: np.array([1])})
 
   def testMaterializeFeaturesFromTfExample(self):
     example1 = self._makeExample(age=3.0, language='english', label=1.0)

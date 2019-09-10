@@ -155,15 +155,15 @@ def _MaterializeFeatures(
       materialized columns, or the features dict of the FPLs.
 
   Returns:
-    Returns Extracts (which is a shallow copy of the original Extracts, so the
+    Returns Extracts (which is a deep copy of the original Extracts, so the
       original isn't mutated) with features populated.
 
   Raises:
     RuntimeError: When tfma.FEATURES_PREDICTIONS_LABELS_KEY key is not populated
       by PredictExtractor for FPL source or incorrect extraction source given.
   """
-  # Make a a shallow copy, so we don't mutate the original.
-  result = copy.copy(extracts)
+  # Make a deep copy, so we don't mutate the original.
+  result = copy.deepcopy(extracts)
 
   if additional_extracts:
     for key in additional_extracts:
