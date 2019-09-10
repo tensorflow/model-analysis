@@ -290,9 +290,7 @@ class _AggregateCombineFn(model_util.CombineFnWithModel):
     return accumulator.metric_variables
 
 
-# TODO(b/138120489): change beam.typehints.KV back to Tuple.
-@beam.typehints.with_input_types(beam.typehints.KV[slicer.SliceKeyType,
-                                                   List[Any]])
+@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, List[Any]])
 # TODO(b/123516222)): Add output typehints. Similarly elsewhere that it applies.
 class _ExtractOutputDoFn(model_util.DoFnWithModel):
   """A DoFn that extracts the metrics output."""
@@ -324,10 +322,8 @@ class _ExtractOutputDoFn(model_util.DoFnWithModel):
       self._num_bootstrap_empties.inc(1)
 
 
-# TODO(b/138120489): change beam.typehints.KV back to Tuple.
 @beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
-@beam.typehints.with_output_types(beam.typehints.KV[slicer.SliceKeyType,
-                                                    types.Extracts])
+@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, types.Extracts])
 class _ModelLoadingIdentityFn(model_util.DoFnWithModel):
   """A DoFn that loads the EvalSavedModel and returns the input unchanged."""
 
