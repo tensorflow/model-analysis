@@ -17,10 +17,7 @@ goog.module('tfma.MetricsHistogramTest');
 
 const TestUtil = goog.require('tfma.TestUtil');
 
-suite('tests', function() {
-  // TODO(b/139550472): Revert to default timeout once fixed.
-  this.timeout(20000);
-
+suite('tests', () => {
   /** @const {number} */
   const INITIALIZATION_TIMEOUT_MS = 2000;
 
