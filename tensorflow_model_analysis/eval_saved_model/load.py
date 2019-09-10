@@ -351,7 +351,8 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
         for group, tensors in all_fetches.items():
           split_tensors = {}
           for key in tensors:
-            split_tensors[key] = util.split_tensor_value(tensors[key])
+            if not np.isscalar(tensors[key]):
+              split_tensors[key] = util.split_tensor_value(tensors[key])
           split_fetches[group] = split_tensors
 
         if (not isinstance(input_refs, np.ndarray) or input_refs.ndim != 1 or
