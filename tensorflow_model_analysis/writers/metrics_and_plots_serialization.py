@@ -133,26 +133,26 @@ def load_and_deserialize_metrics(
           }
       }
 
-    if metrics_for_slice.metric_keys:
-      for key, value in zip(metrics_for_slice.metric_keys,
-                            metrics_for_slice.metric_values):
-        current_model_name = key.model_name
+    if metrics_for_slice.metric_keys_and_values:
+      for kv in metrics_for_slice.metric_keys_and_values:
+        current_model_name = kv.key.model_name
 
         if current_model_name not in model_metrics_map:
           model_metrics_map[current_model_name] = {}
-        output_name = key.output_name
+        output_name = kv.key.output_name
         if output_name not in model_metrics_map[current_model_name]:
           model_metrics_map[current_model_name][output_name] = {}
 
         multi_class_metrics_map = model_metrics_map[current_model_name][
             output_name]
         multi_class_key_id = _get_multi_class_key_id(
-            key.multi_class_key) if key.HasField('multi_class_key') else ''
+            kv.key.multi_class_key) if kv.key.HasField(
+                'multi_class_key') else ''
         if multi_class_key_id not in multi_class_metrics_map:
           multi_class_metrics_map[multi_class_key_id] = {}
-        metric_name = key.name
+        metric_name = kv.key.name
         multi_class_metrics_map[multi_class_key_id][
-            metric_name] = json_format.MessageToDict(value)
+            metric_name] = json_format.MessageToDict(kv.value)
 
     metrics_map = None
     keys = list(model_metrics_map.keys())
@@ -190,16 +190,16 @@ def load_and_deserialize_plots(
     elif plots_for_slice.HasField('plot_data'):
       plots_map[''] = {'': json_format.MessageToDict(plots_for_slice.plot_data)}
 
-    if plots_for_slice.plot_keys:
-      for key, value in zip(plots_for_slice.plot_keys,
-                            plots_for_slice.plot_values):
-        output_name = key.output_name
+    if plots_for_slice.plot_keys_and_values:
+      for kv in plots_for_slice.plot_keys_and_values:
+        output_name = kv.key.output_name
         if output_name not in plots_map:
           plots_map[output_name] = {}
         multi_class_key_id = _get_multi_class_key_id(
-            key.multi_class_key) if key.HasField('multi_class_key') else ''
+            kv.key.multi_class_key) if kv.key.HasField(
+                'multi_class_key') else ''
         plots_map[output_name][multi_class_key_id] = json_format.MessageToDict(
-            value)
+            kv.value)
 
     result.append((
         slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types
