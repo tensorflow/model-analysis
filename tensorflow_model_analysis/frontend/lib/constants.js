@@ -63,10 +63,13 @@ const MetricValueFormat = {
 };
 
 /** @type {string} */
-const METRIC_KEYS = 'metricKeys';
+const KEY = 'key';
 
 /** @type {string} */
-const METRIC_VALUES = 'metricValues';
+const METRIC_KEYS_AND_VALUES = 'metricKeysAndValues';
+
+/** @type {string} */
+const VALUE = 'value';
 
 /** @enum {string}*/
 const PlotTypes = {
@@ -131,10 +134,7 @@ const PlotDataDisplay = {
 };
 
 /** @type {string} */
-const PLOT_KEYS = 'plotKeys';
-
-/** @type {string} */
-const PLOT_VALUES = 'plotValues';
+const PLOT_KEYS_AND_VALUES = 'plotKeysAndValues';
 
 /**
  * @typedef {
@@ -172,6 +172,8 @@ goog.exportSymbol(
 
 goog.exportSymbol('tfma.FLOATING_POINT_PRECISION', FLOATING_POINT_PRECISION);
 
+goog.exportSymbol('tfma.KEY', KEY);
+
 goog.exportSymbol('tfma.MetricValueFormat.INT', MetricValueFormat.INT);
 goog.exportSymbol('tfma.MetricValueFormat.INT64', MetricValueFormat.INT64);
 goog.exportSymbol('tfma.MetricValueFormat.FLOAT', MetricValueFormat.FLOAT);
@@ -180,9 +182,7 @@ goog.exportSymbol(
     'tfma.MetricValueFormat.VALUE_AT_CUTOFFS',
     MetricValueFormat.VALUE_AT_CUTOFFS);
 
-goog.exportSymbol('tfma.METRIC_KEYS', METRIC_KEYS);
-
-goog.exportSymbol('tfma.METRIC_VALUES', METRIC_VALUES);
+goog.exportSymbol('tfma.METRIC_KEYS_AND_VALUES', METRIC_KEYS_AND_VALUES);
 
 goog.exportSymbol(
     'tfma.PlotDataFieldNames.CALIBRATION_BUCKETS',
@@ -239,25 +239,24 @@ goog.exportSymbol(
 goog.exportSymbol('tfma.PlotDataDisplay.EXAMPLES_MAX_STEP',
     PlotDataDisplay.EXAMPLES_MAX_STEP);
 
-goog.exportSymbol('tfma.PLOT_KEYS', PLOT_KEYS);
+goog.exportSymbol('tfma.PLOT_KEYS_AND_VALUES', PLOT_KEYS_AND_VALUES);
 
-goog.exportSymbol('tfma.PLOT_VALUES', PLOT_VALUES);
+goog.exportSymbol('tfma.VALUE', VALUE);
 
 exports = {
   Column,
   Event,
   FLOATING_POINT_PRECISION,
+  KEY,
   MetricValueFormat,
   MetricValueFormatSpec,
   MetricValueTransformer,
-  METRIC_KEYS,
-  METRIC_VALUES,
+  METRIC_KEYS_AND_VALUES,
   PlotDataFieldNames,
   PlotFit,
   PlotHighlight,
   PlotScale,
   PlotTypes,
   PlotDataDisplay,
-  PLOT_KEYS,
-  PLOT_VALUES,
+  VALUE,
 };

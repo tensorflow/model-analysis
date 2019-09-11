@@ -228,6 +228,9 @@ tfma.Column = {
  */
 tfma.FLOATING_POINT_PRECISION;
 
+/** @type {string} */
+tfma.KEY;
+
 /**
  * @constructor
  */
@@ -290,10 +293,7 @@ tfma.MetricValueFormatSpec.prototype.type;
 tfma.MetricValueFormatSpec.prototype.transform;
 
 /** @type {string} */
-tfma.METRIC_KEYS;
-
-/** @type {string} */
-tfma.METRIC_VALUES;
+tfma.METRIC_KEYS_AND_VALUES;
 
 /**
  * @enum {string}
@@ -356,10 +356,7 @@ tfma.PlotDataDisplay = {
 };
 
 /** @type {string} */
-tfma.PLOT_KEYS;
-
-/** @type {string} */
-tfma.PLOT_VALUES
+tfma.PLOT_KEYS_AND_VALUES;
 
 /**
  * @constructor
@@ -554,3 +551,6 @@ tfma.Util.createConfigsList = function(configs) {};
  */
 tfma.Util.mergeMetricsForSelectedConfigsList = function(
     metrics, configsList, blacklist) {};
+
+/** @type {string} */
+tfma.VALUE;
