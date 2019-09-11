@@ -108,7 +108,7 @@ template.innerHTML = `
                 hidden$="[[showAll_]]">
       <div name="[[tabNames_.Calibration]]" class="plot-holder">
         <span class="title">[[chartTitles_.Calibration]]</span>
-        <tfma-calibration-plot buckets="[[calibrationData_]]" bucket-size="0.01">
+        <tfma-calibration-plot buckets="[[calibrationData_]]">
         </tfma-calibration-plot>
       </div>
       <div name="[[tabNames_.Residual]]" class="plot-holder">

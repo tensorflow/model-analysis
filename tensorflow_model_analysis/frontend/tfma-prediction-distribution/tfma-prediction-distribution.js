@@ -44,7 +44,7 @@ export class PredicitonDistribution extends PolymerElement {
       data: {type: Array},
 
       /** @type {number} */
-      bucketSize: {type: Number, value: 0.0625},
+      numberOfBuckets: {type: Number, value: 16},
 
       /**
        * Chart rendering options.
@@ -78,22 +78,30 @@ export class PredicitonDistribution extends PolymerElement {
        * The data to be plotted in the line chart.
        * @private {!Array<!Array<string|number>>}
        */
-      plotData_: {type: Array, computed: 'computePlotData_(data, bucketSize)'},
+      plotData_: {
+        type: Array,
+        computed: 'computePlotData_(data, numberOfBuckets)',
+      },
     };
   }
 
   /**
-   * @param {!Array<!Object>} data
-   * @param {number} bucketSize
+   * @param {!Array<!Object>|undefined} data
+   * @param {number} numberOfBuckets
    * @return {(!Array<!Array<string|number>>|undefined)} A 2d array representing
    *     the data that will be visualized in the prediciton distribution.
    * @private
    */
-  computePlotData_(data, bucketSize) {
+  computePlotData_(data, numberOfBuckets) {
     if (!data) {
       return undefined;
     }
 
+    const minValue = data && data[0] && data[0]['upperThresholdExclusive'] || 0;
+    const maxValue = data && data[data.length - 1] &&
+            data[data.length - 1]['lowerThresholdInclusive'] ||
+        0;
+    const bucketSize = (maxValue - minValue) / numberOfBuckets || 1;
     const plotData = [[
       'Prediction',
       'Count',
@@ -103,12 +111,12 @@ export class PredicitonDistribution extends PolymerElement {
       'Negative',
       {'type': 'string', 'role': 'tooltip'},
     ]];
-    let currentBucketCenter = bucketSize / 2;
+    let currentBucketCenter = minValue + bucketSize / 2;
     do {
       // Initialize histogram with center x and zero count.
       plotData.push([currentBucketCenter, 0, '', 0, '', 0, '']);
       currentBucketCenter += bucketSize;
-    } while (currentBucketCenter < 1);
+    } while (currentBucketCenter < maxValue);
 
     const maxIndex = plotData.length - 1;
     // For each entry, find the corresponding prediction and update weighted
@@ -120,8 +128,8 @@ export class PredicitonDistribution extends PolymerElement {
         const totalLabel = entry['totalWeightedLabel'] || 0;
         const prediction =
             entry['totalWeightedRefinedPrediction'] / weightedExamples;
-        const bucketIndex =
-            Math.min(Math.trunc(prediction / bucketSize) + 1, maxIndex);
+        const bucketIndex = Math.min(
+            Math.trunc((prediction - minValue) / bucketSize) + 1, maxIndex);
         plotData[bucketIndex][1] = plotData[bucketIndex][1] + weightedExamples;
         plotData[bucketIndex][3] = plotData[bucketIndex][3] + totalLabel;
         plotData[bucketIndex][5] =
@@ -130,11 +138,11 @@ export class PredicitonDistribution extends PolymerElement {
     });
 
     // Fill tooltip
-    let lowerBound = 0;
-    let upperBound = bucketSize;
+    let lowerBound = minValue;
+    let upperBound = minValue + bucketSize;
     for (let i = 1; i < plotData.length; i++) {
-      const boundText = ' example(s) between ' +
-          lowerBound.toFixed(4) + ' and ' + upperBound.toFixed(4);
+      const boundText = ' example(s) between ' + lowerBound.toFixed(4) +
+          ' and ' + upperBound.toFixed(4);
       plotData[i][2] = plotData[i][1] + ' weighted' + boundText;
       plotData[i][4] = plotData[i][3] + ' positive' + boundText;
       plotData[i][6] = plotData[i][5] + ' negative' + boundText;

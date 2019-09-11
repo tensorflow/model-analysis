@@ -47,10 +47,10 @@ export class CalibrationPlot extends PolymerElement {
       buckets: {type: Array},
 
       /**
-       * The size of each bucket.
+       * The number of buckets in which to regroup the data.
        * @type {number}
        */
-      bucketSize: {type: Number},
+      numberOfBuckets: {type: Number, value: 100},
 
       /**
        * How to determine the error in each prediction / label pair. For
@@ -106,7 +106,7 @@ export class CalibrationPlot extends PolymerElement {
        */
       options_: {
         type: Object,
-        computed: 'computeOptions_(color, size, scale, overrides)'
+        computed: 'computeOptions_(color, size, scale, overrides, buckets)'
       },
 
       /**
@@ -123,7 +123,7 @@ export class CalibrationPlot extends PolymerElement {
         type: Array,
         computed:
             'computePlotData_(buckets, header_, fit, scale, color, size, ' +
-            'bucketSize)'
+            'numberOfBuckets)'
       },
     };
   }
@@ -133,26 +133,19 @@ export class CalibrationPlot extends PolymerElement {
    * @param {string} size
    * @param {string} scale
    * @param {!Object} overrides
+   * @param {!Array|undefined} buckets
    * @return {!Object} The options object used for configuring the google-chart
    *     object.
    * @private
    */
-  computeOptions_(color, size, scale, overrides) {
+  computeOptions_(color, size, scale, overrides, buckets) {
     var options = {
       'title': 'Calibration Plot',
       'hAxis': {
         'title': 'Average Prediction',
-        'minValue': 0,
-        'maxValue': 1,
-        // Forces displayed value range to [0, 1].
-        'viewWindow': {'min': 0, 'max': 1}
       },
       'vAxis': {
         'title': 'Average Label',
-        'minValue': 0,
-        'maxValue': 1,
-        // Forces displayed value range [0, 1].
-        'viewWindow': {'min': 0, 'max': 1}
       },
       'bubble': {'textStyle': {'fontSize': 11}},
       'colorAxis':
@@ -160,6 +153,21 @@ export class CalibrationPlot extends PolymerElement {
       'sizeAxis': {'minValue': 0, 'maxValue': 0.5, 'minSize': 2, 'maxSize': 12},
       'explorer': {'actions': ['dragToZoom', 'rightClickToReset']},
     };
+
+    const min =
+        buckets && buckets[0] && buckets[0]['upperThresholdExclusive'];
+    const max = buckets && buckets[buckets.length - 1] &&
+            buckets[buckets.length - 1]['lowerThresholdInclusive'];
+    // Force the view window to [0, 1] if applicable.
+    if (!min && max == 1) {
+      const setAxis = (axis) => {
+        axis['minValue'] = 0;
+        axis['maxValue']= 1;
+        axis['viewWindow'] = {'min': 0, 'max': 1};
+      };
+      setAxis(options['hAxis']);
+      setAxis(options['vAxis']);
+    }
 
     if (scale == tfma.PlotScale.LOG) {
       options['hAxis']['logScale'] = true;
@@ -242,19 +250,19 @@ export class CalibrationPlot extends PolymerElement {
    * @param {string} scale
    * @param {string} color
    * @param {string} size
-   * @param {number} bucketSize
+   * @param {number} numberOfBuckets
    * @return {(!Array<!Array<string|number>>|undefined)} A 2d array representing
    *     the data that will be visualized in the claibration plot.
    * @private
    */
-  computePlotData_(buckets, header, fit, scale, color, size, bucketSize) {
+  computePlotData_(buckets, header, fit, scale, color, size, numberOfBuckets) {
     if (!buckets || !header) {
       return undefined;
     }
 
     const plotData = [header];
     tfma.BucketsWrapper.getCalibrationPlotData(
-        buckets, fit, scale, color, size, bucketSize, plotData);
+        buckets, fit, scale, color, size, numberOfBuckets, plotData);
     return plotData;
   }
 }

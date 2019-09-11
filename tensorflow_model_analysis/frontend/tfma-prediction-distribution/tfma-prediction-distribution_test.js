@@ -18,8 +18,15 @@ suite('tests', () => {
 
   test('PutDataInBuckets', () => {
     element = fixture('pd-fixture');
-    element.bucketSize = 0.25;
+    element.numberOfBuckets = 4;
     element.data = [
+      {
+        'lowerThresholdInclusive': -Infinity,
+        'upperThresholdExclusive': 0,
+        'numWeightedExamples': 0,
+        'totalWeightedLabel': 0,
+        'totalWeightedRefinedPrediction': 0,
+      },
       {
         'numWeightedExamples': 2,
         'totalWeightedRefinedPrediction': 0.1 * 2,
@@ -34,7 +41,14 @@ suite('tests', () => {
         'numWeightedExamples': 7,
         'totalWeightedRefinedPrediction': 0.8 * 7,
         'totalWeightedLabel': 2,
-      }
+      },
+      {
+        'lowerThresholdInclusive': 1,
+        'upperThresholdExclusive': Infinity,
+        'numWeightedExamples': 0,
+        'totalWeightedLabel': 0,
+        'totalWeightedRefinedPrediction': 0,
+      },
     ];
     const chartData =
         element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
@@ -44,7 +58,6 @@ suite('tests', () => {
       {'type': 'string', 'role': 'tooltip'}, 'Negative',
       {'type': 'string', 'role': 'tooltip'}
     ]);
-    debugger;
     assert.deepEqual(chartData[1], [
       0.125, 6, '6 weighted example(s) between 0.0000 and 0.2500', 5,
       '5 positive example(s) between 0.0000 and 0.2500', 1,
@@ -68,8 +81,15 @@ suite('tests', () => {
   });
 
   test('BoundaryValues', () => {
-    element.bucketSize = 0.5;
+    element.numberOfBuckets = 2;
     element.data = [
+      {
+        'lowerThresholdInclusive': -Infinity,
+        'upperThresholdExclusive': 0,
+        'numWeightedExamples': 0,
+        'totalWeightedLabel': 0,
+        'totalWeightedRefinedPrediction': 0,
+      },
       {
         'numWeightedExamples': 2,
         'totalWeightedRefinedPrediction': 0,
@@ -79,7 +99,14 @@ suite('tests', () => {
         'numWeightedExamples': 1,
         'totalWeightedRefinedPrediction': 1,
         'totalWeightedLabel': 0
-      }
+      },
+      {
+        'lowerThresholdInclusive': 1,
+        'upperThresholdExclusive': Infinity,
+        'numWeightedExamples': 0,
+        'totalWeightedLabel': 0,
+        'totalWeightedRefinedPrediction': 0,
+      },
     ];
     const chartData =
         element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
@@ -89,7 +116,6 @@ suite('tests', () => {
       {'type': 'string', 'role': 'tooltip'}, 'Negative',
       {'type': 'string', 'role': 'tooltip'}
     ]);
-    debugger;
     assert.deepEqual(chartData[1], [
       0.25, 2, '2 weighted example(s) between 0.0000 and 0.5000', 1,
       '1 positive example(s) between 0.0000 and 0.5000', 1,

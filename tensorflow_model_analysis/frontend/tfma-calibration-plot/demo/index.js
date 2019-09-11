@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 (function() {
-  const count = 20000;
   const step = 0.00005;
+  const minThreshold = -1;
+  const maxThreshold = 3 + step;
   const bucketCutOff = 0.15;
 
   const makeOneBucket = (threshold, weight, label, prediction) => {
@@ -35,12 +36,12 @@
   };
 
   const input = [];
-  let threshold = 0;
+  let threshold = minThreshold;
   let weight;
   let prediction;
   let label;
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; threshold <= maxThreshold; i++) {
     weight = Math.random() * Math.pow(10, Math.random() * 2);
     prediction = (threshold + Math.random() * step) * weight;
     label = (0.975 + 0.5 * Math.random()) * prediction;
@@ -49,11 +50,11 @@
   }
 
   let plot = document.getElementById('plot1');
-  plot.bucketSize = 0.001;
+  plot.numberOfBuckets = 128;
   plot.buckets = input;
 
   plot = document.getElementById('plot2');
-  plot.bucketSize = 0.01;
+  plot.numberOfBuckets = 16;
   plot.buckets = input;
   plot.overrides = {
     'title': 'Color:' + plot['color'] + ', size:' + plot['size'] + ', scale:' +

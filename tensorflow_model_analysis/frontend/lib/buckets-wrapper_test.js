@@ -202,7 +202,7 @@ testSuite({
     const expectedColor = Math.log(40) / Math.log(10);
     BucketsWrapper.getCalibrationPlotData(
         buckets, Constants.PlotFit.PERFECT, Constants.PlotScale.LINEAR,
-        Constants.PlotHighlight.WEIGHTS, Constants.PlotHighlight.ERROR, 0.125,
+        Constants.PlotHighlight.WEIGHTS, Constants.PlotHighlight.ERROR, 8,
         holder);
 
     assertEquals(8, holder.length);
@@ -285,11 +285,20 @@ testSuite({
 function generateStraightLine(count, slope, intercept, opt_weightMultiplier) {
   const data = [];
   let weight = 10;
+  data.push({
+      'upperThresholdExclusive': 0,
+      'lowerThresholdInclusive': -Infinity,
+      'numWeightedExamples': 0,
+      'totalWeightedLabel': 0,
+      'totalWeightedRefinedPrediction': 0
+    });
+  let oldX = 0;
   for (var i = 1; i <= count; i++) {
     const x = i / count;
     const y = x * slope + intercept;
     data.push({
       'upperThresholdExclusive': x,
+      'lowerThresholdInclusive': oldX,
       'numWeightedExamples': weight,
       'totalWeightedLabel': y * weight,
       'totalWeightedRefinedPrediction': x * weight
@@ -297,6 +306,14 @@ function generateStraightLine(count, slope, intercept, opt_weightMultiplier) {
     if (opt_weightMultiplier) {
       weight *= opt_weightMultiplier;
     }
+    oldX = x;
   }
+  data.push({
+      'upperThresholdExclusive': Infinity,
+      'lowerThresholdInclusive': 1,
+      'numWeightedExamples': 0,
+      'totalWeightedLabel': 0,
+      'totalWeightedRefinedPrediction': 0
+    });
   return data;
 }

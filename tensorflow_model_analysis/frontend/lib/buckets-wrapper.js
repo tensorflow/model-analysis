@@ -49,7 +49,7 @@ let BucketEntry;
  */
 const FieldNames = {
   LABEL: 'totalWeightedLabel',
-  LOWER_THRESOLD: 'lowerThresholdInclusive',
+  LOWER_THRESHOLD: 'lowerThresholdInclusive',
   PREDICTION: 'totalWeightedRefinedPrediction',
   UPPER_THRESHOLD: 'upperThresholdExclusive',
   WEIGHTS: 'numWeightedExamples',
@@ -86,17 +86,17 @@ const MIN_ALLOWED_VALUE_ON_LOG_SCALE = Math.pow(10, MIN_ON_LOG_SCALE_VALUE);
 /**
  * Generates calibration plot data from the buckets.
  * @param {!Array<!Object>} buckets
- * @param {Constants.PlotFit} fit
- * @param {Constants.PlotScale} scale
- * @param {Constants.PlotHighlight} color
- * @param {Constants.PlotHighlight} size
- * @param {number|undefined} newBucketSize
+ * @param {!Constants.PlotFit} fit
+ * @param {!Constants.PlotScale} scale
+ * @param {!Constants.PlotHighlight} color
+ * @param {!Constants.PlotHighlight} size
+ * @param {number} numberOfBuckets
  * @param {!Array<!Array<string|number>>} outputArray
  */
 function getCalibrationPlotData(
-    buckets, fit, scale, color, size, newBucketSize, outputArray) {
+    buckets, fit, scale, color, size, numberOfBuckets, outputArray) {
   const entries = regroupBucketToEntries(
-      buckets, newBucketSize || 0, scale == Constants.PlotScale.LOG);
+      buckets, numberOfBuckets, scale == Constants.PlotScale.LOG);
 
   const line = fit == Constants.PlotFit.PERFECT ?
       PERFECT_CALIBRATION_LINE :
@@ -119,21 +119,28 @@ function getCalibrationPlotData(
  * provided bucket size when applicable. Determine the x, y, and w that will be
  * used for plotting calibration based on the average label, average prediction
  * and total weight in each new bucket.
- * @param {Buckets} buckets Buckets are assumed to be sorted in increasing order
- *     by its upper threshold.
- * @param {number} bucketSize Note that if bucketSize is 0, the threshold will
- *     remain 0 the entire time and the buckets will be transformed one to one
- *     from Bucket to BucketEntry without regrouping.
+ * @param {!Buckets} buckets Buckets are assumed to be sorted in increasing
+ *     order by its upper threshold.
+ * @param {number} numberOfBuckets Note that if numberOfBuckets is 0, the
+ *     threshold will remain 0 the entire time and the buckets will be
+ *     transformed one to one from Bucket to BucketEntry without regrouping.
  * @param {boolean} useLogScale If using log sclae, make sure all values are at
  *     least MIN_ALLOWED_VALUE_ON_LOG_SCALE.
  * @return {!Array<!BucketEntry>}
  * @private
  */
-function regroupBucketToEntries(buckets, bucketSize, useLogScale) {
+function regroupBucketToEntries(buckets, numberOfBuckets, useLogScale) {
   let weightSum = 0;
   let labelSum = 0;
   let predictionSum = 0;
-  let currentThreshold = bucketSize;
+  const minValue =
+      buckets && buckets[0] && buckets[0][FieldNames.UPPER_THRESHOLD] || 0;
+  const maxValue = buckets && buckets[buckets.length - 1] &&
+          buckets[buckets.length - 1][FieldNames.LOWER_THRESHOLD] ||
+      0;
+  const bucketSize =
+      numberOfBuckets ? (maxValue - minValue) / numberOfBuckets : 0;
+  let currentThreshold = minValue + bucketSize;
   /**
    * @type {!Array<!BucketEntry>}
    */
@@ -182,8 +189,8 @@ function determineCalibrationPlotValue(useWeight, entry, fit) {
 }
 
 /**
- * @param {LeastSquareFit.Point} point
- * @param {LeastSquareFit.Line} line
+ * @param {!LeastSquareFit.Point} point
+ * @param {!LeastSquareFit.Line} line
  * @return {number} The difference in y between the point and the line.
  * @private
  */

@@ -14,8 +14,15 @@
  * limitations under the License.
  */
 suite('tests', () => {
-  const BUCKET_SIZE = 0.25;
+  const NUMBER_OF_BUCKETS = 4;
   const DEFAULT_BUCKETS = [
+    {
+      'lowerThresholdInclusive': -Infinity,
+      'upperThresholdExclusive': 0,
+      'numWeightedExamples': 0,
+      'totalWeightedLabel': 0,
+      'totalWeightedRefinedPrediction': 0,
+    },
     {
       'lowerThresholdInclusive': 0,
       'upperThresholdExclusive': 0.125,
@@ -71,7 +78,14 @@ suite('tests', () => {
       'numWeightedExamples': 70,
       'totalWeightedLabel': 39,
       'totalWeightedRefinedPrediction': 54,
-    }
+    },
+    {
+      'lowerThresholdInclusive': 1,
+      'upperThresholdExclusive': Infinity,
+      'numWeightedExamples': 0,
+      'totalWeightedLabel': 0,
+      'totalWeightedRefinedPrediction': 0,
+    },
   ];
 
   let plot;
@@ -97,6 +111,9 @@ suite('tests', () => {
     if (scale) {
       plot.scale = scale;
     }
+
+    plot.buckets = DEFAULT_BUCKETS;
+    plot.numberOfBuckets = NUMBER_OF_BUCKETS;
   }
 
   test('SetColorOverrides', () => {
@@ -120,7 +137,6 @@ suite('tests', () => {
     assert.equal(colorOptions['minValue'], minValue);
   });
 
-
   test('SetSizeOverrides', () => {
     setUpFixture({});
     const maxRadius = 456;
@@ -142,10 +158,25 @@ suite('tests', () => {
     assert.equal(sizeOptions['minValue'], minValue);
   });
 
+  test('SetCheckViewWindowOverrides', () => {
+    setUpFixture({});
+
+    const hAxis = plot.$['plot']['options']['hAxis'];
+    assert.equal(hAxis['minValue'], 0);
+    assert.equal(hAxis['maxValue'], 1);
+    assert.equal(hAxis['viewWindow']['min'], 0);
+    assert.equal(hAxis['viewWindow']['max'], 1);
+
+    const vAxis = plot.$['plot']['options']['vAxis'];
+    assert.equal(vAxis['minValue'], 0);
+    assert.equal(vAxis['maxValue'], 1);
+    assert.equal(vAxis['viewWindow']['min'], 0);
+    assert.equal(vAxis['viewWindow']['max'], 1);
+  });
+
   test('CreateChartDataWithoutRebucketing', () => {
     setUpFixture({});
-    plot.bucketSize = 0;
-    plot.buckets = DEFAULT_BUCKETS;
+    plot.numberOfBuckets = 0;
 
     const plotData = plot.plotData_;
     assert.equal(plotData.length, 9);
@@ -175,8 +206,6 @@ suite('tests', () => {
 
   test('CreateChartDataWithRebucketing', () => {
     setUpFixture({});
-    plot.bucketSize = BUCKET_SIZE;
-    plot.buckets = DEFAULT_BUCKETS;
 
     const plotData = plot.plotData_;
     assert.equal(plotData.length, 5);
@@ -193,7 +222,7 @@ suite('tests', () => {
     setUpFixture({
       fit: tfma.PlotFit.LEAST_SQUARE,
     });
-    plot.bucketSize = 0;
+    plot.numberOfBuckets = 0;
 
     // Set up the data so that data fits a line perfectly.
     const SLOPE = 0.5;
@@ -242,8 +271,6 @@ suite('tests', () => {
       color: tfma.PlotHighlight.WEIGHTS,
       size: tfma.PlotHighlight.ERROR,
     });
-    plot.bucketSize = BUCKET_SIZE;
-    plot.buckets = DEFAULT_BUCKETS;
 
     const plotData = plot.plotData_;
     assert.equal(plotData.length, 5);
