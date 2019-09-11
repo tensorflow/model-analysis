@@ -108,13 +108,13 @@ def _convert_proto_map_to_dict(proto_map: Any) -> Dict[Text, Dict[Text, Any]]:
   return {k: json_format.MessageToDict(proto_map[k]) for k in proto_map}
 
 
-def _get_multi_class_key_id(multi_class_key):
-  if multi_class_key.HasField('class_id'):
-    return 'classId:' + str(multi_class_key.class_id)
-  elif multi_class_key.HasField('top_k'):
-    return 'topK:' + str(multi_class_key.top_k)
-  elif multi_class_key.HasField('k'):
-    return 'k:' + str(multi_class_key.k)
+def _get_sub_key_id(sub_key):
+  if sub_key.HasField('class_id'):
+    return 'classId:' + str(sub_key.class_id)
+  elif sub_key.HasField('top_k'):
+    return 'topK:' + str(sub_key.top_k)
+  elif sub_key.HasField('k'):
+    return 'k:' + str(sub_key.k)
 
 
 def load_and_deserialize_metrics(
@@ -143,15 +143,13 @@ def load_and_deserialize_metrics(
         if output_name not in model_metrics_map[current_model_name]:
           model_metrics_map[current_model_name][output_name] = {}
 
-        multi_class_metrics_map = model_metrics_map[current_model_name][
-            output_name]
-        multi_class_key_id = _get_multi_class_key_id(
-            kv.key.multi_class_key) if kv.key.HasField(
-                'multi_class_key') else ''
-        if multi_class_key_id not in multi_class_metrics_map:
-          multi_class_metrics_map[multi_class_key_id] = {}
+        sub_key_metrics_map = model_metrics_map[current_model_name][output_name]
+        sub_key_id = _get_sub_key_id(
+            kv.key.sub_key) if kv.key.HasField('sub_key') else ''
+        if sub_key_id not in sub_key_metrics_map:
+          sub_key_metrics_map[sub_key_id] = {}
         metric_name = kv.key.name
-        multi_class_metrics_map[multi_class_key_id][
+        sub_key_metrics_map[sub_key_id][
             metric_name] = json_format.MessageToDict(kv.value)
 
     metrics_map = None
@@ -195,11 +193,9 @@ def load_and_deserialize_plots(
         output_name = kv.key.output_name
         if output_name not in plots_map:
           plots_map[output_name] = {}
-        multi_class_key_id = _get_multi_class_key_id(
-            kv.key.multi_class_key) if kv.key.HasField(
-                'multi_class_key') else ''
-        plots_map[output_name][multi_class_key_id] = json_format.MessageToDict(
-            kv.value)
+        sub_key_id = _get_sub_key_id(
+            kv.key.sub_key) if kv.key.HasField('sub_key') else ''
+        plots_map[output_name][sub_key_id] = json_format.MessageToDict(kv.value)
 
     result.append((
         slicer.deserialize_slice_key(plots_for_slice.slice_key),  # pytype: disable=wrong-arg-types

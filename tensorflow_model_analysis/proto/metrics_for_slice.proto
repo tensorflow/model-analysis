@@ -21,14 +21,15 @@ import "google/protobuf/wrappers.proto";
 // This proto is copied into PerformanceStatistics because of b/110954446.
 // LINT.IfChange
 
-// A multi-class key identifies a type of multi-class metric.
-message MultiClassKey {
+// A sub key identifies specialized sub-types of metrics and plots.
+message SubKey {
   oneof type {
-    // Specifies multi-class metric is for a specific class ID.
+    // Used with multi-class metrics to identify a specific class ID.
     google.protobuf.Int32Value class_id = 1;
-    // Specifies multi-class metric is related to the kth predicted value.
+    // Used with multi-class metrics to identify the kth predicted value.
     google.protobuf.Int32Value k = 2;
-    // Specifies multi-class metric is related to the top-k predicted values.
+    // Used with multi-class and ranking metrics to identify top-k predicted
+    // values.
     google.protobuf.Int32Value top_k = 3;
   }
 }
@@ -41,8 +42,8 @@ message MetricKey {
   string model_name = 4;
   // Optional output name associated with metric (for multi-output models).
   string output_name = 2;
-  // Optional multi-class key associated with metric (for multi-class models).
-  MultiClassKey multi_class_key = 3;
+  // Optional sub key associated with metric.
+  SubKey sub_key = 3;
 }
 
 // The value will be converted into an error message if we do not know its type.
@@ -280,8 +281,8 @@ message MultiClassConfusionMatrix {
 message PlotKey {
   // Optional output name associated with plot (for multi-output models).
   string output_name = 2;
-  // Optional multi-class key associated with plot (for multi-class models).
-  MultiClassKey multi_class_key = 3;
+  // Optional sub key associated with plot.
+  SubKey sub_key = 3;
 }
 
 message PlotData {

@@ -252,19 +252,19 @@ def get_plot_data_and_config(
     # for backward compatibiility only) should not be provided together.
     raise ValueError('Do not specify both label and output_name / class_id')
 
-  multi_class_key_oneof_check = 0
-  multi_class_id = None
+  sub_key_oneof_check = 0
+  sub_key_id = None
 
   if class_id is not None:
-    multi_class_key_oneof_check = multi_class_key_oneof_check + 1
-    multi_class_id = 'classId:' + str(class_id)
+    sub_key_oneof_check = sub_key_oneof_check + 1
+    sub_key_id = 'classId:' + str(class_id)
   if top_k is not None:
-    multi_class_key_oneof_check = multi_class_key_oneof_check + 1
-    multi_class_id = 'topK:' + str(top_k)
+    sub_key_oneof_check = sub_key_oneof_check + 1
+    sub_key_id = 'topK:' + str(top_k)
   if k is not None:
-    multi_class_key_oneof_check = multi_class_key_oneof_check + 1
-    multi_class_id = 'k:' + str(k)
-  if multi_class_key_oneof_check > 1:
+    sub_key_oneof_check = sub_key_oneof_check + 1
+    sub_key_id = 'k:' + str(k)
+  if sub_key_oneof_check > 1:
     raise ValueError('Up to one of class_id, top_k and k can be provided.')
 
   output_name = '' if output_name is None else output_name
@@ -291,7 +291,7 @@ def get_plot_data_and_config(
       raise ValueError('No plot data found without output name.')
 
   output = target_slice['metrics'][output_name]
-  class_id_to_use = (multi_class_id if multi_class_id is not None else '')
+  class_id_to_use = (sub_key_id if sub_key_id is not None else '')
 
   if class_id_to_use not in output:
     if class_id is None:
