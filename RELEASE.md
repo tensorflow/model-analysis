@@ -65,6 +65,7 @@
 *   Depends on `numpy>=1.16,<2`.
 *   Depends on `protobuf>=3.7,<4`.
 *   Depends on `scipy==1.1.0`.
+*   Added support to change k_anonymization_count value via EvalConfig.
 
 ## Breaking changes
 

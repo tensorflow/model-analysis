@@ -82,6 +82,9 @@ class EvalConfig(
             ('example_weight_metric_key', Union[Text, Dict[Text, Text]]),
             # Set to true in order to calculate confidence intervals.
             ('compute_confidence_intervals', bool),
+            # Privacy k-anonymization count to omit slices with example count
+            # less than k.
+            ('k_anonymization_count', int),
         ])):
   """Config used for extraction and evaluation."""
 
@@ -93,11 +96,13 @@ class EvalConfig(
               example_weight_metric_key: Optional[Union[Text,
                                                         Dict[Text,
                                                              Text]]] = None,
-              compute_confidence_intervals: Optional[bool] = False):
+              compute_confidence_intervals: Optional[bool] = False,
+              k_anonymization_count: Optional[int] = 1):
     return super(EvalConfig, cls).__new__(cls, model_location, data_location,
                                           slice_spec, example_count_metric_key,
                                           example_weight_metric_key,
-                                          compute_confidence_intervals)
+                                          compute_confidence_intervals,
+                                          k_anonymization_count)
 
 
 def _check_version(raw_final_dict: Dict[Text, Any], path: Text):
@@ -616,7 +621,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       slice_spec=slice_spec,
       example_count_metric_key=metric_keys.EXAMPLE_COUNT,
       example_weight_metric_key=example_weight_metric_key,
-      compute_confidence_intervals=compute_confidence_intervals)
+      compute_confidence_intervals=compute_confidence_intervals,
+      k_anonymization_count=k_anonymization_count)
 
   # pylint: disable=no-value-for-parameter
   _ = (
