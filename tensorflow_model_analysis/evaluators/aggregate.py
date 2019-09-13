@@ -291,7 +291,7 @@ class _AggregateCombineFn(model_util.CombineFnWithModel):
 
 
 @beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, List[Any]])
-# TODO(b/123516222)): Add output typehints. Similarly elsewhere that it applies.
+# TODO(b/123516222): Add output typehints. Similarly elsewhere that it applies.
 class _ExtractOutputDoFn(model_util.DoFnWithModel):
   """A DoFn that extracts the metrics output."""
 

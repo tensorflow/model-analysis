@@ -156,6 +156,9 @@ class ModelLoader(
   def __new__(cls,
               shared_handle: Optional[shared.Shared] = None,
               construct_fn: Optional[Callable[..., Any]] = None):
+    # TODO(b/140845455): It's likely very brittle to have the shared_handle
+    # optional since it needs to be tied to the unique shared state it's
+    # responsible for.
     if not shared_handle:
       shared_handle = shared.Shared()
     return super(ModelLoader, cls).__new__(cls, shared_handle, construct_fn)

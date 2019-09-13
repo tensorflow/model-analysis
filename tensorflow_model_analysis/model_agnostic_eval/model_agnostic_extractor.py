@@ -113,6 +113,10 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
   def __init__(self, model_agnostic_config: agnostic_predict.ModelAgnosticConfig
               ) -> None:
     self._model_agnostic_config = model_agnostic_config
+    # TODO(b/140805724): It's odd that shared_handle is not passed as an
+    # argument to the constructor. Logically, it seems to have a 1-1
+    # correspondence with the model_agnostic_config, so it should be passed with
+    # it.
     self._shared_handle = shared.Shared()
     self._model_agnostic_wrapper = None
     self._model_load_seconds = None
@@ -134,18 +138,9 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
 
     return construct
 
-  # TODO(yifanmai): Merge _setup_if_needed into setup
-  # after Beam dependency is upgraded to Beam 2.14.
-  def _setup_if_needed(self):
-    if self._model_agnostic_wrapper is None:
-      self._model_agnostic_wrapper = self._shared_handle.acquire(
-          self._make_construct_fn(self._model_agnostic_config))
-
   def setup(self):
-    self._setup_if_needed()
-
-  def start_bundle(self):
-    self._setup_if_needed()
+    self._model_agnostic_wrapper = self._shared_handle.acquire(
+        self._make_construct_fn(self._model_agnostic_config))
 
   def process(self, element: List[types.Extracts]
              ) -> Generator[types.Extracts, None, None]:

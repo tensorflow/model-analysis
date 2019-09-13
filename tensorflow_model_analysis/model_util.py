@@ -88,19 +88,9 @@ class DoFnWithModel(beam.DoFn):
   def _set_model_load_seconds(self, model_load_seconds):
     self._model_load_seconds = model_load_seconds
 
-  # TODO(yifanmai): Merge _setup_if_needed into setup
-  # after Beam dependency is upgraded to Beam 2.14.
-  def _setup_if_needed(self):
-    if self._loaded_models is None:
-      self._loaded_models = (
-          self._model_loader.shared_handle.acquire(
-              self._model_loader.construct_fn(self._set_model_load_seconds)))
-
   def setup(self):
-    self._setup_if_needed()
-
-  def start_bundle(self):
-    self._setup_if_needed()
+    self._loaded_models = self._model_loader.shared_handle.acquire(
+        self._model_loader.construct_fn(self._set_model_load_seconds))
 
   def process(self, elem):
     raise NotImplementedError('not implemented')
