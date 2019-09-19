@@ -126,7 +126,7 @@ class _AggState(object):
 
 
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(List[Any])
+@beam.typehints.with_output_types(Optional[List[Any]])
 class _AggregateCombineFn(model_util.CombineFnWithModel):
   """Aggregate combine function.
 
@@ -290,7 +290,8 @@ class _AggregateCombineFn(model_util.CombineFnWithModel):
     return accumulator.metric_variables
 
 
-@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, List[Any]])
+@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType,
+                                       Optional[List[Any]]])
 # TODO(b/123516222): Add output typehints. Similarly elsewhere that it applies.
 class _ExtractOutputDoFn(model_util.DoFnWithModel):
   """A DoFn that extracts the metrics output."""
