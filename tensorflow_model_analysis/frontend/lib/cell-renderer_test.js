@@ -233,6 +233,28 @@ testSuite({
         cell.f);
   },
 
+  testRenderValueWithConfusionMatrixAtThresholdsWithPartialConfusionMatrix:
+      function() {
+        const precision = 0.81;
+        const confusionMatrixAtThresholds = {
+          'matrices': [{
+            'threshold': 0.8,
+            'precision': precision,
+            'recall': 0.82,
+            'truePositives': 0.83,
+            'falseNegatives': 0.84
+          }],
+        };
+        const cell = CellRenderer.renderValue(confusionMatrixAtThresholds);
+        assertEquals(precision, cell.v);
+        assertEquals(
+            '<tfma-confusion-matrix-at-thresholds data="' +
+                googString.htmlEscape(
+                    JSON.stringify(confusionMatrixAtThresholds)) +
+                '"></tfma-confusion-matrix-at-thresholds>',
+            cell.f);
+      },
+
   testRenderValueWithConfusionMatrixAtThresholdsWithBoundedValue: function() {
     const precision = 0.81;
     const confusionMatrixAtThresholds = {

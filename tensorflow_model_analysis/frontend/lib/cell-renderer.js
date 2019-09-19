@@ -683,11 +683,9 @@ function isValueAtCutoffs(value) {
  */
 function isConfusionMatrixAtThresholds(value) {
   const hasMatrixData = (item) =>
-      item[ConfusionMatrixAtThresholdsFieldNames.FALSE_NEGATIVES] != null &&
-      item[ConfusionMatrixAtThresholdsFieldNames.FALSE_POSITIVES] != null &&
-      item[ConfusionMatrixAtThresholdsFieldNames.PRECISION] != null &&
-      item[ConfusionMatrixAtThresholdsFieldNames.RECALL] != null &&
-      item[ConfusionMatrixAtThresholdsFieldNames.TRUE_NEGATIVES] != null &&
+      item[ConfusionMatrixAtThresholdsFieldNames.FALSE_NEGATIVES] != null ||
+      item[ConfusionMatrixAtThresholdsFieldNames.FALSE_POSITIVES] != null ||
+      item[ConfusionMatrixAtThresholdsFieldNames.TRUE_NEGATIVES] != null ||
       item[ConfusionMatrixAtThresholdsFieldNames.TRUE_POSITIVES] != null;
   const hasMatrixDataWithConfidenceInterval = (item) =>
       item[ConfusionMatrixAtThresholdsFieldNames.BOUNDED_FALSE_NEGATIVES] !=
