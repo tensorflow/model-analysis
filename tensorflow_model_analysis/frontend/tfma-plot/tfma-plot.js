@@ -271,6 +271,15 @@ export class Plot extends PolymerElement {
        * @private {!Object<!Element>}
        */
       chartsMap_: {type: Object},
+
+      /**
+       * A map where the key is tfma.PlotTypes and the value is the
+       * desired subtitle for that plot.
+       * @type {!Object<string>}
+       */
+      subtitles: {
+        type: Object,
+      },
     };
   }
 
@@ -474,6 +483,25 @@ export class Plot extends PolymerElement {
     }
 
     this.dispatchEvent(new CustomEvent('iron-resize'));
+  }
+
+  /**
+   * Gets the subtitle for the named chart from the given map. If not set,
+   * return empty string.
+   * @param {!Object<string>|undefined} subtitles
+   * @param {string} chart
+   * @return {string}
+   * @private
+   */
+  getSubTitle_(subtitles, chart) {
+    if (subtitles) {
+      for (let visualization in SUPPORTED_VISUALIZATION) {
+        if (SUPPORTED_VISUALIZATION[visualization].type == chart) {
+          return subtitles[visualization] || '';
+        }
+      }
+    }
+    return '';
   }
 }
 

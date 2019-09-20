@@ -105,7 +105,10 @@
   ];
   flatView.initialType = tfma.PlotTypes.PRECISION_RECALL_CURVE;
   flatView.loading = false;
-
+  flatView.subtitles = {
+    [tfma.PlotTypes.PRECISION_RECALL_CURVE]: 'AUPRC is ...',
+    [tfma.PlotTypes.ROC_CURVE]: 'AUROC is ...',
+  };
 
   flatView.data = {
     'plotData': {

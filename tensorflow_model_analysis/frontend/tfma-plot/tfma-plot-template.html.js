@@ -20,11 +20,15 @@ template.innerHTML = `
     display: flex;
     justify-content: center;
   }
-  #plots .title {
+  #plots .title,
+  #plots .subtitle {
     display: none;
   }
   .title {
     font-weight: bold;
+  }
+  .subtitle {
+    font-size: smaller;
   }
   #flat-view-container .plot-holder {
     display: inline-block;
@@ -84,7 +88,7 @@ template.innerHTML = `
     --paper-checkbox-size: 13px;
     margin: 0 12px 6px;
   }
-  #plots .plot-holder :nth-child(2) {
+  #plots .plot-holder :nth-child(3) {
     width: 100%;
   }
   #flat-view-container .plot-holder {
@@ -108,51 +112,61 @@ template.innerHTML = `
                 hidden$="[[showAll_]]">
       <div name="[[tabNames_.Calibration]]" class="plot-holder">
         <span class="title">[[chartTitles_.Calibration]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.Calibration)]]</div>
         <tfma-calibration-plot buckets="[[calibrationData_]]">
         </tfma-calibration-plot>
       </div>
       <div name="[[tabNames_.Residual]]" class="plot-holder">
         <span class="title">[[chartTitles_.Residual]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.Residual)]]</div>
         <tfma-residual-plot data="[[calibrationData_]]">
         </tfma-residual-plot>
       </div>
       <div name="[[tabNames_.Macro]]" class="plot-holder">
         <span class="title">[[chartTitles_.Macro]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.Macro)]]</div>
         <tfma-precision-recall-curve id="mapr" data="[[macroPrecisionRecallCurveData_]]">
         </tfma-precision-recall-curve>
       </div>
       <div name="[[tabNames_.Micro]]" class="plot-holder">
         <span class="title">[[chartTitles_.Micro]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.Micro)]]</div>
         <tfma-precision-recall-curve id="mipr" data="[[microPrecisionRecallCurveData_]]">
         </tfma-precision-recall-curve>
       </div>
       <div name="[[tabNames_.Weighted]]" class="plot-holder">
         <span class="title">[[chartTitles_.Weighted]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.Weighted)]]</div>
         <tfma-precision-recall-curve id="wpr" data="[[weightedPrecisionRecallCurveData_]]">
         </tfma-precision-recall-curve>
       </div>
       <div name="[[tabNames_.Precision]]" class="plot-holder">
         <span class="title">[[chartTitles_.Precision]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.Precision)]]</div>
         <tfma-precision-recall-curve id="pr" data="[[precisionRecallCurveData_]]">
         </tfma-precision-recall-curve>
       </div>
       <div name="[[tabNames_.Prediction]]" class="plot-holder">
         <span class="title">[[chartTitles_.Prediction]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.Prediction)]]</div>
         <tfma-prediction-distribution data="[[calibrationData_]]">
         </tfma-prediction-distribution>
       </div>
       <div name="[[tabNames_.ROC]]" class="plot-holder">
         <span class="title">[[chartTitles_.ROC]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.ROC)]]</div>
         <tfma-roc-curve data="[[precisionRecallCurveData_]]">
         </tfma-roc-curve>
       </div>
       <div name="[[tabNames_.Gain]]" class="plot-holder">
         <span class="title">[[chartTitles_.Gain]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.Gain)]]</div>
         <tfma-gain-chart data="[[precisionRecallCurveData_]]">
         </tfma-gain-chart>
       </div>
       <div name="[[tabNames_.Accuracy]]" class="plot-holder">
         <span class="title">[[chartTitles_.Accuracy]]</span>
+        <div class="subtitle">[[getSubTitle_(subtitles, tabNames_.Accuracy)]]</div>
         <tfma-accuracy-charts data="[[precisionRecallCurveData_]]">
         </tfma-accuracy-charts>
       </div>
