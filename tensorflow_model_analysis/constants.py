@@ -48,6 +48,8 @@ FEATURES_KEY = 'features'
 LABELS_KEY = 'labels'
 # Predictions key.
 PREDICTIONS_KEY = 'predictions'
+# Example weights key.
+EXAMPLE_WEIGHTS_KEY = 'example_weights'
 # Attributions key.
 ATTRIBUTIONS_KEY = 'attributions'
 

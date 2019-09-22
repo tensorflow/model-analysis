@@ -47,6 +47,7 @@ from tensorflow_model_analysis.constants import BASELINE_SCORE_KEY
 from tensorflow_model_analysis.constants import CANDIDATE_KEY
 from tensorflow_model_analysis.constants import DATA_CENTRIC_MODE
 from tensorflow_model_analysis.constants import EXAMPLE_SCORE_KEY
+from tensorflow_model_analysis.constants import EXAMPLE_WEIGHTS_KEY
 # TODO(b/120222218): Remove after passing of native FPL supported.
 from tensorflow_model_analysis.constants import FEATURES_PREDICTIONS_LABELS_KEY
 from tensorflow_model_analysis.constants import FEATURES_KEY
