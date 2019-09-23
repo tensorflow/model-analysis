@@ -37,7 +37,11 @@ from typing import Callable, Dict, Optional, Text, Union
 from tensorflow.python.estimator.export import export as export_lib
 
 # TODO(b/110472071): Temporary for tf.contrib.learn Estimator support only.
-HAS_TF_CONTRIB_LEARN = hasattr(tf, 'contrib') and hasattr(tf.contrib, 'learn')
+try:
+  HAS_TF_CONTRIB_LEARN = hasattr(tf, 'contrib') and hasattr(tf.contrib, 'learn')
+except Exception:  # pylint: disable=broad-except
+  # TF has a lazy loader so hasattr(tf, 'contrib') tries to load contrib.
+  HAS_TF_CONTRIB_LEARN = False
 
 
 # Return type of EvalInputReceiver function.
