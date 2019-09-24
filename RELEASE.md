@@ -7,6 +7,7 @@
 
 ## Bug fixes and other changes
 
+*   Enabled TF 2.0 support using compat.v1.
 *   Added support for slicing on native dicts of features in addition to FPL
     types.
 *   For multi-output and / or multi-class models, please provide output_name and
