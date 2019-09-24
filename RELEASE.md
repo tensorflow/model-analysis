@@ -9,9 +9,11 @@
 
 *   Added support for slicing on native dicts of features in addition to FPL
     types.
-
 *   For multi-output and / or multi-class models, please provide output_name and
     / or class_id to tfma.view.render_plot.
+*   Replaced dependency on `tensorflow-transform` with `tfx-bsl`. If running
+    with latest master, `tfx-bsl` must also be latest master.
+*   Depends on `tfx-bsl>=0.15.0.dev0,<0.16`.
 
 ## Breaking changes
 

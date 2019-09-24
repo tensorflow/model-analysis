@@ -269,9 +269,7 @@ setup_args = {
         # TODO(xinzha): Uncomment this once TF can automatically select between
         # CPU and GPU installation.
         # 'tensorflow>=1.14,<2',
-        # TODO(b/68765743): replace it with tfx-base after it's available
-        # (b/72384547)
-        'tensorflow-transform>=0.14,<1',
+        'tfx-bsl>=0.15.0.dev0,<0.16'
     ],
     'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     'packages': find_packages(),

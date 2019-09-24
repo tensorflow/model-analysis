@@ -21,7 +21,7 @@ from __future__ import print_function
 # Standard Imports
 import numpy as np
 import tensorflow as tf
-from tensorflow_transform.beam import shared
+from tfx_bsl.beam import shared
 
 from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union, NamedTuple
 
