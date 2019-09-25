@@ -52,7 +52,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     self.assertIn(key, d)
     self.assertIsInstance(d[key], types.ValueWithTDistribution)
     self.assertAlmostEqual(
-        d[key].unsampled_value, value, places=places, msg='key %s' % key)
+        d[key].unsampled_value, value, places=places, msg='key {}'.format(key))
 
   def assertHasKeyWithValueAlmostEqual(self,
                                        d: Dict[Text, float],
@@ -60,7 +60,8 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
                                        value: float,
                                        places: int = 5) -> None:
     self.assertIn(key, d)
-    self.assertAlmostEqual(d[key], value, places=places, msg='key %s' % key)
+    self.assertAlmostEqual(
+        d[key], value, places=places, msg='key {}'.format(key))
 
   def assertDictElementsAlmostEqual(self,
                                     got_values_dict: Dict[Text, float],
