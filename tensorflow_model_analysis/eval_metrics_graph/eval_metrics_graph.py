@@ -51,7 +51,7 @@ FPLFeedConfig = NamedTuple(  # pylint: disable=invalid-name
                       ('labels', Dict[Text, Any])])
 
 
-class EvalMetricsGraph(object):
+class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
   """Abstraction for a graph that is used for computing and aggregating metrics.
 
   This abstract class contains methods and lays out the API to handle metrics
