@@ -25,7 +25,6 @@ from tensorflow_model_analysis.api.model_eval_lib import default_eval_shared_mod
 from tensorflow_model_analysis.api.model_eval_lib import default_evaluators
 from tensorflow_model_analysis.api.model_eval_lib import default_extractors
 from tensorflow_model_analysis.api.model_eval_lib import default_writers
-from tensorflow_model_analysis.api.model_eval_lib import EvalConfig
 from tensorflow_model_analysis.api.model_eval_lib import EvalResult
 from tensorflow_model_analysis.api.model_eval_lib import ExtractAndEvaluate
 from tensorflow_model_analysis.api.model_eval_lib import ExtractEvaluateAndWriteResults
@@ -35,10 +34,21 @@ from tensorflow_model_analysis.api.model_eval_lib import load_eval_results
 from tensorflow_model_analysis.api.model_eval_lib import make_eval_results
 from tensorflow_model_analysis.api.model_eval_lib import multiple_data_analysis
 from tensorflow_model_analysis.api.model_eval_lib import multiple_model_analysis
+from tensorflow_model_analysis.api.model_eval_lib import output_filename
 from tensorflow_model_analysis.api.model_eval_lib import run_model_analysis
 from tensorflow_model_analysis.api.model_eval_lib import WriteResults
 
 from tensorflow_model_analysis.api.verifier_lib import Validate
+
+from tensorflow_model_analysis.config import BinarizationOptions
+from tensorflow_model_analysis.config import InputDataSpec
+from tensorflow_model_analysis.config import EvalConfig
+from tensorflow_model_analysis.config import MetricConfig
+from tensorflow_model_analysis.config import MetricsSpec
+from tensorflow_model_analysis.config import ModelSpec
+from tensorflow_model_analysis.config import OutputDataSpec
+from tensorflow_model_analysis.config import SlicingSpec
+from tensorflow_model_analysis.config import verify_eval_config
 
 from tensorflow_model_analysis.constants import ANALYSIS_KEY
 from tensorflow_model_analysis.constants import ATTRIBUTIONS_KEY

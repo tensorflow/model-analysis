@@ -19,7 +19,9 @@ from __future__ import print_function
 import json
 import os
 
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis.api import model_eval_lib
+from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer
 from typing import Any, Dict, List, Optional, Text, Tuple, Union
 
@@ -59,7 +61,7 @@ def get_slicing_metrics(
 
   slice_count = len(data)
   if not slice_count:
-    if slicing_spec is None:
+    if not slicing_spec:
       if not slicing_column:
         slicing_column = slicer.OVERALL_SLICE_NAME
       raise ValueError('No slices found for %s' % slicing_column)
@@ -126,10 +128,10 @@ def get_time_series(
           'metrics': matching_slices[0]['metrics'],
           'config': {
               'modelIdentifier':
-                  _get_identifier(result.config.model_location,
+                  _get_identifier(result.config.model_specs[0].location,
                                   display_full_path),
               'dataIdentifier':
-                  _get_identifier(result.config.data_location,
+                  _get_identifier(result.config.input_data_specs[0].location,
                                   display_full_path),
           }
       })
@@ -341,22 +343,39 @@ def get_plot_data_and_config(
   return plot_data, plot_config  # pytype: disable=bad-return-type
 
 
+# TODO(paulyang): Add support for multi-model / multi-output selection.
 def get_slicing_config(
-    config: model_eval_lib.EvalConfig,
+    eval_config: config.EvalConfig,
     weighted_example_column_to_use: Text = None) -> Dict[Text, Text]:
   """Util function that generates config for visualization.
 
   Args:
-    config: EvalConfig that contains example_weight_metric_key.
+    eval_config: EvalConfig that contains example_weight_metric_key.
     weighted_example_column_to_use: Override for weighted example column in the
       slicing metrics browser.
 
   Returns:
     A dictionary containing configuration of the slicing metrics evalaution.
   """
-  default_column = config.example_weight_metric_key
-  if not default_column or isinstance(default_column, dict):
-    default_column = config.example_count_metric_key
+  # For legacy reasons, default to post_export_metric example_count to start.
+  default_column = metric_keys.EXAMPLE_COUNT
+
+  # For now we only support one candidate model, so pick first.
+  model_spec = None
+  if eval_config.model_specs:
+    for spec in eval_config.model_specs:
+      if not spec.is_baseline:
+        model_spec = spec
+        break
+
+  if model_spec:
+    # For legacy reasons, update default to post_export_metric
+    # example_weight_count if feasible (multi-output models not supported yet).
+    if model_spec.example_weight_key:
+      default_column = metric_keys.EXAMPLE_WEIGHT
+
+    # TODO(mdreves): Add support for new metrics.
+
   return {
       'weightedExamplesColumn':
           weighted_example_column_to_use

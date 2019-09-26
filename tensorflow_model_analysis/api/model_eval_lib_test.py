@@ -23,8 +23,10 @@ import tempfile
 # Standard Imports
 
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis import version as tfma_version
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_linear_classifier
@@ -40,11 +42,21 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.slicer import slicer
+from typing import Dict, List, NamedTuple, Optional, Text, Union
+
+LegacyConfig = NamedTuple(
+    'LegacyConfig',
+    [('model_location', Text), ('data_location', Text),
+     ('slice_spec', Optional[List[slicer.SingleSliceSpec]]),
+     ('example_count_metric_key', Text),
+     ('example_weight_metric_key', Union[Text, Dict[Text, Text]]),
+     ('compute_confidence_intervals', bool), ('k_anonymization_count', int)])
 
 
 class EvaluateTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
+    super(EvaluateTest, self).setUp()
     self.longMessage = True  # pylint: disable=invalid-name
 
   def _getTempDir(self):
@@ -162,7 +174,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
-        (('my_slice', b'a'),): {
+        (('my_slice', 'a'),): {
             'accuracy': {
                 'doubleValue': 1.0
             },
@@ -176,7 +188,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 'doubleValue': 2.0
             },
         },
-        (('my_slice', b'b'),): {
+        (('my_slice', 'b'),): {
             'accuracy': {
                 'doubleValue': 1.0
             },
@@ -190,7 +202,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 'doubleValue': 1.0
             },
         },
-        (('my_slice', b'c'),): {
+        (('my_slice', 'c'),): {
             'accuracy': {
                 'doubleValue': 0.0
             },
@@ -205,9 +217,12 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             },
         },
     }
-    self.assertEqual(eval_result.config.model_location, model_location)
-    self.assertEqual(eval_result.config.data_location, data_location)
-    self.assertEqual(eval_result.config.slice_spec, slice_spec)
+    self.assertEqual(eval_result.config.model_specs[0].location,
+                     model_location.decode())
+    self.assertEqual(eval_result.config.input_data_specs[0].location,
+                     data_location)
+    self.assertEqual(eval_result.config.slicing_specs[0],
+                     config.SlicingSpec(feature_keys=['my_slice']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
@@ -232,7 +247,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
-        (('language', b'hindi'),): {
+        (('language', 'hindi'),): {
             u'__ERROR__': {
                 'debugMessage':
                     u'Example count for this slice key is lower than the '
@@ -240,7 +255,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                     u'this slice.'
             },
         },
-        (('language', b'chinese'),): {
+        (('language', 'chinese'),): {
             'accuracy': {
                 'doubleValue': 0.5
             },
@@ -254,7 +269,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 'doubleValue': 2.0
             },
         },
-        (('language', b'english'),): {
+        (('language', 'english'),): {
             'accuracy': {
                 'doubleValue': 1.0
             },
@@ -269,9 +284,12 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             },
         }
     }
-    self.assertEqual(eval_result.config.model_location, model_location)
-    self.assertEqual(eval_result.config.data_location, data_location)
-    self.assertEqual(eval_result.config.slice_spec, slice_spec)
+    self.assertEqual(eval_result.config.model_specs[0].location,
+                     model_location.decode())
+    self.assertEqual(eval_result.config.input_data_specs[0].location,
+                     data_location)
+    self.assertEqual(eval_result.config.slicing_specs[0],
+                     config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
@@ -331,9 +349,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             },
         }
     }
-    self.assertEqual(eval_result.config.model_location, model_location)
-    self.assertEqual(eval_result.config.data_location, data_location)
-    self.assertEqual(eval_result.config.slice_spec, slice_spec)
+    self.assertEqual(eval_result.config.model_specs[0].location,
+                     model_location.decode())
+    self.assertEqual(eval_result.config.input_data_specs[0].location,
+                     data_location)
+    self.assertEqual(eval_result.config.slicing_specs[0], config.SlicingSpec())
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
@@ -360,7 +380,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
-        (('language', b'hindi'),): {
+        (('language', 'hindi'),): {
             u'__ERROR__': {
                 'debugMessage':
                     u'Example count for this slice key is lower than the '
@@ -368,7 +388,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                     u'this slice.'
             },
         },
-        (('language', b'chinese'),): {
+        (('language', 'chinese'),): {
             metric_keys.EXAMPLE_WEIGHT: {
                 'doubleValue': 8.0
             },
@@ -376,7 +396,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 'doubleValue': 2.0
             },
         },
-        (('language', b'english'),): {
+        (('language', 'english'),): {
             'accuracy': {
                 'boundedValue': {
                     'value': 1.0,
@@ -401,9 +421,12 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             },
         }
     }
-    self.assertEqual(eval_result.config.model_location, model_location)
-    self.assertEqual(eval_result.config.data_location, data_location)
-    self.assertEqual(eval_result.config.slice_spec, slice_spec)
+    self.assertEqual(eval_result.config.model_specs[0].location,
+                     model_location.decode())
+    self.assertEqual(eval_result.config.input_data_specs[0].location,
+                     data_location)
+    self.assertEqual(eval_result.config.slicing_specs[0],
+                     config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
@@ -531,7 +554,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # pipeline works.
     self.assertEqual(2, len(eval_results._results))
     expected_result_1 = {
-        (('language', b'english'),): {
+        (('language', 'english'),): {
             'my_mean_label': {
                 'doubleValue': 1.0
             },
@@ -541,7 +564,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         }
     }
     expected_result_2 = {
-        (('language', b'english'),): {
+        (('language', 'english'),): {
             'my_mean_label': {
                 'doubleValue': 1.0
             },
@@ -572,14 +595,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected_result_1 = {
-        (('language', b'english'),): {
+        (('language', 'english'),): {
             metric_keys.EXAMPLE_COUNT: {
                 'doubleValue': 2.0
             },
         }
     }
     expected_result_2 = {
-        (('language', b'english'),): {
+        (('language', 'english'),): {
             metric_keys.EXAMPLE_COUNT: {
                 'doubleValue': 1.0
             },
@@ -590,20 +613,76 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertMetricsAlmostEqual(eval_results._results[1].slicing_metrics,
                                   expected_result_2)
 
-  def testSerializeDeserializeEvalConfig(self):
-    eval_config = model_eval_lib.EvalConfig(
+  def testSerializeDeserializeLegacyEvalConfig(self):
+    output_path = self._getTempDir()
+    old_config = LegacyConfig(
         model_location='/path/to/model',
         data_location='/path/to/data',
         slice_spec=[
             slicer.SingleSliceSpec(
-                features=[('age', 5), ('gender', 'f')], columns=['country']),
+                columns=['country'], features=[('age', 5), ('gender', 'f')]),
             slicer.SingleSliceSpec(
-                features=[('age', 6), ('gender', 'm')], columns=['interest'])
+                columns=['interest'], features=[('age', 6), ('gender', 'm')])
         ],
-        example_weight_metric_key='key')
-    serialized = model_eval_lib._serialize_eval_config(eval_config)
-    deserialized = pickle.loads(serialized)
-    got_eval_config = deserialized[model_eval_lib._EVAL_CONFIG_KEY]
+        example_count_metric_key=None,
+        example_weight_metric_key='key',
+        compute_confidence_intervals=False,
+        k_anonymization_count=1)
+    final_dict = {}
+    final_dict['tfma_version'] = tfma_version.VERSION_STRING
+    final_dict['eval_config'] = old_config
+    with tf.io.TFRecordWriter(os.path.join(output_path, 'eval_config')) as w:
+      w.write(pickle.dumps(final_dict))
+    got_eval_config = model_eval_lib.load_eval_config(output_path)
+    eval_config = config.EvalConfig(
+        input_data_specs=[
+            config.InputDataSpec(location=old_config.data_location)
+        ],
+        model_specs=[config.ModelSpec(location=old_config.model_location)],
+        output_data_specs=[config.OutputDataSpec(default_location=output_path)],
+        slicing_specs=[
+            config.SlicingSpec(
+                feature_keys=['country'],
+                feature_values={
+                    'age': '5',
+                    'gender': 'f'
+                }),
+            config.SlicingSpec(
+                feature_keys=['interest'],
+                feature_values={
+                    'age': '6',
+                    'gender': 'm'
+                })
+        ],
+        compute_confidence_intervals=old_config.compute_confidence_intervals,
+        k_anonymization_count=old_config.k_anonymization_count)
+    self.assertEqual(eval_config, got_eval_config)
+
+  def testSerializeDeserializeEvalConfig(self):
+    output_path = self._getTempDir()
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec(location='/path/to/data')],
+        model_specs=[config.ModelSpec(location='/path/to/model')],
+        output_data_specs=[config.OutputDataSpec(default_location=output_path)],
+        slicing_specs=[
+            config.SlicingSpec(
+                feature_keys=['country'],
+                feature_values={
+                    'age': '5',
+                    'gender': 'f'
+                }),
+            config.SlicingSpec(
+                feature_keys=['interest'],
+                feature_values={
+                    'age': '6',
+                    'gender': 'm'
+                })
+        ],
+        compute_confidence_intervals=False,
+        k_anonymization_count=1)
+    with open(os.path.join(output_path, 'eval_config.json'), 'w') as f:
+      f.write(model_eval_lib._serialize_eval_config(eval_config))
+    got_eval_config = model_eval_lib.load_eval_config(output_path)
     self.assertEqual(eval_config, got_eval_config)
 
 

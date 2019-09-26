@@ -78,6 +78,7 @@ def wrap_fpl(fpl):
 class SlicerTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
+    super(SlicerTest, self).setUp()
     self.longMessage = True  # pylint: disable=invalid-name
 
   def _makeFeaturesDict(self, features_dict):
@@ -112,8 +113,8 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
         """, metrics_for_slice_pb2.SliceKey())
 
     got_slice_key = slicer.deserialize_slice_key(slice_metrics)
-    self.assertItemsEqual([('age', 5), ('language', b'english'),
-                           ('price', 1.0)], got_slice_key)
+    self.assertItemsEqual([('age', 5), ('language', 'english'), ('price', 1.0)],
+                          got_slice_key)
 
   def testSliceEquality(self):
     overall = slicer.SingleSliceSpec()
@@ -160,7 +161,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
         ('No such column', ['no_such_column'], [], []),
         ('Single column', ['age'], [], [(('age', 5),)]),
         ('Single feature', [], [('age', 5)], [(('age', 5),)]),
-        ('Single feature type mismatch', [], [('age', '5')], []),
+        ('Single feature type mismatch', [], [('age', '5')], [(('age', 5),)]),
         ('One column, one feature',
          ['gender'], [('age', 5)], [(('age', 5), ('gender', 'f'))]),
         ('Two features', ['interest', 'gender'], [('age', 5)],

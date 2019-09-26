@@ -1,0 +1,206 @@
+// Copyright 2019 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package tensorflow_model_analysis;
+
+// Input data specification.
+message InputDataSpec {
+  // Location of the data.
+  string location = 1;
+  // Optional file format of data. By default 'tfrecords' is assumed.
+  string file_format = 2;
+  // Optional format of data. By default 'tf.train.Example' is assumed.
+  string data_format = 3;
+}
+
+// Model specification.
+message ModelSpec {
+  // Path to the saved model.
+  string location = 1;
+  // Model name (required if more than one model).
+  string name = 2;
+  // Name of signature to use (e.g. 'serving_default')
+  string signature_name = 3;
+  // Signature names (multi-output model) keyed by output_name. If all the
+  // outputs for a multi-output model use the same signature name, then a single
+  // name may also be used. Use one of signature_name or signature_names.
+  map<string, string> signature_names = 4;  // oneof not allowed with maps
+  // Label key (single-output model). Use one of label_key or label_keys.
+  string label_key = 5;
+  // Label keys (multi-output model) keyed by output_name. If all the outputs
+  // for a multi-output model use the same key, then a single key may also be
+  // used. Use one of label_key or label_keys.
+  map<string, string> label_keys = 6;  // oneof not allowed with maps
+  // Optional prediction key (single_output model). The prediction key is used
+  // to distinguish between different values when the output from the predict
+  // call is a dict instead of a single tensor as is the case with
+  // tf.Estimators. If not set and the prediction is a dict, the keys
+  // 'logistic', 'predictions', or 'probabilities' are tried (in that order).
+  // The prediction key is also used in cases where the predictions are
+  // pre-calculated and stored along side the features. In this case the
+  // prediction key refers to a key in the features dictionary. Use one of
+  // prediction_key or prediction_keys.
+  string prediction_key = 7;
+  // Optional prediction keys (multi-output model) keyed by output_name. Use one
+  // of prediction_key or prediction_keys.
+  map<string, string> prediction_keys = 8;  // oneof not allowed with maps
+  // Optional example weight key (single-output model). Use one of
+  // example_weight_key or example_weight_keys.
+  string example_weight_key = 9;
+  // Optional example weight keys (multi-output model) keyed by output_name.  If
+  // all the outputs for a multi-output model use the same key, then a single
+  // key may also be used. Use one of example_weight_key or example_weight_keys.
+  map<string, string> example_weight_keys = 10;  // oneof not allowed with maps
+  // True if baseline model (otherwise candidate). Only one baseline is allowed
+  // per evaluation run.
+  bool is_baseline = 11;
+}
+
+// Slicing specification.
+message SlicingSpec {
+  // Feature keys to slice on.
+  repeated string feature_keys = 1;
+  // Feature values to slice on keyed by associated feature keys.
+  //
+  // Note that strings representing ints and floats will be automatically
+  // converted to ints and floats respectively and will be compared against both
+  // the string versions and int or float versions of the associated features.
+  map<string, string> feature_values = 2;
+}
+
+// Output data specification.
+message OutputDataSpec {
+  // Default location of the data.
+  string default_location = 1;
+  // Custom locations (keyed by evaluation output name - e.g.  'metrics',
+  // 'plots', 'analysis'). Note that this is the directory name NOT the
+  // filename. The filename will always be named after the associated key.
+  map<string, string> custom_locations = 2;
+  // List of outputs that should not be written (e.g.  'metrics', 'plots',
+  // 'analysis', 'eval_config.json').
+  repeated string disabled_outputs = 3;
+  // Name of model associated with output (required if multiple non-baseline
+  // models used). The baseline model should not have an output configured.
+  string model_name = 4;
+}
+
+// Options for binarizing multi-class outputs.
+//
+// When used the associated MetricSpec metrics must be binary classification
+// metrics (NOT multi-class classification metrics).
+message BinarizationOptions {
+  // Creates binary classification metrics based on one-vs-rest for each
+  // value of class_id provided.
+  repeated int32 class_ids = 1;
+  // Creates binary classification metrics based on the kth predicted value
+  // for each value of k provided.
+  repeated int32 k_list = 2;
+  // Creates binary classification metrics based on the top k predicted values
+  // for each value of top_k provided. When used to create calibration plots
+  // the histogram will contain a mix of all labels and predictions in the top
+  // k predictions. Note that precision@k and recall@k can also be configured
+  // direclty as multi-class classification metrics by setting top_k on the
+  // metric itself.
+  repeated int32 top_k_list = 3;
+}
+
+// Metric configuration.
+message MetricConfig {
+  // Name of a class derived for either tf.keras.metrics.Metric or
+  // tfma.metris.Metric.
+  string class_name = 1;
+  // Optional name of module associated with class_name. If not set then class
+  // will be searched for under tfma.metrics followed by tf.keras.metrics.
+  string module = 2;
+  // Optional JSON encoded config settings associated with the class.
+  //
+  // The config settings will be passed as **kwarg values to the __init__ method
+  // for the class.
+  //
+  // Example: '{ "name": "my_metric", "thresholds": [0.5] }'
+  string config = 3;
+}
+
+// Metrics specification.
+message MetricsSpec {
+  // List of metric configurations. If None, the legacy post_export_metrics
+  // callbacks will be assumed.
+  repeated MetricConfig metrics = 1;
+  // Names of models the metrics should be calculated for. For metrics that have
+  // diffing enabled, the baseline will be added automatically.
+  repeated string model_names = 2;
+  // Optional names of outputs the metrics should be calculated for (for
+  // multi-output models).
+  repeated string output_names = 3;
+  // Optional binarization options for converting multi-class model outputs into
+  // outputs suitable for binary classification metrics.
+  BinarizationOptions binarize = 4;
+  // Optional query key for query/ranking based metrics.
+  string query_key = 5;
+}
+
+// Tensorflow model analaysis config settings.
+message EvalConfig {
+  // Input data specifications for input data used.
+  repeated InputDataSpec input_data_specs = 1;
+  // Model specifications for models used. Only one baseline is permitted.
+  repeated ModelSpec model_specs = 2;
+  // Output data specifications for storing outputs of evaluation (one per
+  // non-baseline model). The baseline model should NOT have an
+  // output_data_spec.
+  repeated OutputDataSpec output_data_specs = 3;
+  // A list specs where each spec represents a way to slice the data. An empty
+  // config means slice on overall data.
+  //
+  // Example usages:
+  //    - slicing_specs: {}
+  //      Slice consisting of overall data.
+  //    - slicing_specs: { feature_keys: ["country"] }
+  //      Slices for all values in feature "country". For example, we might get
+  //      slices "country:us", "country:jp", etc.
+  //    - slicing_specs: { feature_values: [{key: "country", value: "us"}] }
+  //      Slice consisting of "country:us".
+  //    - slicing_specs: { feature_keys: ["country", "city"] }
+  //      Slices for all values in feature "country" crossed with
+  //      all values in feature "city" (note this may be expensive).
+  //    - slicing_specs: { feature_keys: ["country"]
+  //                       feature_values: [{key: "age", value: "20"}] }
+  //      Slices for all values in feature "country" crossed with value "age:20".
+  repeated SlicingSpec slicing_specs = 4;
+  // Metrics specifications.
+  repeated MetricsSpec metrics_specs = 5;
+  // True to include metrics saved with the model(s) (where possible) when
+  // calculating metrics. Any metrics defined in metrics_specs will override the
+  // metrics defined in the model if there are overlapping names.
+  bool include_default_metrics = 6;
+  // True to calculate confidence intervals.
+  bool compute_confidence_intervals = 7;
+  // Privacy k-anonymization count to omit slices with example count < k.
+  int32 k_anonymization_count = 8;
+  // Optional batch size for batching during predict and metrics evaluation.
+  int32 desired_batch_size = 9;
+  // Optional directory for storing temporary files. If not set, then a
+  // temporary directory will be created automatically when needed.
+  string tmp_dir = 10;
+  // Custom configuration settings.
+  map<string, string> custom_config = 11;
+}
+
+// Config and version.
+message EvalConfigAndVersion {
+  EvalConfig eval_config = 1;
+  string version = 2;
+}

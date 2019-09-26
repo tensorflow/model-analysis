@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 import os
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -191,29 +192,29 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
     result_a = model_eval_lib.EvalResult(
         slicing_metrics=self._makeTestData(),
         plots=None,
-        config=model_eval_lib.EvalConfig(
-            example_weight_metric_key=None,
-            slice_spec=None,
-            data_location=self.data_location_1,
-            model_location=self.model_location_1))
-
+        config=config.EvalConfig(
+            input_data_specs=[
+                config.InputDataSpec(location=self.data_location_1)
+            ],
+            model_specs=[config.ModelSpec(location=self.model_location_1)]))
     result_b = model_eval_lib.EvalResult(
         slicing_metrics=[self.result_c2],
         plots=None,
-        config=model_eval_lib.EvalConfig(
-            example_weight_metric_key=None,
-            slice_spec=None,
-            data_location=self.full_data_location_2,
-            model_location=self.full_model_location_2))
+        config=config.EvalConfig(
+            input_data_specs=[
+                config.InputDataSpec(location=self.full_data_location_2)
+            ],
+            model_specs=[config.ModelSpec(location=self.full_model_location_2)
+                        ]))
     return model_eval_lib.EvalResults([result_a, result_b],
                                       constants.MODEL_CENTRIC_MODE)
 
   def _makeEvalConfig(self):
-    eval_config = model_eval_lib.EvalConfig(
-        example_weight_metric_key='testing_key',
-        slice_spec=None,
-        data_location='',
-        model_location='')
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec(location='')],
+        model_specs=[
+            config.ModelSpec(location='', example_weight_key='testing_key')
+        ])
     return eval_config
 
   def testGetSlicingMetrics(self):
@@ -336,21 +337,21 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
           display_full_path=False)
 
   def testGetPlotDataAndConfig(self):
-    data, config = util.get_plot_data_and_config(
+    data, eval_config = util.get_plot_data_and_config(
         self._makeTestPlotsData(),
         SingleSliceSpec(features=[(self.column_1, self.slice_a)]))
 
     self.assertEqual(data, self.plots_data_a)
-    self.assertEqual(config['sliceName'], self.column_a)
+    self.assertEqual(eval_config['sliceName'], self.column_a)
 
   def testGetPlotDataAndConfigForMultiClass(self):
-    data, config = util.get_plot_data_and_config(
+    data, eval_config = util.get_plot_data_and_config(
         self._makeTestPlotsData(),
         SingleSliceSpec(features=[(self.column_2, self.slice_a)]),
         class_id=0)
 
     self.assertEqual(data, self.plots_data_0)
-    self.assertEqual(config['sliceName'], self.column_2a)
+    self.assertEqual(eval_config['sliceName'], self.column_2a)
 
   def testRaisesErrorWhenNoMatchAvailableInPlotData(self):
     with self.assertRaises(ValueError):
@@ -426,7 +427,9 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
   def testGetSlicingConfig(self):
     eval_config = self._makeEvalConfig()
     slicing_config = util.get_slicing_config(eval_config)
-    self.assertEqual(slicing_config, {'weightedExamplesColumn': 'testing_key'})
+    self.assertEqual(
+        slicing_config,
+        {'weightedExamplesColumn': 'post_export_metrics/example_weight'})
 
   def testOverrideWeightColumnForSlicingMetricsView(self):
     overriding_weight_column = 'override'

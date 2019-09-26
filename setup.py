@@ -103,6 +103,8 @@ class build_py(_build_py):  # pylint: disable=invalid-name
 
   def run(self):
     # Generate necessary .proto file if it doesn't exist.
+    generate_proto('tensorflow_model_analysis/proto/config.proto', False)
+    # Generate necessary .proto file if it doesn't exist.
     generate_proto('tensorflow_model_analysis/proto/metrics_for_slice.proto',
                    False)
     # _build_py is an old-style class, so super() doesn't work.

@@ -18,11 +18,30 @@
 import datetime
 import apache_beam as beam
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import load
 
 from typing import Callable, List, Optional, Text
+
+
+def get_baseline_model_spec(
+    eval_config: config.EvalConfig) -> Optional[config.ModelSpec]:
+  """Returns baseline model spec."""
+  for spec in eval_config.model_specs:
+    if spec.is_baseline:
+      return spec
+  return None
+
+
+def get_model_spec(eval_config: config.EvalConfig,
+                   model_name: Text) -> Optional[config.ModelSpec]:
+  """Returns model spec with given model name."""
+  for spec in eval_config.model_specs:
+    if spec.name == model_name:
+      return spec
+  return None
 
 
 def model_construct_fn(  # pylint: disable=invalid-name
@@ -60,8 +79,7 @@ def model_construct_fn(  # pylint: disable=invalid-name
             additional_fetches=additional_fetches,
             blacklist_feature_fetches=blacklist_feature_fetches)
         if add_metrics_callbacks:
-          eval_saved_model.register_add_metric_callbacks(
-              add_metrics_callbacks)
+          eval_saved_model.register_add_metric_callbacks(add_metrics_callbacks)
         eval_saved_model.graph_finalize()
       end_time = datetime.datetime.now()
       model_load_seconds_callback(int((end_time - start_time).total_seconds()))

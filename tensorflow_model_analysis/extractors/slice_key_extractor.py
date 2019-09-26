@@ -55,7 +55,7 @@ def SliceKeyExtractor(slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
   Returns:
     Extractor for slice keys.
   """
-  if slice_spec is None:
+  if not slice_spec:
     slice_spec = [slicer.SingleSliceSpec()]
   return extractor.Extractor(
       stage_name=SLICE_KEY_EXTRACTOR_STAGE_NAME,

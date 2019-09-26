@@ -157,7 +157,7 @@ def load_and_deserialize_metrics(
     if model_name in model_metrics_map:
       # Use the provided model name if there is a match.
       metrics_map = model_metrics_map[model_name]
-    elif model_name is None and len(keys) == 1:
+    elif not model_name and len(keys) == 1:
       # Show result of the only model if no model name is specified.
       metrics_map = model_metrics_map[keys[0]]
     else:

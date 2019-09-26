@@ -28,6 +28,7 @@ import itertools
 import apache_beam as beam
 import six
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -35,7 +36,7 @@ from tensorflow_model_analysis.slicer import slice_accessor
 from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
 # FeatureValueType represents a value that a feature could take.
-FeatureValueType = Union[bytes, int, float]  # pylint: disable=invalid-name
+FeatureValueType = Union[Text, int, float]  # pylint: disable=invalid-name
 
 # SingletonSliceKeyType is a tuple, where the first element is the key of the
 # feature, and the second element is its value. This describes a single
@@ -82,16 +83,19 @@ class SingleSliceSpec(object):
 
   def __init__(self,
                columns: Iterable[Text] = (),
-               features: Iterable[Tuple[Text, FeatureValueType]] = ()):
+               features: Iterable[Tuple[Text, FeatureValueType]] = (),
+               spec: config.SlicingSpec = None):
     """Initialises a SingleSliceSpec.
 
     Args:
       columns: an iterable of column names to slice on.
       features: a iterable of features to slice on. Each feature is a (key,
-        value) tuple. Note that the value can be either a string or an int, and
-        the type is taken into account when comparing values, so
-        SingleSliceSpec(features=[('age', '5')]) will *not* match a slice with
-        age=[5] (age is a string in the spec, but an int in the slice).
+        value) tuple. Note that strings representing ints and floats will be
+        automatically converted to ints and floats respectively and will be
+        compared against both the string versions and int or float versions of
+        the associated features.
+      spec: Initializes slicing spec from proto. If not None, overrides any
+        values passed in columns or features.
 
     Raises:
       ValueError: There was overlap between the columns specified in columns
@@ -106,11 +110,30 @@ class SingleSliceSpec(object):
       raise ValueError('features is a string: it should probably be a '
                        'singleton list containing that string')
 
+    if spec is not None:
+      columns = spec.feature_keys
+      features = [(k, v) for k, v in spec.feature_values.items()]
+
     if columns is None:
       columns = []
 
     if features is None:
       features = []
+
+    def to_type(v: FeatureValueType) -> FeatureValueType:
+      """Converts string versions of ints and floats to respective values."""
+      if isinstance(v, float) or isinstance(v, int):
+        return v
+      try:
+        v = str(v)
+        if '.' in v:
+          return float(v)
+        else:
+          return int(v)
+      except ValueError:
+        return v
+
+    features = [(k, to_type(v)) for (k, v) in features]
 
     self._columns = frozenset(columns)
     self._features = frozenset(features)
@@ -136,6 +159,11 @@ class SingleSliceSpec(object):
     return 'SingleSliceSpec(columns=%s, features=%s)' % (self._columns,
                                                          self._features)
 
+  def to_proto(self) -> config.SlicingSpec:
+    feature_values = {k: str(v) for (k, v) in self._features}
+    return config.SlicingSpec(
+        feature_keys=self._columns, feature_values=feature_values)
+
   def is_overall(self):
     """Returns True if this specification represents the overall slice."""
     return not self._columns and not self._features
@@ -160,8 +188,9 @@ class SingleSliceSpec(object):
         return False
     return not features and not columns
 
-  def generate_slices(self, accessor: slice_accessor.SliceAccessor
-                     ) -> Generator[SliceKeyType, None, None]:
+  def generate_slices(
+      self, accessor: slice_accessor.SliceAccessor
+  ) -> Generator[SliceKeyType, None, None]:
     """Generates all slices that match this specification from the data.
 
     Should only be called within this file.
@@ -193,11 +222,13 @@ class SingleSliceSpec(object):
       if not accessor.has_key(key):
         return
 
-      if value not in accessor.get(key):
+      accessor_values = accessor.get(key)
+      if value not in accessor_values:
         if isinstance(value, str):
-          if value.encode() not in accessor.get(key):  # For Python3.
+          if value.encode() not in accessor_values:  # For Python3.
             return
-        else:
+        # Check that string version of int/float not in values.
+        elif str(value) not in accessor_values:
           return
 
     # Get all the column matches (where we're matching only the column).
@@ -224,8 +255,8 @@ class SingleSliceSpec(object):
       yield tuple(sorted(self._value_matches + list(column_part)))
 
 
-def serialize_slice_key(slice_key: SliceKeyType
-                       ) -> metrics_for_slice_pb2.SliceKey:
+def serialize_slice_key(
+    slice_key: SliceKeyType) -> metrics_for_slice_pb2.SliceKey:
   """Converts SliceKeyType to SliceKey proto.
 
   Args:
@@ -255,8 +286,8 @@ def serialize_slice_key(slice_key: SliceKeyType
   return result
 
 
-def deserialize_slice_key(slice_key: metrics_for_slice_pb2.SliceKey
-                         ) -> SliceKeyType:
+def deserialize_slice_key(
+    slice_key: metrics_for_slice_pb2.SliceKey) -> SliceKeyType:
   """Converts SliceKey proto to SliceKeyType.
 
   Args:
@@ -271,7 +302,7 @@ def deserialize_slice_key(slice_key: metrics_for_slice_pb2.SliceKey
   result = []
   for elem in slice_key.single_slice_keys:
     if elem.HasField('bytes_value'):
-      value = elem.bytes_value
+      value = tf.compat.as_text(elem.bytes_value)
     elif elem.HasField('int64_value'):
       value = elem.int64_value
     elif elem.HasField('float_value'):
@@ -364,8 +395,9 @@ class _FanoutSlicesDoFn(beam.DoFn):
         constants.METRICS_NAMESPACE, 'post_slice_num_instances')
     self._key_filter_fn = key_filter_fn
 
-  def process(self, element: types.Extracts
-             ) -> List[Tuple[SliceKeyType, types.Extracts]]:
+  def process(
+      self,
+      element: types.Extracts) -> List[Tuple[SliceKeyType, types.Extracts]]:
     key_filter_fn = self._key_filter_fn  # Local cache.
     filtered = {k: v for k, v in element.items() if key_filter_fn(k)}
     result = [(slice_key, filtered)
@@ -400,9 +432,10 @@ def _TrackDistinctSliceKeys(  # pylint: disable=invalid-name
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
-def FanoutSlices(pcoll: beam.pvalue.PCollection,
-                 include_slice_keys_in_output: Optional[bool] = False
-                ) -> beam.pvalue.PCollection:  # pylint: disable=invalid-name
+def FanoutSlices(
+    pcoll: beam.pvalue.PCollection,
+    include_slice_keys_in_output: Optional[bool] = False
+) -> beam.pvalue.PCollection:  # pylint: disable=invalid-name
   """Fan out extracts based on slice keys (slice keys removed by default)."""
   if include_slice_keys_in_output:
     key_filter_fn = lambda k: True

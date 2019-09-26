@@ -15,11 +15,15 @@
 *   Replaced dependency on `tensorflow-transform` with `tfx-bsl`. If running
     with latest master, `tfx-bsl` must also be latest master.
 *   Depends on `tfx-bsl>=0.15.0.dev0,<0.16`.
+*   Slicing now supports conversion between int/floats and strings.
 
 ## Breaking changes
 
 *   tfma.EvalResult.slicing_metrics now contains nested dictionaries of output,
     class id and then metric names.
+*   Update config serialization to use JSON instead of pickling and reformat
+    config to include input_data_specs, model_specs, output_data_specs, and
+    metrics_specs.
 
 ## Deprecations
 

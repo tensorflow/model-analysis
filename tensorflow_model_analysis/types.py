@@ -20,6 +20,7 @@ from __future__ import print_function
 
 # Standard Imports
 import numpy as np
+import six
 import tensorflow as tf
 from tfx_bsl.beam import shared
 
@@ -235,6 +236,8 @@ class EvalSharedModel(
           'only one of model_loader or construct_fn should be used')
     if construct_fn:
       model_loader = ModelLoader(construct_fn=construct_fn)
+    if model_path is not None:
+      model_path = six.ensure_str(model_path)
     return super(EvalSharedModel,
                  cls).__new__(cls, model_path, add_metrics_callbacks,
                               include_default_metrics, example_weight_key,

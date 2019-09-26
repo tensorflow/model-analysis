@@ -66,7 +66,7 @@ def BuildAnalysisTable(  # pylint: disable=invalid-name
     beam.pvalue.PCollection of Extracts. The caller is responsible for
     committing to file for now.
   """
-  if slice_spec is None:
+  if not slice_spec:
     slice_spec = [slicer.SingleSliceSpec()]
 
   if not extractors:

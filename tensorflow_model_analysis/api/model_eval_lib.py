@@ -27,6 +27,7 @@ import tempfile
 import apache_beam as beam
 import six
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
@@ -37,7 +38,7 @@ from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
-import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_model_analysis.validators import validator
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
@@ -45,14 +46,12 @@ from tensorflow_model_analysis.writers import metrics_and_plots_writer
 from tensorflow_model_analysis.writers import writer
 from typing import Any, Dict, List, NamedTuple, Optional, Text, Tuple, Union
 
+from google.protobuf import json_format
+
 # File names for files written out to the result directory.
 _METRICS_OUTPUT_FILE = 'metrics'
 _PLOTS_OUTPUT_FILE = 'plots'
-_EVAL_CONFIG_FILE = 'eval_config'
-
-# Keys for the serialized final dictionary.
-_VERSION_KEY = 'tfma_version'
-_EVAL_CONFIG_KEY = 'eval_config'
+_EVAL_CONFIG_FILE = 'eval_config.json'
 
 
 def _assert_tensorflow_version():
@@ -66,48 +65,8 @@ def _assert_tensorflow_version():
         'https://github.com/tensorflow/tensorflow. ' % tf.version.VERSION)
 
 
-class EvalConfig(
-    NamedTuple(
-        'EvalConfig',
-        [
-            # The location of the model used for this evaluation
-            ('model_location', Text),
-            # The location of the data used for this evaluation
-            ('data_location', Text),
-            # The corresponding slice spec
-            ('slice_spec', Optional[List[slicer.SingleSliceSpec]]),
-            # The example count metric key
-            ('example_count_metric_key', Text),
-            # The example weight metric key (or keys if multi-output model)
-            ('example_weight_metric_key', Union[Text, Dict[Text, Text]]),
-            # Set to true in order to calculate confidence intervals.
-            ('compute_confidence_intervals', bool),
-            # Privacy k-anonymization count to omit slices with example count
-            # less than k.
-            ('k_anonymization_count', int),
-        ])):
-  """Config used for extraction and evaluation."""
-
-  def __new__(cls,
-              model_location: Text,
-              data_location: Optional[Text] = None,
-              slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-              example_count_metric_key: Optional[Text] = None,
-              example_weight_metric_key: Optional[Union[Text,
-                                                        Dict[Text,
-                                                             Text]]] = None,
-              compute_confidence_intervals: Optional[bool] = False,
-              k_anonymization_count: Optional[int] = 1):
-    return super(EvalConfig, cls).__new__(cls, model_location, data_location,
-                                          slice_spec, example_count_metric_key,
-                                          example_weight_metric_key,
-                                          compute_confidence_intervals,
-                                          k_anonymization_count)
-
-
-def _check_version(raw_final_dict: Dict[Text, Any], path: Text):
-  version = raw_final_dict.get(_VERSION_KEY)
-  if version is None:
+def _check_version(version: Text, path: Text):
+  if not version:
     raise ValueError(
         'could not find TFMA version in raw deserialized dictionary for '
         'file at %s' % path)
@@ -115,20 +74,41 @@ def _check_version(raw_final_dict: Dict[Text, Any], path: Text):
   # compatibility issues.
 
 
-def _serialize_eval_config(eval_config: EvalConfig) -> bytes:
-  final_dict = {}
-  final_dict[_VERSION_KEY] = tfma_version.VERSION_STRING
-  final_dict[_EVAL_CONFIG_KEY] = eval_config
-  return pickle.dumps(final_dict)
+def _serialize_eval_config(eval_config: config.EvalConfig) -> Text:
+  return json_format.MessageToJson(
+      config_pb2.EvalConfigAndVersion(
+          eval_config=eval_config, version=tfma_version.VERSION_STRING))
 
 
-def load_eval_config(output_path: Text) -> EvalConfig:
-  serialized_record = six.next(
-      tf.compat.v1.python_io.tf_record_iterator(
-          os.path.join(output_path, _EVAL_CONFIG_FILE)))
-  final_dict = pickle.loads(serialized_record)
-  _check_version(final_dict, output_path)
-  return final_dict[_EVAL_CONFIG_KEY]
+def load_eval_config(output_path: Text) -> config.EvalConfig:
+  """Loads eval config."""
+  path = os.path.join(output_path, _EVAL_CONFIG_FILE)
+  if os.path.exists(path):
+    with open(path) as f:
+      pb = json_format.Parse(f.read(), config_pb2.EvalConfigAndVersion())
+      _check_version(pb.version, output_path)
+      return pb.eval_config
+  else:
+    # Legacy suppport (to be removed in future).
+    # The previous version did not include file extension.
+    path = os.path.splitext(path)[0]
+    serialized_record = six.next(
+        tf.compat.v1.python_io.tf_record_iterator(path))
+    final_dict = pickle.loads(serialized_record)
+    _check_version(final_dict, output_path)
+    old_config = final_dict['eval_config']
+    slicing_specs = None
+    if old_config.slice_spec:
+      slicing_specs = [s.to_proto() for s in old_config.slice_spec]
+    return config.EvalConfig(
+        input_data_specs=[
+            config.InputDataSpec(location=old_config.data_location)
+        ],
+        model_specs=[config.ModelSpec(location=old_config.model_location)],
+        output_data_specs=[config.OutputDataSpec(default_location=output_path)],
+        slicing_specs=slicing_specs,
+        compute_confidence_intervals=old_config.compute_confidence_intervals,
+        k_anonymization_count=old_config.k_anonymization_count)
 
 
 # The field slicing_metrics is a nested dictionaries representing metrics for
@@ -144,7 +124,7 @@ EvalResult = NamedTuple(  # pylint: disable=invalid-name
                  Dict[Text, Dict[Text, Dict[Text, Dict[Text, Dict[Text,
                                                                   Any]]]]]]]),
      ('plots', List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]),
-     ('config', EvalConfig)])
+     ('config', config.EvalConfig)])
 
 
 class EvalResults(object):
@@ -224,6 +204,26 @@ def load_eval_result(output_path: Text,
       slicing_metrics=metrics_proto_list,
       plots=plots_proto_list,
       config=eval_config)
+
+
+def _get_output_data_spec(eval_config: config.EvalConfig,
+                          model_name: Text) -> Optional[config.OutputDataSpec]:
+  """Returns output data spec with given model name or default."""
+  for spec in eval_config.output_data_specs:
+    if spec.model_name == model_name:
+      return spec
+  for spec in eval_config.output_data_specs:
+    if not spec.model_name:
+      return spec
+  return None
+
+
+def output_filename(spec: config.OutputDataSpec, key: Text) -> Text:
+  """Returns output filename for given key."""
+  location = spec.default_location
+  if spec.custom_locations and key in spec.custom_locations:
+    location = spec.custom_locations[key]
+  return os.path.join(location, key)
 
 
 def default_eval_shared_model(
@@ -484,7 +484,7 @@ def WriteResults(  # pylint: disable=invalid-name
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def WriteEvalConfig(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline, eval_config: EvalConfig, output_path: Text):
+    pipeline: beam.Pipeline, eval_config: config.EvalConfig, output_path: Text):
   """Writes EvalConfig to file.
 
   Args:
@@ -498,7 +498,7 @@ def WriteEvalConfig(  # pylint: disable=invalid-name
   return (
       pipeline
       | 'CreateEvalConfig' >> beam.Create([_serialize_eval_config(eval_config)])
-      | 'WriteEvalConfig' >> beam.io.WriteToTFRecord(
+      | 'WriteEvalConfig' >> beam.io.WriteToText(
           os.path.join(output_path, _EVAL_CONFIG_FILE), shard_name_template=''))
 
 
@@ -605,22 +605,22 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   if display_only_data_location is not None:
     data_location = display_only_data_location
 
-  example_weight_metric_key = metric_keys.EXAMPLE_COUNT
-  if eval_shared_model.example_weight_key:
-    if isinstance(eval_shared_model.example_weight_key, dict):
-      example_weight_metric_key = {}
-      for output_name in eval_shared_model.example_weight_key:
-        example_weight_metric_key[output_name] = metric_keys.tagged_key(
-            metric_keys.EXAMPLE_WEIGHT, output_name)
-    else:
-      example_weight_metric_key = metric_keys.EXAMPLE_WEIGHT
-
-  eval_config = EvalConfig(
-      model_location=eval_shared_model.model_path,
-      data_location=data_location,
-      slice_spec=slice_spec,
-      example_count_metric_key=metric_keys.EXAMPLE_COUNT,
-      example_weight_metric_key=example_weight_metric_key,
+  slicing_specs = [s.to_proto() for s in slice_spec] if slice_spec else None
+  example_weight_key = eval_shared_model.example_weight_key
+  example_weight_keys = None
+  if example_weight_key and isinstance(example_weight_key, dict):
+    example_weight_keys = example_weight_key
+    example_weight_key = None
+  eval_config = config.EvalConfig(
+      input_data_specs=[config.InputDataSpec(location=data_location)],
+      model_specs=[
+          config.ModelSpec(
+              location=eval_shared_model.model_path,
+              example_weight_key=example_weight_key,
+              example_weight_keys=example_weight_keys)
+      ],
+      output_data_specs=[config.OutputDataSpec(default_location=output_path)],
+      slicing_specs=slicing_specs,
       compute_confidence_intervals=compute_confidence_intervals,
       k_anonymization_count=k_anonymization_count)
 
