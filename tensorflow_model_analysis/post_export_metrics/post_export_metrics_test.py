@@ -26,6 +26,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -71,8 +72,12 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=metrics_callbacks)
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec()],
+        model_specs=[config.ModelSpec(location=eval_export_dir)],
+        output_data_specs=[config.OutputDataSpec()])
     extractors = model_eval_lib.default_extractors(
-        eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
     with beam.Pipeline() as pipeline:
       (metrics, plots), _ = (
           pipeline

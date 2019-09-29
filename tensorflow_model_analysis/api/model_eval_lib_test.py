@@ -129,18 +129,24 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         linear_classifier.simple_linear_classifier)
     examples = [self._makeExample(age=3.0, language='english', label=1.0)]
     data_location = self._writeTFExamplesToTFRecords(examples)
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec(location=data_location)],
+        model_specs=[config.ModelSpec(location=model_location)],
+        output_data_specs=[
+            config.OutputDataSpec(default_location=self._getTempDir())
+        ])
     # No construct_fn should fail when Beam attempts to call the construct_fn.
     eval_shared_model = types.EvalSharedModel(model_path=model_location)
     with self.assertRaisesRegexp(AttributeError,
                                  '\'NoneType\' object has no attribute'):
       model_eval_lib.run_model_analysis(
-          eval_shared_model=eval_shared_model, data_location=data_location)
+          eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     # Using the default_eval_shared_model should pass as it has a construct_fn.
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location)
     model_eval_lib.run_model_analysis(
-        eval_shared_model=eval_shared_model, data_location=data_location)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
   def testRunModelAnalysisExtraFieldsPlusFeatureExtraction(self):
     model_location = self._exportEvalSavedModel(
@@ -153,9 +159,17 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slice_spec = [slicer.SingleSliceSpec(columns=['my_slice'])]
+    slicing_specs = [config.SlicingSpec(feature_keys=['my_slice'])]
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec(location=data_location)],
+        model_specs=[config.ModelSpec(location=model_location)],
+        output_data_specs=[
+            config.OutputDataSpec(default_location=self._getTempDir())
+        ],
+        slicing_specs=slicing_specs)
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, example_weight_key='age')
+    slice_spec = [slicer.SingleSliceSpec(spec=slicing_specs[0])]
     extractors_with_feature_extraction = [
         predict_extractor.PredictExtractor(
             eval_shared_model, desired_batch_size=3, materialize=False),
@@ -165,12 +179,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(slice_spec, materialize=False)
     ]
     eval_result = model_eval_lib.run_model_analysis(
-        model_eval_lib.default_eval_shared_model(
+        eval_config=eval_config,
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
             eval_saved_model_path=model_location, example_weight_key='age'),
-        data_location,
-        extractors=extractors_with_feature_extraction,
-        slice_spec=slice_spec,
-        k_anonymization_count=1)
+        extractors=extractors_with_feature_extraction)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -237,13 +249,19 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slice_spec = [slicer.SingleSliceSpec(columns=['language'])]
-    eval_result = model_eval_lib.run_model_analysis(
-        model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'),
-        data_location,
-        slice_spec=slice_spec,
+    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec(location=data_location)],
+        model_specs=[config.ModelSpec(location=model_location)],
+        output_data_specs=[
+            config.OutputDataSpec(default_location=self._getTempDir())
+        ],
+        slicing_specs=slicing_specs,
         k_anonymization_count=2)
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'))
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -303,13 +321,19 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=5.0, language='chinese', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slice_spec = [slicer.SingleSliceSpec()]
+    slicing_specs = [config.SlicingSpec()]
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec(location=data_location)],
+        model_specs=[config.ModelSpec(location=model_location)],
+        output_data_specs=[
+            config.OutputDataSpec(default_location=self._getTempDir())
+        ],
+        slicing_specs=slicing_specs)
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, example_weight_key='age')
     eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
         eval_shared_model=eval_shared_model,
-        data_location=data_location,
-        slice_spec=slice_spec,
         evaluators=[
             metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
                 eval_shared_model),
@@ -368,15 +392,20 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slice_spec = [slicer.SingleSliceSpec(columns=['language'])]
-    eval_result = model_eval_lib.run_model_analysis(
-        model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'),
-        data_location,
-        slice_spec=slice_spec,
+    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec(location=data_location)],
+        model_specs=[config.ModelSpec(location=model_location)],
+        output_data_specs=[
+            config.OutputDataSpec(default_location=self._getTempDir())
+        ],
+        slicing_specs=slicing_specs,
         compute_confidence_intervals=True,
         k_anonymization_count=2)
-
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'))
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -440,12 +469,18 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(prediction=1.0, label=1.0),
         self._makeExample(prediction=1.0, label=1.0)
     ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec(location=data_location)],
+        model_specs=[config.ModelSpec(location=model_location)],
+        output_data_specs=[
+            config.OutputDataSpec(default_location=self._getTempDir())
+        ])
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location,
         add_metrics_callbacks=[post_export_metrics.auc_plots()])
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_result = model_eval_lib.run_model_analysis(eval_shared_model,
-                                                    data_location)
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
@@ -475,16 +510,22 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(prediction=1.0, label=1.0),
         self._makeExample(prediction=1.0, label=1.0)
     ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec(location=data_location)],
+        model_specs=[config.ModelSpec(location=model_location)],
+        output_data_specs=[
+            config.OutputDataSpec(default_location=self._getTempDir())
+        ])
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location,
         add_metrics_callbacks=[
             post_export_metrics.auc_plots(),
             post_export_metrics.auc_plots(metric_tag='test')
         ])
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_result = model_eval_lib.run_model_analysis(eval_shared_model,
-                                                    data_location)
-    # We only check some of the metrics to ensure that the end-to-end
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
+
     # pipeline works.
     expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
     expected_matrix = {
@@ -515,11 +556,18 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         '5.0,chinese,1.0'
     ]
     data_location = self._writeCSVToTextFile(examples)
+    eval_config = config.EvalConfig(
+        input_data_specs=[
+            config.InputDataSpec(location=data_location, file_format='text')
+        ],
+        model_specs=[config.ModelSpec(location=model_location)],
+        output_data_specs=[
+            config.OutputDataSpec(default_location=self._getTempDir())
+        ])
     eval_result = model_eval_lib.run_model_analysis(
-        model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location),
-        data_location,
-        file_format='text')
+        eval_config=eval_config,
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location))
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {

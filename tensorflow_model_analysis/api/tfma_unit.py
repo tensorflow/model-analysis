@@ -64,6 +64,7 @@ from __future__ import print_function
 import apache_beam as beam
 from apache_beam.testing import util as beam_util
 
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import load
@@ -187,9 +188,9 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
             eval_saved_model_path, serialized_examples),
         expected_values_dict=expected_metrics)
 
-  def _computeMetricsWithoutBeam(self, eval_saved_model_path: Text,
-                                 serialized_examples: List[bytes]
-                                ) -> Dict[Text, Any]:
+  def _computeMetricsWithoutBeam(
+      self, eval_saved_model_path: Text,
+      serialized_examples: List[bytes]) -> Dict[Text, Any]:
     """Computes metrics in-memory using the low-level APIs without Beam.
 
     Args:
@@ -204,9 +205,9 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     eval_saved_model.metrics_reset_update_get_list(serialized_examples)
     return eval_saved_model.get_metric_values()
 
-  def _computeMetricsWithoutBeamNoBatching(self, eval_saved_model_path: Text,
-                                           serialized_examples: List[bytes]
-                                          ) -> Dict[Text, Any]:
+  def _computeMetricsWithoutBeamNoBatching(
+      self, eval_saved_model_path: Text,
+      serialized_examples: List[bytes]) -> Dict[Text, Any]:
     """Computes metrics in-memory using the low-level APIs without Beam.
 
     This is the non-batched version of computeMetricsWithoutBeam. This can be
@@ -271,11 +272,15 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec()],
+        model_specs=[config.ModelSpec(location=eval_saved_model_path)],
+        output_data_specs=[config.OutputDataSpec()])
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks)
     extractors = model_eval_lib.default_extractors(
-        eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -360,11 +365,19 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
+    slicing_specs = None
+    if slice_spec:
+      slicing_specs = [s.to_proto() for s in slice_spec]
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec()],
+        model_specs=[config.ModelSpec(location=eval_saved_model_path)],
+        output_data_specs=[config.OutputDataSpec()],
+        slicing_specs=slicing_specs)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks)
     extractors = model_eval_lib.default_extractors(
-        eval_shared_model=eval_shared_model, slice_spec=slice_spec)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     # pylint: disable=no-value-for-parameter
     (metrics, _), _ = (

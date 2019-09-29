@@ -3,7 +3,10 @@
 ## Major Features and Improvements
 
 *   Added V2 of PredictExtractor that uses TF 2.0 signature APIs and supports
-    keras models.
+    keras models (note: keras model evaluation not fully supported yet).
+*  `tfma.run_model_analysis`, `tfma.default_extractors`,
+   `tfma.default_evaluators`, and `tfma.default_writers` now allow settings to
+    be passed as an `EvalConfig`.
 
 ## Bug fixes and other changes
 

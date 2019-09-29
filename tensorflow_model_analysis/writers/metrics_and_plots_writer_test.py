@@ -24,6 +24,7 @@ import tempfile
 
 import apache_beam as beam
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -41,6 +42,7 @@ from google.protobuf import text_format
 class MetricsAndPlotsWriterTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
+    super(MetricsAndPlotsWriterTest, self).setUp()
     self.longMessage = True  # pylint: disable=invalid-name
 
   def _getTempDir(self):
@@ -54,6 +56,12 @@ class MetricsAndPlotsWriterTest(testutil.TensorflowModelAnalysisTest):
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
             None, temp_eval_export_dir))
+    eval_config = config.EvalConfig(
+        input_data_specs=[config.InputDataSpec()],
+        model_specs=[config.ModelSpec()],
+        output_data_specs=[
+            config.OutputDataSpec(disabled_outputs=['eval_config.json'])
+        ])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=[
@@ -90,12 +98,11 @@ class MetricsAndPlotsWriterTest(testutil.TensorflowModelAnalysisTest):
           ])
           | 'ExtractEvaluateAndWriteResults' >>
           model_eval_lib.ExtractEvaluateAndWriteResults(
+              eval_config=eval_config,
               eval_shared_model=eval_shared_model,
-              output_path='',
               extractors=extractors,
               evaluators=evaluators,
-              writers=writers,
-              write_config=False))
+              writers=writers))
       # pylint: enable=no-value-for-parameter
 
     expected_metrics_for_slice = text_format.Parse(
