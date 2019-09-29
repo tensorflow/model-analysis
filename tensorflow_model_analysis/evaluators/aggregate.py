@@ -127,7 +127,7 @@ class _AggState(object):
 
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Optional[List[Any]])
-class _AggregateCombineFn(model_util.CombineFnWithModel):
+class _AggregateCombineFn(model_util.CombineFnWithModels):
   """Aggregate combine function.
 
   This function really does three things:
@@ -165,7 +165,8 @@ class _AggregateCombineFn(model_util.CombineFnWithModel):
                desired_batch_size: Optional[int] = None,
                compute_with_sampling: Optional[bool] = False,
                seed_for_testing: Optional[int] = None) -> None:
-    super(_AggregateCombineFn, self).__init__(eval_shared_model.model_loader)
+    super(_AggregateCombineFn,
+          self).__init__({'': eval_shared_model.model_loader})
     self._seed_for_testing = seed_for_testing
     self._eval_metrics_graph = None  # type: eval_metrics_graph.EvalMetricsGraph
     # We really want the batch size to be adaptive like it is in
@@ -213,7 +214,8 @@ class _AggregateCombineFn(model_util.CombineFnWithModel):
         result.extend([input_item] * poisson_counts[i])
     return result
 
-  def _maybe_do_batch(self, accumulator: _AggState,
+  def _maybe_do_batch(self,
+                      accumulator: _AggState,
                       force: bool = False) -> None:
     """Maybe intro metrics and update accumulator in place.
 
@@ -228,9 +230,9 @@ class _AggregateCombineFn(model_util.CombineFnWithModel):
 
     if self._eval_metrics_graph is None:
       self._setup_if_needed()
-      if self._loaded_models.eval_saved_model is None:
+      if self._loaded_models[''].eval_saved_model is None:
         raise ValueError('ModelLoader does not support eval_saved_model.')
-      self._eval_metrics_graph = self._loaded_models.eval_saved_model
+      self._eval_metrics_graph = self._loaded_models[''].eval_saved_model
     batch_size = len(accumulator.inputs)
     if force or batch_size >= self._desired_batch_size:
       if accumulator.inputs:
@@ -280,8 +282,8 @@ class _AggregateCombineFn(model_util.CombineFnWithModel):
     self._num_compacts.inc(1)
     return accumulator
 
-  def extract_output(self, accumulator: _AggState
-                    ) -> Optional[types.MetricVariablesType]:
+  def extract_output(
+      self, accumulator: _AggState) -> Optional[types.MetricVariablesType]:
     # It's possible that the accumulator has not been fully flushed, if it was
     # not produced by a call to compact (which is not guaranteed across all Beam
     # Runners), so we defensively flush it here again, before we extract data
@@ -293,11 +295,12 @@ class _AggregateCombineFn(model_util.CombineFnWithModel):
 @beam.typehints.with_input_types(Tuple[slicer.SliceKeyType,
                                        Optional[List[Any]]])
 # TODO(b/123516222): Add output typehints. Similarly elsewhere that it applies.
-class _ExtractOutputDoFn(model_util.DoFnWithModel):
+class _ExtractOutputDoFn(model_util.DoFnWithModels):
   """A DoFn that extracts the metrics output."""
 
   def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
-    super(_ExtractOutputDoFn, self).__init__(eval_shared_model.model_loader)
+    super(_ExtractOutputDoFn,
+          self).__init__({'': eval_shared_model.model_loader})
 
     # This keeps track of the number of times the poisson bootstrap encounters
     # an empty set of elements for a slice sample. Should be extremely rare in
@@ -311,7 +314,7 @@ class _ExtractOutputDoFn(model_util.DoFnWithModel):
   ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
     (slice_key, metric_variables) = element
     if metric_variables:
-      eval_saved_model = self._loaded_models.eval_saved_model
+      eval_saved_model = self._loaded_models[''].eval_saved_model
       result = eval_saved_model.metrics_set_variables_and_get_values(
           metric_variables)
       yield (slice_key, result)
@@ -325,13 +328,14 @@ class _ExtractOutputDoFn(model_util.DoFnWithModel):
 
 @beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
 @beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, types.Extracts])
-class _ModelLoadingIdentityFn(model_util.DoFnWithModel):
+class _ModelLoadingIdentityFn(model_util.DoFnWithModels):
   """A DoFn that loads the EvalSavedModel and returns the input unchanged."""
 
   def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
     super(_ModelLoadingIdentityFn,
-          self).__init__(eval_shared_model.model_loader)
+          self).__init__({'': eval_shared_model.model_loader})
 
-  def process(self, element: Tuple[slicer.SliceKeyType, types.Extracts]
-             ) -> List[Tuple[slicer.SliceKeyType, types.Extracts]]:
+  def process(
+      self, element: Tuple[slicer.SliceKeyType, types.Extracts]
+  ) -> List[Tuple[slicer.SliceKeyType, types.Extracts]]:
     return [element]

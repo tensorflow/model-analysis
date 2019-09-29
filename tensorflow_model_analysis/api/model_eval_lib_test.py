@@ -140,13 +140,13 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     with self.assertRaisesRegexp(AttributeError,
                                  '\'NoneType\' object has no attribute'):
       model_eval_lib.run_model_analysis(
-          eval_config=eval_config, eval_shared_model=eval_shared_model)
+          eval_config=eval_config, eval_shared_models=[eval_shared_model])
 
     # Using the default_eval_shared_model should pass as it has a construct_fn.
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location)
     model_eval_lib.run_model_analysis(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_models=[eval_shared_model])
 
   def testRunModelAnalysisExtraFieldsPlusFeatureExtraction(self):
     model_location = self._exportEvalSavedModel(
@@ -180,8 +180,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     ]
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'),
+        eval_shared_models=[
+            model_eval_lib.default_eval_shared_model(
+                eval_saved_model_path=model_location, example_weight_key='age')
+        ],
         extractors=extractors_with_feature_extraction)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
@@ -260,8 +262,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         k_anonymization_count=2)
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'))
+        eval_shared_models=[
+            model_eval_lib.default_eval_shared_model(
+                eval_saved_model_path=model_location, example_weight_key='age')
+        ])
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -333,7 +337,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=model_location, example_weight_key='age')
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
+        eval_shared_models=[eval_shared_model],
         evaluators=[
             metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
                 eval_shared_model),
@@ -404,8 +408,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         k_anonymization_count=2)
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'))
+        eval_shared_models=[
+            model_eval_lib.default_eval_shared_model(
+                eval_saved_model_path=model_location, example_weight_key='age')
+        ])
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -480,7 +486,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=model_location,
         add_metrics_callbacks=[post_export_metrics.auc_plots()])
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_models=[eval_shared_model])
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
@@ -524,7 +530,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             post_export_metrics.auc_plots(metric_tag='test')
         ])
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_models=[eval_shared_model])
 
     # pipeline works.
     expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
@@ -566,8 +572,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         ])
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location))
+        eval_shared_models=[
+            model_eval_lib.default_eval_shared_model(
+                eval_saved_model_path=model_location)
+        ])
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {

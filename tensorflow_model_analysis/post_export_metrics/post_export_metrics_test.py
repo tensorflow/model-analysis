@@ -77,7 +77,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         model_specs=[config.ModelSpec(location=eval_export_dir)],
         output_data_specs=[config.OutputDataSpec()])
     extractors = model_eval_lib.default_extractors(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_models=[eval_shared_model])
     with beam.Pipeline() as pipeline:
       (metrics, plots), _ = (
           pipeline

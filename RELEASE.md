@@ -7,6 +7,9 @@
 *  `tfma.run_model_analysis`, `tfma.default_extractors`,
    `tfma.default_evaluators`, and `tfma.default_writers` now allow settings to
     be passed as an `EvalConfig`.
+*  `tfma.run_model_analysis`, `tfma.default_extractors`,
+   `tfma.default_evaluators`, and `tfma.default_writers` now allow multiple
+    models to be passed (note: multi-model support not fully implemented yet).
 
 ## Bug fixes and other changes
 

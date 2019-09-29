@@ -99,7 +99,7 @@ class MetricsAndPlotsWriterTest(testutil.TensorflowModelAnalysisTest):
           | 'ExtractEvaluateAndWriteResults' >>
           model_eval_lib.ExtractEvaluateAndWriteResults(
               eval_config=eval_config,
-              eval_shared_model=eval_shared_model,
+              eval_shared_models=[eval_shared_model],
               extractors=extractors,
               evaluators=evaluators,
               writers=writers))

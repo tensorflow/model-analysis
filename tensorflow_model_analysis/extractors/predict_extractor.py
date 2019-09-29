@@ -66,29 +66,32 @@ def PredictExtractor(eval_shared_model: types.EvalSharedModel,
 
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
-class _TFMAPredictionDoFn(model_util.DoFnWithModel):
+class _TFMAPredictionDoFn(model_util.DoFnWithModels):
   """A DoFn that loads the model and predicts."""
 
   def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
-    super(_TFMAPredictionDoFn, self).__init__(eval_shared_model.model_loader)
+    super(_TFMAPredictionDoFn,
+          self).__init__({'': eval_shared_model.model_loader})
     self._predict_batch_size = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'predict_batch_size')
     self._num_instances = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_instances')
 
-  def process(self, element: List[types.Extracts]
-             ) -> Generator[types.Extracts, None, None]:
+  def process(
+      self,
+      element: List[types.Extracts]) -> Generator[types.Extracts, None, None]:
     batch_size = len(element)
     self._predict_batch_size.update(batch_size)
     self._num_instances.inc(batch_size)
     serialized_examples = [x[constants.INPUT_KEY] for x in element]
 
     # Compute FeaturesPredictionsLabels for each serialized_example
-    for fetched in self._loaded_models.eval_saved_model.predict_list(
+    loaded_model = self._loaded_models['']
+    for fetched in loaded_model.eval_saved_model.predict_list(
         serialized_examples):
       element_copy = copy.copy(element[fetched.input_ref])
       element_copy[constants.FEATURES_PREDICTIONS_LABELS_KEY] = (
-          self._loaded_models.eval_saved_model.as_features_predictions_labels(
+          loaded_model.eval_saved_model.as_features_predictions_labels(
               [fetched])[0])
       for key in fetched.values:
         if key in (eval_saved_model_constants.FEATURES_NAME,

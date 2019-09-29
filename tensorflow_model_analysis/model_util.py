@@ -23,7 +23,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import load
 
-from typing import Callable, List, Optional, Text
+from typing import Callable, Dict, List, Optional, Text
 
 
 def get_baseline_model_spec(
@@ -93,11 +93,12 @@ def model_construct_fn(  # pylint: disable=invalid-name
   return construct_fn
 
 
-class DoFnWithModel(beam.DoFn):
-  """Abstract class for DoFns that need the shared model."""
+class DoFnWithModels(beam.DoFn):
+  """Abstract class for DoFns that need the shared models."""
 
-  def __init__(self, model_loader: types.ModelLoader) -> None:
-    self._model_loader = model_loader
+  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]) -> None:
+    """Initializes DoFn using dict of model loaders keyed by model location."""
+    self._model_loaders = model_loaders
     self._loaded_models = None  # types.ModelTypes
     self._model_load_seconds = None
     self._model_load_seconds_distribution = beam.metrics.Metrics.distribution(
@@ -107,8 +108,10 @@ class DoFnWithModel(beam.DoFn):
     self._model_load_seconds = model_load_seconds
 
   def setup(self):
-    self._loaded_models = self._model_loader.shared_handle.acquire(
-        self._model_loader.construct_fn(self._set_model_load_seconds))
+    self._loaded_models = {}
+    for model_name, model_loader in self._model_loaders.items():
+      self._loaded_models[model_name] = model_loader.shared_handle.acquire(
+          model_loader.construct_fn(self._set_model_load_seconds))
 
   def process(self, elem):
     raise NotImplementedError('not implemented')
@@ -121,15 +124,16 @@ class DoFnWithModel(beam.DoFn):
       self._model_load_seconds = None
 
 
-class CombineFnWithModel(beam.CombineFn):
-  """Abstract class for CombineFns that need the shared model.
+class CombineFnWithModels(beam.CombineFn):
+  """Abstract class for CombineFns that need the shared models.
 
   Until BEAM-3736 (Add SetUp() and TearDown() for CombineFns) is implemented
   users of this class are responsible for calling _setup_if_needed manually.
   """
 
-  def __init__(self, model_loader: types.ModelLoader) -> None:
-    self._model_loader = model_loader
+  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]) -> None:
+    """Initializes CombineFn using dict of loaders keyed by model location."""
+    self._model_loaders = model_loaders
     self._loaded_models = None  # types.ModelTypes
     self._model_load_seconds = None
     self._model_load_seconds_distribution = beam.metrics.Metrics.distribution(
@@ -143,9 +147,10 @@ class CombineFnWithModel(beam.CombineFn):
   # See BEAM-3736: Add SetUp() and TearDown() for CombineFns.
   def _setup_if_needed(self) -> None:
     if self._loaded_models is None:
-      self._loaded_models = (
-          self._model_loader.shared_handle.acquire(
-              self._model_loader.construct_fn(self._set_model_load_seconds)))
+      self._loaded_models = {}
+      for model_name, model_loader in self._model_loaders.items():
+        self._loaded_models[model_name] = model_loader.shared_handle.acquire(
+            model_loader.construct_fn(self._set_model_load_seconds))
       if self._model_load_seconds is not None:
         self._model_load_seconds_distribution.update(self._model_load_seconds)
         self._model_load_seconds = None

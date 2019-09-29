@@ -61,11 +61,11 @@ def PredictExtractor(
 
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
-class _PredictionDoFn(model_util.DoFnWithModel):
-  """A DoFn that loads the model and predicts."""
+class _PredictionDoFn(model_util.DoFnWithModels):
+  """A DoFn that loads the models and predicts."""
 
   def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
-    super(_PredictionDoFn, self).__init__(eval_shared_model.model_loader)
+    super(_PredictionDoFn, self).__init__({'': eval_shared_model.model_loader})
     self._predict_batch_size = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'predict_batch_size')
     self._predict_num_instances = beam.metrics.Metrics.counter(
@@ -78,7 +78,8 @@ class _PredictionDoFn(model_util.DoFnWithModel):
     self._predict_batch_size.update(batch_size)
     self._predict_num_instances.inc(batch_size)
 
-    saved_model = self._loaded_models.saved_model
+    # TODO(b/141016373): Add support for multiple models.
+    saved_model = self._loaded_models[''].saved_model
 
     # First try 'predict' then try 'serving_default'. The estimator output for
     # the 'serving_default' key does not include all the heads in a multi-head
@@ -96,8 +97,8 @@ class _PredictionDoFn(model_util.DoFnWithModel):
     # If input names exist then filter the inputs by these names (unlike
     # estimators, keras does not accept unknown inputs).
     input_names = None
-    if self._loaded_models.keras_model is not None:
-      input_names = self._loaded_models.keras_model.input_names
+    if self._loaded_models[''].keras_model is not None:
+      input_names = self._loaded_models[''].keras_model.input_names
     # First arg of structured_input_signature tuple is shape, second is dtype
     # (we currently only support named params passed as a dict)
     elif (signature.structured_input_signature and

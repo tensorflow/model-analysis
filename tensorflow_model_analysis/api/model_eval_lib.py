@@ -290,7 +290,8 @@ def default_eval_shared_model(
 
 
 def default_extractors(  # pylint: disable=invalid-name
-    eval_shared_model: types.EvalSharedModel,
+    eval_shared_model: Optional[types.EvalSharedModel] = None,
+    eval_shared_models: Optional[List[types.EvalSharedModel]] = None,
     eval_config: config.EvalConfig = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     desired_batch_size: Optional[int] = None,
@@ -298,7 +299,8 @@ def default_extractors(  # pylint: disable=invalid-name
   """Returns the default extractors for use in ExtractAndEvaluate.
 
   Args:
-    eval_shared_model: Shared model parameters for EvalSavedModel.
+    eval_shared_model: Shared model (single-model evaluation).
+    eval_shared_models: Shared models (multi-model evaluation).
     eval_config: Eval config.
     slice_spec: Deprecated (use EvalConfig).
     desired_batch_size: Deprecated (use EvalConfig).
@@ -310,16 +312,19 @@ def default_extractors(  # pylint: disable=invalid-name
         slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
     ]
     desired_batch_size = eval_config.desired_batch_size
+  if eval_shared_model is not None:
+    eval_shared_models = [eval_shared_model]
   return [
       predict_extractor.PredictExtractor(
-          eval_shared_model, desired_batch_size, materialize=materialize),
+          eval_shared_models[0], desired_batch_size, materialize=materialize),
       slice_key_extractor.SliceKeyExtractor(
           slice_spec, materialize=materialize)
   ]
 
 
 def default_evaluators(  # pylint: disable=invalid-name
-    eval_shared_model: types.EvalSharedModel,
+    eval_shared_model: Optional[types.EvalSharedModel] = None,
+    eval_shared_models: Optional[List[types.EvalSharedModel]] = None,
     eval_config: config.EvalConfig = None,
     desired_batch_size: Optional[int] = None,
     compute_confidence_intervals: Optional[bool] = False,
@@ -327,7 +332,8 @@ def default_evaluators(  # pylint: disable=invalid-name
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
-    eval_shared_model: Shared model parameters for EvalSavedModel.
+    eval_shared_model: Shared model (single-model evaluation).
+    eval_shared_models: Shared models (multi-model evaluation).
     eval_config: Eval config.
     desired_batch_size: Deprecated (use eval_config).
     compute_confidence_intervals: Deprecated (use eval_config).
@@ -338,9 +344,11 @@ def default_evaluators(  # pylint: disable=invalid-name
     desired_batch_size = eval_config.desired_batch_size
     compute_confidence_intervals = eval_config.compute_confidence_intervals
     k_anonymization_count = eval_config.k_anonymization_count
+  if eval_shared_model is not None:
+    eval_shared_models = [eval_shared_model]
   return [
       metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
-          eval_shared_model,
+          eval_shared_models[0],
           desired_batch_size,
           compute_confidence_intervals=compute_confidence_intervals,
           k_anonymization_count=k_anonymization_count)
@@ -348,14 +356,16 @@ def default_evaluators(  # pylint: disable=invalid-name
 
 
 def default_writers(
-    eval_shared_model: types.EvalSharedModel,
+    eval_shared_model: Optional[types.EvalSharedModel] = None,
+    eval_shared_models: Optional[List[types.EvalSharedModel]] = None,
     output_path: Optional[Text] = None,
     eval_config: config.EvalConfig = None,
 ) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
 
   Args:
-    eval_shared_model: Shared model parameters for EvalSavedModel.
+    eval_shared_model: Shared model (single-model evaluation).
+    eval_shared_models: Shared models (multi-model evaluation).
     output_path: Deprecated (use EvalConfig).
     eval_config: Eval config.
   """
@@ -364,6 +374,8 @@ def default_writers(
     output_spec = eval_config.output_data_specs[0]
   elif output_path is not None:
     output_spec = config.OutputDataSpec(default_location=output_path)
+  if eval_shared_model is not None:
+    eval_shared_models = [eval_shared_model]
   output_paths = {
       constants.METRICS_KEY:
           output_filename(output_spec, constants.METRICS_KEY),
@@ -372,7 +384,7 @@ def default_writers(
   }
   return [
       metrics_and_plots_writer.MetricsAndPlotsWriter(
-          eval_shared_model=eval_shared_model, output_paths=output_paths)
+          eval_shared_model=eval_shared_models[0], output_paths=output_paths)
   ]
 
 
@@ -526,7 +538,8 @@ def WriteEvalConfig(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     examples: beam.pvalue.PCollection,
-    eval_shared_model: types.EvalSharedModel,
+    eval_shared_model: Optional[types.EvalSharedModel] = None,
+    eval_shared_models: Optional[List[types.EvalSharedModel]] = None,
     eval_config: config.EvalConfig = None,
     extractors: Optional[List[extractor.Extractor]] = None,
     evaluators: Optional[List[evaluator.Evaluator]] = None,
@@ -559,7 +572,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
            | 'ExtractEvaluateAndWriteResults' >>
            tfma.ExtractEvaluateAndWriteResults(
                eval_config=eval_config,
-               eval_shared_model=eval_shared_model,
+               eval_shared_models=[eval_shared_model],
                ...))
     result = tfma.load_eval_result(output_path=output_path)
     tfma.view.render_slicing_metrics(result)
@@ -571,9 +584,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   Args:
     examples: PCollection of input examples. Can be any format the model accepts
       (e.g. string containing CSV row, TensorFlow.Example, etc).
-    eval_shared_model: Shared model parameters for EvalSavedModel including any
-      additional metrics (see EvalSharedModel for more information on how to
-      configure additional metrics).
+    eval_shared_model: Shared model (single-model evaluation).
+    eval_shared_models: Shared models (multi-model evaluation).
     eval_config: Eval config.
     extractors: Optional list of Extractors to apply to Extracts. Typically
       these will be added by calling the default_extractors function. If no
@@ -599,6 +611,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   Returns:
     PDone.
   """
+  if eval_shared_model is not None:
+    eval_shared_models = [eval_shared_model]
+
   if eval_config is None:
     data_location = '<user provided PCollection>'
     if display_only_data_location is not None:
@@ -607,7 +622,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     if not write_config:
       disabled_outputs = [_EVAL_CONFIG_FILE]
     model_specs = []
-    for m in [eval_shared_model]:
+    for m in eval_shared_models:
       example_weight_key = m.example_weight_key
       example_weight_keys = {}
       if example_weight_key and isinstance(example_weight_key, dict):
@@ -618,7 +633,6 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
               location=m.model_path,
               example_weight_key=example_weight_key,
               example_weight_keys=example_weight_keys))
-
     slicing_specs = None
     if slice_spec:
       slicing_specs = [s.to_proto() for s in slice_spec]
@@ -637,19 +651,19 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   if not extractors:
     extractors = default_extractors(
         eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
+        eval_shared_models=eval_shared_models,
         materialize=False)
 
   if not evaluators:
     evaluators = default_evaluators(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_models=eval_shared_models)
 
   for v in evaluators:
     evaluator.verify_evaluator(v, extractors)
 
   if not writers:
     writers = default_writers(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_models=eval_shared_models)
 
   # pylint: disable=no-value-for-parameter
   _ = (
@@ -667,21 +681,22 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   return beam.pvalue.PDone(examples.pipeline)
 
 
-def run_model_analysis(eval_shared_model: types.EvalSharedModel,
-                       eval_config: config.EvalConfig = None,
-                       extractors: Optional[List[extractor.Extractor]] = None,
-                       evaluators: Optional[List[evaluator.Evaluator]] = None,
-                       writers: Optional[List[writer.Writer]] = None,
-                       pipeline_options: Optional[Any] = None,
-                       data_location: Optional[Text] = None,
-                       file_format: Optional[Text] = 'tfrecords',
-                       slice_spec: Optional[List[
-                           slicer.SingleSliceSpec]] = None,
-                       output_path: Optional[Text] = None,
-                       write_config: Optional[bool] = True,
-                       desired_batch_size: Optional[int] = None,
-                       compute_confidence_intervals: Optional[bool] = False,
-                       k_anonymization_count: int = 1) -> EvalResult:
+def run_model_analysis(
+    eval_shared_model: Optional[types.EvalSharedModel] = None,
+    eval_shared_models: Optional[List[types.EvalSharedModel]] = None,
+    eval_config: config.EvalConfig = None,
+    extractors: Optional[List[extractor.Extractor]] = None,
+    evaluators: Optional[List[evaluator.Evaluator]] = None,
+    writers: Optional[List[writer.Writer]] = None,
+    pipeline_options: Optional[Any] = None,
+    data_location: Optional[Text] = None,
+    file_format: Optional[Text] = 'tfrecords',
+    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+    output_path: Optional[Text] = None,
+    write_config: Optional[bool] = True,
+    desired_batch_size: Optional[int] = None,
+    compute_confidence_intervals: Optional[bool] = False,
+    k_anonymization_count: int = 1) -> EvalResult:
   """Runs TensorFlow model analysis.
 
   It runs a Beam pipeline to compute the slicing metrics exported in TensorFlow
@@ -692,9 +707,8 @@ def run_model_analysis(eval_shared_model: types.EvalSharedModel,
   Evaluate PTransform instead.
 
   Args:
-    eval_shared_model: Shared model parameters for EvalSavedModel including any
-      additional metrics (see EvalSharedModel for more information on how to
-      configure additional metrics).
+    eval_shared_model: Shared model (single-model evaluation).
+    eval_shared_models: Shared models (multi-model evaluation).
     eval_config: Eval config.
     extractors: Optional list of Extractors to apply to Extracts. Typically
       these will be added by calling the default_extractors function. If no
@@ -725,6 +739,9 @@ def run_model_analysis(eval_shared_model: types.EvalSharedModel,
   """
   _assert_tensorflow_version()
 
+  if eval_shared_model is not None:
+    eval_shared_models = [eval_shared_model]
+
   if eval_config is None:
     if output_path is None:
       output_path = tempfile.mkdtemp()
@@ -734,7 +751,7 @@ def run_model_analysis(eval_shared_model: types.EvalSharedModel,
     if not write_config:
       disabled_outputs = [_EVAL_CONFIG_FILE]
     model_specs = []
-    for m in [eval_shared_model]:
+    for m in eval_shared_models:
       example_weight_key = m.example_weight_key
       example_weight_keys = {}
       if example_weight_key and isinstance(example_weight_key, dict):
@@ -790,7 +807,7 @@ def run_model_analysis(eval_shared_model: types.EvalSharedModel,
         data
         | 'ExtractEvaluateAndWriteResults' >> ExtractEvaluateAndWriteResults(
             eval_config=eval_config,
-            eval_shared_model=eval_shared_model,
+            eval_shared_models=eval_shared_models,
             extractors=extractors,
             evaluators=evaluators,
             writers=writers))
@@ -800,6 +817,46 @@ def run_model_analysis(eval_shared_model: types.EvalSharedModel,
   return load_eval_result(eval_config.output_data_specs[0].default_location)
 
 
+def single_model_analysis(
+    model_location: Text,
+    data_location: Text,
+    output_path: Text = None,
+    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None) -> EvalResult:
+  """Run model analysis for a single model on a single data set.
+
+  This is a convenience wrapper around run_model_analysis for a single model
+  with a single data set. For more complex use cases, use
+  tfma.run_model_analysis.
+
+  Args:
+    model_location: Path to the export eval saved model.
+    data_location: The location of the data files.
+    output_path: The directory to output metrics and results to. If None, we use
+      a temporary directory.
+    slice_spec: A list of tfma.slicer.SingleSliceSpec.
+
+  Returns:
+    An EvalResult that can be used with the TFMA visualization functions.
+  """
+  # Get working_dir ready.
+  if output_path is None:
+    output_path = tempfile.mkdtemp()
+  if not tf.io.gfile.exists(output_path):
+    tf.io.gfile.makedirs(output_path)
+
+  eval_config = config.EvalConfig(
+      input_data_specs=[config.InputDataSpec(location=data_location)],
+      model_specs=[config.ModelSpec(location=model_location)],
+      output_data_specs=[config.OutputDataSpec(default_location=output_path)],
+      slicing_specs=[s.to_proto() for s in slice_spec])
+
+  return run_model_analysis(
+      eval_config=eval_config,
+      eval_shared_models=[
+          default_eval_shared_model(eval_saved_model_path=model_location)
+      ])
+
+
 def multiple_model_analysis(model_locations: List[Text], data_location: Text,
                             **kwargs) -> EvalResults:
   """Run model analysis for multiple models on the same data set.
@@ -807,7 +864,7 @@ def multiple_model_analysis(model_locations: List[Text], data_location: Text,
   Args:
     model_locations: A list of paths to the export eval saved model.
     data_location: The location of the data files.
-    **kwargs: The args used for evaluation. See tfma.run_model_analysis() for
+    **kwargs: The args used for evaluation. See tfma.single_model_analysis() for
       details.
 
   Returns:
@@ -816,10 +873,7 @@ def multiple_model_analysis(model_locations: List[Text], data_location: Text,
   """
   results = []
   for m in model_locations:
-    results.append(
-        run_model_analysis(
-            default_eval_shared_model(m), data_location=data_location,
-            **kwargs))
+    results.append(single_model_analysis(m, data_location, **kwargs))
   return EvalResults(results, constants.MODEL_CENTRIC_MODE)
 
 
@@ -839,9 +893,5 @@ def multiple_data_analysis(model_location: Text, data_locations: List[Text],
   """
   results = []
   for d in data_locations:
-    results.append(
-        run_model_analysis(
-            default_eval_shared_model(model_location),
-            data_location=d,
-            **kwargs))
+    results.append(single_model_analysis(model_location, d, **kwargs))
   return EvalResults(results, constants.DATA_CENTRIC_MODE)
