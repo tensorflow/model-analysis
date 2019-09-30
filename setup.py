@@ -22,8 +22,8 @@ import platform
 import subprocess
 import sys
 from distutils import log
-from distutils.command.build_py import build_py as _build_py
 from distutils.spawn import find_executable
+from setuptools.command.build_py import build_py as _build_py
 from setuptools import Command
 from setuptools import find_packages
 from setuptools import setup
