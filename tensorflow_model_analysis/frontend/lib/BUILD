@@ -186,13 +186,19 @@ JS_LIB_EXTERNS = [
 ]
 
 ALL_EXTERNS = [
+    "svg-externs.js",
     "d3-externs.js",
-    "gviz-externs.js",
+    "d3-tip-externs.js",
 ] + JS_LIB_EXTERNS
 
 filegroup(
     name = "externs-list",
     srcs = JS_LIB_EXTERNS,
+)
+
+filegroup(
+    name = "all-externs-list",
+    srcs = ALL_EXTERNS,
 )
 
 # The externs needed to build the plugin dashboard and component demos.
