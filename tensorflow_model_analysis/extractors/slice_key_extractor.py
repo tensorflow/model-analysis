@@ -73,14 +73,19 @@ class _ExtractSliceKeysFn(beam.DoFn):
     self._materialize = materialize
 
   def process(self, element: types.Extracts) -> List[types.Extracts]:
-    fpl = element.get(constants.FEATURES_PREDICTIONS_LABELS_KEY)
-    if not fpl:
-      raise RuntimeError('FPL missing, Please ensure Predict() was called.')
-    if not isinstance(fpl, types.FeaturesPredictionsLabels):
-      raise TypeError(
-          'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: '
-          '%s of type %s' % (str(fpl), type(fpl)))
-    features = fpl.features
+    features = None
+    if constants.FEATURES_PREDICTIONS_LABELS_KEY in element:
+      fpl = element[constants.FEATURES_PREDICTIONS_LABELS_KEY]
+      if not isinstance(fpl, types.FeaturesPredictionsLabels):
+        raise TypeError(
+            'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: '
+            '%s of type %s' % (str(fpl), type(fpl)))
+      features = fpl.features
+    elif constants.FEATURES_KEY in element:
+      features = element[constants.FEATURES_KEY]
+    if not features:
+      raise RuntimeError(
+          'Features missing, Please ensure Predict() was called.')
     slices = list(
         slicer.get_slices_for_features_dict(features, self._slice_spec))
 
