@@ -21,6 +21,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
 
 from typing import Callable, Dict, List, Optional, Text
@@ -45,14 +46,15 @@ def get_model_spec(eval_config: config.EvalConfig,
 
 
 def model_construct_fn(  # pylint: disable=invalid-name
-    model_path: Optional[Text] = None,
     eval_saved_model_path: Optional[Text] = None,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
     include_default_metrics: Optional[bool] = None,
     additional_fetches: Optional[List[Text]] = None,
     blacklist_feature_fetches: Optional[List[Text]] = None,
-    tag: Text = tf.saved_model.SERVING):
+    tags: Optional[List[Text]] = None):
   """Returns function for constructing shared ModelTypes."""
+  if tags is None:
+    tags = [eval_constants.EVAL_TAG]
 
   def construct_fn(model_load_seconds_callback: Callable[[int], None]):
     """Thin wrapper for the actual construct to allow for load time metrics."""
@@ -63,16 +65,7 @@ def model_construct_fn(  # pylint: disable=invalid-name
       saved_model = None
       keras_model = None
       eval_saved_model = None
-      if model_path:
-        if tf.version.VERSION.split('.')[0] == '1':
-          saved_model = tf.compat.v1.saved_model.load_v2(model_path, tags=[tag])
-        else:
-          saved_model = tf.saved_model.load(model_path, tags=[tag])
-        try:
-          keras_model = tf.keras.experimental.load_from_saved_model(model_path)
-        except tf.errors.NotFoundError:
-          pass
-      if eval_saved_model_path:
+      if tags == [eval_constants.EVAL_TAG]:
         eval_saved_model = load.EvalSavedModel(
             eval_saved_model_path,
             include_default_metrics,
@@ -81,6 +74,12 @@ def model_construct_fn(  # pylint: disable=invalid-name
         if add_metrics_callbacks:
           eval_saved_model.register_add_metric_callbacks(add_metrics_callbacks)
         eval_saved_model.graph_finalize()
+      else:
+        try:
+          keras_model = tf.keras.models.load_model(eval_saved_model_path)
+        except Exception:  # pylint: disable=broad-except
+          saved_model = tf.compat.v1.saved_model.load_v2(
+              eval_saved_model_path, tags=tags)
       end_time = datetime.datetime.now()
       model_load_seconds_callback(int((end_time - start_time).total_seconds()))
       return types.ModelTypes(

@@ -79,7 +79,16 @@ class _PredictionDoFn(model_util.DoFnWithModels):
     self._predict_num_instances.inc(batch_size)
 
     # TODO(b/141016373): Add support for multiple models.
-    saved_model = self._loaded_models[''].saved_model
+    loaded_model = self._loaded_models['']
+    signatures = None
+    if loaded_model.keras_model:
+      signatures = loaded_model.keras_model.signatures
+    elif loaded_model.saved_model:
+      signatures = loaded_model.saved_model.signatures
+    if not signatures:
+      raise ValueError(
+          'PredictExtractor V2 requires a keras model or a serving model. '
+          'If using EvalSavedModel then you must use PredictExtractor V1.')
 
     # First try 'predict' then try 'serving_default'. The estimator output for
     # the 'serving_default' key does not include all the heads in a multi-head
@@ -87,12 +96,12 @@ class _PredictionDoFn(model_util.DoFnWithModels):
     # Note that the 'predict' key only exists for estimators for multi-head
     # models, for single-head models only 'serving_default' is used.
     signature_key = tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
-    if PREDICT_SIGNATURE_DEF_KEY in saved_model.signatures:
+    if PREDICT_SIGNATURE_DEF_KEY in signatures:
       signature_key = PREDICT_SIGNATURE_DEF_KEY
-    if signature_key not in saved_model.signatures:
-      raise ValueError('%s not found in model signatures: %s' %
-                       (signature_key, saved_model.signatures))
-    signature = saved_model.signatures[signature_key]
+    if signature_key not in signatures:
+      raise ValueError('{} not found in model signatures: {}'.format(
+          signature_key, signatures))
+    signature = signatures[signature_key]
 
     # If input names exist then filter the inputs by these names (unlike
     # estimators, keras does not accept unknown inputs).

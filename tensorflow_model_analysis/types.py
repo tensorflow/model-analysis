@@ -121,7 +121,7 @@ def is_tensor(obj):
 class ModelTypes(object):
   """Instances of different model types.
 
-  Not all instances are supported for all configurations.
+  Only one instance can be set at a time.
 
   Attributes:
     saved_model: Saved model.
@@ -141,11 +141,13 @@ class ModelTypes(object):
 
 
 class ModelLoader(
-    NamedTuple('ModelLoader', [('shared_handle', shared.Shared),
+    NamedTuple('ModelLoader', [('tags', List[Text]),
+                               ('shared_handle', shared.Shared),
                                ('construct_fn', Callable)])):
   """Model loader is responsible for loading shared model types.
 
   Attributes:
+    tags: Model tags (e.g. 'serve' for serving or 'eval' for EvalSavedModel).
     shared_handle: Optional handle to a shared.Shared object for sharing the
       in-memory model within / between stages. Used in combination with the
       construct_fn to load the ModelTypes for the shared model.
@@ -155,6 +157,7 @@ class ModelLoader(
   """
 
   def __new__(cls,
+              tags: Optional[List[Text]] = None,
               shared_handle: Optional[shared.Shared] = None,
               construct_fn: Optional[Callable[..., Any]] = None):
     # TODO(b/140845455): It's likely very brittle to have the shared_handle
@@ -162,7 +165,8 @@ class ModelLoader(
     # responsible for.
     if not shared_handle:
       shared_handle = shared.Shared()
-    return super(ModelLoader, cls).__new__(cls, shared_handle, construct_fn)
+    return super(ModelLoader, cls).__new__(cls, tags, shared_handle,
+                                           construct_fn)
 
 
 class EvalSharedModel(
@@ -235,7 +239,7 @@ class EvalSharedModel(
       raise ValueError(
           'only one of model_loader or construct_fn should be used')
     if construct_fn:
-      model_loader = ModelLoader(construct_fn=construct_fn)
+      model_loader = ModelLoader(tags=None, construct_fn=construct_fn)
     if model_path is not None:
       model_path = six.ensure_str(model_path)
     return super(EvalSharedModel,

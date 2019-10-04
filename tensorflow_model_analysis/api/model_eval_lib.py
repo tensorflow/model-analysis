@@ -32,6 +32,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import version as tfma_version
+from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import extractor
@@ -230,8 +231,8 @@ def default_eval_shared_model(
     include_default_metrics: Optional[bool] = True,
     example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
     additional_fetches: Optional[List[Text]] = None,
-    blacklist_feature_fetches: Optional[List[Text]] = None
-) -> types.EvalSharedModel:
+    blacklist_feature_fetches: Optional[List[Text]] = None,
+    tags: Optional[List[Text]] = None) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
 
   Args:
@@ -252,27 +253,33 @@ def default_eval_shared_model(
       which should be excluded from the fetches request. This is useful in
       scenarios where features are large (e.g. images) and can lead to excessive
       memory use if stored.
+    tags: Model tags (e.g. 'serve' for serving or 'eval' for EvalSavedModel).
   """
-  # Always compute example weight and example count.
-  # PyType doesn't know about the magic exports we do in post_export_metrics.
-  # Additionally, the lines seem to get reordered in compilation, so we can't
-  # just put the disable-attr on the add_metrics_callbacks lines.
-  # pytype: disable=module-attr
-  if not add_metrics_callbacks:
-    add_metrics_callbacks = []
-  example_count_callback = post_export_metrics.example_count()
-  add_metrics_callbacks.append(example_count_callback)
-  if example_weight_key:
-    if isinstance(example_weight_key, dict):
-      for output_name, key in example_weight_key.items():
+  if tags is None:
+    tags = [eval_constants.EVAL_TAG]
+
+  # Backwards compatibility for previous EvalSavedModel implementation.
+  if tags == [eval_constants.EVAL_TAG]:
+    # PyType doesn't know about the magic exports we do in post_export_metrics.
+    # Additionally, the lines seem to get reordered in compilation, so we can't
+    # just put the disable-attr on the add_metrics_callbacks lines.
+    # pytype: disable=module-attr
+    if not add_metrics_callbacks:
+      add_metrics_callbacks = []
+    # Always compute example weight and example count.
+    example_count_callback = post_export_metrics.example_count()
+    add_metrics_callbacks.append(example_count_callback)
+    if example_weight_key:
+      if isinstance(example_weight_key, dict):
+        for output_name, key in example_weight_key.items():
+          example_weight_callback = post_export_metrics.example_weight(
+              key, metric_tag=output_name)
+          add_metrics_callbacks.append(example_weight_callback)
+      else:
         example_weight_callback = post_export_metrics.example_weight(
-            key, metric_tag=output_name)
+            example_weight_key)
         add_metrics_callbacks.append(example_weight_callback)
-    else:
-      example_weight_callback = post_export_metrics.example_weight(
-          example_weight_key)
-      add_metrics_callbacks.append(example_weight_callback)
-  # pytype: enable=module-attr
+    # pytype: enable=module-attr
 
   return types.EvalSharedModel(
       model_path=eval_saved_model_path,
@@ -281,12 +288,14 @@ def default_eval_shared_model(
       example_weight_key=example_weight_key,
       additional_fetches=additional_fetches,
       model_loader=types.ModelLoader(
+          tags=tags,
           construct_fn=model_util.model_construct_fn(
               eval_saved_model_path=eval_saved_model_path,
               add_metrics_callbacks=add_metrics_callbacks,
               include_default_metrics=include_default_metrics,
               additional_fetches=additional_fetches,
-              blacklist_feature_fetches=blacklist_feature_fetches)))
+              blacklist_feature_fetches=blacklist_feature_fetches,
+              tags=tags)))
 
 
 def default_extractors(  # pylint: disable=invalid-name
@@ -314,12 +323,17 @@ def default_extractors(  # pylint: disable=invalid-name
     desired_batch_size = eval_config.desired_batch_size
   if eval_shared_model is not None:
     eval_shared_models = [eval_shared_model]
-  return [
-      predict_extractor.PredictExtractor(
-          eval_shared_models[0], desired_batch_size, materialize=materialize),
-      slice_key_extractor.SliceKeyExtractor(
-          slice_spec, materialize=materialize)
-  ]
+  if (not eval_shared_models[0].model_loader.tags or
+      eval_shared_models[0].model_loader.tags == [eval_constants.EVAL_TAG]):
+    # Backwards compatibility for previous EvalSavedModel implementation.
+    return [
+        predict_extractor.PredictExtractor(
+            eval_shared_models[0], desired_batch_size, materialize=materialize),
+        slice_key_extractor.SliceKeyExtractor(
+            slice_spec, materialize=materialize)
+    ]
+  else:
+    raise NotImplementedError('keras and serving models not implemented yet.')
 
 
 def default_evaluators(  # pylint: disable=invalid-name
@@ -340,19 +354,23 @@ def default_evaluators(  # pylint: disable=invalid-name
     k_anonymization_count: Deprecated (use eval_config).
   """
   # TODO(b/141016373): Add support for multiple models.
-  if eval_config is not None:
-    desired_batch_size = eval_config.desired_batch_size
-    compute_confidence_intervals = eval_config.compute_confidence_intervals
-    k_anonymization_count = eval_config.k_anonymization_count
   if eval_shared_model is not None:
     eval_shared_models = [eval_shared_model]
-  return [
-      metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
-          eval_shared_models[0],
-          desired_batch_size,
-          compute_confidence_intervals=compute_confidence_intervals,
-          k_anonymization_count=k_anonymization_count)
-  ]
+  if not eval_config or not eval_config.metrics_specs:
+    # Backwards compatibility for previous EvalSavedModel implementation.
+    if eval_config is not None:
+      desired_batch_size = eval_config.desired_batch_size
+      compute_confidence_intervals = eval_config.compute_confidence_intervals
+      k_anonymization_count = eval_config.k_anonymization_count
+    return [
+        metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
+            eval_shared_models[0],
+            desired_batch_size,
+            compute_confidence_intervals=compute_confidence_intervals,
+            k_anonymization_count=k_anonymization_count)
+    ]
+  else:
+    raise NotImplementedError('metrics_specs not implemented yet.')
 
 
 def default_writers(

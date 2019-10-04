@@ -33,7 +33,7 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_he
 from tensorflow_model_analysis.extractors import predict_extractor_v2
 
 if tf.version.VERSION.split('.')[0] == '1':
-  tf.compat.v1.enable_eager_execution()
+  tf.compat.v1.enable_v2_behavior()
 
 
 class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
@@ -46,7 +46,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     _, export_dir = (
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
-    eval_shared_model = self.createTestEvalSharedModel(model_path=export_dir)
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(eval_shared_model)
 
     examples = [
@@ -82,7 +83,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got_preds):
         try:
-          self.assertEqual(3, len(got_preds), 'got: %s' % got_preds)
+          self.assertLen(got_preds, 3)
           expected_preds = [0.2, 0.8, 0.5]
           for got_pred, expected_pred in zip(got_preds, expected_preds):
             self.assertIn(constants.PREDICTIONS_KEY, got_pred)
@@ -99,7 +100,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     _, export_dir = dnn_classifier.simple_dnn_classifier(
         None, temp_export_dir, n_classes=2)
 
-    eval_shared_model = self.createTestEvalSharedModel(model_path=export_dir)
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(eval_shared_model)
 
     examples = [
@@ -120,7 +122,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(3, len(got), 'got: %s' % got)
+          self.assertLen(got, 3)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
             self.assertIn(constants.PREDICTIONS_KEY, item)
@@ -137,7 +139,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     _, export_dir = dnn_classifier.simple_dnn_classifier(
         None, temp_export_dir, n_classes=3)
 
-    eval_shared_model = self.createTestEvalSharedModel(model_path=export_dir)
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(eval_shared_model)
 
     examples = [
@@ -159,7 +162,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(4, len(got), 'got: %s' % got)
+          self.assertLen(got, 4)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
             self.assertIn(constants.PREDICTIONS_KEY, item)
@@ -175,7 +178,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     temp_export_dir = self._getExportDir()
     _, export_dir = multi_head.simple_multi_head(None, temp_export_dir)
 
-    eval_shared_model = self.createTestEvalSharedModel(model_path=export_dir)
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(eval_shared_model)
 
     examples = [
@@ -217,7 +221,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(4, len(got), 'got: %s' % got)
+          self.assertLen(got, 4)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
             self.assertIn(constants.PREDICTIONS_KEY, item)
@@ -254,9 +258,10 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     model.fit(dataset, steps_per_epoch=1)
 
     export_dir = self._getExportDir()
-    tf.keras.experimental.export_saved_model(model, export_dir)
+    model.save(export_dir, save_format='tf')
 
-    eval_shared_model = self.createTestEvalSharedModel(model_path=export_dir)
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(eval_shared_model)
 
     predict_features = [
@@ -285,7 +290,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(2, len(got), 'got: %s' % got)
+          self.assertLen(got, 2)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
             self.assertIn(constants.PREDICTIONS_KEY, item)

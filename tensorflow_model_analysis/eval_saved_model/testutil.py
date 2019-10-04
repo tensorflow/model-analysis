@@ -83,8 +83,9 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
   def assertDictMatrixRowsAlmostEqual(
       self,
       got_values_dict: Dict[Text, Sequence[Iterable[Union[float, int]]]],
-      expected_values_dict: Dict[Text, Iterable[
-          Tuple[int, Iterable[Union[float, int]]]]],
+      expected_values_dict: Dict[Text, Iterable[Tuple[int,
+                                                      Iterable[Union[float,
+                                                                     int]]]]],
       places: int = 5) -> None:
     """Fails if got_values_dict does not match values in expected_values_dict.
 
@@ -153,32 +154,30 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
 
   def createTestEvalSharedModel(
       self,
-      model_path: Optional[Text] = None,
       eval_saved_model_path: Optional[Text] = None,
       add_metrics_callbacks: Optional[List[
           types.AddMetricsCallbackType]] = None,
       include_default_metrics: Optional[bool] = True,
       example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
       additional_fetches: Optional[List[Text]] = None,
-      tag: Text = tf.saved_model.SERVING) -> types.EvalSharedModel:
+      tags: Optional[Text] = None) -> types.EvalSharedModel:
 
     return types.EvalSharedModel(
-        model_path if model_path else eval_saved_model_path,
+        eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks,
         example_weight_key=example_weight_key,
         model_loader=types.ModelLoader(
+            tags=tags,
             construct_fn=model_util.model_construct_fn(
-                model_path=model_path,
                 eval_saved_model_path=eval_saved_model_path,
                 add_metrics_callbacks=add_metrics_callbacks,
                 include_default_metrics=include_default_metrics,
                 additional_fetches=additional_fetches,
-                tag=tag)))
+                tags=tags)))
 
-  def predict_injective_single_example(self,
-                                       eval_saved_model: load.EvalSavedModel,
-                                       raw_example_bytes: bytes
-                                      ) -> types.FeaturesPredictionsLabels:
+  def predict_injective_single_example(
+      self, eval_saved_model: load.EvalSavedModel,
+      raw_example_bytes: bytes) -> types.FeaturesPredictionsLabels:
     """Run predict for a single example for a injective model.
 
     Args:
@@ -194,10 +193,10 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     self.assertEqual(0, fetched_list[0].input_ref)
     return eval_saved_model.as_features_predictions_labels(fetched_list)[0]
 
-  def predict_injective_example_list(self,
-                                     eval_saved_model: load.EvalSavedModel,
-                                     raw_example_bytes_list: List[bytes]
-                                    ) -> List[types.FeaturesPredictionsLabels]:
+  def predict_injective_example_list(
+      self, eval_saved_model: load.EvalSavedModel,
+      raw_example_bytes_list: List[bytes]
+  ) -> List[types.FeaturesPredictionsLabels]:
     """Run predict_list for a list of examples for a injective model.
 
     Args:
