@@ -14,5 +14,5 @@
 """Init module for TensorFlow Model Analysis metrics."""
 
 from tensorflow_model_analysis.metrics.metric_types import MetricKey
-from tensorflow_model_analysis.metrics.metric_types import MultiClassKey
 from tensorflow_model_analysis.metrics.metric_types import PlotKey
+from tensorflow_model_analysis.metrics.metric_types import SubKey

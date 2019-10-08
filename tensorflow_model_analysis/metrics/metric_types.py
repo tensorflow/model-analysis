@@ -20,9 +20,14 @@ from __future__ import print_function
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from typing import Any, Callable, Dict, List, Optional, Text, NamedTuple, Union
 
+# LINT.IfChange
 
+
+# A separate version from proto is used here because protos are not hashable and
+# SerializeToString is not guaranteed to be stable between different binaries.
 class SubKey(
     NamedTuple('SubKey', [('class_id', int), ('k', int), ('top_k', int)])):
   """A SubKey identifies a sub-types of metrics and plots.
@@ -50,7 +55,20 @@ class SubKey(
           'attempt to create metric with top_k < 1: top_k={}'.format(top_k))
     return super(SubKey, cls).__new__(cls, class_id, k, top_k)
 
+  def to_proto(self) -> metrics_for_slice_pb2.SubKey:
+    """Converts key to proto."""
+    sub_key = metrics_for_slice_pb2.SubKey()
+    if self.class_id is not None:
+      sub_key.class_id.value = self.class_id
+    if self.k is not None:
+      sub_key.k.value = self.k
+    if self.top_k is not None:
+      sub_key.top_k.value = self.top_k
+    return sub_key
 
+
+# A separate version from proto is used here because protos are not hashable and
+# SerializeToString is not guaranteed to be stable between different binaries.
 class MetricKey(
     NamedTuple('MetricKey', [('name', Text), ('model_name', Text),
                              ('output_name', Text), ('sub_key', SubKey)])):
@@ -66,16 +84,49 @@ class MetricKey(
 
   def __new__(cls,
               name: Text,
-              model_name: Optional[Text] = None,
-              output_name: Optional[Text] = None,
+              model_name: Text = '',
+              output_name: Text = '',
               sub_key: Optional[SubKey] = None):
     return super(MetricKey, cls).__new__(cls, name, model_name, output_name,
                                          sub_key)
 
+  def to_proto(self) -> metrics_for_slice_pb2.MetricKey:
+    """Converts key to proto."""
+    metric_key = metrics_for_slice_pb2.MetricKey()
+    if self.name:
+      metric_key.name = self.name
+    if self.model_name:
+      metric_key.model_name = self.model_name
+    if self.output_name:
+      metric_key.output_name = self.output_name
+    if self.sub_key:
+      metric_key.sub_key.CopyFrom(self.sub_key.to_proto())
+    return metric_key
 
+
+# A separate version from proto is used here because protos are not hashable and
+# SerializeToString is not guaranteed to be stable between different binaries.
+# In addition internally PlotKey is a subclass of MetricKey as each plot is
+# stored separately.
 class PlotKey(MetricKey):
   """A PlotKey is a metric key that uniquely identifies a plot."""
-  pass
+
+  def to_proto(self) -> metrics_for_slice_pb2.PlotKey:
+    """Converts key to proto."""
+    plot_key = metrics_for_slice_pb2.PlotKey()
+    if self.name:
+      raise ValueError('plot values must be combined into a single proto and'
+                       'stored under a plot key without a name')
+    if self.model_name:
+      plot_key.model_name = self.model_name
+    if self.output_name:
+      plot_key.output_name = self.output_name
+    if self.sub_key:
+      plot_key.sub_key.CopyFrom(self.sub_key.to_proto())
+    return plot_key
+
+
+# LINT.ThenChange(../proto/metrics_for_slice.proto)
 
 
 class MetricComputation(
@@ -112,7 +163,8 @@ class DerivedMetricComputation(
     NamedTuple(
         'DerivedMetricComputation',
         [('keys', List[MetricKey]),
-         ('result', Callable[[Dict[MetricKey, Any]], Dict[MetricKey, Any]])])):
+         ('result', Callable)]  # Dict[MetricKey,Any] -> Dict[MetricKey,Any]
+    )):
   """DerivedMetricComputation derives its result from other computations.
 
   Attributes:

@@ -25,6 +25,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -48,9 +49,99 @@ def _make_slice_key(*args):
 class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
+    super(EvaluateMetricsAndPlotsTest, self).setUp()
     self.longMessage = True  # pylint: disable=invalid-name
 
   def testSerializePlots(self):
+    slice_key = _make_slice_key('fruit', 'apple')
+    plot_key = metric_types.PlotKey(
+        name='calibration_plot', output_name='output_name')
+    calibration_plot = text_format.Parse(
+        """
+        buckets {
+          lower_threshold_inclusive: -inf
+          upper_threshold_exclusive: 0.0
+          num_weighted_examples { value: 0.0 }
+          total_weighted_label { value: 0.0 }
+          total_weighted_refined_prediction { value: 0.0 }
+        }
+        buckets {
+          lower_threshold_inclusive: 0.0
+          upper_threshold_exclusive: 0.5
+          num_weighted_examples { value: 1.0 }
+          total_weighted_label { value: 1.0 }
+          total_weighted_refined_prediction { value: 0.3 }
+        }
+        buckets {
+          lower_threshold_inclusive: 0.5
+          upper_threshold_exclusive: 1.0
+          num_weighted_examples { value: 1.0 }
+          total_weighted_label { value: 0.0 }
+          total_weighted_refined_prediction { value: 0.7 }
+        }
+        buckets {
+          lower_threshold_inclusive: 1.0
+          upper_threshold_exclusive: inf
+          num_weighted_examples { value: 0.0 }
+          total_weighted_label { value: 0.0 }
+          total_weighted_refined_prediction { value: 0.0 }
+        }
+     """, metrics_for_slice_pb2.CalibrationHistogramBuckets())
+
+    expected_plots_for_slice = text_format.Parse(
+        """
+      slice_key {
+        single_slice_keys {
+          column: 'fruit'
+          bytes_value: 'apple'
+        }
+      }
+      plot_keys_and_values {
+        key {
+          output_name: "output_name"
+        }
+        value {
+          calibration_histogram_buckets {
+            buckets {
+              lower_threshold_inclusive: -inf
+              upper_threshold_exclusive: 0.0
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.0
+              upper_threshold_exclusive: 0.5
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 1.0 }
+              total_weighted_refined_prediction { value: 0.3 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.5
+              upper_threshold_exclusive: 1.0
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.7 }
+            }
+            buckets {
+              lower_threshold_inclusive: 1.0
+              upper_threshold_exclusive: inf
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
+          }
+        }
+      }
+    """, metrics_for_slice_pb2.PlotsForSlice())
+
+    got = metrics_and_plots_serialization._serialize_plots((slice_key, {
+        plot_key: calibration_plot
+    }), None)
+    self.assertProtoEquals(expected_plots_for_slice,
+                           metrics_for_slice_pb2.PlotsForSlice.FromString(got))
+
+  def testSerializePlotsLegacyStringKeys(self):
     slice_key = _make_slice_key('fruit', 'apple')
     tfma_plots = {
         metric_keys.CALIBRATION_PLOT_MATRICES:
@@ -456,6 +547,73 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         metrics_for_slice_pb2.MetricsForSlice.FromString(got))
 
   def testSerializeMetrics(self):
+    slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
+    slice_metrics = {
+        metric_types.MetricKey(name='accuracy', output_name='output_name'):
+            0.8,
+        metric_types.MetricKey(name='auc_pr', model_name='model_1'):
+            0.1,
+        metric_types.MetricKey(
+            name='auc', sub_key=metric_types.SubKey(class_id=1)):
+            0.2,
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {
+          single_slice_keys {
+            column: 'age'
+            int64_value: 5
+          }
+          single_slice_keys {
+            column: 'language'
+            bytes_value: 'english'
+          }
+          single_slice_keys {
+            column: 'price'
+            float_value: 0.3
+          }
+        }
+        metric_keys_and_values {
+          key {
+            name: "accuracy"
+            output_name: "output_name"
+          }
+          value {
+            double_value {
+              value: 0.8
+            }
+          }
+        }
+        metric_keys_and_values {
+          key {
+            name: "auc"
+            sub_key: { class_id: { value: 1 } }
+          }
+          value {
+            double_value {
+              value: 0.2
+            }
+          }
+        }
+        metric_keys_and_values {
+          key {
+            name: "auc_pr"
+            model_name: "model_1"
+          }
+          value {
+            double_value {
+              value: 0.1
+            }
+          }
+        }""", metrics_for_slice_pb2.MetricsForSlice())
+
+    got = metrics_and_plots_serialization._serialize_metrics(
+        (slice_key, slice_metrics), None)
+    self.assertProtoEquals(
+        expected_metrics_for_slice,
+        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+
+  def testSerializeMetricsFromLegacyStrings(self):
     slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
     slice_metrics = {
         'accuracy': 0.8,

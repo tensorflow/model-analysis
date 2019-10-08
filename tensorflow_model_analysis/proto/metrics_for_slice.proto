@@ -21,6 +21,7 @@ import "google/protobuf/wrappers.proto";
 // This proto is copied into PerformanceStatistics because of b/110954446.
 // LINT.IfChange
 
+// LINT.IfChange
 // A sub key identifies specialized sub-types of metrics and plots.
 message SubKey {
   oneof type {
@@ -33,7 +34,9 @@ message SubKey {
     google.protobuf.Int32Value top_k = 3;
   }
 }
+// LINT.ThenChange(../metrics/metric_types.py)
 
+// LINT.IfChange
 // A metric key uniquely identifies a metric.
 message MetricKey {
   // Name of the metric ('auc', etc).
@@ -45,6 +48,7 @@ message MetricKey {
   // Optional sub key associated with metric.
   SubKey sub_key = 3;
 }
+// LINT.ThenChange(../metrics/metric_types.py)
 
 // The value will be converted into an error message if we do not know its type.
 message UnknownType {
@@ -277,13 +281,17 @@ message MultiClassConfusionMatrix {
   repeated MultiClassConfusionMatrixEntry entries = 1;
 }
 
+// LINT.IfChange
 // A plot key uniquely identifies a set of PlotData.
 message PlotKey {
+  // Optional model name associated with metric (if multi-model evaluation).
+  string model_name = 4;
   // Optional output name associated with plot (for multi-output models).
   string output_name = 2;
   // Optional sub key associated with plot.
   SubKey sub_key = 3;
 }
+// LINT.ThenChange(../metrics/metric_types.py)
 
 message PlotData {
   // For calibration plot and prediction distribution.

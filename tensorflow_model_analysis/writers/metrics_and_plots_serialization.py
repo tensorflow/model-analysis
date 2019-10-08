@@ -28,6 +28,7 @@ import tensorflow as tf
 
 from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer
@@ -110,11 +111,11 @@ def _convert_proto_map_to_dict(proto_map: Any) -> Dict[Text, Dict[Text, Any]]:
 
 def _get_sub_key_id(sub_key):
   if sub_key.HasField('class_id'):
-    return 'classId:' + str(sub_key.class_id)
+    return 'classId:' + str(sub_key.class_id.value)
   elif sub_key.HasField('top_k'):
-    return 'topK:' + str(sub_key.top_k)
+    return 'topK:' + str(sub_key.top_k.value)
   elif sub_key.HasField('k'):
-    return 'k:' + str(sub_key.k)
+    return 'k:' + str(sub_key.k.value)
 
 
 def load_and_deserialize_metrics(
@@ -231,7 +232,7 @@ def _convert_to_array_value(
 
 
 def convert_slice_metrics(
-    slice_key: slicer.SliceKeyType, slice_metrics: Dict[Text, Any],
+    slice_key: slicer.SliceKeyType, slice_metrics: Dict[Any, Any],
     post_export_metrics: List[types.AddMetricsCallbackType],
     metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice) -> None:
   """Converts slice_metrics into the given metrics_for_slice proto."""
@@ -242,41 +243,50 @@ def convert_slice_metrics(
 
   # Convert the metrics from post_export_metrics to the structured output if
   # defined.
-  for post_export_metric in post_export_metrics:
-    if hasattr(post_export_metric, 'populate_stats_and_pop'):
-      post_export_metric.populate_stats_and_pop(slice_key, slice_metrics_copy,
-                                                metrics_for_slice.metrics)
-  for name, value in slice_metrics_copy.items():
-    if isinstance(value, types.ValueWithTDistribution):
+  if post_export_metrics:
+    for post_export_metric in post_export_metrics:
+      if hasattr(post_export_metric, 'populate_stats_and_pop'):
+        post_export_metric.populate_stats_and_pop(slice_key, slice_metrics_copy,
+                                                  metrics_for_slice.metrics)
+  for key in sorted(slice_metrics_copy.keys()):
+    value = slice_metrics_copy[key]
+    metric_value = metrics_for_slice_pb2.MetricValue()
+    if isinstance(value, metrics_for_slice_pb2.ConfusionMatrixAtThresholds):
+      metric_value.confusion_matrix_at_thresholds.CopyFrom(value)
+    elif isinstance(value, types.ValueWithTDistribution):
       # Convert to a bounded value. 95% confidence level is computed here.
       # Will populate t distribution value instead after migration.
-      sample_mean, lower_bound, upper_bound = math_util.calculate_confidence_interval(
-          value)
-      metrics_for_slice.metrics[name].bounded_value.value.value = sample_mean
-      metrics_for_slice.metrics[
-          name].bounded_value.lower_bound.value = lower_bound
-      metrics_for_slice.metrics[
-          name].bounded_value.upper_bound.value = upper_bound
-      metrics_for_slice.metrics[name].bounded_value.methodology = (
+      sample_mean, lower_bound, upper_bound = (
+          math_util.calculate_confidence_interval(value))
+      metric_value.bounded_value.value.value = sample_mean
+      metric_value.bounded_value.lower_bound.value = lower_bound
+      metric_value.bounded_value.upper_bound.value = upper_bound
+      metric_value.bounded_value.methodology = (
           metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
     elif isinstance(value, (six.binary_type, six.text_type)):
       # Convert textual types to string metrics.
-      metrics_for_slice.metrics[name].bytes_value = value
+      metric_value.bytes_value = value
     elif isinstance(value, np.ndarray):
       # Convert NumPy arrays to ArrayValue.
-      metrics_for_slice.metrics[name].array_value.CopyFrom(
-          _convert_to_array_value(value))
+      metric_value.array_value.CopyFrom(_convert_to_array_value(value))
     else:
       # We try to convert to float values.
       try:
-        metrics_for_slice.metrics[name].double_value.value = float(value)
+        metric_value.double_value.value = float(value)
       except (TypeError, ValueError) as e:
-        metrics_for_slice.metrics[name].unknown_type.value = str(value)
-        metrics_for_slice.metrics[name].unknown_type.error = e.message  # pytype: disable=attribute-error
+        metric_value.unknown_type.value = str(value)
+        metric_value.unknown_type.error = e.message  # pytype: disable=attribute-error
+
+    if isinstance(key, metric_types.MetricKey):
+      key_and_value = metrics_for_slice.metric_keys_and_values.add()
+      key_and_value.key.CopyFrom(key.to_proto())
+      key_and_value.value.CopyFrom(metric_value)
+    else:
+      metrics_for_slice.metrics[key].CopyFrom(metric_value)
 
 
 def _serialize_metrics(
-    metrics: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
+    metrics: Tuple[slicer.SliceKeyType, Dict[Any, Any]],
     post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
   """Converts the given slice metrics into serialized proto MetricsForSlice.
 
@@ -314,18 +324,46 @@ def _serialize_metrics(
 
 
 def _convert_slice_plots(
-    slice_plots: Dict[Text, Any],
+    slice_plots: Dict[Any, Any],
     post_export_metrics: List[types.AddMetricsCallbackType],
-    plot_data: Dict[Text, metrics_for_slice_pb2.PlotData]):
+    plots_for_slice: metrics_for_slice_pb2.PlotsForSlice):
   """Converts slice_plots into the given plot_data proto."""
   slice_plots_copy = slice_plots.copy()
   # Prevent further references to this, so we don't accidentally mutate it.
   del slice_plots
 
-  for post_export_metric in post_export_metrics:
-    if hasattr(post_export_metric, 'populate_plots_and_pop'):
-      post_export_metric.populate_plots_and_pop(slice_plots_copy, plot_data)
+  if post_export_metrics:
+    for post_export_metric in post_export_metrics:
+      if hasattr(post_export_metric, 'populate_plots_and_pop'):
+        post_export_metric.populate_plots_and_pop(slice_plots_copy,
+                                                  plots_for_slice.plots)
+  plots_by_key = {}
+  for key in sorted(slice_plots_copy.keys()):
+    value = slice_plots_copy[key]
+    # Remove plot name from key (multiple plots are combined into a single
+    # proto).
+    if isinstance(key, metric_types.MetricKey):
+      parent_key = key._replace(name=None)
+    else:
+      continue
+    if parent_key not in plots_by_key:
+      key_and_value = plots_for_slice.plot_keys_and_values.add()
+      key_and_value.key.CopyFrom(parent_key.to_proto())
+      plots_by_key[parent_key] = key_and_value.value
+
+    if isinstance(value, metrics_for_slice_pb2.CalibrationHistogramBuckets):
+      plots_by_key[parent_key].calibration_histogram_buckets.CopyFrom(value)
+      slice_plots_copy.pop(key)
+    elif isinstance(value, metrics_for_slice_pb2.ConfusionMatrixAtThresholds):
+      plots_by_key[parent_key].confusion_matrix_at_thresholds.CopyFrom(value)
+      slice_plots_copy.pop(key)
+    elif isinstance(value, metrics_for_slice_pb2.MultiClassConfusionMatrix):
+      plots_by_key[parent_key].multi_class_confusion_matrix.CopyFrom(value)
+      slice_plots_copy.pop(key)
+
   if slice_plots_copy:
+    if post_export_metrics is None:
+      post_export_metrics = []
     raise NotImplementedError(
         'some plots were not converted or popped. keys: %s. post_export_metrics'
         'were: %s' % (
@@ -336,7 +374,7 @@ def _convert_slice_plots(
 
 
 def _serialize_plots(
-    plots: Tuple[slicer.SliceKeyType, Dict[Text, Any]],
+    plots: Tuple[slicer.SliceKeyType, Dict[Any, Any]],
     post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
   """Converts the given slice plots into serialized proto PlotsForSlice..
 
@@ -365,7 +403,7 @@ def _serialize_plots(
   result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   # Convert the slice plots.
-  _convert_slice_plots(slice_plots, post_export_metrics, result.plots)  # pytype: disable=wrong-arg-types
+  _convert_slice_plots(slice_plots, post_export_metrics, result)  # pytype: disable=wrong-arg-types
 
   return result.SerializeToString()
 
