@@ -71,7 +71,9 @@ export const SelectEventMixin = (baseClass) => class extends baseClass {
         const selectedRow = eventSource['selection'][0]['row'];
         const tableData = eventSource['data']['getDataTable']();
         selectedSlice = tableData[selectedRow][0];
-      } else if (eventSource.tagName == 'TFMA-SLICE-OVERVIEW') {
+      } else if (
+          eventSource.tagName == 'TFMA-SLICE-OVERVIEW' ||
+          eventSource.tagName == 'FAIRNESS-BOUNDED-VALUE-BAR-CHART') {
         selectedSlice = selectEvent['detail'];
       }
 
