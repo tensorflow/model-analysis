@@ -10,6 +10,8 @@
 *  `tfma.run_model_analysis`, `tfma.default_extractors`,
    `tfma.default_evaluators`, and `tfma.default_writers` now allow multiple
     models to be passed (note: multi-model support not fully implemented yet).
+*   Added InputExtractor for extracting labels, features, and example weights
+    from tf.Examples.
 
 ## Bug fixes and other changes
 
