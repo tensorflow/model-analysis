@@ -75,9 +75,13 @@ def model_construct_fn(  # pylint: disable=invalid-name
           eval_saved_model.register_add_metric_callbacks(add_metrics_callbacks)
         eval_saved_model.graph_finalize()
       else:
+        # TODO(b/141524386, b/141566408): TPU Inference is not supported
+        # for Keras saved_model yet.
         try:
           keras_model = tf.keras.models.load_model(eval_saved_model_path)
         except Exception:  # pylint: disable=broad-except
+          if tf.saved_model.TPU in tags:
+            tf.tpu.experimental.initialize_tpu_system()
           saved_model = tf.compat.v1.saved_model.load_v2(
               eval_saved_model_path, tags=tags)
       end_time = datetime.datetime.now()
