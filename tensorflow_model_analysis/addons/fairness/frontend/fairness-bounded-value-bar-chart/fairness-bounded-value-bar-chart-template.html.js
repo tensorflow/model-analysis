@@ -13,10 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import '@polymer/polymer/lib/elements/dom-if.js';
-import '@polymer/polymer/lib/elements/dom-repeat.js';
-
-import '../tfma-nb-plot/tfma-nb-plot.js';
-import '../tfma-nb-slicing-metrics/tfma-nb-slicing-metrics.js';
-import '../tfma-nb-time-series/tfma-nb-time-series.js';
-import '../../addons/fairness/frontend/fairness-nb-container/fairness-nb-container.js';
+const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
+template.innerHTML = `
+<style>
+  #bar-chart {
+    height: 360px;
+    width: 100%;
+  }
+</style>
+<svg id="bar-chart"></svg>
+`;
+export {template};

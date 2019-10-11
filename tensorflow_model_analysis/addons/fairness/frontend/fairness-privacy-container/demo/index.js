@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Google LLC
+ * Copyright 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import '@polymer/polymer/lib/elements/dom-if.js';
-import '@polymer/polymer/lib/elements/dom-repeat.js';
-
-import '../tfma-nb-plot/tfma-nb-plot.js';
-import '../tfma-nb-slicing-metrics/tfma-nb-slicing-metrics.js';
-import '../tfma-nb-time-series/tfma-nb-time-series.js';
-import '../../addons/fairness/frontend/fairness-nb-container/fairness-nb-container.js';
+(() => {
+  const element =
+      document.getElementsByTagName('fairness-privacy-container')[0];
+  element.omittedSlices = ['Slice:1', 'Slice:2'];
+})();

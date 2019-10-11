@@ -4,14 +4,15 @@
 
 *   Added V2 of PredictExtractor that uses TF 2.0 signature APIs and supports
     keras models (note: keras model evaluation not fully supported yet).
-*  `tfma.run_model_analysis`, `tfma.default_extractors`,
-   `tfma.default_evaluators`, and `tfma.default_writers` now allow settings to
+*   `tfma.run_model_analysis`, `tfma.default_extractors`,
+    `tfma.default_evaluators`, and `tfma.default_writers` now allow settings to
     be passed as an `EvalConfig`.
-*  `tfma.run_model_analysis`, `tfma.default_extractors`,
-   `tfma.default_evaluators`, and `tfma.default_writers` now allow multiple
+*   `tfma.run_model_analysis`, `tfma.default_extractors`,
+    `tfma.default_evaluators`, and `tfma.default_writers` now allow multiple
     models to be passed (note: multi-model support not fully implemented yet).
 *   Added InputExtractor for extracting labels, features, and example weights
     from tf.Examples.
+*   Added Fairness Indicator as an addon.
 
 ## Bug fixes and other changes
 
