@@ -47,8 +47,7 @@ designed to be extensible for other Apache Beam runners.
 
 ## Getting Started
 
-For instructions on using TFMA, see the [get started guide](./get_started)
-and try out the extensive [end-to-end example](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi).
+For instructions on using TFMA, see the [get started guide](./get_started).
 
 ## Compatible Versions
 

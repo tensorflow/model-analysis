@@ -129,11 +129,15 @@ with beam.Pipeline(runner=...) as p:
 result = tfma.load_eval_result(output_path='/path/to/out')
 tfma.view.render_slicing_metrics(result)
 ```
+
 ## End-to-end example
+
 Try the extensive
-[end-to-end example](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi)
-featuring [TensorFlow Transform](https://github.com/tensorflow/transform) for feature
-preprocessing,
+[end-to-end example](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi_pipeline)
+featuring [TensorFlow Transform](https://github.com/tensorflow/transform) for
+feature preprocessing,
 [TensorFlow Estimators](https://www.tensorflow.org/guide/estimators) for
-training, [TensorFlow Model Analysis](https://github.com/tensorflow/model-analysis) and Jupyter for
-evaluation, and [TensorFlow Serving](https://github.com/tensorflow/serving) for serving.
+training,
+[TensorFlow Model Analysis](https://github.com/tensorflow/model-analysis) and
+Jupyter for evaluation, and
+[TensorFlow Serving](https://github.com/tensorflow/serving) for serving.
