@@ -255,6 +255,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
+    options = config.Options()
+    options.k_anonymization_count.value = 2
     eval_config = config.EvalConfig(
         input_data_specs=[config.InputDataSpec(location=data_location)],
         model_specs=[config.ModelSpec(location=model_location)],
@@ -262,7 +264,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             config.OutputDataSpec(default_location=self._getTempDir())
         ],
         slicing_specs=slicing_specs,
-        k_anonymization_count=2)
+        options=options)
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
         eval_shared_models=[
@@ -400,6 +402,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
+    options = config.Options()
+    options.compute_confidence_intervals.value = True
+    options.k_anonymization_count.value = 2
     eval_config = config.EvalConfig(
         input_data_specs=[config.InputDataSpec(location=data_location)],
         model_specs=[config.ModelSpec(location=model_location)],
@@ -407,8 +412,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             config.OutputDataSpec(default_location=self._getTempDir())
         ],
         slicing_specs=slicing_specs,
-        compute_confidence_intervals=True,
-        k_anonymization_count=2)
+        options=options)
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
         eval_shared_models=[
@@ -693,6 +697,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     with tf.io.TFRecordWriter(os.path.join(output_path, 'eval_config')) as w:
       w.write(pickle.dumps(final_dict))
     got_eval_config = model_eval_lib.load_eval_config(output_path)
+    options = config.Options()
+    options.compute_confidence_intervals.value = (
+        old_config.compute_confidence_intervals)
+    options.k_anonymization_count.value = old_config.k_anonymization_count
     eval_config = config.EvalConfig(
         input_data_specs=[
             config.InputDataSpec(location=old_config.data_location)
@@ -713,12 +721,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                     'gender': 'm'
                 })
         ],
-        compute_confidence_intervals=old_config.compute_confidence_intervals,
-        k_anonymization_count=old_config.k_anonymization_count)
+        options=options)
     self.assertEqual(eval_config, got_eval_config)
 
   def testSerializeDeserializeEvalConfig(self):
     output_path = self._getTempDir()
+    options = config.Options()
+    options.compute_confidence_intervals.value = False
+    options.k_anonymization_count.value = 1
     eval_config = config.EvalConfig(
         input_data_specs=[config.InputDataSpec(location='/path/to/data')],
         model_specs=[config.ModelSpec(location='/path/to/model')],
@@ -737,8 +747,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                     'gender': 'm'
                 })
         ],
-        compute_confidence_intervals=False,
-        k_anonymization_count=1)
+        options=options)
     with open(os.path.join(output_path, 'eval_config.json'), 'w') as f:
       f.write(model_eval_lib._serialize_eval_config(eval_config))
     got_eval_config = model_eval_lib.load_eval_config(output_path)

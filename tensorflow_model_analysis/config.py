@@ -28,6 +28,7 @@ OutputDataSpec = config_pb2.OutputDataSpec
 BinarizationOptions = config_pb2.BinarizationOptions
 MetricConfig = config_pb2.MetricConfig
 MetricsSpec = config_pb2.MetricsSpec
+Options = config_pb2.Options
 EvalConfig = config_pb2.EvalConfig
 
 

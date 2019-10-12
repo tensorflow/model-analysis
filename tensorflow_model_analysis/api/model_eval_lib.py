@@ -98,6 +98,10 @@ def load_eval_config(output_path: Text) -> config.EvalConfig:
     slicing_specs = None
     if old_config.slice_spec:
       slicing_specs = [s.to_proto() for s in old_config.slice_spec]
+    options = config.Options()
+    options.compute_confidence_intervals.value = (
+        old_config.compute_confidence_intervals)
+    options.k_anonymization_count.value = old_config.k_anonymization_count
     return config.EvalConfig(
         input_data_specs=[
             config.InputDataSpec(location=old_config.data_location)
@@ -105,8 +109,7 @@ def load_eval_config(output_path: Text) -> config.EvalConfig:
         model_specs=[config.ModelSpec(location=old_config.model_location)],
         output_data_specs=[config.OutputDataSpec(default_location=output_path)],
         slicing_specs=slicing_specs,
-        compute_confidence_intervals=old_config.compute_confidence_intervals,
-        k_anonymization_count=old_config.k_anonymization_count)
+        options=options)
 
 
 # The field slicing_metrics is a nested dictionaries representing metrics for
@@ -320,7 +323,8 @@ def default_extractors(  # pylint: disable=invalid-name
     slice_spec = [
         slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
     ]
-    desired_batch_size = eval_config.desired_batch_size
+    if eval_config.options.HasField('desired_batch_size'):
+      desired_batch_size = eval_config.options.desired_batch_size.value
   if eval_shared_model is not None:
     eval_shared_models = [eval_shared_model]
   if (not eval_shared_models[0].model_loader.tags or
@@ -359,9 +363,13 @@ def default_evaluators(  # pylint: disable=invalid-name
   if not eval_config or not eval_config.metrics_specs:
     # Backwards compatibility for previous EvalSavedModel implementation.
     if eval_config is not None:
-      desired_batch_size = eval_config.desired_batch_size
-      compute_confidence_intervals = eval_config.compute_confidence_intervals
-      k_anonymization_count = eval_config.k_anonymization_count
+      if eval_config.options.HasField('desired_batch_size'):
+        desired_batch_size = eval_config.options.desired_batch_size.value
+      if eval_config.options.HasField('compute_confidence_intervals'):
+        compute_confidence_intervals = (
+            eval_config.options.compute_confidence_intervals.value)
+      if eval_config.options.HasField('k_anonymization_count'):
+        k_anonymization_count = eval_config.options.k_anonymization_count.value
     return [
         metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
             eval_shared_models[0],
@@ -654,6 +662,11 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     slicing_specs = None
     if slice_spec:
       slicing_specs = [s.to_proto() for s in slice_spec]
+    options = config.Options()
+    options.compute_confidence_intervals.value = compute_confidence_intervals
+    options.k_anonymization_count.value = k_anonymization_count
+    if desired_batch_size:
+      options.desired_batch_size.value = desired_batch_size
     eval_config = config.EvalConfig(
         input_data_specs=[config.InputDataSpec(location=data_location)],
         model_specs=model_specs,
@@ -662,9 +675,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
                 default_location=output_path, disabled_outputs=disabled_outputs)
         ],
         slicing_specs=slicing_specs,
-        compute_confidence_intervals=compute_confidence_intervals,
-        k_anonymization_count=k_anonymization_count,
-        desired_batch_size=desired_batch_size)
+        options=options)
 
   if not extractors:
     extractors = default_extractors(
@@ -783,6 +794,11 @@ def run_model_analysis(
     slicing_specs = None
     if slice_spec:
       slicing_specs = [s.to_proto() for s in slice_spec]
+    options = config.Options()
+    options.compute_confidence_intervals.value = compute_confidence_intervals
+    options.k_anonymization_count.value = k_anonymization_count
+    if desired_batch_size:
+      options.desired_batch_size.value = desired_batch_size
     eval_config = config.EvalConfig(
         input_data_specs=[
             config.InputDataSpec(
@@ -794,9 +810,7 @@ def run_model_analysis(
                 default_location=output_path, disabled_outputs=disabled_outputs)
         ],
         slicing_specs=slicing_specs,
-        compute_confidence_intervals=compute_confidence_intervals,
-        k_anonymization_count=k_anonymization_count,
-        desired_batch_size=desired_batch_size)
+        options=options)
 
   if len(eval_config.input_data_specs) != 1:
     raise NotImplementedError(

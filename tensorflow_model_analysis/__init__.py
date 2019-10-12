@@ -46,6 +46,7 @@ from tensorflow_model_analysis.config import EvalConfig
 from tensorflow_model_analysis.config import MetricConfig
 from tensorflow_model_analysis.config import MetricsSpec
 from tensorflow_model_analysis.config import ModelSpec
+from tensorflow_model_analysis.config import Options
 from tensorflow_model_analysis.config import OutputDataSpec
 from tensorflow_model_analysis.config import SlicingSpec
 from tensorflow_model_analysis.config import verify_eval_config

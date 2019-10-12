@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package tensorflow_model_analysis;
 
+import "google/protobuf/wrappers.proto";
+
 // Input data specification.
 message InputDataSpec {
   // Location of the data.
@@ -152,6 +154,23 @@ message MetricsSpec {
   string query_key = 5;
 }
 
+// Additional configuration options.
+message Options {
+  // True to include metrics saved with the model(s) (where possible) when
+  // calculating metrics. Any metrics defined in metrics_specs will override the
+  // metrics defined in the model if there are overlapping names.
+  google.protobuf.BoolValue include_default_metrics = 1;
+  // True to calculate confidence intervals.
+  google.protobuf.BoolValue compute_confidence_intervals = 2;
+  // Privacy k-anonymization count to omit slices with example count < k.
+  google.protobuf.Int32Value k_anonymization_count = 3;
+  // Optional batch size for batching during predict and metrics evaluation.
+  google.protobuf.Int32Value desired_batch_size = 4;
+  // Optional directory for storing temporary files. If not set, then a
+  // temporary directory will be created automatically when needed.
+  string tmp_dir = 5;
+}
+
 // Tensorflow model analaysis config settings.
 message EvalConfig {
   // Input data specifications for input data used.
@@ -182,21 +201,10 @@ message EvalConfig {
   repeated SlicingSpec slicing_specs = 4;
   // Metrics specifications.
   repeated MetricsSpec metrics_specs = 5;
-  // True to include metrics saved with the model(s) (where possible) when
-  // calculating metrics. Any metrics defined in metrics_specs will override the
-  // metrics defined in the model if there are overlapping names.
-  bool include_default_metrics = 6;
-  // True to calculate confidence intervals.
-  bool compute_confidence_intervals = 7;
-  // Privacy k-anonymization count to omit slices with example count < k.
-  int32 k_anonymization_count = 8;
-  // Optional batch size for batching during predict and metrics evaluation.
-  int32 desired_batch_size = 9;
-  // Optional directory for storing temporary files. If not set, then a
-  // temporary directory will be created automatically when needed.
-  string tmp_dir = 10;
+  // Additional configuration options.
+  Options options = 6;
   // Custom configuration settings.
-  map<string, string> custom_config = 11;
+  map<string, string> custom_config = 7;
 }
 
 // Config and version.
