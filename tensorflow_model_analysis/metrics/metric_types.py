@@ -18,10 +18,14 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import copy
+import inspect
 import apache_beam as beam
+from tensorflow_model_analysis import config
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-from typing import Any, Callable, Dict, List, Optional, Text, NamedTuple, Union
+from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Text, Type, Union
 
 # LINT.IfChange
 
@@ -135,19 +139,24 @@ class MetricComputation(
                                      ('combiner', beam.CombineFn)])):
   """MetricComputation represents one or more metric computations.
 
-  The preprocessor is called with a PCollection of extracts to compute the
-  initial combiner input state which is then passed to the combiner. This needs
-  to be done in two steps because slicing happens between the call to the
-  preprocessor and the combiner and this state may end up in multiple slices so
-  we want the representation to be as efficient as possible. If the preprocessor
-  is None, then StandardMetricInputs will be passed.
+  The preprocessor is called with a PCollection of extracts (or list of extracts
+  if query_key is used) to compute the initial combiner input state which is
+  then passed to the combiner. This needs to be done in two steps because
+  slicing happens between the call to the preprocessor and the combiner and this
+  state may end up in multiple slices so we want the representation to be as
+  efficient as possible. If the preprocessor is None, then StandardMetricInputs
+  will be passed.
 
   Attributes:
     keys: List of metric keys associated with computation.
-    preprocessor: Takes a extracts as input (which typically will contain
-      labels, predictions, example weights, and optionally features) and should
-      return the initial state that the combiner will use as input. The output
-      of a processor should only contain information needed by the combiner.
+    preprocessor: Takes a extracts (or a list of extracts) as input (which
+      typically will contain labels, predictions, example weights, and
+      optionally features) and should return the initial state that the combiner
+      will use as input. The output of a processor should only contain
+      information needed by the combiner. Note that if a query_key is used the
+      preprocessor will be passed a list of extracts as input representing the
+      extracts that matched the query_key.  The special FeaturePreprocessor can
+      be used to add additional features to the default standard metric inputs.
     combiner: Takes preprocessor output as input and outputs a tuple: (slice,
       metric results). The metric results should be a dict from MetricKey to
       value (float, int, distribution, ...).
@@ -192,8 +201,8 @@ class Metric(object):
 
   Calling computations creates the metric computations. The parameters passed to
   __init__ will be combined with the parameters passed to the computations
-  method. This allows some of the parameters (e.g. model_name, output_name,
-  sub_key) to be set at the time the computations are created instead of when
+  method. This allows some of the parameters (e.g. model_names, output_names,
+  sub_keys) to be set at the time the computations are created instead of when
   the metric is defined.
   """
 
@@ -204,23 +213,55 @@ class Metric(object):
     Args:
       create_computations_fn: Function to create the metrics computations (e.g.
         mean_label, etc). This function should take the args passed to __init__
-        as as input along with model_name, output_name, and sub_key (even if not
-        applicable).
+        as as input along with any of eval_config, model_names, output_names,
+        sub_keys, or query_key (where needed).
       **kwargs: Any additional kwargs to pass to create_computations_fn. These
         should only contain primitive types or lists/dicts of primitive types.
+        The kwargs passed to computations have precendence over these kwargs.
     """
     self.create_computations_fn = create_computations_fn
     self.kwargs = kwargs
 
+  def get_config(self) -> Dict[Text, Any]:
+    """Returns serializable config."""
+    return self.kwargs
+
   def computations(self,
-                   model_name: Optional[Text] = None,
-                   output_name: Optional[Text] = None,
-                   sub_key: Optional[SubKey] = None):
-    return self.create_computations_fn(
-        model_name=model_name,
-        output_name=output_name,
-        sub_key=sub_key,
-        **self.kwargs)
+                   eval_config: Optional[config.EvalConfig] = None,
+                   model_names: Optional[List[Text]] = None,
+                   output_names: Optional[List[Text]] = None,
+                   sub_keys: Optional[List[SubKey]] = None,
+                   query_key: Optional[Text] = None) -> MetricComputations:
+    """Creates computations associated with metric."""
+    if hasattr(inspect, 'getfullargspec'):
+      args = inspect.getfullargspec(self.create_computations_fn).args
+    else:
+      args = inspect.getargspec(self.create_computations_fn).args
+    kwargs = self.kwargs.copy()
+    if 'eval_config' in args:
+      kwargs['eval_config'] = eval_config
+    if 'model_names' in args:
+      kwargs['model_names'] = model_names
+    if 'output_names' in args:
+      kwargs['output_names'] = output_names
+    if 'sub_keys' in args:
+      kwargs['sub_keys'] = sub_keys
+    if 'query_key' in args:
+      kwargs['query_key'] = query_key
+    return self.create_computations_fn(**kwargs)
+
+
+_METRIC_OBJECTS = {}
+
+
+def register_metric(cls: Type[Metric]):
+  """Registers metric under the list of standard TFMA metrics."""
+  _METRIC_OBJECTS[cls.__name__] = cls
+
+
+def registered_metrics() -> Dict[Text, Type[Metric]]:
+  """Returns standard TFMA metrics."""
+  return copy.copy(_METRIC_OBJECTS)
 
 
 class StandardMetricInputs(
@@ -228,7 +269,8 @@ class StandardMetricInputs(
                [('label', types.TensorValueMaybeDict),
                 ('prediction', Union[types.TensorValueMaybeDict,
                                      Dict[Text, types.TensorValueMaybeDict]]),
-                ('example_weight', types.TensorValueMaybeDict)])):
+                ('example_weight', types.TensorValueMaybeDict),
+                ('features', Dict[Text, types.TensorValueMaybeDict])])):
   """Standard inputs used by most metric computations.
 
   All values are copies of the respective values that were stored in the
@@ -239,11 +281,36 @@ class StandardMetricInputs(
     label: Copy of LABELS_KEY extract.
     prediction: Copy of PREDICTIONS_KEY extract.
     example_weight: Copy of EXAMPLE_WEIGHT_KEY extract.
+    features: Optional additional extracts.
   """
 
-  def __new__(cls, label: types.TensorValueMaybeDict,
+  def __new__(cls,
+              label: types.TensorValueMaybeDict,
               prediction: Union[types.TensorValueMaybeDict,
                                 Dict[Text, types.TensorValueMaybeDict]],
-              example_weight: types.TensorValueMaybeDict):
+              example_weight: types.TensorValueMaybeDict,
+              features: Optional[Dict[Text,
+                                      types.TensorValueMaybeDict]] = None):
     return super(StandardMetricInputs, cls).__new__(cls, label, prediction,
-                                                    example_weight)
+                                                    example_weight, features)
+
+
+class FeaturePreprocessor(beam.DoFn):
+  """Preprocessor for copying features to the standard metric inputs.
+
+  By default StandardMetricInputs only includes labels, predictions, and example
+  weights. To add additional input features this FeaturePreprocessor must be
+  used.
+  """
+
+  def __init__(self, feature_keys: List[Text]):
+    self.feature_keys = feature_keys
+
+  def process(self, extracts: types.Extracts) -> Iterable[types.Extracts]:
+    if constants.FEATURES_KEY in extracts:
+      features = extracts[constants.FEATURES_KEY]
+      out = {}
+      for k in self.feature_keys:
+        if k in features:
+          out[k] = features[k]
+      yield out
