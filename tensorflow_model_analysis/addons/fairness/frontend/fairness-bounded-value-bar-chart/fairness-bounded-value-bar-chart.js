@@ -53,7 +53,7 @@ function buildTooltips() {
   return d3.tip()
       .style('font-size', '10px')
       .style('padding', '2px')
-      .style('background-color', '#CFCFCF')
+      .style('background-color', '#616161')
       .style('color', '#fff')
       .style('border-radius', '2px')
       .html(d => {
