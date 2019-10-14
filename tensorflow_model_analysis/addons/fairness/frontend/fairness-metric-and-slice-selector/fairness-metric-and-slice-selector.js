@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
-import {template} from './fairness-metrics-list-template.html.js';
+import {template} from './fairness-metric-and-slice-selector-template.html.js';
 
 import '@polymer/paper-checkbox/paper-checkbox.js';
 import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
 
 
-export class FairnessMetricsList extends PolymerElement {
+export class FairnessMetricAndSliceSelector extends PolymerElement {
   constructor() {
     super();
   }
 
   static get is() {
-    return 'fairness-metrics-list';
+    return 'fairness-metric-and-slice-selector';
   }
 
   /** @return {!HTMLTemplateElement} */
@@ -103,4 +103,5 @@ export class FairnessMetricsList extends PolymerElement {
   }
 }
 
-customElements.define('fairness-metrics-list', FairnessMetricsList);
+customElements.define(
+    'fairness-metric-and-slice-selector', FairnessMetricAndSliceSelector);

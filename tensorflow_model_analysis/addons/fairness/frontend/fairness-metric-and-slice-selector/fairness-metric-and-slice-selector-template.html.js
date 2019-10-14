@@ -16,11 +16,11 @@
 const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
 template.innerHTML = `
 <style>
-  #metrics-list-title {
+  #metric-and-slice-selector-title {
     padding: 16px 16px 0 16px;
   }
 </style>
-<div id="metrics-list-title">
+<div id="metric-and-slice-selector-title">
   Select metrics to display:
 </div>
 <paper-listbox multi attr-for-selected="item-name" selected-values="{{selectedMetrics}}" >

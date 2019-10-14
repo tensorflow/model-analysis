@@ -62,8 +62,8 @@ suite('fairness-nb-container tests', () => {
       setTimeout(checkValue, 0);
     };
     const checkValue = () => {
-      let metricsList =
-          fairnessContainer.shadowRoot.querySelector('fairness-metrics-list');
+      let metricsList = fairnessContainer.shadowRoot.querySelector(
+          'fairness-metric-and-slice-selector');
       assert.deepEqual(metricsList.availableMetrics, [
         'post_export_metrics/false_positive_rate',
         'post_export_metrics/positive_rate',

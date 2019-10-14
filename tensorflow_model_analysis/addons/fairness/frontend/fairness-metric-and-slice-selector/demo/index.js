@@ -15,7 +15,8 @@
  */
 
 (() => {
-  const element = document.getElementsByTagName('fairness-metrics-list')[0];
+  const element =
+      document.getElementsByTagName('fairness-metric-and-slice-selector')[0];
   element.availableMetrics =
       ['post_export_metrics/false_negative_rate',
        'post_export_metrics/false_positive_rate',

@@ -23,7 +23,7 @@ import {SelectEventMixin} from '../../../../frontend/tfma-nb-event-mixin/tfma-nb
 import '@polymer/paper-card/paper-card.js';
 import '@polymer/iron-flex-layout/iron-flex-layout.js';
 import '../fairness-metrics-board/fairness-metrics-board.js';
-import '../fairness-metrics-list/fairness-metrics-list.js';
+import '../fairness-metric-and-slice-selector/fairness-metric-and-slice-selector.js';
 
 
 /**

@@ -31,9 +31,9 @@ template.innerHTML = `
 
 <div class="container flex-horizontal">
   <paper-card>
-    <fairness-metrics-list available-metrics="[[selectableMetrics_]]"
+    <fairness-metric-and-slice-selector available-metrics="[[selectableMetrics_]]"
                                  selected-metrics='{{selectedMetrics_}}'>
-    </fairness-metrics-list>
+    </fairness-metric-and-slice-selector>
   </paper-card>
   <paper-card id="metrics">
     <fairness-metrics-board data="[[slicingMetrics]]" weight-column="[[weightColumn]]"
