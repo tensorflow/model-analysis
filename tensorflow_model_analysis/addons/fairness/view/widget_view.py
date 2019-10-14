@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.notebook import visualization
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.slicer import slicer
-from typing import Optional, Text, Dict, Callable, Any
+from typing import Optional, Text, Dict, Callable, Any, List
 
 
 def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> Text:
@@ -71,14 +71,12 @@ def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> Text:
   return '_X_'.join(values)
 
 
-def render_fairness_indicator(
+def convert_eval_result_to_ui_input(
     eval_result: model_eval_lib.EvalResult,
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     output_name: Text = '',
-    multi_class_key: Text = '',
-    event_handlers: Optional[Dict[Text, Callable[..., Any]]] = None,
-) -> Optional[visualization.FairnessIndicatorViewer]:
+    multi_class_key: Text = '') -> Optional[List[Dict[Text, Any]]]:
   """Renders the Fairness Indicator view.
 
   Args:
@@ -91,7 +89,6 @@ def render_fairness_indicator(
       models).
     multi_class_key: The multi-class key associated with metric (for multi-class
       models).
-    event_handlers: The event handler callback.
 
   Returns:
     A FairnessIndicatorViewer object if in Jupyter notebook; None if in Colab.
@@ -127,4 +124,35 @@ def render_fairness_indicator(
         'No eval result found for output_name:"%s" and '
         'multi_class_key:"%s" and slicing_column:"%s" and slicing_spec:"%s".' %
         (output_name, multi_class_key, slicing_column, slicing_spec))
+  return data
+
+
+def render_fairness_indicator(
+    eval_result: model_eval_lib.EvalResult,
+    slicing_column: Optional[Text] = None,
+    slicing_spec: Optional[slicer.SingleSliceSpec] = None,
+    output_name: Text = '',
+    multi_class_key: Text = '',
+    event_handlers: Optional[Dict[Text, Callable[..., Any]]] = None,
+) -> Optional[Any]:
+  """Renders the Fairness Indicator view.
+
+  Args:
+    eval_result: An tfma.EvalResult.
+    slicing_column: The slicing column to to filter results. If both
+      slicing_column and slicing_spec are None, show all eval results.
+    slicing_spec: The slicing spec to filter results. If both slicing_column and
+      slicing_spec are None, show all eval results.
+    output_name: The output name associated with metric (for multi-output
+      models).
+    multi_class_key: The multi-class key associated with metric (for multi-class
+      models).
+    event_handlers: The event handler callback.
+
+  Returns:
+    A FairnessIndicatorViewer object if in Jupyter notebook; None if in Colab.
+  """
+  data = convert_eval_result_to_ui_input(eval_result, slicing_column,
+                                         slicing_spec, output_name,
+                                         multi_class_key)
   return visualization.render_fairness_indicator(data, event_handlers)
