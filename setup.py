@@ -256,7 +256,7 @@ setup_args = {
     # protobuf) with TF.
     'install_requires': [
         # Sort alphabetically
-        'apache-beam[gcp]>=2.14,<3',
+        'apache-beam[gcp]>=2.16,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
@@ -267,11 +267,11 @@ setup_args = {
         # Note: try version 1.10 if error "metaclass conflict: the
         # metaclass of a derived class must be a (non-strict) subclass of the
         # metaclasses of all its bases" occurred in future.
-        'six>=1.10,<2',
+        'six>=1.12,<2',
         # TODO(xinzha): Uncomment this once TF can automatically select between
         # CPU and GPU installation.
         # 'tensorflow>=1.14,<2',
-        'tfx-bsl>=0.15.0.dev0,<0.16'
+        'tfx-bsl>=0.15,<0.16'
     ],
     'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     'packages': find_packages(),

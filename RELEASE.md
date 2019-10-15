@@ -1,4 +1,4 @@
-# Current version (not yet released; still in development)
+# Current version 0.15.0
 
 ## Major Features and Improvements
 
@@ -25,6 +25,8 @@
     with latest master, `tfx-bsl` must also be latest master.
 *   Depends on `tfx-bsl>=0.15.0.dev0,<0.16`.
 *   Slicing now supports conversion between int/floats and strings.
+*   Depends on `apache-beam[gcp]>=2.16,<3`..
+*   Depends on `six==1.12`.
 
 ## Breaking changes
 
@@ -33,6 +35,7 @@
 *   Update config serialization to use JSON instead of pickling and reformat
     config to include input_data_specs, model_specs, output_data_specs, and
     metrics_specs.
+*   Requires pre-installed TensorFlow >=1.15,<2.
 
 ## Deprecations
 
