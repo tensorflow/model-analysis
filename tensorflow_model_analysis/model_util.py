@@ -79,7 +79,13 @@ def model_construct_fn(  # pylint: disable=invalid-name
         # for Keras saved_model yet.
         try:
           keras_model = tf.keras.models.load_model(eval_saved_model_path)
+          # In some cases, tf.keras.models.load_model can successfully load a
+          # saved_model but it won't actually be a keras model.
+          if not isinstance(keras_model, tf.keras.model.Model):
+            keras_model = None
         except Exception:  # pylint: disable=broad-except
+          keras_model = None
+        if keras_model is None:
           if tf.saved_model.TPU in tags:
             tf.tpu.experimental.initialize_tpu_system()
           saved_model = tf.compat.v1.saved_model.load_v2(
