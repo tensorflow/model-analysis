@@ -55,20 +55,20 @@ The following table is the TFMA package versions that are compatible with each
 other. This is determined by our testing framework, but other *untested*
 combinations may also work.
 
-|tensorflow-model-analysis                                                           |tensorflow    |apache-beam[gcp]|
-|------------------------------------------------------------------------------------|--------------|----------------|
-|[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md)|nightly (1.x) |2.16.0          |
-|[0.15.0](https://github.com/tensorflow/model-analysis/blob/v0.15.0/RELEASE.md)      |1.15          |2.16.0          |
-|[0.14.0](https://github.com/tensorflow/model-analysis/blob/v0.14.0/RELEASE.md)      |1.14          |2.14.0          |
-|[0.13.1](https://github.com/tensorflow/model-analysis/blob/v0.13.1/RELEASE.md)      |1.13          |2.11.0          |
-|[0.13.0](https://github.com/tensorflow/model-analysis/blob/v0.13.0/RELEASE.md)      |1.13          |2.11.0          |
-|0.12.1                                                                              |1.12          |2.10.0          |
-|0.12.0                                                                              |1.12          |2.10.0          |
-|[0.11.0](https://github.com/tensorflow/model-analysis/blob/v0.11.0/RELEASE.md)      |1.11          |2.8.0           |
-|[0.9.2](https://github.com/tensorflow/model-analysis/blob/v0.9.2/RELEASE.md)        |1.9           |2.6.0           |
-|[0.9.1](https://github.com/tensorflow/model-analysis/blob/v0.9.1/RELEASE.md)        |1.10          |2.6.0           |
-|[0.9.0](https://github.com/tensorflow/model-analysis/blob/v0.9.0/RELEASE.md)        |1.9           |2.5.0           |
-|[0.6.0](https://github.com/tensorflow/model-analysis/blob/v0.6.0/RELEASE.md)        |1.6           |2.4.0           |
+tensorflow-model-analysis                                                            | tensorflow        | apache-beam[gcp]
+------------------------------------------------------------------------------------ | ----------------- | ----------------
+[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | nightly (1.x/2.x) | 2.16.0
+[0.15.0](https://github.com/tensorflow/model-analysis/blob/v0.15.0/RELEASE.md)       | 1.15              | 2.16.0
+[0.14.0](https://github.com/tensorflow/model-analysis/blob/v0.14.0/RELEASE.md)       | 1.14              | 2.14.0
+[0.13.1](https://github.com/tensorflow/model-analysis/blob/v0.13.1/RELEASE.md)       | 1.13              | 2.11.0
+[0.13.0](https://github.com/tensorflow/model-analysis/blob/v0.13.0/RELEASE.md)       | 1.13              | 2.11.0
+0.12.1                                                                               | 1.12              | 2.10.0
+0.12.0                                                                               | 1.12              | 2.10.0
+[0.11.0](https://github.com/tensorflow/model-analysis/blob/v0.11.0/RELEASE.md)       | 1.11              | 2.8.0
+[0.9.2](https://github.com/tensorflow/model-analysis/blob/v0.9.2/RELEASE.md)         | 1.9               | 2.6.0
+[0.9.1](https://github.com/tensorflow/model-analysis/blob/v0.9.1/RELEASE.md)         | 1.10              | 2.6.0
+[0.9.0](https://github.com/tensorflow/model-analysis/blob/v0.9.0/RELEASE.md)         | 1.9               | 2.5.0
+[0.6.0](https://github.com/tensorflow/model-analysis/blob/v0.6.0/RELEASE.md)         | 1.6               | 2.4.0
 
 ## Questions
 

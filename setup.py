@@ -263,15 +263,11 @@ setup_args = {
         'protobuf>=3.7,<4',
         # TODO(b/126957988): Stop pinning scipy when possible.
         'scipy==1.1.0',
-        # For apitools.
-        # Note: try version 1.10 if error "metaclass conflict: the
-        # metaclass of a derived class must be a (non-strict) subclass of the
-        # metaclasses of all its bases" occurred in future.
         'six>=1.12,<2',
         # TODO(xinzha): Uncomment this once TF can automatically select between
         # CPU and GPU installation.
-        # 'tensorflow>=1.14,<2',
-        'tfx-bsl>=0.15,<0.16'
+        # 'tensorflow>=1.15,<3',
+        'tfx-bsl>=0.16.0dev,<0.17'
     ],
     'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     'packages': find_packages(),

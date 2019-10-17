@@ -61,6 +61,10 @@ def _assert_tensorflow_version():
         'Tensorflow version >= 1.15, < 3 is required. Found (%s). Please '
         'install the latest 1.x or 2.x version from '
         'https://github.com/tensorflow/tensorflow. ' % tf.version.VERSION)
+  if int(major) == 2:
+    tf.compat.v1.logging.warning(
+        'Tensorflow version (%s) found. Note that TFMA support for TF 2.0 '
+        'is currently in beta' % tf.version.VERSION)
 
 
 def _check_version(version: Text, path: Text):
