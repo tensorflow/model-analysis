@@ -43,9 +43,9 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testPredictExtractorWithRegressionModel(self):
     temp_export_dir = self._getExportDir()
-    _, export_dir = (
+    export_dir, _ = (
         fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
+        .simple_fixed_prediction_estimator_extra_fields(temp_export_dir, None))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(eval_shared_model)
@@ -97,8 +97,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testPredictExtractorWithBinaryClassificationModel(self):
     temp_export_dir = self._getExportDir()
-    _, export_dir = dnn_classifier.simple_dnn_classifier(
-        None, temp_export_dir, n_classes=2)
+    export_dir, _ = dnn_classifier.simple_dnn_classifier(
+        temp_export_dir, None, n_classes=2)
 
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
@@ -136,8 +136,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testPredictExtractorWithMultiClassModel(self):
     temp_export_dir = self._getExportDir()
-    _, export_dir = dnn_classifier.simple_dnn_classifier(
-        None, temp_export_dir, n_classes=3)
+    export_dir, _ = dnn_classifier.simple_dnn_classifier(
+        temp_export_dir, None, n_classes=3)
 
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
@@ -176,7 +176,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testPredictExtractorWithMultiOutputModel(self):
     temp_export_dir = self._getExportDir()
-    _, export_dir = multi_head.simple_multi_head(None, temp_export_dir)
+    export_dir, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
