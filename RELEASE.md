@@ -48,7 +48,7 @@
     / or class_id to tfma.view.render_plot.
 *   Replaced dependency on `tensorflow-transform` with `tfx-bsl`. If running
     with latest master, `tfx-bsl` must also be latest master.
-*   Depends on `tfx-bsl>=0.15.0.dev0,<0.16`.
+*   Depends on `tfx-bsl>=0.15,<0.16`.
 *   Slicing now supports conversion between int/floats and strings.
 *   Depends on `apache-beam[gcp]>=2.16,<3`.
 *   Depends on `six==1.12`.
