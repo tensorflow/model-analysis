@@ -4,6 +4,9 @@
 
 *   Added example count metrics (`tfma.metrics.ExampleCount` and
     `tfma.metrics.WeightedExampleCount`) for use with V2 metrics API.
+*   Added calibration metrics (`tfma.metrics.MeanLabel`,
+    `tfma.metrics.MeanPrediction`, and `tfma.metrics.Calibration`) for use with
+    V2 metrics API.
 *   Added `tfma.metrics.ConfusionMatrixAtThresholds` for use with V2 metrics
     API.
 *   Added multi_class / multi_label plots (

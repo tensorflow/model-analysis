@@ -13,6 +13,9 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis metrics."""
 
+from tensorflow_model_analysis.metrics.calibration import Calibration
+from tensorflow_model_analysis.metrics.calibration import MeanLabel
+from tensorflow_model_analysis.metrics.calibration import MeanPrediction
 from tensorflow_model_analysis.metrics.confusion_matrix_at_thresholds import ConfusionMatrixAtThresholds
 from tensorflow_model_analysis.metrics.example_count import ExampleCount
 from tensorflow_model_analysis.metrics.metric_types import MetricKey
