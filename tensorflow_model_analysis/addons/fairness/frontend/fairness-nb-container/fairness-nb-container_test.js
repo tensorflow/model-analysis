@@ -117,7 +117,7 @@ suite('fairness-nb-container tests', () => {
   test('testRunSelectorVisible', done => {
     const fillData = () => {
       fairnessContainer.slicingMetrics = sliceingMetrics;
-      fairnessContainer.availbleEvaluationRuns = ['1', '2', '3'];
+      fairnessContainer.availableEvaluationRuns = ['1', '2', '3'];
       setTimeout(checkRunSelectorIsInvisibale, 0);
     };
     const checkRunSelectorIsInvisibale = () => {

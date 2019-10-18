@@ -97,12 +97,11 @@ export class FairnessNbContainer extends SelectEventMixin
        */
       slicingMetrics: {type: Array, observer: 'slicingMetricsChanged_'},
 
-
       /**
-       * The list of run numbers that's availble to select.
+       * The list of run numbers that's available to select.
        * @type {!Array<string>}
        */
-      availbleEvaluationRuns: {type: Array, value: []},
+      availableEvaluationRuns: {type: Array, value: []},
 
       /**
        * The full names of metrics available. eg: auc, negative_rate@0.25 or
@@ -134,9 +133,8 @@ export class FairnessNbContainer extends SelectEventMixin
       /** @type {string} */
       weightColumn: {type: String, value: 'totalWeightedExamples'},
 
-
       /** @type {string} */
-      selectedEvaluationRun: {type: String},
+      selectedEvaluationRun: {type: String, notify: true},
     };
   }
 

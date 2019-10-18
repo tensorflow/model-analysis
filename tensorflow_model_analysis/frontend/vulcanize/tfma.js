@@ -20,3 +20,4 @@ import '../tfma-nb-plot/tfma-nb-plot.js';
 import '../tfma-nb-slicing-metrics/tfma-nb-slicing-metrics.js';
 import '../tfma-nb-time-series/tfma-nb-time-series.js';
 import '../../addons/fairness/frontend/fairness-nb-container/fairness-nb-container.js';
+import '../../addons/fairness/frontend/fairness-tensorboard-container/fairness-tensorboard-container.js';
