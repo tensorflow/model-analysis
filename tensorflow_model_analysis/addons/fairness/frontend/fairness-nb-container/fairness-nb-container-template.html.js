@@ -18,23 +18,49 @@ template.innerHTML = `
 <style>
   paper-card {
     margin: 10px;
-    display:block;
     padding: 10px;
   }
   #metrics {
     width: 100%;
   }
-  .flex-horizontal {
-    @apply --layout-horizontal;
+  #metrics-and-slice-selector {
+    height: 100%
+  }
+  #run-selector > paper-dropdown-menu {
+    margin-left: 16px;
+  }
+  .flex-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
+  .flex-column {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
   }
 </style>
 
-<div class="container flex-horizontal">
-  <paper-card>
-    <fairness-metric-and-slice-selector available-metrics="[[selectableMetrics_]]"
-                                 selected-metrics='{{selectedMetrics_}}'>
-    </fairness-metric-and-slice-selector>
-  </paper-card>
+<div class="flex-row">
+  <div class="flex-column">
+    <paper-card id="run-selector" hidden$="[[!availbleEvaluationRuns.length]]">
+        <paper-dropdown-menu label="Run">
+          <paper-listbox selected="{{selectedEvaluationRun}}" attr-for-selected="run"
+                         class="dropdown-content" slot="dropdown-content">
+            <template is="dom-repeat" items="[[availbleEvaluationRuns]]">
+              <paper-item run="[[item]]">
+                [[item]]
+              </paper-item>
+            </template>
+          </paper-listbox>
+        </paper-dropdown-menu>
+    </paper-card>
+    <paper-card id="metrics-and-slice-selector">
+      <fairness-metric-and-slice-selector available-metrics="[[selectableMetrics_]]"
+                                   selected-metrics='{{selectedMetrics_}}'>
+      </fairness-metric-and-slice-selector>
+    </paper-card>
+  </div>
   <paper-card id="metrics">
     <fairness-metrics-board data="[[slicingMetrics]]" weight-column="[[weightColumn]]"
                       metrics="[[selectedMetrics_]]"

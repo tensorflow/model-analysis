@@ -16,49 +16,52 @@
 
 suite('fairness-nb-container tests', () => {
   const SLICES_NAMES = [
-    'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4', 'Slice:5', 'Slice:6', 'Slice:7',
-    'Slice:8', 'Slice:9', 'Slice:10', 'Slice:11', 'Slice:12', 'Slice:13',
-    'Slice:14', 'Slice:15', 'Slice:16'
+    'Overall', 'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4', 'Slice:5', 'Slice:6',
+    'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10', 'Slice:11', 'Slice:12',
+    'Slice:13', 'Slice:14', 'Slice:15', 'Slice:16'
   ];
 
-  const SLICEING_METRICS = SLICES_NAMES.map((slice) => {
-    return {
-      'slice': slice,
-      'sliceValue': slice.split(':')[1],
-      'metrics': {
-        'accuracy': {
-          'doubleValue': Math.random(),
-        },
-        'post_export_metrics/positive_rate@0.50': {
-          'doubleValue': Math.random(),
-        },
-        'post_export_metrics/true_positive_rate@0.50': {
-          'doubleValue': Math.random(),
-        },
-        'post_export_metrics/false_positive_rate@0.50': {
-          'doubleValue': Math.random(),
-        },
-        'post_export_metrics/positive_rate@0.60': {
-          'doubleValue': Math.random(),
-        },
-        'post_export_metrics/true_positive_rate@0.60': {
-          'doubleValue': Math.random(),
-        },
-        'post_export_metrics/false_positive_rate@0.60': {
-          'doubleValue': Math.random(),
-        },
-        'totalWeightedExamples': {'doubleValue': 2000 * (Math.random() + 0.8)}
-      }
-    };
-  });
-
   let fairnessContainer;
+  let sliceingMetrics;
 
-  test('testMetricsList', done => {
+  setup(() => {
+    fairnessContainer = fixture('test-fixture');
+    sliceingMetrics = SLICES_NAMES.map((slice) => {
+      return {
+        'slice': slice,
+        'sliceValue': slice.split(':')[1] || 'Overall',
+        'metrics': {
+          'accuracy': {
+            'doubleValue': Math.random(),
+          },
+          'post_export_metrics/positive_rate@0.50': {
+            'doubleValue': Math.random(),
+          },
+          'post_export_metrics/true_positive_rate@0.50': {
+            'doubleValue': Math.random(),
+          },
+          'post_export_metrics/false_positive_rate@0.50': {
+            'doubleValue': Math.random(),
+          },
+          'post_export_metrics/positive_rate@0.60': {
+            'doubleValue': Math.random(),
+          },
+          'post_export_metrics/true_positive_rate@0.60': {
+            'doubleValue': Math.random(),
+          },
+          'post_export_metrics/false_positive_rate@0.60': {
+            'doubleValue': Math.random(),
+          },
+          'totalWeightedExamples': {'doubleValue': 2000 * (Math.random() + 0.8)}
+        }
+      };
+    });
+  });
+  test('testMetricsAndSliceList', done => {
     fairnessContainer = fixture('test-fixture');
 
     const fillData = () => {
-      fairnessContainer.slicingMetrics = SLICEING_METRICS;
+      fairnessContainer.slicingMetrics = sliceingMetrics;
       setTimeout(checkValue, 0);
     };
     const checkValue = () => {
@@ -83,7 +86,7 @@ suite('fairness-nb-container tests', () => {
     fairnessContainer = fixture('test-fixture');
 
     const fillData = () => {
-      fairnessContainer.slicingMetrics = SLICEING_METRICS;
+      fairnessContainer.slicingMetrics = sliceingMetrics;
       setTimeout(checkValue, 0);
     };
     const checkValue = () => {
@@ -92,6 +95,35 @@ suite('fairness-nb-container tests', () => {
       assert.deepEqual(
           fairnessElement.metrics, ['post_export_metrics/false_positive_rate']);
       assert.deepEqual(fairnessElement.thresholds, ['0.50', '0.60']);
+      done();
+    };
+    setTimeout(fillData, 0);
+  });
+
+  test('testRunSelectorHidden', done => {
+    const fillData = () => {
+      fairnessContainer.slicingMetrics = sliceingMetrics;
+      setTimeout(checkRunSelectorIsInvisibale, 0);
+    };
+    const checkRunSelectorIsInvisibale = () => {
+      let runSelector =
+          fairnessContainer.shadowRoot.querySelector('#run-selector');
+      assert.equal(runSelector.hidden, true);
+      done();
+    };
+    setTimeout(fillData, 0);
+  });
+
+  test('testRunSelectorVisible', done => {
+    const fillData = () => {
+      fairnessContainer.slicingMetrics = sliceingMetrics;
+      fairnessContainer.availbleEvaluationRuns = ['1', '2', '3'];
+      setTimeout(checkRunSelectorIsInvisibale, 0);
+    };
+    const checkRunSelectorIsInvisibale = () => {
+      let runSelector =
+          fairnessContainer.shadowRoot.querySelector('#run-selector');
+      assert.equal(runSelector.hidden, false);
       done();
     };
     setTimeout(fillData, 0);

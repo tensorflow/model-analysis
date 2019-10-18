@@ -61,4 +61,5 @@
   }, []);
   const element = document.getElementsByTagName('fairness-nb-container')[0];
   element.slicingMetrics = input;
+  element.availbleEvaluationRuns = ['1', '2', '3'];
 })();
