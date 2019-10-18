@@ -13,6 +13,7 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis metrics."""
 
+from tensorflow_model_analysis.metrics.confusion_matrix_at_thresholds import ConfusionMatrixAtThresholds
 from tensorflow_model_analysis.metrics.example_count import ExampleCount
 from tensorflow_model_analysis.metrics.metric_types import MetricKey
 from tensorflow_model_analysis.metrics.metric_types import PlotKey

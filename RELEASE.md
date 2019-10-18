@@ -4,6 +4,8 @@
 
 *   Added example count metrics (`tfma.metrics.ExampleCount` and
     `tfma.metrics.WeightedExampleCount`) for use with V2 metrics API.
+*   Added `tfma.metrics.ConfusionMatrixAtThresholds` for use with V2 metrics
+    API.
 *   Added multi_class / multi_label plots (
     `tfma.metrics.MultiClassConfusionMatrixAtThresholds`,
     `tfma.metrics.MultiLabelConfusionMatrixAtThresholds`) for use with V2
