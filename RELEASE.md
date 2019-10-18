@@ -13,6 +13,7 @@
     `tfma.metrics.MultiClassConfusionMatrixAtThresholds`,
     `tfma.metrics.MultiLabelConfusionMatrixAtThresholds`) for use with V2
     metrics API.
+*   Added `tfma.metrics.NDCG` metric for use with V2 metrics API.
 
 ## Bug fixes and other changes
 
