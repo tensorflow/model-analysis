@@ -93,10 +93,13 @@ export class FairnessMetricsTable extends PolymerElement {
    * @param {!Object} data
    * @param {!Array<string>} metrics
    * @param {!Object<string>} headerOverride
-   * @return {!Array<!Array>}
+   * @return {!Array<!Array>|undefined}
    * @private
    */
   computePlotData_(data, metrics, headerOverride) {
+    if (!data || !metrics || !headerOverride) {
+      return undefined;
+    }
     if (Object.keys(data).length == 0) {
       // No need to compute plot data if data is empty.
       return [[]];

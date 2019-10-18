@@ -65,7 +65,7 @@ export class FairnessMetricsBoard extends PolymerElement {
       thresholds: {type: Array, observer: 'thresholdsChanged_'},
 
       /** @type {string} */
-      baseline_: {type: String, value: 'Overall'},
+      baseline_: {type: String, computed: 'computeBaseline_(slices_)'},
 
       /**
        * The list of all slice names.
@@ -104,13 +104,30 @@ export class FairnessMetricsBoard extends PolymerElement {
     };
   }
 
+
+  /**
+   * Extracts the baseline slice name.
+   * @param {!Array<string>} slices
+   * @return {string|undefined}
+   * @private
+   */
+  computeBaseline_(slices) {
+    if (!slices) {
+      return;
+    }
+    return slices[0];
+  }
+
   /**
    * Extracts the names of the slices from the data.
    * @param {!Array<!Object>} data
-   * @return {!Array<string>}
+   * @return {!Array<string>|undefined}
    * @private
    */
   computeSlices_(data) {
+    if (!data) {
+      return;
+    }
     return data.filter(d => !d['metrics'][OMITTED_SLICE_ERROR_KEY])
         .map(d => d['slice']);
   }
@@ -118,10 +135,13 @@ export class FairnessMetricsBoard extends PolymerElement {
   /**
    * Extracts the names of the slices omitted to ensure privacy.
    * @param {!Array<!Object>} data
-   * @return {!Array<string>}
+   * @return {!Array<string>|undefined}
    * @private
    */
   computeOmittedSlices_(data) {
+    if (!data) {
+      return;
+    }
     return data.filter(d => d['metrics'][OMITTED_SLICE_ERROR_KEY])
         .map(d => d['slice']);
   }

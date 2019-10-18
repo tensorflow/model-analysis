@@ -106,7 +106,7 @@ export class FairnessNbContainer extends SelectEventMixin
       /**
        * The full names of metrics available. eg: auc, negative_rate@0.25 or
        * post_export_metrics/head_1/negative_rate@0.25.
-       * @private {!Array<string>}
+       * @private {!Array<string>|undefined}
        */
       availableMetricsNames_: {
         type: Array,
@@ -138,24 +138,18 @@ export class FairnessNbContainer extends SelectEventMixin
     };
   }
 
-  static get observers() {
-    return [
-      'updateSelectableMetricsAndThresholds_(availableMetricsNames_)',
-    ];
-  }
-
   /**
    * @param {!Array<!Object>} slicingMetrics
    * @return {undefined}
    * @private
    */
   slicingMetricsChanged_(slicingMetrics) {
-    if (!slicingMetrics) {
-      return;
+    if (slicingMetrics) {
+      tfma.Data.flattenMetrics(slicingMetrics, 'metrics');
     }
-    tfma.Data.flattenMetrics(slicingMetrics, 'metrics');
     this.availableMetricsNames_ =
         this.computeAvailableMetricsNames_(slicingMetrics);
+    this.updateSelectableMetricsAndThresholds_(this.availableMetricsNames_);
   }
 
   /**
@@ -179,11 +173,14 @@ export class FairnessNbContainer extends SelectEventMixin
 
   /**
    * @param {!Array<!Object>} slicingMetrics
-   * @return {!Array<string>} An array of names of all metrics suitable
-   *     for the fairness view.
+   * @return {!Array<string>|undefined} An array of names of all metrics
+   *     suitable for the fairness view.
    * @private
    */
   computeAvailableMetricsNames_(slicingMetrics) {
+    if (!slicingMetrics) {
+      return [];
+    }
     const allMetrics = new Set();
     slicingMetrics.forEach(slicingMetric => {
       Object.keys(slicingMetric['metrics']).forEach(metricName => {
@@ -208,7 +205,7 @@ export class FairnessNbContainer extends SelectEventMixin
   /**
    * Updates selectable metrics and available thresholds from avialable
    * metrics.
-   * @param {!Array<string>} availableMetricsNames_
+   * @param {!Array<string>|undefined} availableMetricsNames_
    * @private
    */
   updateSelectableMetricsAndThresholds_(availableMetricsNames_) {
