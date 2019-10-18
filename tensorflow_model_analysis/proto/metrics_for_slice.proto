@@ -267,18 +267,45 @@ message CalibrationHistogramBuckets {
   repeated Bucket buckets = 1;
 }
 
-message MultiClassConfusionMatrix {
+message MultiClassConfusionMatrixAtThresholds {
   message MultiClassConfusionMatrixEntry {
-    google.protobuf.Int32Value actual_class_id = 4;
-    google.protobuf.Int32Value predicted_class_id = 5;
-    google.protobuf.DoubleValue num_weighted_examples = 6;
+    int32 actual_class_id = 1;
+    int32 predicted_class_id = 2;
+    double num_weighted_examples = 3;
   }
 
-  // Only entries with non-zero num_weighted_examples are included. If a
-  // threshold was specified and the top prediction was less than the threshold,
-  // then the predict_class_id will be set to -1. Entries are sorted in order of
-  // actual_class_id followed by predicted_class_id.
-  repeated MultiClassConfusionMatrixEntry entries = 1;
+  message MultiClassConfusionMatrix {
+    double threshold = 1;
+    // Only entries with non-zero num_weighted_examples are included. If the top
+    // prediction was less than the threshold, then the predict_class_id will be
+    // set to -1. Entries are sorted in order of actual_class_id followed by
+    // predicted_class_id.
+    repeated MultiClassConfusionMatrixEntry entries = 2;
+  }
+
+  // Entries are sorted in order of threshold.
+  repeated MultiClassConfusionMatrix matrices = 1;
+}
+
+message MultiLabelConfusionMatrixAtThresholds {
+  message MultiLabelConfusionMatrixEntry {
+    int32 actual_class_id = 1;
+    int32 predicted_class_id = 2;
+    double false_negatives = 3;
+    double true_negatives = 4;
+    double false_positives = 5;
+    double true_positives = 6;
+  }
+
+  message MultiLabelConfusionMatrix {
+    double threshold = 1;
+    // Only entries with no non-zero values are included. Entries are sorted in
+    // order of actual_class_id followed by predicted_class_id.
+    repeated MultiLabelConfusionMatrixEntry entries = 2;
+  }
+
+  // Entries are sorted in order of threshold.
+  repeated MultiLabelConfusionMatrix matrices = 1;
 }
 
 // LINT.IfChange
@@ -299,7 +326,9 @@ message PlotData {
   // For auc curve and auprc curve.
   ConfusionMatrixAtThresholds confusion_matrix_at_thresholds = 2;
   // For multi-class confusion matrix.
-  MultiClassConfusionMatrix multi_class_confusion_matrix = 4;
+  MultiClassConfusionMatrixAtThresholds multi_class_confusion_matrix_at_thresholds = 4;
+  // For multi-label confusion matrix.
+  MultiLabelConfusionMatrixAtThresholds multi_label_confusion_matrix_at_thresholds = 5;
 
   // This field will contain a generic message to be used to communicate any
   // extra information, such as in a scenario when no data is aggregated for a

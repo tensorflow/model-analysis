@@ -357,8 +357,15 @@ def _convert_slice_plots(
     elif isinstance(value, metrics_for_slice_pb2.ConfusionMatrixAtThresholds):
       plots_by_key[parent_key].confusion_matrix_at_thresholds.CopyFrom(value)
       slice_plots_copy.pop(key)
-    elif isinstance(value, metrics_for_slice_pb2.MultiClassConfusionMatrix):
-      plots_by_key[parent_key].multi_class_confusion_matrix.CopyFrom(value)
+    elif isinstance(
+        value, metrics_for_slice_pb2.MultiClassConfusionMatrixAtThresholds):
+      plots_by_key[
+          parent_key].multi_class_confusion_matrix_at_thresholds.CopyFrom(value)
+      slice_plots_copy.pop(key)
+    elif isinstance(
+        value, metrics_for_slice_pb2.MultiLabelConfusionMatrixAtThresholds):
+      plots_by_key[
+          parent_key].multi_label_confusion_matrix_at_thresholds.CopyFrom(value)
       slice_plots_copy.pop(key)
 
   if slice_plots_copy:
