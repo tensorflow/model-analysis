@@ -13,6 +13,8 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis metrics."""
 
+from tensorflow_model_analysis.metrics.example_count import ExampleCount
 from tensorflow_model_analysis.metrics.metric_types import MetricKey
 from tensorflow_model_analysis.metrics.metric_types import PlotKey
 from tensorflow_model_analysis.metrics.metric_types import SubKey
+from tensorflow_model_analysis.metrics.weighted_example_count import WeightedExampleCount

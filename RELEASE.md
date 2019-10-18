@@ -4,6 +4,9 @@
 
 ## Bug fixes and other changes
 
+*   Added example count metrics (`tfma.metrics.ExampleCount` and
+    `tfma.metrics.WeightedExampleCount`) for use with V2 metrics API.
+
 ## Breaking changes
 
 ## Deprecations
