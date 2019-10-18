@@ -65,6 +65,9 @@ template.innerHTML = `
   .blue-icon {
     --iron-icon-fill-color: blue;
   }
+  .orange-icon {
+    --iron-icon-fill-color: orange;
+  }
 </style>
 <div class="table-holder" id="table">
   <template is="dom-repeat" items="[[plotData_]]" as="row">
@@ -91,7 +94,7 @@ template.innerHTML = `
               <template is="dom-if" if="[[isDiffWithBaselineColumn_(index)]]">
                 <template is="dom-if" if="[[!isZero_(item)]]">
                   <template is="dom-if" if="[[isPositive_(item)]]">
-                    <iron-icon icon="arrow-upward" class="blue-icon"></iron-icon>
+                    <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
                   </template>
                   <template is="dom-if" if="[[isNegative_(item)]]">
                     <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
