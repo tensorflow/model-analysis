@@ -33,12 +33,24 @@ export class FairnessTensorboardContainer extends SelectEventMixin
   constructor() {
     super();
     tensorboard_util.runs.getRuns().then(runs => {
-      this.evaluationRuns_ = runs;
-      // To select first evaluation run by default.
-      if (this.evaluationRuns_ && this.evaluationRuns_.length) {
-        this.selectedEvaluationRun_ = this.evaluationRuns_[0];
-      }
+      this.loadEvaluationRuns(runs);
     });
+
+    tensorboard_util.runs.setOnRunsChanged(
+        (runs) => this.loadEvaluationRuns(runs));
+  }
+
+  loadEvaluationRuns(runs) {
+    this.evaluationRuns_ = runs;
+    // To select first evaluation run by default.
+    if (this.evaluationRuns_ === undefined || !this.evaluationRuns_.length) {
+      return;
+    }
+
+    const hasSelection = runs.includes(this.selectedEvaluationRun_);
+    if (!hasSelection) {
+      this.selectedEvaluationRun_ = this.evaluationRuns_[0];
+    }
   }
 
   static get is() {
@@ -59,7 +71,7 @@ export class FairnessTensorboardContainer extends SelectEventMixin
        * rendered in UI.
        * @private {!Array<string>}
        */
-      evaluationRuns_: {type: Array, notify: true, value: []},
+      evaluationRuns_: {type: Array, notify: true},
 
       /**
        * Evaluation run selected by the user.
