@@ -43,6 +43,7 @@ const ERROR_BAR_COLOR_ = [
   '#ba4a0d', '#184889', '#b48014', '#270086', '#b12d33', '#006067', '#632440',
   '#515050'
 ];
+const NUM_DECIMAL_PLACES = 5;
 
 
 /**
@@ -60,10 +61,11 @@ function buildTooltips() {
         let html = '<table><tbody>';
         html += '<tr><td>Slice</td><td>' + d.fullSliceName + '</td></tr>';
         html += '<tr><td>Metric</td><td>' + d.metricName + '</td></tr>';
-        html += '<tr><td>Value</td><td>' + d.value.toString() + '</td></tr>';
+        html += '<tr><td>Value</td><td>' + d.value.toFixed(NUM_DECIMAL_PLACES) +
+            '</td></tr>';
         if (d.upperBound && d.lowerBound) {
-          const conf_int = ' (' + d.upperBound.toString() + ', ' +
-              d.lowerBound.toString() + ')';
+          const conf_int = ' (' + d.upperBound.toFixed(NUM_DECIMAL_PLACES) +
+              ', ' + d.lowerBound.toFixed(NUM_DECIMAL_PLACES) + ')';
           html +=
               '<tr><td>Confidence Interval</td><td>' + conf_int + '</td></tr>';
         }
@@ -178,8 +180,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       }
       // Sort by the first threshold value if multiple thresholds are present.
       for (let i = 0; i < a.metricsData.length; i++) {
-        const diff =
-            a.metricsData[i]['value'] - b.metricsData[i]['value'];
+        const diff = a.metricsData[i]['value'] - b.metricsData[i]['value'];
         if (diff != 0) {
           return diff;
         }
@@ -187,8 +188,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       // If metrics are equal for both slices, go by alphabetical order.
       if (a['fullSliceName'] <= b['fullSliceName']) {
         return -1;
-      }
-      else {
+      } else {
         return 1;
       }
     });
