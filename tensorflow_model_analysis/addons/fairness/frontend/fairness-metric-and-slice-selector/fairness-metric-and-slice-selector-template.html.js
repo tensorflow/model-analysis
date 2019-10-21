@@ -19,6 +19,17 @@ template.innerHTML = `
   #metric-and-slice-selector-title {
     padding: 16px 16px 0 16px;
   }
+
+  paper-listbox {
+    width: 350px;
+  }
+
+  .metric-name {
+    max-width: 290px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
 </style>
 <div id="metric-and-slice-selector-title">
   Select metrics to display:
@@ -27,7 +38,7 @@ template.innerHTML = `
   <template is="dom-repeat" items="[[metricsSelectedStatus_]]">
     <paper-item item-name="[[item.metricsName]]">
       <paper-checkbox checked="[[item.selected]]">
-         <span>[[item.metricsName]]</span>
+         <span class="metric-name" title$="[[item.metricsName]]">[[item.metricsName]]</span>
       </paper-checkbox>
     </paper-item>
   </template>

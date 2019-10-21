@@ -31,7 +31,7 @@ template.innerHTML = `
     letter-spacing: 0.25;
     display: flex;
     position: relative;
-    border-bottom: 1px solid #80868b;
+    border-bottom: 1px solid #63696e;
     min-height: min-content;
     padding-top: 6px;
     padding-bottom: 6px;
@@ -41,14 +41,14 @@ template.innerHTML = `
   .table-head-row {
     background: #e8e8e8;
     font-weight: 500;
-    color: #80868b;
+    color: #63696e;
   }
   .table-entry,
   .table-feature-column {
     text-align: left;
     padding-top: 8px;
     padding-bottom: 8px;
-    font-size: 11px;
+    font-size: 12px;
     min-height: min-content;
     width: 100%;
     padding-left: 6px;
