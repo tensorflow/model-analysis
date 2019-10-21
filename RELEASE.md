@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Added support for defaulting to using class IDs when classes are not present
+    in outputs for multi-class metrics (for use in keras model_to_estimator).
 *   Added example count metrics (`tfma.metrics.ExampleCount` and
     `tfma.metrics.WeightedExampleCount`) for use with V2 metrics API.
 *   Added calibration metrics (`tfma.metrics.MeanLabel`,

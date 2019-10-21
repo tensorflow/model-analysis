@@ -29,6 +29,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
+from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import dnn_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import dnn_regressor
@@ -44,7 +45,6 @@ from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-
 
 _TEST_SEED = 857586
 
@@ -3078,6 +3078,79 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     self._runTestWithCustomCheck(
         examples,
         eval_export_dir, [error_metric],
+        custom_metrics_check=check_result)
+
+  def testPostExportMetricsWithModelToEstimator(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    prediction_input = tf.keras.layers.Input(shape=(3,), name='prediction')
+    inputs = [
+        prediction_input,
+        tf.keras.layers.Input(shape=(1,), name='label'),
+    ]
+    output_layer = tf.keras.layers.Lambda(
+        lambda x: x, name='output1')(
+            prediction_input)
+    model = tf.keras.models.Model(inputs, output_layer)
+    model.compile(
+        loss=tf.keras.losses.sparse_categorical_crossentropy,
+        metrics=['accuracy'])
+
+    estimator = tf.keras.estimator.model_to_estimator(
+        keras_model=model, config=tf.estimator.RunConfig())
+
+    eval_feature_spec = {
+        'prediction': tf.io.FixedLenFeature([3], dtype=tf.float32),
+        'label': tf.io.FixedLenFeature([1], dtype=tf.int64),
+    }
+
+    eval_export_dir = export.export_eval_savedmodel(
+        estimator=estimator,
+        export_dir_base=temp_eval_export_dir,
+        eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(
+            eval_feature_spec, label_key='label'),
+        serving_input_receiver_fn=None)
+
+    examples = [
+        self._makeExample(prediction=[0.2, 0.6, 0.2], label=[1]),
+        self._makeExample(prediction=[0.3, 0.5, 0.2], label=[2]),
+        self._makeExample(prediction=[0.8, 0.1, 0.1], label=[0]),
+        self._makeExample(prediction=[0.0, 0.3, 0.7], label=[1])
+    ]
+
+    precision_metric = post_export_metrics.precision_at_k(
+        [0, 1], target_prediction_keys=['output1'])
+    recall_metric = post_export_metrics.recall_at_k(
+        [0, 1], target_prediction_keys=['output1'])
+
+    def check_result(got):  # pylint: disable=invalid-name
+      try:
+        self.assertEqual(1, len(got), 'got: %s' % got)
+        (slice_key, value) = got[0]
+        self.assertEqual((), slice_key)
+
+        precision_key = metric_keys.tagged_key(metric_keys.PRECISION_AT_K,
+                                               'output1')
+        self.assertIn(precision_key, value)
+        precision_table = value[precision_key]
+        cutoffs = precision_table[:, 0].tolist()
+        precision = precision_table[:, 1].tolist()
+        self.assertEqual(cutoffs, [0, 1])
+        self.assertSequenceAlmostEqual(precision, [2.0 / 6.0, 1.0 / 2.0])
+
+        recall_key = metric_keys.tagged_key(metric_keys.RECALL_AT_K, 'output1')
+        self.assertIn(recall_key, value)
+        recall_table = value[recall_key]
+        cutoffs = recall_table[:, 0].tolist()
+        recall = recall_table[:, 1].tolist()
+        self.assertEqual(cutoffs, [0, 1])
+        self.assertSequenceAlmostEqual(recall, [2.0 / 2.0, 1.0 / 2.0])
+
+      except AssertionError as err:
+        raise util.BeamAssertException(err)
+
+    self._runTestWithCustomCheck(
+        examples,
+        eval_export_dir, [precision_metric, recall_metric],
         custom_metrics_check=check_result)
 
 

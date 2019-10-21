@@ -1458,6 +1458,8 @@ class _PrecisionRecallAtK(_PostExportMetric):
     self._metric_name = metric_name
     self._cutoffs = cutoffs
     self._example_weight_key = example_weight_key
+    if probabilities_key is None and target_prediction_keys:
+      probabilities_key = target_prediction_keys[0]
     probabilities_key = (
         probabilities_key or prediction_keys.PredictionKeys.PROBABILITIES)
     if classes_key:
@@ -1484,7 +1486,8 @@ class _PrecisionRecallAtK(_PostExportMetric):
     if not isinstance(predictions_dict, dict):
       raise TypeError('predictions_dict should be a dict. predictions_dict '
                       'was: %s' % predictions_dict)
-    if _get_target_tensor(predictions_dict, self._classes_keys) is None:
+    if (_get_target_tensor(predictions_dict, self._classes_keys) is None and
+        prediction_keys.PredictionKeys.ALL_CLASSES not in self._classes_keys):
       raise KeyError('predictions_dict should contain one of %s. '
                      'predictions_dict was: %s' %
                      (self._classes_keys, predictions_dict))
@@ -1524,8 +1527,14 @@ class _PrecisionRecallAtK(_PostExportMetric):
         [(tf.equal(tf.rank(labels), 1), lambda: tf.expand_dims(labels, -1))],
         default=lambda: labels)
 
-    classes = _get_target_tensor(predictions_dict, self._classes_keys)
     scores = _get_target_tensor(predictions_dict, self._probabilities_keys)
+    classes = _get_target_tensor(predictions_dict, self._classes_keys)
+    if (classes is None and
+        prediction_keys.PredictionKeys.ALL_CLASSES in self._classes_keys):
+      # If no classes were found and ALL_CLASSES is used in the classes_keys
+      # then default to using class IDs as the classes. The intended use case is
+      # keras model_to_estimator which does not output any classes.
+      classes = tf.as_string(_class_ids(scores))
 
     # To support canned Estimators which right now only expose the argmax class
     # id, if labels are ints then then the classes are likely class_ids in
