@@ -118,11 +118,11 @@ export class FairnessMetricsBoard extends PolymerElement {
   slicesChanged_(slices) {
     if (!slices || !slices.length) {
       this.baseline_ = undefined;
-    }
-    if (slices.includes('Overall')) {
+    } else if (slices.includes('Overall')) {
       this.baseline_ = 'Overall';
+    } else {
+      this.baseline_ = slices[0];
     }
-    this.baseline_ = slices[0];
   }
 
   /**
