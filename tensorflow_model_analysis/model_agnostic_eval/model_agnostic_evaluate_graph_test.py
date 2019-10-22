@@ -31,7 +31,7 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_evaluate_graph
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_extractor
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict as agnostic_predict
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 
 # Create a dummy metric callback that adds two metrics:

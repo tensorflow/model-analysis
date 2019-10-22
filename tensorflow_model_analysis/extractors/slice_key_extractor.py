@@ -26,7 +26,7 @@ import apache_beam as beam
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 from typing import List, Optional
 

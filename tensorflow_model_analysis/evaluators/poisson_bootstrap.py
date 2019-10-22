@@ -23,7 +23,7 @@ import apache_beam as beam
 import numpy as np
 
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Type, Union
 
 DEFAULT_NUM_BOOTSTRAP_SAMPLES = 20

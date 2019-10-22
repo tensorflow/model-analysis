@@ -26,7 +26,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
 

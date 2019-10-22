@@ -23,8 +23,6 @@ import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model import util
 
-from tensorflow.core.example import example_pb2
-
 
 def make_regressor_input_fn(feature_spec):
   """Train input function.
@@ -109,7 +107,7 @@ def make_classifier_input_fn(feature_spec, n_classes=2, label_vocabulary=None):
 
 
 def make_example(age, language, label=None):
-  example = example_pb2.Example()
+  example = tf.train.Example()
   example.features.feature['age'].float_list.value.append(age)
   example.features.feature['language'].bytes_list.value.append(language)
   if label:

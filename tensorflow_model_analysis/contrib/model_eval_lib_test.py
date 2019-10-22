@@ -33,7 +33,7 @@ from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.contrib import model_eval_lib as contrib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 
 class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
@@ -51,7 +51,7 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
     for key in expected_column_names:
       self.assertIn(key, got_values_dict)
       got_column = got_values_dict[key]
-      self.assertTrue(isinstance(got_column, types.MaterializedColumn))
+      self.assertIsInstance(got_column, types.MaterializedColumn)
 
   def _assertMaterializedColumns(self,
                                  got_values_dict,
@@ -61,7 +61,7 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
       self.assertIn(key, got_values_dict)
 
       got_column = got_values_dict[key]
-      self.assertTrue(isinstance(got_column, types.MaterializedColumn))
+      self.assertIsInstance(got_column, types.MaterializedColumn)
 
       if (isinstance(expected_column.value, np.ndarray) or
           isinstance(expected_column.value, list)):

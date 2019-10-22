@@ -25,14 +25,14 @@ from __future__ import print_function
 import abc
 # Standard Imports
 import numpy as np
-from six import with_metaclass
+import six
 import tensorflow as tf
 from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from typing import Any, Dict, List, Optional, Text, Tuple, Type, Callable
 
 from tensorflow.python.estimator.canned import prediction_keys
@@ -335,7 +335,7 @@ def _string_labels_to_class_ids(labels_tensor: tf.Tensor,
   return tf.reshape(labels_tensor, shape)
 
 
-class _PostExportMetric(with_metaclass(abc.ABCMeta, object)):
+class _PostExportMetric(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class for post export metrics."""
 
   def __init__(self,

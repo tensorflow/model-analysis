@@ -22,8 +22,8 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.slicer.slicer import OVERALL_SLICE_NAME
-from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
+from tensorflow_model_analysis.slicer.slicer_lib import OVERALL_SLICE_NAME
+from tensorflow_model_analysis.slicer.slicer_lib import SingleSliceSpec
 from tensorflow_model_analysis.view import util
 
 

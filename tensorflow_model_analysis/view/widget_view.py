@@ -20,7 +20,7 @@ from __future__ import print_function
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 import tensorflow_model_analysis.notebook.visualization as visualization
-from tensorflow_model_analysis.slicer.slicer import SingleSliceSpec
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.view import util
 from typing import Callable, Dict, Optional, Text, Union
 
@@ -28,10 +28,10 @@ from typing import Callable, Dict, Optional, Text, Union
 def render_slicing_metrics(
     result: model_eval_lib.EvalResult,
     slicing_column: Optional[Text] = None,
-    slicing_spec: Optional[SingleSliceSpec] = None,
+    slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     weighted_example_column: Text = None,
-    event_handlers: Optional[
-        Callable[[Dict[Text, Union[Text, float]]], None]] = None,
+    event_handlers: Optional[Callable[[Dict[Text, Union[Text, float]]],
+                                      None]] = None,
 ) -> Optional[visualization.SlicingMetricsViewer]:  # pytype: disable=invalid-annotation
   """Renders the slicing metrics view as widget.
 
@@ -56,10 +56,11 @@ def render_slicing_metrics(
       data, config, event_handlers=event_handlers)
 
 
-def render_time_series(results: model_eval_lib.EvalResults,
-                       slice_spec: Optional[SingleSliceSpec] = None,
-                       display_full_path: bool = False
-                      ) -> Optional[visualization.TimeSeriesViewer]:  # pytype: disable=invalid-annotation
+def render_time_series(
+    results: model_eval_lib.EvalResults,
+    slice_spec: Optional[slicer.SingleSliceSpec] = None,
+    display_full_path: bool = False
+) -> Optional[visualization.TimeSeriesViewer]:  # pytype: disable=invalid-annotation
   """Renders the time series view as widget.
 
   Args:
@@ -72,7 +73,7 @@ def render_time_series(results: model_eval_lib.EvalResults,
   Returns:
     A TimeSeriesViewer object if in Jupyter notebook; None if in Colab.
   """
-  slice_spec_to_use = slice_spec if slice_spec else SingleSliceSpec()
+  slice_spec_to_use = slice_spec if slice_spec else slicer.SingleSliceSpec()
   data = util.get_time_series(results, slice_spec_to_use, display_full_path)
   config = {
       'isModelCentric': results.get_mode() == constants.MODEL_CENTRIC_MODE
@@ -83,7 +84,7 @@ def render_time_series(results: model_eval_lib.EvalResults,
 
 def render_plot(
     result: model_eval_lib.EvalResult,
-    slicing_spec: Optional[SingleSliceSpec] = None,
+    slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     output_name: Optional[Text] = None,
     class_id: Optional[int] = None,
     top_k: Optional[int] = None,
@@ -104,7 +105,7 @@ def render_plot(
   Returns:
     A PlotViewer object if in Jupyter notebook; None if in Colab.
   """
-  slice_spec_to_use = slicing_spec if slicing_spec else SingleSliceSpec()
+  slice_spec_to_use = slicing_spec if slicing_spec else slicer.SingleSliceSpec()
   data, config = util.get_plot_data_and_config(result.plots, slice_spec_to_use,
                                                output_name, class_id, top_k, k,
                                                label)

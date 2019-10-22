@@ -22,8 +22,8 @@ import contextlib
 import inspect
 import os
 import pickle
-
 # Standard Imports
+import six
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import types
@@ -264,9 +264,9 @@ def _serialize_feature_metadata_for_model(
   }
 
 
-def feature_metadata_path(export_path: bytes) -> bytes:
+def feature_metadata_path(export_path: Text) -> Text:
   """Returns the path to the feature metadata for the given export dir."""
-  return os.path.join(export_path, b'assets.extra', b'feature_metadata')
+  return os.path.join(export_path, 'assets.extra', 'feature_metadata')
 
 
 def serialize_feature_metadata(output_dict: Dict[Text, Any]) -> bytes:
@@ -292,10 +292,10 @@ def export_eval_savedmodel_with_feature_metadata(
     estimator,
     export_dir_base: Text,
     eval_input_receiver_fn: Callable[[], tfma.export.EvalInputReceiverType],
-    serving_input_receiver_fn: Optional[
-        Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
+    serving_input_receiver_fn: Optional[Callable[
+        [], tf.estimator.export.ServingInputReceiver]] = None,
     assets_extra: Optional[Dict[Text, Text]] = None,
-    checkpoint_path: Optional[Text] = None) -> bytes:
+    checkpoint_path: Optional[Text] = None) -> Text:
   """Like tfma.export.export_eval_savedmodel, with extra feature metadata."""
   output_dict = {}
   with _observe_dnn_model(output_dict):
@@ -315,6 +315,7 @@ def export_eval_savedmodel_with_feature_metadata(
     raise ValueError('export appears to have failed. export_path was: %s' %
                      export_path)
 
+  export_path = six.ensure_str(export_path)
   output_path = feature_metadata_path(export_path)
   assets_extra_path = os.path.dirname(output_path)
   if not os.path.isdir(assets_extra_path):
@@ -371,7 +372,7 @@ def deserialize_feature_metadata(serialized_feature_metadata: bytes
   return result
 
 
-def load_feature_metadata(eval_saved_model_path: bytes):
+def load_feature_metadata(eval_saved_model_path: Text):
   """Get feature data (feature columns, feature) from EvalSavedModel metadata.
 
   Args:
@@ -386,7 +387,7 @@ def load_feature_metadata(eval_saved_model_path: bytes):
     return deserialize_feature_metadata(f.read())
 
 
-def load_and_resolve_feature_metadata(eval_saved_model_path: bytes,
+def load_and_resolve_feature_metadata(eval_saved_model_path: Text,
                                       graph: tf.Graph):
   """Get feature data (feature columns, feature) from EvalSavedModel metadata.
 

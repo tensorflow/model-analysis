@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.view import widget_view
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 
 class WidgetViewTest(testutil.TensorflowModelAnalysisTest):

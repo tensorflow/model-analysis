@@ -30,7 +30,7 @@ from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
 from typing import Any, Dict, Optional, Text, Tuple
 

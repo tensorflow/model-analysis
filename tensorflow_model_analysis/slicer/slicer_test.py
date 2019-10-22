@@ -30,7 +30,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 from google.protobuf import text_format
 

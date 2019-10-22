@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Initializes TFMA's Jupyter notebook widget."""
-from .widget import PlotViewer
-from .widget import SlicingMetricsViewer
-from .widget import TimeSeriesViewer
+from tensorflow_model_analysis.notebook.jupyter.tfma_widget.widget import PlotViewer
+from tensorflow_model_analysis.notebook.jupyter.tfma_widget.widget import SlicingMetricsViewer
+from tensorflow_model_analysis.notebook.jupyter.tfma_widget.widget import TimeSeriesViewer

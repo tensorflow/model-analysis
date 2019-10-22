@@ -27,7 +27,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import slice_key_extractor
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 
 def make_features_dict(features_dict):
@@ -91,7 +91,7 @@ class SliceTest(testutil.TensorflowModelAnalysisTest):
                                      [(), (('gender', 'm'),)]])
           got_results = []
           for item in got:
-            self.assertTrue(constants.SLICE_KEY_TYPES_KEY in item)
+            self.assertIn(constants.SLICE_KEY_TYPES_KEY, item)
             got_results.append(sorted(item[constants.SLICE_KEY_TYPES_KEY]))
           self.assertEqual(sorted(got_results), sorted(expected_results))
         except AssertionError as err:
@@ -126,7 +126,7 @@ class SliceTest(testutil.TensorflowModelAnalysisTest):
           ])
           got_results = []
           for item in got:
-            self.assertTrue(constants.SLICE_KEYS_KEY in item)
+            self.assertIn(constants.SLICE_KEYS_KEY, item)
             got_results.append(item[constants.SLICE_KEYS_KEY])
           self.assertEqual(sorted(got_results), sorted(expected_results))
         except AssertionError as err:

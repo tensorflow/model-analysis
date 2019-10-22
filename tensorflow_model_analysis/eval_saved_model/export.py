@@ -326,10 +326,10 @@ def export_eval_savedmodel(
     estimator,
     export_dir_base: Text,
     eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
-    serving_input_receiver_fn: Optional[
-        Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
+    serving_input_receiver_fn: Optional[Callable[
+        [], tf.estimator.export.ServingInputReceiver]] = None,
     assets_extra: Optional[Dict[Text, Text]] = None,
-    checkpoint_path: Optional[Text] = None) -> bytes:
+    checkpoint_path: Optional[Text] = None) -> Text:
   """Export a EvalSavedModel for the given estimator.
 
   Args:
@@ -386,7 +386,7 @@ if HAS_TF_CONTRIB_LEARN:
       eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
       serving_input_receiver_fn: Optional[Callable[
           [], tf.estimator.export.ServingInputReceiver]] = None,
-      checkpoint_path: Optional[Text] = None) -> bytes:
+      checkpoint_path: Optional[Text] = None) -> Text:
     """Export a EvalSavedModel for the given tf.contrib.learn Estimator.
 
     This is a compatibility shim for exporting tf.contrib.learn Estiamtors.

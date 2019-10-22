@@ -22,7 +22,7 @@ import os
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.post_export_metrics import metric_keys
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from typing import Any, Dict, List, Optional, Text, Tuple, Union
 
 

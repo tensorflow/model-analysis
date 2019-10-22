@@ -20,7 +20,7 @@ from __future__ import print_function
 import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.notebook import visualization
 from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from typing import Optional, Text, Dict, Callable, Any, List
 
 

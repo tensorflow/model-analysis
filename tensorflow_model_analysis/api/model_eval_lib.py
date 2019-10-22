@@ -40,7 +40,7 @@ from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
-from tensorflow_model_analysis.slicer import slicer
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.validators import validator
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
 from tensorflow_model_analysis.writers import metrics_and_plots_writer

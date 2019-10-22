@@ -13,29 +13,26 @@
 # limitations under the License.
 """Defines TFMA's Jupyter notebook widgets."""
 import ipywidgets as widgets
-from traitlets import Dict
-from traitlets import List
-from traitlets import observe
-from traitlets import Unicode
+import traitlets
 
 
 @widgets.register
 class SlicingMetricsViewer(widgets.DOMWidget):
   """The slicing metrics visualization widget."""
-  _view_name = Unicode('SlicingMetricsView').tag(sync=True)
-  _model_name = Unicode('SlicingMetricsModel').tag(sync=True)
-  _view_module = Unicode('tfma_widget_js').tag(sync=True)
-  _model_module = Unicode('tfma_widget_js').tag(sync=True)
-  _view_module_version = Unicode('^0.1.0').tag(sync=True)
-  _model_module_version = Unicode('^0.1.0').tag(sync=True)
-  data = List([]).tag(sync=True)
-  config = Dict(dict()).tag(sync=True)
+  _view_name = traitlets.Unicode('SlicingMetricsView').tag(sync=True)
+  _model_name = traitlets.Unicode('SlicingMetricsModel').tag(sync=True)
+  _view_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
+  _model_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
+  _view_module_version = traitlets.Unicode('^0.1.0').tag(sync=True)
+  _model_module_version = traitlets.Unicode('^0.1.0').tag(sync=True)
+  data = traitlets.List([]).tag(sync=True)
+  config = traitlets.Dict(dict()).tag(sync=True)
 
   # Used for handling on the js side.
   event_handlers = {}
-  js_events = List([]).tag(sync=True)
+  js_events = traitlets.List([]).tag(sync=True)
 
-  @observe('js_events')
+  @traitlets.observe('js_events')
   def _handle_js_events(self, change):
     if self.js_events:
       if self.event_handlers:
@@ -51,24 +48,24 @@ class SlicingMetricsViewer(widgets.DOMWidget):
 @widgets.register
 class TimeSeriesViewer(widgets.DOMWidget):
   """The time series visualization widget."""
-  _view_name = Unicode('TimeSeriesView').tag(sync=True)
-  _model_name = Unicode('TimeSeriesModel').tag(sync=True)
-  _view_module = Unicode('tfma_widget_js').tag(sync=True)
-  _model_module = Unicode('tfma_widget_js').tag(sync=True)
-  _view_module_version = Unicode('^0.1.0').tag(sync=True)
-  _model_module_version = Unicode('^0.1.0').tag(sync=True)
-  data = List([]).tag(sync=True)
-  config = Dict(dict()).tag(sync=True)
+  _view_name = traitlets.Unicode('TimeSeriesView').tag(sync=True)
+  _model_name = traitlets.Unicode('TimeSeriesModel').tag(sync=True)
+  _view_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
+  _model_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
+  _view_module_version = traitlets.Unicode('^0.1.0').tag(sync=True)
+  _model_module_version = traitlets.Unicode('^0.1.0').tag(sync=True)
+  data = traitlets.List([]).tag(sync=True)
+  config = traitlets.Dict(dict()).tag(sync=True)
 
 
 @widgets.register
 class PlotViewer(widgets.DOMWidget):
   """The time series visualization widget."""
-  _view_name = Unicode('PlotView').tag(sync=True)
-  _model_name = Unicode('PlotModel').tag(sync=True)
-  _view_module = Unicode('tfma_widget_js').tag(sync=True)
-  _model_module = Unicode('tfma_widget_js').tag(sync=True)
-  _view_module_version = Unicode('^0.1.0').tag(sync=True)
-  _model_module_version = Unicode('^0.1.0').tag(sync=True)
-  data = Dict([]).tag(sync=True)
-  config = Dict(dict()).tag(sync=True)
+  _view_name = traitlets.Unicode('PlotView').tag(sync=True)
+  _model_name = traitlets.Unicode('PlotModel').tag(sync=True)
+  _view_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
+  _model_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
+  _view_module_version = traitlets.Unicode('^0.1.0').tag(sync=True)
+  _model_module_version = traitlets.Unicode('^0.1.0').tag(sync=True)
+  data = traitlets.Dict([]).tag(sync=True)
+  config = traitlets.Dict(dict()).tag(sync=True)
