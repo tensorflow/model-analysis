@@ -1,4 +1,4 @@
-# Current version (not yet released; still in development)
+# Release 0.15.1
 
 ## Major Features and Improvements
 
@@ -20,6 +20,14 @@
 *   Added `tfma.metrics.NDCG` metric for use with V2 metrics API.
 
 ## Bug fixes and other changes
+
+*   Depends on `tensorflow>=1.15,<3.0`.
+    *   Starting from 1.15, package `tensorflow` comes with GPU support. Users
+        won't need to choose between `tensorflow` and `tensorflow-gpu`.
+    *   Caveat: `tensorflow` 2.0.0 is an exception and does not have GPU
+        support. If `tensorflow-gpu` 2.0.0 is installed before installing
+        `tensorflow_model_analysis`, it will be replaced with `tensorflow`
+        2.0.0. Re-install `tensorflow-gpu` 2.0.0 if needed.
 
 ## Breaking changes
 
@@ -214,7 +222,8 @@
 *   Depends on `numpy>=1.14.5,<2`.
 *   Depends on `scipy==0.19.1`.
 *   Depends on `protobuf==3.7.0rc2`.
-*   Chicago Taxi example is moved to tfx repo (https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi)
+*   Chicago Taxi example is moved to tfx repo
+    (https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi)
 
 ## Breaking changes
 

@@ -264,10 +264,8 @@ setup_args = {
         # TODO(b/126957988): Stop pinning scipy when possible.
         'scipy==1.1.0',
         'six>=1.12,<2',
-        # TODO(xinzha): Uncomment this once TF can automatically select between
-        # CPU and GPU installation.
-        # 'tensorflow>=1.15,<3',
-        'tfx-bsl>=0.15.0,<0.17'
+        'tensorflow>=1.15,<3',
+        'tfx-bsl>=0.15,<0.16'
     ],
     'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     'packages': find_packages(),
