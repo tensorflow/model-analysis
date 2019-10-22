@@ -32,7 +32,7 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
-from typing import Optional, Text, Tuple
+from typing import Any, Dict, Optional, Text, Tuple
 
 
 # TODO(mdreves): Perhaps keep this as the only public method and privatize
@@ -240,8 +240,7 @@ class _SeparateMetricsAndPlotsFn(beam.DoFn):
   OUTPUT_TAG_METRICS = 'tag_metrics'
   OUTPUT_TAG_PLOTS = 'tag_plots'
 
-  def process(self,
-              element: Tuple[slicer.SliceKeyType, types.MetricVariablesType]):
+  def process(self, element: Tuple[slicer.SliceKeyType, Dict[Text, Any]]):
     (slice_key, results) = element
     slicing_metrics = {}
     plots = {}

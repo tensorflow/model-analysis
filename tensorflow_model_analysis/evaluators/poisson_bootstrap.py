@@ -24,7 +24,7 @@ import numpy as np
 
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.slicer import slicer
-from typing import Any, Dict, Generator, List, Optional, Text, Tuple, Type, Union
+from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Type, Union
 
 DEFAULT_NUM_BOOTSTRAP_SAMPLES = 20
 
@@ -98,7 +98,7 @@ class _MergeBootstrap(beam.DoFn):
   """Merge the bootstrap values and fit a T-distribution to get confidence."""
 
   def process(
-      self, element: Tuple[slicer.SliceKeyType, List[Dict[Text, Any]]],
+      self, element: Tuple[slicer.SliceKeyType, Iterable[Dict[Text, Any]]],
       unsampled_results: Dict[slicer.SliceKeyType, Dict[Text, Any]]
   ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
     """Merge the bootstrap values.
