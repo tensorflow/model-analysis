@@ -115,6 +115,9 @@ export class FairnessMetricsBoard extends PolymerElement {
     if (!slices) {
       return;
     }
+    if (slices.includes('Overall')) {
+      return 'Overall';
+    }
     return slices[0];
   }
 
