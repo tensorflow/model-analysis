@@ -153,7 +153,13 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   formatFloatValue_(value) {
-    return value == 'NaN' ? 'NaN' : value.toFixed(FLOATING_POINT_PRECISION);
+    if (value == 'NaN') {
+      return 'NaN';
+    } else {
+      return (typeof (value) == 'string') ?
+          parseFloat(value).toFixed(FLOATING_POINT_PRECISION) :
+          value.toFixed(FLOATING_POINT_PRECISION);
+    }
   }
 
   /**
@@ -195,6 +201,15 @@ export class FairnessMetricsTable extends PolymerElement {
    */
   isZero_(s) {
     return parseFloat(s) === 0;
+  }
+
+  /**
+   * @param {(string)} s
+   * @return {boolean} Returns true if string is 1.
+   * @private
+   */
+  isOne_(s) {
+    return parseFloat(s) === 1;
   }
 
   /**

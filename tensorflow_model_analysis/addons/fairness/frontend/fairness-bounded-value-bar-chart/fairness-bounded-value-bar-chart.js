@@ -39,6 +39,10 @@ const CHART_BAR_COLOR_ = [
   '#f0bd80', '#61aff7', '#ffe839', '#9b86ef', '#ff777b', '#7ddad3', '#ef96cd',
   '#b5bcc3'
 ];
+const BASELINE_BAR_COLOR_ = [
+  '#4ccfae', '#f761af', '#39ffe8', '#ef9b86', '#7bff77', '#d37dda', '#cdef96',
+  '#c3b5bc'
+];
 const ERROR_BAR_COLOR_ = [
   '#ba4a0d', '#184889', '#b48014', '#270086', '#b12d33', '#006067', '#632440',
   '#515050'
@@ -243,6 +247,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     const configureYAxis = g =>
         g.attr('transform', `translate(${MARGIN.left},0)`).call(d3.axisLeft(y));
     const metricsColor = d3.scaleOrdinal().range(CHART_BAR_COLOR_);
+    const baselineColor = d3.scaleOrdinal().range(BASELINE_BAR_COLOR_);
     const confidenceIntervalColor = d3.scaleOrdinal().range(ERROR_BAR_COLOR_);
 
     // Draw Graph
@@ -264,7 +269,9 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         .attr('y', d => y(d.value))
         .attr('width', metricsX.bandwidth())
         .attr('height', d => y(0) - y(d.value))
-        .attr('fill', d => metricsColor(d.metricName))
+        .attr('fill',
+              d => d.fullSliceName == baseline ? baselineColor(d.metricName) :
+                                                 metricsColor(d.metricName))
         .on('mouseover', this.tip_.show)
         .on('mouseout', this.tip_.hide)
         .on('click', (d, i) => {
