@@ -213,7 +213,7 @@ export class FairnessMetricSummary extends PolymerElement {
    * @private
    */
   computeDiffRatios_(baseline, data, slices, metrics) {
-    if (!metrics) {
+    if (!baseline || !data || !slices || !metrics) {
       return undefined;
     }
     return metrics.reduce((metricAcc, metric) => {
@@ -244,7 +244,8 @@ export class FairnessMetricSummary extends PolymerElement {
    * @private
    */
   initializeSlicesToPlot_(baseline, slices, metricsToPlot, diffRatios) {
-    if (metricsToPlot && metricsToPlot.length) {
+    if (metricsToPlot && metricsToPlot.length && baseline && slices &&
+        diffRatios) {
       // Use the first metrics to determine "interesting" slices to plot.
       const metric = metricsToPlot[0];
       this.slicesToPlot_ =

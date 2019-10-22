@@ -64,14 +64,18 @@ export class FairnessMetricsBoard extends PolymerElement {
       /** @type {!Array<string>} */
       thresholds: {type: Array, observer: 'thresholdsChanged_'},
 
-      /** @type {string} */
-      baseline_: {type: String, computed: 'computeBaseline_(slices_)'},
+      /** @type {string|undefined} */
+      baseline_: {type: String, value: 'Overall'},
 
       /**
        * The list of all slice names.
        * @private {!Array<string>}
        */
-      slices_: {type: Array, computed: 'computeSlices_(data)'},
+      slices_: {
+        type: Array,
+        computed: 'computeSlices_(data)',
+        observer: 'slicesChanged_'
+      },
 
       /**
        * The list of all slices omitted to ensure privacy.
@@ -108,17 +112,17 @@ export class FairnessMetricsBoard extends PolymerElement {
   /**
    * Extracts the baseline slice name.
    * @param {!Array<string>} slices
-   * @return {string|undefined}
+   * @return {undefined}
    * @private
    */
-  computeBaseline_(slices) {
-    if (!slices) {
-      return;
+  slicesChanged_(slices) {
+    if (!slices || !slices.length) {
+      this.baseline_ = undefined;
     }
     if (slices.includes('Overall')) {
-      return 'Overall';
+      this.baseline_ = 'Overall';
     }
-    return slices[0];
+    this.baseline_ = slices[0];
   }
 
   /**
