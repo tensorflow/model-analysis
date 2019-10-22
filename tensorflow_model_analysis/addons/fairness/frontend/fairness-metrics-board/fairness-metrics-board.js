@@ -81,7 +81,8 @@ export class FairnessMetricsBoard extends PolymerElement {
        * The list of all slices omitted to ensure privacy.
        * @private {!Array<string>}
        */
-      omittedSlices_: {type: Array, computed: 'computeOmittedSlices_(data)'},
+      omittedSlices_:
+          {type: Array, computed: 'computeOmittedSlices_(data)', value: []},
 
 
       /**
@@ -147,7 +148,7 @@ export class FairnessMetricsBoard extends PolymerElement {
    */
   computeOmittedSlices_(data) {
     if (!data) {
-      return;
+      return [];
     }
     return data.filter(d => d['metrics'][OMITTED_SLICE_ERROR_KEY])
         .map(d => d['slice']);
@@ -174,8 +175,7 @@ export class FairnessMetricsBoard extends PolymerElement {
     if (thresholds.length) {
       this.$.thresholdsList.select(
           thresholds[Math.floor(thresholds.length / 2)]);
-    }
-    else {
+    } else {
       this.$.thresholdsList.select();
     }
   }
