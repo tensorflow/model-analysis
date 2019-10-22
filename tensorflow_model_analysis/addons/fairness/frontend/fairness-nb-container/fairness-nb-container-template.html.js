@@ -41,9 +41,13 @@ template.innerHTML = `
   }
   .evaluation-run {
     max-width: 290px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
     display: block;
+  }
+  #run-selector > paper-dropdown-menu {
+    margin-left: 16px;
+    width: 90%;
+    margin-right: 16px;
   }
 </style>
 
