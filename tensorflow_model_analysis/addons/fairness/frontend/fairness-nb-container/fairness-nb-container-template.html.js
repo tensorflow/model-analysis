@@ -39,6 +39,12 @@ template.innerHTML = `
     flex-direction: column;
     flex-wrap: nowrap;
   }
+  .evaluation-run {
+    max-width: 290px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
 </style>
 
 <div class="flex-row">
@@ -49,7 +55,7 @@ template.innerHTML = `
                          class="dropdown-content" slot="dropdown-content" title$="">
             <template is="dom-repeat" items="[[availableEvaluationRuns]]">
               <paper-item run="[[item]]">
-                [[item]]
+                <span class="evaluation-run" title$="[[item]]">[[item]]</span>
               </paper-item>
             </template>
           </paper-listbox>

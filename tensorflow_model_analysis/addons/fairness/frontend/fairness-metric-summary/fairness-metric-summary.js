@@ -288,23 +288,27 @@ export class FairnessMetricSummary extends PolymerElement {
       return undefined;
     }
 
-    const slicesInTable = [baseline, ...slices];
-    const tableData = slicesInTable.map(slice => {
-      const sliceMetrics = data.find(d => d['slice'] == slice)['metrics'];
-      return !sliceMetrics ? {} : {
-        'slice': slice,
-        'metrics': metrics.reduce(
-            (acc, metric) => {
-              acc[metric] = sliceMetrics[metric];
-              const metricDiffName = metric + ' against ' + baseline;
-              acc[metricDiffName] = diffRatios[metric][slice];
-              return acc;
-            },
-            {})
-      };
-    });
-
-    return tableData;
+    try {
+      const slicesInTable = [baseline, ...slices];
+      const tableData = slicesInTable.map(slice => {
+        const sliceMetrics = data.find(d => d['slice'] == slice);
+        return !sliceMetrics ? {} : {
+          'slice': slice,
+          'metrics': metrics.reduce(
+              (acc, metric) => {
+                acc[metric] = sliceMetrics['metrics'][metric];
+                const metricDiffName = metric + ' against ' + baseline;
+                acc[metricDiffName] = diffRatios[metric][slice];
+                return acc;
+              },
+              {})
+        };
+      });
+      return tableData;
+    } catch (error) {
+      console.error(error);
+      return undefined;
+    }
   }
 
   /**

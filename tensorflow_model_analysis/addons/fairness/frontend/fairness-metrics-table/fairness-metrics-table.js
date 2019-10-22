@@ -113,6 +113,10 @@ export class FairnessMetricsTable extends PolymerElement {
       const metricsData = data[key]['metrics'];
       const slice = data[key]['slice'];
 
+      if (metricsData === undefined || slice === undefined) {
+        return;
+      }
+
       var tableRow = [slice];
       metrics.forEach(entry => {
         tableRow.push(this.formatData_(metricsData[entry]));

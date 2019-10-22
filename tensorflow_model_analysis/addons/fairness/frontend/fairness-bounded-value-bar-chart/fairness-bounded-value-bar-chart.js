@@ -146,12 +146,25 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       return;
     }
 
+    slices = [baseline, ...slices];
+    var absentSlices =
+        slices.filter(slice => !(data.find(d => d['slice'] == slice)));
+    if (absentSlices.length) {
+      return;
+    }
+
     // Covert the data into the d3 friendly data structure.
     const d3Data = [];
-    slices = [baseline, ...slices];
     slices.forEach((slice) => {
       const sliceMetrics = data.find(d => d['slice'] == slice);
       const metricsData = [];
+
+      var undefinedMetrics = metrics.filter(
+          metric => sliceMetrics['metrics'][metric] === undefined);
+      if (undefinedMetrics.length) {
+        return;
+      }
+
       metrics.forEach((metric) => {
         const bounds = this.getMetricBounds_(sliceMetrics['metrics'][metric]);
         metricsData.push({

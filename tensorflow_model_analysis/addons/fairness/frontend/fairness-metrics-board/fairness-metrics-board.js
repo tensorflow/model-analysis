@@ -166,19 +166,13 @@ export class FairnessMetricsBoard extends PolymerElement {
    * @private
    */
   thresholdsChanged_(thresholds) {
-    const sortedThresholds =
-        thresholds
-            .map(threshold => {
-              return {
-                threshold: threshold,
-                numericalValue: parseFloat(threshold)
-              };
-            })
-            .sort((a, b) => a.numericalValue - b.numericalValue);
-
+    this.selectedThresholds_ = [];
     if (thresholds.length) {
       this.$.thresholdsList.select(
-          sortedThresholds[Math.floor(sortedThresholds.length / 2)].threshold);
+          thresholds[Math.floor(thresholds.length / 2)]);
+    }
+    else {
+      this.$.thresholdsList.select();
     }
   }
 

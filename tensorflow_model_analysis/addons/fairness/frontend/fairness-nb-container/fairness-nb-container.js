@@ -224,7 +224,7 @@ export class FairnessNbContainer extends SelectEventMixin
 
     this.selectableMetrics_ =
         [...Object.keys(fairnessMertics).sort(), ...otherMetrics.sort()];
-    this.fairnessThresholds_ = Object.keys(thresholds);
+    this.fairnessThresholds_ = Object.keys(thresholds).sort();
   }
 };
 
