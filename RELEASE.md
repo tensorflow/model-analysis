@@ -4,6 +4,9 @@
 
 ## Bug fixes and other changes
 
+*   Updated to use tf.io.gfile for reading config files (fixes issue with
+    reading from GCS/HDFS in 0.15.0 and 0.15.1 releases).
+
 ## Breaking changes
 
 ## Deprecations

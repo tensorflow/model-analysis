@@ -748,7 +748,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 })
         ],
         options=options)
-    with open(os.path.join(output_path, 'eval_config.json'), 'w') as f:
+    with tf.io.gfile.GFile(os.path.join(output_path, 'eval_config.json'),
+                           'w') as f:
       f.write(model_eval_lib._serialize_eval_config(eval_config))
     got_eval_config = model_eval_lib.load_eval_config(output_path)
     self.assertEqual(eval_config, got_eval_config)

@@ -85,8 +85,8 @@ def _serialize_eval_config(eval_config: config.EvalConfig) -> Text:
 def load_eval_config(output_path: Text) -> config.EvalConfig:
   """Loads eval config."""
   path = os.path.join(output_path, _EVAL_CONFIG_FILE)
-  if os.path.exists(path):
-    with open(path) as f:
+  if tf.io.gfile.exists(path):
+    with tf.io.gfile.GFile(path, 'r') as f:
       pb = json_format.Parse(f.read(), config_pb2.EvalConfigAndVersion())
       _check_version(pb.version, output_path)
       return pb.eval_config
