@@ -78,6 +78,8 @@ const PlotTypes = {
   GAIN_CHART: 'gainChart',
   MACRO_PRECISION_RECALL_CURVE: 'macroPrecisionRecallCurve',
   MICRO_PRECISION_RECALL_CURVE: 'microPrecisionRecallCurve',
+  MULTI_CLASS_CONFUSION_MATRIX: 'multiClassConfusionMatrix',
+  MULTI_LABEL_CONFUSION_MATRIX: 'multiLabelConfusionMatrix',
   PREDICTION_DISTRIBUTION: 'predictionDistribution',
   PRECISION_RECALL_CURVE: 'precisionRecallCurve',
   RESIDUAL_PLOT: 'residualPlot',
@@ -92,6 +94,8 @@ const PlotDataFieldNames = {
   CONFUSION_MATRICES: 'matrices',
   MACRO_PRECISION_RECALL_CURVE_DATA: 'macroValuesByThreshold',
   MICRO_PRECISION_RECALL_CURVE_DATA: 'microValuesByThreshold',
+  MULTI_CLASS_CONFUSION_MATRIX_DATA: 'multiClassConfusionMatrixAtThresholds',
+  MULTI_LABEL_CONFUSION_MATRIX_DATA: 'multiLabelConfusionMatrixAtThresholds',
   PRECISION_RECALL_CURVE_DATA: 'binaryClassificationByThreshold',
   WEIGHTED_PRECISION_RECALL_CURVE_DATA: 'weightedValuesByThreshold',
 };
@@ -200,6 +204,12 @@ goog.exportSymbol(
     'tfma.PlotDataFieldNames.MICRO_PRECISION_RECALL_CURVE_DATA',
     PlotDataFieldNames.MICRO_PRECISION_RECALL_CURVE_DATA);
 goog.exportSymbol(
+    'tfma.PlotDataFieldNames.MULTI_CLASS_CONFUSION_MATRIX_DATA',
+    PlotDataFieldNames.MULTI_CLASS_CONFUSION_MATRIX_DATA);
+goog.exportSymbol(
+    'tfma.PlotDataFieldNames.MULTI_LABEL_CONFUSION_MATRIX_DATA',
+    PlotDataFieldNames.MULTI_LABEL_CONFUSION_MATRIX_DATA);
+goog.exportSymbol(
     'tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA',
     PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA);
 goog.exportSymbol(
@@ -225,6 +235,12 @@ goog.exportSymbol(
 goog.exportSymbol(
     'tfma.PlotTypes.MICRO_PRECISION_RECALL_CURVE',
     PlotTypes.MICRO_PRECISION_RECALL_CURVE);
+goog.exportSymbol(
+    'tfma.PlotTypes.MULTI_CLASS_CONFUSION_MATRIX',
+    PlotTypes.MULTI_CLASS_CONFUSION_MATRIX);
+goog.exportSymbol(
+    'tfma.PlotTypes.MULTI_LABEL_CONFUSION_MATRIX',
+    PlotTypes.MULTI_LABEL_CONFUSION_MATRIX);
 goog.exportSymbol(
     'tfma.PlotTypes.PREDICTION_DISTRIBUTION',
     PlotTypes.PREDICTION_DISTRIBUTION);

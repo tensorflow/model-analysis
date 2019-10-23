@@ -407,6 +407,10 @@ function getAvailablePlotTypes(plotMap) {
       },
       {
         type: Constants.PlotTypes.WEIGHTED_PRECISION_RECALL_CURVE,
+      }, {
+        type: Constants.PlotTypes.MULTI_CLASS_CONFUSION_MATRIX,
+      }, {
+        type: Constants.PlotTypes.MULTI_LABEL_CONFUSION_MATRIX,
       }
     ];
 
