@@ -1,0 +1,377 @@
+/**
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const template = /** @type {!HTMLTemplateElement} */(document.createElement('template'));
+template.innerHTML = `
+<style>
+  .container {
+    display: table;
+    border-collapse: collapse;
+  }
+  .outer {
+    display: inline-flex;
+    flex-direction: column;
+    text-align: center;
+  }
+  .inner {
+    display: inline-flex;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+  .h-label {
+    padding: 0 0 5px 0;
+  }
+  .v-label {
+    transform: rotate(-90deg);
+  }
+  .row {
+    display: table-row;
+  }
+  .guide {
+    background-color: rgba(0,0,0, 0.1);
+  }
+  .cell {
+    display: table-cell;
+    white-space: nowrap;
+    border: 1px #c5c5c5 solid;
+    position: relative;
+  }
+  .padded {
+    padding: 5px;
+  }
+  .container.compact .cell .padded,
+  .container.compact .cell .header {
+    display: none;
+  }
+  .compact .positive,
+  .compact .false-positive,
+  .compact .false-negative {
+    width: 10px;
+    height: 10px;
+  }
+  .compact .cell {
+    border: 1px #ddd;
+  }
+  .cell .false-positive,
+  .cell .false-negative,
+  .show-false-positive .cell .positive,
+  .show-false-negative .cell .positive,
+  .show-false-positive .cell .diag.false-positive,
+  .show-false-negative .cell .diag.false-negative {
+    display: none;
+  }
+
+  .show-false-positive .cell .false-positive,
+  .show-false-negative .cell .false-negative {
+    display: block;
+  }
+
+  .positive,
+  .false-positive,
+  .false-negative {
+    text-align: right;
+  }
+  #controls {
+    width: 680px;
+    margin: 5px;
+    min-height: 36px;
+    position:relative;
+  }
+  #ctrl-btn {
+    position:absolute;
+    right: 0px;
+  }
+  #class-count {
+    display: inline-block;
+    text-align: center;
+    width: 64px;
+  }
+  .info {
+    width: 14px;
+    padding: 0 0 8px 2px;
+  }
+
+  paper-tooltip {
+    --paper-tooltip-background: #555;
+    --paper-tooltip-opacity: 1;
+    --paper-tooltip: {
+      font-size: 13px;
+      color: white;
+    }
+  }
+  .tip {
+    margin: 12px;
+    width: 200px;
+  }
+  .b0 {
+    background-color: rgb(240, 240, 240);
+  }
+   .b1 {
+    background-color: rgb(226, 229, 235);
+  }
+  .b2 {
+    background-color: rgb(211, 219, 231);
+  }
+  .b3 {
+    background-color: rgb(197, 208, 226);
+  }
+  .b4 {
+    background-color: rgb(183, 198, 221);
+  }
+  .b5 {
+    background-color: rgb(168, 187, 216);
+  }
+  .b6 {
+    background-color: rgb(154, 177, 212);
+  }
+  .b7 {
+    background-color: rgb(139, 166, 207);
+  }
+  .b8 {
+    background-color: rgb(125, 156, 202);
+  }
+  .b9 {
+    background-color: rgb(111, 145, 197);
+    color: white;
+  }
+  .b10 {
+    background-color: rgb(96, 134, 193);
+    color: white;
+  }
+  .b11 {
+    background-color: rgb(82, 124, 188);
+    color: white;
+  }
+  .b12 {
+    background-color: rgb(68, 113, 183);
+    color: white;
+  }
+  .b13 {
+    background-color: rgb(53, 103, 178);
+    color: white;
+  }
+  .b14 {
+    background-color: rgb(39, 92, 174);
+    color: white;
+  }
+  .b15 {
+    background-color: rgb(24, 82, 169);
+    color: white;
+  }
+  .b16 {
+    background-color: rgb(10, 71, 164);
+    color: white;
+  }
+
+  #scale {
+    display: inline-block;
+    width: 256px;
+    height: 10px;
+    background: linear-gradient(90deg, #f0f0f0, #0a47a4);
+    padding: 0 6px;
+  }
+
+  .anchor {
+    z-index: 1;
+  }
+
+  #tooltip {
+    position:absolute;
+    left: 12px;
+    top: 24px;
+    border: 1px solid grey;
+    padding: 6px;
+    background: white;
+  }
+  .compact #tooltip {
+    left: 5px;
+    top: 10px;
+  }
+</style>
+<div>
+  <div id="controls">
+    <paper-icon-button id="ctrl-btn" icon="[[getIcon_(controlOpened_)]]"
+                       on-tap="toggleControl_">
+    </paper-icon-button>
+    <iron-collapse opened="{{controlOpened_}}">
+      <div>
+        <paper-dropdown-menu always-float-label label="Thresholds">
+          <paper-listbox slot="dropdown-content" attr-for-selected="value"
+                         selected="{{selectedThreshold_}}">
+            <template is="dom-repeat" items="[[thresholds_]]">
+              <paper-item value="[[item]]">[[item]]</paper-item>
+            </template>
+          </paper-listbox>
+        </paper-dropdown-menu>
+      </div>
+      <div hidden$="[[!multiLabel]]">
+        <label id="mode-label">
+          <span>
+            Show<iron-icon class="info" icon="info-outline"></iron-icon>:
+            <paper-tooltip position="right bottom" fit-to-visible-bounds>
+              <div class="tip">
+                What is displayed in each cell:
+                <ul>
+                  <li>
+                    total prediction count for given label class and predicted class
+                  </li>
+                  <li>
+                    total incorrect prediction count for the given label class and predicted
+                    class
+                  </li>
+                </ul>
+              </div>
+            </paper-tooltip>
+          </span>
+        </label>
+        <paper-radio-group selected={{mode_}} aria-labelledby="mode-label">
+          <paper-radio-button name="[[sortBy_.POSITIVES]]">
+            [[getModeText_(sortBy_.POSITIVES)]]
+          </paper-radio-button>
+          <paper-radio-button name="[[sortBy_.FALSE_POSITIVES]]">
+            [[getModeText_(sortBy_.FALSE_POSITIVES)]]
+          </paper-radio-button>
+          <paper-radio-button name="[[sortBy_.FALSE_NEGATIVES]]">
+            [[getModeText_(sortBy_.FALSE_NEGATIVES)]]
+          </paper-radio-button>
+        </paper-radio-group>
+      </div>
+      <div>
+        <label id="sort-label">
+          <span>
+            Sort by<iron-icon class="info" icon="info-outline"></iron-icon>:
+            <paper-tooltip position="right" fit-to-visible-bounds>
+              <div class="tip">
+                How the classes are sorted:
+                <ul>
+                  <li>
+                    alphabetically
+                  </li>
+                  <li>
+                    total prediction count for all examples with label containing the class
+                  </li>
+                  <li>
+                    total correct prediction count
+                  </li>
+                  <li>
+                    total incorrect prediction count
+                  </li>
+                  <li hidden$="[[!multiLabel]]">
+                    total false negatives count
+                  </li>
+                  <li hidden$="[[multiLabel]]">
+                    no prediction / prediciton for all classes below threshold
+                  </li>
+                </ul>
+              </div>
+            </paper-tooltip>
+          </span>
+        </label>
+        <paper-radio-group selected={{sort_}} aria-labelledby="sort-label">
+          <paper-radio-button name="[[sortBy_.ALPHABETICAL]]">
+            [[getSortText_(sortBy_.ALPHABETICAL)]]
+          </paper-radio-button>
+          <paper-radio-button name="[[sortBy_.POSITIVES]]">
+            [[getSortText_(sortBy_.POSITIVES)]]
+          </paper-radio-button>
+          <paper-radio-button name="[[sortBy_.TRUE_POSITIVES]]">
+            [[getSortText_(sortBy_.TRUE_POSITIVES)]]
+          </paper-radio-button>
+          <paper-radio-button name="[[sortBy_.FALSE_POSITIVES]]">
+            [[getSortText_(sortBy_.FALSE_POSITIVES)]]
+          </paper-radio-button>
+          <paper-radio-button name="[[sortBy_.FALSE_NEGATIVES]]" hidden$="[[!multiLabel]]">
+            [[getSortText_(sortBy_.FALSE_NEGATIVES)]]
+          </paper-radio-button>
+          <paper-radio-button name="[[sortBy_.NO_PREDICTION]]" hidden$="[[multiLabel]]">
+            [[getSortText_(sortBy_.NO_PREDICTION)]]
+          </paper-radio-button>
+        </paper-radio-group>
+      </div>
+      <div>
+        <label>Number of classes to show</label>
+        <paper-input id="class-count" value="{{numberOfClassesShown_}}">
+        </paper-input>
+        <label>Scale:</label>0%<div id="scale"></div>100%
+      </div>
+      <div>
+        <paper-checkbox checked="{{showPercentage_}}">Show percentage</paper-checkbox>
+        <paper-checkbox checked="{{compact_}}">Compact</paper-checkbox>
+      </div>
+    </iron-collapse>
+  </div>
+  <div class="outer">
+    <div class="h-label">
+      Predicted
+    </div>
+    <div class="inner">
+      <div class="v-label">
+        Actual
+      </div>
+      <div class$="[[determineTableClass_(mode_, compact_)]]" on-pointerover="onPointerOver_"
+           on-pointerout="maybeRemoveTooltip_">
+        <template is="dom-repeat" items=[[matrix_]] as="row" initial-count=16 index-as="rowId">
+          <div class="row">
+            <template is="dom-repeat" items=[[row]] initial-count=32>
+              <div class="cell" row$=[[rowId]] column$=[[index]] diagonal$="[[item.diagonal]]">
+                <div class$="[[item.headerClasses]]" hidden$="[[item.cell]]">
+                  <div class="padded">
+                    [[item.text]]
+                  </div>
+                </div>
+                <div class$="[[item.positiveClasses]]" hidden$="[[item.classId]]">
+                  <div class="padded">
+                    [[item.positives]]
+                  </div>
+                </div>
+                <div class$="[[item.falsePositiveClasses]]" hidden$="[[item.classId]]">
+                  <div class="padded">
+                    [[item.falsePositives]]
+                  </div>
+                </div>
+                <div class$="[[item.falseNegativeClasses]]" hidden$="[[item.classId]]">
+                  <div class="padded">
+                    [[item.falseNegatives]]
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="tooltip" hidden$="[[!showTooltip_]]">
+  <table>
+    <tr>
+      <td>Predicted class:</td> <td>[[selectedPrecitedClass_]]</td>
+    </tr>
+    <tr>
+      <td>Actual class:</td><td>[[selectedActualClass_]]</td>
+    </tr>
+    <tr>
+      <td>[[getModeText_(mode_)]]:</td>
+      <td>[[selectedCellValue_]] ([[selectedCellPercentage_]]%)</td>
+    </tr>
+    <tr>
+      <td>Order by [[getSortText_(sort_)]]:</td><td>[[selectedRowTotal_]]</td>
+    </tr>
+  </table>
+</div>
+`;
+export {template};
