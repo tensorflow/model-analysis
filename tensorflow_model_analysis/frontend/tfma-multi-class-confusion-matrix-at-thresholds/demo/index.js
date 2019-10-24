@@ -74,8 +74,17 @@
         'entries': entries,
       });
     }
-    matrix.data = {'matrices': matrices};
 
+    const classNames = {};
+    for (let i = 0; i < count; i++) {
+      const prefix = (i % 3) ? (i % 2 ? '' : 'b') : 'a';
+      if (prefix) {
+        classNames[prefix + ':' + i] = i;
+      }
+    }
+
+    matrix.data = {'matrices': matrices};
+    matrix.classNames = classNames;
     matrix.multiLabel = multiLabel;
   };
 

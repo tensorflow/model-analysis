@@ -173,6 +173,23 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
       data: {type: Object},
 
       /**
+       * A map where the keys are the class names in string and the values are
+       * class ids in number.
+       * @type {!Object<number>}
+       */
+      classNames: {type: Object, value: () => {}},
+
+      /**
+       * A map where the keys are the class ids and the values are the
+       * corresponding class name strings.
+       * @private {!Object<string>}
+       */
+      displayNames_: {
+        type: Object,
+        computed: 'computeDisplayNames_(classNames, availableClassIds_)',
+      },
+
+      /**
        * Whether the data contains results for a multi-label multi-class model
        * or single-label multi-class model.
        */
@@ -229,7 +246,7 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
       sortedClassIds_: {
         type: Array,
         computed: 'computeSortedClassIds_(' +
-            'selectedMatrix_, availableClassIds_, sort_)',
+            'selectedMatrix_, availableClassIds_, displayNames_, sort_)',
         observer: 'sortedClassIdsChanged_'
       },
 
@@ -240,8 +257,8 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
       matrix_: {
         type: Array,
         computed: 'computeMatrix_(' +
-            'selectedMatrix_, sortedClassIds_, numberOfClassesShown_, sort_, ' +
-            'showPercentage_)'
+            'selectedMatrix_, sortedClassIds_, numberOfClassesShown_, ' +
+            'displayNames_, sort_, showPercentage_)'
       },
 
       /**
@@ -553,12 +570,13 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
    * Sorts the list of class ids based on the method specified by the user.
    * @param {!SummaryMatrix|undefined} summary
    * @param {!Array<number>|undefined} classIds
+   * @param {!Object<string>} displayNames
    * @param {!SortBy} sort
    * @return {!Array<string>|undefined}
    * @private
    */
-  computeSortedClassIds_(summary, classIds, sort) {
-    if (!summary || !classIds) {
+  computeSortedClassIds_(summary, classIds, displayNames, sort) {
+    if (!summary || !classIds || !displayNames) {
       return undefined;
     }
 
@@ -571,7 +589,7 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
         return -1;
       }
       if (sort == SortBy.ALPHABETICAL) {
-        return classA > classB ? 1 : -1;
+        return displayNames[classA] > displayNames[classB] ? 1 : -1;
       }
       const countA = this.getSortValue_(
           /** @type {!SummaryMatrix} */ (summary), classA, sort);
@@ -622,13 +640,16 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
    * @param {!SummaryMatrix|undefined} summaryMatrix
    * @param {!Array<string>|undefined} classIds
    * @param {number} classesToShow
+   * @param {!Object<string>} displayNames
    * @param {!SortBy} sort
    * @param {boolean} showPercentage
    * @return {!RenderMatrix|undefined}
    * @private
    */
-  computeMatrix_(summaryMatrix, classIds, classesToShow, sort, showPercentage) {
-    if (!summaryMatrix || !classIds) {
+  computeMatrix_(
+      summaryMatrix, classIds, classesToShow, displayNames, sort,
+      showPercentage) {
+    if (!summaryMatrix || !classIds || !displayNames) {
       return undefined;
     }
 
@@ -644,11 +665,7 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
       this.makeHeaderCell_('Total', 'guide'),
     ];
     classIds.forEach((classId, index) => {
-      if (classId == NO_PREDICTION_CLASS_ID) {
-        header.push(this.makeHeaderCell_('No Prediction', 'guide'));
-      } else if (index < classesToShow) {
-        header.push(this.makeHeaderCell_(classId));
-      }
+      header.push(this.makeHeaderCell_(displayNames[classId]));
     });
 
     if (showSortColumn) {
@@ -690,7 +707,7 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
       }
       const sourceRow = summaryMatrix[rowId];
       const row = [
-        this.makeHeaderCell_(rowId),
+        this.makeHeaderCell_(displayNames[rowId]),
         this.makeDataCell_(
             formatNumber(sourceRow.totalPositives),
             formatNumber(sourceRow.totalFalsePositives),
@@ -862,8 +879,9 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
       const sortValue = this.getSortValue_(
           this.selectedMatrix_, pointerEvent.actualClass, this.sort_);
       this.updateAnchor_(pointerEvent.container);
-      this.selectedPrecitedClass_ = pointerEvent.predictedClass;
-      this.selectedActualClass_ = pointerEvent.actualClass;
+      this.selectedPrecitedClass_ =
+          this.displayNames_[pointerEvent.predictedClass];
+      this.selectedActualClass_ = this.displayNames_[pointerEvent.actualClass];
       this.selectedRowTotal_ = sortValue;
       this.selectedCellValue_ = getDisplayValue(
           pointerEvent.actualClass, pointerEvent.predictedClass, this.mode_);
@@ -928,6 +946,34 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
    */
   getSortText_(sort) {
     return SortText[sort] || '';
+  }
+
+  /**
+   * Creates a map from class id to the class name that should be displayed.
+   * @param {!Object<number>} classNames
+   * @param {!Array<string>|undefined} classIds
+   * @return {!Object<string>|undefined}
+   * @private
+   */
+  computeDisplayNames_(classNames, classIds) {
+    if (!classIds) {
+      return undefined;
+    }
+
+    const displayNames = {
+      [NO_PREDICTION_CLASS_ID]: SortText[SortBy.NO_PREDICTION],
+    };
+
+    for (let key in classNames) {
+      displayNames[classNames[key]] = key;
+    }
+
+    classIds.forEach((classId) => {
+      if (!displayNames[classId]) {
+        displayNames[classId] = classId;
+      }
+    });
+    return displayNames;
   }
 }
 
