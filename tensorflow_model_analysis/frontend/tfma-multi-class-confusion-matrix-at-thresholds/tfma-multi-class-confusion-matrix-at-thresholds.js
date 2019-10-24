@@ -664,12 +664,22 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
       }
       return '';
     };
+    const formatNumber = (value) => {
+      if (value < 1000) {
+        return value;
+      } else {
+        const base = [1, 1e3, 1e6, 1e9, 1e12, 1e15, 1e18];
+        const unit = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
+        const index = Math.floor(Math.log10(value) / 3);
+        return (value / base[index]).toFixed(2) + unit[index];
+      }
+    };
     const formatValue = (value, baseline, showPercentage) => {
       baseline = baseline || 1;
       if (value && showPercentage) {
         return (value / baseline * 100).toFixed(1) + '%';
       } else {
-        return value;
+        return formatNumber(value);
       }
     };
 
@@ -682,9 +692,10 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
       const row = [
         this.makeHeaderCell_(rowId),
         this.makeDataCell_(
-            sourceRow.totalPositives, sourceRow.totalFalsePositives,
-            sourceRow.totalFalseNegatives, 'guide header', 'guide header',
-            'guide header')
+            formatNumber(sourceRow.totalPositives),
+            formatNumber(sourceRow.totalFalsePositives),
+            formatNumber(sourceRow.totalFalseNegatives), 'guide header',
+            'guide header', 'guide header')
       ];
       const baseline = this.getSortValue_(summaryMatrix, rowId, sort);
 
@@ -720,7 +731,8 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
 
       if (showSortColumn) {
         row.push(this.makeHeaderCell_(
-            this.getSortValue_(summaryMatrix, rowId, sort), 'guide'));
+            formatNumber(this.getSortValue_(summaryMatrix, rowId, sort)),
+            'guide'));
       }
       matrix.push(row);
     });
