@@ -24,6 +24,7 @@ import '@polymer/paper-tabs/paper-tabs.js';
 import '../tfma-accuracy-charts/tfma-accuracy-charts.js';
 import '../tfma-calibration-plot/tfma-calibration-plot.js';
 import '../tfma-gain-chart/tfma-gain-chart.js';
+import '../tfma-multi-class-confusion-matrix-at-thresholds/tfma-multi-class-confusion-matrix-at-thresholds.js';
 import '../tfma-precision-recall-curve/tfma-precision-recall-curve.js';
 import '../tfma-prediction-distribution/tfma-prediction-distribution.js';
 import '../tfma-residual-plot/tfma-residual-plot.js';
@@ -35,6 +36,8 @@ const TABS = {
   GAIN_CHART: 'gain',
   MACRO_PRECISION_RECALL: 'mapr',
   MICRO_PRECISION_RECALL: 'mipr',
+  MULTI_CLASS_CONFUSION_MATRIX: 'mccm',
+  MULTI_LABEL_CONFUSION_MATRIX: 'mlcm',
   PRECISION_RECALL: 'pr',
   PREDICTION_DISTRIBUTION: 'pd',
   RESIDUAL_PLOT: 'res',
@@ -48,6 +51,8 @@ const TITLES = {
   GAIN_CHART: 'Gain',
   MACRO_PRECISION_RECALL: 'Macro PR Curve',
   MICRO_PRECISION_RECALL: 'Micro PR Curve',
+  MULTI_CLASS_CONFUSION_MATRIX: 'Multi-class Confusion Matrix',
+  MULTI_LABEL_CONFUSION_MATRIX: 'Multi-label Confusion Matrix',
   PRECISION_RECALL: 'Precision-Recall Curve',
   PREDICTION_DISTRIBUTION: 'Prediction Distribution',
   RESIDUAL_PLOT: 'Residual Plot',
@@ -93,6 +98,14 @@ const SUPPORTED_VISUALIZATION = {
   [tfma.PlotTypes.GAIN_CHART]: {
     type: TABS.GAIN_CHART,
     text: TITLES.GAIN_CHART,
+  },
+  [tfma.PlotTypes.MULTI_CLASS_CONFUSION_MATRIX]: {
+    type: TABS.MULTI_CLASS_CONFUSION_MATRIX,
+    text: TITLES.MULTI_CLASS_CONFUSION_MATRIX,
+  },
+  [tfma.PlotTypes.MULTI_LABEL_CONFUSION_MATRIX]: {
+    type: TABS.MULTI_LABEL_CONFUSION_MATRIX,
+    text: TITLES.MULTI_LABEL_CONFUSION_MATRIX,
   },
 };
 
@@ -177,6 +190,8 @@ export class Plot extends PolymerElement {
           'Prediction': TABS.PREDICTION_DISTRIBUTION,
           'Macro': TABS.MACRO_PRECISION_RECALL,
           'Micro': TABS.MICRO_PRECISION_RECALL,
+          'MULTI_CLASS_CONFUSION_MATRIX': TABS.MULTI_CLASS_CONFUSION_MATRIX,
+          'MULTI_LABEL_CONFUSION_MATRIX': TABS.MULTI_LABEL_CONFUSION_MATRIX,
           'Precision': TABS.PRECISION_RECALL,
           'Residual': TABS.RESIDUAL_PLOT,
           'ROC': TABS.ROC,
@@ -198,6 +213,8 @@ export class Plot extends PolymerElement {
           'Prediction': TITLES.PREDICTION_DISTRIBUTION,
           'Macro': TITLES.MACRO_PRECISION_RECALL,
           'Micro': TITLES.MICRO_PRECISION_RECALL,
+          'MultiClassConfusionMatrix': TITLES.MULTI_CLASS_CONFUSION_MATRIX,
+          'MultiLabelConfusionMatrix': TITLES.MULTI_LABEL_CONFUSION_MATRIX,
           'Precision': TITLES.PRECISION_RECALL,
           'Residual': TITLES.RESIDUAL_PLOT,
           'ROC': TITLES.ROC,
@@ -239,6 +256,26 @@ export class Plot extends PolymerElement {
       microPrecisionRecallCurveData_: {
         type: Array,
         computed: 'computeMicroPrecisionRecallCurveData_(data)'
+      },
+
+      /**
+       * The data for multi-class confusion matrix.
+       * @type {!Array<!Object>}
+       * @private
+       */
+      multiClassConfusionMatrixData_: {
+        type: Object,
+        computed: 'computeMultiClassConfusionMatrixData_(data)',
+      },
+
+      /**
+       * The data for multi-label confusion matrix.
+       * @type {!Array<!Object>}
+       * @private
+       */
+      multiLabelConfusionMatrixData_: {
+        type: Object,
+        computed: 'computeMultiLabelConfusionMatrixData_(data)',
       },
 
       /**
@@ -358,6 +395,30 @@ export class Plot extends PolymerElement {
   computeMicroPrecisionRecallCurveData_(data) {
     return this.getMatricesForPRCurve_(
         data, tfma.PlotDataFieldNames.MICRO_PRECISION_RECALL_CURVE_DATA);
+  }
+
+  /**
+   * Extracts confusion matrix data out of raw data for multi-class
+   * single-label model.
+   * @param {?Object} data
+   * @return {!Array<!Object>|undefined}
+   * @private
+   */
+  computeMultiClassConfusionMatrixData_(data) {
+    const plotData = data && data['plotData'] || {};
+    return plotData[tfma.PlotDataFieldNames.MULTI_CLASS_CONFUSION_MATRIX_DATA];
+  }
+
+  /**
+   * Extracts confusion matrix data out of raw data for multi-class
+   * multi-label model.
+   * @param {?Object} data
+   * @return {!Array<!Object>|undefined}
+   * @private
+   */
+  computeMultiLabelConfusionMatrixData_(data) {
+    const plotData = data && data['plotData'] || {};
+    return plotData[tfma.PlotDataFieldNames.MULTI_LABEL_CONFUSION_MATRIX_DATA];
   }
 
   /**

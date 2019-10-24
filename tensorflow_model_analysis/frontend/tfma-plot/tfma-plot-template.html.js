@@ -170,6 +170,23 @@ template.innerHTML = `
         <tfma-accuracy-charts data="[[precisionRecallCurveData_]]">
         </tfma-accuracy-charts>
       </div>
+      <div name="[[tabNames_.MULTI_CLASS_CONFUSION_MATRIX]]" class="plot-holder">
+        <span class="title">[[chartTitles_.MultiClassConfusionMatrix]]</span>
+        <div class="subtitle">
+          [[getSubTitle_(subtitles, tabNames_.MULTI_CLASS_CONFUSION_MATRIX)]]
+        </div>
+        <tfma-multi-class-confusion-matrix-at-thresholds data="[[multiClassConfusionMatrixData_]]">
+        </tfma-multi-class-confusion-matrix-at-thresholds>
+      </div>
+      <div name="[[tabNames_.MULTI_LABEL_CONFUSION_MATRIX]]" class="plot-holder">
+        <span class="title">[[chartTitles_.MultiLabelConfusionMatrix]]</span>
+        <div class="subtitle">
+          [[getSubTitle_(subtitles, tabNames_.MULTI_LABEL_CONFUSION_MATRIX)]]
+        </div>
+        <tfma-multi-class-confusion-matrix-at-thresholds data="[[multiLabelConfusionMatrixData_]]"
+                                                         multi-label>
+        </tfma-multi-class-confusion-matrix-at-thresholds>
+      </div>
     </iron-pages>
     <paper-spinner id="spinner" active="[[loading]]"></paper-spinner>
     <div hidden$="[[showAll_]]">

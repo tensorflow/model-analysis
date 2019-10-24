@@ -43,16 +43,22 @@ limitations under the License.
       </div>
       <div>
         <h3>Error / Reload</h3>
-        <tfma-plot id="error"></tfma-plot>
+        <tfma-plot id="error-matrix"></tfma-plot>
         <div id="reload-prompt"></div>
       </div>
     </div>
-    <div>
-      <h3>Flat View</h3>
+    <div style="display:felx">
       <div>
-        Resize window to see the charts reflow.
+        <h3>Flat View</h3>
+        <div>
+          Resize window to see the charts reflow.
+        </div>
+        <tfma-plot id="flat" flat style="width:75%;min-width:400px;"></tfma-plot>
       </div>
-      <tfma-plot id="flat" flat style="width:75%;min-width:400px;"></tfma-plot>
+      <div>
+        <h3>Multi-class Confusion Matrix</h3>
+        <tfma-plot id="matrix"></tfma-plot>
+      </div>
     </div>
   </body>
 </html>

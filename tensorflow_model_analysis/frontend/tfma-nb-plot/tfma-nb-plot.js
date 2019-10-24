@@ -137,7 +137,12 @@ export class NotebookPlotWrapper extends PolymerElement {
     if (data[tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA]) {
       plotMap[tfma.PlotTypes.PRECISION_RECALL_CURVE] = 1;
     }
-
+    if (data[tfma.PlotDataFieldNames.MULTI_CLASS_CONFUSION_MATRIX_DATA]) {
+      plotMap[tfma.PlotTypes.MULTI_CLASS_CONFUSION_MATRIX] = 1;
+    }
+    if (data[tfma.PlotDataFieldNames.MULTI_LABEL_CONFUSION_MATRIX_DATA]) {
+      plotMap[tfma.PlotTypes.MULTI_LABEL_CONFUSION_MATRIX] = 1;
+    }
     return tfma.Data.getAvailablePlotTypes(plotMap);
   }
 
