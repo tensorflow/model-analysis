@@ -23,7 +23,7 @@ import six
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
-from typing import List, Optional, Text, Tuple
+from typing import Any, List, Callable, Optional, Text, Tuple
 
 from tensorflow.core.example import example_pb2
 
@@ -33,9 +33,9 @@ def default_dict_key(prefix: Text) -> Text:
   return util.KEY_SEPARATOR + prefix
 
 
-def extract_tensor_maybe_dict(prefix: Text,
-                              dict_of_tensors: types.DictOfTensorType
-                             ) -> types.TensorTypeMaybeDict:
+def extract_tensor_maybe_dict(
+    prefix: Text,
+    dict_of_tensors: types.DictOfTensorType) -> types.TensorTypeMaybeDict:
   """Returns tensor if single entry under default key else returns dict."""
   default_key = default_dict_key(prefix)
   if list(dict_of_tensors.keys()) == [default_key]:
@@ -327,8 +327,9 @@ def _sparse_concat_rows(
   # pylint: enable=g-long-ternary
 
 
-def _sparse_slice_rows(sparse_tensor_value: tf.compat.v1.SparseTensorValue
-                      ) -> List[tf.compat.v1.SparseTensorValue]:
+def _sparse_slice_rows(
+    sparse_tensor_value: tf.compat.v1.SparseTensorValue
+) -> List[tf.compat.v1.SparseTensorValue]:
   """Returns a list of single rows of a SparseTensorValue.
 
   This is equivalent to:
@@ -413,8 +414,8 @@ def _sparse_slice_rows(sparse_tensor_value: tf.compat.v1.SparseTensorValue
   return result
 
 
-def split_tensor_value(tensor_value: types.TensorValue
-                      ) -> List[types.TensorValue]:
+def split_tensor_value(
+    tensor_value: types.TensorValue) -> List[types.TensorValue]:
   """Split a single batch of Tensor values into a list of Tensor values.
 
   Args:
@@ -441,8 +442,8 @@ def split_tensor_value(tensor_value: types.TensorValue
                     (type(tensor_value), tensor_value))
 
 
-def merge_tensor_values(tensor_values: List[types.TensorValue]
-                       ) -> Optional[types.TensorValue]:
+def merge_tensor_values(
+    tensor_values: List[types.TensorValue]) -> Optional[types.TensorValue]:
   """Merge a list of Tensor values into a single batch of Tensor values.
 
   Args:
@@ -478,3 +479,53 @@ def merge_tensor_values(tensor_values: List[types.TensorValue]
 
 def add_build_data_collection():
   return
+
+
+def export_legacy_eval_savedmodel(
+    estimator,
+    export_dir_base: Text,
+    eval_input_receiver_fn: Callable[[], Any],
+    serving_input_receiver_fn: Optional[Callable[
+        [], tf.estimator.export.ServingInputReceiver]] = None,
+    checkpoint_path: Optional[Text] = None) -> Optional[bytes]:
+  """Exports a legacy EvalSavedModel for the given estimator.
+
+  Args:
+    estimator: Estimator to export the graph for.
+    export_dir_base: Base path for export. Graph will be exported into a
+      subdirectory of this base path.
+    eval_input_receiver_fn: Eval input receiver function.
+    serving_input_receiver_fn: (Optional) Serving input receiver function. We
+      recommend that you provide this as well, so that the exported SavedModel
+      also contains the serving graph. If not privded, the serving graph will
+      not be included in the exported SavedModel.
+    checkpoint_path: Path to a specific checkpoint to export. If set to None,
+      exports the latest checkpoint.
+
+  Returns:
+    Path to the directory where the EvalSavedModel was exported or None if
+    legacy export not required.
+
+  Raises:
+    ValueError: Could not find a checkpoint to export.
+  """
+  del estimator
+  del export_dir_base
+  del eval_input_receiver_fn,
+  del serving_input_receiver_fn
+  del checkpoint_path
+  return
+
+
+def legacy_export_stategy(
+    eval_input_receiver_fn: Callable[[], Any],
+    serving_input_receiver_fn: Optional[Callable[
+        [], tf.estimator.export.ServingInputReceiver]] = None,
+    exports_to_keep: Optional[int] = 5,
+    export_eval_savedmodel_fn: Callable[..., Any] = None) -> Any:
+  """Creates legacy export strategy using the given export_fn."""
+  del eval_input_receiver_fn
+  del serving_input_receiver_fn
+  del exports_to_keep
+  del export_eval_savedmodel_fn
+  raise NotImplementedError('legacy ExportStrategy no longer supported')
