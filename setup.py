@@ -265,7 +265,7 @@ setup_args = {
         'scipy==1.1.0',
         'six>=1.12,<2',
         'tensorflow>=1.15,<3',
-        'tfx-bsl>=0.15,<0.16'
+        'tfx-bsl>=0.15.1,<0.16'
     ],
     'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     'packages': find_packages(),
