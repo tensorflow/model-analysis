@@ -42,6 +42,9 @@
       'post_export_metrics/false_positive_rate@0.60': {
         'doubleValue': Math.random(),
       },
+      'post_export_metrics/example_count': {
+        'doubleValue': Math.floor(Math.random() * 100)
+      },
       'totalWeightedExamples': {'doubleValue': 2000 * (Math.random() + 0.8)}
     };
   };

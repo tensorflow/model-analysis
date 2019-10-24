@@ -50,6 +50,7 @@
           'value': Math.random() * 0.3 + 0.3,
           'methodology': 'POISSON_BOOTSTRAP'
         },
+        'post_export_metrics/example_count': Math.floor(Math.random() * 100),
       }
     };
   });
@@ -63,6 +64,7 @@
         'post_export_metrics/false_negative_rate@0.30': Math.random(),
         'post_export_metrics/false_negative_rate@0.50': Math.random(),
         'post_export_metrics/false_negative_rate@0.70': Math.random(),
+        'post_export_metrics/example_count': Math.floor(Math.random() * 100),
       }
     };
   });

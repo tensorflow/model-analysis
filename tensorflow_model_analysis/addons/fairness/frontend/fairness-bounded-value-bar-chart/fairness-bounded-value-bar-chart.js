@@ -73,6 +73,10 @@ function buildTooltips() {
           html +=
               '<tr><td>Confidence Interval</td><td>' + conf_int + '</td></tr>';
         }
+        if (d.exampleCount) {
+          html +=
+              '<tr><td>Example Count</td><td>' + d.exampleCount + '</td></tr>';
+        }
         html += '</tbody></table>';
         return html;
       });
@@ -178,7 +182,9 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
           value: tfma.CellRenderer.maybeExtractBoundedValue(
               sliceMetrics['metrics'][metric]),
           upperBound: bounds.min,
-          lowerBound: bounds.max
+          lowerBound: bounds.max,
+          exampleCount:
+              sliceMetrics['metrics']['post_export_metrics/example_count']
         });
       });
       d3Data.push({
@@ -269,9 +275,10 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         .attr('y', d => y(d.value))
         .attr('width', metricsX.bandwidth())
         .attr('height', d => y(0) - y(d.value))
-        .attr('fill',
-              d => d.fullSliceName == baseline ? baselineColor(d.metricName) :
-                                                 metricsColor(d.metricName))
+        .attr(
+            'fill',
+            d => d.fullSliceName == baseline ? baselineColor(d.metricName) :
+                                               metricsColor(d.metricName))
         .on('mouseover', this.tip_.show)
         .on('mouseout', this.tip_.hide)
         .on('click', (d, i) => {

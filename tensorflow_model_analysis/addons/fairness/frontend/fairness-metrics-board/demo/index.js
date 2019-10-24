@@ -19,6 +19,7 @@
       return {
         'post_export_metrics/false_negative_rate@0.25': Math.random(),
         'post_export_metrics/false_negative_rate@0.15': Math.random(),
+        'post_export_metrics/example_count': Math.floor(Math.random() * 100),
         'accuracy': Math.random(),
         'weight': 2000 * (Math.random() + 0.8),
       };

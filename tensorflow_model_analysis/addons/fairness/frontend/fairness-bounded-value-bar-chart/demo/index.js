@@ -49,6 +49,7 @@
           'value': Math.random() * 0.4 + 0.4,
           'methodology': 'POISSON_BOOTSTRAP'
         },
+        'post_export_metrics/example_count': Math.floor(Math.random() * 100),
       }
     };
   });

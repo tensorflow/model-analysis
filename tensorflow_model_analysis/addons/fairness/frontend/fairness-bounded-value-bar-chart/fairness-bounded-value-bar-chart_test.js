@@ -71,6 +71,7 @@ suite('fairness-bounded-value-bar-chart tests', () => {
           'value': 0.3,
           'methodology': 'POISSON_BOOTSTRAP'
         },
+        'post_export_metrics/example_count': Math.floor(Math.random() * 100),
       }
     };
   });
@@ -110,6 +111,7 @@ suite('fairness-bounded-value-bar-chart tests', () => {
           'value': 0.3,
           'methodology': 'POISSON_BOOTSTRAP'
         },
+        'post_export_metrics/example_count': Math.floor(Math.random() * 100),
       }
     };
   });
