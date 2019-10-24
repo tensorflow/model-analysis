@@ -517,7 +517,7 @@ def export_legacy_eval_savedmodel(
   return
 
 
-def legacy_export_stategy(
+def legacy_export_strategy(
     eval_input_receiver_fn: Callable[[], Any],
     serving_input_receiver_fn: Optional[Callable[
         [], tf.estimator.export.ServingInputReceiver]] = None,
