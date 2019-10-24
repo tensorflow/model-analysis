@@ -517,6 +517,36 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         post_export_metrics.squared_pearson_correlation('prediction')
     ], expected_values_dict)
 
+  def testPostExportMetricsCalibrationUnweighted(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator.simple_fixed_prediction_estimator(
+            None, temp_eval_export_dir))
+    examples = [
+        self._makeExample(prediction=0.4, label=0.8),
+        self._makeExample(prediction=0.1, label=0.2),
+    ]
+    expected_values_dict = {metric_keys.CALIBRATION: 0.5}
+    self._runTest(examples, eval_export_dir,
+                  [post_export_metrics.calibration()], expected_values_dict)
+
+  def testPostExportMetricsCalibrationWeighted(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None,
+                                                        temp_eval_export_dir))
+    examples = [
+        self._makeExample(prediction=0.8, label=0.9, fixed_float=2.0),
+        self._makeExample(prediction=0.2, label=0.1, fixed_float=1.0),
+        self._makeExample(prediction=0.2, label=0.1, fixed_float=1.0),
+    ]
+    expected_values_dict = {metric_keys.CALIBRATION: 1.0}
+    self._runTest(
+        examples, eval_export_dir,
+        [post_export_metrics.calibration(example_weight_key='fixed_float')],
+        expected_values_dict)
+
   def testPrecisionRecallAtKUnweighted(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (

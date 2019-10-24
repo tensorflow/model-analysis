@@ -108,6 +108,60 @@ def squared_pearson_correlation(predictions: types.TensorType,
     return value_op, update_op
 
 
+def calibration(
+    predictions: types.TensorType, labels: types.TensorType,
+    weights: types.TensorType) -> Tuple[types.TensorType, types.TensorType]:
+  """Metric to compute the calibration of a model.
+
+  This is defined as the total weighted predictions divided by the total.
+  weighted labels.
+
+  Args:
+    predictions: A <float64>[batch_size,] tensor of predictions for each
+      example.
+    labels: A <float64>[batch_size,] tensor of labels for each example.
+    weights: A <float64>[batch_size,] tensor of weights for each example. If
+      empty, a uniform weighting will be used where each example has weight 1.
+
+  Returns:
+    A tuple of ops where the first element is the value_op and the second
+    element is the update_op.
+  """
+  with tf.compat.v1.variable_scope('calibration'):
+    total_predictions = tf.compat.v1.Variable(
+        initial_value=tf.zeros(()),
+        dtype=tf.float32,
+        trainable=False,
+        collections=[
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
+        ],
+        validate_shape=True,
+        name='total_predictions')
+
+    total_labels = tf.compat.v1.Variable(
+        initial_value=tf.zeros(()),
+        dtype=tf.float32,
+        trainable=False,
+        collections=[
+            tf.compat.v1.GraphKeys.METRIC_VARIABLES,
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES
+        ],
+        validate_shape=True,
+        name='total_labels')
+
+  update_total_predictions_op = tf.compat.v1.assign_add(
+      total_predictions,
+      tf.squeeze(tf.tensordot(predictions, weights, axes=[0, 0])))
+  update_total_labels_op = tf.compat.v1.assign_add(
+      total_labels, tf.squeeze(tf.tensordot(labels, weights, axes=[0, 0])))
+  update_op = tf.group([update_total_predictions_op, update_total_labels_op])
+
+  value_op = total_predictions / total_labels
+
+  return (value_op, update_op)
+
+
 def calibration_plot(predictions: types.TensorType,
                      labels: types.TensorType,
                      left: float,

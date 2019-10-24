@@ -64,6 +64,7 @@ ERROR_METRIC = '__ERROR__'
 EXAMPLE_WEIGHT = base_key('example_weight')
 EXAMPLE_COUNT = base_key('example_count')
 SQUARED_PEARSON_CORRELATION = base_key('squared_pearson_correlation')
+CALIBRATION = base_key('calibration')
 _CALIBRATION_PLOT_MATRICES_SUFFIX = 'calibration_plot/matrices'
 CALIBRATION_PLOT_MATRICES = base_key(_CALIBRATION_PLOT_MATRICES_SUFFIX)
 _CALIBRATION_PLOT_BOUNDARIES_SUFFIX = 'calibration_plot/boundaries'

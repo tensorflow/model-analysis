@@ -41,6 +41,7 @@
     `tfma.metrics.MultiLabelConfusionMatrixAtThresholds`) for use with V2
     metrics API.
 *   Added `tfma.metrics.NDCG` metric for use with V2 metrics API.
+*   Added `calibration` as a post export metric.
 
 ## Bug fixes and other changes
 

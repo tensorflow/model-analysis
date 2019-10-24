@@ -767,6 +767,80 @@ class _SquaredPearsonCorrelation(_PostExportMetric):
             metric_keys.SQUARED_PEARSON_CORRELATION)], r_squared)
 
 
+@_export('calibration')
+class _Calibration(_PostExportMetric):
+  """Metric that computes the calibration of the model.
+
+  This is defined as the total (weighted) prediction value divided by the total
+  (weighted) label value.
+  """
+
+  _example_weight_key = ...  # type: Text
+  _target_prediction_keys = ...  # type: List[Text]
+  _labels_key = ...  # type: Text
+  _metric_tag = None  # type: Text
+  _tensor_index = ...  # type: int
+
+  def __init__(self,
+               example_weight_key: Optional[Text] = None,
+               target_prediction_keys: Optional[List[Text]] = None,
+               labels_key: Optional[Text] = None,
+               metric_tag: Optional[Text] = None,
+               tensor_index: Optional[int] = None):
+    """Create a metric that computes calibration.
+
+    Args:
+      example_weight_key: The key of the example weight column in the features
+        dict. If None, all predictions are given a weight of 1.0.
+      target_prediction_keys: If provided, the prediction keys to look for in
+        order.
+      labels_key: If provided, a custom label key.
+      metric_tag: If provided, a custom metric tag. Only necessary to
+        disambiguate instances of the same metric on different predictions.
+      tensor_index: Optional index to specify class predictions to calculate
+        metrics on in the case of multi-class models.
+    """
+
+    self._example_weight_key = example_weight_key
+    super(_Calibration, self).__init__(
+        target_prediction_keys=target_prediction_keys,
+        labels_key=labels_key,
+        metric_tag=metric_tag)
+
+  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
+                          predictions_dict: types.TensorTypeMaybeDict,
+                          labels_dict: types.TensorTypeMaybeDict) -> None:
+    _check_feature_present(features_dict, self._example_weight_key)
+    self._get_labels_and_predictions(predictions_dict, labels_dict)
+
+  def get_metric_ops(
+      self, features_dict: types.TensorTypeMaybeDict,
+      predictions_dict: types.TensorTypeMaybeDict,
+      labels_dict: types.TensorTypeMaybeDict
+  ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+    prediction_tensor, label_tensor = self._get_labels_and_predictions(
+        predictions_dict, labels_dict)
+    # metrics.calibration expects tensors with shape (n,)
+    prediction_tensor = _flatten_to_one_dim(prediction_tensor)
+    label_tensor = _flatten_to_one_dim(label_tensor)
+    if self._example_weight_key:
+      weights = _flatten_to_one_dim(features_dict[self._example_weight_key])
+    else:
+      weights = tf.ones_like(prediction_tensor)
+    return {
+        self._metric_key(metric_keys.CALIBRATION):
+            metrics.calibration(prediction_tensor, label_tensor, weights)
+    }
+
+  def populate_stats_and_pop(
+      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,
+                                                                         Any],
+      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+    calibration = combine_metrics.pop(self._metric_key(metric_keys.CALIBRATION))
+    _populate_bounded_value(
+        output_metrics[self._metric_key(metric_keys.CALIBRATION)], calibration)
+
+
 @_export('calibration_plot_and_prediction_histogram')
 class _CalibrationPlotAndPredictionHistogram(_PostExportMetric):
   """Plot metric for calibration plot and prediction histogram.
