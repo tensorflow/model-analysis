@@ -272,7 +272,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         .enter()
         .append('rect')
         .attr('x', d => metricsX(d.metricName))
-        .attr('y', d => y(d.value))
+        .attr('y', d => isNaN(d.value) ? y(0) : y(d.value))
         .attr('width', metricsX.bandwidth())
         .attr('height', d => y(0) - y(d.value))
         .attr(
@@ -291,9 +291,9 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         .enter()
         .append('line')
         .attr('x1', d => metricsX(d.metricName) + (metricsX.bandwidth() / 2))
-        .attr('y1', d => y(d.upperBound))
+        .attr('y1', d => isNaN(d.upperBound) ? y(0) : y(d.upperBound))
         .attr('x2', d => metricsX(d.metricName) + (metricsX.bandwidth() / 2))
-        .attr('y2', d => y(d.lowerBound))
+        .attr('y2', d => isNaN(d.lowerBound) ? y(0) : y(d.lowerBound))
         .attr('stroke', d => confidenceIntervalColor(d.metricName))
         .attr('stroke-width', 1);
 

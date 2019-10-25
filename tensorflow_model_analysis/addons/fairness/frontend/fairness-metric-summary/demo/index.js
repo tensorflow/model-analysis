@@ -45,9 +45,9 @@
           'methodology': 'POISSON_BOOTSTRAP'
         },
         'post_export_metrics/false_negative_rate@0.70': {
-          'lowerBound': Math.random() * 0.3,
-          'upperBound': Math.random() * 0.3 + 0.6,
-          'value': Math.random() * 0.3 + 0.3,
+          'lowerBound': NaN,
+          'upperBound': NaN,
+          'value': NaN,
           'methodology': 'POISSON_BOOTSTRAP'
         },
         'post_export_metrics/example_count': Math.floor(Math.random() * 100),

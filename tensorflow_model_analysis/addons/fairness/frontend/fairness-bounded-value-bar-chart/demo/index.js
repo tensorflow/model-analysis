@@ -60,7 +60,7 @@
       'sliceValue': slice.split(':')[1] || 'Overall',
       'metrics': {
         'accuracy': Math.random(),
-        'post_export_metrics/false_negative_rate@0.30': Math.random() * 0.4,
+        'post_export_metrics/false_negative_rate@0.30': NaN,
         'post_export_metrics/false_negative_rate@0.50': Math.random() * 0.6,
         'post_export_metrics/false_negative_rate@0.70': Math.random() * 0.8,
       }
