@@ -47,6 +47,16 @@ class UtilTest(tf.test.TestCase):
     self.assertAllClose(got_pred, np.array([0, 0.5, 0.3, 0.9]))
     self.assertAllClose(got_example_weight, np.array([1.0]))
 
+  def testStandardMetricInputsWithZeroWeightsToNumpy(self):
+    example = metric_types.StandardMetricInputs(
+        np.array([2]), np.array([0, 0.5, 0.3, 0.9]), np.array([0.0]))
+    got_label, got_pred, got_example_weight = (
+        metric_util.to_label_prediction_example_weight(example))
+
+    self.assertAllClose(got_label, np.array([2]))
+    self.assertAllClose(got_pred, np.array([0, 0.5, 0.3, 0.9]))
+    self.assertAllClose(got_example_weight, np.array([0.0]))
+
   def testStandardMetricInputsWithClassIDToNumpy(self):
     example = metric_types.StandardMetricInputs(
         {'output_name': np.array([2])},

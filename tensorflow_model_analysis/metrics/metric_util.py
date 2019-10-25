@@ -132,7 +132,9 @@ def to_label_prediction_example_weight(
 
   label = inputs.label
   prediction = inputs.prediction
-  example_weight = inputs.example_weight or np.array(1.0)
+  example_weight = inputs.example_weight
+  if example_weight is None:
+    example_weight = np.array(1.0)
   if model_name:
     prediction = util.get_by_keys(prediction, [model_name])
     # Labels and weights can optionally be keyed by model name.
