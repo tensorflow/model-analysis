@@ -103,7 +103,7 @@ export class FairnessTensorboardContainer extends SelectEventMixin
        * ]
        * @private {!Array<!Object>}
        */
-      slicingMetrics_: {type: Array, notify: true},
+      slicingMetrics_: {type: Array, notify: true, value: []},
     };
   }
 

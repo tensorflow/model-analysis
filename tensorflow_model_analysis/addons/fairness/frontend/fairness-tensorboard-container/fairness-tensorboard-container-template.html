@@ -43,42 +43,40 @@ template.innerHTML = `
                          slicing-metrics="[[slicingMetrics_]]">
   </fairness-nb-container>
 
-  <div class="center" slot="center">
-    <template is="dom-if" if="[[!slicingMetrics_ || !slicingMetrics_.length]]">
-      <div class="no-data-warning">
-        <h3>No fairness evaluation data was found.</h3>
-        <p>Probable causes:</p>
-        <ul>
-          <li>You haven’t written any evaluation data to your event files.</li>
-          <li>Tensorboard might be looking for your event files, please wait for few seconds.</li>
-          <li>TensorBoard can’t find your event files.</li>
-          <li>Selected evaluation run doesn't contain any fairness evaluation related data.</li>
-        </ul>
+  <template is="dom-if" if="[[!slicingMetrics_.length]]">
+    <div class="no-data-warning">
+      <h3>No fairness evaluation data was found.</h3>
+      <p>Probable causes:</p>
+      <ul>
+        <li>You haven’t written any evaluation data to your event files.</li>
+        <li>Tensorboard might be looking for your event files, please wait for few seconds.</li>
+        <li>TensorBoard can’t find your event files.</li>
+        <li>Selected evaluation run doesn't contain any fairness evaluation related data.</li>
+      </ul>
 
-        <p>
-          If you’re new to using TensorBoard, and want to find out how to
-          add data and set up your event files, check out the Fairness Indicators
-          for Tensorboard
-          <a
-            href="https://www.tensorflow.org/tensorboard/fairness_indicators" target="_blank"
-            >tutorial</a
-          >
-          and Fairness Indicators
-          <a
-            href="https://github.com/tensorflow/fairness-indicators/blob/master/README.md"
-             target="_blank">README</a
-          >.
-        </p>
+      <p>
+        If you’re new to using TensorBoard, and want to find out how to
+        add data and set up your event files, check out the Fairness Indicators
+        for Tensorboard
+        <a
+          href="https://www.tensorflow.org/tensorboard/fairness_indicators" target="_blank"
+          >tutorial</a
+        >
+        and Fairness Indicators
+        <a
+          href="https://github.com/tensorflow/fairness-indicators/blob/master/README.md"
+           target="_blank">README</a
+        >.
+      </p>
 
-        <p>
-          If you think TensorBoard is configured properly, please see the section of the
-          <a href="https://github.com/tensorflow/tensorboard/blob/master/README.md#my-tensorboard-isnt-showing-any-data-whats-wrong"
-             target="_blank">README</a>
-          devoted to missing data problems and consider filing an issue on GitHub.
-        </p>
-      </div>
-    </template>
-  </div>
+      <p>
+        If you think TensorBoard is configured properly, please see the section of the
+        <a href="https://github.com/tensorflow/tensorboard/blob/master/README.md#my-tensorboard-isnt-showing-any-data-whats-wrong"
+           target="_blank">README</a>
+        devoted to missing data problems and consider filing an issue on GitHub.
+      </p>
+    </div>
+  </template>
 </div>
 `;
 export {template};
