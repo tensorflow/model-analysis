@@ -81,7 +81,7 @@ def model_construct_fn(  # pylint: disable=invalid-name
           keras_model = tf.keras.models.load_model(eval_saved_model_path)
           # In some cases, tf.keras.models.load_model can successfully load a
           # saved_model but it won't actually be a keras model.
-          if not isinstance(keras_model, tf.keras.model.Model):
+          if not isinstance(keras_model, tf.keras.models.Model):
             keras_model = None
         except Exception:  # pylint: disable=broad-except
           keras_model = None

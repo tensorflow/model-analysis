@@ -123,17 +123,20 @@ class _PredictionDoFn(model_util.DoFnWithModels):
       # If input names exist then filter the inputs by these names (unlike
       # estimators, keras does not accept unknown inputs).
       input_names = None
-      if loaded_model.keras_model is not None:
-        input_names = loaded_model.keras_model.input_names
       # First arg of structured_input_signature tuple is shape, second is dtype
       # (we currently only support named params passed as a dict)
-      elif (signature.structured_input_signature and
-            len(signature.structured_input_signature) == 2 and
-            isinstance(signature.structured_input_signature[1], dict)):
+      if (signature.structured_input_signature and
+          len(signature.structured_input_signature) == 2 and
+          isinstance(signature.structured_input_signature[1], dict)):
         input_names = [name for name in signature.structured_input_signature[1]]
+      elif loaded_model.keras_model is not None:
+        # Calling keras_model.input_names does not work properly in TF 1.15.0.
+        # As a work around, make sure the signature.structured_input_signature
+        # check is before this check (see b/142807137).
+        input_names = loaded_model.keras_model.input_names
+      inputs = collections.defaultdict(list)
       if input_names is not None:
         # TODO(b/138474171): Make this code more efficient.
-        inputs = collections.defaultdict(list)
         found = {}
         for name in input_names:
           for extract in batch_of_extracts:
@@ -159,7 +162,7 @@ class _PredictionDoFn(model_util.DoFnWithModels):
               'PredictExtractor inputs do not match those expected by the '
               'model: input_names={}, found in extracts={}'.format(
                   input_names, found))
-      else:
+      if not inputs and (input_names is None or len(input_names) <= 1):
         # Assume serialized examples
         inputs = [extract[constants.INPUT_KEY] for extract in batch_of_extracts]
 
