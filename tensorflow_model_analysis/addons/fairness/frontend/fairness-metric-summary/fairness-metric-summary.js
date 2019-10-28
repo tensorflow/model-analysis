@@ -175,13 +175,14 @@ export class FairnessMetricSummary extends PolymerElement {
     thresholds.forEach(threshold => {
       const fairnessMetricName = metric + '@' + threshold;
       if (baselineSliceMetrics &&
-          baselineSliceMetrics['metrics'][fairnessMetricName]) {
+          Object.keys(baselineSliceMetrics['metrics'])
+              .includes(fairnessMetricName)) {
         metricsToPlot.push(fairnessMetricName);
       }
     });
 
     if (!metricsToPlot.length && baselineSliceMetrics &&
-        baselineSliceMetrics['metrics'][metric]) {
+        Object.keys(baselineSliceMetrics['metrics']).includes(metric)) {
       metricsToPlot.push(metric);
     }
 

@@ -274,7 +274,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         .attr('x', d => metricsX(d.metricName))
         .attr('y', d => isNaN(d.value) ? y(0) : y(d.value))
         .attr('width', metricsX.bandwidth())
-        .attr('height', d => y(0) - y(d.value))
+        .attr('height', d => isNaN(d.value) ? 0 : y(0) - y(d.value))
         .attr(
             'fill',
             d => d.fullSliceName == baseline ? baselineColor(d.metricName) :

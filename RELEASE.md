@@ -1,10 +1,22 @@
+# Current version (not yet released; still in development)
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+*   Fixed the bug that Fairness Indicator will skip metrics with NaN value.
+
+## Breaking changes
+
+## Deprecations
+
 # Release 0.15.3
 
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
 
-* Updated vulcanized_tfma.js with UI changes in addons/fairness_indicators.
+*   Updated vulcanized_tfma.js with UI changes in addons/fairness_indicators.
 
 ## Breaking changes
 

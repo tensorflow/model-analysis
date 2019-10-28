@@ -26,7 +26,12 @@ suite('fairness-metric-summary tests', () => {
     return {
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
-      'metrics': {'accuracy': 0.2}
+      'metrics': {
+        'accuracy': 0.2,
+        'post_export_metrics/false_negative_rate@0.30': NaN,
+        'post_export_metrics/false_negative_rate@0.50': 0.5,
+        'post_export_metrics/false_negative_rate@0.70': 0.8
+      }
     };
   });
   const BOUNDED_VALUE_DATA = SLICES.map((slice) => {
@@ -41,9 +46,9 @@ suite('fairness-metric-summary tests', () => {
           'methodology': 'POISSON_BOOTSTRAP'
         },
         'post_export_metrics/false_negative_rate@0.30': {
-          'lowerBound': 0.2,
-          'upperBound': 0.4,
-          'value': 0.3,
+          'lowerBound': NaN,
+          'upperBound': NaN,
+          'value': NaN,
           'methodology': 'POISSON_BOOTSTRAP'
         },
         'post_export_metrics/false_negative_rate@0.50': {
@@ -208,7 +213,7 @@ suite('fairness-metric-summary tests', () => {
       metricSummary.slices = SLICES.slice(0, 2);
       metricSummary.thresholds = ['0.30', '0.50'];
       metricSummary.baseline = 'Overall';
-      metricSummary.data = BOUNDED_VALUE_DATA.slice(0, 2);
+      metricSummary.data = DOUBLE_VALUE_DATA.slice(0, 2);
     };
 
     const CheckProperties = () => {

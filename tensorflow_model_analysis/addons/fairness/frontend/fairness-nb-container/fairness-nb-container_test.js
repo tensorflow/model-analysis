@@ -41,7 +41,7 @@ suite('fairness-nb-container tests', () => {
             'doubleValue': Math.random(),
           },
           'post_export_metrics/false_positive_rate@0.50': {
-            'doubleValue': Math.random(),
+            'doubleValue': NaN,
           },
           'post_export_metrics/positive_rate@0.60': {
             'doubleValue': Math.random(),
