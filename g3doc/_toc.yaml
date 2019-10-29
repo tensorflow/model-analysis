@@ -7,3 +7,5 @@ toc:
   path: /tfx/model_analysis/architecture
 - title: "Improving Model Quality"
   path: /tfx/guide/tfma
+- title: "Using Fairness Indicators"
+  path: /tfx/guide/fairness_indicators
