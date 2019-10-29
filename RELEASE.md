@@ -2,6 +2,9 @@
 
 ## Major Features and Improvements
 
+*   Added `tfma.metrics.MinLabelPosition` and `tfma.metrics.QueryStatistics` for
+    use with V2 metrics API.
+
 ## Bug fixes and other changes
 
 ## Breaking changes
