@@ -231,6 +231,7 @@ class Metric(object):
                    model_names: Optional[List[Text]] = None,
                    output_names: Optional[List[Text]] = None,
                    sub_keys: Optional[List[SubKey]] = None,
+                   class_weights: Optional[Dict[int, float]] = None,
                    query_key: Optional[Text] = None) -> MetricComputations:
     """Creates computations associated with metric."""
     if hasattr(inspect, 'getfullargspec'):
@@ -246,6 +247,8 @@ class Metric(object):
       kwargs['output_names'] = output_names
     if 'sub_keys' in args:
       kwargs['sub_keys'] = sub_keys
+    if 'class_weights' in args:
+      kwargs['class_weights'] = class_weights
     if 'query_key' in args:
       kwargs['query_key'] = query_key
     return self.create_computations_fn(**kwargs)

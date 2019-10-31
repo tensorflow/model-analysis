@@ -26,7 +26,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import metric_types
-from typing import Any, Callable, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 _ALL_CLASSES = 'all_classes'
 _PREDICTIONS = 'predictions'
@@ -94,10 +94,11 @@ def to_label_prediction_example_weight(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    class_weights: Optional[Dict[int, float]] = None,
+    flatten: bool = True,
     allow_none: bool = False,
-    array_size: Optional[int] = None,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-  """Returns label, prediction, and example weight for use in calculations.
+) -> Iterable[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+  """Yields label, prediction, and example weights for use in calculations.
 
   Where applicable this function will perform model and output name lookups as
   well as any required class ID, top K, etc conversions. It will also apply
@@ -115,12 +116,15 @@ def to_label_prediction_example_weight(
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
+    class_weights: Optional class weights to apply to multi-class / multi-label
+      labels and predictions.
+    flatten: True to flatten the final label and prediction outputs so that the
+      yielded values are always arrays of size 1. For example, multi-class /
+      multi-label outputs would be converted into label and prediction pairs
+      that could then be processed by a binary classification metric in order to
+      compute a micro average over all classes.
     allow_none: True to allow labels or predictions with None values to be
       returned. The example weight will always be non-None.
-    array_size: Verifies the prediction and labels are of the given size. If
-      both array_size and sub_key.top_k is set, then array_size will be ignored
-      and the size will be verified based on the top_k setting. The example
-      weight will always be size 1.
   """
 
   def optionally_get_by_keys(value: Any, keys: List[Text]) -> Any:
@@ -178,28 +182,13 @@ def to_label_prediction_example_weight(
             'error in the pipeline.'.format(txt, model_name, output_name,
                                             sub_key, inputs))
 
-  for txt, value in zip(('label', 'prediction', 'example_weight'),
-                        (label, prediction, example_weight)):
-    if value is None:
-      continue
-    if txt == 'example_weight':
-      size = 1
-    elif array_size is None:
-      continue
-    elif sub_key and sub_key.top_k is not None:
-      size = sub_key.top_k
-    else:
-      size = array_size
-    if value.size != size:
-      raise ValueError(
-          'expected {} to be size = {}, but instead it has size = {}: '
-          '{}={}, model_name={}, output_name={}, sub_key={}, '
-          'StandardMetricInputs={}\n\nThis is most likely a configuration '
-          'error (for multi-class models using binary classification '
-          'metrics, a sub_key must be set).'.format(txt, size, value.size, txt,
-                                                    value, model_name,
-                                                    output_name, sub_key,
-                                                    inputs))
+  if example_weight is not None and example_weight.size != 1:
+    raise ValueError(
+        'expected example weight to be size = 1, but instead it has '
+        'size = {}: example_weight={}, model_name={}, output_name={}, '
+        'sub_key={}, StandardMetricInputs={}\n\nThis is most likely a '
+        'configuration error.'.format(example_weight.size, example_weight,
+                                      model_name, output_name, sub_key, inputs))
 
   # For consistency, make sure all outputs are arrays (i.e. convert scalars)
   if label is not None and not label.shape:
@@ -208,7 +197,41 @@ def to_label_prediction_example_weight(
     prediction = prediction.reshape((1,))
   if example_weight is not None and not example_weight.shape:
     example_weight = example_weight.reshape((1,))
-  return label, prediction, example_weight
+
+  if class_weights and prediction is not None:
+    multiplier = [
+        class_weights[i] if i in class_weights else 1.0
+        for i in range(prediction.shape[-1])
+    ]
+    prediction = np.multiply(prediction, multiplier)
+    if label is not None:
+      if label.shape[-1] == 1:
+        label = one_hot(label, prediction)
+      label = np.multiply(label, multiplier)
+
+  if (not flatten or (label is None and prediction is None) or
+      (label is not None and prediction is not None and label.size == 1 and
+       prediction.size == 1)):
+    yield label, prediction, example_weight
+  elif label is None:
+    for p in prediction.flatten():
+      yield label, np.array([p]), example_weight
+  elif prediction is None:
+    for l in label.flatten():
+      yield np.array([l]), prediction, example_weight
+  elif label.size == prediction.size:
+    for l, p in zip(label.flatten(), prediction.flatten()):
+      yield np.array([l]), np.array([p]), example_weight
+  elif label.shape[-1] == 1:
+    label = one_hot(label, prediction)
+    for l, p in zip(label.flatten(), prediction.flatten()):
+      yield np.array([l]), np.array([p]), example_weight
+  else:
+    raise ValueError(
+        'unable to pair labels with predictions: labels={}, predictions={}, '
+        'model_name={}, output_name={}, sub_key={}, StandardMetricInputs={} '
+        '\n\nThis is most likely a configuration error.'.format(
+            label, prediction, model_name, output_name, sub_key, inputs))
 
 
 def prepare_labels_and_predictions(
@@ -422,13 +445,7 @@ def select_top_k(top_k: int,
                                              predictions, scores))
 
   if not labels.shape or labels.shape[-1] == 1:
-    # Convert labels into one-hot vectors. For labels that are OOV (i.e. set to
-    # -1) we will use a vector of all 0's. When np.eye is indexed by -1, a
-    # value of all 0's followed by 1 is used for the row. The following handles
-    # -1 values by adding an additional column for indexing the -1 and then
-    # removing it after.
-    labels = np.delete(np.eye(predictions.shape[-1] + 1)[labels], -1, axis=-1)
-    labels = labels.reshape(predictions.shape)
+    labels = one_hot(labels, predictions)
 
   if scores is None:
     scores = predictions
@@ -462,6 +479,26 @@ def select_top_k(top_k: int,
             predictions))
 
 
+def one_hot(tensor: np.ndarray, target: np.ndarray) -> np.ndarray:
+  """Convert tensor's last dimension into a one-hot vector of target's shape.
+
+  Args:
+    tensor: Tensor to convert to one-hot vector. Must have no shape or a final
+      dimension of size 1.
+    target: Target tensor to reshape the tensor to.
+
+  Returns:
+    Tensor with last dimension encoded as a one-hot vector with the overall
+    shape the same as that of target.
+  """
+  # For values that are OOV (i.e. set to -1) we will use a vector of all 0's.
+  # When np.eye is indexed by -1, a value of all 0's followed by 1 is used for
+  # the row. The following handles -1 values by adding an additional column for
+  # indexing the -1 and then removing it after.
+  tensor = np.delete(np.eye(target.shape[-1] + 1)[tensor], -1, axis=-1)
+  return tensor.reshape(target.shape)
+
+
 def merge_per_key_computations(
     create_computations_fn: Callable[..., metric_types.MetricComputations],
 ) -> metric_types.MetricComputations:
@@ -471,6 +508,7 @@ def merge_per_key_computations(
                             model_names: Optional[List[Text]] = None,
                             output_names: Optional[List[Text]] = None,
                             sub_keys: Optional[List[Text]] = None,
+                            class_weights: Optional[Dict[int, float]] = None,
                             query_key: Optional[Text] = None,
                             **kwargs) -> metric_types.MetricComputations:
     """Merge computations function."""
@@ -497,6 +535,8 @@ def merge_per_key_computations(
             updated_kwargs['output_name'] = output_name
           if 'sub_key' in args:
             updated_kwargs['sub_key'] = sub_key
+          if 'class_weights' in args:
+            updated_kwargs['class_weights'] = class_weights
           if 'query_key' in args:
             updated_kwargs['query_key'] = query_key
           computations.extend(create_computations_fn(**updated_kwargs))

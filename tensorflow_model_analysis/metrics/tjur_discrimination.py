@@ -65,14 +65,19 @@ def _coefficient_of_discrimination(
     name: Text = COEFFICIENT_OF_DISCRIMINATION_NAME,
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
-    output_name: Text = '') -> metric_types.MetricComputations:
+    output_name: Text = '',
+    class_weights: Optional[Dict[int, float]] = None
+) -> metric_types.MetricComputations:
   """Returns metric computations for coefficient of discrimination."""
   key = metric_types.MetricKey(
       name=name, model_name=model_name, output_name=output_name)
 
   # Compute shared tjur discimination metrics.
   computations = _tjur_discrimination(
-      eval_config=eval_config, model_name=model_name, output_name=output_name)
+      eval_config=eval_config,
+      model_name=model_name,
+      output_name=output_name,
+      class_weights=class_weights)
   # Shared metrics are based on a single computation and key.
   tjur_discrimination_key = computations[0].keys[0]
 
@@ -129,14 +134,19 @@ def _relative_coefficient_of_discrimination(
     name: Text = RELATIVE_COEFFICIENT_OF_DISCRIMINATION_NAME,
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
-    output_name: Text = '') -> metric_types.MetricComputations:
+    output_name: Text = '',
+    class_weights: Optional[Dict[float, int]] = None
+) -> metric_types.MetricComputations:
   """Returns metric computations for coefficient of discrimination."""
   key = metric_types.MetricKey(
       name=name, model_name=model_name, output_name=output_name)
 
   # Compute shared tjur discimination metrics.
   computations = _tjur_discrimination(
-      eval_config=eval_config, model_name=model_name, output_name=output_name)
+      eval_config=eval_config,
+      model_name=model_name,
+      output_name=output_name,
+      class_weights=class_weights)
   # Shared metrics are based on a single computation and key.
   tjur_discrimination_key = computations[0].keys[0]
 
@@ -169,7 +179,9 @@ def _tjur_discrimination(
     name=_TJUR_DISCRIMINATION_NAME,
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
-    output_name: Text = '') -> metric_types.MetricComputations:
+    output_name: Text = '',
+    class_weights: Optional[Dict[int, float]] = None
+) -> metric_types.MetricComputations:
   """Returns metric computations for TJUR discrimination."""
   key = metric_types.MetricKey(
       name=name, model_name=model_name, output_name=output_name)
@@ -177,7 +189,7 @@ def _tjur_discrimination(
       metric_types.MetricComputation(
           keys=[key],
           preprocessor=None,
-          combiner=_TJURDiscriminationCombiner(key, eval_config))
+          combiner=_TJURDiscriminationCombiner(key, eval_config, class_weights))
   ]
 
 
@@ -199,9 +211,11 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
   """Computes min label position metric."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig]):
+               eval_config: Optional[config.EvalConfig],
+               class_weights: Optional[Dict[int, float]]):
     self._key = key
     self._eval_config = eval_config
+    self._class_weights = class_weights
 
   def create_accumulator(self) -> _TJURDiscriminationAccumulator:
     return _TJURDiscriminationAccumulator()
@@ -210,22 +224,23 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
       self, accumulator: _TJURDiscriminationAccumulator,
       element: metric_types.StandardMetricInputs
   ) -> _TJURDiscriminationAccumulator:
-    label, prediction, example_weight = (
+    for label, prediction, example_weight in (
         metric_util.to_label_prediction_example_weight(
             element,
             eval_config=self._eval_config,
             model_name=self._key.model_name,
-            output_name=self._key.output_name))
-    label = float(label)
-    prediction = float(prediction)
-    example_weight = float(example_weight)
-    accumulator.total_negative_weighted_labels += ((1.0 - label) *
-                                                   example_weight)
-    accumulator.total_positive_weighted_labels += label * example_weight
-    accumulator.total_negative_weighted_predictions += ((1.0 - prediction) *
-                                                        example_weight)
-    accumulator.total_positive_weighted_predictions += (
-        prediction * example_weight)
+            output_name=self._key.output_name,
+            class_weights=self._class_weights)):
+      label = float(label)
+      prediction = float(prediction)
+      example_weight = float(example_weight)
+      accumulator.total_negative_weighted_labels += ((1.0 - label) *
+                                                     example_weight)
+      accumulator.total_positive_weighted_labels += label * example_weight
+      accumulator.total_negative_weighted_predictions += ((1.0 - prediction) *
+                                                          example_weight)
+      accumulator.total_positive_weighted_predictions += (
+          prediction * example_weight)
     return accumulator
 
   def merge_accumulators(

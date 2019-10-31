@@ -48,7 +48,8 @@ def calibration_histogram(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-    sub_key: Optional[metric_types.SubKey] = None
+    sub_key: Optional[metric_types.SubKey] = None,
+    class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for calibration histogram.
 
@@ -62,6 +63,8 @@ def calibration_histogram(
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
+    class_weights: Optional class weights to apply to multi-class / multi-label
+      labels and predictions prior to flattening (when micro averaging is used).
 
   Returns:
     MetricComputations for computing the histogram(s).
@@ -86,6 +89,7 @@ def calibration_histogram(
           combiner=_CalibrationHistogramCombiner(
               key=key,
               eval_config=eval_config,
+              class_weights=class_weights,
               num_buckets=num_buckets,
               left=left,
               right=right))
@@ -95,10 +99,13 @@ def calibration_histogram(
 class _CalibrationHistogramCombiner(beam.CombineFn):
   """Creates histogram from labels, predictions, and example weights."""
 
-  def __init__(self, key: metric_types.PlotKey, eval_config: config.EvalConfig,
-               num_buckets: int, left: float, right: float):
-    self._eval_config = eval_config
+  def __init__(self, key: metric_types.PlotKey,
+               eval_config: Optional[config.EvalConfig],
+               class_weights: Optional[Dict[int, float]], num_buckets: int,
+               left: float, right: float):
     self._key = key
+    self._eval_config = eval_config
+    self._class_weights = class_weights
     self._num_buckets = num_buckets
     self._left = left
     self._range = right - left
@@ -122,18 +129,18 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
 
   def add_input(self, accumulator: Histogram,
                 element: metric_types.StandardMetricInputs) -> Histogram:
-    labels, predictions, example_weight = (
+    for label, prediction, example_weight in (
         metric_util.to_label_prediction_example_weight(
             element,
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
             sub_key=self._key.sub_key,
-            array_size=1))
-    example_weight = float(example_weight)
-    for i in range(predictions.size):
-      label = float(labels[i])
-      prediction = float(predictions[i])
+            flatten=True,
+            class_weights=self._class_weights)):
+      example_weight = float(example_weight)
+      label = float(label)
+      prediction = float(prediction)
       weighted_label = label * example_weight
       weighted_prediction = prediction * example_weight
       bucket_index = self._bucket_index(prediction)

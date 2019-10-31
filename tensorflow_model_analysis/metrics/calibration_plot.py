@@ -66,7 +66,8 @@ def _calibration_plot(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-    sub_key: Optional[metric_types.SubKey] = None
+    sub_key: Optional[metric_types.SubKey] = None,
+    class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for calibration plot."""
   key = metric_types.PlotKey(
@@ -85,7 +86,8 @@ def _calibration_plot(
       output_name=output_name,
       sub_key=sub_key,
       left=left,
-      right=right)
+      right=right,
+      class_weights=class_weights)
   histogram_key = computations[-1].keys[-1]
 
   def result(

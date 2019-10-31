@@ -41,7 +41,8 @@ def binary_confusion_matrices(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-    sub_key: Optional[metric_types.SubKey] = None
+    sub_key: Optional[metric_types.SubKey] = None,
+    class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for computing binary confusion matrices.
 
@@ -58,6 +59,8 @@ def binary_confusion_matrices(
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
+    class_weights: Optional class weights to apply to multi-class / multi-label
+      labels and predictions prior to flattening (when micro averaging is used).
 
   Raises:
     ValueError: If both num_thresholds and thresholds are set at the same time.
@@ -93,7 +96,8 @@ def binary_confusion_matrices(
       num_buckets=num_buckets,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      class_weights=class_weights)
   histogram_key = histogram_computations[-1].keys[-1]
 
   def result(

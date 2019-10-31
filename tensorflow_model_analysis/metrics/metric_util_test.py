@@ -39,9 +39,24 @@ class UtilTest(tf.test.TestCase):
         {'output_name': np.array([2])},
         {'output_name': np.array([0, 0.5, 0.3, 0.9])},
         {'output_name': np.array([1.0])})
-    got_label, got_pred, got_example_weight = (
+    iterable = metric_util.to_label_prediction_example_weight(
+        example, output_name='output_name')
+
+    for expected_label, expected_prediction in zip((0.0, 0.0, 1.0, 0.0),
+                                                   (0.0, 0.5, 0.3, 0.9)):
+      got_label, got_pred, got_example_weight = next(iterable)
+      self.assertAllClose(got_label, np.array([expected_label]))
+      self.assertAllClose(got_pred, np.array([expected_prediction]))
+      self.assertAllClose(got_example_weight, np.array([1.0]))
+
+  def testStandardMetricInputsToNumpyWithoutFlatten(self):
+    example = metric_types.StandardMetricInputs(
+        {'output_name': np.array([2])},
+        {'output_name': np.array([0, 0.5, 0.3, 0.9])},
+        {'output_name': np.array([1.0])})
+    got_label, got_pred, got_example_weight = next(
         metric_util.to_label_prediction_example_weight(
-            example, output_name='output_name'))
+            example, output_name='output_name', flatten=False))
 
     self.assertAllClose(got_label, np.array([2]))
     self.assertAllClose(got_pred, np.array([0, 0.5, 0.3, 0.9]))
@@ -50,8 +65,20 @@ class UtilTest(tf.test.TestCase):
   def testStandardMetricInputsWithZeroWeightsToNumpy(self):
     example = metric_types.StandardMetricInputs(
         np.array([2]), np.array([0, 0.5, 0.3, 0.9]), np.array([0.0]))
-    got_label, got_pred, got_example_weight = (
-        metric_util.to_label_prediction_example_weight(example))
+    iterable = metric_util.to_label_prediction_example_weight(example)
+
+    for expected_label, expected_prediction in zip((0.0, 0.0, 1.0, 0.0),
+                                                   (0.0, 0.5, 0.3, 0.9)):
+      got_label, got_pred, got_example_weight = next(iterable)
+      self.assertAllClose(got_label, np.array([expected_label]))
+      self.assertAllClose(got_pred, np.array([expected_prediction]))
+      self.assertAllClose(got_example_weight, np.array([0.0]))
+
+  def testStandardMetricInputsWithZeroWeightsToNumpyWithoutFlatten(self):
+    example = metric_types.StandardMetricInputs(
+        np.array([2]), np.array([0, 0.5, 0.3, 0.9]), np.array([0.0]))
+    got_label, got_pred, got_example_weight = next(
+        metric_util.to_label_prediction_example_weight(example, flatten=False))
 
     self.assertAllClose(got_label, np.array([2]))
     self.assertAllClose(got_pred, np.array([0, 0.5, 0.3, 0.9]))
@@ -62,7 +89,7 @@ class UtilTest(tf.test.TestCase):
         {'output_name': np.array([2])},
         {'output_name': np.array([0, 0.5, 0.3, 0.9])},
         {'output_name': np.array([1.0])})
-    got_label, got_pred, got_example_weight = (
+    got_label, got_pred, got_example_weight = next(
         metric_util.to_label_prediction_example_weight(
             example,
             output_name='output_name',
@@ -77,7 +104,7 @@ class UtilTest(tf.test.TestCase):
         {'output_name': np.array([2])},
         {'output_name': np.array([0, 0.5, 0.3, 0.9])},
         {'output_name': np.array([1.0])})
-    got_label, got_pred, got_example_weight = (
+    got_label, got_pred, got_example_weight = next(
         metric_util.to_label_prediction_example_weight(
             example,
             output_name='output_name',
@@ -92,14 +119,68 @@ class UtilTest(tf.test.TestCase):
         {'output_name': np.array([1])},
         {'output_name': np.array([0, 0.5, 0.3, 0.9])},
         {'output_name': np.array([1.0])})
-    got_label, got_pred, got_example_weight = (
+    iterable = metric_util.to_label_prediction_example_weight(
+        example,
+        output_name='output_name',
+        sub_key=metric_types.SubKey(top_k=2))
+
+    for expected_label, expected_prediction in zip((0.0, 1.0), (0.9, 0.5)):
+      got_label, got_pred, got_example_weight = next(iterable)
+      self.assertAllClose(got_label, np.array([expected_label]))
+      self.assertAllClose(got_pred, np.array([expected_prediction]))
+      self.assertAllClose(got_example_weight, np.array([1.0]))
+
+  def testStandardMetricInputsWithTopKToNumpyWithoutFlatten(self):
+    example = metric_types.StandardMetricInputs(
+        {'output_name': np.array([1])},
+        {'output_name': np.array([0, 0.5, 0.3, 0.9])},
+        {'output_name': np.array([1.0])})
+    got_label, got_pred, got_example_weight = next(
         metric_util.to_label_prediction_example_weight(
             example,
             output_name='output_name',
-            sub_key=metric_types.SubKey(top_k=2)))
+            sub_key=metric_types.SubKey(top_k=2),
+            flatten=False))
 
     self.assertAllClose(got_label, np.array([0.0, 1.0]))
     self.assertAllClose(got_pred, np.array([0.9, 0.5]))
+    self.assertAllClose(got_example_weight, np.array([1.0]))
+
+  def testStandardMetricInputsWithClassWeights(self):
+    example = metric_types.StandardMetricInputs(
+        {'output_name': np.array([2])},
+        {'output_name': np.array([0, 0.5, 0.3, 0.9])},
+        {'output_name': np.array([1.0])})
+    iterable = metric_util.to_label_prediction_example_weight(
+        example, output_name='output_name', class_weights={
+            1: 0.5,
+            2: 0.25
+        })
+
+    for expected_label, expected_prediction in zip((0.0, 0.0, 0.25, 0.0),
+                                                   (0.0, 0.25, 0.075, 0.9)):
+      got_label, got_pred, got_example_weight = next(iterable)
+      self.assertAllClose(got_label, np.array([expected_label]))
+      self.assertAllClose(got_pred, np.array([expected_prediction]))
+      self.assertAllClose(got_example_weight, np.array([1.0]))
+
+  def testStandardMetricInputsWithClassWeightsWithoutFlatten(self):
+    example = metric_types.StandardMetricInputs(
+        {'output_name': np.array([1.0, 1.0, 1.0, 0.0])},
+        {'output_name': np.array([0, 0.5, 0.3, 0.9])},
+        {'output_name': np.array([1.0])})
+    got_label, got_pred, got_example_weight = next(
+        metric_util.to_label_prediction_example_weight(
+            example,
+            output_name='output_name',
+            class_weights={
+                0: 0.5,
+                2: 0.25
+            },
+            flatten=False))
+
+    self.assertAllClose(got_label, np.array([0.5, 1.0, 0.25, 0.0]))
+    self.assertAllClose(got_pred, np.array([0, 0.5, 0.075, 0.9]))
     self.assertAllClose(got_example_weight, np.array([1.0]))
 
   def testPrepareLabelsAndPredictions(self):

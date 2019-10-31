@@ -59,7 +59,8 @@ def _auc_plot(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-    sub_key: Optional[metric_types.SubKey] = None
+    sub_key: Optional[metric_types.SubKey] = None,
+    class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for AUC plots."""
   key = metric_types.PlotKey(
@@ -79,6 +80,7 @@ def _auc_plot(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
+      class_weights=class_weights,
       thresholds=thresholds)
   matrices_key = matrices_computations[-1].keys[-1]
 

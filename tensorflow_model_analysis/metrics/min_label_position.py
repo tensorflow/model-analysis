@@ -110,14 +110,14 @@ class _MinLabelPositionCombiner(beam.CombineFn):
     min_label_pos = None
     example_weight = None
     for i, element in enumerate(elements):
-      label, _, weight = (
+      label, _, weight = next(
           metric_util.to_label_prediction_example_weight(
               element,
               eval_config=self._eval_config,
               model_name=self._key.model_name,
               output_name=self._key.output_name,
-              allow_none=True,
-              array_size=1))
+              flatten=False,
+              allow_none=True))
       weight = float(weight)
       if example_weight is None:
         example_weight = weight

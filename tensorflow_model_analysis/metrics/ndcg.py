@@ -110,7 +110,7 @@ class _NDCGCombiner(beam.CombineFn):
   """Computes NDCG (normalized discounted cumulative gain)."""
 
   def __init__(self, metric_keys: List[metric_types.MetricKey],
-               eval_config: config.EvalConfig, model_name: Text,
+               eval_config: Optional[config.EvalConfig], model_name: Text,
                output_name: Text, query_key: Text, gain_key: Text):
     """Initialize.
 
@@ -154,13 +154,13 @@ class _NDCGCombiner(beam.CombineFn):
     predictions = []
     example_weight = None
     for i in inputs:
-      _, prediction, weight = (
+      _, prediction, weight = next(
           metric_util.to_label_prediction_example_weight(
               i,
               eval_config=self._eval_config,
               model_name=self._model_name,
               output_name=self._output_name,
-              array_size=1))
+              flatten=False))
       weight = float(weight)
       if example_weight is None:
         example_weight = weight

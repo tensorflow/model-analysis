@@ -53,7 +53,8 @@ def _mean_label(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-    sub_key: Optional[metric_types.SubKey] = None
+    sub_key: Optional[metric_types.SubKey] = None,
+    class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean label."""
 
@@ -68,7 +69,8 @@ def _mean_label(
       eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      class_weights=class_weights)
   weighted_labels_predictions_key = computations[-1].keys[-1]
 
   def result(
@@ -109,7 +111,8 @@ def _mean_prediction(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-    sub_key: Optional[metric_types.SubKey] = None
+    sub_key: Optional[metric_types.SubKey] = None,
+    class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean prediction."""
   key = metric_types.MetricKey(
@@ -123,7 +126,8 @@ def _mean_prediction(
       eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      class_weights=class_weights)
   weighted_labels_predictions_key = computations[-1].keys[-1]
 
   def result(
@@ -168,7 +172,8 @@ def _calibration(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-    sub_key: Optional[metric_types.SubKey] = None
+    sub_key: Optional[metric_types.SubKey] = None,
+    class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for calibration."""
   key = metric_types.MetricKey(
@@ -182,7 +187,8 @@ def _calibration(
       eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      class_weights=class_weights)
   weighted_labels_predictions_key = computations[-1].keys[-1]
 
   def result(
@@ -208,7 +214,8 @@ def _weighted_labels_predictions_examples(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-    sub_key: Optional[metric_types.SubKey] = None
+    sub_key: Optional[metric_types.SubKey] = None,
+    class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for weighted labels, predictions, and examples.
 
@@ -218,6 +225,8 @@ def _weighted_labels_predictions_examples(
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
+    class_weights: Optional class weights to apply to multi-class / multi-label
+      labels and predictions prior to flattening (when micro averaging is used).
   """
   key = metric_types.MetricKey(
       name=name,
@@ -229,7 +238,7 @@ def _weighted_labels_predictions_examples(
           keys=[key],
           preprocessor=None,  # Use default
           combiner=_WeightedLabelsPredictionsExamplesCombiner(
-              key, eval_config=eval_config))
+              key, eval_config=eval_config, class_weights=class_weights))
   ]
 
 
@@ -251,9 +260,11 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
   """Computes weighted labels, predictions, and examples."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: config.EvalConfig):
+               eval_config: Optional[config.EvalConfig],
+               class_weights: Optional[Dict[int, float]]):
     self._key = key
     self._eval_config = eval_config
+    self._class_weights = class_weights
 
   def create_accumulator(self) -> _WeightedLabelsPredictionsExamples:
     return _WeightedLabelsPredictionsExamples()
@@ -262,33 +273,33 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
       self, accumulator: _WeightedLabelsPredictionsExamples,
       element: metric_types.StandardMetricInputs
   ) -> _WeightedLabelsPredictionsExamples:
-    label, prediction, example_weight = (
+    for label, prediction, example_weight in (
         metric_util.to_label_prediction_example_weight(
             element,
             eval_config=self._eval_config,
             output_name=self._key.output_name,
             sub_key=self._key.sub_key,
-            allow_none=True,
-            array_size=1))
-    if example_weight is None:
-      example_weight = 0.0
-    else:
-      example_weight = float(example_weight)
-    accumulator.total_weighted_examples += example_weight
-    if label is not None:
-      if self._key.sub_key and self._key.sub_key.top_k is not None:
-        for i in range(self._key.sub_key.top_k):
-          weighted_label = label[i] * example_weight
+            class_weights=self._class_weights,
+            allow_none=True)):
+      if example_weight is None:
+        example_weight = 0.0
       else:
-        weighted_label = float(label) * example_weight
-      accumulator.total_weighted_labels += weighted_label
-    if prediction is not None:
-      if self._key.sub_key and self._key.sub_key.top_k is not None:
-        for i in range(self._key.sub_key.top_k):
-          weighted_prediction = prediction[i] * example_weight
-      else:
-        weighted_prediction = float(prediction) * example_weight
-      accumulator.total_weighted_predictions += weighted_prediction
+        example_weight = float(example_weight)
+      accumulator.total_weighted_examples += example_weight
+      if label is not None:
+        if self._key.sub_key and self._key.sub_key.top_k is not None:
+          for i in range(self._key.sub_key.top_k):
+            weighted_label = label[i] * example_weight
+        else:
+          weighted_label = float(label) * example_weight
+        accumulator.total_weighted_labels += weighted_label
+      if prediction is not None:
+        if self._key.sub_key and self._key.sub_key.top_k is not None:
+          for i in range(self._key.sub_key.top_k):
+            weighted_prediction = prediction[i] * example_weight
+        else:
+          weighted_prediction = float(prediction) * example_weight
+        accumulator.total_weighted_predictions += weighted_prediction
     return accumulator
 
   def merge_accumulators(

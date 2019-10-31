@@ -135,7 +135,8 @@ _Matrices = Dict[float, Dict[_MatrixEntryKey, _ConfusionMatrix]]
 class _MultiLabelConfusionMatrixAtThresholdsCombiner(beam.CombineFn):
   """Creates multi-label confusion matrix at thresholds from standard inputs."""
 
-  def __init__(self, key: metric_types.PlotKey, eval_config: config.EvalConfig,
+  def __init__(self, key: metric_types.PlotKey,
+               eval_config: Optional[config.EvalConfig],
                thresholds: List[float]):
     self._key = key
     self._eval_config = eval_config
@@ -146,11 +147,12 @@ class _MultiLabelConfusionMatrixAtThresholdsCombiner(beam.CombineFn):
 
   def add_input(self, accumulator: _Matrices,
                 element: metric_types.StandardMetricInputs) -> _Matrices:
-    labels, predictions, example_weight = (
+    labels, predictions, example_weight = next(
         metric_util.to_label_prediction_example_weight(
             element,
             eval_config=self._eval_config,
-            output_name=self._key.output_name))
+            output_name=self._key.output_name,
+            flatten=False))
     if not labels.shape:
       raise ValueError(
           'Labels missing from example: StandardMetricInputs={}'.format(
