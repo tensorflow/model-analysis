@@ -4,6 +4,9 @@
 
 *   Added `tfma.metrics.MinLabelPosition` and `tfma.metrics.QueryStatistics` for
     use with V2 metrics API.
+*   Added `tfma.metrics.CoefficientOfDiscrimination` and
+    `tfma.metrics.RelativeCoefficientOfDiscrimination` for use with V2 metrics
+    API.
 
 ## Bug fixes and other changes
 
