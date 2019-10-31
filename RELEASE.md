@@ -10,6 +10,8 @@
 *   Added support for using `tf.keras.metrics.*` metrics with V2 metrics API.
 *   Added support for default V2 MetricSpecs and creating specs from
     `tf.kera.metrics.*` and `tfma.metrics.*` metric classes.
+*   Added new MetricsAndPlotsEvaluator based on V2 infrastructure. Note this
+    evaluator also supports query-based metrics.
 
 ## Bug fixes and other changes
 

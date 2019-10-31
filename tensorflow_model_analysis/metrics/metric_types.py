@@ -176,6 +176,13 @@ class DerivedMetricComputation(
     )):
   """DerivedMetricComputation derives its result from other computations.
 
+  When creating derived metric computations it is recommended (but not required)
+  that the underlying MetricComputations that they depend on are defined at the
+  same time. This is to avoid having to pre-construct and pass around all the
+  required dependencies in order to construct a derived metric. The evaluation
+  pipeline is responsible for de-duplicating overlapping MetricComputations so
+  that only one computation is actually run.
+
   Attributes:
     keys: List of metric keys associated with derived computation.
     result: Function (called per slice) to compute the result using the results
