@@ -7,6 +7,7 @@
 *   Added `tfma.metrics.CoefficientOfDiscrimination` and
     `tfma.metrics.RelativeCoefficientOfDiscrimination` for use with V2 metrics
     API.
+*   Added support for using `tf.keras.metrics.*` metrics with V2 metrics API.
 
 ## Bug fixes and other changes
 
