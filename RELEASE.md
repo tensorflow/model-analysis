@@ -8,6 +8,8 @@
     `tfma.metrics.RelativeCoefficientOfDiscrimination` for use with V2 metrics
     API.
 *   Added support for using `tf.keras.metrics.*` metrics with V2 metrics API.
+*   Added support for default V2 MetricSpecs and creating specs from
+    `tf.kera.metrics.*` and `tfma.metrics.*` metric classes.
 
 ## Bug fixes and other changes
 
