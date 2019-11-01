@@ -22,6 +22,25 @@ suite('fairness-metric-summary tests', () => {
     'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10', 'Slice:11', 'Slice:12',
     'Slice:13', 'Slice:14', 'Slice:15', 'Slice:16'
   ];
+  const EXAMPLE_COUNTS = {
+    'Overall': 524,
+    'Slice:1': 92,
+    'Slice:2': 92,
+    'Slice:3': 99,
+    'Slice:4': 52,
+    'Slice:5': 98,
+    'Slice:6': 44,
+    'Slice:7': 95,
+    'Slice:8': 0,
+    'Slice:9': 60,
+    'Slice:10': 25,
+    'Slice:11': 77,
+    'Slice:12': 52,
+    'Slice:13': 87,
+    'Slice:14': 47,
+    'Slice:15': 54,
+    'Slice:16': 44
+  };
   const DOUBLE_VALUE_DATA = SLICES.map((slice) => {
     return {
       'slice': slice,
@@ -63,6 +82,7 @@ suite('fairness-metric-summary tests', () => {
           'value': 0.3,
           'methodology': 'POISSON_BOOTSTRAP'
         },
+        'post_export_metrics/example_count': EXAMPLE_COUNTS[slice],
       }
     };
   });
@@ -119,6 +139,11 @@ suite('fairness-metric-summary tests', () => {
           SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT + 1));
       assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
       assert.deepEqual(metricSummary.$['bar-chart'].data, BOUNDED_VALUE_DATA);
+      assert.deepEqual(
+          metricSummary.computeExampleCounts_(
+              'Overall', BOUNDED_VALUE_DATA,
+              ['Slice:15', 'Slice:7', 'Slice:4']),
+          [524, 54, 95, 52]);
       done();
     };
     setUpAndCheck(fillBoundedValue, checkValue);
@@ -148,6 +173,11 @@ suite('fairness-metric-summary tests', () => {
           SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT + 1));
       assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
       assert.deepEqual(metricSummary.$['bar-chart'].data, DOUBLE_VALUE_DATA);
+      assert.deepEqual(
+          metricSummary.computeExampleCounts_(
+              'Overall', BOUNDED_VALUE_DATA,
+              ['Slice:15', 'Slice:7', 'Slice:4']),
+          [524, 54, 95, 52]);
       done();
     };
     setUpAndCheck(fillDoubleValue, checkValue);

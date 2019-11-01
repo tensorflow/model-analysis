@@ -57,6 +57,8 @@ suite('fairness-metrics-table tests', () => {
 
   const HEADER_OVERRIDE = {'logisticLoss': 'loss'};
 
+  const EXAMPLE_COUNTS = [34, 84, 49];
+
   let table;
 
   test('ComputingTableData', done => {
@@ -66,6 +68,7 @@ suite('fairness-metrics-table tests', () => {
       table.metrics = METRICS;
       table.data = TABLE_DATA;
       table.headerOverride = HEADER_OVERRIDE;
+      table.exampleCounts = EXAMPLE_COUNTS;
       setTimeout(CheckProperties, 500);
     };
 

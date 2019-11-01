@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+const NUM_SLICES = 100;
+
 (() => {
   var metrics = [];
   for (var i = 0; i < 7; i++) {
@@ -26,8 +28,9 @@
   table.metrics = metrics;
 
   var data = [];
+  var exampleCounts = [];
 
-  for (var i = 0; i < 100; i++) {
+  for (var i = 0; i < NUM_SLICES; i++) {
     var entry = {};
     entry['slice'] = 'col:' + i;
 
@@ -45,7 +48,9 @@
 
     entry['metrics'] = metric;
     data.push(entry);
+    exampleCounts.push(Math.floor(Math.random() * 100));
   }
 
   table.data = data;
+  table.exampleCounts = exampleCounts;
 })();

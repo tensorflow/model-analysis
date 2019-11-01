@@ -45,7 +45,7 @@ export class FairnessMetricSummary extends PolymerElement {
   static get properties() {
     return {
       /**
-       * A dictionary of slice anmes and metrics values which itself is a
+       * A dictionary of slice names and metrics values which itself is a
        * dictionary.
        * @type {!Array<!Object>}
        *
@@ -145,6 +145,16 @@ export class FairnessMetricSummary extends PolymerElement {
        * @private {!Array<string>}
        */
       configSelectedSlices_: {type: Array},
+
+      /**
+       * A list containing the number of examples for each slice.
+       * @private {!Array<string>}
+       */
+      exampleCounts_: {
+        type: Array,
+        computed: 'computeExampleCounts_(baseline, data, ' +
+            'slicesToPlot_)'
+      }
     };
   }
 
@@ -185,7 +195,6 @@ export class FairnessMetricSummary extends PolymerElement {
         Object.keys(baselineSliceMetrics['metrics']).includes(metric)) {
       metricsToPlot.push(metric);
     }
-
     return metricsToPlot;
   }
 
@@ -198,7 +207,7 @@ export class FairnessMetricSummary extends PolymerElement {
    */
   computeHeaderOverride_(baseline, metrics) {
     return metrics.reduce((acc, metric) => {
-      acc[metric + ' against ' + baseline] = 'Diff. w. baseline';
+      acc[metric + '  against ' + baseline] = 'Diff. w. baseline';
       return acc;
     }, {});
   }
@@ -311,6 +320,27 @@ export class FairnessMetricSummary extends PolymerElement {
       console.error(error);
       return undefined;
     }
+  }
+
+  /**
+   * @param {string} baseline
+   * @param {!Array<!Object>} data
+   * @param {!Array<string>} slices
+   * @return {!Array|undefined}
+   * @private
+   */
+  computeExampleCounts_(baseline, data, slices) {
+    if (!baseline || !data || !slices) {
+      return undefined;
+    }
+    const slicesInTable = [baseline, ...slices];
+    const exampleCounts = slicesInTable.map(slice => {
+      const sliceMetrics = data.find(d => d['slice'] == slice);
+      return !sliceMetrics ?
+          {} :
+          sliceMetrics['metrics']['post_export_metrics/example_count'];
+    });
+    return exampleCounts;
   }
 
   /**

@@ -76,6 +76,15 @@ export class FairnessMetricsTable extends PolymerElement {
       },
 
       /**
+       * List of example counts for each slice.
+       * @type {!Array<string>}
+       */
+      exampleCounts: {
+        type: Array,
+        value: () => ([]),
+      },
+
+      /**
        * Generated plot data piped to google-chart. It should be 2d array
        * where the each element in the top level array represents a row in
        * the table.
@@ -195,6 +204,18 @@ export class FairnessMetricsTable extends PolymerElement {
   }
 
   /**
+   * @param {(string)} rowNum
+   * @param {(string)} exampleCounts
+   * @return {boolean} Get example count for the corresponding row.
+   * @private
+   */
+  getExampleCount_(rowNum, exampleCounts) {
+    // We skip the first row, since it is a header row which does not correspond
+    // to a slice.
+    return exampleCounts[parseFloat(rowNum)-1];
+  }
+
+  /**
    * @param {(string)} s
    * @return {boolean} Returns true if string is 0.
    * @private
@@ -204,12 +225,30 @@ export class FairnessMetricsTable extends PolymerElement {
   }
 
   /**
-   * @param {(string)} s
-   * @return {boolean} Returns true if string is 1.
+   * @param {(string)} row_num
+   * @return {boolean} Returns true if row_num is 0.
    * @private
    */
-  isOne_(s) {
-    return parseFloat(s) === 1;
+  isHeaderRow_(row_num) {
+    return parseFloat(row_num) === 0;
+  }
+
+  /**
+   * @param {(string)} row_num
+   * @return {boolean} Returns true if row_num is 1.
+   * @private
+   */
+  isBaselineRow_(row_num) {
+    return parseFloat(row_num) === 1;
+  }
+
+  /**
+   * @param {(string)} row_num
+   * @return {boolean} Returns true if row_num is greater than 1.
+   * @private
+   */
+  isSliceRow_(row_num) {
+    return parseFloat(row_num) > 1;
   }
 
   /**

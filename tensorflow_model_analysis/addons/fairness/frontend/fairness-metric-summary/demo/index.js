@@ -20,6 +20,10 @@
     'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10', 'Slice:11', 'Slice:12',
     'Slice:13', 'Slice:14', 'Slice:15', 'Slice:16'
   ];
+  const EXAMPLE_COUNTS = {};
+  SLICES.forEach(function(slice) {
+    EXAMPLE_COUNTS[slice] = Math.floor(Math.random() * 100);
+  });
 
   const BOUNDED_VALUE_DATA = SLICES.map((slice) => {
     return {
@@ -50,7 +54,7 @@
           'value': NaN,
           'methodology': 'POISSON_BOOTSTRAP'
         },
-        'post_export_metrics/example_count': Math.floor(Math.random() * 100),
+        'post_export_metrics/example_count': EXAMPLE_COUNTS[slice],
       }
     };
   });
@@ -64,7 +68,7 @@
         'post_export_metrics/false_negative_rate@0.30': Math.random(),
         'post_export_metrics/false_negative_rate@0.50': Math.random(),
         'post_export_metrics/false_negative_rate@0.70': Math.random(),
-        'post_export_metrics/example_count': Math.floor(Math.random() * 100),
+        'post_export_metrics/example_count': EXAMPLE_COUNTS[slice],
       }
     };
   });

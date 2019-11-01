@@ -93,7 +93,7 @@ template.innerHTML = `
 </style>
 <div class="table-holder" id="table">
   <template is="dom-repeat" items="[[plotData_]]" as="row">
-    <template is="dom-if" if="[[!index]]">
+    <template is="dom-if" if="[[isHeaderRow_(index)]]">
       <div class="table-head-row">
         <template is="dom-repeat" items="[[row]]">
           <template is="dom-if" if="[[!index]]">
@@ -103,63 +103,68 @@ template.innerHTML = `
             <div class="table-entry" title="[[item]]">[[item]]</div>
           </template>
         </template>
+        <div class="table-feature-column" title="[[item]]">post_export_metrics/example_count</div>
       </div>
     </template>
-    <template is="dom-if" if="[[index]]">
-      <template is="dom-if" if="[[!isOne_(index)]]">
-        <div class="table-row" on-tap="togglePerfRow">
-          <template is="dom-repeat" items="[[row]]">
-            <template is="dom-if" if="[[!index]]">
-              <div class="table-feature-column" title="[[item]]">[[item]]</div>
-            </template>
-            <template is="dom-if" if="[[index]]">
-              <div class="table-entry" title="[[item]]">
-                <template is="dom-if" if="[[isDiffWithBaselineColumn_(index)]]">
-                  <template is="dom-if" if="[[!isZero_(item)]]">
-                    <template is="dom-if" if="[[isPositive_(item)]]">
-                      <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
-                    </template>
-                    <template is="dom-if" if="[[isNegative_(item)]]">
-                      <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
-                    </template>
-                    [[toPercentage_(item)]]
-                  </template>
-                </template>
-                <template is="dom-if" if="[[!isDiffWithBaselineColumn_(index)]]">
-                  [[formatFloatValue_(item)]]
-                </template>
-              </div>
-            </template>
+    <template is="dom-if" if="[[isBaselineRow_(index)]]">
+      <div class="baseline-row" on-tap="togglePerfRow">
+        <template is="dom-repeat" items="[[row]]">
+          <template is="dom-if" if="[[!index]]">
+            <div class="table-feature-column" title="[[item]]">[[item]]</div>
           </template>
-        </div>
-      </template>
-      <template is="dom-if" if="[[isOne_(index)]]">
-        <div class="baseline-row" on-tap="togglePerfRow">
-          <template is="dom-repeat" items="[[row]]">
-            <template is="dom-if" if="[[!index]]">
-              <div class="table-feature-column" title="[[item]]">[[item]]</div>
-            </template>
-            <template is="dom-if" if="[[index]]">
-              <div class="table-entry" title="[[item]]">
-                <template is="dom-if" if="[[isDiffWithBaselineColumn_(index)]]">
-                  <template is="dom-if" if="[[!isZero_(item)]]">
-                    <template is="dom-if" if="[[isPositive_(item)]]">
-                      <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
-                    </template>
-                    <template is="dom-if" if="[[isNegative_(item)]]">
-                      <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
-                    </template>
-                    [[toPercentage_(item)]]
+          <template is="dom-if" if="[[index]]">
+            <div class="table-entry" title="[[item]]">
+              <template is="dom-if" if="[[isDiffWithBaselineColumn_(index)]]">
+                <template is="dom-if" if="[[!isZero_(item)]]">
+                  <template is="dom-if" if="[[isPositive_(item)]]">
+                    <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
                   </template>
+                  <template is="dom-if" if="[[isNegative_(item)]]">
+                    <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
+                  </template>
+                  [[toPercentage_(item)]]
                 </template>
-                <template is="dom-if" if="[[!isDiffWithBaselineColumn_(index)]]">
-                  [[formatFloatValue_(item)]]
-                </template>
-              </div>
-            </template>
+              </template>
+              <template is="dom-if" if="[[!isDiffWithBaselineColumn_(index)]]">
+                [[formatFloatValue_(item)]]
+              </template>
+            </div>
           </template>
+        </template>
+        <div class="table-entry" title="[[item]]">
+          [[getExampleCount_(index, exampleCounts)]]
         </div>
-      </template>
+      </div>
+    </template>
+    <template is="dom-if" if="[[isSliceRow_(index)]]">
+      <div class="table-row" on-tap="togglePerfRow">
+        <template is="dom-repeat" items="[[row]]">
+          <template is="dom-if" if="[[!index]]">
+            <div class="table-feature-column" title="[[item]]">[[item]]</div>
+          </template>
+          <template is="dom-if" if="[[index]]">
+            <div class="table-entry" title="[[item]]">
+              <template is="dom-if" if="[[isDiffWithBaselineColumn_(index)]]">
+                <template is="dom-if" if="[[!isZero_(item)]]">
+                  <template is="dom-if" if="[[isPositive_(item)]]">
+                    <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
+                  </template>
+                  <template is="dom-if" if="[[isNegative_(item)]]">
+                    <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
+                  </template>
+                  [[toPercentage_(item)]]
+                </template>
+              </template>
+              <template is="dom-if" if="[[!isDiffWithBaselineColumn_(index)]]">
+                [[formatFloatValue_(item)]]
+              </template>
+            </div>
+          </template>
+        </template>
+        <div class="table-entry" title="[[item]]">
+          [[getExampleCount_(index, exampleCounts)]]
+        </div>
+      </div>
     </template>
   </template>
 </div>

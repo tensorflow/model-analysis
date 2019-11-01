@@ -56,7 +56,7 @@ template.innerHTML = `
                                  baseline="[[baseline]]">
 </fairness-bounded-value-bar-chart>
 <fairness-metrics-table id="table" metrics="[[metricsForTable_]]" data="[[tableData_]]"
-                        header-override="[[headerOverride_]]">
+                        header-override="[[headerOverride_]]" example-counts="[[exampleCounts_]]">
 </fairness-metrics-table>
 <paper-dialog id="settings">
   <div class="header">
