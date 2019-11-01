@@ -18,6 +18,10 @@ template.innerHTML = `
 <style>
   #metric-and-slice-selector-title {
     padding: 16px 16px 0 16px;
+    /* We set font color to black because the Fairness widget background is always white.
+     * Without explicitly setting it, the font color is selected by the Jupyter environment theme.
+     */
+    color: black
   }
 
   paper-listbox {
