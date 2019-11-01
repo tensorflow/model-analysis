@@ -332,7 +332,7 @@ def default_extractors(  # pylint: disable=invalid-name
   if eval_shared_model is not None:
     eval_shared_models = [eval_shared_model]
   if (not eval_shared_models[0].model_loader.tags or
-      eval_shared_models[0].model_loader.tags == [eval_constants.EVAL_TAG]):
+      eval_constants.EVAL_TAG in eval_shared_models[0].model_loader.tags):
     # Backwards compatibility for previous EvalSavedModel implementation.
     return [
         predict_extractor.PredictExtractor(

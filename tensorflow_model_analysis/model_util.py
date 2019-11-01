@@ -65,12 +65,16 @@ def model_construct_fn(  # pylint: disable=invalid-name
       saved_model = None
       keras_model = None
       eval_saved_model = None
-      if tags == [eval_constants.EVAL_TAG]:
+      # If we are evaluating on TPU, initialize the TPU.
+      if tf.saved_model.TPU in tags:
+        tf.tpu.experimental.initialize_tpu_system()
+      if eval_constants.EVAL_TAG in tags:
         eval_saved_model = load.EvalSavedModel(
             eval_saved_model_path,
             include_default_metrics,
             additional_fetches=additional_fetches,
-            blacklist_feature_fetches=blacklist_feature_fetches)
+            blacklist_feature_fetches=blacklist_feature_fetches,
+            tags=tags)
         if add_metrics_callbacks:
           eval_saved_model.register_add_metric_callbacks(add_metrics_callbacks)
         eval_saved_model.graph_finalize()
@@ -86,8 +90,6 @@ def model_construct_fn(  # pylint: disable=invalid-name
         except Exception:  # pylint: disable=broad-except
           keras_model = None
         if keras_model is None:
-          if tf.saved_model.TPU in tags:
-            tf.tpu.experimental.initialize_tpu_system()
           saved_model = tf.compat.v1.saved_model.load_v2(
               eval_saved_model_path, tags=tags)
       end_time = datetime.datetime.now()

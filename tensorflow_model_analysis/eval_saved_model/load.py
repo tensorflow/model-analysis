@@ -66,7 +66,8 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
                path: Text,
                include_default_metrics: Optional[bool] = True,
                additional_fetches: Optional[List[Text]] = None,
-               blacklist_feature_fetches: Optional[List[Text]] = None):
+               blacklist_feature_fetches: Optional[List[Text]] = None,
+               tags: Optional[List[Text]] = None):
     """Initializes EvalSavedModel.
 
     Args:
@@ -80,6 +81,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
         which should be excluded from the fetches request. This is useful in
         scenarios where features are large (e.g. images) and can lead to
         excessive memory use if stored.
+      tags: Tags to use when loading the saved model.
 
     Raises:
       ValueError: If "features" or "labels" included in additional_fetches.
@@ -93,6 +95,10 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
         raise ValueError('additional_fetches should not contain "labels"')
     self._additional_fetches = additional_fetches
     self._blacklist_feature_fetches = blacklist_feature_fetches
+    if tags:
+      self._tags = tags
+    else:
+      self._tags = [constants.EVAL_TAG]
     super(EvalSavedModel, self).__init__()
 
   def _check_version(self, version_node: types.TensorType):
@@ -160,7 +166,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
         unrecognised suffix.
     """
     meta_graph_def = tf.compat.v1.saved_model.loader.load(
-        self._session, [constants.EVAL_TAG], self._path)
+        self._session, self._tags, self._path)
 
     with self._graph.as_default():
       signature_def = meta_graph_def.signature_def.get(
