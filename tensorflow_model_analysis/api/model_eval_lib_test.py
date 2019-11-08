@@ -16,7 +16,6 @@
 from __future__ import division
 from __future__ import print_function
 
-import json
 import os
 import pickle
 import tempfile
@@ -34,15 +33,12 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_line
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
 from tensorflow_model_analysis.evaluators import query_based_metrics_evaluator
-from tensorflow_model_analysis.evaluators.query_metrics import ndcg as legacy_ndcg
+from tensorflow_model_analysis.evaluators.query_metrics import ndcg
 from tensorflow_model_analysis.evaluators.query_metrics import query_statistics
 from tensorflow_model_analysis.extractors import feature_extractor
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
-from tensorflow_model_analysis.metrics import metric_specs
-from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
@@ -324,156 +320,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
-  def testRunModelAnalysisWithKerasModel(self):
-    input_layer = tf.keras.layers.Input(shape=(28 * 28,), name='data')
-    output_layer = tf.keras.layers.Dense(
-        10, activation=tf.nn.softmax)(
-            input_layer)
-    model = tf.keras.models.Model(input_layer, output_layer)
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.categorical_crossentropy)
-
-    features = {'data': [[0.0] * 28 * 28]}
-    labels = [[0, 0, 0, 0, 0, 0, 0, 1, 0, 0]]
-    example_weights = [1.0]
-    dataset = tf.data.Dataset.from_tensor_slices(
-        (features, labels, example_weights))
-    dataset = dataset.shuffle(buffer_size=1).repeat().batch(1)
-    model.fit(dataset, steps_per_epoch=1)
-
-    model_location = os.path.join(self._getTempDir(), 'export_dir')
-    model.save(model_location, save_format='tf')
-
-    examples = [
-        self._makeExample(data=[0.0] * 28 * 28, label=1.0),
-        self._makeExample(data=[1.0] * 28 * 28, label=5.0),
-        self._makeExample(data=[1.0] * 28 * 28, label=9.0),
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    metrics_spec = config.MetricsSpec()
-    for metric in (tf.keras.metrics.AUC(),):
-      cfg = tf.keras.utils.serialize_keras_object(metric)
-      metrics_spec.metrics.append(
-          config.MetricConfig(
-              class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
-    for class_id in (0, 5, 9):
-      metrics_spec.binarize.class_ids.append(class_id)
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[
-            config.ModelSpec(location=model_location, label_key='label')
-        ],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ],
-        metrics_specs=[metrics_spec])
-    eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
-        eval_shared_models=[
-            model_eval_lib.default_eval_shared_model(
-                eval_saved_model_path=model_location,
-                tags=[tf.saved_model.SERVING])
-        ])
-    self.assertEqual(eval_result.config.model_specs[0].location, model_location)
-    self.assertEqual(eval_result.config.input_data_specs[0].location,
-                     data_location)
-    self.assertLen(eval_result.slicing_metrics, 1)
-    got_slice_key, got_metrics = eval_result.slicing_metrics[0]
-    self.assertEqual(got_slice_key, ())
-    self.assertIn('', got_metrics)  # output_name
-    got_metrics = got_metrics['']
-    expected_metrics = {
-        'classId:0': {
-            'auc': True,
-        },
-        'classId:5': {
-            'auc': True,
-        },
-        'classId:9': {
-            'auc': True,
-        },
-    }
-    for class_id in expected_metrics:
-      self.assertIn(class_id, got_metrics)
-      for k in expected_metrics[class_id]:
-        self.assertIn(k, got_metrics[class_id])
-
-  def testRunModelAnalysisWithQueryBasedMetrics(self):
-    input_layer = tf.keras.layers.Input(shape=(1,), name='age')
-    output_layer = tf.keras.layers.Dense(
-        1, activation=tf.nn.sigmoid)(
-            input_layer)
-    model = tf.keras.models.Model(input_layer, output_layer)
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy)
-
-    features = {'age': [[20.0]]}
-    labels = [[1]]
-    example_weights = [1.0]
-    dataset = tf.data.Dataset.from_tensor_slices(
-        (features, labels, example_weights))
-    dataset = dataset.shuffle(buffer_size=1).repeat().batch(1)
-    model.fit(dataset, steps_per_epoch=1)
-
-    model_location = os.path.join(self._getTempDir(), 'export_dir')
-    model.save(model_location, save_format='tf')
-
-    examples = [
-        self._makeExample(age=3.0, language='english', label=1.0),
-        self._makeExample(age=5.0, language='chinese', label=0.0),
-        self._makeExample(age=3.0, language='english', label=0.0),
-        self._makeExample(age=5.0, language='chinese', label=1.0)
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [config.SlicingSpec()]
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[
-            config.ModelSpec(location=model_location, label_key='label')
-        ],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ],
-        slicing_specs=slicing_specs,
-        metrics_specs=metric_specs.specs_from_metrics(
-            [ndcg.NDCG(gain_key='age', name='ndcg')],
-            top_k_list=[1],
-            query_key='language'))
-    eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location, tags=[tf.saved_model.SERVING])
-    eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
-        eval_shared_models=[eval_shared_model],
-        evaluators=[
-            metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-                eval_config=eval_config, eval_shared_models=[eval_shared_model])
-        ])
-
-    self.assertEqual(eval_result.config.model_specs[0].location, model_location)
-    self.assertEqual(eval_result.config.input_data_specs[0].location,
-                     data_location)
-    self.assertLen(eval_result.slicing_metrics, 1)
-    got_slice_key, got_metrics = eval_result.slicing_metrics[0]
-    self.assertEqual(got_slice_key, ())
-    self.assertIn('', got_metrics)  # output_name
-    got_metrics = got_metrics['']
-    expected_metrics = {
-        '': {
-            'example_count': True,
-            'weighted_example_count': True,
-        },
-        'topK:1': {
-            'ndcg': True,
-        },
-    }
-    for group in expected_metrics:
-      self.assertIn(group, got_metrics)
-      for k in expected_metrics[group]:
-        self.assertIn(k, got_metrics[group])
-
-  def testRunModelAnalysisWithLegacyQueryExtractor(self):
+  def testRunModelAnalysisWithQueryExtractor(self):
     model_location = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
     examples = [
@@ -504,7 +351,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 prediction_key='logistic',
                 combine_fns=[
                     query_statistics.QueryStatisticsCombineFn(),
-                    legacy_ndcg.NdcgMetricCombineFn(
+                    ndcg.NdcgMetricCombineFn(
                         at_vals=[1], gain_key='label', weight_key='')
                 ]),
         ])
@@ -706,6 +553,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertEqual(len(eval_result.plots), 1)
     slice_key, plots = eval_result.plots[0]
     self.assertEqual((), slice_key)
+    tf.compat.v1.logging.info(plots.keys())
     self.assertDictElementsAlmostEqual(
         plots['']['']['post_export_metrics']['confusionMatrixAtThresholds']
         ['matrices'][8001], expected_matrix)
