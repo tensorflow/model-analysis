@@ -120,8 +120,8 @@ class DoFnWithModels(beam.DoFn):
 
   def setup(self):
     self._loaded_models = {}
-    for model_name, model_loader in self._model_loaders.items():
-      self._loaded_models[model_name] = model_loader.shared_handle.acquire(
+    for model_path, model_loader in self._model_loaders.items():
+      self._loaded_models[model_path] = model_loader.shared_handle.acquire(
           model_loader.construct_fn(self._set_model_load_seconds))
 
   def process(self, elem):
@@ -159,8 +159,8 @@ class CombineFnWithModels(beam.CombineFn):
   def _setup_if_needed(self) -> None:
     if self._loaded_models is None:
       self._loaded_models = {}
-      for model_name, model_loader in self._model_loaders.items():
-        self._loaded_models[model_name] = model_loader.shared_handle.acquire(
+      for model_path, model_loader in self._model_loaders.items():
+        self._loaded_models[model_path] = model_loader.shared_handle.acquire(
             model_loader.construct_fn(self._set_model_load_seconds))
       if self._model_load_seconds is not None:
         self._model_load_seconds_distribution.update(self._model_load_seconds)
