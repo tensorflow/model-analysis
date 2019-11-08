@@ -35,8 +35,11 @@ from tensorflow_model_analysis import version as tfma_version
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
+from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.extractors import input_extractor
 from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
@@ -341,7 +344,13 @@ def default_extractors(  # pylint: disable=invalid-name
             slice_spec, materialize=materialize)
     ]
   else:
-    raise NotImplementedError('keras and serving models not implemented yet.')
+    return [
+        input_extractor.InputExtractor(eval_config=eval_config),
+        predict_extractor_v2.PredictExtractor(
+            eval_config=eval_config, eval_shared_models=eval_shared_models),
+        slice_key_extractor.SliceKeyExtractor(
+            slice_spec, materialize=materialize)
+    ]
 
 
 def default_evaluators(  # pylint: disable=invalid-name
@@ -350,7 +359,8 @@ def default_evaluators(  # pylint: disable=invalid-name
     eval_config: config.EvalConfig = None,
     desired_batch_size: Optional[int] = None,
     compute_confidence_intervals: Optional[bool] = False,
-    k_anonymization_count: int = 1) -> List[evaluator.Evaluator]:
+    k_anonymization_count: int = 1,
+    serialize: bool = False) -> List[evaluator.Evaluator]:
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
@@ -360,11 +370,18 @@ def default_evaluators(  # pylint: disable=invalid-name
     desired_batch_size: Deprecated (use eval_config).
     compute_confidence_intervals: Deprecated (use eval_config).
     k_anonymization_count: Deprecated (use eval_config).
+    serialize: Deprecated.
   """
   # TODO(b/141016373): Add support for multiple models.
   if eval_shared_model is not None:
     eval_shared_models = [eval_shared_model]
-  if not eval_config or not eval_config.metrics_specs:
+  disabled_outputs = []
+  if eval_config and eval_config.output_data_specs:
+    disabled_outputs = eval_config.output_data_specs[0].disabled_outputs
+  if (constants.METRICS_KEY in disabled_outputs and
+      constants.PLOTS_KEY in disabled_outputs):
+    return []
+  elif not eval_config or not eval_config.metrics_specs:
     # Backwards compatibility for previous EvalSavedModel implementation.
     if eval_config is not None:
       if eval_config.options.HasField('desired_batch_size'):
@@ -379,10 +396,14 @@ def default_evaluators(  # pylint: disable=invalid-name
             eval_shared_models[0],
             desired_batch_size,
             compute_confidence_intervals=compute_confidence_intervals,
-            k_anonymization_count=k_anonymization_count)
+            k_anonymization_count=k_anonymization_count,
+            serialize=serialize)
     ]
   else:
-    raise NotImplementedError('metrics_specs not implemented yet.')
+    return [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_models=eval_shared_models)
+    ]
 
 
 def default_writers(

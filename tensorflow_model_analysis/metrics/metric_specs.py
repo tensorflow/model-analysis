@@ -495,6 +495,16 @@ def _create_sub_keys(
   return sub_keys
 
 
+def _metric_config(cfg: Text) -> Text:
+  """Returns JSON deserializable metric config from string."""
+  if not cfg:
+    return '{}'
+  elif cfg[0] != '{':
+    return '{' + cfg + '}'
+  else:
+    return cfg
+
+
 def _serialize_tf_metric(
     metric: tf.keras.metrics.Metric) -> config.MetricConfig:
   """Serializes TF metric."""
@@ -511,7 +521,7 @@ def _deserialize_tf_metric(
   with tf.keras.utils.custom_object_scope(custom_objects):
     return tf.keras.metrics.deserialize({
         'class_name': metric_config.class_name,
-        'config': json.loads(metric_config.config)
+        'config': json.loads(_metric_config(metric_config.config))
     })
 
 
@@ -533,5 +543,5 @@ def _deserialize_tfma_metric(
   with tf.keras.utils.custom_object_scope(custom_objects):
     return tf.keras.utils.deserialize_keras_object({
         'class_name': metric_config.class_name,
-        'config': json.loads(metric_config.config)
+        'config': json.loads(_metric_config(metric_config.config))
     })

@@ -57,7 +57,7 @@ def verify_eval_config(eval_config: EvalConfig):
             'baseline model "{}" should not have an output_data_spec '
             'because baseline outputs are included with the candidates: '
             '{}'.format(baseline.name, eval_config.output_data_specs))
-      if spec.model_name not in model_specs_by_name:
+      if spec.model_name and spec.model_name not in model_specs_by_name:
         raise ValueError(
             'model_name "{}" for output_data_spec {} unknown'.format(
                 spec.model_name, spec))
