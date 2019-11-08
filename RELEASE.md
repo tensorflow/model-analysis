@@ -12,8 +12,10 @@
     `tf.kera.metrics.*` and `tfma.metrics.*` metric classes.
 *   Added new MetricsAndPlotsEvaluator based on V2 infrastructure. Note this
     evaluator also supports query-based metrics.
-
 ## Bug fixes and other changes
+
+*   Fixed error in `tfma-multi-class-confusion-matrix-at-thresholds` with
+    default classNames value.
 
 ## Breaking changes
 

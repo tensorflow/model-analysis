@@ -177,7 +177,7 @@ export class MultiClassConfusionMatrixAtThresholds extends PolymerElement {
        * class ids in number.
        * @type {!Object<number>}
        */
-      classNames: {type: Object, value: () => {}},
+      classNames: {type: Object, value: () => ({})},
 
       /**
        * A map where the keys are the class ids and the values are the
