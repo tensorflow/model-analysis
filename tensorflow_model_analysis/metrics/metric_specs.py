@@ -21,7 +21,8 @@ from __future__ import print_function
 
 import importlib
 import json
-from typing import Dict, List, Optional, Text, Type, Union
+import re
+from typing import Any, Dict, List, Optional, Text, Type, Union
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
@@ -495,6 +496,27 @@ def _create_sub_keys(
   return sub_keys
 
 
+def _metric_config(cfg: Text) -> Dict[Text, Any]:
+  """Returns deserializable metric config from JSON string."""
+  if not cfg:
+    json_cfg = '{}'
+  elif cfg[0] != '{':
+    json_cfg = '{' + cfg + '}'
+  else:
+    json_cfg = cfg
+  return json.loads(json_cfg)
+
+
+def _maybe_add_name_to_config(cfg: Dict[Text, Any],
+                              class_name: Text) -> Dict[Text, Any]:
+  """Adds default name field to metric config if not present."""
+  if 'name' not in cfg:
+    # Use snake_case version of class name as default name.
+    intermediate = re.sub('(.)([A-Z][a-z0-9]+)', r'\1_\2', class_name)
+    cfg['name'] = re.sub('([a-z])([A-Z])', r'\1_\2', intermediate).lower()
+  return cfg
+
+
 def _serialize_tf_metric(
     metric: tf.keras.metrics.Metric) -> config.MetricConfig:
   """Serializes TF metric."""
@@ -508,10 +530,18 @@ def _deserialize_tf_metric(
     custom_objects: Dict[Text, Type[tf.keras.metrics.Metric]]
 ) -> tf.keras.metrics.Metric:
   """Deserializes a tf.keras.metrics metric."""
+  # The same metric type may be used for different keys when mult-class metrics
+  # are used (e.g. AUC for class0, # class1, etc). TF tries to generate unique
+  # metirc names even though these metrics are already unique within a
+  # MetricKey. To workaroudn this issue, if a name is not set, then add a
+  # default name ourselves.
   with tf.keras.utils.custom_object_scope(custom_objects):
     return tf.keras.metrics.deserialize({
-        'class_name': metric_config.class_name,
-        'config': json.loads(metric_config.config)
+        'class_name':
+            metric_config.class_name,
+        'config':
+            _maybe_add_name_to_config(
+                _metric_config(metric_config.config), metric_config.class_name)
     })
 
 
@@ -533,5 +563,5 @@ def _deserialize_tfma_metric(
   with tf.keras.utils.custom_object_scope(custom_objects):
     return tf.keras.utils.deserialize_keras_object({
         'class_name': metric_config.class_name,
-        'config': json.loads(metric_config.config)
+        'config': _metric_config(metric_config.config)
     })
