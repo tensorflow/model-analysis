@@ -724,11 +724,11 @@ function isArrayValue(value) {
 }
 
 // Registers all built-in renderers.
-registerRenderer(ValueType.FLOAT, renderFloat, goog.isNumber);
+registerRenderer(ValueType.FLOAT, renderFloat, x => typeof x === 'number');
 registerRenderer(
     ValueType.SCALAR_IN_VALUE, renderScalarInValue, isScalarInValue);
 registerRenderer(ValueType.BOUNDED_VALUE, renderBoundedValue, isBoundedValue);
-registerRenderer(ValueType.STRING, renderString, goog.isString);
+registerRenderer(ValueType.STRING, renderString, x => typeof x === 'string');
 registerRenderer(
     ValueType.MULTI_CLASS_CONFUSION_MATRIX, renderMultiClassConfusionMatrix,
     isMultiClassConfusionMatrix);
