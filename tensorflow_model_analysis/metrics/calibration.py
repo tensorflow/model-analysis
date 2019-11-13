@@ -281,10 +281,7 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
             sub_key=self._key.sub_key,
             class_weights=self._class_weights,
             allow_none=True)):
-      if example_weight is None:
-        example_weight = 0.0
-      else:
-        example_weight = float(example_weight)
+      example_weight = float(example_weight)
       accumulator.total_weighted_examples += example_weight
       if label is not None:
         if self._key.sub_key and self._key.sub_key.top_k is not None:

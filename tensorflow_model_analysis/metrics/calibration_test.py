@@ -53,7 +53,7 @@ class CalibrationMetricsTest(testutil.TensorflowModelAnalysisTest,
     example3 = {
         'labels': np.array([1.0]),
         'predictions': np.array([0.9]),
-        'example_weights': np.array([1.0]),
+        'example_weights': None,  # defaults to 1.0
     }
 
     with beam.Pipeline() as pipeline:
