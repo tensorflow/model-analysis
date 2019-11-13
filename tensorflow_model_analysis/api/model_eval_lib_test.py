@@ -439,7 +439,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         slicing_specs=slicing_specs,
         metrics_specs=metric_specs.specs_from_metrics(
             [ndcg.NDCG(gain_key='age', name='ndcg')],
-            top_k_list=[1],
+            binarize=config.BinarizationOptions(top_k_list=[1]),
             query_key='language'))
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, tags=[tf.saved_model.SERVING])

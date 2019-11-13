@@ -56,7 +56,7 @@ def to_scalar(
   if tensor.size != 1:
     raise ValueError('"{}" should have exactly 1 value, but found {} instead: '
                      'values={}'.format(tensor_name, tensor.size(), tensor))
-  return np.asscalar(tensor)
+  return tensor.item()
 
 
 def to_standard_metric_inputs(

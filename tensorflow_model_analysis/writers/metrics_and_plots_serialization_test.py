@@ -549,13 +549,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
   def testSerializeMetrics(self):
     slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
     slice_metrics = {
-        metric_types.MetricKey(name='accuracy', output_name='output_name'):
-            0.8,
-        metric_types.MetricKey(name='auc_pr', model_name='model_1'):
-            0.1,
-        metric_types.MetricKey(
-            name='auc', sub_key=metric_types.SubKey(class_id=1)):
-            0.2,
+        metric_types.MetricKey(name='accuracy', output_name='output_name'): 0.8
     }
     expected_metrics_for_slice = text_format.Parse(
         """
@@ -581,28 +575,6 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           value {
             double_value {
               value: 0.8
-            }
-          }
-        }
-        metric_keys_and_values {
-          key {
-            name: "auc"
-            sub_key: { class_id: { value: 1 } }
-          }
-          value {
-            double_value {
-              value: 0.2
-            }
-          }
-        }
-        metric_keys_and_values {
-          key {
-            name: "auc_pr"
-            model_name: "model_1"
-          }
-          value {
-            double_value {
-              value: 0.1
             }
           }
         }""", metrics_for_slice_pb2.MetricsForSlice())

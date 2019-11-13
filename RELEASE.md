@@ -12,6 +12,8 @@
     `tf.kera.metrics.*` and `tfma.metrics.*` metric classes.
 *   Added new MetricsAndPlotsEvaluator based on V2 infrastructure. Note this
     evaluator also supports query-based metrics.
+*   Add support for micro_average, macro_average, and weighted_macro_average
+    metrics.
 *   Added support for running V2 extractors and evaluators. V2 extractors will
     be used whenever the default_eval_saved_model is created using a non-eval
     tag (e.g. `tf.saved_model.SERVING`). The V2 evaluator will be used whenever

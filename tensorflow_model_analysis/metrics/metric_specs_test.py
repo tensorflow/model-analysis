@@ -42,10 +42,10 @@ class MetricSpecsTest(tf.test.TestCase):
             ]
         },
         model_names=['model_name1', 'model_name2'],
-        class_ids=[0, 1],
-        top_k_list=[2])
+        binarize=config.BinarizationOptions(class_ids=[0, 1]),
+        aggregate=config.AggregationOptions(macro_average=True))
 
-    self.assertLen(metrics_specs, 7)
+    self.assertLen(metrics_specs, 5)
     self.assertProtoEquals(
         metrics_specs[0],
         config.MetricsSpec(metrics=[
@@ -79,26 +79,10 @@ class MetricSpecsTest(tf.test.TestCase):
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1'],
-            binarize=config.BinarizationOptions(class_ids=[0, 1])))
+            binarize=config.BinarizationOptions(class_ids=[0, 1]),
+            aggregate=config.AggregationOptions(macro_average=True)))
     self.assertProtoEquals(
         metrics_specs[3],
-        config.MetricsSpec(
-            metrics=[
-                config.MetricConfig(
-                    class_name='MeanSquaredError',
-                    config=json.dumps({
-                        'name': 'mse',
-                        'dtype': 'float32'
-                    })),
-                config.MetricConfig(
-                    class_name='MeanLabel',
-                    config=json.dumps({'name': 'mean_label'}))
-            ],
-            model_names=['model_name1', 'model_name2'],
-            output_names=['output_name1'],
-            binarize=config.BinarizationOptions(top_k_list=[2])))
-    self.assertProtoEquals(
-        metrics_specs[4],
         config.MetricsSpec(
             metrics=[
                 config.MetricConfig(
@@ -108,7 +92,7 @@ class MetricSpecsTest(tf.test.TestCase):
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name2']))
     self.assertProtoEquals(
-        metrics_specs[5],
+        metrics_specs[4],
         config.MetricsSpec(
             metrics=[
                 config.MetricConfig(
@@ -123,24 +107,8 @@ class MetricSpecsTest(tf.test.TestCase):
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name2'],
-            binarize=config.BinarizationOptions(class_ids=[0, 1])))
-    self.assertProtoEquals(
-        metrics_specs[6],
-        config.MetricsSpec(
-            metrics=[
-                config.MetricConfig(
-                    class_name='RootMeanSquaredError',
-                    config=json.dumps({
-                        'name': 'rmse',
-                        'dtype': 'float32'
-                    })),
-                config.MetricConfig(
-                    class_name='MeanPrediction',
-                    config=json.dumps({'name': 'mean_prediction'}))
-            ],
-            model_names=['model_name1', 'model_name2'],
-            output_names=['output_name2'],
-            binarize=config.BinarizationOptions(top_k_list=[2])))
+            binarize=config.BinarizationOptions(class_ids=[0, 1]),
+            aggregate=config.AggregationOptions(macro_average=True)))
 
   def testToComputations(self):
     computations = metric_specs.to_computations(
@@ -152,14 +120,16 @@ class MetricSpecsTest(tf.test.TestCase):
                 ]
             },
             model_names=['model_name'],
-            class_ids=[0, 1]), config.EvalConfig())
+            binarize=config.BinarizationOptions(class_ids=[0, 1]),
+            aggregate=config.AggregationOptions(macro_average=True)),
+        config.EvalConfig())
 
     keys = []
     for m in computations:
       for k in m.keys:
         if not k.name.startswith('_'):
           keys.append(k)
-    self.assertLen(keys, 6)
+    self.assertLen(keys, 8)
     self.assertIn(metric_types.MetricKey(name='example_count'), keys)
     self.assertIn(
         metric_types.MetricKey(
@@ -180,6 +150,10 @@ class MetricSpecsTest(tf.test.TestCase):
             sub_key=metric_types.SubKey(class_id=1)), keys)
     self.assertIn(
         metric_types.MetricKey(
+            name='mse', model_name='model_name', output_name='output_name'),
+        keys)
+    self.assertIn(
+        metric_types.MetricKey(
             name='mean_label',
             model_name='model_name',
             output_name='output_name',
@@ -190,6 +164,11 @@ class MetricSpecsTest(tf.test.TestCase):
             model_name='model_name',
             output_name='output_name',
             sub_key=metric_types.SubKey(class_id=1)), keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='mean_label',
+            model_name='model_name',
+            output_name='output_name'), keys)
 
 
 if __name__ == '__main__':

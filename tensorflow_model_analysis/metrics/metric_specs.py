@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Text, Type, Union
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.metrics import aggregation
 from tensorflow_model_analysis.metrics import auc_plot
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import calibration_plot
@@ -42,9 +43,8 @@ def specs_from_metrics(
     metrics: Union[List[_TFOrTFMAMetric], Dict[Text, List[_TFOrTFMAMetric]]],
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
-    class_ids: Optional[List[int]] = None,
-    k_list: Optional[List[int]] = None,
-    top_k_list: Optional[List[int]] = None,
+    binarize: Optional[config.BinarizationOptions] = None,
+    aggregate: Optional[config.AggregationOptions] = None,
     query_key: Optional[Text] = None,
     include_example_count: Optional[bool] = None,
     include_weighted_example_count: Optional[bool] = None
@@ -84,17 +84,9 @@ def specs_from_metrics(
     model_names: Optional model names (if multi-model evaluation).
     output_names: Optional output names (if multi-output models). If the metrics
       are a dict this should not be set.
-    class_ids: Optional class IDs to computes metrics for particular classes of
-      a multi-class model. If output_names are provided, all outputs are assumed
-      to use the same class IDs.
-    k_list: Optional list of k values to compute metrics for the kth predicted
-      values in a multi-class model prediction. If output_names are provided,
-      all outputs are assumed to use the same k value.
-    top_k_list: Optional list of top_k values to compute metrics for the top k
-      predicted values in a multi-class model prediction. If output_names are
-      provided, all outputs are assumed to use the same top_k value. Metrics and
-      plots will be based on treating each predicted value in the top_k as
-      though they were separate predictions.
+    binarize: Optional settings for binarizing multi-class/multi-label metrics.
+    aggregate: Optional settings for aggregating multi-class/multi-label
+      metrics.
     query_key: Optional query key for query/ranking based metrics.
     include_example_count: True to add example_count metric. Default is True.
     include_weighted_example_count: True to add weighted_example_count metric.
@@ -113,9 +105,8 @@ def specs_from_metrics(
               metrics[output_name],
               model_names=model_names,
               output_names=[output_name],
-              class_ids=class_ids,
-              k_list=k_list,
-              top_k_list=top_k_list,
+              binarize=binarize,
+              aggregate=aggregate,
               include_example_count=include_example_count,
               include_weighted_example_count=include_weighted_example_count))
       include_example_count = False
@@ -140,37 +131,14 @@ def specs_from_metrics(
       metric_configs.append(_serialize_tf_metric(metric))
     else:
       metric_configs.append(_serialize_tfma_metric(metric))
-  if class_ids:
-    specs.append(
-        config.MetricsSpec(
-            metrics=metric_configs,
-            model_names=model_names,
-            output_names=output_names,
-            binarize=config.BinarizationOptions(class_ids=class_ids),
-            query_key=query_key))
-  if k_list:
-    specs.append(
-        config.MetricsSpec(
-            metrics=metric_configs,
-            model_names=model_names,
-            output_names=output_names,
-            binarize=config.BinarizationOptions(k_list=k_list),
-            query_key=query_key))
-  if top_k_list:
-    specs.append(
-        config.MetricsSpec(
-            metrics=metric_configs,
-            model_names=model_names,
-            output_names=output_names,
-            binarize=config.BinarizationOptions(top_k_list=top_k_list),
-            query_key=query_key))
-  if not class_ids and not k_list and not top_k_list:
-    specs.append(
-        config.MetricsSpec(
-            metrics=metric_configs,
-            model_names=model_names,
-            output_names=output_names,
-            query_key=query_key))
+  specs.append(
+      config.MetricsSpec(
+          metrics=metric_configs,
+          model_names=model_names,
+          output_names=output_names,
+          binarize=binarize,
+          aggregate=aggregate,
+          query_key=query_key))
 
   return specs
 
@@ -243,26 +211,17 @@ def default_regression_specs(
 def default_binary_classification_specs(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
-    class_ids: Optional[List[int]] = None,
-    k_list: Optional[List[int]] = None,
-    top_k_list: Optional[List[int]] = None,
+    binarize: Optional[config.BinarizationOptions] = None,
+    aggregate: Optional[config.AggregationOptions] = None,
     include_loss: bool = True) -> List[config.MetricsSpec]:
   """Returns default metric specs for binary classification problems.
 
   Args:
     model_names: Optional model names (if multi-model evaluation).
     output_names: Optional list of output names (if multi-output model).
-    class_ids: Optional class IDs to compute metrics for particular classes in a
-      multi-class model. If output_names are provided, all outputs are assumed
-      to use the same class IDs.
-    k_list: Optional list of k values to compute metrics for the kth predicted
-      values of a multi-class model prediction. If output_names are provided,
-      all outputs are assumed to use the same k value.
-    top_k_list: Optional list of top_k values to compute metrics for the top k
-      predicted values in a multi-class model prediction. If output_names are
-      provided, all outputs are assumed to use the same top_k value. Metrics and
-      plots will be based on treating each predicted value in the top_k as
-      though they were separate predictions.
+    binarize: Optional settings for binarizing multi-class/multi-label metrics.
+    aggregate: Optional settings for aggregating multi-class/multi-label
+      metrics.
     include_loss: True to include loss.
   """
 
@@ -285,35 +244,24 @@ def default_binary_classification_specs(
       metrics,
       model_names=model_names,
       output_names=output_names,
-      class_ids=class_ids,
-      k_list=k_list,
-      top_k_list=top_k_list)
+      binarize=binarize,
+      aggregate=aggregate)
 
 
 def default_multi_class_classification_specs(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
-    top_k_list: Optional[List[int]] = None,
-    class_ids: Optional[List[int]] = None,
-    k_list: Optional[List[int]] = None,
+    binarize: Optional[config.BinarizationOptions] = None,
+    aggregate: Optional[config.AggregationOptions] = None,
     sparse: bool = True) -> config.MetricsSpec:
   """Returns default metric specs for multi-class classification problems.
 
   Args:
     model_names: Optional model names if multi-model evaluation.
     output_names: Optional list of output names (if multi-output model).
-    top_k_list: Optional list of top-k values to compute metrics for the top k
-      predicted values (e.g. precision@k, recall@k). If output_names are
-      provided, all outputs are assumed to use the same top-k value. By default
-      only typical multi-class metrics such as precision@k/recall@k are
-      computed. If plots, mean_label, etc are also desired then
-      default_binary_classification_metrics should be called direclty.
-    class_ids: Optional class IDs to compute binary classification metrics for
-      using one vs rest. If output_names are provided, all outputs are kassumed
-      to use same class IDs.
-    k_list: Optional list of k values to compute binary classification metrics
-      based on the kth predicted value. If output_names are provided, all
-      outputs are assumed to use the same k value.
+    binarize: Optional settings for binarizing multi-class/multi-label metrics.
+    aggregate: Optional settings for aggregating multi-class/multi-label
+      metrics.
     sparse: True if the labels are sparse.
   """
 
@@ -331,19 +279,24 @@ def default_multi_class_classification_specs(
       multi_class_confusion_matrix_at_thresholds
       .MultiClassConfusionMatrixAtThresholds(
           name='multi_class_confusion_matrix_at_thresholds'))
-  if top_k_list:
-    for top_k in top_k_list:
+  if binarize is not None:
+    for top_k in binarize.top_k_list:
       metrics.extend([
           tf.keras.metrics.Precision(name='precision', top_k=top_k),
           tf.keras.metrics.Recall(name='recall', top_k=top_k)
       ])
-
+    binarize = config.BinarizationOptions().CopyFrom(binarize)
+    binarize.ClearField('top_k')
   multi_class_metrics = specs_from_metrics(
       metrics, model_names=model_names, output_names=output_names)
-  if class_ids or k_list:
-    multi_class_metrics.extend(
-        default_binary_classification_specs(model_names, output_names,
-                                            class_ids, k_list))
+  if aggregate is None:
+    aggregate = config.AggregationOptions(micro_average=True)
+  multi_class_metrics.extend(
+      default_binary_classification_specs(
+          model_names=model_names,
+          output_names=output_names,
+          binarize=binarize,
+          aggregate=aggregate))
   return multi_class_metrics
 
 
@@ -367,6 +320,16 @@ def to_computations(
   tfma_metric_classes = metric_types.registered_metrics()  # class_name -> class
   # List[metric_types.MetricsSpec]
   tfma_metrics_specs = []
+  #
+  # Note: Lists are used instead of Dicts for the following items because
+  # protos are are no hashable.
+  #
+  # List[List[_TFOrTFMAMetric]] (offsets align with metrics_specs).
+  per_spec_metric_instances = []
+  # List[List[tf.keras.metrics.Metric]] (offsets align with tf_metrics_specs).
+  per_tf_spec_metric_instances = []
+  # List[List[metric_types.Metric]]] (offsets align with tfma_metrics_specs).
+  per_tfma_spec_metric_instances = []
   for spec in metrics_specs:
     tf_spec = config.MetricsSpec()
     tf_spec.CopyFrom(spec)
@@ -388,10 +351,24 @@ def to_computations(
         else:
           tfma_metric_classes[metric.class_name] = cls
           tfma_spec.metrics.append(metric)
+
+    metric_instances = []
     if tf_spec.metrics:
       tf_metrics_specs.append(tf_spec)
+      tf_metric_instances = [
+          _deserialize_tf_metric(m, tf_metric_classes) for m in tf_spec.metrics
+      ]
+      per_tf_spec_metric_instances.append(tf_metric_instances)
+      metric_instances.extend(tf_metric_instances)
     if tfma_spec.metrics:
       tfma_metrics_specs.append(tfma_spec)
+      tfma_metric_instances = [
+          _deserialize_tfma_metric(m, tfma_metric_classes)
+          for m in tfma_spec.metrics
+      ]
+      per_tfma_spec_metric_instances.append(tfma_metric_instances)
+      metric_instances.extend(tfma_metric_instances)
+    per_spec_metric_instances.append(metric_instances)
 
   #
   # Group TF metrics by the subkeys, models and outputs. This is done in reverse
@@ -401,33 +378,32 @@ def to_computations(
   # outputs are batch calculated in a single model evaluation call.
   #
 
-  # Dict[metric_types.SubKey, Dict[Text, List[config.MetricSpec]]
-  tf_specs_by_subkey = {}  # SubKey -> model_name -> [MetricSpec]
-  for spec in tf_metrics_specs:
+  # Dict[metric_types.SubKey, Dict[Text, List[int]]
+  tf_spec_indices_by_subkey = {}  # SubKey -> model_name -> [index(MetricSpec)]
+  for i, spec in enumerate(tf_metrics_specs):
     sub_keys = _create_sub_keys(spec)
     if not sub_keys:
       sub_keys = [None]
     for sub_key in sub_keys:
-      if sub_key not in tf_specs_by_subkey:
-        tf_specs_by_subkey[sub_key] = {}
+      if sub_key not in tf_spec_indices_by_subkey:
+        tf_spec_indices_by_subkey[sub_key] = {}
       # Dict[Text, List[config.MetricSpec]]
-      tf_specs_by_model = tf_specs_by_subkey[sub_key]  # name -> [ModelSpec]
+      tf_spec_indices_by_model = (tf_spec_indices_by_subkey[sub_key]
+                                 )  # name -> [ModelSpec]
       model_names = spec.model_names
       if not model_names:
         model_names = ['']  # '' is name used when only one model is used
       for model_name in model_names:
-        if model_name not in tf_specs_by_model:
-          tf_specs_by_model[model_name] = []
-        tf_specs_by_model[model_name].append(spec)
-  for sub_key, specs_by_model in tf_specs_by_subkey.items():
-    for model_name, specs in specs_by_model.items():
+        if model_name not in tf_spec_indices_by_model:
+          tf_spec_indices_by_model[model_name] = []
+        tf_spec_indices_by_model[model_name].append(i)
+  for sub_key, spec_indices_by_model in tf_spec_indices_by_subkey.items():
+    for model_name, indices in spec_indices_by_model.items():
       metrics_by_output = {}
-      for spec in specs:
-        metrics = [
-            _deserialize_tf_metric(m, tf_metric_classes) for m in spec.metrics
-        ]
-        if spec.output_names:
-          for output_name in spec.output_names:
+      for i in indices:
+        metrics = per_tf_spec_metric_instances[i]
+        if tf_metrics_specs[i].output_names:
+          for output_name in tf_metrics_specs[i].output_names:
             if output_name not in metrics_by_output:
               metrics_by_output[output_name] = []
             metrics_by_output[output_name].extend(metrics)
@@ -444,6 +420,7 @@ def to_computations(
               eval_config=eval_config,
               model_name=model_name,
               sub_key=sub_key,
+              class_weights=dict(tf_metrics_specs[i].aggregate.class_weights),
               model_loader=model_loader))
 
   #
@@ -452,20 +429,20 @@ def to_computations(
 
   # Dict[bytes, List[config.MetricSpec]]
   tfma_specs_by_metric_config = {}  # hash(MetricConfig) -> [MetricSpec]
-  # Dict[bytes, config.MetricConfig]
-  hashed_metric_configs = {}  # hash(MetricConfig) -> MetricConfig
-  for spec in tfma_metrics_specs:
-    for metric_config in spec.metrics:
+  # Dict[bytes, metric_types.Metric]
+  hashed_metrics = {}  # hash(MetricConfig) -> Metric
+  for i, spec in enumerate(tfma_metrics_specs):
+    for metric_config, metric in zip(spec.metrics,
+                                     per_tfma_spec_metric_instances[i]):
       # Note that hashing by SerializeToString() is only safe if used within the
       # same process.
       config_hash = metric_config.SerializeToString()
       if config_hash not in tfma_specs_by_metric_config:
-        hashed_metric_configs[config_hash] = metric_config
+        hashed_metrics[config_hash] = metric
         tfma_specs_by_metric_config[config_hash] = []
       tfma_specs_by_metric_config[config_hash].append(spec)
   for config_hash, specs in tfma_specs_by_metric_config.items():
-    metric = _deserialize_tfma_metric(hashed_metric_configs[config_hash],
-                                      tfma_metric_classes)
+    metric = hashed_metrics[config_hash]
     for spec in specs:
       sub_keys = _create_sub_keys(spec)
       computations.extend(
@@ -474,7 +451,42 @@ def to_computations(
               model_names=spec.model_names if spec.model_names else [''],
               output_names=spec.output_names if spec.output_names else [''],
               sub_keys=sub_keys,
+              class_weights=dict(spec.aggregate.class_weights),
               query_key=spec.query_key))
+
+  #
+  # Create macro averaging metrics
+  #
+
+  for i, spec in enumerate(metrics_specs):
+    if spec.aggregate.macro_average or spec.aggregate.weighted_macro_average:
+      sub_keys = _create_sub_keys(spec)
+      if sub_keys is None:
+        raise ValueError(
+            'binarize settings are required when aggregate.macro_average or '
+            'aggregate.weighted_macro_average is used: spec={}'.format(spec))
+      for model_name in spec.model_names or ['']:
+        for output_name in spec.output_names or ['']:
+          for metric in per_spec_metric_instances[i]:
+            if spec.aggregate.macro_average:
+              computations.extend(
+                  aggregation.macro_average(
+                      metric.get_config()['name'],
+                      eval_config=eval_config,
+                      model_name=model_name,
+                      output_name=output_name,
+                      sub_keys=sub_keys,
+                      class_weights=dict(spec.aggregate.class_weights)))
+            elif spec.aggregate.weighted_macro_average:
+              computations.extend(
+                  aggregation.weighted_macro_average(
+                      metric.get_config()['name'],
+                      eval_config=eval_config,
+                      model_name=model_name,
+                      output_name=output_name,
+                      sub_keys=sub_keys,
+                      class_weights=dict(spec.aggregate.class_weights)))
+
   return computations
 
 
@@ -493,6 +505,15 @@ def _create_sub_keys(
     if spec.binarize.top_k_list:
       for v in spec.binarize.top_k_list:
         sub_keys.append(metric_types.SubKey(top_k=v))
+    if spec.aggregate.micro_average:
+      # Micro averaging is performed by flattening the labels and predictions
+      # and treating them as independent pairs. This is done by default by most
+      # metrics whenever binarization is not used. If micro-averaging and
+      # binarization are used, then we need to create an empty subkey to ensure
+      # the overall aggregate key is still computed. Note that the class_weights
+      # should always be passed to all metric calculations to ensure they are
+      # taken into account when flattening is required.
+      sub_keys.append(None)
   return sub_keys
 
 

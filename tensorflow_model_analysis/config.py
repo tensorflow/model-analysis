@@ -26,6 +26,7 @@ ModelSpec = config_pb2.ModelSpec
 SlicingSpec = config_pb2.SlicingSpec
 OutputDataSpec = config_pb2.OutputDataSpec
 BinarizationOptions = config_pb2.BinarizationOptions
+AggregationOptions = config_pb2.AggregationOptions
 MetricConfig = config_pb2.MetricConfig
 MetricsSpec = config_pb2.MetricsSpec
 Options = config_pb2.Options

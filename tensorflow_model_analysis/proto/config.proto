@@ -99,7 +99,47 @@ message OutputDataSpec {
   string model_name = 4;
 }
 
-// Options for binarizing multi-class outputs.
+// Options for aggregating multi-class / multi-label outputs.
+//
+// When used the associated MetricSpec metrics must be binary classification
+// metrics (NOT multi-class classification metrics).
+message AggregationOptions {
+  oneof type {
+    // Compute aggregate metrics by treating all examples being equal (i.e.
+    // flatten the prediction/label pairs across all classes and perform the
+    // computation as if they were separate examples in a binary classification
+    // problem). Micro is typically used with multi-class outputs.
+    bool micro_average = 1;
+    // Computes aggregate metrics by treating all classes being equal (i.e.
+    // compute binary classification metrics separately for each of the classes
+    // and then take the average). This approach is good for the case where each
+    // class is equally important and/or class labels distribution is balanced.
+    // Macro is typically used with multi-label outputs.
+    //
+    // If macro averaging is enabled, a corresponding binarization option must
+    // be configured in the same spec in order to identify which classes the
+    // average will be computed for.
+    bool macro_average = 2;
+    // Compute aggregate metrics using macro averaging but weight the classes
+    // during aggregation by the ratio of positive labels for each class.
+    //
+    // As with macro averaging, when enabled a corresponding binarization option
+    // must be configured in the same spec in order to identify which classes
+    // the average will be computed for.
+    bool weighted_macro_average = 3;
+
+  }
+  // Weights to apply to classes during aggregation. For micro aggregation the
+  // weights will be applied to each prediction/label pair. For macro
+  // aggregation the weights will be applied to the overall metric computed for
+  // each class prior to aggregation. If a class ID is not provided then a
+  // weight of 1.0 is assumed. Note that when used with weighted_macro_average
+  // then weights will be applied in two forms (from ratio of positive labels
+  // and from the values provided here) which may or may not be desired.
+  map<int32, float> class_weights = 4;
+}
+
+// Options for binarizing multi-class / multi-label outputs.
 //
 // When used the associated MetricSpec metrics must be binary classification
 // metrics (NOT multi-class classification metrics).
@@ -114,7 +154,7 @@ message BinarizationOptions {
   // for each value of top_k provided. When used to create calibration plots
   // the histogram will contain a mix of all labels and predictions in the top
   // k predictions. Note that precision@k and recall@k can also be configured
-  // direclty as multi-class classification metrics by setting top_k on the
+  // directly as multi-class classification metrics by setting top_k on the
   // metric itself.
   repeated int32 top_k_list = 3;
 }
@@ -147,9 +187,13 @@ message MetricsSpec {
   // Optional names of outputs the metrics should be calculated for (for
   // multi-output models).
   repeated string output_names = 3;
-  // Optional binarization options for converting multi-class model outputs into
-  // outputs suitable for binary classification metrics.
+  // Optional binarization options for converting multi-class / multi-label
+  // model outputs into outputs suitable for binary classification metrics.
   BinarizationOptions binarize = 4;
+  // Optional aggregation options for computing overall aggregate metrics for
+  // multi-class / multi-label model outputs. Aggregation options involving
+  // macro averaging must be used in conjunction with binarization options.
+  AggregationOptions aggregate = 6;
   // Optional query key for query/ranking based metrics.
   string query_key = 5;
 }
@@ -164,7 +208,11 @@ message Options {
   google.protobuf.BoolValue compute_confidence_intervals = 2;
   // Privacy k-anonymization count to omit slices with example count < k.
   google.protobuf.Int32Value k_anonymization_count = 3;
-  // Optional batch size for batching during predict and metrics evaluation.
+  // Optional batch size to run evaluation. Default is this will be autotuned.
+  // Unless your model has specific batch size constraints or fail with
+  // large batch sizes (100s to 1000s), it should be safe use the built in
+  // autotune capability. Note that this serves as a MAX batch size. There might
+  // still be requests with smaller batch sizes sent to the model.
   google.protobuf.Int32Value desired_batch_size = 4;
   // Optional directory for storing temporary files. If not set, then a
   // temporary directory will be created automatically when needed.
@@ -203,8 +251,8 @@ message EvalConfig {
   repeated MetricsSpec metrics_specs = 5;
   // Additional configuration options.
   Options options = 6;
-  // Custom configuration settings.
-  map<string, string> custom_config = 7;
+
+  reserved 7;
 }
 
 // Config and version.

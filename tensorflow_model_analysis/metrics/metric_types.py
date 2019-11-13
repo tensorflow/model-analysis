@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
+import functools
 import inspect
 import apache_beam as beam
 from tensorflow_model_analysis import config
@@ -32,6 +33,7 @@ from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Te
 
 # A separate version from proto is used here because protos are not hashable and
 # SerializeToString is not guaranteed to be stable between different binaries.
+@functools.total_ordering
 class SubKey(
     NamedTuple('SubKey', [('class_id', int), ('k', int), ('top_k', int)])):
   """A SubKey identifies a sub-types of metrics and plots.
@@ -59,6 +61,17 @@ class SubKey(
           'attempt to create metric with top_k < 1: top_k={}'.format(top_k))
     return super(SubKey, cls).__new__(cls, class_id, k, top_k)
 
+  def __eq__(self, other):
+    return tuple(self) == other
+
+  def __lt__(self, other):
+    # Python3 does not allow comparison of NoneType, remove if present.
+    return (tuple(x if x is not None else -1 for x in self) < tuple(
+        x if x is not None else -1 for x in other))
+
+  def __hash__(self):
+    return hash(tuple(self))
+
   def to_proto(self) -> metrics_for_slice_pb2.SubKey:
     """Converts key to proto."""
     sub_key = metrics_for_slice_pb2.SubKey()
@@ -73,6 +86,7 @@ class SubKey(
 
 # A separate version from proto is used here because protos are not hashable and
 # SerializeToString is not guaranteed to be stable between different binaries.
+@functools.total_ordering
 class MetricKey(
     NamedTuple('MetricKey', [('name', Text), ('model_name', Text),
                              ('output_name', Text), ('sub_key', SubKey)])):
@@ -93,6 +107,18 @@ class MetricKey(
               sub_key: Optional[SubKey] = None):
     return super(MetricKey, cls).__new__(cls, name, model_name, output_name,
                                          sub_key)
+
+  def __eq__(self, other):
+    return tuple(self) == other
+
+  def __lt__(self, other):
+    # Python3 does not allow comparison of NoneType, remove if present.
+    return (tuple(self[:-1])
+            if self.sub_key is None else tuple(self) < tuple(other[:-1])
+            if other.sub_key is None else tuple(other))
+
+  def __hash__(self):
+    return hash(tuple(self))
 
   def to_proto(self) -> metrics_for_slice_pb2.MetricKey:
     """Converts key to proto."""

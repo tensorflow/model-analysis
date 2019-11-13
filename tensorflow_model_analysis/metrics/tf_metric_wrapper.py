@@ -344,6 +344,23 @@ def _wrap_confusion_matrix_metric(
                                  float]]) -> metric_types.MetricComputations:
   """Returns confusion matrix metric wrapped in a more efficient computation."""
 
+  # Special handling for AUC metric which supports aggregation inherently via
+  # multi_label flag.
+  if (isinstance(metric, tf.keras.metrics.AUC) and
+      hasattr(metric, 'label_weights')):
+    if metric.label_weights:
+      if class_weights:
+        raise ValueError(
+            'class weights are configured in two different places: (1) via the '
+            'tf.keras.metrics.AUC class (using "label_weights") and (2) via '
+            'the MetricsSpecs (using "aggregate.class_weights"). Either remove '
+            'the label_weights settings in the AUC class or remove the '
+            'class_weights from the AggregationOptions: metric={}, '
+            'class_weights={}'.format(metric, class_weights))
+      class_weights = {i: v for i, v in enumerate(metric.label_weights)}
+    if metric.multi_label:
+      raise NotImplementedError('AUC.multi_label=True is not implemented yet.')
+
   sub_key = _verify_and_update_sub_key(model_name, output_name, sub_key, metric)
   key = metric_types.MetricKey(
       name=metric.name,
