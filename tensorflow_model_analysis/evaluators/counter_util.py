@@ -36,8 +36,11 @@ def IncrementMetricsComputationCounters(
   def _MakeAndIncrementCounters(_):
     for callback in metrics_callbacks:
       if hasattr(callback, 'name'):
+        # LINT.IfChange
+        metric_name = 'metric_computed_%s' % callback.name
+        # LINT.ThenChange(../../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
         metrics_counter = beam.metrics.Metrics.counter(
-            constants.METRICS_NAMESPACE, 'metric_computed_%s' % callback.name)
+            constants.METRICS_NAMESPACE, metric_name)
         metrics_counter.inc(1)
 
   return (pipeline

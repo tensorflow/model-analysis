@@ -28,7 +28,9 @@ DATA_CENTRIC_MODE = 'data_centric_mode'
 PLACEHOLDER = 'placeholder'
 SPARSE_PLACEHOLDER = 'sparse_placeholder'
 
+# LINT.IfChange
 METRICS_NAMESPACE = 'tfx.ModelAnalysis'
+# LINT.ThenChange(../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
 
 # Keys for Extracts dictionary (keys starting with _ will not be materialized).
 
