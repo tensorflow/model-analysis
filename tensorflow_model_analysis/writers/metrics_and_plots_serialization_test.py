@@ -493,10 +493,10 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                 value: 0.8
               }
               lower_bound {
-                value: 0.7284643
+                value: 0.5737843
               }
               upper_bound {
-                value: 0.8715357
+                value: 1.0262157
               }
               methodology: POISSON_BOOTSTRAP
             }
@@ -723,10 +723,10 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                 value: 2.0
               }
               lower_bound {
-                value: 0.4087768
+                value: -1.1824463
               }
               upper_bound {
-                value: 3.5912232
+                value: 5.1824463
               }
               methodology: POISSON_BOOTSTRAP
             }

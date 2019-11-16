@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 # Standard __future__ imports
 
-import numpy as np
 from scipy import stats
 from tensorflow_model_analysis import types
 
@@ -26,8 +25,7 @@ def calculate_confidence_interval(
     t_distribution_value: types.ValueWithTDistribution):
   """Caculate confidence intervals based 95% confidence level."""
   alpha = 0.05
-  std_err = t_distribution_value.sample_standard_deviation / np.sqrt(
-      t_distribution_value.sample_degrees_of_freedom + 1)
+  std_err = t_distribution_value.sample_standard_deviation
   t_stat = stats.t.ppf(1 - (alpha / 2.0),
                        t_distribution_value.sample_degrees_of_freedom)
   upper_bound = t_distribution_value.sample_mean + t_stat * std_err

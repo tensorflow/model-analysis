@@ -1510,11 +1510,11 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         # Checks serialization of bounds.
         self.assertAlmostEqual(
             comparison_point.bounded_true_negatives.lower_bound.value,
-            1.84,
+            -0.96,
             places=2)
         self.assertAlmostEqual(
             comparison_point.bounded_true_negatives.upper_bound.value,
-            3.46,
+            6.26,
             places=2)
         self.assertAlmostEqual(
             comparison_point.bounded_true_negatives.value.value, 2.65, places=2)
@@ -2743,13 +2743,14 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
             None, temp_eval_export_dir))
+    # Repeat the examples 20 times.
     examples = [
         self._makeExample(prediction=0.0000, label=0.0000),
         self._makeExample(prediction=0.0000, label=1.0000),
         self._makeExample(prediction=0.7000, label=1.0000),
         self._makeExample(prediction=0.8000, label=0.0000),
         self._makeExample(prediction=1.0000, label=1.0000),
-    ]
+    ] * 20
 
     mean_absolute_error_metric = post_export_metrics.mean_absolute_error(
         labels_key='label',
@@ -2935,11 +2936,11 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             delta=0.01)
         self.assertAlmostEqual(
             actual_metric_value.bounded_value.upper_bound.value,
-            0.5227398817322649,
+            0.89287988,
             delta=0.01)
         self.assertAlmostEqual(
             actual_metric_value.bounded_value.lower_bound.value,
-            0.30953395219801283,
+            -0.0606060,
             delta=0.01)
 
       except AssertionError as err:
@@ -3098,9 +3099,13 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertAlmostEqual(
             actual_metric_value.bounded_value.value.value, 0.62417656, places=5)
         self.assertAlmostEqual(
-            actual_metric_value.bounded_value.upper_bound.value, 0.8, delta=0.1)
+            actual_metric_value.bounded_value.upper_bound.value,
+            0.974,
+            delta=0.1)
         self.assertAlmostEqual(
-            actual_metric_value.bounded_value.lower_bound.value, 0.5, delta=0.1)
+            actual_metric_value.bounded_value.lower_bound.value,
+            0.274,
+            delta=0.1)
 
       except AssertionError as err:
         raise util.BeamAssertException(err)

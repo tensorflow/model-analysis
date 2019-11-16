@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import math
+import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
@@ -26,10 +27,10 @@ from tensorflow_model_analysis import types
 class MathUtilTest(tf.test.TestCase):
 
   def testCalculateConfidenceInterval(self):
-    self.assertEqual(
+    np.testing.assert_almost_equal(
         math_util.calculate_confidence_interval(
             types.ValueWithTDistribution(10, 2, 9, 10)),
-        (10, 8.5692861880948552, 11.430713811905145))
+        (10, 5.4756856744035902196, 14.524314325596410669))
     mean, lb, ub = math_util.calculate_confidence_interval(
         types.ValueWithTDistribution(-1, -1, -1, -1))
     self.assertEqual(mean, -1)
