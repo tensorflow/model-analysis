@@ -1354,8 +1354,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                                        [2, 1, 1, 1, 1.0 / 2.0, 1.0 / 3.0])
         self.assertSequenceAlmostEqual(matrices[8001],
                                        [2, 2, 0, 1, 1.0 / 1.0, 1.0 / 3.0])
-        self.assertSequenceAlmostEqual(
-            matrices[10001], [3, 2, 0, 0, float('nan'), 0.0])
+        self.assertSequenceAlmostEqual(matrices[10001], [3, 2, 0, 0, 0, 0.0])
         self.assertIn(metric_keys.AUC_PLOTS_THRESHOLDS, value)
         thresholds = value[metric_keys.AUC_PLOTS_THRESHOLDS]
         self.assertAlmostEqual(0.0, thresholds[1])
@@ -1373,7 +1372,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             true_negatives: 2.0
             false_positives: 0.0
             true_positives: 0.0
-            precision: nan
+            precision: 0.0
             recall: 0.0
             bounded_false_negatives {
               value {
@@ -1395,7 +1394,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             }
             bounded_precision {
               value {
-                value: nan
+                value: 0.0
               }
             }
             bounded_recall {
@@ -1422,7 +1421,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             }
             t_distribution_precision {
               unsampled_value {
-                value: nan
+                value: 0.0
               }
             }
             t_distribution_recall {
@@ -1474,17 +1473,16 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             [0.0, 0.0, 2.6500001, 3.0, 0.54976189, 1.0])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[1]],
-            [1.05, 1.15, 1.5, 1.95, 0.55438596, 0.64166665])
+            [1.05, 1.15, 1.5, 1.95, 0.5266667, 0.64166665])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[7001]],
-            [2.0999999, 1.15, 1.5, 0.89999998, 0.36574075, 0.33083338])
+            [2.0999999, 1.15, 1.5, 0.89999998, 0.32916668, 0.33083338])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[8001]],
-            [2.0999999, 2.6500001, 0.0, 0.89999998, 1.0, 0.33083335])
+            [2.0999999, 2.6500001, 0.0, 0.89999998, 0.65, 0.33083335])
         self.assertSequenceAlmostEqual(
             [matrix.sample_mean for matrix in matrices[10001]],
-            [3.0, 2.6500001, 0.0, 0.0,
-             float('nan'), 0.0])
+            [3.0, 2.6500001, 0.0, 0.0, 0, 0.0])
         self.assertIn(metric_keys.AUC_PLOTS_THRESHOLDS, value)
         thresholds = value[metric_keys.AUC_PLOTS_THRESHOLDS]
         self.assertAlmostEqual(0.0, thresholds[1].sample_mean)
@@ -1505,7 +1503,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         self.assertAlmostEqual(comparison_point.false_negatives, 3.0)
         self.assertAlmostEqual(comparison_point.true_positives, 0.0)
         self.assertAlmostEqual(comparison_point.true_negatives, 2.0)
-        self.assertTrue(np.isnan(comparison_point.precision))
+        self.assertAlmostEqual(comparison_point.precision, 0.0)
         self.assertAlmostEqual(comparison_point.recall, 0.0)
         # Checks serialization of bounds.
         self.assertAlmostEqual(
@@ -1604,9 +1602,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             matrices[2], [4.0, 1.0, 2.0, 3.0, 3.0 / 5.0, 3.0 / 7.0])
         self.assertSequenceAlmostEqual(matrices[3],
                                        [4.0, 3.0, 0.0, 3.0, 1.0, 3.0 / 7.0])
-        self.assertSequenceAlmostEqual(
-            matrices[4],
-            [7.0, 3.0, 0.0, 0.0, float('nan'), 0.0])
+        self.assertSequenceAlmostEqual(matrices[4],
+                                       [7.0, 3.0, 0.0, 0.0, 0, 0.0])
         self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS,
                       value)
         thresholds = value[
@@ -1659,7 +1656,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
             [4.0, 3.0, 0.0, 3.0, 1.0, 3.0 / 7.0])
         self.assertSequenceAlmostEqual(
             [matrix.unsampled_value for matrix in matrices[4]],
-            [7.0, 3.0, 0.0, 0.0, float('nan'), 0.0])
+            [7.0, 3.0, 0.0, 0.0, 0, 0.0])
         self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS,
                       value)
         thresholds = value[
@@ -1714,9 +1711,8 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                                        [0.0, 1.0, 0.0, 2.0, 1.0, 1.0])
         self.assertSequenceAlmostEqual(matrices[1],
                                        [1.0, 1.0, 0.0, 1.0, 1.0, 0.5])
-        self.assertSequenceAlmostEqual(
-            matrices[2],
-            [2.0, 1.0, 0.0, 0.0, float('nan'), 0.0])
+        self.assertSequenceAlmostEqual(matrices[2],
+                                       [2.0, 1.0, 0.0, 0.0, 0, 0.0])
         self.assertIn(metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS,
                       value)
         thresholds = value[
@@ -1878,7 +1874,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                 true_negatives: 1.0
                 false_positives: 0.0
                 true_positives: 0.0
-                precision: nan
+                precision: 0.0
                 recall: 0.0
                 bounded_false_negatives {
                   value {
@@ -1902,7 +1898,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                 }
                 bounded_precision {
                   value {
-                    value: nan
+                    value: 0.0
                   }
                 }
                 bounded_recall {
@@ -1932,7 +1928,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
                 }
                 t_distribution_precision {
                   unsampled_value {
-                    value: nan
+                    value: 0.0
                   }
                 }
                 t_distribution_recall {

@@ -24,7 +24,6 @@ import os
 
 import apache_beam as beam
 from apache_beam.testing import util
-import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.addons.fairness.post_export_metrics import fairness_indicators  # pylint: disable=unused-import
@@ -150,6 +149,27 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
             prediction=1.0000,
             label=1.0000,
             fixed_float=3.0,
+            fixed_string='',
+            fixed_int=0),
+    ]
+
+  def makeConfusionMatrixExamplesAllNegative(self):
+    """Helper to create a set of examples used by multiple tests."""
+    #            |      |       --------- Threshold -----------
+    # true label | pred | wt   | -1e-6 | 0.0 | 0.7 | 0.8 | 1.0
+    #     -      | 0.0  | 1.0  | FP    | TN  | TN  | TN  | TN
+    #     -      | 0.7  | 1.0  | FP    | FP  | TN  | TN  | TN
+    return [
+        self._makeExample(
+            prediction=0.0000,
+            label=0.0000,
+            fixed_float=1.0,
+            fixed_string='',
+            fixed_int=0),
+        self._makeExample(
+            prediction=0.0000,
+            label=0.0000,
+            fixed_float=1.0,
             fixed_string='',
             fixed_int=0),
     ]
@@ -410,8 +430,10 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual(1, len(got), 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
-        self.assertTrue(
-            np.isnan(value[metric_keys.base_key('true_positive_rate@0.10')]))
+        expected_values_dict = {
+            metric_keys.base_key('true_positive_rate@0.10'): 0.0,
+        }
+        self.assertDictElementsAlmostEqual(value, expected_values_dict)
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
@@ -657,6 +679,50 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
             slicer.SingleSliceSpec(),
             slicer.SingleSliceSpec(columns=['fixed_string'])
         ],
+        custom_metrics_check=check_result)
+
+  def testFairnessIndicatorsWithAllNegativeExamples(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None,
+                                                        temp_eval_export_dir))
+    examples = self.makeConfusionMatrixExamplesAllNegative()
+    fairness_metrics = post_export_metrics.fairness_indicators(
+        example_weight_key='fixed_float', thresholds=[0.0, 0.7, 1.0])
+
+    def check_result(got):  # pylint: disable=invalid-name
+      try:
+        self.assertEqual(1, len(got), 'got: %s' % got)
+        (slice_key, value) = got[0]
+        self.assertEqual((), slice_key)
+        expected_values_dict = {
+            metric_keys.base_key('true_positive_rate@0.00'): 0,
+            metric_keys.base_key('false_positive_rate@0.00'): 0,
+            metric_keys.base_key('positive_rate@0.00'): 0,
+            metric_keys.base_key('true_negative_rate@0.00'): 1,
+            metric_keys.base_key('false_negative_rate@0.00'): 0,
+            metric_keys.base_key('negative_rate@0.00'): 1,
+            metric_keys.base_key('true_positive_rate@0.70'): 0,
+            metric_keys.base_key('false_positive_rate@0.70'): 0,
+            metric_keys.base_key('positive_rate@0.70'): 0,
+            metric_keys.base_key('true_negative_rate@0.70'): 1,
+            metric_keys.base_key('false_negative_rate@0.70'): 0,
+            metric_keys.base_key('negative_rate@0.70'): 1,
+            metric_keys.base_key('true_positive_rate@1.00'): 0,
+            metric_keys.base_key('false_positive_rate@1.00'): 0,
+            metric_keys.base_key('positive_rate@1.00'): 0,
+            metric_keys.base_key('true_negative_rate@1.00'): 1,
+            metric_keys.base_key('false_negative_rate@1.00'): 0,
+            metric_keys.base_key('negative_rate@1.00'): 1,
+        }
+        self.assertDictElementsAlmostEqual(value, expected_values_dict)
+      except AssertionError as err:
+        raise util.BeamAssertException(err)
+
+    self._runTestWithCustomCheck(
+        examples,
+        eval_export_dir, [fairness_metrics],
         custom_metrics_check=check_result)
 
 

@@ -24,6 +24,8 @@
 *   Fixed error in `tfma-multi-class-confusion-matrix-at-thresholds` with
     default classNames value.
 
+*   Fairness Indicators: compute ratio metrics with safe division.
+
 ## Breaking changes
 
 ## Deprecations

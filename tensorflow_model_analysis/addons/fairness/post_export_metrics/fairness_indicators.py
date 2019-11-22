@@ -30,7 +30,6 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-
 from typing import Any, Dict, List, Optional, Text, Tuple
 
 
@@ -109,13 +108,19 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
         features_dict, predictions_dict, labels_dict)
     # True positive rate is computed by confusion_matrix_metric_ops as 'recall'.
     # pytype: disable=unsupported-operands
-    values['tnr'] = values['tn'] / (values['tn'] + values['fp'])
-    values['fpr'] = values['fp'] / (values['fp'] + values['tn'])
-    values['positive_rate'] = (values['tp'] + values['fp']) / (
+    values['tnr'] = tf.math.divide_no_nan(values['tn'],
+                                          values['tn'] + values['fp'])
+    values['fpr'] = tf.math.divide_no_nan(values['fp'],
+                                          values['fp'] + values['tn'])
+    values['positive_rate'] = tf.math.divide_no_nan(
+        values['tp'] + values['fp'],
         values['tp'] + values['fp'] + values['tn'] + values['fn'])
-    values['fnr'] = values['fn'] / (values['fn'] + values['tp'])
-    values['negative_rate'] = (values['tn'] + values['fn']) / (
+    values['fnr'] = tf.math.divide_no_nan(values['fn'],
+                                          values['fn'] + values['tp'])
+    values['negative_rate'] = tf.math.divide_no_nan(
+        values['tn'] + values['fn'],
         values['tp'] + values['fp'] + values['tn'] + values['fn'])
+
     # pytype: enable=unsupported-operands
 
     update_op = tf.group(update_ops['fn'], update_ops['tn'], update_ops['fp'],
