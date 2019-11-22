@@ -33,9 +33,6 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 
-if tf.__version__[0] == '1':
-  tf.compat.v1.enable_v2_behavior()
-
 
 class _CustomMetric(tf.keras.metrics.Mean):
 
@@ -639,4 +636,5 @@ class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

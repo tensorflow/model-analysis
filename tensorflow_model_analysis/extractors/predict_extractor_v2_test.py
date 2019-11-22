@@ -33,9 +33,6 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_pr
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
 from tensorflow_model_analysis.extractors import predict_extractor_v2
 
-if tf.version.VERSION.split('.')[0] == '1':
-  tf.compat.v1.enable_v2_behavior()
-
 
 class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
@@ -391,4 +388,5 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

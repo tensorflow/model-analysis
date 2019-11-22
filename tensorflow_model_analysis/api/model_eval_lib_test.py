@@ -48,8 +48,6 @@ from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from typing import Dict, List, NamedTuple, Optional, Text, Union
 
-if tf.__version__[0] == '1':
-  tf.compat.v1.enable_v2_behavior()
 
 LegacyConfig = NamedTuple(
     'LegacyConfig',
@@ -908,4 +906,5 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

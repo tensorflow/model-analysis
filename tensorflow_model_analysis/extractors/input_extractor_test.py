@@ -26,9 +26,6 @@ from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import input_extractor
 
-if tf.version.VERSION.split('.')[0] == '1':
-  tf.compat.v1.enable_v2_behavior()
-
 
 class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
 
@@ -315,4 +312,5 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

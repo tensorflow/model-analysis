@@ -42,9 +42,6 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
-if tf.__version__[0] == '1':
-  tf.compat.v1.enable_v2_behavior()
-
 
 class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
 
@@ -935,4 +932,5 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()
