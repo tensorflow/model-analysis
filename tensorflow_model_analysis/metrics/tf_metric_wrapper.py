@@ -577,7 +577,8 @@ class _CompilableMetricsCombiner(beam.CombineFn):
               element,
               output_name=output_name,
               sub_key=self._sub_key,
-              class_weights=self._class_weights)):
+              class_weights=self._class_weights,
+              flatten=self._class_weights is None)):
         accumulator.add_input(i, label, prediction, example_weight)
     if accumulator.len_inputs() >= self._batch_size:
       self._process_batch(accumulator)

@@ -343,8 +343,7 @@ def to_computations(
       elif not metric.module:
         tf_spec.metrics.append(metric)
       else:
-        cls = getattr(
-            importlib.import_module(metric.module_name), metric.class_name)
+        cls = getattr(importlib.import_module(metric.module), metric.class_name)
         if isinstance(metric, tf.keras.metrics.Metric):
           tf_metric_classes[metric.class_name] = cls
           tf_spec.metrics.append(metric)
