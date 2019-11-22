@@ -103,7 +103,7 @@ template.innerHTML = `
             <div class="table-entry" title="[[item]]">[[item]]</div>
           </template>
         </template>
-        <div class="table-feature-column" title="[[item]]">post_export_metrics/example_count</div>
+        <div class="table-feature-column" title="[[item]]">example_count</div>
       </div>
     </template>
     <template is="dom-if" if="[[isBaselineRow_(index)]]">

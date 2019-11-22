@@ -20,6 +20,8 @@ import '@polymer/paper-checkbox/paper-checkbox.js';
 import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
 
+const MULTIHEAD_METRIC_PREFIX_ = 'post_export_metrics/';
+
 
 export class FairnessMetricAndSliceSelector extends PolymerElement {
   constructor() {
@@ -93,6 +95,9 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
       return status;
     }
     availableMetrics.forEach((metricsName, idx) => {
+      if (metricsName.startsWith(MULTIHEAD_METRIC_PREFIX_)) {
+        metricsName = metricsName.slice(MULTIHEAD_METRIC_PREFIX_.length);
+      }
       status.push({
         'metricsName': metricsName,
         'selected':

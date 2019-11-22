@@ -20,6 +20,9 @@ import {template} from './fairness-metrics-table-template.html.js';
 /** @const {number} */
 const FLOATING_POINT_PRECISION = 5;
 
+/** @const {string} */
+const MULTIHEAD_METRIC_PREFIX_ = 'post_export_metrics/';
+
 /**
  * @enum {string}
  */
@@ -114,7 +117,15 @@ export class FairnessMetricsTable extends PolymerElement {
       return [[]];
     }
 
-    var headerRow = ['feature'].concat(metrics);
+    // var headerRow = ['feature'].concat(metrics);
+    let headerRow = ['feature'];
+    for (let i = 0; i < metrics.length; i++) {
+      if (metrics[i].startsWith(MULTIHEAD_METRIC_PREFIX_)) {
+        headerRow.push(metrics[i].slice(MULTIHEAD_METRIC_PREFIX_.length));
+      } else {
+        headerRow.push(metrics[i]);
+      }
+    }
     headerRow = headerRow.map(metric => headerOverride[metric] || metric);
 
     var plotData = [];

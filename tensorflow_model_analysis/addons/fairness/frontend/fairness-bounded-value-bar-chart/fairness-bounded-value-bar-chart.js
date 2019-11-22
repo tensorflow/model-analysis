@@ -48,6 +48,7 @@ const ERROR_BAR_COLOR_ = [
   '#515050'
 ];
 const NUM_DECIMAL_PLACES = 5;
+const MULTIHEAD_METRIC_PREFIX_ = 'post_export_metrics/';
 
 
 /**
@@ -64,7 +65,10 @@ function buildTooltips() {
       .html(d => {
         let html = '<table><tbody>';
         html += '<tr><td>Slice</td><td>' + d.fullSliceName + '</td></tr>';
-        html += '<tr><td>Metric</td><td>' + d.metricName + '</td></tr>';
+        const metricName = d.metricName.startsWith(MULTIHEAD_METRIC_PREFIX_) ?
+            d.metricName.slice(MULTIHEAD_METRIC_PREFIX_.length) :
+            d.metricName
+        html += '<tr><td>Metric</td><td>' + metricName + '</td></tr>';
         html += '<tr><td>Value</td><td>' + d.value.toFixed(NUM_DECIMAL_PLACES) +
             '</td></tr>';
         if (d.upperBound && d.lowerBound) {

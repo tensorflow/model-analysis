@@ -23,8 +23,8 @@
 
 *   Fixed error in `tfma-multi-class-confusion-matrix-at-thresholds` with
     default classNames value.
-
-*   Fairness Indicators: compute ratio metrics with safe division.
+*   Fairness Indicators: compute ratio metrics with safe division, remove
+    "post_export_metrics" from metric names.
 
 ## Breaking changes
 
