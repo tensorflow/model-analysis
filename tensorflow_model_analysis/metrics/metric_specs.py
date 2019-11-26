@@ -542,7 +542,8 @@ def _serialize_tf_metric(
   """Serializes TF metric."""
   cfg = tf.keras.metrics.serialize(metric)
   return config.MetricConfig(
-      class_name=cfg['class_name'], config=json.dumps(cfg['config']))
+      class_name=cfg['class_name'],
+      config=json.dumps(cfg['config'], sort_keys=True))
 
 
 def _deserialize_tf_metric(
@@ -572,7 +573,8 @@ def _serialize_tfma_metric(metric: metric_types.Metric) -> config.MetricConfig:
   # are required (and to be consistent with the keras implementation).
   cfg = tf.keras.utils.serialize_keras_object(metric)
   return config.MetricConfig(
-      class_name=cfg['class_name'], config=json.dumps(cfg['config']))
+      class_name=cfg['class_name'],
+      config=json.dumps(cfg['config'], sort_keys=True))
 
 
 def _deserialize_tfma_metric(

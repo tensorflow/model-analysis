@@ -72,7 +72,8 @@ class MetricSpecsTest(tf.test.TestCase):
                     config=json.dumps({
                         'name': 'mse',
                         'dtype': 'float32'
-                    })),
+                    },
+                                      sort_keys=True)),
                 config.MetricConfig(
                     class_name='MeanLabel',
                     config=json.dumps({'name': 'mean_label'}))
@@ -100,7 +101,8 @@ class MetricSpecsTest(tf.test.TestCase):
                     config=json.dumps({
                         'name': 'rmse',
                         'dtype': 'float32'
-                    })),
+                    },
+                                      sort_keys=True)),
                 config.MetricConfig(
                     class_name='MeanPrediction',
                     config=json.dumps({'name': 'mean_prediction'}))
