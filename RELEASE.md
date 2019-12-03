@@ -18,6 +18,8 @@
     be used whenever the default_eval_saved_model is created using a non-eval
     tag (e.g. `tf.saved_model.SERVING`). The V2 evaluator will be used whenever
     a `tfma.EvalConfig` is used containing `metrics_specs`.
+*   Added support for `tfma.metrics.SquaredPearsonCorrelation` for use with V2
+    metrics API.
 
 ## Bug fixes and other changes
 
