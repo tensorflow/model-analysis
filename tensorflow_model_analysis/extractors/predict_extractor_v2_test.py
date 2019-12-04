@@ -28,6 +28,7 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.eval_saved_model.example_trainers import batch_size_limited_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import dnn_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
@@ -385,6 +386,97 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
+  def testBatchSizeLimitWithKerasModel(self):
+    input1 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input1')
+    input2 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input2')
+
+    inputs = [input1, input2]
+    input_layer = tf.keras.layers.concatenate(inputs)
+
+    def add_1(tensor):
+      return tf.add_n([tensor, tf.constant(1.0, shape=(1, 2))])
+
+    assert_layer = tf.keras.layers.Lambda(add_1)(input_layer)
+
+    model = tf.keras.models.Model(inputs, assert_layer)
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(lr=.001),
+        loss=tf.keras.losses.binary_crossentropy,
+        metrics=['accuracy'])
+
+    export_dir = self._getExportDir()
+    model.save(export_dir, save_format='tf')
+
+    eval_config = config.EvalConfig(
+        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+    predict_extractor = predict_extractor_v2.PredictExtractor(
+        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+
+    predict_features = []
+    for _ in range(4):
+      predict_features.append({
+          'input1': np.array([0.0], dtype=np.float32),
+          'input2': np.array([1.0], dtype=np.float32),
+      })
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create(predict_features)
+          | 'FeaturesToExtracts' >>
+          beam.Map(lambda x: {constants.FEATURES_KEY: x})
+          | predict_extractor.stage_name >> predict_extractor.ptransform)
+
+      # pylint: enable=no-value-for-parameter
+      def check_result(got):
+        try:
+          # We can't verify the actual predictions, but we can verify the keys.
+          self.assertLen(got, 4)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  def testBatchSizeLimit(self):
+    temp_export_dir = self._getExportDir()
+    _, export_dir = batch_size_limited_classifier.simple_batch_size_limited_classifier(
+        None, temp_export_dir)
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+    eval_config = config.EvalConfig(
+        model_specs=[config.ModelSpec(location=export_dir)])
+    predict_extractor = predict_extractor_v2.PredictExtractor(
+        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+    with beam.Pipeline() as pipeline:
+      examples = [
+          self._makeExample(classes='first', scores=0.0, labels='third'),
+          self._makeExample(classes='first', scores=0.0, labels='third'),
+          self._makeExample(classes='first', scores=0.0, labels='third'),
+          self._makeExample(classes='first', scores=0.0, labels='third'),
+      ]
+
+      predict_extracts = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'FeaturesToExtracts' >> model_eval_lib.InputsToExtracts()
+          | predict_extractor.stage_name >> predict_extractor.ptransform)
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 4)
+          # We can't verify the actual predictions, but we can verify the keys.
+          for item in got:
+            self.assertIn(constants.PREDICTIONS_KEY, item)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(predict_extracts, check_result, label='result')
 
 
 if __name__ == '__main__':

@@ -20,6 +20,8 @@
     a `tfma.EvalConfig` is used containing `metrics_specs`.
 *   Added support for `tfma.metrics.SquaredPearsonCorrelation` for use with V2
     metrics API.
+*   Improved support for TPU autoscaling and handling batch_size related
+    scaling.
 
 ## Bug fixes and other changes
 

@@ -28,7 +28,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
-from typing import Iterable, List
+from typing import List, Sequence
 
 PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
@@ -63,7 +63,7 @@ def PredictExtractor(
 
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
-class _PredictionDoFn(model_util.DoFnWithModels):
+class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
   """A DoFn that loads the models and predicts."""
 
   def __init__(self, eval_config: config.EvalConfig,
@@ -71,19 +71,12 @@ class _PredictionDoFn(model_util.DoFnWithModels):
     super(_PredictionDoFn, self).__init__(
         {m.model_path: m.model_loader for m in eval_shared_models})
     self._eval_config = eval_config
-    self._predict_batch_size = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'predict_batch_size')
-    self._predict_num_instances = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'predict_num_instances')
 
-  def process(
+  def _batch_reducible_process(
       self,
-      batch_of_extracts: List[types.Extracts]) -> Iterable[types.Extracts]:
+      batch_of_extracts: List[types.Extracts]) -> Sequence[types.Extracts]:
     batch_size = len(batch_of_extracts)
-    self._predict_batch_size.update(batch_size)
-    self._predict_num_instances.inc(batch_size)
-
-    output_batch_of_extracts = []
+    result = []
     for spec in self._eval_config.model_specs:
       if spec.location not in self._loaded_models:
         raise ValueError('loaded model for location {} not found: '
@@ -178,18 +171,16 @@ class _PredictionDoFn(model_util.DoFnWithModels):
         # with the labels (and model.predict API).
         if len(output) == 1:
           output = list(output.values())[0]
-        if i >= len(output_batch_of_extracts):
-          output_batch_of_extracts.append(copy.copy(batch_of_extracts[i]))
+        if i >= len(result):
+          result.append(copy.copy(batch_of_extracts[i]))
         # If only one model, the predictions are stored without using a dict
         if len(self._eval_config.model_specs) == 1:
-          output_batch_of_extracts[i][constants.PREDICTIONS_KEY] = output
+          result[i][constants.PREDICTIONS_KEY] = output
         else:
-          if constants.PREDICTIONS_KEY not in output_batch_of_extracts[i]:
-            output_batch_of_extracts[i][constants.PREDICTIONS_KEY] = {}
-          output_batch_of_extracts[i][constants.PREDICTIONS_KEY][spec.name] = (
-              output)
-
-    return iter(output_batch_of_extracts)
+          if constants.PREDICTIONS_KEY not in result[i]:
+            result[i][constants.PREDICTIONS_KEY] = {}
+          result[i][constants.PREDICTIONS_KEY][spec.name] = output
+    return result
 
 
 @beam.ptransform_fn
@@ -211,16 +202,16 @@ def _ExtractPredictions(  # pylint: disable=invalid-name
     PCollection of Extracts updated with the predictions.
   """
   batch_args = {}
+  # TODO(b/143484017): Consider removing this option if autotuning is better
+  # able to handle batch size selection.
   if eval_config.options.HasField('desired_batch_size'):
     batch_args = dict(
         min_batch_size=eval_config.options.desired_batch_size.value,
         max_batch_size=eval_config.options.desired_batch_size.value)
 
-  extracts = (
+  return (
       extracts
       | 'Batch' >> beam.BatchElements(**batch_args)
       | 'Predict' >> beam.ParDo(
           _PredictionDoFn(
               eval_config=eval_config, eval_shared_models=eval_shared_models)))
-
-  return extracts

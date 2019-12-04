@@ -24,7 +24,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
 
-from typing import Callable, Dict, List, Optional, Text
+from typing import Callable, Dict, List, Optional, Sequence, Text
 
 
 def get_baseline_model_spec(
@@ -66,6 +66,7 @@ def model_construct_fn(  # pylint: disable=invalid-name
       keras_model = None
       eval_saved_model = None
       # If we are evaluating on TPU, initialize the TPU.
+      # TODO(b/143484017): Add model warmup for TPU.
       if tf.saved_model.TPU in tags:
         tf.tpu.experimental.initialize_tpu_system()
       if eval_constants.EVAL_TAG in tags:
@@ -107,7 +108,7 @@ def model_construct_fn(  # pylint: disable=invalid-name
 class DoFnWithModels(beam.DoFn):
   """Abstract class for DoFns that need the shared models."""
 
-  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]) -> None:
+  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
     """Initializes DoFn using dict of model loaders keyed by model location."""
     self._model_loaders = model_loaders
     self._loaded_models = None  # types.ModelTypes
@@ -125,7 +126,7 @@ class DoFnWithModels(beam.DoFn):
           model_loader.construct_fn(self._set_model_load_seconds))
 
   def process(self, elem):
-    raise NotImplementedError('not implemented')
+    raise NotImplementedError('Subclasses are expected to override this.')
 
   def finish_bundle(self):
     # Must update distribution in finish_bundle instead of setup
@@ -135,6 +136,51 @@ class DoFnWithModels(beam.DoFn):
       self._model_load_seconds = None
 
 
+@beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
+@beam.typehints.with_output_types(types.Extracts)
+class BatchReducibleDoFnWithModels(DoFnWithModels):
+  """Abstract class for DoFns that need the shared models.
+
+  This DoFn will try to use large batch size at first. If a functional failure
+  is caught, an attempt will be made to process the elements serially
+  at batch size 1.
+  """
+
+  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
+    super(BatchReducibleDoFnWithModels, self).__init__(model_loaders)
+    self._batch_size = (
+        beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
+                                          'batch_size'))
+    self._batch_size_failed = (
+        beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
+                                          'batch_size_failed'))
+    self._num_instances = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_instances')
+
+  def _batch_reducible_process(
+      self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
+    raise NotImplementedError('Subclasses are expected to override this.')
+
+  def process(self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
+    batch_size = len(elements)
+    try:
+      result = self._batch_reducible_process(elements)
+      self._batch_size.update(batch_size)
+      self._num_instances.inc(batch_size)
+      return result
+    except (ValueError, tf.errors.InvalidArgumentError) as e:
+      tf.compat.v1.logging.warning(
+          'Large batch_size %s failed with error %s. '
+          'Attempting to run batch through serially.', batch_size, e)
+      self._batch_size_failed.update(batch_size)
+      result = []
+      for element in elements:
+        self._batch_size.update(1)
+        result.extend(self._batch_reducible_process([element]))
+      self._num_instances.inc(len(result))
+      return result
+
+
 class CombineFnWithModels(beam.CombineFn):
   """Abstract class for CombineFns that need the shared models.
 
@@ -142,7 +188,7 @@ class CombineFnWithModels(beam.CombineFn):
   users of this class are responsible for calling _setup_if_needed manually.
   """
 
-  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]) -> None:
+  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
     """Initializes CombineFn using dict of loaders keyed by model location."""
     self._model_loaders = model_loaders
     self._loaded_models = None  # types.ModelTypes

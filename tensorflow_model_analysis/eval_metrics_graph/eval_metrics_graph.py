@@ -35,11 +35,13 @@ import abc
 import itertools
 import threading
 # Standard Imports
+import apache_beam as beam
 import tensorflow as tf
 
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util as general_util
-from tensorflow_model_analysis.eval_saved_model import constants
+from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import util
 from typing import Any, Dict, List, NamedTuple, Text, Tuple
 
@@ -121,6 +123,13 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
     # OrderedDict produced by graph_ref's load_(legacy_)inputs, mapping input
     # key to tensor value.
     self._input_map = None
+
+    self._batch_size = (
+        beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
+                                          'batch_size'))
+    self._batch_size_failed = (
+        beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
+                                          'batch_size_failed'))
 
     try:
       self._construct_graph()
@@ -293,7 +302,8 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
     for key, value in self._predictions_map.items():
       predictions[key] = value
     # Unnest if it wasn't a dictionary to begin with.
-    default_predictions_key = util.default_dict_key(constants.PREDICTIONS_NAME)
+    default_predictions_key = util.default_dict_key(
+        eval_constants.PREDICTIONS_NAME)
     if list(predictions.keys()) == [default_predictions_key]:
       predictions = predictions[default_predictions_key]
 
@@ -301,7 +311,7 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
     for key, value in self._labels_map.items():
       labels[key] = value
     # Unnest if it wasn't a dictionary to begin with.
-    default_labels_key = util.default_dict_key(constants.LABELS_NAME)
+    default_labels_key = util.default_dict_key(eval_constants.LABELS_NAME)
     if list(labels.keys()) == [default_labels_key]:
       labels = labels[default_labels_key]
 
@@ -329,8 +339,23 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
     with self._lock:
       # Note that due to tf op reordering issues on some hardware, DO NOT merge
       # these operations into a single atomic reset_update_get operation.
-      self._reset_metric_variables()
-      self._perform_metrics_update_list(examples_list)
+      #
+      # Try to run the entire batch size through. If we hit a functional issue,
+      # attempt to run the examples through serially
+      batch_size = len(examples_list)
+      try:
+        self._reset_metric_variables()
+        self._perform_metrics_update_list(examples_list)
+        self._batch_size.update(batch_size)
+      except (ValueError, tf.errors.InvalidArgumentError) as e:
+        self._reset_metric_variables()
+        self._batch_size_failed.update(batch_size)
+        tf.compat.v1.logging.warning(
+            'Large batch_size %s failed with error %s. '
+            'Attempting to run batch through serially.', batch_size, e)
+        for example in examples_list:
+          self._perform_metrics_update_list([example])
+          self._batch_size.update(1)
       return self._get_metric_variables()
 
   def _get_metric_variables(self) -> List[Any]:

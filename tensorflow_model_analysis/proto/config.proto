@@ -127,7 +127,6 @@ message AggregationOptions {
     // must be configured in the same spec in order to identify which classes
     // the average will be computed for.
     bool weighted_macro_average = 3;
-
   }
   // Weights to apply to classes during aggregation. For micro aggregation the
   // weights will be applied to each prediction/label pair. For macro
@@ -208,11 +207,14 @@ message Options {
   google.protobuf.BoolValue compute_confidence_intervals = 2;
   // Privacy k-anonymization count to omit slices with example count < k.
   google.protobuf.Int32Value k_anonymization_count = 3;
+
   // Optional batch size to run evaluation. Default is this will be autotuned.
   // Unless your model has specific batch size constraints or fail with
   // large batch sizes (100s to 1000s), it should be safe use the built in
   // autotune capability. Note that this serves as a MAX batch size. There might
   // still be requests with smaller batch sizes sent to the model.
+  // TODO(b/143484017): Consider removing this option if autotuning is better
+  // able to handle batch size selection.
   google.protobuf.Int32Value desired_batch_size = 4;
   // Optional directory for storing temporary files. If not set, then a
   // temporary directory will be created automatically when needed.
@@ -245,7 +247,8 @@ message EvalConfig {
   //      all values in feature "city" (note this may be expensive).
   //    - slicing_specs: { feature_keys: ["country"]
   //                       feature_values: [{key: "age", value: "20"}] }
-  //      Slices for all values in feature "country" crossed with value "age:20".
+  //      Slices for all values in feature "country" crossed with value
+  //      "age:20".
   repeated SlicingSpec slicing_specs = 4;
   // Metrics specifications.
   repeated MetricsSpec metrics_specs = 5;

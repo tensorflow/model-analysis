@@ -29,7 +29,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import feature_extractor
-from typing import Generator, List, Optional
+from typing import List, Optional, Sequence
 
 PREDICT_EXTRACTOR_STAGE_NAME = 'Predict'
 
@@ -66,30 +66,23 @@ def PredictExtractor(eval_shared_model: types.EvalSharedModel,
 
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
-class _TFMAPredictionDoFn(model_util.DoFnWithModels):
+class _TFMAPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
   """A DoFn that loads the model and predicts."""
 
-  def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
+  def __init__(self, eval_shared_model: types.EvalSharedModel):
     super(_TFMAPredictionDoFn,
           self).__init__({'': eval_shared_model.model_loader})
-    self._predict_batch_size = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'predict_batch_size')
-    self._num_instances = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_instances')
 
-  def process(
-      self,
-      element: List[types.Extracts]) -> Generator[types.Extracts, None, None]:
-    batch_size = len(element)
-    self._predict_batch_size.update(batch_size)
-    self._num_instances.inc(batch_size)
-    serialized_examples = [x[constants.INPUT_KEY] for x in element]
+  def _batch_reducible_process(
+      self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
+    serialized_examples = [x[constants.INPUT_KEY] for x in elements]
 
     # Compute FeaturesPredictionsLabels for each serialized_example
     loaded_model = self._loaded_models['']
+    result = []
     for fetched in loaded_model.eval_saved_model.predict_list(
         serialized_examples):
-      element_copy = copy.copy(element[fetched.input_ref])
+      element_copy = copy.copy(elements[fetched.input_ref])
       element_copy[constants.FEATURES_PREDICTIONS_LABELS_KEY] = (
           loaded_model.eval_saved_model.as_features_predictions_labels(
               [fetched])[0])
@@ -99,7 +92,8 @@ class _TFMAPredictionDoFn(model_util.DoFnWithModels):
                    eval_saved_model_constants.PREDICTIONS_NAME):
           continue
         element_copy[key] = fetched.values[key]
-      yield element_copy
+      result.append(element_copy)
+    return result
 
 
 @beam.ptransform_fn
@@ -125,6 +119,9 @@ def _TFMAPredict(  # pylint: disable=invalid-name
     predictions, labels retrieved.
   """
   batch_args = {}
+
+  # TODO(b/143484017): Consider removing this option if autotuning is better
+  # able to handle batch size selection.
   if desired_batch_size:
     batch_args = dict(
         min_batch_size=desired_batch_size, max_batch_size=desired_batch_size)

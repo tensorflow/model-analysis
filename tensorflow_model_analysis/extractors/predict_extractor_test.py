@@ -33,6 +33,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.eval_saved_model.example_trainers import batch_size_limited_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fake_multi_examples_per_input_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.extractors import predict_extractor
@@ -92,6 +93,37 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
+
+      util.assert_that(predict_extracts, check_result)
+
+  def testBatchSizeLimit(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = batch_size_limited_classifier.simple_batch_size_limited_classifier(
+        None, temp_eval_export_dir)
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=eval_export_dir)
+    with beam.Pipeline() as pipeline:
+      examples = [
+          self._makeExample(classes='first', scores=0.0, labels='third'),
+          self._makeExample(classes='first', scores=0.0, labels='third'),
+          self._makeExample(classes='first', scores=0.0, labels='third'),
+          self._makeExample(classes='first', scores=0.0, labels='third'),
+      ]
+      serialized_examples = [e.SerializeToString() for e in examples]
+
+      predict_extracts = (
+          pipeline
+          | beam.Create(serialized_examples)
+          # Our diagnostic outputs, pass types.Extracts throughout, however our
+          # aggregating functions do not use this interface.
+          | beam.Map(lambda x: {constants.INPUT_KEY: x})
+          | 'Predict' >>
+          predict_extractor._TFMAPredict(eval_shared_model=eval_shared_model))
+
+      def check_result(got):
+        self.assertLen(got, 4)
+        for item in got:
+          self.assertIn(constants.PREDICTIONS_KEY, item)
 
       util.assert_that(predict_extracts, check_result)
 
