@@ -3,11 +3,11 @@
 # Get Started with TensorFlow Model Analysis
 
 TensorFlow Model Analysis (TFMA) can export a model's *evaluation graph* to a
-special `SavedModel` called `EvalSavedModel`. (Note that the evaluation
-graph is used and not the graph for training or inference.) The `EvalSavedModel`
-contains additional information that allows TFMA to compute the same evaluation
-metrics defined in the model in a distributed manner over a large amount of data
-and user-defined slices.
+special `SavedModel` called `EvalSavedModel`. (Note that the evaluation graph is
+used and not the graph for training or inference.) The `EvalSavedModel` contains
+additional information that allows TFMA to compute the same evaluation metrics
+defined in the model in a distributed manner over a large amount of data and
+user-defined slices.
 
 ## Modify an existing model
 
@@ -30,9 +30,9 @@ tfma.export.export_eval_savedmodel(
 
 `eval_input_receiver_fn` must be defined and is similar to the
 `serving_input_receiver_fn` for `estimator.export_savedmodel`. Like
-`serving_input_receiver_fn`, the `eval_input_receiver_fn` function
-defines an input placeholder example, parses the features from the example, and
-returns the parsed features. It parses and returns the label.
+`serving_input_receiver_fn`, the `eval_input_receiver_fn` function defines an
+input placeholder example, parses the features from the example, and returns the
+parsed features. It parses and returns the label.
 
 The following snippet defines an example `eval_input_receiver_fn`:
 
@@ -62,14 +62,13 @@ def eval_input_receiver_fn():
 
 In this example you can see that:
 
-  *  `labels` can also be a dictionary. Useful for a multi-headed model.
-  *   The `eval_input_receiver_fn` function will, most likely, be the same
-	  as your `serving_input_receiver_fn` function. But, in some cases, you
-	  may want to define additional features for slicing. For example, you
-	  introduce an `age_category` feature which divides the `age` feature
-	  into multiple buckets. You can then slice on this feature in TFMA to help
-	  understand how your model's performance differs across different age
-      categories.
+*   `labels` can also be a dictionary. Useful for a multi-headed model.
+*   The `eval_input_receiver_fn` function will, most likely, be the same as your
+    `serving_input_receiver_fn` function. But, in some cases, you may want to
+    define additional features for slicing. For example, you introduce an
+    `age_category` feature which divides the `age` feature into multiple
+    buckets. You can then slice on this feature in TFMA to help understand how
+    your model's performance differs across different age categories.
 
 ## Use TFMA to evaluate the modified model
 
@@ -99,15 +98,15 @@ eval_result = tfma.run_model_analysis(
 tfma.view.render_slicing_metrics(eval_result)
 ```
 
-Compute metrics on slices of data by configuring the `slice_spec` parameter.
-Add additional metrics that are not included in the model with
+Compute metrics on slices of data by configuring the `slice_spec` parameter. Add
+additional metrics that are not included in the model with
 `add_metrics_callbacks`. For more details, see the Python help for
 `run_model_analysis`.
 
 For distributed evaluation, construct an [Apache Beam](http://beam.apache.org)
 pipeline using a distributed runner. In the pipeline, use the
 `tfma.ExtractEvaluateAndWriteResults` for evaluation and to write out the
-results.  The results can be loaded for visualization using
+results. The results can be loaded for visualization using
 `tfma.load_eval_result`. For example:
 
 ```python
@@ -141,3 +140,9 @@ training,
 [TensorFlow Model Analysis](https://github.com/tensorflow/model-analysis) and
 Jupyter for evaluation, and
 [TensorFlow Serving](https://github.com/tensorflow/serving) for serving.
+
+## Adding a Custom Post Export Metric
+
+If you want to add your own custom post export metric in TFMA, please checkout
+the documentation
+[here](https://github.com/tensorflow/model-analysis/blob/master/g3doc/post_export_metrics.md).
