@@ -344,7 +344,7 @@ def to_computations(
         tf_spec.metrics.append(metric)
       else:
         cls = getattr(importlib.import_module(metric.module), metric.class_name)
-        if isinstance(metric, tf.keras.metrics.Metric):
+        if issubclass(cls, tf.keras.metrics.Metric):
           tf_metric_classes[metric.class_name] = cls
           tf_spec.metrics.append(metric)
         else:
