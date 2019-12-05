@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,16 +26,15 @@ import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_at_thresholds
+from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_plot
 
 
-class MultiClassConfusionMatrixAtThresholdsTest(
-    testutil.TensorflowModelAnalysisTest):
+class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
 
-  def testMultiClassConfusionMatrixAtThresholds(self):
+  def testMultiClassConfusionMatrixPlot(self):
     computation = (
-        multi_class_confusion_matrix_at_thresholds
-        .MultiClassConfusionMatrixAtThresholds().computations()[0])
+        multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot()
+        .computations()[0])
 
     example1 = {
         'labels': np.array([2.0]),
@@ -85,8 +85,7 @@ class MultiClassConfusionMatrixAtThresholdsTest(
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(
-              name='multi_class_confusion_matrix_at_thresholds')
+          key = metric_types.PlotKey(name='multi_class_confusion_matrix_plot')
           got_matrix = got_plots[key]
           self.assertProtoEquals(
               """
@@ -120,10 +119,9 @@ class MultiClassConfusionMatrixAtThresholdsTest(
 
       util.assert_that(result, check_result, label='result')
 
-  def testMultiClassConfusionMatrixAtThresholdsWithThresholds(self):
+  def testMultiClassConfusionMatrixPlotWithThresholds(self):
     computation = (
-        multi_class_confusion_matrix_at_thresholds
-        .MultiClassConfusionMatrixAtThresholds(
+        multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot(
             thresholds=[0.0, 0.5]).computations()[0])
 
     example1 = {
@@ -175,8 +173,7 @@ class MultiClassConfusionMatrixAtThresholdsTest(
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(
-              name='multi_class_confusion_matrix_at_thresholds')
+          key = metric_types.PlotKey(name='multi_class_confusion_matrix_plot')
           got_matrix = got_plots[key]
           self.assertProtoEquals(
               """

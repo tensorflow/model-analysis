@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for AUC plot."""
+"""Tests for confusion matrix plot."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,15 +24,16 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.metrics import auc_plot
+from tensorflow_model_analysis.metrics import confusion_matrix_plot
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 
 
-class AUCPlotTest(testutil.TensorflowModelAnalysisTest):
+class ConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
 
-  def testAUCPlot(self):
-    computations = auc_plot.AUCPlot(num_thresholds=4).computations()
+  def testConfusionMatrixPlot(self):
+    computations = confusion_matrix_plot.ConfusionMatrixPlot(
+        num_thresholds=4).computations()
     histogram = computations[0]
     matrices = computations[1]
     plot = computations[2]
@@ -77,7 +79,7 @@ class AUCPlotTest(testutil.TensorflowModelAnalysisTest):
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(name='auc_plot')
+          key = metric_types.PlotKey(name='confusion_matrix_plot')
           self.assertIn(key, got_plots)
           got_plot = got_plots[key]
           self.assertProtoEquals(

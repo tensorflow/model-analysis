@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +14,15 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis metrics."""
 
-from tensorflow_model_analysis.metrics.auc_plot import AUCPlot
 from tensorflow_model_analysis.metrics.calibration import Calibration
 from tensorflow_model_analysis.metrics.calibration import MeanLabel
 from tensorflow_model_analysis.metrics.calibration import MeanPrediction
 from tensorflow_model_analysis.metrics.calibration_plot import CalibrationPlot
-from tensorflow_model_analysis.metrics.confusion_matrix_at_thresholds import ConfusionMatrixAtThresholds
+from tensorflow_model_analysis.metrics.confusion_matrix_metrics import ConfusionMatrixAtThresholds
+from tensorflow_model_analysis.metrics.confusion_matrix_metrics import FallOut
+from tensorflow_model_analysis.metrics.confusion_matrix_metrics import MissRate
+from tensorflow_model_analysis.metrics.confusion_matrix_metrics import Specificity
+from tensorflow_model_analysis.metrics.confusion_matrix_plot import ConfusionMatrixPlot
 from tensorflow_model_analysis.metrics.example_count import ExampleCount
 from tensorflow_model_analysis.metrics.metric_specs import default_binary_classification_specs
 from tensorflow_model_analysis.metrics.metric_specs import default_multi_class_classification_specs
@@ -37,8 +41,8 @@ from tensorflow_model_analysis.metrics.metric_util import merge_per_key_computat
 from tensorflow_model_analysis.metrics.metric_util import to_label_prediction_example_weight
 from tensorflow_model_analysis.metrics.metric_util import to_standard_metric_inputs
 from tensorflow_model_analysis.metrics.min_label_position import MinLabelPosition
-from tensorflow_model_analysis.metrics.multi_class_confusion_matrix_at_thresholds import MultiClassConfusionMatrixAtThresholds
-from tensorflow_model_analysis.metrics.multi_label_confusion_matrix_at_thresholds import MultiLabelConfusionMatrixAtThresholds
+from tensorflow_model_analysis.metrics.multi_class_confusion_matrix_plot import MultiClassConfusionMatrixPlot
+from tensorflow_model_analysis.metrics.multi_label_confusion_matrix_plot import MultiLabelConfusionMatrixPlot
 from tensorflow_model_analysis.metrics.ndcg import NDCG
 from tensorflow_model_analysis.metrics.query_statistics import QueryStatistics
 from tensorflow_model_analysis.metrics.squared_pearson_correlation import SquaredPearsonCorrelation

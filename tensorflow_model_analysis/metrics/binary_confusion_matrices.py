@@ -122,6 +122,12 @@ def binary_confusion_matrices(
     else:
       rebin_thresholds = ([thresholds[0]] +
                           [t + _EPSILON for t in thresholds[1:]])
+      if thresholds[0] >= 0:
+        # Add -epsilon bucket to account for differences in histogram vs
+        # confusion matrix intervals mentioned above. If the epsilon bucket is
+        # missing the false negatives and false positives will be 0 for the
+        # first threshold.
+        rebin_thresholds = [-_EPSILON] + rebin_thresholds
     histogram = calibration_histogram.rebin(rebin_thresholds,
                                             metrics[histogram_key])
     matrices = _to_binary_confusion_matrices(thresholds, histogram)
@@ -133,6 +139,15 @@ def binary_confusion_matrices(
           fp=[matrices.fp[1]],
           tn=[matrices.tn[1]],
           fn=[matrices.fn[1]])
+    elif thresholds[0] >= 0:
+      # Remove -epsilon bucket
+      matrices = Matrices(
+          thresholds[1:],
+          tp=matrices.tp[1:],
+          fp=matrices.fp[1:],
+          tn=matrices.tn[1:],
+          fn=matrices.fn[1:])
+
     return {key: matrices}
 
   derived_computation = metric_types.DerivedMetricComputation(

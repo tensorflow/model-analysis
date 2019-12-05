@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,58 +12,59 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""AUC Plot."""
+"""Confusion matrix Plot."""
 
 from __future__ import absolute_import
 from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Any, Dict, Optional, Text
+
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
-from tensorflow_model_analysis.metrics import confusion_matrix_at_thresholds
+from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-from typing import Any, Dict, Optional, Text
 
 DEFAULT_NUM_THRESHOLDS = 1000
 
-AUC_PLOT_NAME = 'auc_plot'
+CONFUSION_MATRIX_PLOT_NAME = 'confusion_matrix_plot'
 
 
-class AUCPlot(metric_types.Metric):
-  """AUC plot."""
+class ConfusionMatrixPlot(metric_types.Metric):
+  """Confusion matrix plot."""
 
   def __init__(self,
                num_thresholds: int = DEFAULT_NUM_THRESHOLDS,
-               name: Text = AUC_PLOT_NAME):
-    """Initializes AUC plot.
+               name: Text = CONFUSION_MATRIX_PLOT_NAME):
+    """Initializes confusion matrix plot.
 
     Args:
       num_thresholds: Number of thresholds to use when discretizing the curve.
         Values must be > 1. Defaults to 1000.
       name: Metric name.
     """
-    super(AUCPlot, self).__init__(
-        metric_util.merge_per_key_computations(_auc_plot),
+    super(ConfusionMatrixPlot, self).__init__(
+        metric_util.merge_per_key_computations(_confusion_matrix_plot),
         num_thresholds=num_thresholds,
         name=name)
 
 
-metric_types.register_metric(AUCPlot)
+metric_types.register_metric(ConfusionMatrixPlot)
 
 
-def _auc_plot(
+def _confusion_matrix_plot(
     num_thresholds: int = DEFAULT_NUM_THRESHOLDS,
-    name: Text = AUC_PLOT_NAME,
+    name: Text = CONFUSION_MATRIX_PLOT_NAME,
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
-  """Returns metric computations for AUC plots."""
+  """Returns metric computations for confusion matrix plots."""
   key = metric_types.PlotKey(
       name=name,
       model_name=model_name,
@@ -90,8 +92,7 @@ def _auc_plot(
             metrics_for_slice_pb2.ConfusionMatrixAtThresholds]:
     return {
         key:
-            confusion_matrix_at_thresholds.to_proto(thresholds,
-                                                    metrics[matrices_key])
+            confusion_matrix_metrics.to_proto(thresholds, metrics[matrices_key])
     }
 
   derived_computation = metric_types.DerivedMetricComputation(

@@ -27,12 +27,12 @@ import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import aggregation
-from tensorflow_model_analysis.metrics import auc_plot
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import calibration_plot
+from tensorflow_model_analysis.metrics import confusion_matrix_plot
 from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import metric_types
-from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_at_thresholds
+from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_plot
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.metrics import weighted_example_count
 
@@ -234,7 +234,7 @@ def default_binary_classification_specs(
       calibration.MeanLabel(name='mean_label'),
       calibration.MeanPrediction(name='mean_prediction'),
       calibration.Calibration(name='calibration'),
-      auc_plot.AUCPlot(name='auc_plot'),
+      confusion_matrix_plot.AUCPlot(name='confusion_matrix_plot'),
       calibration_plot.CalibrationPlot(name='calibration_plot')
   ]
   if include_loss:
@@ -276,9 +276,7 @@ def default_multi_class_classification_specs(
         tf.keras.metrics.CategoricalAccuracy(name='accuracy')
     ]
   metrics.append(
-      multi_class_confusion_matrix_at_thresholds
-      .MultiClassConfusionMatrixAtThresholds(
-          name='multi_class_confusion_matrix_at_thresholds'))
+      multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot())
   if binarize is not None:
     for top_k in binarize.top_k_list:
       metrics.extend([

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,24 +19,24 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Dict, List, Optional, NamedTuple, Text
+
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-from typing import Dict, List, Optional, NamedTuple, Text
 
-MULTI_CLASS_CONFUSION_MATRIX_AT_THRESHOLDS_NAME = (
-    'multi_class_confusion_matrix_at_thresholds')
+MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME = ('multi_class_confusion_matrix_plot')
 
 # Class ID used when no prediction was made because a threshold was given and
 # the top prediction was less than the threshold.
 NO_PREDICTED_CLASS_ID = -1
 
 
-class MultiClassConfusionMatrixAtThresholds(metric_types.Metric):
-  """Multi-class confusion matrix.
+class MultiClassConfusionMatrixPlot(metric_types.Metric):
+  """Multi-class confusion matrix plot.
 
   Computes weighted example counts for all combinations of actual / (top)
   predicted classes.
@@ -46,8 +47,8 @@ class MultiClassConfusionMatrixAtThresholds(metric_types.Metric):
   """
 
   def __init__(self,
-               thresholds: Optional[float] = None,
-               name: Text = MULTI_CLASS_CONFUSION_MATRIX_AT_THRESHOLDS_NAME):
+               thresholds: Optional[List[float]] = None,
+               name: Text = MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME):
     """Initializes multi-class confusion matrix.
 
     Args:
@@ -57,19 +58,19 @@ class MultiClassConfusionMatrixAtThresholds(metric_types.Metric):
         NO_PREDICTED_CLASS_ID). Defaults to [0.0].
       name: Metric name.
     """
-    super(MultiClassConfusionMatrixAtThresholds, self).__init__(
+    super(MultiClassConfusionMatrixPlot, self).__init__(
         metric_util.merge_per_key_computations(
-            _multi_class_confusion_matrix_at_thresholds),
+            _multi_class_confusion_matrix_plot),
         thresholds=thresholds,
         name=name)
 
 
-metric_types.register_metric(MultiClassConfusionMatrixAtThresholds)
+metric_types.register_metric(MultiClassConfusionMatrixPlot)
 
 
-def _multi_class_confusion_matrix_at_thresholds(
+def _multi_class_confusion_matrix_plot(
     thresholds: Optional[List[float]] = None,
-    name: Text = MULTI_CLASS_CONFUSION_MATRIX_AT_THRESHOLDS_NAME,
+    name: Text = MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME,
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
@@ -81,7 +82,7 @@ def _multi_class_confusion_matrix_at_thresholds(
       metric_types.MetricComputation(
           keys=[key],
           preprocessor=None,
-          combiner=_MultiClassConfusionMatrixAtThresholdsCombiner(
+          combiner=_MultiClassConfusionMatrixPlotCombiner(
               key=key, eval_config=eval_config, thresholds=thresholds))
   ]
 
@@ -92,7 +93,7 @@ _MatrixEntryKey = NamedTuple('_MatrixEntryKey', [('actual_class_id', int),
 _Matrices = Dict[float, Dict[_MatrixEntryKey, float]]
 
 
-class _MultiClassConfusionMatrixAtThresholdsCombiner(beam.CombineFn):
+class _MultiClassConfusionMatrixPlotCombiner(beam.CombineFn):
   """Creates multi-class confusion matrix at thresholds from standard inputs."""
 
   def __init__(self, key: metric_types.PlotKey,
@@ -121,7 +122,7 @@ class _MultiClassConfusionMatrixAtThresholdsCombiner(beam.CombineFn):
           'Predictions shape must be > 1 for multi-class confusion matrix: '
           'shape={}, StandardMetricInputs={}'.format(predictions.shape,
                                                      element))
-    if len(label.shape) > 1:
+    if label.size > 1:
       actual_class_id = np.argmax(label)
     else:
       actual_class_id = int(label)

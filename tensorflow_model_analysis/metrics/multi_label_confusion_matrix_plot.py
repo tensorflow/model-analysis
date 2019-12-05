@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +19,18 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Dict, List, Optional, NamedTuple, Text
+
 import apache_beam as beam
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-from typing import Dict, List, Optional, NamedTuple, Text
 
-MULTI_LABEL_CONFUSION_MATRIX_AT_THRESHOLDS_NAME = (
-    'multi_label_confusion_matrix_at_thresholds')
+MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME = ('multi_label_confusion_matrix_plot')
 
 
-class MultiLabelConfusionMatrixAtThresholds(metric_types.Metric):
+class MultiLabelConfusionMatrixPlot(metric_types.Metric):
   """Multi-label confusion matrix.
 
   For each actual class (positive label) a confusion matrix is computed for each
@@ -75,26 +76,26 @@ class MultiLabelConfusionMatrixAtThresholds(metric_types.Metric):
 
   def __init__(self,
                thresholds: Optional[float] = None,
-               name: Text = MULTI_LABEL_CONFUSION_MATRIX_AT_THRESHOLDS_NAME):
+               name: Text = MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME):
     """Initializes multi-label confusion matrix.
 
     Args:
       thresholds: Optional thresholds. Defaults to [0.5].
       name: Metric name.
     """
-    super(MultiLabelConfusionMatrixAtThresholds, self).__init__(
+    super(MultiLabelConfusionMatrixPlot, self).__init__(
         metric_util.merge_per_key_computations(
-            _multi_label_confusion_matrix_at_thresholds),
+            _multi_label_confusion_matrix_plot),
         thresholds=thresholds,
         name=name)
 
 
-metric_types.register_metric(MultiLabelConfusionMatrixAtThresholds)
+metric_types.register_metric(MultiLabelConfusionMatrixPlot)
 
 
-def _multi_label_confusion_matrix_at_thresholds(
+def _multi_label_confusion_matrix_plot(
     thresholds: Optional[List[float]] = None,
-    name: Text = MULTI_LABEL_CONFUSION_MATRIX_AT_THRESHOLDS_NAME,
+    name: Text = MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME,
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
@@ -106,7 +107,7 @@ def _multi_label_confusion_matrix_at_thresholds(
       metric_types.MetricComputation(
           keys=[key],
           preprocessor=None,
-          combiner=_MultiLabelConfusionMatrixAtThresholdsCombiner(
+          combiner=_MultiLabelConfusionMatrixPlotCombiner(
               key=key, eval_config=eval_config, thresholds=thresholds))
   ]
 
@@ -132,7 +133,7 @@ class _ConfusionMatrix(object):
 _Matrices = Dict[float, Dict[_MatrixEntryKey, _ConfusionMatrix]]
 
 
-class _MultiLabelConfusionMatrixAtThresholdsCombiner(beam.CombineFn):
+class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
   """Creates multi-label confusion matrix at thresholds from standard inputs."""
 
   def __init__(self, key: metric_types.PlotKey,

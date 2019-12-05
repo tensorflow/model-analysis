@@ -22,6 +22,11 @@
     metrics API.
 *   Improved support for TPU autoscaling and handling batch_size related
     scaling.
+*   Added support for `tfma.metrics.Specificity`, `tfma.metrics.FallOut`, and
+    `tfma.metrics.MissRate` for use with V2 metrics API. Renamed `AUCPlot` to
+    `ConfusionMatrixPlot`, `MultiClassConfusionMatrixAtThresholds` to
+    `MultiClassConfusionMatrixPlot` and `MultiLabelConfusionMatrixAtThresholds`
+    to `MultiLabelConfusionMatrixPlot`.
 
 ## Bug fixes and other changes
 

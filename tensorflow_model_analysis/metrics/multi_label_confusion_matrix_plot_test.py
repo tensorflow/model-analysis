@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,16 +26,15 @@ import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.metrics import multi_label_confusion_matrix_at_thresholds
+from tensorflow_model_analysis.metrics import multi_label_confusion_matrix_plot
 
 
-class MultiLabelConfusionMatrixAtThresholdsTest(
-    testutil.TensorflowModelAnalysisTest):
+class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
 
-  def testMultiLabelConfusionMatrixAtThresholds(self):
+  def testMultiLabelConfusionMatrixPlot(self):
     computation = (
-        multi_label_confusion_matrix_at_thresholds
-        .MultiLabelConfusionMatrixAtThresholds().computations()[0])
+        multi_label_confusion_matrix_plot.MultiLabelConfusionMatrixPlot()
+        .computations()[0])
 
     example1 = {
         'labels': np.array([1.0, 1.0, 0.0]),
@@ -74,8 +74,7 @@ class MultiLabelConfusionMatrixAtThresholdsTest(
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(
-              name='multi_label_confusion_matrix_at_thresholds')
+          key = metric_types.PlotKey(name='multi_label_confusion_matrix_plot')
           got_matrix = got_plots[key]
           self.assertProtoEquals(
               """
@@ -137,10 +136,9 @@ class MultiLabelConfusionMatrixAtThresholdsTest(
 
       util.assert_that(result, check_result, label='result')
 
-  def testMultiLabelConfusionMatrixAtThresholdsWithThresholds(self):
+  def testMultiLabelConfusionMatrixPlotWithThresholds(self):
     computation = (
-        multi_label_confusion_matrix_at_thresholds
-        .MultiLabelConfusionMatrixAtThresholds(
+        multi_label_confusion_matrix_plot.MultiLabelConfusionMatrixPlot(
             thresholds=[0.2, 0.5]).computations()[0])
 
     example1 = {
@@ -181,8 +179,7 @@ class MultiLabelConfusionMatrixAtThresholdsTest(
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(
-              name='multi_label_confusion_matrix_at_thresholds')
+          key = metric_types.PlotKey(name='multi_label_confusion_matrix_plot')
           got_matrix = got_plots[key]
           self.assertProtoEquals(
               """
