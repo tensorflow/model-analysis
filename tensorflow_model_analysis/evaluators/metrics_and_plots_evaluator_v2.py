@@ -43,7 +43,7 @@ _DEFAULT_COMBINER_INPUT_KEY = '_default_combiner_input'
 
 def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     eval_config: config.EvalConfig,
-    eval_shared_models: List[types.EvalSharedModel],
+    eval_shared_models: Optional[List[types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME
@@ -52,7 +52,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
 
   Args:
     eval_config: Eval config.
-    eval_shared_models: Shared model instances.
+    eval_shared_models: Optional shared model instances. Required if any of the
+      metrics are derived or computed using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
     run_after: Extractor to run after (None means before any extractors).
@@ -441,7 +442,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_config: config.EvalConfig,
     metrics_specs: List[config.MetricsSpec],
-    eval_shared_models: List[types.EvalSharedModel],
+    eval_shared_models: Optional[List[types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY) -> evaluator.Evaluation:
   """Computes metrics and plots.
@@ -452,7 +453,8 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     eval_config: Eval config.
     metrics_specs: Subset of the metric specs to compute metrics for. If a
       query_key was used all of the metric specs will be for the same query_key.
-    eval_shared_models: Shared models.
+    eval_shared_models: Optional shared model instances. Required if any of the
+      metrics are derived or computed using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
 
@@ -461,7 +463,9 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     tuples where the dict is keyed by either the metrics_key (e.g. 'metrics') or
     plots_key (e.g. 'plots') depending on what the results_dict contains.
   """
-  model_loaders = {m.model_path: m.model_loader for m in eval_shared_models}
+  model_loaders = None
+  if eval_shared_models:
+    model_loaders = {m.model_path: m.model_loader for m in eval_shared_models}
   computations, derived_computations = _filter_and_separate_computations(
       metric_specs.to_computations(
           metrics_specs, eval_config=eval_config, model_loaders=model_loaders))
@@ -539,7 +543,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_config: config.EvalConfig,
-    eval_shared_models: List[types.EvalSharedModel],
+    eval_shared_models: Optional[List[types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY) -> evaluator.Evaluation:
   """Evaluates metrics and plots.
@@ -553,7 +557,8 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
       tfma.EXAMPLE_WEIGHTS_KEY). Usually these will be added by calling the
       default_extractors function.
     eval_config: Eval config.
-    eval_shared_models: Shared models.
+    eval_shared_models: Optional shared model instances. Required if any of the
+      metrics are derived or computed using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
 

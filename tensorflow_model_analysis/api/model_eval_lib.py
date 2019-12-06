@@ -364,8 +364,10 @@ def default_evaluators(  # pylint: disable=invalid-name
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
-    eval_shared_model: Shared model (single-model evaluation).
-    eval_shared_models: Shared models (multi-model evaluation).
+    eval_shared_model: Optional shared model (single-model evaluation). Required
+      if any of the metrics are derived or computed using the model.
+    eval_shared_models: Optional shared models (multi-model evaluation).
+      Required if any of the metrics are derived or computed using the model.
     eval_config: Eval config.
     desired_batch_size: Deprecated (use eval_config).
     compute_confidence_intervals: Deprecated (use eval_config).
