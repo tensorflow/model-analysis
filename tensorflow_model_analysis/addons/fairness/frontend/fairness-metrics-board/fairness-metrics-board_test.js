@@ -18,12 +18,16 @@ suite('fairness-metrics-board tests', () => {
   let fairness;
 
   const SLICES = [
-    'Overall', 'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4', 'Slice:5', 'Slice:6',
-    'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10', 'Slice:11', 'Slice:12',
-    'Slice:13', 'Slice:14', 'Slice:15', 'Slice:16'
+    'sex:male', 'Overall', 'sex:female', 'passed:yes', 'passed:no', 'year:9',
+    'year:10', 'year:11', 'year:12', 'group:A', 'group:B'
   ];
 
-  const BOUNDED_VALUE_DATA = SLICES.map((slice) => {
+  const SLICES_SORTED = [
+    'Overall', 'group:A', 'group:B', 'passed:no', 'passed:yes', 'sex:female',
+    'sex:male', 'year:10', 'year:11', 'year:12', 'year:9'
+  ];
+
+  function generate_bounded_value_data(slice) {
     return {
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
@@ -55,12 +59,16 @@ suite('fairness-metrics-board tests', () => {
         },
       }
     };
-  });
+  }
+
+  const BOUNDED_VALUE_DATA = SLICES.map(generate_bounded_value_data);
+  const BOUNDED_VALUE_DATA_SORTED =
+      SLICES_SORTED.map(generate_bounded_value_data);
 
   const BOUNDED_VALUE_DATA_WITH_OMITTED_SLICE = Array.from(BOUNDED_VALUE_DATA);
   BOUNDED_VALUE_DATA_WITH_OMITTED_SLICE.push({
-    'slice': 'Slice:17',
-    'sliceValue': '17',
+    'slice': 'year:13',
+    'sliceValue': '13',
     'metrics': {'__ERROR__': 'error message'}
   });
 
@@ -84,7 +92,7 @@ suite('fairness-metrics-board tests', () => {
       assert.deepEqual(
           metricSummary.metric, 'post_export_metrics/false_negative_rate');
       assert.deepEqual(
-          metricSummary.slices, BOUNDED_VALUE_DATA.map(v => v['slice']));
+          metricSummary.slices, BOUNDED_VALUE_DATA_SORTED.map(v => v['slice']));
       assert.deepEqual(metricSummary.baseline, 'Overall');
       assert.deepEqual(metricSummary.thresholds, ['0.50']);
 

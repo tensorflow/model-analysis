@@ -25,7 +25,9 @@
       };
     };
 
-    const slices = ['Overall', 'slice:1', 'slice:2', 'slice:3', 'slice:4'];
+    const slices = [
+      'Overall', 'sex:male', 'group:A', 'sex:female', 'group:B'
+    ];
     const data = slices.map(slice => {
       return {
         'slice': slice,

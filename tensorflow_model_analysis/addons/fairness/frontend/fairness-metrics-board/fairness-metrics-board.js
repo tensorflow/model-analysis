@@ -33,6 +33,13 @@ import '../fairness-privacy-container/fairness-privacy-container.js';
 const OMITTED_SLICE_ERROR_KEY = '__ERROR__';
 
 /**
+ * Name of master slice containing all data.
+ * @private {string}
+ * @const
+ */
+const OVERALL_SLICE_KEY = 'Overall';
+
+/**
  * @polymer
  */
 export class FairnessMetricsBoard extends PolymerElement {
@@ -127,7 +134,7 @@ export class FairnessMetricsBoard extends PolymerElement {
   }
 
   /**
-   * Extracts the names of the slices from the data.
+   * Extracts and sort the names of the slices from the data.
    * @param {!Array<!Object>} data
    * @return {!Array<string>|undefined}
    * @private
@@ -137,7 +144,15 @@ export class FairnessMetricsBoard extends PolymerElement {
       return;
     }
     return data.filter(d => !d['metrics'][OMITTED_SLICE_ERROR_KEY])
-        .map(d => d['slice']);
+        .map(d => d['slice'])
+        .sort(function(x, y) {
+          if (x.localeCompare(OVERALL_SLICE_KEY) == 0) {
+            return -1;
+          } else if (y.localeCompare(OVERALL_SLICE_KEY) == 0) {
+            return 1;
+          } else
+            return x.localeCompare(y);
+        });
   }
 
   /**
