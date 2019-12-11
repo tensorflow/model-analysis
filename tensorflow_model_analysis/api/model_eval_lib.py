@@ -383,7 +383,9 @@ def default_evaluators(  # pylint: disable=invalid-name
   if (constants.METRICS_KEY in disabled_outputs and
       constants.PLOTS_KEY in disabled_outputs):
     return []
-  elif not eval_config or not eval_config.metrics_specs:
+  if ((not eval_shared_models[0].model_loader.tags or
+       eval_constants.EVAL_TAG in eval_shared_models[0].model_loader.tags) and
+      (not eval_config or not eval_config.metrics_specs)):
     # Backwards compatibility for previous EvalSavedModel implementation.
     if eval_config is not None:
       if eval_config.options.HasField('desired_batch_size'):
