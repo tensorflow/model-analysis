@@ -117,7 +117,6 @@ export class FairnessMetricsTable extends PolymerElement {
       return [[]];
     }
 
-    // var headerRow = ['feature'].concat(metrics);
     let headerRow = ['feature'];
     for (let i = 0; i < metrics.length; i++) {
       if (metrics[i].startsWith(MULTIHEAD_METRIC_PREFIX_)) {

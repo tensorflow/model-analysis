@@ -69,7 +69,7 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
 
 
   /**
-   * Init the defult seleted metrics.
+   * Init the defult selected metrics.
    * @param {!Array<string>} availableMetrics
    * @private
    */
@@ -95,9 +95,6 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
       return status;
     }
     availableMetrics.forEach((metricsName, idx) => {
-      if (metricsName.startsWith(MULTIHEAD_METRIC_PREFIX_)) {
-        metricsName = metricsName.slice(MULTIHEAD_METRIC_PREFIX_.length);
-      }
       status.push({
         'metricsName': metricsName,
         'selected':
@@ -105,6 +102,17 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
       });
     });
     return status;
+  }
+
+  /**
+   * Strip post_export_metrics/ from metric name.
+   * @param {string} metric
+   * @return {string}
+   */
+  stripPostExport(metric) {
+    return metric.startsWith(MULTIHEAD_METRIC_PREFIX_) ?
+        metric.slice(MULTIHEAD_METRIC_PREFIX_.length) :
+        metric;
   }
 }
 
