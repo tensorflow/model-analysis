@@ -71,6 +71,9 @@ export class FairnessMetricsBoard extends PolymerElement {
       /** @type {!Array<string>} */
       thresholds: {type: Array, observer: 'thresholdsChanged_'},
 
+      /** @type {!Set<string>} */
+      thresholdedMetrics: {type: Set},
+
       /** @type {string|undefined} */
       baseline_: {type: String, value: 'Overall'},
 
@@ -212,6 +215,15 @@ export class FairnessMetricsBoard extends PolymerElement {
             {'item': {'label': this.thresholdsToPlot_.join(', ') || ' '}});
       }, 0);
     }
+  }
+
+  /**
+   * Returns thresholds if metric has thresholds.
+   * @param {string} metric
+   * @return {!Array<string>}
+   */
+  thresholdsForMetric(metric) {
+    return this.thresholdedMetrics.has(metric) ? this.thresholds : [];
   }
 }
 

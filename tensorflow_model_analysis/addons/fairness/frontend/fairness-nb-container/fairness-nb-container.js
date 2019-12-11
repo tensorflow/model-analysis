@@ -113,6 +113,12 @@ export class FairnessNbContainer extends SelectEventMixin
       },
 
       /**
+       * A set containing metrics that are thresholded.
+       * @private {!Object}
+       */
+      thresholdedMetrics_: {type: Set},
+
+      /**
        * The short names of metrics available. eg: auc, negative_rate or
        * post_export_metrics/head_1/negative_rate.
        * @private {!Array<string>}
@@ -203,28 +209,32 @@ export class FairnessNbContainer extends SelectEventMixin
   }
 
   /**
-   * Updates selectable metrics and available thresholds from avialable
+   * Updates selectable metrics and available thresholds from available
    * metrics.
    * @param {!Array<string>|undefined} availableMetricsNames_
    * @private
    */
   updateSelectableMetricsAndThresholds_(availableMetricsNames_) {
-    const fairnessMertics = {};
-    const otherMetrics = [];
-    const thresholds = {};
+    this.thresholdedMetrics_ = new Set();
+    const otherMetrics = new Set();
+    const thresholds = new Set();
     availableMetricsNames_.forEach(metricName => {
       const fairnessMetric = this.extractFairnessMetric_(metricName);
       if (fairnessMetric) {
-        thresholds[fairnessMetric.threshold] = 1;
-        fairnessMertics[fairnessMetric.name] = 1;
+        thresholds.add(fairnessMetric.threshold);
+        this.thresholdedMetrics_.add(fairnessMetric.name);
       } else {
-        otherMetrics.push(metricName);
+        otherMetrics.add(metricName);
       }
     });
 
-    this.selectableMetrics_ =
-        [...Object.keys(fairnessMertics).sort(), ...otherMetrics.sort()];
-    this.fairnessThresholds_ = Object.keys(thresholds).sort();
+    const setToArray = (s) => Array.from(s.entries()).map(entry => entry[0]);
+    this.selectableMetrics_ = [
+      ...setToArray(this.thresholdedMetrics_)
+          .sort((a, b) => a.localeCompare(b)),
+      ...setToArray(otherMetrics).sort((a, b) => a.localeCompare(b))
+    ];
+    this.fairnessThresholds_ = setToArray(thresholds).sort();
   }
 };
 

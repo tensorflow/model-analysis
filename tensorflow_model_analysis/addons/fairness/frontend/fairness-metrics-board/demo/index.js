@@ -48,6 +48,8 @@
   const element = document.getElementsByTagName('fairness-metrics-board')[0];
   element.data = createTestData();
   element.metrics = ['post_export_metrics/false_negative_rate', 'accuracy'];
+  element.thresholdedMetrics =
+      new Set(['post_export_metrics/false_negative_rate']);
   element.thresholds = ['0.25', '0.15'];
   element.weightColumn = 'weight';
 })();
