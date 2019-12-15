@@ -34,6 +34,8 @@ PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
 PREDICT_SIGNATURE_DEF_KEY = 'predict'
 
+KERAS_INPUT_SUFFIX = '_input'
+
 
 def PredictExtractor(
     eval_config: config.EvalConfig,
@@ -102,7 +104,7 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
         # First try 'predict' then try 'serving_default'. The estimator output
         # for the 'serving_default' key does not include all the heads in a
         # multi-head model. However, keras only uses the 'serving_default' for
-        # its outputs.  Note that the 'predict' key only exists for estimators
+        # its outputs. Note that the 'predict' key only exists for estimators
         # for multi-head models, for single-head models only 'serving_default'
         # is used.
         signature_key = tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
@@ -142,6 +144,13 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
               if name in input_features:
                 found[name] = True
                 inputs[name].append(input_features[name])
+              # Some keras models prepend '_input' to the names of the inputs
+              # so try under '<name>_input' as well.
+              elif (name.endswith(KERAS_INPUT_SUFFIX) and
+                    name[:-len(KERAS_INPUT_SUFFIX)] in input_features):
+                found[name] = True
+                inputs[name].append(
+                    input_features[name[:-len(KERAS_INPUT_SUFFIX)]])
             else:
               if len(inputs) > 1:
                 raise ValueError(

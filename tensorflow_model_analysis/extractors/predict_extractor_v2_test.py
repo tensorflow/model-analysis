@@ -387,6 +387,71 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
+  def testPredictExtractorWithSequentialKerasModel(self):
+    # Note that the input will be called 'test_input'
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Dense(
+            1, activation=tf.nn.sigmoid, input_shape=(1,), name='test')
+    ])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(lr=.001),
+        loss=tf.keras.losses.binary_crossentropy,
+        metrics=['accuracy'])
+
+    train_features = {'test_input': [[0.0], [1.0]]}
+    labels = [[1], [0]]
+    example_weights = [1.0, 0.5]
+    dataset = tf.data.Dataset.from_tensor_slices(
+        (train_features, labels, example_weights))
+    dataset = dataset.shuffle(buffer_size=1).repeat().batch(2)
+    model.fit(dataset, steps_per_epoch=1)
+
+    export_dir = self._getExportDir()
+    model.save(export_dir, save_format='tf')
+
+    eval_config = config.EvalConfig(
+        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+    predict_extractor = predict_extractor_v2.PredictExtractor(
+        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+
+    # Notice that the features are 'test' but the model expects 'test_input'.
+    # This tests that the PredictExtractor properly handles this case.
+    predict_features = [
+        {
+            'test': np.array([0.0], dtype=np.float32),
+            'non_model_feature': np.array([0]),  # should be ignored by model
+        },
+        {
+            'test': np.array([1.0], dtype=np.float32),
+            'non_model_feature': np.array([1]),  # should be ignored by model
+        }
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create(predict_features)
+          | 'FeaturesToExtracts' >>
+          beam.Map(lambda x: {constants.FEATURES_KEY: x})
+          | predict_extractor.stage_name >> predict_extractor.ptransform)
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 2)
+          # We can't verify the actual predictions, but we can verify the keys.
+          for item in got:
+            self.assertIn(constants.PREDICTIONS_KEY, item)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
   def testBatchSizeLimitWithKerasModel(self):
     input1 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input2')
