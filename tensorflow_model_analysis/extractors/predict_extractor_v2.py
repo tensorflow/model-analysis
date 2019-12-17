@@ -18,7 +18,6 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-import collections
 import copy
 
 import apache_beam as beam
@@ -33,8 +32,6 @@ from typing import List, Sequence
 PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
 PREDICT_SIGNATURE_DEF_KEY = 'predict'
-
-KERAS_INPUT_SUFFIX = '_input'
 
 
 def PredictExtractor(
@@ -77,8 +74,7 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
   def _batch_reducible_process(
       self,
       batch_of_extracts: List[types.Extracts]) -> Sequence[types.Extracts]:
-    batch_size = len(batch_of_extracts)
-    result = []
+    result = copy.deepcopy(batch_of_extracts)
     for spec in self._eval_config.model_specs:
       if spec.location not in self._loaded_models:
         raise ValueError('loaded model for location {} not found: '
@@ -118,52 +114,23 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       # If input names exist then filter the inputs by these names (unlike
       # estimators, keras does not accept unknown inputs).
       input_names = None
+      input_specs = None
       # First arg of structured_input_signature tuple is shape, second is dtype
       # (we currently only support named params passed as a dict)
       if (signature.structured_input_signature and
           len(signature.structured_input_signature) == 2 and
           isinstance(signature.structured_input_signature[1], dict)):
         input_names = [name for name in signature.structured_input_signature[1]]
+        input_specs = signature.structured_input_signature[1]
       elif loaded_model.keras_model is not None:
         # Calling keras_model.input_names does not work properly in TF 1.15.0.
         # As a work around, make sure the signature.structured_input_signature
         # check is before this check (see b/142807137).
         input_names = loaded_model.keras_model.input_names
-      inputs = collections.defaultdict(list)
+      inputs = None
       if input_names is not None:
-        # TODO(b/138474171): Make this code more efficient.
-        found = {}
-        for name in input_names:
-          for extract in batch_of_extracts:
-            # If features key exist, use that for features, else use input_key
-            if constants.FEATURES_KEY in extract:
-              input_features = extract[constants.FEATURES_KEY]
-            else:
-              input_features = extract[constants.INPUT_KEY]
-            if isinstance(input_features, dict):
-              if name in input_features:
-                found[name] = True
-                inputs[name].append(input_features[name])
-              # Some keras models prepend '_input' to the names of the inputs
-              # so try under '<name>_input' as well.
-              elif (name.endswith(KERAS_INPUT_SUFFIX) and
-                    name[:-len(KERAS_INPUT_SUFFIX)] in input_features):
-                found[name] = True
-                inputs[name].append(
-                    input_features[name[:-len(KERAS_INPUT_SUFFIX)]])
-            else:
-              if len(inputs) > 1:
-                raise ValueError(
-                    'PredictExtractor passed single input but keras model '
-                    'expects multiple: model.input_names = {}, '
-                    'extracts={}'.format(input_names, extract))
-              found[name] = True
-              inputs[name].append(input_features)
-        if len(found) != len(input_names):
-          tf.compat.v1.logging.warning(
-              'PredictExtractor inputs do not match those expected by the '
-              'model: input_names={}, found in extracts={}'.format(
-                  input_names, found))
+        inputs = model_util.rebatch_by_input_names(batch_of_extracts,
+                                                   input_names, input_specs)
       if not inputs and (input_names is None or len(input_names) <= 1):
         # Assume serialized examples
         inputs = [extract[constants.INPUT_KEY] for extract in batch_of_extracts]
@@ -173,15 +140,13 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       else:
         outputs = signature(tf.constant(inputs, dtype=tf.string))
 
-      for i in range(batch_size):
+      for i in range(len(result)):
         output = {k: v[i].numpy() for k, v in outputs.items()}
         # Keras and regression serving models return a dict of predictions even
         # for single-outputs. Convert these to a single tensor for compatibility
         # with the labels (and model.predict API).
         if len(output) == 1:
           output = list(output.values())[0]
-        if i >= len(result):
-          result.append(copy.copy(batch_of_extracts[i]))
         # If only one model, the predictions are stored without using a dict
         if len(self._eval_config.model_specs) == 1:
           result[i][constants.PREDICTIONS_KEY] = output

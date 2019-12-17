@@ -15,6 +15,7 @@
 
 # Standard __future__ imports
 
+import collections
 import datetime
 import apache_beam as beam
 import tensorflow as tf
@@ -24,7 +25,9 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
 
-from typing import Callable, Dict, List, Optional, Sequence, Text
+from typing import Any, Callable, Dict, List, Optional, Sequence, Text
+
+KERAS_INPUT_SUFFIX = '_input'
 
 
 def get_baseline_model_spec(
@@ -43,6 +46,72 @@ def get_model_spec(eval_config: config.EvalConfig,
     if spec.name == model_name:
       return spec
   return None
+
+
+def rebatch_by_input_names(
+    batch_of_extracts: List[types.Extracts],
+    input_names: List[Text],
+    input_specs: Optional[Dict[Text, tf.TypeSpec]] = None) -> Dict[Text, Any]:
+  """Converts a batch of extracts into multiple batches keyed by input names.
+
+  Args:
+    batch_of_extracts: Batch of extracts (one per example).
+    input_names: List of input names to search for features under.
+    input_specs: Optional list of type specs associated with inputs.
+
+  Returns:
+    Dict of batch aligned features keyed by input (feature) name.
+  """
+  # TODO(b/138474171): Make this code more efficient.
+  if input_specs is None:
+    input_specs = {}
+  inputs = collections.defaultdict(list)
+  found = {}
+  for name in input_names:
+    for extract in batch_of_extracts:
+      # If features key exist, use that for features, else use input_key
+      if constants.FEATURES_KEY in extract:
+        input_features = extract[constants.FEATURES_KEY]
+      else:
+        input_features = extract[constants.INPUT_KEY]
+      if isinstance(input_features, dict):
+        value = None
+        if name in input_features:
+          found[name] = True
+          value = input_features[name]
+        # Some keras models prepend '_input' to the names of the inputs
+        # so try under '<name>_input' as well.
+        elif (name.endswith(KERAS_INPUT_SUFFIX) and
+              name[:-len(KERAS_INPUT_SUFFIX)] in input_features):
+          found[name] = True
+          value = input_features[name[:-len(KERAS_INPUT_SUFFIX)]]
+        if value is not None:
+          # If the expected input shape contains only the batch dimension
+          # then we need to flatten the np.array. This it to handle tf_hub
+          # cases where the inputs can have a single dimension.
+          if name in input_specs and len(input_specs[name].shape) == 1:
+            if value.size != 1:
+              raise ValueError(
+                  'model expects inputs with shape (?,), but shape is '
+                  '{}: input_names={} input_specs={}, extract={}'.format(
+                      value.shape, input_names, input_specs, extract))
+            inputs[name].append(value.item())
+          else:
+            inputs[name].append(value)
+      else:
+        # Check that we have not previously added inputs before.
+        if inputs:
+          raise ValueError(
+              'only a single input was passed, but model expects multiple: '
+              'input_names = {}, extract={}'.format(input_names, extract))
+        found[name] = True
+        inputs[name].append(input_features)
+  if len(found) != len(input_names):
+    tf.compat.v1.logging.warning(
+        'inputs do not match those expected by the '
+        'model: input_names={}, found in extracts={}'.format(
+            input_names, found))
+  return inputs
 
 
 def model_construct_fn(  # pylint: disable=invalid-name
