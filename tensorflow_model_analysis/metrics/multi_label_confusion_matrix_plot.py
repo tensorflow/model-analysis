@@ -163,6 +163,11 @@ class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
           'Predictions shape must be > 1 for multi-label confusion matrix: '
           'shape={}, StandardMetricInputs={}'.format(predictions.shape,
                                                      element))
+    # If the label and prediction shapes are different then assume the labels
+    # are sparse and convert them to dense.
+    if (len(labels.shape) != len(predictions.shape) or
+        labels.shape[-1] != predictions.shape[-1]):
+      labels = metric_util.one_hot(labels, predictions)
     example_weight = float(example_weight)
     for threshold in self._thresholds:
       if threshold not in accumulator:

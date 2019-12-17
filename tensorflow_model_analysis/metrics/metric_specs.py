@@ -411,13 +411,16 @@ def to_computations(
       model_loader = None
       if model_loaders and model_name in model_loaders:
         model_loader = model_loaders[model_name]
+      class_weights = None
+      if tf_metrics_specs[i].HasField('aggregate'):
+        class_weights = dict(tf_metrics_specs[i].aggregate.class_weights)
       computations.extend(
           tf_metric_wrapper.tf_metric_computations(
               metrics_by_output,
               eval_config=eval_config,
               model_name=model_name,
               sub_key=sub_key,
-              class_weights=dict(tf_metrics_specs[i].aggregate.class_weights),
+              class_weights=class_weights,
               model_loader=model_loader))
 
   #
@@ -442,13 +445,16 @@ def to_computations(
     metric = hashed_metrics[config_hash]
     for spec in specs:
       sub_keys = _create_sub_keys(spec)
+      class_weights = None
+      if spec.HasField('aggregate'):
+        class_weights = dict(spec.aggregate.class_weights)
       computations.extend(
           metric.computations(
               eval_config=eval_config,
               model_names=spec.model_names if spec.model_names else [''],
               output_names=spec.output_names if spec.output_names else [''],
               sub_keys=sub_keys,
-              class_weights=dict(spec.aggregate.class_weights),
+              class_weights=class_weights,
               query_key=spec.query_key))
 
   #

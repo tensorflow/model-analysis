@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -311,6 +312,99 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
           self.assertEqual(got_slice_key, ())
           mse_key = metric_types.MetricKey(name='mse')
           self.assertDictElementsAlmostEqual(got_metrics, {mse_key: 0.1875})
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  def testSparseMetric(self):
+    computation = tf_metric_wrapper.tf_metric_computations([
+        tf.keras.metrics.SparseCategoricalCrossentropy(
+            name='sparse_categorical_crossentropy')
+    ], config.EvalConfig())[0]
+
+    # Simulate a multi-class problem with 3 labels.
+    example = {
+        'labels': [1],
+        'predictions': [0.3, 0.6, 0.1],
+        'example_weights': [1.0]
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([example])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          key = metric_types.MetricKey(name='sparse_categorical_crossentropy')
+          # 0*log(.3) -1*log(0.6)-0*log(.1) = 0.51
+          self.assertDictElementsAlmostEqual(got_metrics, {key: 0.51083})
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  def testRaisesErrorForInvalidNonSparseSettings(self):
+    with self.assertRaises(ValueError):
+      tf_metric_wrapper.tf_metric_computations([
+          tf.keras.metrics.SparseCategoricalCrossentropy(
+              name='sparse_categorical_crossentropy')
+      ],
+                                               config.EvalConfig(),
+                                               class_weights={})
+
+  def testMetricWithClassWeights(self):
+    computation = tf_metric_wrapper.tf_metric_computations(
+        [tf.keras.metrics.MeanSquaredError(name='mse')],
+        config.EvalConfig(),
+        class_weights={
+            0: 0.1,
+            1: 0.2,
+            2: 0.3,
+            3: 0.4
+        })[0]
+
+    # Simulate a multi-class problem with 4 labels. The use of class weights
+    # implies micro averaging which only makes sense for multi-class metrics.
+    example = {
+        'labels': [0, 0, 1, 0],
+        'predictions': [0, 0.5, 0.3, 0.9],
+        'example_weights': [1.0]
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([example])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          mse_key = metric_types.MetricKey(name='mse')
+          # numerator = (0.1*0**2 + 0.2*0.5**2 + 0.3*0.7**2 + 0.4*0.9**2)
+          # denominator = (.1 + .2 + 0.3 + 0.4)
+          # numerator / denominator = 0.521
+          self.assertDictElementsAlmostEqual(got_metrics, {mse_key: 0.521})
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

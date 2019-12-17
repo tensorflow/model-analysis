@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +20,9 @@ from __future__ import division
 from __future__ import print_function
 
 import inspect
+
+from typing import Any, Callable, Dict, Iterable, List, Optional, Text, Tuple, Union
+
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
@@ -26,7 +30,6 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import metric_types
-from typing import Any, Callable, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 _ALL_CLASSES = 'all_classes'
 _PREDICTIONS = 'predictions'
@@ -104,11 +107,51 @@ def to_label_prediction_example_weight(
   well as any required class ID, top K, etc conversions. It will also apply
   prediction keys and label vocabularies given the necessary information is
   provided as part of the EvalConfig (or standard estimator based naming is
-  used).
+  used). The sparseness of labels will be inferred from the shapes of the labels
+  and predictions (i.e. if the shapes are different then the labels will be
+  assumed to be sparse).
 
   If successful, the final output of calling this function will be a tuple of
   numpy arrays representing the label, prediction, and example weight
-  respectively.
+  respectively. Labels and predictions will be returned in the same shape
+  provided (default behavior) unless (1) flatten is True in which case a series
+  of values (one per class ID) will be returned with last dimension of size 1 or
+  (2) a sub_key is used in which case the last dimension will be re-shaped to
+  match the number of outputs selected (1 or top_k). Examples:
+
+    # default behavior
+    #
+    # Binary classification
+    Input  : labels=[1] predictions=[0.6]
+    Output : (np.array([1]), np.array([0.6]), np.array([1.0]))
+    # Multi-class classification w/ sparse labels
+    Input : labels=[2] predictions=[0.3, 0.6, 0.1]
+    Output: (np.array([2]), np.array([0.3, 0.6, 0.1]), np.array([1.0]))
+    # Multi-class / multi-label classification w/ dense labels
+    Input  : labels=[0, 1, 1] predictions=[0.3, 0.6, 0.1]
+    Output : (np.array([0, 1, 1]), np.array([0.3, 0.6, 0.1]), np.array([1.0]))
+
+    # flatten=True
+    #
+    # Multi-class classification w/ sparse labels
+    Input  : labels=[2], predictions=[0.3, 0.6, 0.1]
+    Output : (np.array([0]), np.array([0.3]), np.array([1.0])),
+             (np.array([0]), np.array([0.6]), np.array([1.0])),
+             (np.array([1]), np.array([0.1]), np.array([1.0]))
+    # Multi-class/multi-label classification w/ dense labels
+    Input  : labels=[0, 0, 1], predictions=[0.3, 0.6, 0.1]
+    Output : (np.array([0]), np.array([0.3]), np.array([1.0])),
+             (np.array([0]), np.array([0.6]), np.array([1.0])),
+             (np.array([1]), np.array([0.1]), np.array([1.0]))
+
+    # sub_key.class_id=[2]
+    #
+    # Multi-class classification w/ sparse labels
+    Input  : labels=[2] predictions=[0.3, 0.6, 0.1]
+    Output : (np.array([1]), np.array([0.1]), np.array([1.0]))
+    # Multi-class classification w/ dense labels
+    Input  : labels=[0, 0, 1] predictions=[0.3, 0.6, 0.1]
+    Output : (np.array([1]), np.array([0.1]), np.array([1.0]))
 
   Args:
     inputs: Standard metric inputs.
@@ -117,7 +160,7 @@ def to_label_prediction_example_weight(
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
     class_weights: Optional class weights to apply to multi-class / multi-label
-      labels and predictions.
+      labels and predictions. If used, flatten must also be True.
     flatten: True to flatten the final label and prediction outputs so that the
       yielded values are always arrays of size 1. For example, multi-class /
       multi-label outputs would be converted into label and prediction pairs
@@ -125,6 +168,9 @@ def to_label_prediction_example_weight(
       compute a micro average over all classes.
     allow_none: True to allow labels or predictions with None values to be
       returned. The example weight will always be non-None.
+
+  Yields:
+    Tuple of (label, prediction, example_weight).
   """
 
   def optionally_get_by_keys(value: Any, keys: List[Text]) -> Any:
@@ -158,6 +204,27 @@ def to_label_prediction_example_weight(
   label, prediction = prepare_labels_and_predictions(label, prediction,
                                                      prediction_key)
 
+  if not allow_none:
+    for txt, value in zip(('label', 'prediction'), (label, prediction)):
+      if value is None:
+        raise ValueError(
+            'no value provided for {}: model_name={}, output_name={}, '
+            'sub_key={}, StandardMetricInputs={}\n\n'
+            'This may be caused by a configuration error (i.e. label, '
+            'and/or prediction keys were not specified) or an '
+            'error in the pipeline.'.format(txt, model_name, output_name,
+                                            sub_key, inputs))
+
+  example_weight = to_numpy(example_weight)
+
+  if example_weight.size != 1:
+    raise ValueError(
+        'expected example weight to be size = 1, but instead it has '
+        'size = {}: example_weight={}, model_name={}, output_name={}, '
+        'sub_key={}, StandardMetricInputs={}\n\nThis is most likely a '
+        'configuration error.'.format(example_weight.size, example_weight,
+                                      model_name, output_name, sub_key, inputs))
+
   if sub_key is not None:
     if sub_key.class_id is not None:
       label, prediction = select_class_id(sub_key.class_id, label, prediction)
@@ -168,28 +235,6 @@ def to_label_prediction_example_weight(
     elif sub_key.top_k is not None:
       label, prediction = select_top_k(sub_key.top_k, label, prediction)
 
-  example_weight = to_numpy(example_weight)
-
-  if not allow_none:
-    for txt, value in zip(('label', 'prediction', 'example_weight'),
-                          (label, prediction, example_weight)):
-      if value is None:
-        raise ValueError(
-            'no value provided for {}: model_name={}, output_name={}, '
-            'sub_key={}, StandardMetricInputs={}\n\n'
-            'This may be caused by a configuration error (i.e. label, '
-            'prediction, and/or example weight keys were not specified) or an '
-            'error in the pipeline.'.format(txt, model_name, output_name,
-                                            sub_key, inputs))
-
-  if example_weight is not None and example_weight.size != 1:
-    raise ValueError(
-        'expected example weight to be size = 1, but instead it has '
-        'size = {}: example_weight={}, model_name={}, output_name={}, '
-        'sub_key={}, StandardMetricInputs={}\n\nThis is most likely a '
-        'configuration error.'.format(example_weight.size, example_weight,
-                                      model_name, output_name, sub_key, inputs))
-
   # For consistency, make sure all outputs are arrays (i.e. convert scalars)
   if label is not None and not label.shape:
     label = label.reshape((1,))
@@ -198,34 +243,43 @@ def to_label_prediction_example_weight(
   if example_weight is not None and not example_weight.shape:
     example_weight = example_weight.reshape((1,))
 
-  if class_weights and prediction is not None:
-    multiplier = [
-        class_weights[i] if i in class_weights else 1.0
-        for i in range(prediction.shape[-1])
-    ]
-    prediction = np.multiply(prediction, multiplier)
-    if label is not None:
-      if label.shape[-1] == 1:
-        label = one_hot(label, prediction)
-      label = np.multiply(label, multiplier)
+  if class_weights:
+    if not flatten:
+      raise ValueError(
+          'class_weights can only be used when flatten is also used. This is '
+          'likely caused by a configuration error (i.e. micro averaging being '
+          "applied to metrics that don't support micro averaging): "
+          'class_weights={}, flatten={}, StandardMetricInputs={}'.format(
+              class_weights, flatten, inputs))
+    example_weight = np.array([
+        float(example_weight) * class_weights[i] if i in class_weights else 1.0
+        for i in range(prediction.shape[-1] or label.shape[-1])
+    ])
+  elif flatten:
+    example_weight = np.array([
+        float(example_weight)
+        for i in range(prediction.shape[-1] or label.shape[-1])
+    ])
 
   if (not flatten or (label is None and prediction is None) or
       (label is not None and prediction is not None and label.size == 1 and
        prediction.size == 1)):
     yield label, prediction, example_weight
   elif label is None:
-    for p in prediction.flatten():
-      yield label, np.array([p]), example_weight
+    for p, w in (prediction.flatten(), example_weight.flatten()):
+      yield label, np.array([p]), np.array([w])
   elif prediction is None:
-    for l in label.flatten():
-      yield np.array([l]), prediction, example_weight
+    for l, w in (label.flatten(), example_weight.flatten()):
+      yield np.array([l]), prediction, np.array([w])
   elif label.size == prediction.size:
-    for l, p in zip(label.flatten(), prediction.flatten()):
-      yield np.array([l]), np.array([p]), example_weight
+    for l, p, w in zip(label.flatten(), prediction.flatten(),
+                       example_weight.flatten()):
+      yield np.array([l]), np.array([p]), np.array([w])
   elif label.shape[-1] == 1:
     label = one_hot(label, prediction)
-    for l, p in zip(label.flatten(), prediction.flatten()):
-      yield np.array([l]), np.array([p]), example_weight
+    for l, p, w in zip(label.flatten(), prediction.flatten(),
+                       example_weight.flatten()):
+      yield np.array([l]), np.array([p]), np.array([w])
   else:
     raise ValueError(
         'unable to pair labels with predictions: labels={}, predictions={}, '
@@ -347,6 +401,7 @@ def select_class_id(
     class_id: int,
     labels: Any,
     predictions: Any,
+    sparse_labels: bool = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
   """Selects values for given class ID from multi-class labels and predictions.
 
@@ -354,10 +409,14 @@ def select_class_id(
     class_id: Class ID to filter the labels and predictions by.
     labels: Array or list of processed labels (1D, 2D, or 3D).
     predictions: Array or list of processed predictions (1D, 2D, or 3D).
+    sparse_labels: True if sparse labels are being used. If None then the
+      sparseness will be inferred from the shapes of the labels and predictions
+      (i.e. if the shapes are different then the labels will be assumed to be
+      sparse).
 
   Returns:
     A (labels, predictions) tuple with the predictions returned in the same form
-    as the labels.
+    as the originals (except for the last dimension which will be 1).
 
   Raises:
     ValueError: If the labels or predictions cannot be formatted properly.
@@ -373,29 +432,35 @@ def select_class_id(
           class_id, target, arr))
     return arr[class_id]
 
-  out_shape = list(labels.shape)
-  if len(out_shape) > 1 and out_shape[-1] > 1:
-    # Labels are of the form [[0, 0, 1, ...], ..] so the last dim will be
-    # reduced to 1 later, so squeeze this out of the output.
-    out_shape = out_shape[:-1]
+  # Convert scalars to arrays
+  if not labels.shape:
+    labels = labels.reshape((1,))
+  if not predictions.shape:
+    predictions = predictions.reshape((1,))
 
-  # Flatten all but the last dim (a, b, c) -> (a * b, c)  (e.g. [[...], [...]])
-  if len(labels.shape) == 1:
-    # Labels are of the form [class_id1, class_id2, ...]. Assume this is for a
-    # batch of labels and convert to the form [[class_id1], [class_id2], ...]
-    # for looking up the class IDs. This will be reshaped back to single
-    # dimension later.
+  sparse_labels = _verify_sparse_labels(
+      labels, predictions, sparse_labels=sparse_labels)
+  if sparse_labels and labels.shape[-1] != 1:
+    # Convert to [[class_id1], ...]
     labels = labels.reshape((-1, 1))
-  else:
-    labels = labels.reshape((-1, labels.shape[-1]))
-  if len(predictions.shape) == 1:
-    # Predictions are of the form [p1, p2, ...]. Assume this is for a single
-    # multi-class prediction and convert to the form [[p1, p2, ...]] for looking
-    # up the class IDs. This will be reshaped to match the labels later.
-    predictions = predictions.reshape((1, predictions.shape[0]))
-  predictions = predictions.reshape((-1, predictions.shape[-1]))
 
-  if labels.shape[1] == 1:
+  labels_out_shape = list(labels.shape)
+  labels_out_shape[-1] = 1
+  predictions_out_shape = list(predictions.shape)
+  predictions_out_shape[-1] = 1
+
+  # Convert labels and predictions into the form ([[...], [...]])
+  if len(labels.shape) > 1:
+    # Flatten all but the last dim (a, b, c) -> (a * b, c)
+    labels = labels.reshape((-1, labels.shape[-1]))
+  else:
+    labels = labels.reshape((1, labels.shape[0]))
+  if len(predictions.shape) > 1:
+    predictions = predictions.reshape((-1, predictions.shape[-1]))
+  else:
+    predictions = predictions.reshape((1, predictions.shape[0]))
+
+  if sparse_labels:
     # Labels are of the form [[class_id1], [class_id2], ...]
     labels = np.array([int(l[0] == class_id) for l in labels])
   else:
@@ -403,7 +468,66 @@ def select_class_id(
     labels = np.array([lookup(l, 'labels') for l in labels])
   predictions = np.array([lookup(p, 'predictions') for p in predictions])
 
-  return (labels.reshape(out_shape), predictions.reshape(out_shape))
+  return (labels.reshape(labels_out_shape),
+          predictions.reshape(predictions_out_shape))
+
+
+def _verify_sparse_labels(labels: np.ndarray,
+                          predictions: np.ndarray,
+                          sparse_labels: bool = None) -> bool:
+  """Checks if labels are sparse or not.
+
+  Args:
+    labels: Numpy array of labels.
+    predictions: Numpy array of predictions.
+    sparse_labels: True if sparse labels should be used. If None then the
+      sparseness will be inferred from the shapes of the labels and predictions
+      (i.e. if the shapes are different then the labels will be assumed to be
+      sparse).
+
+  Returns:
+    True if sparse.
+
+  Raises:
+    ValueError: If the sparse_labels setting does not match labels and
+      predictions.
+  """
+  if (len(labels.shape) != len(predictions.shape) or
+      labels.shape[-1] != predictions.shape[-1]):
+    # Labels are of the form [class_id1, ...]
+    #
+    # Note that it is possible that the labels could be multi-label of the form
+    # [[class_id1, class_id2], [class_id3, ...]]. However, this would require a
+    # ragged or sparse tensor input to support. Ragged data in np.array is
+    # encoded as a list object which doesn't accurately reflect the shape (i.e.
+    # np.array([[1, 2], [3]]) has shape (2,). As such we will assume that all
+    # multi-label use cases will use one-hot encodings (e.g. [0, 1. 1, ...]) and
+    # will update this if/when RaggedTensorValue and SparseTensorValue value
+    # types are supported in addition to np.ndarray.
+    if sparse_labels is not None and not sparse_labels:
+      raise ValueError(
+          'The number of labels = 1, but sparse labels are not being used\n\n'
+          'This is likley caused by a metric configuration error. Change to '
+          'use a non-sparse versions of the metrics or ensure that sparse '
+          'labels are passed as input: labels={}, predictions={}'.format(
+              labels, predictions))
+    return True
+  else:
+    # Labels are of the form [0, 0, 1, ...] (i.e. one-hot). This includes
+    # regression and binary classification.
+    #
+    # Similar to the note above, this is only true if multi-label inputs are
+    # always encoded as one-hot since it is possible for a multi-label encoding
+    # using [class_id1, ...] to use all the classes and therefore match the
+    # prediction's last dimension in length.
+    if sparse_labels is not None and sparse_labels:
+      raise ValueError(
+          'The number of labels > 1, but sparse labels are being used\n\n'
+          'This is likley caused by a metric configuration error. Change to '
+          'use sparse versions of the metrics or ensure that non-sparse labels '
+          'are passed as input: labels={}, predictions={}'.format(
+              labels, predictions))
+    return False
 
 
 def select_top_k(top_k: int,
@@ -414,8 +538,8 @@ def select_top_k(top_k: int,
 
   Args:
     top_k: Number of top k values to return.
-    labels: Array or list of processed labels (1D, 2D, or 3D).
-    predictions: Array or list of processed predictions (1D, 2D, or 3D).
+    labels: Array or list of processed labels (1D or 2D).
+    predictions: Array or list of processed predictions (1D or 2D).
     scores: Optional array or list of scores for computing the top_k values. If
       scores is not set then predictions will be used.
 
@@ -525,7 +649,7 @@ def merge_per_key_computations(
           if hasattr(inspect, 'getfullargspec'):
             args = inspect.getfullargspec(create_computations_fn).args
           else:
-            args = inspect.getargspec(create_computations_fn).args
+            args = inspect.getargspec(create_computations_fn).args  # pylint: disable=deprecated-method
           updated_kwargs = kwargs.copy()
           if 'eval_config' in args:
             updated_kwargs['eval_config'] = eval_config

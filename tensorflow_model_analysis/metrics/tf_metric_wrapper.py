@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +21,8 @@ from __future__ import print_function
 
 import importlib
 
+from typing import Any, Dict, List, Optional, Text, Type, Tuple, Union
+
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
@@ -29,7 +32,6 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from typing import Any, Dict, List, Optional, Text, Type, Tuple, Union
 
 _DEFAULT_BATCH_SIZE = 1000
 
@@ -68,7 +70,8 @@ def tf_metric_computations(
     model_name: Optional model name (if multi-model evaluation).
     sub_key: Optional sub key.
     class_weights: Optional class weights to apply to multi-class / multi-label
-      labels and predictions.
+      labels and predictions. This should only be used when micro averaging is
+      being used.
     model_loader: Optional model loader. Only the non-compilable metrics will be
       evaluated using the model, all other metrics will be calculated directly
       in eager mode. However, the model is also used to add default metrics.
@@ -89,6 +92,14 @@ def tf_metric_computations(
         model_loader.construct_fn(lambda x: None)().keras_model)
   elif not isinstance(metrics, dict):
     metrics = {'': metrics}
+
+  if class_weights is not None:
+    sparse_metrics = _sparse_metrics(metrics)
+    if sparse_metrics:
+      raise ValueError(
+          'sparse metrics cannot be used with aggregation options. Either '
+          'disable aggregation settings or replace the sparse metrics with'
+          'non-sparse versions: {}'.format(sparse_metrics))
 
   computations = []
 
@@ -146,6 +157,20 @@ def tf_metric_computations(
                                                    desired_batch_size)))
 
   return computations
+
+
+def _sparse_metrics(
+    metrics: Dict[Text, List[tf.keras.metrics.Metric]]
+) -> Dict[Text, List[tf.keras.metrics.Metric]]:
+  """Returns input metrics filtered to contain only the sparse metrics."""
+  results = {}
+  for k, v in metrics.items():
+    for m in v:
+      if m.__class__.__name__.startswith('Sparse'):
+        if k not in results:
+          results[k] = []
+        results[k].append(m)
+  return results
 
 
 def _combine_with_default_metrics(
@@ -397,7 +422,8 @@ def _wrap_confusion_matrix_metric(
   if thresholds is not None and num_thresholds is not None:
     num_thresholds = None
 
-  # Make sure matrices are calculated.
+  # Make sure matrices are calculated. Note that the use of class_weights here
+  # implies that micro averaging is being performed.
   computations = binary_confusion_matrices.binary_confusion_matrices(
       num_thresholds=num_thresholds,
       thresholds=thresholds,
@@ -572,13 +598,16 @@ class _CompilableMetricsCombiner(beam.CombineFn):
       element: metric_types.StandardMetricInputs
   ) -> _CompilableMetricsAccumulator:
     for i, output_name in enumerate(self._output_names):
+      # The use of class_weights means that micro averaging is being used. When
+      # micro averaging is being used, flatten should be set to True so that
+      # each class is treated as though it was an independent example.
       for label, prediction, example_weight in (
           metric_util.to_label_prediction_example_weight(
               element,
               output_name=output_name,
               sub_key=self._sub_key,
               class_weights=self._class_weights,
-              flatten=self._class_weights is None)):
+              flatten=self._class_weights is not None)):
         accumulator.add_input(i, label, prediction, example_weight)
     if accumulator.len_inputs() >= self._batch_size:
       self._process_batch(accumulator)
@@ -603,7 +632,9 @@ class _CompilableMetricsCombiner(beam.CombineFn):
           result.add_weights(output_index, metric_index, weights)
     return result
 
-  def extract_output(self, accumulator: _CompilableMetricsAccumulator) -> Any:
+  def extract_output(
+      self, accumulator: _CompilableMetricsAccumulator
+  ) -> Dict[metric_types.MetricKey, Any]:
     self._process_batch(accumulator)
     result = {}
     for output_index, output_name in enumerate(self._output_names):
