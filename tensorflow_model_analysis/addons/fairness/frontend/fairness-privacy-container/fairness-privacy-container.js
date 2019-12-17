@@ -20,7 +20,7 @@ import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
 
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
-import {template} from './fairness-privacy-container.html.js';
+import {template} from './fairness-privacy-container-template.html.js';
 
 export class FairnessPrivacyContainer extends PolymerElement {
   constructor() {
