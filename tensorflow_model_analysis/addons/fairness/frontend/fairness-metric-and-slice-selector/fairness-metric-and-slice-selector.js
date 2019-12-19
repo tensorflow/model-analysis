@@ -20,8 +20,7 @@ import '@polymer/paper-checkbox/paper-checkbox.js';
 import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
 
-const MULTIHEAD_METRIC_PREFIX_ = 'post_export_metrics/';
-
+const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
 
 export class FairnessMetricAndSliceSelector extends PolymerElement {
   constructor() {
@@ -110,9 +109,7 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
    * @return {string}
    */
   stripPostExport(metric) {
-    return metric.startsWith(MULTIHEAD_METRIC_PREFIX_) ?
-        metric.slice(MULTIHEAD_METRIC_PREFIX_.length) :
-        metric;
+    return Util.removePostExportMetrics(metric);
   }
 }
 

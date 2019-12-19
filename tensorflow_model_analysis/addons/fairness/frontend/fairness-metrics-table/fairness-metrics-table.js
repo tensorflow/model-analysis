@@ -17,11 +17,10 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './fairness-metrics-table-template.html.js';
 
+const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
+
 /** @const {number} */
 const FLOATING_POINT_PRECISION = 5;
-
-/** @const {string} */
-const MULTIHEAD_METRIC_PREFIX_ = 'post_export_metrics/';
 
 /**
  * @enum {string}
@@ -119,11 +118,7 @@ export class FairnessMetricsTable extends PolymerElement {
 
     let headerRow = ['feature'];
     for (let i = 0; i < metrics.length; i++) {
-      if (metrics[i].startsWith(MULTIHEAD_METRIC_PREFIX_)) {
-        headerRow.push(metrics[i].slice(MULTIHEAD_METRIC_PREFIX_.length));
-      } else {
-        headerRow.push(metrics[i]);
-      }
+      headerRow.push(Util.removePostExportMetrics(metrics[i]));
     }
     headerRow = headerRow.map(metric => headerOverride[metric] || metric);
 
