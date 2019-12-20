@@ -39,24 +39,11 @@ template.innerHTML = `
       </paper-listbox>
     </paper-dropdown-menu>
   </span>
-  <span>
-    <paper-dropdown-menu opened="{{thresholdsMenuOpened_}}" label="Thresholds">
-      <paper-listbox id="thresholdsList" multi selected-values="{{selectedThresholds_}}"
-                     attr-for-selected="threshold"
-                     class="dropdown-content" slot="dropdown-content">
-        <template is="dom-repeat" items="[[thresholds]]">
-          <paper-item threshold="[[item]]">
-            [[item]]
-          </paper-item>
-        </template>
-      </paper-listbox>
-    </paper-dropdown-menu>
-  </span>
 </div>
 <template is="dom-repeat" items="[[metrics]]">
   <fairness-metric-summary data="[[data]]"
-                                   metric="[[item]]" slices="[[slices_]]" baseline="[[baseline_]]"
-                                   thresholds="[[thresholdsToPlot_]]">
+                           metric="[[item]]" slices="[[slices_]]" baseline="[[baseline_]]"
+                           thresholds="[[thresholdsForMetric(item)]]">
   </fairness-metric-summary>
 </template>
 `;

@@ -69,7 +69,7 @@ export class FairnessMetricsBoard extends PolymerElement {
       metrics: {type: Array},
 
       /** @type {!Array<string>} */
-      thresholds: {type: Array, observer: 'thresholdsChanged_'},
+      thresholds: {type: Array},
 
       /** @type {!Set<string>} */
       thresholdedMetrics: {type: Set},
@@ -93,29 +93,6 @@ export class FairnessMetricsBoard extends PolymerElement {
        */
       omittedSlices_:
           {type: Array, computed: 'computeOmittedSlices_(data)', value: []},
-
-
-      /**
-       * A flag used to update the selected thresholds displayed in the UI.
-       * @private {boolean}
-       */
-      thresholdsMenuOpened_:
-          {type: Boolean, observer: 'thresholdsMenuOpenedChanged_'},
-
-      /**
-       * The list of seleted thresholds.
-       * @private {!Array<string>}
-       */
-      selectedThresholds_: {type: Array},
-
-      /**
-       * A copy of selectedThresholds_ to push data binding.
-       * @private {!Array<string>}
-       */
-      thresholdsToPlot_: {
-        type: Array,
-        computed: 'computeThresholdsToPlot_(selectedThresholds_.length)'
-      },
     };
   }
 
@@ -170,51 +147,6 @@ export class FairnessMetricsBoard extends PolymerElement {
     }
     return data.filter(d => d['metrics'][OMITTED_SLICE_ERROR_KEY])
         .map(d => d['slice']);
-  }
-
-  /**
-   * Determines the thresholds to use in metric summary.
-   * @param {number} unused The number of thresholds selected by the user.
-   * @return {!Array<string>}
-   * @private
-   */
-  computeThresholdsToPlot_(unused) {
-    return this.selectedThresholds_.slice();
-  }
-
-  /**
-   * Observer for property thresholds_. Automatically selects the median
-   * thresholds as default.
-   * @param {!Array<string>} thresholds
-   * @private
-   */
-  thresholdsChanged_(thresholds) {
-    this.selectedThresholds_ = [];
-    if (thresholds.length) {
-      this.$.thresholdsList.select(
-          thresholds[Math.floor(thresholds.length / 2)]);
-    } else {
-      this.$.thresholdsList.select();
-    }
-  }
-
-  /**
-   * Observer for thresholdsMenuOpened_ flag. Updates the string for the
-   * thresholds selected.
-   * @param {boolean} open
-   * @private
-   */
-  thresholdsMenuOpenedChanged_(open) {
-    if (!open) {
-      setTimeout(() => {
-        // HACK: Fire off a fake iron-select event with fake label with multiple
-        // selected thresholds so that they are displayed in the menu. In case
-        // none is selected, use ' '.
-        this.$.thresholdsList.fire(
-            'iron-select',
-            {'item': {'label': this.thresholdsToPlot_.join(', ') || ' '}});
-      }, 0);
-    }
   }
 
   /**

@@ -32,9 +32,13 @@
 
 *   Fixed error in `tfma-multi-class-confusion-matrix-at-thresholds` with
     default classNames value.
-*   Fairness Indicators: compute ratio metrics with safe division, remove
-    "post_export_metrics" from metric names. Fairness Indicators UI now displays
-    slices in alphabetic order.
+*   Fairness Indicators
+    -   Compute ratio metrics with safe division.
+    -   Remove "post_export_metrics" from metric names.
+    -   Move threshold dropdown selector to a metric-by-metric basis, allowing
+        different metrics to be inspected with different thresholds. Don't show
+        thresholds for metrics that do not support them.
+    -   Slices are now displayed in alphabetic order.
 
 ## Breaking changes
 
@@ -223,6 +227,7 @@
     number of examples.
 
 ## Bug fixes and other changes
+
 *   Cast / convert labels for precision / recall at K so that they work even if
     the label and the classes Tensors have different types, as long as the types
     are compatible.
@@ -235,6 +240,7 @@
 *   Use `__slots__` in accumulators.
 
 ## Breaking changes
+
 *   Expose Python 3 types in the code (this will break Python 2 compatibility)
 
 ## Deprecations
@@ -242,6 +248,7 @@
 # Release 0.13.0
 
 ## Major Features and Improvements
+
 *   Python 3.5 is supported.
 
 ## Bug fixes and other changes
@@ -261,6 +268,7 @@
 *   Add support for changeable confidence levels.
 
 ## Breaking changes
+
 *   Post export metrics for precision_recall_at_k were split into separate
     fuctions: precision_at_k and recall_at_k.
 *   Requires pre-installed TensorFlow >=1.13,<2.
@@ -270,6 +278,7 @@
 # Release 0.12.0
 
 ## Major Features and Improvements
+
 *   Python 3.5 readiness complete (all tests pass). Full Python 3.5
     compatibility is expected to be available with the next version of Model
     Analysis (after Apache Beam 2.11 is released).

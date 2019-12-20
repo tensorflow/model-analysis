@@ -26,6 +26,8 @@ import '../fairness-metrics-table/fairness-metrics-table.js';
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './fairness-metric-summary-template.html.js';
 
+const DEFAULT_NUM_SLICES = 9;
+
 export class FairnessMetricSummary extends PolymerElement {
   constructor() {
     super();
@@ -59,10 +61,23 @@ export class FairnessMetricSummary extends PolymerElement {
       metric: {type: String},
 
       /**
+       * The list of available thresholds.
+       * @type {!Array<string>}
+       */
+      thresholds: {type: Array, value: () => []},
+
+      /**
        * The list of selected thresholds.
        * @type {!Array<string>}
        */
-      thresholds: {type: Array, value: []},
+      selectedThresholds_: {type: Array},
+
+      /**
+       * A flag used to update the selected thresholds displayed in the UI.
+       * @private {boolean}
+       */
+      thresholdsMenuOpened_:
+          {type: Boolean, observer: 'thresholdsMenuOpenedChanged_'},
 
       /**
        * The slice that will be used as the baseline.
@@ -77,15 +92,16 @@ export class FairnessMetricSummary extends PolymerElement {
       slices: {type: Array},
 
       /**
-       * The list of full metric names to plot in the bar chart. For regular
-       * metrics, it should be a list containing only the property metric. For
-       * fairness metrics, it would be the metric@threshold for all thresholds.
+       * The list of full metric names. For regular metrics, it should be an
+       * array containing only the property metric. For thresholded metrics, it
+       * would be "metric@threshold" for all thresholds.
        * @private {!Array<string>}
        */
-      metricsForBarChart_: {
+      metrics_: {
         type: Array,
         computed:
-            'computeMetricsForBarChart_(metric, thresholds, baseline, data)'
+            'computeMetrics_(metric, thresholds, selectedThresholds_.*, ' +
+            'baseline, data)'
       },
 
       /**
@@ -94,7 +110,7 @@ export class FairnessMetricSummary extends PolymerElement {
        */
       metricsForTable_: {
         type: Array,
-        computed: 'computeMetricsForTable_(metricsForBarChart_, baseline)'
+        computed: 'computeMetricsForTable_(metrics_, baseline)'
       },
 
       /**
@@ -104,8 +120,7 @@ export class FairnessMetricSummary extends PolymerElement {
        */
       diffRatios_: {
         type: Object,
-        computed:
-            'computeDiffRatios_(baseline, data, slices, metricsForBarChart_)'
+        computed: 'computeDiffRatios_(baseline, data, slices, metrics_)'
       },
 
       /**
@@ -120,7 +135,7 @@ export class FairnessMetricSummary extends PolymerElement {
        */
       headerOverride_: {
         type: Object,
-        computed: 'computeHeaderOverride_(baseline, metricsForBarChart_)'
+        computed: 'computeHeaderOverride_(baseline, metrics_)'
       },
 
       /**
@@ -129,7 +144,7 @@ export class FairnessMetricSummary extends PolymerElement {
        */
       tableData_: {
         type: Object,
-        computed: 'computeTableData_(baseline, data, metricsForBarChart_, ' +
+        computed: 'computeTableData_(baseline, data, metrics_, ' +
             'slicesToPlot_, diffRatios_)'
       },
 
@@ -160,52 +175,91 @@ export class FairnessMetricSummary extends PolymerElement {
 
   static get observers() {
     return [
-      'initializeSlicesToPlot_(baseline, slices, metricsForBarChart_, ' +
+      'initializeSlicesToPlot_(baseline, slices, metrics_, ' +
           'diffRatios_)',
       'refreshSelectableSlices_(baseline, slices, ' +
           'configSelectedSlices_.length)',
+      'initializeSelectedThresholds_(thresholds.*)'
     ];
+  }
+
+  /**
+   * Observer for property thresholds_. Automatically selects the median
+   * thresholds as default.
+   * @param {!Object} thresholdsEvent
+   * @private
+   */
+  initializeSelectedThresholds_(thresholdsEvent) {
+    this.selectedThresholds_ = [];
+    if (thresholdsEvent.base.length) {
+      this.$.thresholdsList.select(
+          thresholdsEvent.base[Math.floor(thresholdsEvent.base.length / 2)]);
+    }
+  }
+
+  /**
+   * Observer for thresholdsMenuOpened_ flag. Updates the string for the
+   * thresholds selected.
+   * @param {boolean} open
+   * @private
+   */
+  thresholdsMenuOpenedChanged_(open) {
+    if (this.selectedThresholds_ && !open) {
+      setTimeout(() => {
+        // HACK: Fire off a fake iron-select event with fake label with multiple
+        // selected thresholds so that they are displayed in the menu. In case
+        // none is selected, use ' '.
+        // Needed in order to display multiple thresholds in the paper-listbox's
+        // label when multiple thresholds are selected.
+        const label = this.selectedThresholds_.length > 0 ?
+            this.selectedThresholds_.join(', ') :
+            ' ';
+        this.$.thresholdsList.fire('iron-select', {'item': {'label': label}});
+      }, 0);
+    }
   }
 
   /**
    * @param {string} metric
    * @param {!Array<string>} thresholds
+   * @param {!Object} selectedThresholdsEvent
    * @param {string} baseline
-   * @param {!Object} data
+   * @param {!Array<Object>} data
    * @return {!Array<string>} The list of full metric names to be
    *     plotted.
    * @private
    */
-  computeMetricsForBarChart_(metric, thresholds, baseline, data) {
-    if (!data || !baseline) {
+  computeMetrics_(metric, thresholds, selectedThresholdsEvent, baseline, data) {
+    if (!data || !baseline ||
+        (this.metricIsThresholded_() && !selectedThresholdsEvent.base)) {
       return [];
     }
-    const baselineSliceMetrics = data.find(d => d['slice'] == baseline);
-    const metricsToPlot = [];
-    thresholds.forEach(threshold => {
-      const fairnessMetricName = metric + '@' + threshold;
-      if (baselineSliceMetrics &&
-          Object.keys(baselineSliceMetrics['metrics'])
-              .includes(fairnessMetricName)) {
-        metricsToPlot.push(fairnessMetricName);
-      }
-    });
 
-    if (!metricsToPlot.length && baselineSliceMetrics &&
-        Object.keys(baselineSliceMetrics['metrics']).includes(metric)) {
-      metricsToPlot.push(metric);
+    if (this.metricIsThresholded_()) {
+      const thresholdedMetrics = selectedThresholdsEvent.base.map(
+          (threshold) => metric + '@' + threshold);
+
+      const baselineSliceMetrics = data.find(d => d['slice'] == baseline);
+      const hasBaselineSlice = (metricName) => baselineSliceMetrics &&
+          Object.keys(baselineSliceMetrics['metrics']).includes(metricName);
+
+      return thresholdedMetrics.filter(hasBaselineSlice);
+    } else {
+      return [metric];
     }
-    return metricsToPlot;
   }
 
   /**
    * Constructs the header override for the table view.
    * @param {string} baseline
    * @param {!Array<string>} metrics
-   * @return {!Array<string>}
+   * @return {!Object}
    * @private
    */
   computeHeaderOverride_(baseline, metrics) {
+    if (!baseline || !metrics) {
+      return {};
+    }
     return metrics.reduce((acc, metric) => {
       acc[metric + '  against ' + baseline] = 'Diff. w. baseline';
       return acc;
@@ -245,8 +299,8 @@ export class FairnessMetricSummary extends PolymerElement {
 
   /**
    * Determines the slices to visualize. The slices are sorted by how noteworthy
-   * they are when compared to the baseline and by default, the top 9 wil be
-   * chosen.
+   * they are when compared to the baseline and by default, the top
+   * DEFAULT_NUM_SLICES wil be chosen.
    * @param {string} baseline
    * @param {!Array<string>} slices
    * @param {!Array<string>} metricsToPlot
@@ -264,7 +318,9 @@ export class FairnessMetricSummary extends PolymerElement {
                 return Math.abs(
                     diffRatios[metric][sliceB] - diffRatios[metric][sliceA]);
               })
-              .slice(0, 9);  // Show up to 9 slices (plus baseline) by default.
+              .slice(
+                  0, DEFAULT_NUM_SLICES);  // Show up to DEFAULT_NUM_SLICES
+                                           // slices (plus baseline) by default.
     } else {
       this.slicesToPlot_ = [];
     }
@@ -278,11 +334,15 @@ export class FairnessMetricSummary extends PolymerElement {
    * @private
    */
   computeMetricsForTable_(metrics, baseline) {
-    return metrics.reduce((acc, metric) => {
-      acc.push(metric);
-      acc.push(metric + ' against ' + baseline);
-      return acc;
-    }, []);
+    if (baseline) {
+      return metrics.reduce((acc, metric) => {
+        acc.push(metric);
+        acc.push(metric + ' against ' + baseline);
+        return acc;
+      }, []);
+    } else {
+      return [];
+    }
   }
 
   /**
@@ -384,6 +444,14 @@ export class FairnessMetricSummary extends PolymerElement {
              this.configSelectedSlices_.indexOf(slice) == -1),
       };
     });
+  }
+
+  /**
+   * @return {boolean} Returns true if metric is thresholded.
+   * @private
+   */
+  metricIsThresholded_() {
+    return this.thresholds.length > 0;
   }
 }
 

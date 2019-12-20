@@ -44,14 +44,32 @@ template.innerHTML = `
     margin-top: 10px;
     width: 1000px;
   }
-
+  .config {
+    margin: 0 16px;
+  }
+  .config > span {
+    padding: 0 12px;
+  }
 </style>
 <div id="metric-header" class="header">
   [[metric]]
   <paper-icon-button id="settings-icon" icon="settings" on-tap="openSettings_">
   </paper-icon-button>
 </div>
-<fairness-bounded-value-bar-chart id="bar-chart" metrics="[[metricsForBarChart_]]"
+<div class="config" hidden$="[[!metricIsThresholded_(thresholds)]]">
+  <paper-dropdown-menu opened="{{thresholdsMenuOpened_}}" label="Thresholds">
+    <paper-listbox id="thresholdsList" multi selected-values="{{selectedThresholds_}}"
+                   attr-for-selected="threshold"
+                   class="dropdown-content" slot="dropdown-content">
+      <template is="dom-repeat" items="[[thresholds]]">
+        <paper-item threshold="[[item]]">
+          [[item]]
+        </paper-item>
+      </template>
+    </paper-listbox>
+  </paper-dropdown-menu>
+</div>
+<fairness-bounded-value-bar-chart id="bar-chart" metrics="[[metrics_]]"
                                  data="[[data]]" slices="{{slicesToPlot_}}"
                                  baseline="[[baseline]]">
 </fairness-bounded-value-bar-chart>

@@ -73,17 +73,17 @@
     };
   });
 
-  let element = document.getElementById('bounded-value');
-  element.slices = SLICES;
-  element.data = BOUNDED_VALUE_DATA;
-  element.metric = 'post_export_metrics/false_negative_rate';
-  element.thresholds = ['0.30', '0.50', '0.70'];
-  element.baseline = 'Overall';
+  let element_bounded = document.getElementById('bounded-value');
+  element_bounded.slices = SLICES;
+  element_bounded.data = BOUNDED_VALUE_DATA;
+  element_bounded.metric = 'post_export_metrics/false_negative_rate';
+  element_bounded.thresholds = ['0.30', '0.50', '0.70'];
+  element_bounded.baseline = 'Overall';
 
-  element = document.getElementById('double-value');
-  element.slices = SLICES;
-  element.data = DOUBLE_VALUE_DATA;
-  element.metric = 'accuracy';
-  element.thresholds = ['0.30', '0.50', '0.70'];
-  element.baseline = 'Overall';
+  let element_double = document.getElementById('double-value');
+  element_double.slices = SLICES;
+  element_double.data = DOUBLE_VALUE_DATA;
+  element_double.metric = 'accuracy';
+  element_double.thresholds = [];
+  element_double.baseline = 'Overall';
 })();

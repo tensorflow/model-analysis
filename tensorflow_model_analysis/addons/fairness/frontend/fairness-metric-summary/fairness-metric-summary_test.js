@@ -92,6 +92,8 @@ suite('fairness-metric-summary tests', () => {
   const DEFAULT_NUM_OF_SLICES_TO_PLOT = 9;
   const MAX_NUM_OF_SLICES_TO_PLOT = 15;
 
+  const THRESHOLDS = ['0.30', '0.50'];
+
   let metricSummary;
 
   const setUpAndCheck = (setUpCallback, checkCallback) => {
@@ -124,14 +126,11 @@ suite('fairness-metric-summary tests', () => {
           metricSummary.$['metric-header'].innerText.trim(),
           'post_export_metrics/false_negative_rate');
       assert.deepEqual(metricSummary.$['table'].metrics, [
-        'post_export_metrics/false_negative_rate@0.30',
-        'post_export_metrics/false_negative_rate@0.30 against Overall',
         'post_export_metrics/false_negative_rate@0.50',
         'post_export_metrics/false_negative_rate@0.50 against Overall'
       ]);
 
       assert.deepEqual(metricSummary.$['bar-chart'].metrics, [
-        'post_export_metrics/false_negative_rate@0.30',
         'post_export_metrics/false_negative_rate@0.50'
       ]);
       assert.deepEqual(
@@ -156,7 +155,6 @@ suite('fairness-metric-summary tests', () => {
       metricSummary.slices = SLICES;
       metricSummary.data = DOUBLE_VALUE_DATA;
       metricSummary.metric = 'accuracy';
-      metricSummary.thresholds = ['0.30', '0.50'];
       metricSummary.baseline = 'Overall';
     };
 
@@ -187,10 +185,10 @@ suite('fairness-metric-summary tests', () => {
     metricSummary = fixture('main');
 
     const fillData = () => {
-      metricSummary.slices = SLICES;
       metricSummary.data = DOUBLE_VALUE_DATA;
+      metricSummary.slices = SLICES;
       metricSummary.metric = 'accuracy';
-      metricSummary.thresholds = ['0.30', '0.50'];
+      metricSummary.thresholds = [];
       metricSummary.baseline = 'Overall';
     };
 
@@ -201,24 +199,41 @@ suite('fairness-metric-summary tests', () => {
     };
 
     const chooseSlices = () => {
-      // Only 9 slices, besides baseline, to plot by default.
+      // There are two parameters - slices and thresholds.
+      // So the number of selectable items should be the sum of the two.
       let paperItems = queryElement('paper-item');
-      for (let i = 1; i < paperItems.length; i++) {
-        assert.isFalse(paperItems[i].disabled);
+      assert.equal(paperItems.length, SLICES.length);
+
+      let slices = [];
+      for (let i = 0; i < paperItems.length; i++) {
+        slices.push(paperItems[i]);
+      }
+      // The Overall slice should be disabled by default
+      assert.isTrue(slices[0].disabled);
+      // None of the other slices should be disabled by default
+      for (let i = 1; i < slices.length; i++) {
+        assert.isFalse(slices[i].disabled);
       }
 
-      // Select up to 16 slices.
+      // Select up to MAX_NUM_OF_SLICES_TO_PLOT slices.
       for (let i = DEFAULT_NUM_OF_SLICES_TO_PLOT + 1;
            i <= MAX_NUM_OF_SLICES_TO_PLOT; i++) {
-        paperItems[i].fire('tap');
+        slices[i].fire('tap');
       }
       setTimeout(closeSettingMenu, TEST_STEP_TIMEOUT_MS);
     };
 
     const closeSettingMenu = () => {
       let paperItems = queryElement('paper-item');
-      for (let i = MAX_NUM_OF_SLICES_TO_PLOT + 1; i < paperItems.length; i++) {
-        assert.isTrue(paperItems[i].disabled);
+      let slices = [];
+      for (let i = THRESHOLDS.length; i < paperItems.length; i++) {
+        slices.push(paperItems[i]);
+      }
+
+      // After MAX_NUM_OF_SLICES_TO_PLOT have been tapped,
+      // no more slices should be tappable.
+      for (let i = MAX_NUM_OF_SLICES_TO_PLOT + 1; i < slices.length; i++) {
+        assert.isTrue(slices[i].disabled);
       }
 
       let updateButton = metricSummary.shadowRoot.querySelector('paper-button');
@@ -241,14 +256,13 @@ suite('fairness-metric-summary tests', () => {
     const fillData = () => {
       metricSummary.metric = 'post_export_metrics/false_negative_rate';
       metricSummary.slices = SLICES.slice(0, 2);
-      metricSummary.thresholds = ['0.30', '0.50'];
+      metricSummary.thresholds = THRESHOLDS;
       metricSummary.baseline = 'Overall';
       metricSummary.data = DOUBLE_VALUE_DATA.slice(0, 2);
     };
 
     const CheckProperties = () => {
       assert.deepEqual(metricSummary.$['bar-chart'].metrics, [
-        'post_export_metrics/false_negative_rate@0.30',
         'post_export_metrics/false_negative_rate@0.50'
       ]);
       done();
@@ -262,7 +276,7 @@ suite('fairness-metric-summary tests', () => {
 
     const fillData = () => {
       metricSummary.metric = 'accuracy';
-      metricSummary.thresholds = ['0.30', '0.50'];
+      metricSummary.thresholds = [];
       metricSummary.baseline = 'Overall';
       metricSummary.slices = SLICES;
       metricSummary.data = DOUBLE_VALUE_DATA;
@@ -283,7 +297,7 @@ suite('fairness-metric-summary tests', () => {
 
     const fillData = () => {
       metricSummary.metric = 'accuracy';
-      metricSummary.thresholds = ['0.30', '0.50'];
+      metricSummary.thresholds = [];
       metricSummary.baseline = 'Overall';
       metricSummary.slices = SLICES.slice(0, 3);
       metricSummary.data = DOUBLE_VALUE_DATA.slice(0, 3);
