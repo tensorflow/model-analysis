@@ -23,4 +23,4 @@ if _is_colab():
   from tensorflow_model_analysis.addons.fairness.notebook.colab.renderer import *  # pylint: disable=wildcard-import,g-import-not-at-top
   from tensorflow_model_analysis.addons.fairness.notebook.colab.widget import *  # pylint: disable=wildcard-import,g-import-not-at-top
 else:
-  pass
+  from tensorflow_model_analysis.addons.fairness.notebook.jupyter.widget import *  # pylint: disable=wildcard-import,g-import-not-at-top
