@@ -193,19 +193,19 @@ export class FairnessNbContainer extends SelectEventMixin
         allMetrics.add(metricName);
       });
     });
-    // Only support numeric value and bounded value metrics.
-    const isSupportedMetricFormat = (entry, metricName) => {
-      const value = entry[metricName];
-
-      const isDef = v => v !== undefined;
-      const isNumber = v => typeof v === 'number';
-      return isDef(value) &&
-          (isNumber(value) || tfma.CellRenderer.isBoundedValue(value) ||
-           tfma.CellRenderer.isRatioValue(value));
+    // Only support fairness, numeric value, and bounded value metrics.
+    const isSupportedMetricFormat = (metricName) => {
+      if (this.extractFairnessMetric_(metricName)) {
+        return true;
+      }
+      const metric_value = slicingMetrics[0]['metrics'][metricName];
+      const is_defined = metric_value !== undefined;
+      const is_number = typeof metric_value === 'number';
+      return is_defined &&
+          (is_number || tfma.CellRenderer.isBoundedValue(metric_value) ||
+           tfma.CellRenderer.isRatioValue(metric_value));
     };
-    return [...allMetrics].filter(
-        metric => this.extractFairnessMetric_(metric) ||
-            isSupportedMetricFormat(slicingMetrics[0]['metrics'], metric));
+    return [...allMetrics].filter(isSupportedMetricFormat);
   }
 
   /**
