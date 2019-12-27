@@ -27,13 +27,12 @@ import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-
-_DEFAULT_BATCH_SIZE = 1000
 
 _CONFIG_KEY = 'config'
 _NUM_THRESHOLDS_KEY = 'num_thresholds'
@@ -51,8 +50,8 @@ def tf_metric_computations(
     model_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None,
-    model_loader: Optional[types.ModelLoader] = None
-) -> metric_types.MetricComputations:
+    model_loader: Optional[types.ModelLoader] = None,
+    batch_size: Optional[int] = None) -> metric_types.MetricComputations:
   """Returns metric computations for the given TF metrics.
 
   Note that there is no requirement that a one to one mapping exist between the
@@ -75,16 +74,12 @@ def tf_metric_computations(
     model_loader: Optional model loader. Only the non-compilable metrics will be
       evaluated using the model, all other metrics will be calculated directly
       in eager mode. However, the model is also used to add default metrics.
+    batch_size: Batch size to use when calling TF metrics (testing only).
 
   Returns:
     Metric computations.
   """
-  if eval_config and eval_config.options.HasField('desired_batch_size'):
-    desired_batch_size = eval_config.options.desired_batch_size.value
-  else:
-    desired_batch_size = _DEFAULT_BATCH_SIZE
-
-  if (model_loader is not None and eval_config and
+  if (sub_key is None and model_loader is not None and eval_config and
       (not eval_config.options.HasField('include_default_metrics') or
        eval_config.options.include_default_metrics.value)):
     metrics = _combine_with_default_metrics(
@@ -145,16 +140,14 @@ def tf_metric_computations(
             preprocessor=None,
             combiner=_CompilableMetricsCombiner(metric_configs, loss_configs,
                                                 custom_objects, sub_key,
-                                                class_weights,
-                                                desired_batch_size)))
+                                                class_weights, batch_size)))
 
   if non_compilable_metrics:
     computations.append(
         metric_types.MetricComputation(
             keys=metric_keys,
             preprocessor=None,
-            combiner=_NonCompilableMetricsCombiner(model_loader, sub_key,
-                                                   desired_batch_size)))
+            combiner=_NonCompilableMetricsCombiner(model_loader, sub_key)))
 
   return computations
 
@@ -322,9 +315,9 @@ def _metric_keys_and_configs(
               output_name=output_name,
               sub_key=sub_key))
       if isinstance(metric, tf.keras.metrics.Metric):
-        metric_config_list.append(tf.keras.metrics.serialize(metric))
+        metric_config_list.append(metric_util.serialize_metric(metric))
       elif isinstance(metric, tf.keras.losses.Loss):
-        loss_config_list.append(tf.keras.losses.serialize(metric))
+        loss_config_list.append(metric_util.serialize_loss(metric))
 
     metric_configs[output_name] = metric_config_list
     loss_configs[output_name] = loss_config_list
@@ -488,12 +481,12 @@ class _CompilableMetricsAccumulator(object):
   """Accumulator for compilable metrics.
 
   Attributes:
-    inputs: Accumulated batch of inputs (max size of desired_batch_size). The
-      inputs are stored in a multi-dimensional list. The first dimension is used
-      to index the associated output (for single-output models this will only
-      have one item). The second dimension is used to store the args passed to
-      update_state (i.e. (y_true, y_pred, example_weight)). Batching is done on
-      the last dimension.
+    inputs: Accumulated batch of inputs. The inputs are stored in a
+      multi-dimensional list. The first dimension is used to index the
+      associated output (for single-output models this will only have one item).
+      The second dimension is used to store the args passed to update_state
+      (i.e. (y_true, y_pred, example_weight)). Batching is done on the last
+      dimension.
     weights: Accumulated weights. The weights are stored in a multi-dimensional
       list where the first dimension is used to index the associated output (for
       single-output models this will only have one item). The second dimension
@@ -548,11 +541,22 @@ class _CompilableMetricsAccumulator(object):
 class _CompilableMetricsCombiner(beam.CombineFn):
   """Combines compilable metric weights and computes result."""
 
-  def __init__(self, metric_configs: Dict[Text, List[Dict[Text, Any]]],
+  # This needs to be large enough to allow for efficient TF invocations during
+  # batch flushing, but shouldn't be too large as it also acts as cap on the
+  # maximum memory usage of the computation.
+  #
+  # We really want the batch size to be adaptive like it is in
+  # beam.BatchElements(), but there isn't an easy way to make it so.
+  # TODO(b/73789023): Figure out how to make this batch size dynamic.
+  _BATCH_SIZE = 1000
+
+  def __init__(self,
+               metric_configs: Dict[Text, List[Dict[Text, Any]]],
                loss_configs: Dict[Text, List[Dict[Text, Any]]],
                custom_objects: Dict[Text, Type[Any]],
                sub_key: Optional[metric_types.SubKey],
-               class_weights: Dict[int, float], batch_size: int):
+               class_weights: Dict[int, float],
+               batch_size: Optional[int] = None):
     # Use parallel lists to store output_names and configs to guarantee
     # consistent ordering and for natural alignment with the accumulator where
     # lists are used instead of dicts for efficency.
@@ -562,8 +566,12 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._custom_objects = custom_objects
     self._sub_key = sub_key
     self._class_weights = class_weights
-    self._batch_size = batch_size
     self._metrics = None  # type: Dict[Text, List[tf.keras.metrics.Metric]]
+    self._batch_size = (
+        batch_size if batch_size is not None else self._BATCH_SIZE)
+    self._keras_compilable_metrics_batch_size = (
+        beam.metrics.Metrics.distribution(
+            constants.METRICS_NAMESPACE, 'keras_compilable_metrics_batch_size'))
 
   def _setup_if_needed(self):
     if self._metrics is None:
@@ -580,6 +588,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._setup_if_needed()
     if accumulator.len_inputs() == 0:
       return
+    self._keras_compilable_metrics_batch_size.update(accumulator.len_inputs())
     for output_index, output_name in enumerate(self._output_names):
       inputs = accumulator.get_inputs(output_index)
       for metric_index, metric in enumerate(self._metrics[output_name]):
@@ -611,6 +620,12 @@ class _CompilableMetricsCombiner(beam.CombineFn):
         accumulator.add_input(i, label, prediction, example_weight)
     if accumulator.len_inputs() >= self._batch_size:
       self._process_batch(accumulator)
+    return accumulator
+
+  def compact(
+      self, accumulator: _CompilableMetricsAccumulator
+  ) -> _CompilableMetricsAccumulator:
+    self._process_batch(accumulator)
     return accumulator
 
   def merge_accumulators(
@@ -658,10 +673,9 @@ class _NonCompilableMetricsCombiner(model_util.CombineFnWithModels):
   """Combines non-compilable metric weights and computes result."""
 
   def __init__(self, model_loader: types.ModelLoader,
-               sub_key: Optional[metric_types.SubKey], batch_size: int):
+               sub_key: Optional[metric_types.SubKey]):
     super(_NonCompilableMetricsCombiner, self).__init__({'': model_loader})
     self._sub_key = sub_key
-    self._batch_size = batch_size
 
   def _setup_if_needed(self):
     super(_NonCompilableMetricsCombiner, self)._setup_if_needed()

@@ -29,6 +29,7 @@ from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import dnn_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
+from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
 from tensorflow_model_analysis.extractors import input_extractor
@@ -40,7 +41,19 @@ from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
+from tensorflow_model_analysis.post_export_metrics import metrics as metric_fns
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+
+
+def _addExampleCountMetricCallback(  # pylint: disable=invalid-name
+    features_dict, predictions_dict, labels_dict):
+  del features_dict
+  del labels_dict
+  metric_ops = {}
+  value_op, update_op = metric_fns.total(
+      tf.shape(input=predictions_dict['logits'])[0])
+  metric_ops['added_example_count'] = (value_op, update_op)
+  return metric_ops
 
 
 class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
@@ -682,7 +695,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     model = tf.keras.models.Model(inputs, output_layer)
     model.compile(
         optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy,
+        loss=tf.keras.losses.BinaryCrossentropy(),
         metrics=['accuracy'])
 
     features = {'input1': [[0.0], [1.0]], 'input2': [[1.0], [0.0]]}
@@ -922,6 +935,104 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                   weighted_example_count_key: 3.0,
                   ndcg1_key: 1.0,
                   ndcg2_key: 1.0
+              })
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(
+          metrics[constants.METRICS_KEY], check_metrics, label='metrics')
+
+  def testEvaluateWithEvalSavedModel(self):
+    temp_export_dir = self._getExportDir()
+    _, export_dir = linear_classifier.simple_linear_classifier(
+        None, temp_export_dir)
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(location=export_dir, signature_name='eval')
+        ],
+        slicing_specs=[
+            config.SlicingSpec(),
+            config.SlicingSpec(feature_keys=['slice_key']),
+        ])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir,
+        add_metrics_callbacks=[_addExampleCountMetricCallback])
+    slice_spec = [
+        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
+    ]
+    extractors = [
+        predict_extractor.PredictExtractor(eval_shared_model),
+        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+    ]
+
+    examples = [
+        self._makeExample(
+            age=3.0, language='english', label=1.0, slice_key='first_slice'),
+        self._makeExample(
+            age=3.0, language='chinese', label=0.0, slice_key='first_slice'),
+        self._makeExample(
+            age=4.0, language='english', label=0.0, slice_key='second_slice'),
+        self._makeExample(
+            age=5.0, language='chinese', label=1.0, slice_key='second_slice'),
+        self._makeExample(
+            age=5.0, language='chinese', label=1.0, slice_key='second_slice')
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      metrics = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_metrics(got):
+        try:
+          self.assertLen(got, 3)
+          slices = {}
+          for slice_key, value in got:
+            slices[slice_key] = value
+          overall_slice = ()
+          first_slice = (('slice_key', b'first_slice'),)
+          second_slice = (('slice_key', b'second_slice'),)
+          self.assertCountEqual(
+              list(slices.keys()), [overall_slice, first_slice, second_slice])
+          self.assertDictElementsAlmostEqual(
+              slices[overall_slice], {
+                  metric_types.MetricKey(name='accuracy'): 0.4,
+                  metric_types.MetricKey(name='label/mean'): 0.6,
+                  metric_types.MetricKey(name='my_mean_age'): 4.0,
+                  metric_types.MetricKey(name='my_mean_age_times_label'): 2.6,
+                  metric_types.MetricKey(name='added_example_count'): 5.0
+              })
+          self.assertDictElementsAlmostEqual(
+              slices[first_slice], {
+                  metric_types.MetricKey(name='accuracy'): 1.0,
+                  metric_types.MetricKey(name='label/mean'): 0.5,
+                  metric_types.MetricKey(name='my_mean_age'): 3.0,
+                  metric_types.MetricKey(name='my_mean_age_times_label'): 1.5,
+                  metric_types.MetricKey(name='added_example_count'): 2.0
+              })
+          self.assertDictElementsAlmostEqual(
+              slices[second_slice], {
+                  metric_types.MetricKey(name='accuracy'):
+                      0.0,
+                  metric_types.MetricKey(name='label/mean'):
+                      2.0 / 3.0,
+                  metric_types.MetricKey(name='my_mean_age'):
+                      14.0 / 3.0,
+                  metric_types.MetricKey(name='my_mean_age_times_label'):
+                      10.0 / 3.0,
+                  metric_types.MetricKey(name='added_example_count'):
+                      3.0
               })
 
         except AssertionError as err:

@@ -546,12 +546,11 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result, label='result')
 
   def testBatching(self):
-    options = config.Options()
-    options.desired_batch_size.value = 2
     computation = tf_metric_wrapper.tf_metric_computations(
         [_CustomMetric(),
          tf.keras.metrics.MeanSquaredError(name='mse')],
-        config.EvalConfig(options=options))[0]
+        config.EvalConfig(),
+        batch_size=2)[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.0], 'example_weights': [1.0]}
     example2 = {'labels': [0.0], 'predictions': [0.5], 'example_weights': [1.0]}
@@ -593,11 +592,10 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result, label='result')
 
   def testMergeAccumulators(self):
-    options = config.Options()
-    options.desired_batch_size.value = 2
     computation = tf_metric_wrapper.tf_metric_computations(
         [tf.keras.metrics.MeanSquaredError(name='mse')],
-        config.EvalConfig(options=options))[0]
+        config.EvalConfig(),
+        batch_size=2)[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.0], 'example_weights': [1.0]}
     example2 = {'labels': [0.0], 'predictions': [0.5], 'example_weights': [1.0]}

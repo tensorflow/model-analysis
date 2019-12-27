@@ -32,6 +32,7 @@ from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import confusion_matrix_plot
 from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_plot
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.metrics import weighted_example_count
@@ -544,7 +545,7 @@ def _maybe_add_name_to_config(cfg: Dict[Text, Any],
 def _serialize_tf_metric(
     metric: tf.keras.metrics.Metric) -> config.MetricConfig:
   """Serializes TF metric."""
-  cfg = tf.keras.metrics.serialize(metric)
+  cfg = metric_util.serialize_metric(metric)
   return config.MetricConfig(
       class_name=cfg['class_name'],
       config=json.dumps(cfg['config'], sort_keys=True))

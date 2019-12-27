@@ -29,6 +29,7 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
+from tensorflow_model_analysis.evaluators import eval_saved_model_util
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import slice_key_extractor
@@ -223,12 +224,6 @@ class _PreprocessorDoFn(beam.DoFn):
 
   def __init__(self, computations: List[metric_types.MetricComputation]):
     self._computations = computations
-    output_names = []
-    for c in computations:
-      for k in c.keys:
-        if k.output_name:
-          output_names.append(k.output_name)
-    self._output_names = list(set(output_names))
     self._evaluate_num_instances = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'evaluate_num_instances')
     self._timer = beam.metrics.Metrics.distribution(
@@ -341,6 +336,14 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
           self).__init__(*[c.combiner for c in computations])
     self._compute_with_sampling = compute_with_sampling
     self._random_state = np.random.RandomState(random_seed_for_testing)
+    self._num_compacts = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_compacts')
+    # This keeps track of the number of times the poisson bootstrap encounters
+    # an empty set of elements for a slice sample. Should be extremely rare in
+    # practice, keeping this counter will help us understand if something is
+    # misbehaving.
+    self._num_bootstrap_empties = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_bootstrap_empties')
 
   def add_input(self, accumulator, element):
     elements = [element]
@@ -362,6 +365,23 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
         result = c.add_input(result, get_combiner_input(e, i))
       results.append(result)
     return results
+
+  def compact(self, accumulator: Any) -> Any:
+    self._num_compacts.inc(1)
+    return super(_ComputationsCombineFn, self).compact(accumulator)
+
+  def extract_output(self, accumulator: Any) -> Tuple[Dict[Any, Any]]:
+    result = []
+    for c, a in zip(self._combiners, accumulator):
+      output = c.extract_output(a)
+      if not output:
+        # Increase a counter for empty bootstrap samples. When sampling is not
+        # enabled, this should never be exected. This should only occur when the
+        # slice sizes are incredibly small, and seeing large values of this
+        # counter is a sign that something has gone wrong.
+        self._num_bootstrap_empties.inc(1)
+      result.append(output)
+    return tuple(result)
 
 
 @beam.ptransform_fn
@@ -406,12 +426,18 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
         result.pop(k)
     return (sliced_results[0], result)
 
+  # A fanout of 8 is used here to reduce stragglers that occur during the
+  # merger of large datasets such as historgram buckets. This has little effect
+  # on the msec profiles, but can impact the wall time and memory usage. If
+  # experiencing significantly extended run times due to stragglers, try bumping
+  # this to a larger number.
   return (sliced_extracts
           | 'CombinePerSliceKey' >> beam.CombinePerKey(
               _ComputationsCombineFn(
                   computations=computations,
                   compute_with_sampling=compute_with_sampling,
                   random_seed_for_testing=random_seed_for_testing))
+          .with_hot_key_fanout(8)
           | 'ConvertAndAddDerivedValues' >> beam.Map(
               convert_and_add_derived_values, derived_computations))
 
@@ -465,10 +491,31 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   """
   model_loaders = None
   if eval_shared_models:
-    model_loaders = {m.model_path: m.model_loader for m in eval_shared_models}
+    # TODO(b/141016373): Add support for multiple models.
+    assert len(eval_shared_models) == 1
+    model_loaders = {'': m.model_loader for m in eval_shared_models}
   computations, derived_computations = _filter_and_separate_computations(
       metric_specs.to_computations(
           metrics_specs, eval_config=eval_config, model_loaders=model_loaders))
+  # Add default metric computations
+  if (model_loaders and eval_config and
+      (not eval_config.options.HasField('include_default_metrics') or
+       eval_config.options.include_default_metrics.value)):
+    for model_name, model_loader in model_loaders.items():
+      model_types = model_loader.construct_fn(lambda x: None)()
+      if model_types.keras_model is not None:
+        # TODO(mdreves): Move handling of keras metrics to here.
+        pass
+      elif model_types.eval_saved_model is not None:
+        # Note that there is the possibility for metric naming collisions here
+        # (e.g. 'auc' calculated within the EvalSavedModel as well as by AUC
+        # metric computation performed outside the model). Currently all the
+        # overlapping metrics such as AUC that are computed outside the model
+        # are all derived metrics so they will override the metrics calculated
+        # by the model which is the desired behavior.
+        computations.extend(
+            eval_saved_model_util.metric_computations_using_eval_saved_model(
+                model_name, model_loader))
 
   # pylint: disable=no-value-for-parameter
 
@@ -573,6 +620,11 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     if spec.query_key not in metrics_specs_by_query_key:
       metrics_specs_by_query_key[spec.query_key] = []
     metrics_specs_by_query_key[spec.query_key].append(spec)
+
+  # If there are no metrics specs then add an empty one (this is required for
+  # cases where only the default metrics from the model are used).
+  if not metrics_specs_by_query_key:
+    metrics_specs_by_query_key[''] = [config.MetricsSpec()]
 
   # pylint: disable=no-value-for-parameter
 

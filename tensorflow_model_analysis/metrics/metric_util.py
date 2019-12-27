@@ -37,6 +37,39 @@ _LOGISTIC = 'logistic'
 _PROBABILITIES = 'probabilities'
 _LOGITS = 'logits'
 
+_MEAN_METRIC_WRAPPER = 'MeanMetricWrapper'
+_LOSS_FUNCTION_WRAPPER = 'LossFunctionWrapper'
+
+
+def serialize_metric(metric: tf.keras.metrics.Metric) -> Dict[Text, Any]:
+  """Serializes keras metric."""
+  cfg = tf.keras.metrics.serialize(metric)
+  # If a metric function (vs a class) is passed directly to compile, it
+  # will be wrapped in a MeanMetricWrapper which is not deserializable.
+  # If this happens, set the class name to the CamelCase from of the
+  # function name since most keras metric functions have both forms.
+  if ('class_name' in cfg and cfg['class_name'] == _MEAN_METRIC_WRAPPER and
+      'config' in cfg and 'name' in cfg['config']):
+    cfg['class_name'] = _camel_case(cfg['config']['name'])
+  return cfg
+
+
+def serialize_loss(loss: tf.keras.losses.Loss) -> Dict[Text, Any]:
+  """Serializes keras loss."""
+  cfg = tf.keras.losses.serialize(loss)
+  # If a metric function (vs a class) is passed directly to compile, it
+  # will be wrapped in a LossFunctionWrapper which is not deserializable.
+  # If this happens, set the class name to the CamelCase from of the
+  # function name since most keras loss functions have both forms.
+  if ('class_name' in cfg and cfg['class_name'] == _LOSS_FUNCTION_WRAPPER and
+      'config' in cfg and 'name' in cfg['config']):
+    cfg['class_name'] = _camel_case(cfg['config']['name'])
+  return cfg
+
+
+def _camel_case(txt: Text) -> Text:
+  return ''.join(s.capitalize() for s in txt.split('_'))
+
 
 def to_numpy(tensor: Any) -> np.ndarray:
   """Converts tensor type (list, etc) to np.ndarray if not already."""
