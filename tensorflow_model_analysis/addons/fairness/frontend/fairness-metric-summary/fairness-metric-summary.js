@@ -250,6 +250,17 @@ export class FairnessMetricSummary extends PolymerElement {
   }
 
   /**
+   * The name of the metric when compared with baseline.
+   * @param {string} metric
+   * @param {string} baseline
+   * @return {string}
+   * @private
+   */
+  metricDiffName_(metric, baseline) {
+    return metric + ' against ' + baseline;
+  }
+
+  /**
    * Constructs the header override for the table view.
    * @param {string} baseline
    * @param {!Array<string>} metrics
@@ -261,7 +272,7 @@ export class FairnessMetricSummary extends PolymerElement {
       return {};
     }
     return metrics.reduce((acc, metric) => {
-      acc[metric + '  against ' + baseline] = 'Diff. w. baseline';
+      acc[this.metricDiffName_(metric, baseline)] = 'Diff. w. baseline';
       return acc;
     }, {});
   }
@@ -337,7 +348,7 @@ export class FairnessMetricSummary extends PolymerElement {
     if (baseline) {
       return metrics.reduce((acc, metric) => {
         acc.push(metric);
-        acc.push(metric + ' against ' + baseline);
+        acc.push(this.metricDiffName_(metric, baseline));
         return acc;
       }, []);
     } else {
@@ -368,7 +379,7 @@ export class FairnessMetricSummary extends PolymerElement {
           'metrics': metrics.reduce(
               (acc, metric) => {
                 acc[metric] = sliceMetrics['metrics'][metric];
-                const metricDiffName = metric + ' against ' + baseline;
+                const metricDiffName = this.metricDiffName_(metric, baseline);
                 acc[metricDiffName] = diffRatios[metric][slice];
                 return acc;
               },
