@@ -25,28 +25,7 @@ import '@polymer/iron-flex-layout/iron-flex-layout.js';
 import '../fairness-metrics-board/fairness-metrics-board.js';
 import '../fairness-metric-and-slice-selector/fairness-metric-and-slice-selector.js';
 
-
-/**
- * The list of fainress metrics. The order is used to determine which
- * metrics is displayed by default.
- * @const
- * @private
- */
-const FAIRNESS_METRICS_ = [
-  'false_negative_rate',
-  'false_positive_rate',
-  'true_positive_rate',
-  'true_negative_rate',
-  'positive_rate',
-  'negative_rate',
-];
-
-/**
- * The prefix for fairness metric that will be applied under multihead
- * model.
- * @private {string}
- */
-const MULTIHEAD_METRIC_PREFIX_ = 'post_export_metrics';
+const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
 
 /**
  * @extends HTMLElement
@@ -159,25 +138,6 @@ export class FairnessNbContainer extends SelectEventMixin
   }
 
   /**
-   * Extracts short fairness metric name if applicable; null. otherwise.
-   * @param {string} metricName
-   * @return {?Object} An object containing fairness metric name and
-   *     threshold or null if the named metric is not a  fairness metric.
-   * @private
-   */
-  extractFairnessMetric_(metricName) {
-    for (let i = 0; i < FAIRNESS_METRICS_.length; i++) {
-      const parts = metricName.split(FAIRNESS_METRICS_[i] + '@');
-      const prefix = parts[0];
-      if (parts.length == 2 &&
-          (prefix == '' || prefix.indexOf(MULTIHEAD_METRIC_PREFIX_) == 0)) {
-        return {name: parts[0] + FAIRNESS_METRICS_[i], threshold: parts[1]};
-      }
-    }
-    return null;
-  }
-
-  /**
    * @param {!Array<!Object>} slicingMetrics
    * @return {!Array<string>|undefined} An array of names of all metrics
    *     suitable for the fairness view.
@@ -195,7 +155,7 @@ export class FairnessNbContainer extends SelectEventMixin
     });
     // Only support fairness, numeric value, and bounded value metrics.
     const isSupportedMetricFormat = (metricName) => {
-      if (this.extractFairnessMetric_(metricName)) {
+      if (Util.extractFairnessMetric(metricName)) {
         return true;
       }
       const metric_value = slicingMetrics[0]['metrics'][metricName];
@@ -219,7 +179,7 @@ export class FairnessNbContainer extends SelectEventMixin
     const otherMetrics = new Set();
     const thresholds = new Set();
     availableMetricsNames_.forEach(metricName => {
-      const fairnessMetric = this.extractFairnessMetric_(metricName);
+      const fairnessMetric = Util.extractFairnessMetric(metricName);
       if (fairnessMetric) {
         thresholds.add(fairnessMetric.threshold);
         this.thresholdedMetrics_.add(fairnessMetric.name);

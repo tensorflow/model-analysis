@@ -21,7 +21,6 @@ const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Ut
 const testSuite = goog.require('goog.testing.testSuite');
 
 testSuite({
-
   testRemovePostExportMetrics() {
     assertNotUndefined(Util.removePostExportMetrics);
     assertEquals('', Util.removePostExportMetrics(''));
@@ -32,19 +31,29 @@ testSuite({
             'post_export_metrics/false_positive_rate'));
     assertEquals(
         'post_export_metrics',
-        Util.removePostExportMetrics(
-            'post_export_metrics'));
-    assertEquals(
-        '',
-        Util.removePostExportMetrics(
-            'post_export_metrics/'));
+        Util.removePostExportMetrics('post_export_metrics'));
+    assertEquals('', Util.removePostExportMetrics('post_export_metrics/'));
     assertEquals(
         'post_export_metrics/false_positive_rate',
         Util.removePostExportMetrics(
             'post_export_metrics/post_export_metrics/false_positive_rate'));
     assertEquals(
         'post_export_metrics_foo/bar',
-        Util.removePostExportMetrics(
-            'post_export_metrics_foo/bar'));
+        Util.removePostExportMetrics('post_export_metrics_foo/bar'));
+  },
+
+  testExtractFairnessMetric() {
+    assertNotUndefined(Util.extractFairnessMetric);
+    const fairness_metric1 =
+        Util.extractFairnessMetric('post_export_metrics/positive_rate@50');
+    assertEquals('post_export_metrics/positive_rate', fairness_metric1.name);
+    assertEquals('50', fairness_metric1.threshold);
+
+    const fairness_metric2 = Util.extractFairnessMetric('negative_rate@0');
+    assertEquals('negative_rate', fairness_metric2.name);
+    assertEquals('0', fairness_metric2.threshold);
+
+    const fairness_metric3 = Util.extractFairnessMetric('neutral_rate');
+    assertNull('negative_rate', fairness_metric3);
   }
 });
