@@ -80,10 +80,10 @@ suite('fairness-metrics-table tests', () => {
         ['col:3', '0.73', '2000003', '0.61300 (0.60300, 0.62300)', '0.73'],
       ];
 
-      assert.equal(table.plotData_.length, expected_data.length);
+      assert.equal(table.tableData_.length, expected_data.length);
       for (var i = 0; i < 4; i++) {
         for (var j = 0; j < 5; j++) {
-          assert.equal(table.plotData_[i][j], expected_data[i][j]);
+          assert.equal(table.tableData_[i][j], expected_data[i][j]);
         }
       }
 

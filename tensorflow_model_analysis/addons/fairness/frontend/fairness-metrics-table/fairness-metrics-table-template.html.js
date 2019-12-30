@@ -92,7 +92,7 @@ template.innerHTML = `
   }
 </style>
 <div class="table-holder" id="table">
-  <template is="dom-repeat" items="[[plotData_]]" as="row">
+  <template is="dom-repeat" items="[[tableData_]]" as="row">
     <template is="dom-if" if="[[isHeaderRow_(index)]]">
       <div class="table-head-row">
         <template is="dom-repeat" items="[[row]]">

@@ -92,9 +92,9 @@ export class FairnessMetricsTable extends PolymerElement {
        * the table.
        * @private {!Array<!Array>}
        */
-      plotData_: {
+      tableData_: {
         type: Array,
-        computed: 'computePlotData_(data, metrics, headerOverride)',
+        computed: 'computeTableData_(data, metrics, headerOverride)',
       },
     };
   }
@@ -107,7 +107,7 @@ export class FairnessMetricsTable extends PolymerElement {
    * @return {!Array<!Array>|undefined}
    * @private
    */
-  computePlotData_(data, metrics, headerOverride) {
+  computeTableData_(data, metrics, headerOverride) {
     if (!data || !metrics || !headerOverride) {
       return undefined;
     }
@@ -122,7 +122,7 @@ export class FairnessMetricsTable extends PolymerElement {
     }
     headerRow = headerRow.map(metric => headerOverride[metric] || metric);
 
-    var plotData = [];
+    var tableData = [];
     Object.keys(data).forEach(key => {
       const metricsData = data[key]['metrics'];
       const slice = data[key]['slice'];
@@ -135,10 +135,10 @@ export class FairnessMetricsTable extends PolymerElement {
       metrics.forEach(entry => {
         tableRow.push(this.formatData_(metricsData[entry]));
       });
-      plotData.push(tableRow);
+      tableData.push(tableRow);
     });
 
-    return [headerRow].concat(plotData);
+    return [headerRow].concat(tableData);
   }
 
   /**
@@ -167,7 +167,7 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   formatFloatValue_(value) {
-    if (value == 'NaN') {
+    if (value === undefined || value == 'NaN') {
       return 'NaN';
     } else {
       return (typeof (value) == 'string') ?
