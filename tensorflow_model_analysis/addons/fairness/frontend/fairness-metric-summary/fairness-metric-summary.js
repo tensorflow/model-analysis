@@ -288,23 +288,29 @@ export class FairnessMetricSummary extends PolymerElement {
    * @private
    */
   computeDiffRatios_(baseline, data, slices, metrics) {
-    if (!baseline || !data || !slices || !metrics) {
+    if (!baseline || !data || !slices || !metrics || metrics.length == 0) {
       return undefined;
     }
-    return metrics.reduce((metricAcc, metric) => {
-      const baselineValue = tfma.CellRenderer.maybeExtractBoundedValue(
-          data.find(d => d['slice'] == baseline)['metrics'][metric]);
-      metricAcc[metric] = slices.reduce((sliceAcc, slice) => {
-        if (data.find(d => d['slice'] == slice)) {
-          sliceAcc[slice] =
-              (tfma.CellRenderer.maybeExtractBoundedValue(
-                   data.find(d => d['slice'] == slice)['metrics'][metric]) /
-               baselineValue) -
-              1;
-        }
-        return sliceAcc;
-      }, {});
-      return metricAcc;
+
+    const sliceValue = (metric, slice) =>
+        tfma.CellRenderer.maybeExtractBoundedValue(
+            data.find(d => d['slice'] == slice)['metrics'][metric]);
+
+    const baselineValues = {};
+    metrics.forEach(function(metric) {
+      baselineValues[metric] = sliceValue(metric, baseline);
+    });
+
+    return metrics.reduce((diffRatiosByMetric, metric) => {
+      diffRatiosByMetric[metric] =
+          slices.reduce((diffRatiosForMetricBySlice, slice) => {
+            if (data.find(d => d['slice'] == slice)) {
+              diffRatiosForMetricBySlice[slice] =
+                  (sliceValue(metric, slice) / baselineValues[metric]) - 1;
+            }
+            return diffRatiosForMetricBySlice;
+          }, {});
+      return diffRatiosByMetric;
     }, {});
   }
 
