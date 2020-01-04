@@ -49,10 +49,7 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
        * A list of metrics selected.
        * @type {!Array<string>}
        */
-      selectedMetrics: {
-        type: Array,
-        notify: true,
-      },
+      selectedMetrics: {type: Array, notify: true},
 
       /**
        * A list of objects which indicate if metrics have been selected.
@@ -110,6 +107,41 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
    */
   stripPostExport(metric) {
     return Util.removePostExportMetrics(metric);
+  }
+
+  /**
+   * Handler listening to any change in "Select all" check box.
+   */
+  onSelectAllCheckedChanged_(event) {
+    const checked = event.detail.value;
+    if (checked) {
+      this.selectedMetrics = this.availableMetrics.slice();
+    } else {
+      this.selectedMetrics = [];
+    }
+  }
+
+  /**
+   * Handler listening to any changes in selected item list.
+   */
+  onCheckedChanged_(event) {
+    if (!this.availableMetrics) {
+      return;
+    }
+
+    let selectedMetrics = this.selectedMetrics.slice();
+    let availableMetrics = this.availableMetrics.slice();
+    if (JSON.stringify(selectedMetrics.sort()) ==
+        JSON.stringify(availableMetrics.sort())) {
+      this.$.selectAll.checked = true;
+    } else {
+      this.$.selectAll.checked = false;
+    }
+
+    // To To re-select all the checked metrics. Un-checking "Select all"
+    // checkbox in previous if else block, will de-select all the metrics
+    // user has selected initially.
+    this.selectedMetrics = selectedMetrics.slice();
   }
 }
 

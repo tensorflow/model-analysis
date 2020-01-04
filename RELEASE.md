@@ -39,6 +39,7 @@
         different metrics to be inspected with different thresholds. Don't show
         thresholds for metrics that do not support them.
     -   Slices are now displayed in alphabetic order.
+    -   Adding an option to "Select all" metrics in UI.
 
 ## Breaking changes
 

@@ -78,4 +78,24 @@ suite('tests', () => {
     };
     setTimeout(tapMetrics, 0);
   });
+
+  test('CheckSelectAll', done => {
+    const check = () => {
+      element.$['selectAll'].fire('tap');
+
+      assert.deepEqual(element.selectedMetrics, AVAILABLE_METRICS);
+      assert.isTrue(element.$['selectAll'].checked);
+
+      let items = element.shadowRoot.querySelector('paper-listbox').items;
+      items[items.length - 1].fire('tap');
+
+      assert.isFalse(element.$['selectAll'].checked);
+
+      items[items.length - 1].fire('tap');
+
+      assert.isTrue(element.$['selectAll'].checked);
+      done();
+    };
+    setTimeout(check, 0);
+  });
 });

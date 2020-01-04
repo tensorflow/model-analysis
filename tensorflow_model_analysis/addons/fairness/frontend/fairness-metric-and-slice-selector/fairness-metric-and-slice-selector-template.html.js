@@ -38,7 +38,16 @@ template.innerHTML = `
 <div id="metric-and-slice-selector-title">
   Select metrics to display:
 </div>
-<paper-listbox multi attr-for-selected="item-name" selected-values="{{selectedMetrics}}" >
+
+<paper-item>
+  <paper-checkbox id="selectAll" on-checked-changed="onSelectAllCheckedChanged_">
+     <span class="metric-name" title$="Select all">
+       Select all
+    </span>
+  </paper-checkbox>
+</paper-item>
+
+<paper-listbox multi attr-for-selected="item-name" selected-values="{{selectedMetrics}}" on-selected-items-changed="onCheckedChanged_">
   <template is="dom-repeat" items="[[metricsSelectedStatus_]]">
     <paper-item item-name="[[item.metricsName]]">
       <paper-checkbox checked="[[item.selected]]">
