@@ -68,12 +68,6 @@ export class FairnessMetricsBoard extends PolymerElement {
       /** @type {!Array<string>} */
       metrics: {type: Array},
 
-      /** @type {!Array<string>} */
-      thresholds: {type: Array},
-
-      /** @type {!Set<string>} */
-      thresholdedMetrics: {type: Set},
-
       /** @type {string|undefined} */
       baseline_: {type: String, value: 'Overall'},
 
@@ -147,15 +141,6 @@ export class FairnessMetricsBoard extends PolymerElement {
     }
     return data.filter(d => d['metrics'][OMITTED_SLICE_ERROR_KEY])
         .map(d => d['slice']);
-  }
-
-  /**
-   * Returns thresholds if metric has thresholds.
-   * @param {string} metric
-   * @return {!Array<string>}
-   */
-  thresholdsForMetric(metric) {
-    return this.thresholdedMetrics.has(metric) ? this.thresholds : [];
   }
 }
 

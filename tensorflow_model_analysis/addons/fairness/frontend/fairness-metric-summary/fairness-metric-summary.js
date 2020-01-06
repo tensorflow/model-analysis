@@ -26,6 +26,8 @@ import '../fairness-metrics-table/fairness-metrics-table.js';
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './fairness-metric-summary-template.html.js';
 
+const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
+
 const DEFAULT_NUM_SLICES = 9;
 
 export class FairnessMetricSummary extends PolymerElement {
@@ -64,7 +66,7 @@ export class FairnessMetricSummary extends PolymerElement {
        * The list of available thresholds.
        * @type {!Array<string>}
        */
-      thresholds: {type: Array, value: () => []},
+      thresholds: {type: Array, computed: 'computeThresholds_(data, metric)'},
 
       /**
        * The list of selected thresholds.
@@ -184,6 +186,31 @@ export class FairnessMetricSummary extends PolymerElement {
   }
 
   /**
+   * @param {!Object} data
+   * @param {string} metric
+   * @private
+   * @return {!Array<number>} The array of thresholds this metric supports. If
+   *     the metric is not thresholded, return an empty array.
+   */
+  computeThresholds_(data, metric) {
+    if (!data || !metric) {
+      return [];
+    }
+    const thresholds = new Set();
+    data.forEach(sliceData => {
+      Object.keys(sliceData.metrics).forEach(metricName => {
+        if (metricName.startsWith(metric)) {
+          const fairnessMetric = Util.extractFairnessMetric(metricName);
+          if (fairnessMetric) {
+            thresholds.add(fairnessMetric.threshold);
+          }
+        }
+      });
+    });
+    return Array.from(thresholds);
+  }
+
+  /**
    * Observer for property thresholds_. Automatically selects the median
    * thresholds as default.
    * @param {!Object} thresholdsEvent
@@ -224,13 +251,13 @@ export class FairnessMetricSummary extends PolymerElement {
    * @param {!Array<string>} thresholds
    * @param {!Object} selectedThresholdsEvent
    * @param {string} baseline
-   * @param {!Array<Object>} data
+   * @param {!Array<!Object>} data
    * @return {!Array<string>} The list of full metric names to be
    *     plotted.
    * @private
    */
   computeMetrics_(metric, thresholds, selectedThresholdsEvent, baseline, data) {
-    if (!data || !baseline ||
+    if (!data || !baseline || thresholds === undefined ||
         (this.metricIsThresholded_() && !selectedThresholdsEvent.base)) {
       return [];
     }
@@ -372,7 +399,8 @@ export class FairnessMetricSummary extends PolymerElement {
    * @private
    */
   computeTableData_(baseline, data, metrics, slices, diffRatios) {
-    if (!baseline || !data || !metrics || !slices || !diffRatios) {
+    if (!baseline || !data || !metrics || !slices || !diffRatios ||
+        !Object.keys(diffRatios).length) {
       return undefined;
     }
 

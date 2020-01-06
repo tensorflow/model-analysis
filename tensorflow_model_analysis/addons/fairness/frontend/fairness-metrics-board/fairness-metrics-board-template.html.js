@@ -42,8 +42,7 @@ template.innerHTML = `
 </div>
 <template is="dom-repeat" items="[[metrics]]">
   <fairness-metric-summary data="[[data]]"
-                           metric="[[item]]" slices="[[slices_]]" baseline="[[baseline_]]"
-                           thresholds="[[thresholdsForMetric(item)]]">
+                           metric="[[item]]" slices="[[slices_]]" baseline="[[baseline_]]">
   </fairness-metric-summary>
 </template>
 `;

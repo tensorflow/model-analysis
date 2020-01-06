@@ -94,7 +94,6 @@ suite('fairness-nb-container tests', () => {
           fairnessContainer.shadowRoot.querySelector('fairness-metrics-board');
       assert.deepEqual(
           fairnessElement.metrics, ['post_export_metrics/false_positive_rate']);
-      assert.deepEqual(fairnessElement.thresholds, ['0.50', '0.60']);
       done();
     };
     setTimeout(fillData, 0);

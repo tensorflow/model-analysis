@@ -73,9 +73,7 @@ template.innerHTML = `
   </div>
   <paper-card id="metrics">
     <fairness-metrics-board data="[[slicingMetrics]]" weight-column="[[weightColumn]]"
-                      metrics="[[selectedMetrics_]]"
-                      thresholds="[[fairnessThresholds_]]"
-                      thresholded-metrics="[[thresholdedMetrics_]]">
+                      metrics="[[selectedMetrics_]]">
     </fairness-metrics-board>
   </paper-card>
 </div>

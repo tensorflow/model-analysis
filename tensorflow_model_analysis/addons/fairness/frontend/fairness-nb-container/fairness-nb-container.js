@@ -55,7 +55,7 @@ export class FairnessNbContainer extends SelectEventMixin
        * "slice" and "metrics". For example:
        * [
        *   {
-       *     "slice":"Overall",
+       *     "slice": "Overall",
        *     "sliceValue": "Overall"
        *     "metrics": {
        *       "auc": {
@@ -92,23 +92,11 @@ export class FairnessNbContainer extends SelectEventMixin
       },
 
       /**
-       * A set containing metrics that are thresholded.
-       * @private {!Object}
-       */
-      thresholdedMetrics_: {type: Set},
-
-      /**
        * The short names of metrics available. eg: auc, negative_rate or
        * post_export_metrics/head_1/negative_rate.
        * @private {!Array<string>}
        */
       selectableMetrics_: {type: Array},
-
-      /**
-       * The thresholds at which fairness metrics are computed.
-       * @private {!Array<string>}
-       */
-      fairnessThresholds_: {type: Array},
 
       /** @private {!Array<string>} */
       selectedMetrics_: {
@@ -134,9 +122,8 @@ export class FairnessNbContainer extends SelectEventMixin
     }
     this.availableMetricsNames_ =
         this.computeAvailableMetricsNames_(slicingMetrics);
-    this.updateSelectableMetricsAndThresholds_(this.availableMetricsNames_);
+    this.updateSelectableMetrics_(this.availableMetricsNames_);
   }
-
   /**
    * @param {!Array<!Object>} slicingMetrics
    * @return {!Array<string>|undefined} An array of names of all metrics
@@ -174,15 +161,13 @@ export class FairnessNbContainer extends SelectEventMixin
    * @param {!Array<string>|undefined} availableMetricsNames_
    * @private
    */
-  updateSelectableMetricsAndThresholds_(availableMetricsNames_) {
-    this.thresholdedMetrics_ = new Set();
+  updateSelectableMetrics_(availableMetricsNames_) {
+    const thresholdedMetrics = new Set();
     const otherMetrics = new Set();
-    const thresholds = new Set();
     availableMetricsNames_.forEach(metricName => {
       const fairnessMetric = Util.extractFairnessMetric(metricName);
       if (fairnessMetric) {
-        thresholds.add(fairnessMetric.threshold);
-        this.thresholdedMetrics_.add(fairnessMetric.name);
+        thresholdedMetrics.add(fairnessMetric.name);
       } else {
         otherMetrics.add(metricName);
       }
@@ -190,11 +175,9 @@ export class FairnessNbContainer extends SelectEventMixin
 
     const setToArray = (s) => Array.from(s.entries()).map(entry => entry[0]);
     this.selectableMetrics_ = [
-      ...setToArray(this.thresholdedMetrics_)
-          .sort((a, b) => a.localeCompare(b)),
+      ...setToArray(thresholdedMetrics).sort((a, b) => a.localeCompare(b)),
       ...setToArray(otherMetrics).sort((a, b) => a.localeCompare(b))
     ];
-    this.fairnessThresholds_ = setToArray(thresholds).sort();
   }
 };
 

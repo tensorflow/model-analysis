@@ -117,7 +117,6 @@ suite('fairness-metric-summary tests', () => {
       metricSummary.slices = SLICES;
       metricSummary.data = BOUNDED_VALUE_DATA;
       metricSummary.metric = 'post_export_metrics/false_negative_rate';
-      metricSummary.thresholds = ['0.30', '0.50'];
       metricSummary.baseline = 'Overall';
     };
 
@@ -188,7 +187,6 @@ suite('fairness-metric-summary tests', () => {
       metricSummary.data = DOUBLE_VALUE_DATA;
       metricSummary.slices = SLICES;
       metricSummary.metric = 'accuracy';
-      metricSummary.thresholds = [];
       metricSummary.baseline = 'Overall';
     };
 
@@ -256,7 +254,6 @@ suite('fairness-metric-summary tests', () => {
     const fillData = () => {
       metricSummary.metric = 'post_export_metrics/false_negative_rate';
       metricSummary.slices = SLICES.slice(0, 2);
-      metricSummary.thresholds = THRESHOLDS;
       metricSummary.baseline = 'Overall';
       metricSummary.data = DOUBLE_VALUE_DATA.slice(0, 2);
     };
@@ -276,7 +273,6 @@ suite('fairness-metric-summary tests', () => {
 
     const fillData = () => {
       metricSummary.metric = 'accuracy';
-      metricSummary.thresholds = [];
       metricSummary.baseline = 'Overall';
       metricSummary.slices = SLICES;
       metricSummary.data = DOUBLE_VALUE_DATA;
@@ -297,7 +293,6 @@ suite('fairness-metric-summary tests', () => {
 
     const fillData = () => {
       metricSummary.metric = 'accuracy';
-      metricSummary.thresholds = [];
       metricSummary.baseline = 'Overall';
       metricSummary.slices = SLICES.slice(0, 3);
       metricSummary.data = DOUBLE_VALUE_DATA.slice(0, 3);

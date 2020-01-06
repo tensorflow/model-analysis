@@ -76,7 +76,6 @@ suite('fairness-metrics-board tests', () => {
     fairness = fixture('test-fixture');
 
     const fillData = () => {
-      fairness.thresholds = ['0.30', '0.50', '0.70'];
       fairness.data = BOUNDED_VALUE_DATA;
       fairness.weightColumn = 'totalWeightedExamples';
       fairness.metrics = ['post_export_metrics/false_negative_rate'];
@@ -96,7 +95,6 @@ suite('fairness-metrics-board tests', () => {
       assert.deepEqual(
           metricSummary.slices, BOUNDED_VALUE_DATA_SORTED.map(v => v['slice']));
       assert.deepEqual(metricSummary.baseline, 'Overall');
-      assert.deepEqual(metricSummary.thresholds, ['0.30', '0.50', '0.70']);
 
       done();
     };
