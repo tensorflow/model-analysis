@@ -60,7 +60,8 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | extractor.stage_name >> extractor.ptransform)
 
@@ -139,7 +140,8 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | extractor.stage_name >> extractor.ptransform)
 
@@ -234,7 +236,8 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | extractor.stage_name >> extractor.ptransform)
 

@@ -81,7 +81,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     with beam.Pipeline() as pipeline:
       (metrics, plots), _ = (
           pipeline
-          | 'Create' >> beam.Create(serialized_examples)
+          | 'Create' >> beam.Create(serialized_examples, reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
           | 'ComputeMetricsAndPlots' >>

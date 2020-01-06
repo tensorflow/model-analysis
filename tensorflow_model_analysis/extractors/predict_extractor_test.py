@@ -67,7 +67,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       predict_extracts = (
           pipeline
-          | beam.Create(serialized_examples)
+          | beam.Create(serialized_examples, reshuffle=False)
           # Our diagnostic outputs, pass types.Extracts throughout, however our
           # aggregating functions do not use this interface.
           | beam.Map(lambda x: {constants.INPUT_KEY: x})
@@ -113,7 +113,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       predict_extracts = (
           pipeline
-          | beam.Create(serialized_examples)
+          | beam.Create(serialized_examples, reshuffle=False)
           # Our diagnostic outputs, pass types.Extracts throughout, however our
           # aggregating functions do not use this interface.
           | beam.Map(lambda x: {constants.INPUT_KEY: x})
@@ -159,7 +159,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
     with beam.Pipeline() as pipeline:
       predict_extracts = (
           pipeline
-          | beam.Create(raw_example_bytes)
+          | beam.Create(raw_example_bytes, reshuffle=False)
           # Our diagnostic outputs, pass types.Extracts throughout, however our
           # aggregating functions do not use this interface.
           | beam.Map(lambda x: {constants.INPUT_KEY: x})

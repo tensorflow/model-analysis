@@ -78,7 +78,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | predict_extractor.stage_name >> predict_extractor.ptransform)
 
@@ -120,7 +121,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | predict_extractor.stage_name >> predict_extractor.ptransform)
 
@@ -163,7 +165,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | predict_extractor.stage_name >> predict_extractor.ptransform)
 
@@ -225,7 +228,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | predict_extractor.stage_name >> predict_extractor.ptransform)
 
@@ -295,7 +299,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | predict_extractor.stage_name >> predict_extractor.ptransform)
 
@@ -368,7 +373,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create(predict_features)
+          | 'Create' >> beam.Create(predict_features, reshuffle=False)
           | 'FeaturesToExtracts' >>
           beam.Map(lambda x: {constants.FEATURES_KEY: x})
           | predict_extractor.stage_name >> predict_extractor.ptransform)
@@ -433,7 +438,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create(predict_features)
+          | 'Create' >> beam.Create(predict_features, reshuffle=False)
           | 'FeaturesToExtracts' >>
           beam.Map(lambda x: {constants.FEATURES_KEY: x})
           | predict_extractor.stage_name >> predict_extractor.ptransform)
@@ -491,7 +496,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create(predict_features)
+          | 'Create' >> beam.Create(predict_features, reshuffle=False)
           | 'FeaturesToExtracts' >>
           beam.Map(lambda x: {constants.FEATURES_KEY: x})
           | predict_extractor.stage_name >> predict_extractor.ptransform)
@@ -527,7 +532,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       predict_extracts = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
           | 'FeaturesToExtracts' >> model_eval_lib.InputsToExtracts()
           | predict_extractor.stage_name >> predict_extractor.ptransform)
 

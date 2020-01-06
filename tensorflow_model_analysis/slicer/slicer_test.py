@@ -360,7 +360,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
       fpls = create_fpls()
       metrics = (
           pipeline
-          | 'CreateTestInput' >> beam.Create(fpls)
+          | 'CreateTestInput' >> beam.Create(fpls, reshuffle=False)
           | 'WrapFpls' >> beam.Map(wrap_fpl)
           | 'ExtractSlices' >> slice_key_extractor._ExtractSliceKeys([
               slicer.SingleSliceSpec(),
