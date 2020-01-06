@@ -405,7 +405,7 @@ def prepare_labels_and_predictions(
       predictions.size == 0):
     return (labels, predictions)
 
-  if label_vocabulary is not None and labels.dtype.kind in ('U', 'S'):
+  if label_vocabulary is not None and labels.dtype.kind in ('U', 'S', 'O'):
     labels = _string_labels_to_class_ids(label_vocabulary, labels)
 
   # Classify scores contain two values intead of one for binary classification

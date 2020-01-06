@@ -261,6 +261,15 @@ class UtilTest(tf.test.TestCase):
     self.assertAllClose(got_labels, np.array([0, 1]))
     self.assertAllClose(got_preds, np.array([0.2, 0.8]))
 
+  def testPrepareLabelsAndPredictionsWithVocabUsingObjectType(self):
+    labels = np.array(['e', 'f'], dtype=np.object)
+    preds = {'probabilities': [0.2, 0.8], 'all_classes': ['a', 'b', 'c']}
+    got_labels, got_preds = metric_util.prepare_labels_and_predictions(
+        labels, preds, label_vocabulary=['e', 'f'])
+
+    self.assertAllClose(got_labels, np.array([0, 1]))
+    self.assertAllClose(got_preds, np.array([0.2, 0.8]))
+
   def testSelectClassIDSparse(self):
     labels = np.array([2])
     preds = np.array([0.2, 0.7, 0.1])
