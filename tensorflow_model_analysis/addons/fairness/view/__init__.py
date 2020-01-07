@@ -11,3 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Init module for TensorFlow Model Analysis addons fairness view."""
+
+from tensorflow_model_analysis.addons.fairness.view import widget_view

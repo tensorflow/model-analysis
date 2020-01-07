@@ -11,3 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Init module for TensorFlow Model Analysis addons fairness metrics."""
+
+from tensorflow_model_analysis.addons.fairness.post_export_metrics import fairness_indicators
