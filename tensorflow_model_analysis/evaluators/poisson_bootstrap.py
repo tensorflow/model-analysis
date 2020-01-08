@@ -18,13 +18,14 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-# Standard Imports
 import apache_beam as beam
 import numpy as np
 
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Type, Union
+
+from google.protobuf import message
 
 DEFAULT_NUM_BOOTSTRAP_SAMPLES = 20
 
@@ -116,7 +117,8 @@ class _MergeBootstrap(beam.DoFn):
 
     Yields:
       A tuple of slice key and the metrics dict which contains the unsampled
-      value, as well as parameters about t distribution.
+      value, as well as parameters about t distribution. If the metric is a
+      proto only the unsampled value will be returned.
 
     Raises:
       ValueError if the key of metrics inside element does not equal to the
@@ -148,8 +150,13 @@ class _MergeBootstrap(beam.DoFn):
 
     metrics_with_confidence = {}
     for metrics_name in metrics_dict:
-      metrics_with_confidence[metrics_name] = _calculate_t_distribution(
-          metrics_dict[metrics_name], unsampled_metrics_dict[metrics_name])
+      # If metric is a proto, return as is.
+      unsampled_value = unsampled_metrics_dict[metrics_name]
+      if isinstance(unsampled_value, message.Message):
+        metrics_with_confidence[metrics_name] = unsampled_value
+      else:
+        metrics_with_confidence[metrics_name] = _calculate_t_distribution(
+            metrics_dict[metrics_name], unsampled_value)
 
     yield slice_key, metrics_with_confidence
 
