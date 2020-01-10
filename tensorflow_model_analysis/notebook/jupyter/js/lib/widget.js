@@ -51,6 +51,9 @@ const TIME_SERIES_ELEMENT_NAME = 'tfma-nb-time-series';
 const PLOT_MODEL_NAME = 'PlotModel';
 const PLOT_VIEW_NAME = 'PlotView';
 const PLOT_ELEMENT_NAME = 'tfma-nb-plot';
+const FAIRNESS_INDICATOR_MODEL_NAME = 'FairnessIndicatorModel';
+const FAIRNESS_INDICATOR_VIEW_NAME = 'FairnessIndicatorView';
+const FAIRNESS_INDICATOR_ELEMENT_NAME = 'fairness-nb-container';
 
 const SlicingMetricsModel = widgets.DOMWidgetModel.extend({
   defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
@@ -161,6 +164,40 @@ const PlotView = widgets.DOMWidgetView.extend({
     this.view_.config = this.model.get('config');
   },
 });
+const FairnessIndicatorModel = widgets.DOMWidgetModel.extend({
+  defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
+    _model_name: FAIRNESS_INDICATOR_MODEL_NAME,
+    _view_name: FAIRNESS_INDICATOR_VIEW_NAME,
+    _model_module: MODULE_NAME,
+    _view_module: MODULE_NAME,
+    _model_module_version: MODEL_VERSION,
+    _view_module_version: VIEW_VERSION,
+    config: {},
+    data: [],
+  })
+});
+
+const FairnessIndicatorView = widgets.DOMWidgetView.extend({
+  render: function() {
+    loadVulcanizedTemplate();
+
+    this.view_ = document.createElement(FAIRNESS_INDICATOR_ELEMENT_NAME);
+    this.el.appendChild(this.view_);
+
+    delayedRender(() => {
+      this.configChanged_();
+      this.dataChanged_();
+      this.model.on('change:config', this.configChanged_, this);
+      this.model.on('change:data', this.dataChanged_, this);
+    });
+  },
+  dataChanged_: function() {
+    this.view_.data = this.model.get('data');
+  },
+  configChanged_: function() {
+    this.view_.config = this.model.get('config');
+  },
+});
 
 /**
  * Handler for events of type "tfma-event" for the given view element.
@@ -183,4 +220,6 @@ module.exports = {
   [SLICING_METRICS_VIEW_NAME]: SlicingMetricsView,
   [TIME_SERIES_MODEL_NAME]: TimeSeriesModel,
   [TIME_SERIES_VIEW_NAME]: TimeSeriesView,
+  [FAIRNESS_INDICATOR_MODEL_NAME]: FairnessIndicatorModel,
+  [FAIRNESS_INDICATOR_VIEW_NAME]: FairnessIndicatorView,
 };
