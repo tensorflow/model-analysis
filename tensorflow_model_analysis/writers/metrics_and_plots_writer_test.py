@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +24,7 @@ import tempfile
 # Standard Imports
 
 import apache_beam as beam
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
@@ -81,8 +82,8 @@ class MetricsAndPlotsWriterTest(testutil.TensorflowModelAnalysisTest):
         constants.PLOTS_KEY: plots_file
     }
     writers = [
-        metrics_and_plots_writer.MetricsAndPlotsWriter(eval_shared_model,
-                                                       output_paths)
+        metrics_and_plots_writer.MetricsAndPlotsWriter(
+            output_paths, eval_shared_model.add_metrics_callbacks)
     ]
 
     with beam.Pipeline() as pipeline:

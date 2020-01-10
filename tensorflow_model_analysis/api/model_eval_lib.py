@@ -411,35 +411,33 @@ def default_evaluators(  # pylint: disable=invalid-name
 
 
 def default_writers(
-    eval_shared_model: Optional[types.EvalSharedModel] = None,
-    eval_shared_models: Optional[List[types.EvalSharedModel]] = None,
-    output_path: Optional[Text] = None,
-    eval_config: config.EvalConfig = None,
+    output_path: Optional[Text],
+    eval_shared_model: Optional[Union[types.EvalSharedModel,
+                                      Dict[Text, types.EvalSharedModel]]] = None
 ) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
 
   Args:
-    eval_shared_model: Shared model (single-model evaluation).
-    eval_shared_models: Shared models (multi-model evaluation).
-    output_path: Deprecated (use EvalConfig).
-    eval_config: Eval config.
+    output_path: Output path.
+    eval_shared_model: Optional shared model (single-model evaluation) or dict
+      of shared models keyed by model name (multi-model evaluation). Only
+      required if legacy add_metrics_callbacks are used.
   """
-  # TODO(b/141016373): Add support for multiple models.
-  if eval_config is not None:
-    output_spec = eval_config.output_data_specs[0]
-  elif output_path is not None:
-    output_spec = config.OutputDataSpec(default_location=output_path)
-  if eval_shared_model is not None:
-    eval_shared_models = [eval_shared_model]
+  add_metric_callbacks = []
+  if eval_shared_model:
+    eval_shared_models = eval_shared_model
+    if not isinstance(eval_shared_model, dict):
+      eval_shared_models = {'': eval_shared_model}
+    for v in eval_shared_models.values():
+      add_metric_callbacks.extend(v.add_metrics_callbacks)
+
   output_paths = {
-      constants.METRICS_KEY:
-          output_filename(output_spec, constants.METRICS_KEY),
-      constants.PLOTS_KEY:
-          output_filename(output_spec, constants.PLOTS_KEY)
+      constants.METRICS_KEY: os.path.join(output_path, constants.METRICS_KEY),
+      constants.PLOTS_KEY: os.path.join(output_path, constants.PLOTS_KEY)
   }
   return [
       metrics_and_plots_writer.MetricsAndPlotsWriter(
-          eval_shared_model=eval_shared_models[0], output_paths=output_paths)
+          output_paths=output_paths, add_metrics_callbacks=add_metric_callbacks)
   ]
 
 
@@ -721,7 +719,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
 
   if not writers:
     writers = default_writers(
-        eval_config=eval_config, eval_shared_models=eval_shared_models)
+        output_path=eval_config.output_data_specs[0].default_location,
+        eval_shared_model=eval_shared_models[0])
 
   # pylint: disable=no-value-for-parameter
   _ = (

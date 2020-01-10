@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,42 +19,47 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-import apache_beam as beam
+from typing import Dict, List, Text
 
+import apache_beam as beam
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
 from tensorflow_model_analysis.writers import writer
 
-from typing import Dict, Text
 
+def MetricsAndPlotsWriter(
+    output_paths: Dict[Text, Text],
+    add_metrics_callbacks: List[types.AddMetricsCallbackType]) -> writer.Writer:
+  """Returns metrics and plots writer.
 
-def MetricsAndPlotsWriter(eval_shared_model: types.EvalSharedModel,
-                          output_paths: Dict[Text, Text]) -> writer.Writer:
+  Args:
+    output_paths: Output paths keyed by output key (e.g. 'metrics', 'plots').
+    add_metrics_callbacks: Optional list of metric callbacks (if used).
+  """
   return writer.Writer(
       stage_name='WriteMetricsAndPlots',
       ptransform=_WriteMetricsAndPlots(  # pylint: disable=no-value-for-parameter
-          eval_shared_model=eval_shared_model,
-          output_paths=output_paths))
+          output_paths=output_paths,
+          add_metrics_callbacks=add_metrics_callbacks))
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(evaluator.Evaluation)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
-def _WriteMetricsAndPlots(evaluation: evaluator.Evaluation,
-                          eval_shared_model: types.EvalSharedModel,
-                          output_paths: Dict[Text, Text]):
+def _WriteMetricsAndPlots(
+    evaluation: evaluator.Evaluation, output_paths: Dict[Text, Text],
+    add_metrics_callbacks: List[types.AddMetricsCallbackType]):
   """PTransform to write metrics and plots."""
 
   metrics = evaluation[constants.METRICS_KEY]
   plots = evaluation[constants.PLOTS_KEY]
 
-  metrics, plots = (
-      (metrics, plots)
-      | 'SerializeMetricsAndPlots' >>
-      metrics_and_plots_serialization.SerializeMetricsAndPlots(
-          post_export_metrics=eval_shared_model.add_metrics_callbacks))
+  metrics, plots = ((metrics, plots)
+                    | 'SerializeMetricsAndPlots' >>
+                    metrics_and_plots_serialization.SerializeMetricsAndPlots(
+                        add_metrics_callbacks=add_metrics_callbacks))
 
   if constants.METRICS_KEY in output_paths:
     _ = metrics | 'WriteMetrics' >> beam.io.WriteToTFRecord(

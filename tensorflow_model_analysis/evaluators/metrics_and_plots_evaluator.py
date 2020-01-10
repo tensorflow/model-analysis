@@ -227,7 +227,7 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
         (metrics, plots)
         | 'SerializeMetricsAndPlots' >>
         metrics_and_plots_serialization.SerializeMetricsAndPlots(
-            post_export_metrics=eval_shared_model.add_metrics_callbacks))
+            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks))
 
   return {metrics_key: metrics, plots_key: plots}
 

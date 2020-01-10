@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +19,13 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Any, Dict, List, Optional, Text, Tuple
+
 import apache_beam as beam
 
 import numpy as np
 import six
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
@@ -30,8 +33,6 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-
-from typing import Any, Dict, List, Optional, Text, Tuple
 
 from google.protobuf import json_format
 
@@ -231,7 +232,7 @@ def _convert_to_array_value(
 
 def convert_slice_metrics(
     slice_key: slicer.SliceKeyType, slice_metrics: Dict[Any, Any],
-    post_export_metrics: List[types.AddMetricsCallbackType],
+    add_metrics_callbacks: List[types.AddMetricsCallbackType],
     metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice) -> None:
   """Converts slice_metrics into the given metrics_for_slice proto."""
 
@@ -239,13 +240,14 @@ def convert_slice_metrics(
   # Prevent further references to this, so we don't accidentally mutate it.
   del slice_metrics
 
-  # Convert the metrics from post_export_metrics to the structured output if
+  # Convert the metrics from add_metrics_callbacks to the structured output if
   # defined.
-  if post_export_metrics:
-    for post_export_metric in post_export_metrics:
-      if hasattr(post_export_metric, 'populate_stats_and_pop'):
-        post_export_metric.populate_stats_and_pop(slice_key, slice_metrics_copy,
-                                                  metrics_for_slice.metrics)
+  if add_metrics_callbacks:
+    for add_metrics_callback in add_metrics_callbacks:
+      if hasattr(add_metrics_callback, 'populate_stats_and_pop'):
+        add_metrics_callback.populate_stats_and_pop(slice_key,
+                                                    slice_metrics_copy,
+                                                    metrics_for_slice.metrics)
   for key in sorted(slice_metrics_copy.keys()):
     value = slice_metrics_copy[key]
     metric_value = metrics_for_slice_pb2.MetricValue()
@@ -285,12 +287,12 @@ def convert_slice_metrics(
 
 def _serialize_metrics(
     metrics: Tuple[slicer.SliceKeyType, Dict[Any, Any]],
-    post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
+    add_metrics_callbacks: List[types.AddMetricsCallbackType]) -> bytes:
   """Converts the given slice metrics into serialized proto MetricsForSlice.
 
   Args:
     metrics: The slice metrics.
-    post_export_metrics: A list of metric callbacks. This should be the same
+    add_metrics_callbacks: A list of metric callbacks. This should be the same
       list as the one passed to tfma.Evaluate().
 
   Returns:
@@ -317,24 +319,24 @@ def _serialize_metrics(
   result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   # Convert the slice metrics.
-  convert_slice_metrics(slice_key, slice_metrics, post_export_metrics, result)
+  convert_slice_metrics(slice_key, slice_metrics, add_metrics_callbacks, result)
   return result.SerializeToString()
 
 
 def _convert_slice_plots(
     slice_plots: Dict[Any, Any],
-    post_export_metrics: List[types.AddMetricsCallbackType],
+    add_metrics_callbacks: List[types.AddMetricsCallbackType],
     plots_for_slice: metrics_for_slice_pb2.PlotsForSlice):
   """Converts slice_plots into the given plot_data proto."""
   slice_plots_copy = slice_plots.copy()
   # Prevent further references to this, so we don't accidentally mutate it.
   del slice_plots
 
-  if post_export_metrics:
-    for post_export_metric in post_export_metrics:
-      if hasattr(post_export_metric, 'populate_plots_and_pop'):
-        post_export_metric.populate_plots_and_pop(slice_plots_copy,
-                                                  plots_for_slice.plots)
+  if add_metrics_callbacks:
+    for add_metrics_callback in add_metrics_callbacks:
+      if hasattr(add_metrics_callback, 'populate_plots_and_pop'):
+        add_metrics_callback.populate_plots_and_pop(slice_plots_copy,
+                                                    plots_for_slice.plots)
   plots_by_key = {}
   for key in sorted(slice_plots_copy.keys()):
     value = slice_plots_copy[key]
@@ -367,25 +369,25 @@ def _convert_slice_plots(
       slice_plots_copy.pop(key)
 
   if slice_plots_copy:
-    if post_export_metrics is None:
-      post_export_metrics = []
+    if add_metrics_callbacks is None:
+      add_metrics_callbacks = []
     raise NotImplementedError(
-        'some plots were not converted or popped. keys: %s. post_export_metrics'
-        'were: %s' % (
+        'some plots were not converted or popped. keys: %s. '
+        'add_metrics_callbacks were: %s' % (
             slice_plots_copy.keys(),
             [
-                x.name for x in post_export_metrics  # pytype: disable=attribute-error
+                x.name for x in add_metrics_callbacks  # pytype: disable=attribute-error
             ]))
 
 
 def _serialize_plots(
     plots: Tuple[slicer.SliceKeyType, Dict[Any, Any]],
-    post_export_metrics: List[types.AddMetricsCallbackType]) -> bytes:
+    add_metrics_callbacks: List[types.AddMetricsCallbackType]) -> bytes:
   """Converts the given slice plots into serialized proto PlotsForSlice..
 
   Args:
     plots: The slice plots.
-    post_export_metrics: A list of metric callbacks. This should be the same
+    add_metrics_callbacks: A list of metric callbacks. This should be the same
       list as the one passed to tfma.Evaluate().
 
   Returns:
@@ -408,7 +410,7 @@ def _serialize_plots(
   result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   # Convert the slice plots.
-  _convert_slice_plots(slice_plots, post_export_metrics, result)  # pytype: disable=wrong-arg-types
+  _convert_slice_plots(slice_plots, add_metrics_callbacks, result)  # pytype: disable=wrong-arg-types
 
   return result.SerializeToString()
 
@@ -416,8 +418,8 @@ def _serialize_plots(
 class SerializeMetrics(beam.PTransform):  # pylint: disable=invalid-name
   """Converts metrics to serialized protos."""
 
-  def __init__(self, post_export_metrics: List[types.AddMetricsCallbackType]):
-    self._post_export_metrics = post_export_metrics
+  def __init__(self, add_metrics_callbacks: List[types.AddMetricsCallbackType]):
+    self._add_metrics_callbacks = add_metrics_callbacks
 
   def expand(self, metrics: beam.pvalue.PCollection):
     """Converts the given metrics into serialized proto.
@@ -429,15 +431,15 @@ class SerializeMetrics(beam.PTransform):  # pylint: disable=invalid-name
       PCollection of serialized proto MetricsForSlice.
     """
     metrics = metrics | 'SerializeMetrics' >> beam.Map(
-        _serialize_metrics, post_export_metrics=self._post_export_metrics)
+        _serialize_metrics, add_metrics_callbacks=self._add_metrics_callbacks)
     return metrics
 
 
 class SerializePlots(beam.PTransform):  # pylint: disable=invalid-name
   """Converts plots serialized protos."""
 
-  def __init__(self, post_export_metrics: List[types.AddMetricsCallbackType]):
-    self._post_export_metrics = post_export_metrics
+  def __init__(self, add_metrics_callbacks: List[types.AddMetricsCallbackType]):
+    self._add_metrics_callbacks = add_metrics_callbacks
 
   def expand(self, plots: beam.pvalue.PCollection):
     """Converts the given plots into serialized proto.
@@ -449,7 +451,7 @@ class SerializePlots(beam.PTransform):  # pylint: disable=invalid-name
       PCollection of serialized proto MetricsForSlice.
     """
     plots = plots | 'SerializePlots' >> beam.Map(
-        _serialize_plots, post_export_metrics=self._post_export_metrics)
+        _serialize_plots, add_metrics_callbacks=self._add_metrics_callbacks)
     return plots
 
 
@@ -458,8 +460,8 @@ class SerializePlots(beam.PTransform):  # pylint: disable=invalid-name
 class SerializeMetricsAndPlots(beam.PTransform):  # pylint: disable=invalid-name
   """Converts metrics and plots into serialized protos."""
 
-  def __init__(self, post_export_metrics: List[types.AddMetricsCallbackType]):
-    self._post_export_metrics = post_export_metrics
+  def __init__(self, add_metrics_callbacks: List[types.AddMetricsCallbackType]):
+    self._add_metrics_callbacks = add_metrics_callbacks
 
   def expand(self, metrics_and_plots: Tuple[beam.pvalue.PCollection,
                                             beam.pvalue.PCollection]):
@@ -473,7 +475,7 @@ class SerializeMetricsAndPlots(beam.PTransform):  # pylint: disable=invalid-name
     """
     metrics, plots = metrics_and_plots
     metrics = metrics | 'SerializeMetrics' >> beam.Map(
-        _serialize_metrics, post_export_metrics=self._post_export_metrics)
+        _serialize_metrics, add_metrics_callbacks=self._add_metrics_callbacks)
     plots = plots | 'SerializePlots' >> beam.Map(
-        _serialize_plots, post_export_metrics=self._post_export_metrics)
+        _serialize_plots, add_metrics_callbacks=self._add_metrics_callbacks)
     return (metrics, plots)
