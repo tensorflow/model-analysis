@@ -208,11 +208,12 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
               """
               matrices {
                 threshold: 0.3
+                false_negatives: 1.0
                 true_negatives: 1.0
                 false_positives: 1.0
-                true_positives: 2.0
-                precision: 0.6666667
-                recall: 1.0
+                true_positives: 1.0
+                precision: 0.5
+                recall: 0.5
               }
               matrices {
                 threshold: 0.5
@@ -224,11 +225,11 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
               }
               matrices {
                 threshold: 0.8
-                false_negatives: 2.0
+                false_negatives: 1.0
                 true_negatives: 2.0
                 true_positives: 1.0
                 precision: 1.0
-                recall: 0.3333333
+                recall: 0.5
               }
           """, got_metric)
 

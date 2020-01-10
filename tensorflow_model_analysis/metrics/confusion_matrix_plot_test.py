@@ -92,10 +92,9 @@ class ConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
                 recall: 1.0
               }
               matrices {
-                true_negatives: 1.0
-                false_positives: 1.0
+                false_positives: 2.0
                 true_positives: 2.0
-                precision: 0.6666667
+                precision: 0.5
                 recall: 1.0
               }
               matrices {

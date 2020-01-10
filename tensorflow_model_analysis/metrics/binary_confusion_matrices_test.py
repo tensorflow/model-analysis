@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,21 +19,74 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 
 
-class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest):
+class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
+                                  parameterized.TestCase):
 
-  def testBinaryConfusionMatrices(self):
-    computations = binary_confusion_matrices.binary_confusion_matrices(
-        num_thresholds=3)
+  @parameterized.named_parameters(
+      ('using_num_thresholds', {
+          'num_thresholds': 3
+      },
+       binary_confusion_matrices.Matrices(
+           thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+           tp=[2.0, 1.0, 0.0],
+           fp=[2.0, 0.0, 0.0],
+           tn=[0.0, 2.0, 2.0],
+           fn=[0.0, 1.0, 2.0])),
+      ('single_threshold', {
+          'thresholds': [0.5]
+      },
+       binary_confusion_matrices.Matrices(
+           thresholds=[0.5], tp=[1.0], fp=[0.0], tn=[2.0], fn=[1.0])),
+      ('inner_thresholds', {
+          'thresholds': [0.25, 0.75]
+      },
+       binary_confusion_matrices.Matrices(
+           thresholds=[0.25, 0.75],
+           tp=[2.0, 1.0],
+           fp=[1.0, 0.0],
+           tn=[1.0, 2.0],
+           fn=[0.0, 1.0])),
+      ('boundary_thresholds', {
+          'thresholds': [0.0, 1.0]
+      },
+       binary_confusion_matrices.Matrices(
+           thresholds=[0.0, 1.0],
+           tp=[2.0, 0.0],
+           fp=[2.0, 0.0],
+           tn=[0.0, 2.0],
+           fn=[0.0, 2.0])),
+      ('left_boundary', {
+          'thresholds': [0.0, 0.5]
+      },
+       binary_confusion_matrices.Matrices(
+           thresholds=[0.0, 0.5],
+           tp=[2.0, 1.0],
+           fp=[2.0, 0.0],
+           tn=[0.0, 2.0],
+           fn=[0.0, 1.0])),
+      ('right_boundary', {
+          'thresholds': [0.5, 1.0]
+      },
+       binary_confusion_matrices.Matrices(
+           thresholds=[0.5, 1.0],
+           tp=[1.0, 0.0],
+           fp=[0.0, 0.0],
+           tn=[2.0, 2.0],
+           fn=[1.0, 2.0])),
+  )
+  def testBinaryConfusionMatrices(self, kwargs, expected_matrices):
+    computations = binary_confusion_matrices.binary_confusion_matrices(**kwargs)
     histogram = computations[0]
     matrices = computations[1]
 
@@ -80,14 +134,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest):
           key = metric_types.MetricKey(name='_binary_confusion_matrices')
           self.assertIn(key, got_metrics)
           got_matrices = got_metrics[key]
-          self.assertEqual(
-              got_matrices,
-              binary_confusion_matrices.Matrices(
-                  thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
-                  tp=[2.0, 1.0, 0.0],
-                  fp=[2.0, 0.0, 0.0],
-                  tn=[0.0, 2.0, 2.0],
-                  fn=[0.0, 1.0, 2.0]))
+          self.assertEqual(got_matrices, expected_matrices)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

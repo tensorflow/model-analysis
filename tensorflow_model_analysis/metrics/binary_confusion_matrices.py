@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +19,10 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Any, Dict, List, NamedTuple, Optional, Text
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
-from typing import Any, Dict, List, NamedTuple, Optional, Text
 
 DEFAULT_NUM_THRESHOLDS = calibration_histogram.DEFAULT_NUM_BUCKETS
 
@@ -120,33 +121,29 @@ def binary_confusion_matrices(
         # This case is used for a single threshold within [0, 1] (e.g. 0.5).
         rebin_thresholds = [-_EPSILON, thresholds[0] + _EPSILON, 1.0 + _EPSILON]
     else:
-      rebin_thresholds = ([thresholds[0]] +
-                          [t + _EPSILON for t in thresholds[1:]])
+      rebin_thresholds = [t + _EPSILON if t != 0 else t for t in thresholds]
       if thresholds[0] >= 0:
         # Add -epsilon bucket to account for differences in histogram vs
         # confusion matrix intervals mentioned above. If the epsilon bucket is
         # missing the false negatives and false positives will be 0 for the
         # first threshold.
         rebin_thresholds = [-_EPSILON] + rebin_thresholds
+      if thresholds[-1] < 1.0:
+        # If the last threshold < 1.0, then add a fence post at 1.0 + epsilon
+        # othewise true negatives and true positives will be overcounted.
+        rebin_thresholds = rebin_thresholds + [1.0 + _EPSILON]
+
     histogram = calibration_histogram.rebin(rebin_thresholds,
                                             metrics[histogram_key])
     matrices = _to_binary_confusion_matrices(thresholds, histogram)
-    if len(thresholds) == 1:
-      # Reset back to 1 bucket
-      matrices = Matrices(
-          thresholds,
-          tp=[matrices.tp[1]],
-          fp=[matrices.fp[1]],
-          tn=[matrices.tn[1]],
-          fn=[matrices.fn[1]])
-    elif thresholds[0] >= 0:
-      # Remove -epsilon bucket
-      matrices = Matrices(
-          thresholds[1:],
-          tp=matrices.tp[1:],
-          fp=matrices.fp[1:],
-          tn=matrices.tn[1:],
-          fn=matrices.fn[1:])
+    # Check if need to remove -epsilon bucket (or reset back to 1 bucket).
+    start_index = 1 if thresholds[0] >= 0 or len(thresholds) == 1 else 0
+    matrices = Matrices(
+        thresholds,
+        tp=matrices.tp[start_index:start_index + len(thresholds)],
+        fp=matrices.fp[start_index:start_index + len(thresholds)],
+        tn=matrices.tn[start_index:start_index + len(thresholds)],
+        fn=matrices.fn[start_index:start_index + len(thresholds)])
 
     return {key: matrices}
 
