@@ -27,6 +27,8 @@
     `ConfusionMatrixPlot`, `MultiClassConfusionMatrixAtThresholds` to
     `MultiClassConfusionMatrixPlot` and `MultiLabelConfusionMatrixAtThresholds`
     to `MultiLabelConfusionMatrixPlot`.
+*   Added Jupyter support to Fairness Indicators. Currently does not support WIT
+    integration.
 
 ## Bug fixes and other changes
 

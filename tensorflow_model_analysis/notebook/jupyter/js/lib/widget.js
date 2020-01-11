@@ -199,6 +199,40 @@ const FairnessIndicatorView = widgets.DOMWidgetView.extend({
   },
 });
 
+const FairnessIndicatorModel = widgets.DOMWidgetModel.extend({
+  defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
+    _model_name: FAIRNESS_INDICATOR_MODEL_NAME,
+    _view_name: FAIRNESS_INDICATOR_VIEW_NAME,
+    _model_module: MODULE_NAME,
+    _view_module: MODULE_NAME,
+    _model_module_version: MODEL_VERSION,
+    _view_module_version: VIEW_VERSION,
+    slicingMetrics: [],
+    js_events: [],
+  })
+});
+
+const FairnessIndicatorView = widgets.DOMWidgetView.extend({
+  render: function() {
+    loadVulcanizedTemplate();
+
+    this.view_ = document.createElement(FAIRNESS_INDICATOR_ELEMENT_NAME);
+    this.el.appendChild(this.view_);
+
+    this.view_.addEventListener('tfma-event', (e) => {
+      handleTfmaEvent(e, this);
+    });
+
+    delayedRender(() => {
+      this.slicingMetricsChanged_();
+      this.model.on('change:slicingMetrics', this.slicingMetricsChanged_, this);
+    });
+  },
+  slicingMetricsChanged_: function() {
+    this.view_.slicingMetrics = this.model.get('slicingMetrics');
+  },
+});
+
 /**
  * Handler for events of type "tfma-event" for the given view element.
  * @param {!Event} tfmaEvent

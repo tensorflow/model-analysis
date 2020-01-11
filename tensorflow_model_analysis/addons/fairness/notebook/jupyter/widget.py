@@ -13,6 +13,8 @@
 # limitations under the License.
 """Defines Fairness Indicator's Jupyter notebook widgets."""
 import ipywidgets as widgets
+import traitlets
+from traitlets import List
 from traitlets import Unicode
 
 
@@ -25,4 +27,20 @@ class FairnessIndicatorViewer(widgets.DOMWidget):
   _model_name = Unicode('FairnessIndicatorModel').tag(sync=True)
   _model_module = Unicode('tfma_widget_js').tag(sync=True)
   _model_module_version = Unicode('0.1.0').tag(sync=True)
-  value = Unicode('Hello World!').tag(sync=True)
+  slicingMetrics = List().tag(sync=True)
+
+  # Used for handling on the js side.
+  eventHandlers = {}
+  js_events = List([]).tag(sync=True)
+
+  @traitlets.observe('js_events')
+  def _handle_js_events(self, change):
+    if self.js_events:
+      if self.eventHandlers:
+        for event in self.js_events:
+          event_name = event['name']
+          if event_name in self.eventHandlers:
+            self.eventHandlers[event_name](event['detail'])
+
+      # clears the event queue.
+      self.js_events = []

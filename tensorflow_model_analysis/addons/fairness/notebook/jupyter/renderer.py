@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,17 +17,17 @@
 from tensorflow_model_analysis.addons.fairness.notebook.jupyter import widget
 
 
-# TODO(b/147495615): add slicing_metrics arg, which will get passed in to
-# FairnessIndicatorViewer, which will pass it to fairness-nb-container
-def render_fairness_indicator(event_handlers=None) -> None:
+def render_fairness_indicator(slicing_metrics, event_handlers=None) -> None:
   """Renders the fairness indicator view in Colab.
 
   Args:
+    slicing_metrics: A dictionary containing data for visualization.
     event_handlers: The event handler callback.
 
   Returns:
     FairnessIndicatorViewer object
   """
   view = widget.FairnessIndicatorViewer()
-  view.event_handlers = event_handlers
+  view.slicingMetrics = slicing_metrics
+  view.eventHandlers = event_handlers
   return view

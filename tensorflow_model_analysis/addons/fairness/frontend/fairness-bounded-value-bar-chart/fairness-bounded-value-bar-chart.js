@@ -56,32 +56,34 @@ const NUM_DECIMAL_PLACES = 5;
  * @return {!d3.tip.x}
  */
 function buildTooltips() {
-  return d3.tip()
-      .style('font-size', '10px')
-      .style('padding', '2px')
-      .style('background-color', '#616161')
-      .style('color', '#fff')
-      .style('border-radius', '2px')
-      .html(d => {
-        let html = '<table><tbody>';
-        html += '<tr><td>Slice</td><td>' + d.fullSliceName + '</td></tr>';
-        const metricName = Util.removePostExportMetrics(d.metricName);
-        html += '<tr><td>Metric</td><td>' + metricName + '</td></tr>';
-        html += '<tr><td>Value</td><td>' + d.value.toFixed(NUM_DECIMAL_PLACES) +
-            '</td></tr>';
-        if (d.upperBound && d.lowerBound) {
-          const conf_int = ' (' + d.upperBound.toFixed(NUM_DECIMAL_PLACES) +
-              ', ' + d.lowerBound.toFixed(NUM_DECIMAL_PLACES) + ')';
-          html +=
-              '<tr><td>Confidence Interval</td><td>' + conf_int + '</td></tr>';
-        }
-        if (d.exampleCount) {
-          html +=
-              '<tr><td>Example Count</td><td>' + d.exampleCount + '</td></tr>';
-        }
-        html += '</tbody></table>';
-        return html;
-      });
+  return d3.tip === undefined ?
+      undefined :
+      d3.tip()
+          .style('font-size', '10px')
+          .style('padding', '2px')
+          .style('background-color', '#616161')
+          .style('color', '#fff')
+          .style('border-radius', '2px')
+          .html(d => {
+            let html = '<table><tbody>';
+            html += '<tr><td>Slice</td><td>' + d.fullSliceName + '</td></tr>';
+            const metricName = Util.removePostExportMetrics(d.metricName);
+            html += '<tr><td>Metric</td><td>' + metricName + '</td></tr>';
+            html += '<tr><td>Value</td><td>' +
+                d.value.toFixed(NUM_DECIMAL_PLACES) + '</td></tr>';
+            if (d.upperBound && d.lowerBound) {
+              const conf_int = ' (' + d.upperBound.toFixed(NUM_DECIMAL_PLACES) +
+                  ', ' + d.lowerBound.toFixed(NUM_DECIMAL_PLACES) + ')';
+              html += '<tr><td>Confidence Interval</td><td>' + conf_int +
+                  '</td></tr>';
+            }
+            if (d.exampleCount) {
+              html += '<tr><td>Example Count</td><td>' + d.exampleCount +
+                  '</td></tr>';
+            }
+            html += '</tbody></table>';
+            return html;
+          });
 }
 
 
@@ -148,11 +150,11 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    * @param {string} baseline slice of the metrics.
    * @param {boolean} isAttached Whether this element is attached to
    *     the DOM.
-   * @param {!d3.tip.x} tip for barc chart.
+   // * @param {!d3.tip.x} tip for bar chart.
    * @private
    */
   initializePlotGraph_(data, metrics, slices, baseline, isAttached, tip) {
-    if (!data || !metrics || !slices || !baseline || !isAttached || !tip) {
+    if (!data || !metrics || !slices || !baseline || !isAttached) {
       return;
     }
 
@@ -281,8 +283,8 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
             'fill',
             d => d.fullSliceName == baseline ? baselineColor(d.metricName) :
                                                metricsColor(d.metricName))
-        .on('mouseover', this.tip_.show)
-        .on('mouseout', this.tip_.hide)
+        .on('mouseover', tip ? tip.show : () => {})
+        .on('mouseout', tip ? tip.hide : () => {})
         .on('click', (d, i) => {
           this.dispatchEvent(new CustomEvent(
               tfma.Event.SELECT,
@@ -302,7 +304,9 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     // Draw X Y axis.
     svg.append('g').attr('id', 'xaxis').call(configureXAxis);
     svg.append('g').attr('id', 'yaxis').call(configureYAxis);
-    svg.call(tip);
+    if (tip) {
+      svg.call(tip);
+    }
   }
 
   /**
