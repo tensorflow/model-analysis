@@ -101,12 +101,12 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
   }
 
   /**
-   * Strip post_export_metrics/ from metric name.
+   * Strip prefix from metric name.
    * @param {string} metric
    * @return {string}
    */
-  stripPostExport(metric) {
-    return Util.removePostExportMetrics(metric);
+  stripPrefix(metric) {
+    return Util.removeMetricNamePrefix(metric);
   }
 
   /**

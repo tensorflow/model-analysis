@@ -22,6 +22,12 @@ goog.module('tensorflow_model_analysis.addons.fairness.frontend.Util');
  */
 const MULTIHEAD_METRIC_PREFIX_ = 'post_export_metrics/';
 
+/**
+ * @const {string}
+ * @private
+ */
+const FAIRNESS_METRIC_PREFIX_ = 'fairness_indicators_metrics/';
+
 
 /**
  * The list of fainress metrics. The order is used to determine which
@@ -42,10 +48,13 @@ const FAIRNESS_METRICS_ = [
  * @param {string} metricName
  * @return {string}
  */
-exports.removePostExportMetrics = function(metricName) {
-  return metricName.startsWith(MULTIHEAD_METRIC_PREFIX_) ?
-      metricName.slice(MULTIHEAD_METRIC_PREFIX_.length) :
-      metricName;
+exports.removeMetricNamePrefix = function(metricName) {
+  if (metricName.startsWith(MULTIHEAD_METRIC_PREFIX_)) {
+    return metricName.slice(MULTIHEAD_METRIC_PREFIX_.length);
+  } else if (metricName.startsWith(FAIRNESS_METRIC_PREFIX_)) {
+    return metricName.slice(FAIRNESS_METRIC_PREFIX_.length);
+  }
+  return metricName;
 };
 
 /**
@@ -59,8 +68,9 @@ exports.extractFairnessMetric = function(metricName) {
     const parts = metricName.split(FAIRNESS_METRICS_[i] + '@');
     const prefix = parts[0];
     if (parts.length == 2 &&
-        (prefix == '' || prefix.indexOf(MULTIHEAD_METRIC_PREFIX_) == 0)) {
-      return {name: parts[0] + FAIRNESS_METRICS_[i], threshold: parts[1]};
+        (prefix == '' || prefix.indexOf(MULTIHEAD_METRIC_PREFIX_) == 0 ||
+         prefix.indexOf(FAIRNESS_METRIC_PREFIX_) == 0)) {
+      return {name: prefix + FAIRNESS_METRICS_[i], threshold: parts[1]};
     }
   }
   return null;

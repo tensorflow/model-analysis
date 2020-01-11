@@ -21,25 +21,37 @@ const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Ut
 const testSuite = goog.require('goog.testing.testSuite');
 
 testSuite({
-  testRemovePostExportMetrics() {
-    assertNotUndefined(Util.removePostExportMetrics);
-    assertEquals('', Util.removePostExportMetrics(''));
-    assertEquals('accuracy', Util.removePostExportMetrics('accuracy'));
+  testRemoveMetricNamePrefix() {
+    assertNotUndefined(Util.removeMetricNamePrefix);
+    assertEquals('', Util.removeMetricNamePrefix(''));
+    assertEquals('accuracy', Util.removeMetricNamePrefix('accuracy'));
     assertEquals(
         'false_positive_rate',
-        Util.removePostExportMetrics(
-            'post_export_metrics/false_positive_rate'));
+        Util.removeMetricNamePrefix('post_export_metrics/false_positive_rate'));
+    assertEquals(
+        'false_positive_rate',
+        Util.removeMetricNamePrefix(
+            'fairness_indicators_metrics/false_positive_rate'));
     assertEquals(
         'post_export_metrics',
-        Util.removePostExportMetrics('post_export_metrics'));
-    assertEquals('', Util.removePostExportMetrics('post_export_metrics/'));
+        Util.removeMetricNamePrefix('post_export_metrics'));
+    assertEquals(
+        'fairness_indicators_metrics',
+        Util.removeMetricNamePrefix('fairness_indicators_metrics'));
+    assertEquals('', Util.removeMetricNamePrefix('post_export_metrics/'));
+    assertEquals(
+        '', Util.removeMetricNamePrefix('fairness_indicators_metrics/'));
     assertEquals(
         'post_export_metrics/false_positive_rate',
-        Util.removePostExportMetrics(
+        Util.removeMetricNamePrefix(
             'post_export_metrics/post_export_metrics/false_positive_rate'));
     assertEquals(
+        'fairness_indicators_metrics/false_positive_rate',
+        Util.removeMetricNamePrefix(
+            'fairness_indicators_metrics/fairness_indicators_metrics/false_positive_rate'));
+    assertEquals(
         'post_export_metrics_foo/bar',
-        Util.removePostExportMetrics('post_export_metrics_foo/bar'));
+        Util.removeMetricNamePrefix('post_export_metrics_foo/bar'));
   },
 
   testExtractFairnessMetric() {

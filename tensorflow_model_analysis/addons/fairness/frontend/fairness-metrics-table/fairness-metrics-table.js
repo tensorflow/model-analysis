@@ -118,7 +118,7 @@ export class FairnessMetricsTable extends PolymerElement {
 
     let headerRow = ['feature'];
     for (let i = 0; i < metrics.length; i++) {
-      headerRow.push(Util.removePostExportMetrics(metrics[i]));
+      headerRow.push(Util.removeMetricNamePrefix(metrics[i]));
     }
     headerRow = headerRow.map(metric => headerOverride[metric] || metric);
 

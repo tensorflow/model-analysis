@@ -67,7 +67,7 @@ function buildTooltips() {
           .html(d => {
             let html = '<table><tbody>';
             html += '<tr><td>Slice</td><td>' + d.fullSliceName + '</td></tr>';
-            const metricName = Util.removePostExportMetrics(d.metricName);
+            const metricName = Util.removeMetricNamePrefix(d.metricName);
             html += '<tr><td>Metric</td><td>' + metricName + '</td></tr>';
             html += '<tr><td>Value</td><td>' +
                 d.value.toFixed(NUM_DECIMAL_PLACES) + '</td></tr>';

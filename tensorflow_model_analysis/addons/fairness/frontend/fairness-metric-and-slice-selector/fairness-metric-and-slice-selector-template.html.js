@@ -51,8 +51,8 @@ template.innerHTML = `
   <template is="dom-repeat" items="[[metricsSelectedStatus_]]">
     <paper-item item-name="[[item.metricsName]]">
       <paper-checkbox checked="[[item.selected]]">
-         <span class="metric-name" title$="[[stripPostExport(item.metricsName)]]">
-           [[stripPostExport(item.metricsName)]]
+         <span class="metric-name" title$="[[stripPrefix(item.metricsName)]]">
+           [[stripPrefix(item.metricsName)]]
         </span>
       </paper-checkbox>
     </paper-item>
