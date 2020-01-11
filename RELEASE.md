@@ -29,7 +29,8 @@
     to `MultiLabelConfusionMatrixPlot`.
 *   Added Jupyter support to Fairness Indicators. Currently does not support WIT
     integration.
-
+*   Added fairness indicators metrics
+    `tfma.addons.fairness.metrics.FairnessIndicators`.
 ## Bug fixes and other changes
 
 *   Fixed error in `tfma-multi-class-confusion-matrix-at-thresholds` with

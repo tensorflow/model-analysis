@@ -1,4 +1,5 @@
-# Copyright 2019 Google LLC
+# Lint as: python3
+# Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Init module for TensorFlow Model Analysis addons fairness."""
+"""Init module for TensorFlow Model Analysis fairness metrics."""
 
-from tensorflow_model_analysis.addons.fairness import metrics
-from tensorflow_model_analysis.addons.fairness import post_export_metrics
-from tensorflow_model_analysis.addons.fairness import view
+# The import will trigger the metrics registration.
+from tensorflow_model_analysis.addons.fairness.metrics.fairness_indicators import FairnessIndicators
