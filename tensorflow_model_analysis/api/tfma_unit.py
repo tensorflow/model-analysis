@@ -272,10 +272,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec()],
-        model_specs=[config.ModelSpec(location=eval_saved_model_path)],
-        output_data_specs=[config.OutputDataSpec()])
+    eval_config = config.EvalConfig()
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks)
@@ -368,11 +365,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     slicing_specs = None
     if slice_spec:
       slicing_specs = [s.to_proto() for s in slice_spec]
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec()],
-        model_specs=[config.ModelSpec(location=eval_saved_model_path)],
-        output_data_specs=[config.OutputDataSpec()],
-        slicing_specs=slicing_specs)
+    eval_config = config.EvalConfig(slicing_specs=slicing_specs)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks)

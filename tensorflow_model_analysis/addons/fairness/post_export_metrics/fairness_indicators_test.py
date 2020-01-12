@@ -66,16 +66,12 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
     slicing_specs = None
     if slice_spec:
       slicing_specs = [s.to_proto() for s in slice_spec]
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec()],
-        model_specs=[config.ModelSpec(location=eval_export_dir)],
-        output_data_specs=[config.OutputDataSpec()],
-        slicing_specs=slicing_specs)
+    eval_config = config.EvalConfig(slicing_specs=slicing_specs)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=metrics_callbacks)
     extractors = model_eval_lib.default_extractors(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
     with beam.Pipeline() as pipeline:
       (metrics, plots), _ = (
           pipeline

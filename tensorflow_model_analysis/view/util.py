@@ -128,11 +128,9 @@ def get_time_series(
           'metrics': matching_slices[0]['metrics'],
           'config': {
               'modelIdentifier':
-                  _get_identifier(result.config.model_specs[0].location,
-                                  display_full_path),
+                  _get_identifier(result.model_location, display_full_path),
               'dataIdentifier':
-                  _get_identifier(result.config.input_data_specs[0].location,
-                                  display_full_path),
+                  _get_identifier(result.data_location, display_full_path),
           }
       })
     elif slice_count > 1:

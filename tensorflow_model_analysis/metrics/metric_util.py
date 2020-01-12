@@ -231,7 +231,10 @@ def to_label_prediction_example_weight(
   prediction_key = ''
   if eval_config and eval_config.model_specs:
     for spec in eval_config.model_specs:
-      if spec.name == model_name:
+      # To maintain consistency between settings where single models are used,
+      # always use '' as the model name regardless of whether a name is passed.
+      spec_name = spec.name if len(eval_config.model_specs) > 1 else ''
+      if spec_name == model_name:
         prediction_key = spec.prediction_key
         break
   label, prediction = prepare_labels_and_predictions(label, prediction,

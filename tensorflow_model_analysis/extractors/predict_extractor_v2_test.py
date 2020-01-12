@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +24,7 @@ import os
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
@@ -46,12 +47,11 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(temp_export_dir, None))
 
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(
@@ -104,12 +104,11 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
         temp_export_dir, None, n_classes=2)
 
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
@@ -147,12 +146,11 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
         temp_export_dir, None, n_classes=3)
 
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
@@ -190,12 +188,11 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     temp_export_dir = self._getExportDir()
     export_dir, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(
@@ -257,8 +254,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir2, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
     eval_config = config.EvalConfig(model_specs=[
-        config.ModelSpec(location=export_dir1, name='model1'),
-        config.ModelSpec(location=export_dir2, name='model2')
+        config.ModelSpec(name='model1'),
+        config.ModelSpec(name='model2')
     ])
     eval_shared_model1 = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir1, tags=[tf.saved_model.SERVING])
@@ -266,7 +263,10 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=export_dir2, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(
         eval_config=eval_config,
-        eval_shared_models=[eval_shared_model1, eval_shared_model2])
+        eval_shared_model={
+            'model1': eval_shared_model1,
+            'model2': eval_shared_model2
+        })
 
     examples = [
         self._makeExample(
@@ -349,12 +349,11 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
 
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     predict_features = [
         {
@@ -414,12 +413,11 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
 
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     # Notice that the features are 'test' but the model expects 'test_input'.
     # This tests that the PredictExtractor properly handles this case.
@@ -478,12 +476,11 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
 
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     predict_extractor = predict_extractor_v2.PredictExtractor(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     predict_features = []
     for _ in range(4):
@@ -518,10 +515,9 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         None, temp_export_dir)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(location=export_dir)])
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
     predict_extractor = predict_extractor_v2.PredictExtractor(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
     with beam.Pipeline() as pipeline:
       examples = [
           self._makeExample(classes='first', scores=0.0, labels='third'),

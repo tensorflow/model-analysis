@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +20,7 @@ from __future__ import print_function
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
@@ -105,7 +106,6 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testInputExtractorMultiOutput(self):
     model_spec = config.ModelSpec(
-        location='',
         label_keys={
             'output1': 'label1',
             'output2': 'label2'

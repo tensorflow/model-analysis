@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +22,9 @@ import os
 import pickle
 import tempfile
 
-# Standard Imports
+from typing import Dict, List, NamedTuple, Optional, Text, Union
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
@@ -46,8 +47,6 @@ from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-from typing import Dict, List, NamedTuple, Optional, Text, Union
-
 
 LegacyConfig = NamedTuple(
     'LegacyConfig',
@@ -99,7 +98,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
       self.assertFalse(expected_value, msg='Actual value was empty.')
 
   def assertSliceMetricsEqual(self, expected_metrics, got_metrics):
-    self.assertItemsEqual(
+    self.assertCountEqual(
         list(expected_metrics.keys()),
         list(got_metrics.keys()),
         msg='keys do not match. expected_metrics: %s, got_metrics: %s' %
@@ -134,24 +133,25 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         linear_classifier.simple_linear_classifier)
     examples = [self._makeExample(age=3.0, language='english', label=1.0)]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[config.ModelSpec(location=model_location)],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ])
+    eval_config = config.EvalConfig()
     # No construct_fn should fail when Beam attempts to call the construct_fn.
     eval_shared_model = types.EvalSharedModel(model_path=model_location)
     with self.assertRaisesRegexp(AttributeError,
                                  '\'NoneType\' object has no attribute'):
       model_eval_lib.run_model_analysis(
-          eval_config=eval_config, eval_shared_models=[eval_shared_model])
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          data_location=data_location,
+          output_path=self._getTempDir())
 
     # Using the default_eval_shared_model should pass as it has a construct_fn.
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location)
     model_eval_lib.run_model_analysis(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
+        data_location=data_location,
+        output_path=self._getTempDir())
 
   def testRunModelAnalysisExtraFieldsPlusFeatureExtraction(self):
     model_location = self._exportEvalSavedModel(
@@ -165,13 +165,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config.SlicingSpec(feature_keys=['my_slice'])]
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[config.ModelSpec(location=model_location)],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ],
-        slicing_specs=slicing_specs)
+    eval_config = config.EvalConfig(slicing_specs=slicing_specs)
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, example_weight_key='age')
     slice_spec = [slicer.SingleSliceSpec(spec=slicing_specs[0])]
@@ -185,10 +179,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     ]
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_models=[
-            model_eval_lib.default_eval_shared_model(
-                eval_saved_model_path=model_location, example_weight_key='age')
-        ],
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'),
+        data_location=data_location,
+        output_path=self._getTempDir(),
         extractors=extractors_with_feature_extraction)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
@@ -236,10 +230,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             },
         },
     }
-    self.assertEqual(eval_result.config.model_specs[0].location,
-                     model_location.decode())
-    self.assertEqual(eval_result.config.input_data_specs[0].location,
-                     data_location)
+    self.assertEqual(eval_result.model_location, model_location.decode())
+    self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
                      config.SlicingSpec(feature_keys=['my_slice']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
@@ -260,19 +252,13 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     options = config.Options()
     options.k_anonymization_count.value = 2
     eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[config.ModelSpec(location=model_location)],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ],
-        slicing_specs=slicing_specs,
-        options=options)
+        slicing_specs=slicing_specs, options=options)
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_models=[
-            model_eval_lib.default_eval_shared_model(
-                eval_saved_model_path=model_location, example_weight_key='age')
-        ])
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'),
+        data_location=data_location,
+        output_path=self._getTempDir())
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -313,10 +299,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             },
         }
     }
-    self.assertEqual(eval_result.config.model_specs[0].location,
-                     model_location.decode())
-    self.assertEqual(eval_result.config.input_data_specs[0].location,
-                     data_location)
+    self.assertEqual(eval_result.model_location, model_location.decode())
+    self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
                      config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
@@ -358,24 +342,17 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     for class_id in (0, 5, 9):
       metrics_spec.binarize.class_ids.append(class_id)
     eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[
-            config.ModelSpec(location=model_location, label_key='label')
-        ],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ],
+        model_specs=[config.ModelSpec(label_key='label')],
         metrics_specs=[metrics_spec])
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_models=[
-            model_eval_lib.default_eval_shared_model(
-                eval_saved_model_path=model_location,
-                tags=[tf.saved_model.SERVING])
-        ])
-    self.assertEqual(eval_result.config.model_specs[0].location, model_location)
-    self.assertEqual(eval_result.config.input_data_specs[0].location,
-                     data_location)
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location,
+            tags=[tf.saved_model.SERVING]),
+        data_location=data_location,
+        output_path=self._getTempDir())
+    self.assertEqual(eval_result.model_location, model_location)
+    self.assertEqual(eval_result.data_location, data_location)
     self.assertLen(eval_result.slicing_metrics, 1)
     got_slice_key, got_metrics = eval_result.slicing_metrics[0]
     self.assertEqual(got_slice_key, ())
@@ -427,13 +404,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config.SlicingSpec()]
     eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[
-            config.ModelSpec(location=model_location, label_key='label')
-        ],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ],
+        model_specs=[config.ModelSpec(label_key='label')],
         slicing_specs=slicing_specs,
         metrics_specs=metric_specs.specs_from_metrics(
             [ndcg.NDCG(gain_key='age', name='ndcg')],
@@ -443,15 +414,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=model_location, tags=[tf.saved_model.SERVING])
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_models=[eval_shared_model],
+        eval_shared_model=eval_shared_model,
+        data_location=data_location,
+        output_path=self._getTempDir(),
         evaluators=[
             metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-                eval_config=eval_config, eval_shared_models=[eval_shared_model])
+                eval_config=eval_config, eval_shared_model=eval_shared_model)
         ])
 
-    self.assertEqual(eval_result.config.model_specs[0].location, model_location)
-    self.assertEqual(eval_result.config.input_data_specs[0].location,
-                     data_location)
+    self.assertEqual(eval_result.model_location, model_location)
+    self.assertEqual(eval_result.data_location, data_location)
     self.assertLen(eval_result.slicing_metrics, 1)
     got_slice_key, got_metrics = eval_result.slicing_metrics[0]
     self.assertEqual(got_slice_key, ())
@@ -482,18 +454,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config.SlicingSpec()]
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[config.ModelSpec(location=model_location)],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ],
-        slicing_specs=slicing_specs)
+    eval_config = config.EvalConfig(slicing_specs=slicing_specs)
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, example_weight_key='age')
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_models=[eval_shared_model],
+        eval_shared_model=eval_shared_model,
+        data_location=data_location,
+        output_path=self._getTempDir(),
         evaluators=[
             metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
                 eval_shared_model),
@@ -533,10 +501,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             },
         }
     }
-    self.assertEqual(eval_result.config.model_specs[0].location,
-                     model_location.decode())
-    self.assertEqual(eval_result.config.input_data_specs[0].location,
-                     data_location)
+    self.assertEqual(eval_result.model_location, model_location.decode())
+    self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0], config.SlicingSpec())
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
@@ -557,19 +523,13 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     options.compute_confidence_intervals.value = True
     options.k_anonymization_count.value = 2
     eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[config.ModelSpec(location=model_location)],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ],
-        slicing_specs=slicing_specs,
-        options=options)
+        slicing_specs=slicing_specs, options=options)
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_models=[
-            model_eval_lib.default_eval_shared_model(
-                eval_saved_model_path=model_location, example_weight_key='age')
-        ])
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'),
+        data_location=data_location,
+        output_path=self._getTempDir())
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -614,10 +574,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             },
         }
     }
-    self.assertEqual(eval_result.config.model_specs[0].location,
-                     model_location.decode())
-    self.assertEqual(eval_result.config.input_data_specs[0].location,
-                     data_location)
+    self.assertEqual(eval_result.model_location, model_location.decode())
+    self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
                      config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
@@ -634,17 +592,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(prediction=1.0, label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[config.ModelSpec(location=model_location)],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ])
+    eval_config = config.EvalConfig()
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location,
         add_metrics_callbacks=[post_export_metrics.auc_plots()])
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
+        data_location=data_location,
+        output_path=self._getTempDir())
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
@@ -675,12 +631,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(prediction=1.0, label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location=data_location)],
-        model_specs=[config.ModelSpec(location=model_location)],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ])
+    eval_config = config.EvalConfig()
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location,
         add_metrics_callbacks=[
@@ -688,7 +639,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
             post_export_metrics.auc_plots(metric_tag='test')
         ])
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config, eval_shared_models=[eval_shared_model])
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
+        data_location=data_location,
+        output_path=self._getTempDir())
 
     # pipeline works.
     expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
@@ -719,20 +673,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         '5.0,chinese,1.0'
     ]
     data_location = self._writeCSVToTextFile(examples)
-    eval_config = config.EvalConfig(
-        input_data_specs=[
-            config.InputDataSpec(location=data_location, file_format='text')
-        ],
-        model_specs=[config.ModelSpec(location=model_location)],
-        output_data_specs=[
-            config.OutputDataSpec(default_location=self._getTempDir())
-        ])
+    eval_config = config.EvalConfig()
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_models=[
-            model_eval_lib.default_eval_shared_model(
-                eval_saved_model_path=model_location)
-        ])
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location),
+        data_location=data_location,
+        file_format='text',
+        output_path=self._getTempDir())
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -846,17 +794,13 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     final_dict['eval_config'] = old_config
     with tf.io.TFRecordWriter(os.path.join(output_path, 'eval_config')) as w:
       w.write(pickle.dumps(final_dict))
-    got_eval_config = model_eval_lib.load_eval_config(output_path)
+    got_eval_config, got_data_location, _, got_model_locations = (
+        model_eval_lib._load_eval_run(output_path))
     options = config.Options()
     options.compute_confidence_intervals.value = (
         old_config.compute_confidence_intervals)
     options.k_anonymization_count.value = old_config.k_anonymization_count
     eval_config = config.EvalConfig(
-        input_data_specs=[
-            config.InputDataSpec(location=old_config.data_location)
-        ],
-        model_specs=[config.ModelSpec(location=old_config.model_location)],
-        output_data_specs=[config.OutputDataSpec(default_location=output_path)],
         slicing_specs=[
             config.SlicingSpec(
                 feature_keys=['country'],
@@ -873,6 +817,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         ],
         options=options)
     self.assertEqual(eval_config, got_eval_config)
+    self.assertEqual(old_config.data_location, got_data_location)
+    self.assertLen(got_model_locations, 1)
+    self.assertEqual(old_config.model_location,
+                     list(got_model_locations.values())[0])
 
   def testSerializeDeserializeEvalConfig(self):
     output_path = self._getTempDir()
@@ -880,9 +828,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     options.compute_confidence_intervals.value = False
     options.k_anonymization_count.value = 1
     eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location='/path/to/data')],
-        model_specs=[config.ModelSpec(location='/path/to/model')],
-        output_data_specs=[config.OutputDataSpec(default_location=output_path)],
         slicing_specs=[
             config.SlicingSpec(
                 feature_keys=['country'],
@@ -898,11 +843,20 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 })
         ],
         options=options)
+    data_location = '/path/to/data'
+    file_format = 'tfrecords'
+    model_location = '/path/to/model'
     with tf.io.gfile.GFile(os.path.join(output_path, 'eval_config.json'),
                            'w') as f:
-      f.write(model_eval_lib._serialize_eval_config(eval_config))
-    got_eval_config = model_eval_lib.load_eval_config(output_path)
+      f.write(
+          model_eval_lib._serialize_eval_run(eval_config, data_location,
+                                             file_format, {'': model_location}))
+    got_eval_config, got_data_location, got_file_format, got_model_locations = (
+        model_eval_lib._load_eval_run(output_path))
     self.assertEqual(eval_config, got_eval_config)
+    self.assertEqual(data_location, got_data_location)
+    self.assertEqual(file_format, got_file_format)
+    self.assertEqual({'': model_location}, got_model_locations)
 
 
 if __name__ == '__main__':

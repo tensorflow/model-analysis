@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,14 +21,15 @@ from __future__ import print_function
 
 import copy
 
+from typing import Dict, List, Optional, Sequence, Text, Union
+
 import apache_beam as beam
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
-from typing import List, Sequence
 
 PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
@@ -36,7 +38,9 @@ PREDICT_SIGNATURE_DEF_KEY = 'predict'
 
 def PredictExtractor(
     eval_config: config.EvalConfig,
-    eval_shared_models: List[types.EvalSharedModel]) -> extractor.Extractor:
+    eval_shared_model: Union[types.EvalSharedModel,
+                             Dict[Text, types.EvalSharedModel]],
+    desired_batch_size: Optional[int] = None) -> extractor.Extractor:
   """Creates an extractor for performing predictions.
 
   The extractor's PTransform loads and runs the serving saved_model(s) against
@@ -48,16 +52,28 @@ def PredictExtractor(
 
   Args:
     eval_config: Eval config.
-    eval_shared_models: Shared model parameters.
+    eval_shared_model: Shared model (single-model evaluation) or dict of shared
+      models keyed by model name (multi-model evaluation).
+    desired_batch_size: Optional batch size.
 
   Returns:
     Extractor for extracting predictions.
   """
+  eval_shared_models = eval_shared_model
+  if not isinstance(eval_shared_model, dict):
+    eval_shared_models = {'': eval_shared_model}
+  # To maintain consistency between settings where single models are used,
+  # always use '' as the model name regardless of whether a name is passed.
+  if len(eval_shared_models) == 1:
+    eval_shared_models = {'': list(eval_shared_models.values())[0]}
+
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractPredictions(
-          eval_config=eval_config, eval_shared_models=eval_shared_models))
+          eval_config=eval_config,
+          eval_shared_models=eval_shared_models,
+          desired_batch_size=desired_batch_size))
 
 
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
@@ -66,9 +82,9 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
   """A DoFn that loads the models and predicts."""
 
   def __init__(self, eval_config: config.EvalConfig,
-               eval_shared_models: List[types.EvalSharedModel]) -> None:
+               eval_shared_models: Dict[Text, types.EvalSharedModel]) -> None:
     super(_PredictionDoFn, self).__init__(
-        {m.model_path: m.model_loader for m in eval_shared_models})
+        {k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
 
   def _batch_reducible_process(
@@ -76,12 +92,14 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       batch_of_extracts: List[types.Extracts]) -> Sequence[types.Extracts]:
     result = copy.deepcopy(batch_of_extracts)
     for spec in self._eval_config.model_specs:
-      if spec.location not in self._loaded_models:
-        raise ValueError('loaded model for location {} not found: '
-                         'locations={}, eval_config={}'.format(
-                             spec.location, self._loaded_models.keys(),
-                             self._eval_config))
-      loaded_model = self._loaded_models[spec.location]
+      # To maintain consistency between settings where single models are used,
+      # always use '' as the model name regardless of whether a name is passed.
+      model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
+      if model_name not in self._loaded_models:
+        raise ValueError(
+            'loaded model for "{}" not found: eval_config={}'.format(
+                spec.name, self._eval_config))
+      loaded_model = self._loaded_models[model_name]
       signatures = None
       if loaded_model.keras_model:
         signatures = loaded_model.keras_model.signatures
@@ -93,9 +111,7 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
             'If using EvalSavedModel then you must use PredictExtractor V1.')
 
       signature_key = spec.signature_name
-      if (not signature_key and spec.signature_names and
-          spec.model_name in spec.signature_names):
-        signature_key = spec.signature_names[spec.model_name]
+      # TODO(mdreves): Add support for multiple signatures per output.
       if not signature_key:
         # First try 'predict' then try 'serving_default'. The estimator output
         # for the 'serving_default' key does not include all the heads in a
@@ -162,7 +178,8 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractPredictions(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection, eval_config: config.EvalConfig,
-    eval_shared_models: List[types.EvalSharedModel]) -> beam.pvalue.PCollection:
+    eval_shared_models: Dict[Text, types.EvalSharedModel],
+    desired_batch_size: Optional[int]) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
   Args:
@@ -170,7 +187,8 @@ def _ExtractPredictions(  # pylint: disable=invalid-name
       tfma.FEATURES_KEY (if model inputs are named) or tfma.INPUTS_KEY (if model
       takes raw tf.Examples as input).
     eval_config: Eval config.
-    eval_shared_models: Shared model parameters.
+    eval_shared_models: Shared model parameters keyed by model name.
+    desired_batch_size: Optional batch size.
 
   Returns:
     PCollection of Extracts updated with the predictions.
@@ -178,10 +196,9 @@ def _ExtractPredictions(  # pylint: disable=invalid-name
   batch_args = {}
   # TODO(b/143484017): Consider removing this option if autotuning is better
   # able to handle batch size selection.
-  if eval_config.options.HasField('desired_batch_size'):
+  if desired_batch_size is not None:
     batch_args = dict(
-        min_batch_size=eval_config.options.desired_batch_size.value,
-        max_batch_size=eval_config.options.desired_batch_size.value)
+        min_batch_size=desired_batch_size, max_batch_size=desired_batch_size)
 
   return (
       extracts

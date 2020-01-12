@@ -192,29 +192,23 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
     result_a = model_eval_lib.EvalResult(
         slicing_metrics=self._makeTestData(),
         plots=None,
-        config=config.EvalConfig(
-            input_data_specs=[
-                config.InputDataSpec(location=self.data_location_1)
-            ],
-            model_specs=[config.ModelSpec(location=self.model_location_1)]))
+        config=config.EvalConfig(),
+        data_location=self.data_location_1,
+        file_format='tfrecords',
+        model_location=self.model_location_1)
     result_b = model_eval_lib.EvalResult(
         slicing_metrics=[self.result_c2],
         plots=None,
-        config=config.EvalConfig(
-            input_data_specs=[
-                config.InputDataSpec(location=self.full_data_location_2)
-            ],
-            model_specs=[config.ModelSpec(location=self.full_model_location_2)
-                        ]))
+        config=config.EvalConfig(),
+        data_location=self.full_data_location_2,
+        file_format='tfrecords',
+        model_location=self.full_model_location_2)
     return model_eval_lib.EvalResults([result_a, result_b],
                                       constants.MODEL_CENTRIC_MODE)
 
   def _makeEvalConfig(self):
     eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec(location='')],
-        model_specs=[
-            config.ModelSpec(location='', example_weight_key='testing_key')
-        ])
+        model_specs=[config.ModelSpec(example_weight_key='testing_key')])
     return eval_config
 
   def testGetSlicingMetrics(self):

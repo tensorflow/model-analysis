@@ -35,7 +35,12 @@ class WidgetViewTest(testutil.TensorflowModelAnalysisTest):
 
     slicing_metrics = [(s, metrics) for s in slices]
     return model_eval_lib.EvalResult(
-        slicing_metrics=slicing_metrics, plots=None, config=None)
+        slicing_metrics=slicing_metrics,
+        plots=None,
+        config=None,
+        data_location=None,
+        file_format=None,
+        model_location=None)
 
   def testConvertEvalResultToUIInputWithAllDefaultParams(self):
     eval_result = self._makeEvalResult()

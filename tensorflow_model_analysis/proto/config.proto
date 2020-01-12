@@ -18,20 +18,8 @@ package tensorflow_model_analysis;
 
 import "google/protobuf/wrappers.proto";
 
-// Input data specification.
-message InputDataSpec {
-  // Location of the data.
-  string location = 1;
-  // Optional file format of data. By default 'tfrecords' is assumed.
-  string file_format = 2;
-  // Optional format of data. By default 'tf.train.Example' is assumed.
-  string data_format = 3;
-}
-
 // Model specification.
 message ModelSpec {
-  // Path to the saved model.
-  string location = 1;
   // Model name (required if more than one model).
   string name = 2;
   // Name of signature to use (e.g. 'serving_default')
@@ -69,6 +57,8 @@ message ModelSpec {
   // True if baseline model (otherwise candidate). Only one baseline is allowed
   // per evaluation run.
   bool is_baseline = 11;
+
+  reserved 1;
 }
 
 // Slicing specification.
@@ -81,22 +71,6 @@ message SlicingSpec {
   // converted to ints and floats respectively and will be compared against both
   // the string versions and int or float versions of the associated features.
   map<string, string> feature_values = 2;
-}
-
-// Output data specification.
-message OutputDataSpec {
-  // Default location of the data.
-  string default_location = 1;
-  // Custom locations (keyed by evaluation output name - e.g.  'metrics',
-  // 'plots', 'analysis'). Note that this is the directory name NOT the
-  // filename. The filename will always be named after the associated key.
-  map<string, string> custom_locations = 2;
-  // List of outputs that should not be written (e.g.  'metrics', 'plots',
-  // 'analysis', 'eval_config.json').
-  repeated string disabled_outputs = 3;
-  // Name of model associated with output (required if multiple non-baseline
-  // models used). The baseline model should not have an output configured.
-  string model_name = 4;
 }
 
 // Options for aggregating multi-class / multi-label outputs.
@@ -161,7 +135,7 @@ message BinarizationOptions {
 // Metric configuration.
 message MetricConfig {
   // Name of a class derived for either tf.keras.metrics.Metric or
-  // tfma.metris.Metric.
+  // tfma.metrics.Metric.
   string class_name = 1;
   // Optional name of module associated with class_name. If not set then class
   // will be searched for under tfma.metrics followed by tf.keras.metrics.
@@ -169,16 +143,16 @@ message MetricConfig {
   // Optional JSON encoded config settings associated with the class.
   //
   // The config settings will be passed as **kwarg values to the __init__ method
-  // for the class.
+  // for the class. For ease of use the leading and trailing '{' and '}'
+  // brackets may be omitted.
   //
-  // Example: '{ "name": "my_metric", "thresholds": [0.5] }'
+  // Example: '"name": "my_metric", "thresholds": [0.5]'
   string config = 3;
 }
 
 // Metrics specification.
 message MetricsSpec {
-  // List of metric configurations. If None, the legacy post_export_metrics
-  // callbacks will be assumed.
+  // List of metric configurations.
   repeated MetricConfig metrics = 1;
   // Names of models the metrics should be calculated for. For metrics that have
   // diffing enabled, the baseline will be added automatically.
@@ -207,30 +181,17 @@ message Options {
   google.protobuf.BoolValue compute_confidence_intervals = 2;
   // Privacy k-anonymization count to omit slices with example count < k.
   google.protobuf.Int32Value k_anonymization_count = 3;
+  // List of outputs that should not be written (e.g.  'metrics', 'plots',
+  // 'analysis', 'eval_config.json').
+  repeated string disabled_outputs = 6;
 
-  // Optional batch size to run evaluation. Default is this will be autotuned.
-  // Unless your model has specific batch size constraints or fail with
-  // large batch sizes (100s to 1000s), it should be safe use the built in
-  // autotune capability. Note that this serves as a MAX batch size. There might
-  // still be requests with smaller batch sizes sent to the model.
-  // TODO(b/143484017): Consider removing this option if autotuning is better
-  // able to handle batch size selection.
-  google.protobuf.Int32Value desired_batch_size = 4;
-  // Optional directory for storing temporary files. If not set, then a
-  // temporary directory will be created automatically when needed.
-  string tmp_dir = 5;
+  reserved 4, 5;
 }
 
 // Tensorflow model analaysis config settings.
 message EvalConfig {
-  // Input data specifications for input data used.
-  repeated InputDataSpec input_data_specs = 1;
   // Model specifications for models used. Only one baseline is permitted.
   repeated ModelSpec model_specs = 2;
-  // Output data specifications for storing outputs of evaluation (one per
-  // non-baseline model). The baseline model should NOT have an
-  // output_data_spec.
-  repeated OutputDataSpec output_data_specs = 3;
   // A list specs where each spec represents a way to slice the data. An empty
   // config means slice on overall data.
   //
@@ -255,11 +216,26 @@ message EvalConfig {
   // Additional configuration options.
   Options options = 6;
 
-  reserved 7;
+  reserved 1, 3, 7;
 }
 
 // Config and version.
 message EvalConfigAndVersion {
   EvalConfig eval_config = 1;
   string version = 2;
+}
+
+// Evaluation run containing config, version and input parameters. This should
+// be structurally compatible with EvalConfigAndVersion such that a saved
+// EvalRun can be read as an EvalConfigAndVersion.
+message EvalRun {
+  EvalConfig eval_config = 1;
+  string version = 2;
+
+  // Location of data used with evaluation run.
+  string data_location = 3;
+  // File format used with evaluation run.
+  string file_format = 4;
+  // Locations of model used with evaluation run.
+  map<string, string> model_locations = 5;
 }

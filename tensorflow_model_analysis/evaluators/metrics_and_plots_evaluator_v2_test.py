@@ -22,7 +22,7 @@ import os
 
 import apache_beam as beam
 from apache_beam.testing import util
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
@@ -69,9 +69,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
-                location=export_dir,
-                label_key='label',
-                example_weight_key='fixed_float')
+                label_key='label', example_weight_key='fixed_float')
         ],
         slicing_specs=[
             config.SlicingSpec(),
@@ -92,7 +90,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
     # fixed_float used as example_weight key
@@ -187,9 +185,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
-                location=export_dir,
-                label_key='label',
-                example_weight_key='fixed_float')
+                label_key='label', example_weight_key='fixed_float')
         ],
         slicing_specs=[
             config.SlicingSpec(),
@@ -209,12 +205,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     extractors = [
         input_extractor.InputExtractor(eval_config=eval_config),
         predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model]),
+            eval_config=eval_config, eval_shared_model=eval_shared_model),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
     # fixed_float used as example_weight key
@@ -303,9 +299,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
-                location=export_dir,
-                label_key='label',
-                example_weight_key='fixed_float')
+                label_key='label', example_weight_key='fixed_float')
         ],
         slicing_specs=[config.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics([
@@ -321,12 +315,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     extractors = [
         input_extractor.InputExtractor(eval_config=eval_config),
         predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model]),
+            eval_config=eval_config, eval_shared_model=eval_shared_model),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
     # fixed_float used as example_weight key
@@ -395,10 +389,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     # Add mean_label, example_count, weighted_example_count, calibration_plot
     eval_config = config.EvalConfig(
         model_specs=[
-            config.ModelSpec(
-                location=export_dir,
-                label_key='label',
-                example_weight_key='age')
+            config.ModelSpec(label_key='label', example_weight_key='age')
         ],
         slicing_specs=[config.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics([
@@ -415,12 +406,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     extractors = [
         input_extractor.InputExtractor(eval_config=eval_config),
         predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model]),
+            eval_config=eval_config, eval_shared_model=eval_shared_model),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
     examples = [
@@ -488,10 +479,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     # Add example_count and weighted_example_count
     eval_config = config.EvalConfig(
         model_specs=[
-            config.ModelSpec(
-                location=export_dir,
-                label_key='label',
-                example_weight_key='age')
+            config.ModelSpec(label_key='label', example_weight_key='age')
         ],
         slicing_specs=[config.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics(
@@ -506,12 +494,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     extractors = [
         input_extractor.InputExtractor(eval_config=eval_config),
         predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model]),
+            eval_config=eval_config, eval_shared_model=eval_shared_model),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
     examples = [
@@ -572,7 +560,6 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
-                location=export_dir,
                 label_keys={
                     'chinese_head': 'chinese_label',
                     'english_head': 'english_label',
@@ -599,12 +586,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     extractors = [
         input_extractor.InputExtractor(eval_config=eval_config),
         predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model]),
+            eval_config=eval_config, eval_shared_model=eval_shared_model),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
     examples = [
@@ -712,9 +699,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
-                location=export_dir,
-                label_key='label',
-                example_weight_key='example_weight')
+                label_key='label', example_weight_key='example_weight')
         ],
         slicing_specs=[config.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics(
@@ -728,12 +713,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     extractors = [
         input_extractor.InputExtractor(eval_config=eval_config),
         predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model]),
+            eval_config=eval_config, eval_shared_model=eval_shared_model),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
     examples = [
@@ -791,10 +776,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
     eval_config = config.EvalConfig(
         model_specs=[
-            config.ModelSpec(
-                location=export_dir,
-                label_key='label',
-                example_weight_key='fixed_int')
+            config.ModelSpec(label_key='label', example_weight_key='fixed_int')
         ],
         slicing_specs=[
             config.SlicingSpec(),
@@ -812,12 +794,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     extractors = [
         input_extractor.InputExtractor(eval_config=eval_config),
         predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model]),
+            eval_config=eval_config, eval_shared_model=eval_shared_model),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
     # fixed_string used as query_key
@@ -948,9 +930,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     _, export_dir = linear_classifier.simple_linear_classifier(
         None, temp_export_dir)
     eval_config = config.EvalConfig(
-        model_specs=[
-            config.ModelSpec(location=export_dir, signature_name='eval')
-        ],
+        model_specs=[config.ModelSpec(signature_name='eval')],
         slicing_specs=[
             config.SlicingSpec(),
             config.SlicingSpec(feature_keys=['slice_key']),
@@ -967,7 +947,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_models=[eval_shared_model])
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
     examples = [

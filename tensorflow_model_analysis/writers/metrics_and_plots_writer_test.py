@@ -58,11 +58,8 @@ class MetricsAndPlotsWriterTest(testutil.TensorflowModelAnalysisTest):
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
             None, temp_eval_export_dir))
     eval_config = config.EvalConfig(
-        input_data_specs=[config.InputDataSpec()],
         model_specs=[config.ModelSpec()],
-        output_data_specs=[
-            config.OutputDataSpec(disabled_outputs=['eval_config.json'])
-        ])
+        options=config.Options(disabled_outputs=['eval_config.json']))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=[
@@ -100,7 +97,7 @@ class MetricsAndPlotsWriterTest(testutil.TensorflowModelAnalysisTest):
           | 'ExtractEvaluateAndWriteResults' >>
           model_eval_lib.ExtractEvaluateAndWriteResults(
               eval_config=eval_config,
-              eval_shared_models=[eval_shared_model],
+              eval_shared_model=eval_shared_model,
               extractors=extractors,
               evaluators=evaluators,
               writers=writers))
