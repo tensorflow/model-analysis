@@ -118,7 +118,8 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 
   _ = (
       extracts.pipeline
-      | counter_util.IncrementMetricsComputationCounters(
+      | 'IncrementMetricsComputationCounters' >>
+      counter_util.IncrementMetricsComputationCounters(
           eval_shared_model.add_metrics_callbacks))
 
   slices = (

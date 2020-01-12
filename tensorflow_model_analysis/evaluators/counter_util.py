@@ -44,6 +44,5 @@ def IncrementMetricsComputationCounters(
         metrics_counter.inc(1)
 
   return (pipeline
-          | 'CreateNone' >> beam.Create([None])
-          | 'IncrementMetricsComputationCounters' >>
-          beam.Map(_MakeAndIncrementCounters))
+          | 'CreateSole' >> beam.Create([None])
+          | 'Count' >> beam.Map(_MakeAndIncrementCounters))
