@@ -35,15 +35,11 @@ pipeline.
 
 The following table summarizes the models supported by default:
 
-| Model Type     | Standard | Custom        | Standard Post | Custom Post      |
-:                : Training : Training      : Training      : Training Metrics :
-:                : Metrics  : Metrics       : Metrics       :                  :
-| -------------- | -------- | ------------- | ------------- | ---------------- |
-| TF (keras)     | Y        | Not supported | Y             | Y                |
-:                :          : yet.          :               :                  :
-| TF2 Signatures | N/A      | N/A           | Y             | Y                |
-| EvalSavedModel | Y        | Y             | Y             | Y                |
-: (estimator)    :          :               :               :                  :
+| Model Type | Standard Training Metrics | Custom Training Metrics | Standard Post Training Metrics | Custom Post Training Metrics |
+| --- | --- | --- | --- | --- |
+| TF (keras) | Y | Not supported yet. | Y | Y |
+| TF2 Signatures | N/A | N/A | Y | Y |
+| EvalSavedModel (estimator) | Y | Y | Y | Y |
 
 *   Standard metrics refers to metrics that are defined based only on label
     (i.e. `y_true`), prediction (i.e. `y_pred`), and example weight (i.e.

@@ -62,7 +62,8 @@ assumptions:
 *   Saved model is for serving and uses the signature name `serving_default`
     (this can be changed using `model_specs[0].signature_name`).
 *   Built in metrics from `model.compile(...)` should be evaluated (this can be
-    disabled via `options.include_default_metric` within the [tfma.EvalConfig](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/config.proto)).
+    disabled via `options.include_default_metric` within the
+    [tfma.EvalConfig](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/config.proto)).
 
 ```python
 from google.protobuf import text_format
@@ -114,45 +115,15 @@ can be configured.
 
 ### How do I setup TFMA to work with an estimator based model? {#estimator}
 
-In this case there are three choices:
-
-<style>
-.wide-first-col tr td:first-child {
-  width: 50%;
-}
-</style>
-
-| Option                               | Configuration                         | {.wide-first-col}
-| ------------------------------------ | ------------------------------------- |
-| 1) Use serving model \               | * By default uses `serving_default`   |
-: \                                    :   for the for the signature name. \   :
-: If this option is used then any      : * Must specify `label_key` and        :
-: metrics added during training will   :   `example_weight` key.               :
-: NOT be included in the evaluation.   :                                       :
-:                                      :                                       :
-| 2) Use `EvalSavedModel` for both     | * Use `eval` for the signature name.  |
-: feature / prediction extraction and  :                                       :
-: evaluation and also add additional   :                                       :
-: combiner based metrics.              :                                       :
-:                                      :                                       :
-| 3) Use `EvalSavedModel` but only for | * Use `eval` for the signature        |
-: feature / prediction extraction. \   :   name. \                             :
-: \                                    : * Disable `include_default_metrics`.  :
-: This option is useful if only        :                                       :
-: external metrics are desired, but    :                                       :
-: there are feature transformations    :                                       :
-: that you would like to slice on.     :                                       :
-: Similar to option (1) any metrics    :                                       :
-: added during training will NOT be    :                                       :
-: included in the evaluation.          :                                       :
-
-NOTE: If using an `EvalSavedModel`, see [EvalSavedModel](eval_saved_model.md)
-for more information about setup.
+In this case there are three choices.
 
 **Option1: Use Serving Model**
 
-The following is an example config for option 1 assuming `serving_default` is
-the signature name used:
+If this option is used then any metrics added during training will NOT be
+included in the evaluation.
+
+The following is an example config assuming `serving_default` is the signature
+name used:
 
 ```python
 from google.protobuf import text_format
@@ -174,7 +145,10 @@ can be configured.
 
 **Option2: Use EvalSavedModel along with additional combiner-based metrics**
 
-The following is an example config for option 2:
+In this case, use `EvalSavedModel` for both feature / prediction extraction and
+evaluation and also add additional combiner based metrics.
+
+The following is an example config:
 
 ```python
 from google.protobuf import text_format
@@ -191,9 +165,16 @@ config = text_format.Parse("""
 ```
 
 See [metrics](metrics.md) for more information about other types of metrics that
-can be configured.
+can be configured and [EvalSavedModel](eval_saved_model.md) for more information
+about setting up the EvalSavedModel.
 
 **Option3: Use EvalSavedModel Model only for Feature / Prediction Extraction**
+
+Similar to option(2), but only use `EvalSavedModel` for feature / prediction
+extraction. This option is useful if only external metrics are desired, but
+there are feature transformations that you would like to slice on. Similar to
+option (1) any metrics added during training will NOT be included in the
+evaluation.
 
 In this case the config is the same as above only `include_default_metrics` is
 disabled.
@@ -216,8 +197,8 @@ config = text_format.Parse("""
 ```
 
 See [metrics](metrics.md) for more information about other types of metrics that
-can be configured.
-
+can be configured and [EvalSavedModel](eval_saved_model.md) for more information
+about setting up the EvalSavedModel.
 
 ### How do I setup TFMA to work with a keras model-to-estimator based model? {#model-to-estmator}
 
@@ -254,11 +235,11 @@ config = text_format.Parse("""
 
 TFMA supports a wide variety of matrics including:
 
-  * [regression metrics](metrics.md#regression-metrics)
-  * [binary classification metrics](metrics.md#binary-classification-metrics)
-  * [multi-class/multi-label classification metrics](metrics.md#multi-classmulti-label-classification-metrics)
-  * [micro average / macro average metrics](metrics.md#multi-classmulti-label-aggregate-metrics)
-  * [query / ranking based metrics](metrics.md#query-ranking-based-metrics)
+*   [regression metrics](metrics.md#regression-metrics)
+*   [binary classification metrics](metrics.md#binary-classification-metrics)
+*   [multi-class/multi-label classification metrics](metrics.md#multi-classmulti-label-classification-metrics)
+*   [micro average / macro average metrics](metrics.md#multi-classmulti-label-aggregate-metrics)
+*   [query / ranking based metrics](metrics.md#query-ranking-based-metrics)
 
 ### Are metrics from multi-output models supported?
 
