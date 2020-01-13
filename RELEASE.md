@@ -31,6 +31,9 @@
     integration.
 *   Added fairness indicators metrics
     `tfma.addons.fairness.metrics.FairnessIndicators`.
+*   Updated documentation for new metrics infrastructure and newly supported
+    models (keras, etc).
+
 ## Bug fixes and other changes
 
 *   Fixed error in `tfma-multi-class-confusion-matrix-at-thresholds` with

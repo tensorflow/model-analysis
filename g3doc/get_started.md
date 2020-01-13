@@ -1,107 +1,104 @@
 <!-- See: www.tensorflow.org/tfx/model_analysis/ -->
 
-# Get Started with TensorFlow Model Analysis
+# Getting Started with TensorFlow Model Analysis
 
-TensorFlow Model Analysis (TFMA) can export a model's *evaluation graph* to a
-special `SavedModel` called `EvalSavedModel`. (Note that the evaluation graph is
-used and not the graph for training or inference.) The `EvalSavedModel` contains
-additional information that allows TFMA to compute the same evaluation metrics
-defined in the model in a distributed manner over a large amount of data and
-user-defined slices.
+*   **For**: Machine Learning Engineers or Data Scientists
+*   **who**: want to analyze and understand their TensorFlow models
+*   **it is**: a standalone library or component of a TFx pipeline
+*   **that**: evaluates models on large amounts of data in a distributed manner
+    on the same metrics defined in training. These metrics are compared over
+    slices of data, and visualized in Jupyter or Colab notebooks.
+*   **unlike**: some model introspection tools like tensorboard that offer model
+    introspection
 
-## Modify an existing model
+TFMA performs its computations in a distributed manner over large amounts of
+data using [Apache Beam](http://beam.apache.org). The following sections
+describe how to setup a basic TFMA evaluation pipeline. See
+[architecture](architecture.md) more details on the underlying implementation.
 
-To use an existing model with TFMA, first modify the model to export the
-`EvalSavedModel`. This is done by adding a call to
-`tfma.export.export_eval_savedmodel` and is similar to
-`estimator.export_savedmodel`. For example:
+## Model Types Supported
 
-```python
-# Define, train and export your estimator as usual
-estimator = tf.estimator.DNNClassifier(...)
-estimator.train(...)
-estimator.export_savedmodel(...)
+TFMA is designed to support tensorflow based models, but can be easily extended
+to support other frameworks as well. Historically, TFMA required an
+`EvalSavedModel` be created to use TFMA, but the latest version of TFMA supports
+multiple types of models depending on the user's needs.
+[Setting up an EvalSavedModel](eval_saved_model.md) should only be required if a
+`tf.estimator` based model is used and custom training time metrics are
+required.
 
-# Also export the EvalSavedModel
-tfma.export.export_eval_savedmodel(
-  estimator=estimator, export_dir_base=export_dir,
-  eval_input_receiver_fn=eval_input_receiver_fn)
-```
+Note that because TFMA now runs based on the serving model, TFMA will no longer
+automatically evaluate metrics added at training time. The exception to this
+case is if a keras model is used since keras saves the metrics used along side
+of the saved model. However, if this is a hard requirement, the latest TFMA is
+backwards compatible such at an `EvalSavedModel` can still be run in a TFMA
+pipeline.
 
-`eval_input_receiver_fn` must be defined and is similar to the
-`serving_input_receiver_fn` for `estimator.export_savedmodel`. Like
-`serving_input_receiver_fn`, the `eval_input_receiver_fn` function defines an
-input placeholder example, parses the features from the example, and returns the
-parsed features. It parses and returns the label.
+The following table summarizes the models supported by default:
 
-The following snippet defines an example `eval_input_receiver_fn`:
+| Model Type     | Standard | Custom        | Standard Post | Custom Post      |
+:                : Training : Training      : Training      : Training Metrics :
+:                : Metrics  : Metrics       : Metrics       :                  :
+| -------------- | -------- | ------------- | ------------- | ---------------- |
+| TF (keras)     | Y        | Not supported | Y             | Y                |
+:                :          : yet.          :               :                  :
+| TF2 Signatures | N/A      | N/A           | Y             | Y                |
+| EvalSavedModel | Y        | Y             | Y             | Y                |
+: (estimator)    :          :               :               :                  :
 
-```python
-country = tf.feature_column.categorical_column_with_hash('country', 100)
-language = tf.feature_column.categorical_column_with_hash('language', 100)
-age = tf.feature_column.numeric_column('age')
-label = tf.feature_column.numeric_column('label')
+*   Standard metrics refers to metrics that are defined based only on label
+    (i.e. `y_true`), prediction (i.e. `y_pred`), and example weight (i.e.
+    `sample_weight`).
+*   Training metrics refers to metrics defined at training time and saved with
+    the model (either TFMA EvalSavedModel or keras saved model).
 
-def eval_input_receiver_fn():
-  serialized_tf_example = tf.compat.v1.placeholder(
-      dtype=tf.string, shape=[None], name='input_example_placeholder')
+See [FAQ](faq.md) for more information no how to setup and configure these
+different model types.
 
-  # This *must* be a dictionary containing a single key 'examples', which
-  # points to the input placeholder.
-  receiver_tensors = {'examples': serialized_tf_example}
+## Example
 
-  feature_spec =  tf.feature_column.make_parse_example_spec(
-      [country, language, age, label])
-  features = tf.io.parse_example(serialized_tf_example, feature_spec)
+The following uses `tfma.run_model_analysis` to perform evaluation on a serving
+model. For an explanation of the different settings needed see the
+[setup](setup.md) guide. To run with an `EvalSavedModel`, just set
+`signature_name: "eval"` in the model spec.
 
-  return tfma.export.EvalInputReceiver(
-    features=features,
-    receiver_tensors=receiver_tensors,
-    labels=features['label'])
-```
-
-In this example you can see that:
-
-*   `labels` can also be a dictionary. Useful for a multi-headed model.
-*   The `eval_input_receiver_fn` function will, most likely, be the same as your
-    `serving_input_receiver_fn` function. But, in some cases, you may want to
-    define additional features for slicing. For example, you introduce an
-    `age_category` feature which divides the `age` feature into multiple
-    buckets. You can then slice on this feature in TFMA to help understand how
-    your model's performance differs across different age categories.
-
-## Use TFMA to evaluate the modified model
-
-TFMA can perform large-scale distributed evaluation of your model by using
-[Apache Beam](http://beam.apache.org), a distributed processing framework. The
-evaluation results can be visualized in a Jupyter notebook using the frontend
-components included in TFMA.
-
-![TFMA Slicing Metrics Browser](images/tfma-slicing-metrics-browser.png)
-
-Use `tfma.run_model_analysis` for evaluation. Since this uses Beam's local
-runner, it's mainly for local, small-scale experimentation. For example:
+Note this uses Beam's local runner which is mainly for local, small-scale
+experimentation.
 
 ```python
-# Note that this code should be run in a Jupyter Notebook.
+# Run in a Jupyter Notebook.
+from google.protobuf import text_format
 
-# This assumes your data is a TFRecords file containing records in the format
-# your model is expecting, e.g. tf.train.Example if you're using
-# tf.parse_example in your model.
+eval_config = text_format.Parse("""
+  model_specs {
+    # This assumes a serving model with a "serving_default" signature.
+    label_key: "label"
+    example_weight_key: "weight"
+  }
+  metrics_spec {
+    # This assumes a binary classification model.
+    metrics { class_name: "AUC" }
+    ... other metrics ...
+  }
+  slicing_specs {}
+  slicing_specs {
+    feature_keys: ["age"]
+  }
+}
+""", tfma.EvalConfig())
+
 eval_shared_model = tfma.default_eval_shared_model(
-    eval_saved_model_path='/path/to/eval/saved/model')
+    eval_saved_model_path='/path/to/saved/model', tags=[tf.saved_model.SERVING])
+
 eval_result = tfma.run_model_analysis(
     eval_shared_model=eval_shared_model,
-    data_location='/path/to/file/containing/tfrecords',
-    file_format='tfrecords')
+    eval_config=eval_config,
+    # This assumes your data is a TFRecords file containing records in the
+    # tf.train.Example format.
+    data_location="/path/to/file/containing/tfrecords",
+    output_path="/path/for/metrics_for_slice_proto")
 
 tfma.view.render_slicing_metrics(eval_result)
 ```
-
-Compute metrics on slices of data by configuring the `slice_spec` parameter. Add
-additional metrics that are not included in the model with
-`add_metrics_callbacks`. For more details, see the Python help for
-`run_model_analysis`.
 
 For distributed evaluation, construct an [Apache Beam](http://beam.apache.org)
 pipeline using a distributed runner. In the pipeline, use the
@@ -111,38 +108,60 @@ results. The results can be loaded for visualization using
 
 ```python
 # To run the pipeline.
+from google.protobuf import text_format
+
+eval_config = text_format.Parse("""
+  model_specs {
+    # This assumes a serving model with a "serving_default" signature.
+    label_key: "label"
+    example_weight_key: "weight"
+  }
+  metrics_specs {
+    # This assumes a binary classification model.
+    metrics { class_name: "AUC" }
+    ... other metrics ...
+  }
+  slicing_specs {}
+  slicing_specs {
+    feature_keys: ["age"]
+  }
+}
+""", tfma.EvalConfig())
+
 eval_shared_model = tfma.default_eval_shared_model(
-    model_path='/path/to/eval/saved/model')
+    eval_saved_model_path='/path/to/saved/model', tags=[tf.saved_model.SERVING])
+
 with beam.Pipeline(runner=...) as p:
   _ = (p
        # You can change the source as appropriate, e.g. read from BigQuery.
-       | 'ReadData' >> beam.io.ReadFromTFRecord(data_location)
+       # This assumes your data is a TFRecords file containing records in the
+       # tf.train.Example format.
+       | 'ReadData' >> beam.io.ReadFromTFRecord(
+           "/path/to/file/containing/tfrecords")
        | 'ExtractEvaluateAndWriteResults' >>
        tfma.ExtractEvaluateAndWriteResults(
             eval_shared_model=eval_shared_model,
-            output_path='/path/to/output',
-            display_only_data_location=data_location))
+            eval_config=eval_config,
+            output_path="/path/for/metrics_for_slice_proto"))
 
 # To load and visualize results.
 # Note that this code should be run in a Jupyter Notebook.
-result = tfma.load_eval_result(output_path='/path/to/out')
+result = tfma.load_eval_result(
+    output_path=eval_config.output_data_specs[0].location)
 tfma.view.render_slicing_metrics(result)
 ```
 
-## End-to-end example
+## Visualization
 
-Try the extensive
-[end-to-end example](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi_pipeline)
-featuring [TensorFlow Transform](https://github.com/tensorflow/transform) for
-feature preprocessing,
-[TensorFlow Estimators](https://www.tensorflow.org/guide/estimators) for
-training,
-[TensorFlow Model Analysis](https://github.com/tensorflow/model-analysis) and
-Jupyter for evaluation, and
-[TensorFlow Serving](https://github.com/tensorflow/serving) for serving.
+TFMA evaluation results can be visualized in a Jupyter notebook using the
+frontend components included in TFMA. For example:
 
-## Adding a Custom Post Export Metric
+![TFMA Slicing Metrics Browser](images/tfma-slicing-metrics-browser.png).
 
-If you want to add your own custom post export metric in TFMA, please checkout
-the documentation
-[here](https://github.com/tensorflow/model-analysis/blob/master/g3doc/post_export_metrics.md).
+## More Information
+
+*   [FAQ](faq.md)
+*   [Install](install.md)
+*   [Setup](setup.md)
+*   [Metrics](metrics.md)
+*   [Architecture](architecture.md)
