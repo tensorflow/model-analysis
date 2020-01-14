@@ -61,7 +61,7 @@ npm_path = os.pathsep.join([
 ])
 
 # Set this to true if ipywidgets js should be built. This would require nodejs.
-build_js = False
+build_js = os.environ.get('BUILD_JS') is not None
 
 log.set_verbosity(log.DEBUG)
 log.info('setup.py entered')
