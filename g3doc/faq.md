@@ -1,7 +1,5 @@
 # Tensorflow Model Analysis Frequently Asked Questions
 
-[TOC]
-
 ## General
 
 ### Is an EvalSavedModel still required?
@@ -54,7 +52,7 @@ based models may require an `EvalSavedModel` to be used).
 See [get_started](get_started.md) guide for the full list of model types
 supported and any restrictions.
 
-### How do I setup TFMA to work with a native keras based model? {#keras}
+### How do I setup TFMA to work with a native keras based model?
 
 The following is an example config for a keras model based on the following
 assumptions:
@@ -85,7 +83,7 @@ config = text_format.Parse("""
 See [metrics](metrics.md) for more information about other types of metrics that
 can be configured.
 
-### How do I setup TFMA to work with a generic TF2 signatures based model? {#generic-tf2}
+### How do I setup TFMA to work with a generic TF2 signatures based model?
 
 The following is an example config for a generic TF2 model. Below,
 `signature_name` is the name of the specific signature that should be used for
@@ -113,7 +111,7 @@ config = text_format.Parse("""
 See [metrics](metrics.md) for more information about other types of metrics that
 can be configured.
 
-### How do I setup TFMA to work with an estimator based model? {#estimator}
+### How do I setup TFMA to work with an estimator based model?
 
 In this case there are three choices.
 
@@ -200,18 +198,18 @@ See [metrics](metrics.md) for more information about other types of metrics that
 can be configured and [EvalSavedModel](eval_saved_model.md) for more information
 about setting up the EvalSavedModel.
 
-### How do I setup TFMA to work with a keras model-to-estimator based model? {#model-to-estmator}
+### How do I setup TFMA to work with a keras model-to-estimator based model?
 
-The keras `model_to_estimator` setup is similar to the [estimator](#estimator)
-confiugration. However there are a few differences specific to how model to
-estimator works. In particular, the model-to-esimtator returns its outputs in
-the form of a dict where the dict key is the name of the last output layer in
-the associated keras model (if no name is provided, keras will choose a default
-name for you such as `dense_1` or `output_1`). From a TFMA perspective, this
-behavior is similar to what would be output for a multi-output model even though
-the model to estimator may only be for a single model. To account for this
-difference, an additional step is required to setup the output name. However,
-the same three options apply as [above](#estimator).
+The keras `model_to_estimator` setup is similar to the estimator confiugration.
+However there are a few differences specific to how model to estimator works. In
+particular, the model-to-esimtator returns its outputs in the form of a dict
+where the dict key is the name of the last output layer in the associated keras
+model (if no name is provided, keras will choose a default name for you such as
+`dense_1` or `output_1`). From a TFMA perspective, this behavior is similar to
+what would be output for a multi-output model even though the model to estimator
+may only be for a single model. To account for this difference, an additional
+step is required to setup the output name. However, the same three options apply
+as estimator.
 
 The following is an example of the changes required to an estimator based
 config:
