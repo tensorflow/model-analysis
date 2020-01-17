@@ -96,6 +96,8 @@ def tf_metric_computations(
           'disable aggregation settings or replace the sparse metrics with'
           'non-sparse versions: {}'.format(sparse_metrics))
 
+  metrics = _filter_duplicate_metrics(metrics, model_name, sub_key)
+
   computations = []
 
   # For efficency, metrics are separated into compilable vs non-compilable
@@ -150,6 +152,27 @@ def tf_metric_computations(
             combiner=_NonCompilableMetricsCombiner(model_loader, sub_key)))
 
   return computations
+
+
+def _filter_duplicate_metrics(
+    metrics: Dict[Text, List[tf.keras.metrics.Metric]],
+    model_name: Text,
+    sub_key: Optional[metric_types.SubKey] = None,
+) -> Dict[Text, List[tf.keras.metrics.Metric]]:
+  """Filters duplicate metrics from the metrics."""
+  for output_name, metrics_list in metrics.items():
+    unique_metrics = {}
+    for metric in metrics_list:
+      key = metric_types.MetricKey(
+          name=metric.name,
+          model_name=model_name,
+          output_name=output_name,
+          sub_key=_verify_and_update_sub_key(model_name, output_name, sub_key,
+                                             metric))
+      # Replace any previous metric (i.e. last added metric wins).
+      unique_metrics[key] = metric
+    metrics[output_name] = list(unique_metrics.values())
+  return metrics
 
 
 def _sparse_metrics(
@@ -306,14 +329,13 @@ def _metric_keys_and_configs(
     metric_config_list = []
     loss_config_list = []
     for metric in metrics_list:
-      sub_key = _verify_and_update_sub_key(model_name, output_name, sub_key,
-                                           metric)
       metric_keys.append(
           metric_types.MetricKey(
               name=metric.name,
               model_name=model_name,
               output_name=output_name,
-              sub_key=sub_key))
+              sub_key=_verify_and_update_sub_key(model_name, output_name,
+                                                 sub_key, metric)))
       if isinstance(metric, tf.keras.metrics.Metric):
         metric_config_list.append(metric_util.serialize_metric(metric))
       elif isinstance(metric, tf.keras.losses.Loss):
@@ -388,32 +410,28 @@ def _wrap_confusion_matrix_metric(
 
   metric_config = tf.keras.metrics.serialize(metric)
 
+  thresholds = None
+  num_thresholds = None
+  if hasattr(metric, _THRESHOLDS_KEY):
+    if (len(
+        metric.thresholds) == binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS):
+      num_thresholds = binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS
+    else:
+      thresholds = metric.thresholds
+  # Only one of either thresholds or num_thresholds should be used. Keras AUC
+  # allows both but thresholds has more precedence.
+  if thresholds is None and hasattr(metric, _NUM_THRESHOLDS_KEY):
+    num_thresholds = metric.num_thresholds
+
   # By default use separate compuations for the confusion matrices since the
   # metrics might be using different thresholds (note, the underlying histogram
   # the confusion matrices are based on will still only be calculated once).
-  name = '_{}{}'.format(
-      metric.name, binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME)
-  thresholds = None
-  if hasattr(metric, _THRESHOLDS_KEY):
-    thresholds = metric.thresholds
-  num_thresholds = None
-  if hasattr(metric, _NUM_THRESHOLDS_KEY):
-    num_thresholds = metric.num_thresholds
-  # Increase the default number of thresholds if keras defaults were used (this
-  # also allows us to share the computation with other confusion based metrics).
-  if (num_thresholds == _DEFAULT_NUM_THRESHOLDS_IN_KERAS and
-      _CONFIG_KEY in metric_config and
-      _NUM_THRESHOLDS_KEY in metric_config[_CONFIG_KEY]):
+  if (num_thresholds is not None and
+      num_thresholds == binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS):
     name = binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME
-    num_thresholds = binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS
-    metric_config[_CONFIG_KEY][_NUM_THRESHOLDS_KEY] = num_thresholds
-    thresholds = None
-    if _THRESHOLDS_KEY in metric_config[_CONFIG_KEY]:
-      metric_config[_CONFIG_KEY][_THRESHOLDS_KEY] = None
-  # Only one of either thresholds or num_thresholds should be used. Keras AUC
-  # allows both but thresholds has more precedence.
-  if thresholds is not None and num_thresholds is not None:
-    num_thresholds = None
+  else:
+    name = '_{}{}'.format(
+        metric.name, binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME)
 
   # Make sure matrices are calculated. Note that the use of class_weights here
   # implies that micro averaging is being performed.

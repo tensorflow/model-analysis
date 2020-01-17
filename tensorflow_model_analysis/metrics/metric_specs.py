@@ -19,6 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import copy
 import importlib
 import json
 import re
@@ -27,6 +28,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import aggregation
+from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import confusion_matrix_plot
@@ -38,6 +40,25 @@ from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.metrics import weighted_example_count
 
 _TFOrTFMAMetric = Union[tf.keras.metrics.Metric, metric_types.Metric]
+
+# TF configs that should be treated special by either modifying the class names
+# used or updating the default config settings.
+_TF_CONFIG_DEFAULTS = {
+    'AUC': {
+        'class_name': 'AUC',
+        'config': {
+            'num_thresholds': binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS
+        }
+    },
+    'AUCPrecisionRecall': {
+        'class_name': 'AUC',
+        'config': {
+            'name': 'auc_precision_recall',
+            'num_thresholds': binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS,
+            'curve': 'PR'
+        }
+    }
+}
 
 
 def specs_from_metrics(
@@ -228,8 +249,13 @@ def default_binary_classification_specs(
 
   metrics = [
       tf.keras.metrics.BinaryAccuracy(name='accuracy'),
-      tf.keras.metrics.AUC(name='auc'),
-      tf.keras.metrics.AUC(name='auc_pr', curve='PR'),
+      tf.keras.metrics.AUC(
+          name='auc',
+          num_thresholds=binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS),
+      tf.keras.metrics.AUC(
+          name='auc_precison_recall',  # Matches default name used by estimator.
+          curve='PR',
+          num_thresholds=binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS),
       tf.keras.metrics.Precision(name='precision'),
       tf.keras.metrics.Recall(name='recall'),
       calibration.MeanLabel(name='mean_label'),
@@ -556,6 +582,18 @@ def _deserialize_tf_metric(
     custom_objects: Dict[Text, Type[tf.keras.metrics.Metric]]
 ) -> tf.keras.metrics.Metric:
   """Deserializes a tf.keras.metrics metric."""
+  cls_name = metric_config.class_name
+  cfg = _metric_config(metric_config.config)
+  for name, defaults in _TF_CONFIG_DEFAULTS.items():
+    if name == cls_name:
+      if 'class_name' in defaults:
+        cls_name = defaults['class_name']
+      if 'config' in defaults:
+        tmp = cfg
+        cfg = copy.copy(defaults['config'])
+        cfg.update(tmp)
+      break
+
   # The same metric type may be used for different keys when mult-class metrics
   # are used (e.g. AUC for class0, # class1, etc). TF tries to generate unique
   # metirc names even though these metrics are already unique within a
@@ -563,11 +601,8 @@ def _deserialize_tf_metric(
   # default name ourselves.
   with tf.keras.utils.custom_object_scope(custom_objects):
     return tf.keras.metrics.deserialize({
-        'class_name':
-            metric_config.class_name,
-        'config':
-            _maybe_add_name_to_config(
-                _metric_config(metric_config.config), metric_config.class_name)
+        'class_name': cls_name,
+        'config': _maybe_add_name_to_config(cfg, metric_config.class_name)
     })
 
 
