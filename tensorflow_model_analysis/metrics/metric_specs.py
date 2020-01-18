@@ -261,7 +261,7 @@ def default_binary_classification_specs(
       calibration.MeanLabel(name='mean_label'),
       calibration.MeanPrediction(name='mean_prediction'),
       calibration.Calibration(name='calibration'),
-      confusion_matrix_plot.AUCPlot(name='confusion_matrix_plot'),
+      confusion_matrix_plot.ConfusionMatrixPlot(name='confusion_matrix_plot'),
       calibration_plot.CalibrationPlot(name='calibration_plot')
   ]
   if include_loss:

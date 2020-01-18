@@ -48,6 +48,7 @@
     -   Adding an option to "Select all" metrics in UI.
 
 ## Breaking changes
+
 *   Updated proto config to remove input/output data specs in favor of passing
     them directly to the run_eval.
 

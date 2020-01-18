@@ -658,7 +658,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     desired_batch_size: Optional batch size for batching in Predict.
 
   Raises:
-    ValueError: If matching Extractor not found for an Evaluator.
+    ValueError: If EvalConfig invalid or matching Extractor not found for an
+      Evaluator.
 
   Returns:
     PDone.
@@ -690,6 +691,16 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       options.disabled_outputs.append(_EVAL_CONFIG_FILE)
     eval_config = config.EvalConfig(
         model_specs=model_specs, slicing_specs=slicing_specs, options=options)
+
+  # Add default ModelSpec if empty.
+  if (eval_shared_models and len(eval_shared_models) == 1 and
+      not eval_config.model_specs):
+    tmp_config = config.EvalConfig()
+    tmp_config.CopyFrom(eval_config)
+    eval_config = tmp_config
+    eval_config.model_specs.add()
+
+  config.verify_eval_config(eval_config)
 
   if not extractors:
     extractors = default_extractors(
