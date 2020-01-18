@@ -245,7 +245,8 @@ def default_eval_shared_model(
       configure additional metrics). Metrics for example count and example
       weights will be added automatically.
     include_default_metrics: True to include the default metrics that are part
-      of the saved model graph during evaluation.
+      of the saved model graph during evaluation. Note that
+      eval_config.options.include_default_metrics must also be true.
     example_weight_key: Example weight key (single-output model) or dict of
       example weight keys (multi-output model) keyed by output name.
     additional_fetches: Prefixes of additional tensors stored in

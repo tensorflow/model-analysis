@@ -503,7 +503,10 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   """
   model_loaders = None
   if eval_shared_models:
-    model_loaders = {k: v.model_loader for k, v in eval_shared_models.items()}
+    model_loaders = {}
+    for k, v in eval_shared_models.items():
+      if v.include_default_metrics:
+        model_loaders[k] = v.model_loader
   computations, derived_computations = _filter_and_separate_computations(
       metric_specs.to_computations(
           metrics_specs, eval_config=eval_config, model_loaders=model_loaders))
