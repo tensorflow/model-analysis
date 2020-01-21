@@ -47,7 +47,6 @@ from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-
 LegacyConfig = NamedTuple(
     'LegacyConfig',
     [('model_location', Text), ('data_location', Text),
@@ -55,6 +54,8 @@ LegacyConfig = NamedTuple(
      ('example_count_metric_key', Text),
      ('example_weight_metric_key', Union[Text, Dict[Text, Text]]),
      ('compute_confidence_intervals', bool), ('k_anonymization_count', int)])
+
+_TEST_SEED = 982735
 
 
 class EvaluateTest(testutil.TensorflowModelAnalysisTest):
@@ -579,6 +580,92 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertEqual(eval_result.config.slicing_specs[0],
                      config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
+    self.assertFalse(eval_result.plots)
+
+  def testRunModelAnalysisWithDeterministicConfidenceIntervals(self):
+    model_location = self._exportEvalSavedModel(
+        linear_classifier.simple_linear_classifier)
+    examples = [
+        self._makeExample(age=3.0, language='english', label=1.0),
+        self._makeExample(age=3.0, language='chinese', label=0.0),
+        self._makeExample(age=4.0, language='english', label=1.0),
+        self._makeExample(age=5.0, language='chinese', label=1.0),
+        self._makeExample(age=5.0, language='hindi', label=1.0)
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
+    options = config.Options()
+    options.compute_confidence_intervals.value = True
+    options.k_anonymization_count.value = 2
+    eval_config = config.EvalConfig(
+        slicing_specs=slicing_specs, options=options)
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'),
+        data_location=data_location,
+        output_path=self._getTempDir(),
+        random_seed_for_testing=_TEST_SEED)
+    # We only check some of the metrics to ensure that the end-to-end
+    # pipeline works.
+    expected = {
+        (('language', 'hindi'),): {
+            u'__ERROR__': {
+                'debugMessage':
+                    u'Example count for this slice key is lower than the '
+                    u'minimum required value: 2. No data is aggregated for '
+                    u'this slice.'
+            },
+        },
+        (('language', 'chinese'),): {
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 8.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
+        },
+        (('language', 'english'),): {
+            'accuracy': {
+                'boundedValue': {
+                    'value': 1.0,
+                    'lowerBound': 1.0,
+                    'upperBound': 1.0,
+                    'methodology': 'POISSON_BOOTSTRAP'
+                }
+            },
+            'my_mean_label': {
+                'boundedValue': {
+                    'value': 1.0,
+                    'lowerBound': 1.0,
+                    'upperBound': 1.0,
+                    'methodology': 'POISSON_BOOTSTRAP'
+                }
+            },
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 7.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
+        }
+    }
+    self.assertEqual(eval_result.model_location, model_location.decode())
+    self.assertEqual(eval_result.data_location, data_location)
+    self.assertEqual(eval_result.config.slicing_specs[0],
+                     config.SlicingSpec(feature_keys=['language']))
+    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
+
+    for key, value in eval_result.slicing_metrics:
+      if (('language', 'english'),) == key:
+        metric = value['']['']['average_loss']
+        self.assertAlmostEqual(
+            0.171768754720, metric['boundedValue']['value'], delta=0.1)
+
+        metric = value['']['']['auc_precision_recall']
+        self.assertAlmostEqual(
+            0.99999940395, metric['boundedValue']['value'], delta=0.1)
+
     self.assertFalse(eval_result.plots)
 
   def testRunModelAnalysisWithPlots(self):

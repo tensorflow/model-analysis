@@ -46,7 +46,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
-    serialize=False) -> evaluator.Evaluator:
+    serialize=False,
+    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -63,6 +64,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
       data for smaller number of examples.
     serialize: If true, serialize the metrics to protos as part of the
       evaluation as well.
+    random_seed_for_testing: Provide for deterministic tests only.
 
   Returns:
     Evaluator for evaluating metrics and plots. The output will be stored under
@@ -79,7 +81,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           plots_key=plots_key,
           compute_confidence_intervals=compute_confidence_intervals,
           k_anonymization_count=k_anonymization_count,
-          serialize=serialize))
+          serialize=serialize,
+          random_seed_for_testing=random_seed_for_testing))
 
 
 @beam.ptransform_fn
@@ -176,7 +179,8 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     plots_key: Text = constants.PLOTS_KEY,
     compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
-    serialize: bool = False) -> evaluator.Evaluation:
+    serialize: bool = False,
+    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
   """Evaluates metrics and plots using the EvalSavedModel.
 
   Args:
@@ -199,6 +203,7 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
       data for smaller number of examples.
     serialize: If true, serialize the metrics to protos as part of the
       evaluation as well.
+    random_seed_for_testing: Provide for deterministic tests only.
 
   Returns:
     Evaluation containing metrics and plots dictionaries keyed by 'metrics'
@@ -211,7 +216,8 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
       | 'ComputeMetricsAndPlots' >> ComputeMetricsAndPlots(
           eval_shared_model,
           desired_batch_size,
-          compute_confidence_intervals=compute_confidence_intervals))
+          compute_confidence_intervals=compute_confidence_intervals,
+          random_seed_for_testing=random_seed_for_testing))
 
   if k_anonymization_count > 1:
     metrics = (

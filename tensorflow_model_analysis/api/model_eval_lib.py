@@ -353,7 +353,9 @@ def default_evaluators(  # pylint: disable=invalid-name
     compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
     desired_batch_size: Optional[int] = None,
-    serialize: bool = False) -> List[evaluator.Evaluator]:
+    serialize: bool = False,
+    random_seed_for_testing: Optional[int] = None) -> List[evaluator.Evaluator]:
+
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
@@ -365,6 +367,7 @@ def default_evaluators(  # pylint: disable=invalid-name
     k_anonymization_count: Deprecated (use eval_config).
     desired_batch_size: Optional batch size for batching in combiner.
     serialize: Deprecated.
+    random_seed_for_testing: Provide for deterministic tests only.
   """
   disabled_outputs = []
   if eval_config and eval_config.options:
@@ -389,7 +392,8 @@ def default_evaluators(  # pylint: disable=invalid-name
             compute_confidence_intervals=compute_confidence_intervals,
             k_anonymization_count=k_anonymization_count,
             desired_batch_size=desired_batch_size,
-            serialize=serialize)
+            serialize=serialize,
+            random_seed_for_testing=random_seed_for_testing)
     ]
   else:
     return [
@@ -602,7 +606,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     write_config: Optional[bool] = True,
     compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
-    desired_batch_size: Optional[int] = None) -> beam.pvalue.PDone:
+    desired_batch_size: Optional[int] = None,
+    random_seed_for_testing: Optional[int] = None) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -656,6 +661,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     compute_confidence_intervals: Deprecated (use EvalConfig).
     k_anonymization_count: Deprecated (use EvalConfig).
     desired_batch_size: Optional batch size for batching in Predict.
+    random_seed_for_testing: Provide for deterministic tests only.
 
   Raises:
     ValueError: If EvalConfig invalid or matching Extractor not found for an
@@ -711,7 +717,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
 
   if not evaluators:
     evaluators = default_evaluators(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
+        random_seed_for_testing=random_seed_for_testing)
 
   for v in evaluators:
     evaluator.verify_evaluator(v, extractors)
@@ -763,7 +771,8 @@ def run_model_analysis(
     write_config: Optional[bool] = True,
     compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
-    desired_batch_size: Optional[int] = None) -> Union[EvalResult, EvalResults]:
+    desired_batch_size: Optional[int] = None,
+    random_seed_for_testing: Optional[int] = None) -> Union[EvalResult, EvalResults]:
   """Runs TensorFlow model analysis.
 
   It runs a Beam pipeline to compute the slicing metrics exported in TensorFlow
@@ -800,6 +809,7 @@ def run_model_analysis(
     compute_confidence_intervals: Deprecated (use EvalConfig).
     k_anonymization_count: Deprecated (use EvalConfig).
     desired_batch_size: Optional batch size for batching in Predict.
+    random_seed_for_testing: Provide for deterministic tests only.
 
   Returns:
     An EvalResult that can be used with the TFMA visualization functions.
@@ -863,7 +873,8 @@ def run_model_analysis(
             extractors=extractors,
             evaluators=evaluators,
             writers=writers,
-            desired_batch_size=desired_batch_size))
+            desired_batch_size=desired_batch_size,
+            random_seed_for_testing=random_seed_for_testing))
     # pylint: enable=no-value-for-parameter
 
   if len(eval_config.model_specs) <= 1:
