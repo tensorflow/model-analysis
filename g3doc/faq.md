@@ -227,6 +227,48 @@ config = text_format.Parse("""
 """, tfma.EvalConfig())
 ```
 
+### How do I setup TFMA to work with pre-calculated (i.e. model-agnostic) predictions?
+
+In order to configure TFMA to work with pre-calculated predictions, the default
+`tfma.PredictExtractor` must be disabled and the `tfma.InputExtractor` must be
+configured to parse the predictions along with the other input features. This is
+accomplished by configuring a `tfma.ModelSpec` with the name of the feature key
+used for the predictions alongside of the labels and weights.
+
+The following is an example setup:
+
+```python
+from google.protobuf import text_format
+
+config = text_format.Parse("""
+  model_specs {
+    prediction_key: "<prediction-key>"
+    label_key: "<label-key>"
+    example_weight_key: "<example-weight-key>"
+  }
+  metrics_specs {
+    # Add metrics here.
+  }
+  slicing_specs {}
+""", tfma.EvalConfig())
+```
+
+See [metrics](metrics.md) for more information about metrics that can be
+configured.
+
+Note that altough a `tfma.ModelSpec` is being configured a model is not actually
+being used (i.e. there is no `tfma.EvalSharedModel`). The call to run model
+analysis might look as follows:
+
+```python
+eval_result = tfma.run_model_analysis(
+    eval_config=eval_config,
+    # This assumes your data is a TFRecords file containing records in the
+    # tf.train.Example format.
+    data_location="/path/to/file/containing/tfrecords",
+    output_path="/path/for/metrics_for_slice_proto")
+```
+
 ## Metrics
 
 ### What types of metrics are supported?

@@ -304,7 +304,7 @@ def default_eval_shared_model(
 
 def default_extractors(  # pylint: disable=invalid-name
     eval_shared_model: Union[types.EvalSharedModel,
-                             Dict[Text, types.EvalSharedModel]],
+                             Dict[Text, types.EvalSharedModel]] = None,
     eval_config: config.EvalConfig = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     desired_batch_size: Optional[int] = None,
@@ -313,7 +313,9 @@ def default_extractors(  # pylint: disable=invalid-name
 
   Args:
     eval_shared_model: Shared model (single-model evaluation) or dict of shared
-      models keyed by model name (multi-model evaluation).
+      models keyed by model name (multi-model evaluation). Required unless the
+      predictions are provided alongside of the features (i.e. model-agnostic
+      evaluations).
     eval_config: Eval config.
     slice_spec: Deprecated (use EvalConfig).
     desired_batch_size: Optional batch size for batching in Predict.
@@ -323,7 +325,7 @@ def default_extractors(  # pylint: disable=invalid-name
     slice_spec = [
         slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
     ]
-  if (not isinstance(eval_shared_model, dict) and
+  if (eval_shared_model and not isinstance(eval_shared_model, dict) and
       (not eval_shared_model.model_loader.tags or
        eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags)):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
@@ -333,13 +335,19 @@ def default_extractors(  # pylint: disable=invalid-name
         slice_key_extractor.SliceKeyExtractor(
             slice_spec, materialize=materialize)
     ]
-  else:
+  elif eval_shared_model:
     return [
         input_extractor.InputExtractor(eval_config=eval_config),
         predict_extractor_v2.PredictExtractor(
             eval_config=eval_config,
             eval_shared_model=eval_shared_model,
             desired_batch_size=desired_batch_size),
+        slice_key_extractor.SliceKeyExtractor(
+            slice_spec, materialize=materialize)
+    ]
+  else:
+    return [
+        input_extractor.InputExtractor(eval_config=eval_config),
         slice_key_extractor.SliceKeyExtractor(
             slice_spec, materialize=materialize)
     ]
@@ -745,7 +753,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       file_format = display_only_file_format
     model_locations = {}
     for k, v in eval_shared_models.items():
-      model_locations[k] = '<unknown>' if v.model_path is None else v.model_path
+      model_locations[k] = ('<unknown>' if v is None or v.model_path is None
+                            else v.model_path)
     _ = (
         examples.pipeline
         | WriteEvalConfig(eval_config, output_path, data_location, file_format,

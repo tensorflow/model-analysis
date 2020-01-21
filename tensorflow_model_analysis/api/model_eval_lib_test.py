@@ -307,6 +307,67 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
+  def testRunModelAnalysisWithModelAgnosticPredictions(self):
+    examples = [
+        self._makeExample(
+            age=3.0, language='english', label=1.0, prediction=0.9),
+        self._makeExample(
+            age=3.0, language='chinese', label=0.0, prediction=0.4),
+        self._makeExample(
+            age=4.0, language='english', label=1.0, prediction=0.7),
+        self._makeExample(
+            age=5.0, language='chinese', label=1.0, prediction=0.2)
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    model_specs = [
+        config.ModelSpec(
+            prediction_key='prediction',
+            label_key='label',
+            example_weight_key='age')
+    ]
+    metrics = [
+        config.MetricConfig(class_name='ExampleCount'),
+        config.MetricConfig(class_name='WeightedExampleCount'),
+        config.MetricConfig(class_name='BinaryAccuracy')
+    ]
+    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
+    eval_config = config.EvalConfig(
+        model_specs=model_specs,
+        metrics_specs=[config.MetricsSpec(metrics=metrics)],
+        slicing_specs=slicing_specs)
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
+        data_location=data_location,
+        output_path=self._getTempDir())
+    expected = {
+        (('language', 'chinese'),): {
+            'binary_accuracy': {
+                'doubleValue': 0.375
+            },
+            'weighted_example_count': {
+                'doubleValue': 8.0
+            },
+            'example_count': {
+                'doubleValue': 2.0
+            },
+        },
+        (('language', 'english'),): {
+            'binary_accuracy': {
+                'doubleValue': 1.0
+            },
+            'weighted_example_count': {
+                'doubleValue': 7.0
+            },
+            'example_count': {
+                'doubleValue': 2.0
+            },
+        }
+    }
+    self.assertEqual(eval_result.data_location, data_location)
+    self.assertEqual(eval_result.config.slicing_specs[0],
+                     config.SlicingSpec(feature_keys=['language']))
+    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
+
   def testRunModelAnalysisWithKerasModel(self):
     input_layer = tf.keras.layers.Input(shape=(28 * 28,), name='data')
     output_layer = tf.keras.layers.Dense(
