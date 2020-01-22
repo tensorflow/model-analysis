@@ -227,7 +227,7 @@ key used (e.g. `tfma.METRICS_KEY`, `tfma.ANALYSIS_KEY`, etc).
 # Step by Step Example
 
 The following is an example of the steps involved in the extraction and
-evaluation pipeline when both the `tfma.evaulators.MetricsAndPlotsEvaluator` and
+evaluation pipeline when both the `tfma.evaluators.MetricsAndPlotsEvaluator` and
 `tfma.evaluators.AnalysisTableEvaluator` are used:
 
 ```python
