@@ -118,7 +118,7 @@ def _ParseExample(extracts: types.Extracts, eval_config: config.EvalConfig):
         extracts[key] = {}
       extracts[key][model_name] = feature_values
     else:
-      extracts[key] = values
+      extracts[key] = feature_values
 
   keys_to_pop = []
   for spec in eval_config.model_specs:
