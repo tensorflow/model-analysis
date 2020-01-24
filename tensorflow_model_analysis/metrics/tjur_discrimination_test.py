@@ -36,10 +36,10 @@ class TjurDisriminationTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(
       ('coefficient_of_discrimination',
        tjur_discrimination.CoefficientOfDiscrimination(),
-       (1.2 / 2.0) - (1.8 / 1.0)),
+       (1.2 / 2.0) - (0.8 / 1.0)),
       ('relative_coefficient_of_discrimination',
        tjur_discrimination.RelativeCoefficientOfDiscrimination(),
-       (1.2 / 2.0) / (1.8 / 1.0)))
+       (1.2 / 2.0) / (0.8 / 1.0)))
   def testTjuDicriminationMetricsWithoutWeights(self, metric, expected_value):
     computations = metric.computations()
     shared_metrics = computations[0]
@@ -47,11 +47,11 @@ class TjurDisriminationTest(testutil.TensorflowModelAnalysisTest,
 
     # Positive labels: 0.0 + 1.0 + 1.0  = 2.0
     # Negative labels: 1.0 + 0.0 + 0.0 = 1.0
-    # Positive predictions: 0.0 + 0.3 + 0.9 = 1.2
-    # Negative predictions: 1.0 + 0.7 + 0.1 = 1.8
+    # Positive predictions: 0.0 * 0.8 + 1.0 * 0.3 + 1.0 * 0.9 = 1.2
+    # Negative predictions: 1.0 * 0.8 + 0.0 * 0.3 + 0.0 * 0.9 = 0.8
     example1 = {
         'labels': np.array([0.0]),
-        'predictions': np.array([0.0]),
+        'predictions': np.array([0.8]),
         'example_weights': np.array([1.0]),
     }
     example2 = {
@@ -95,22 +95,24 @@ class TjurDisriminationTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(
       ('coefficient_of_discrimination',
        tjur_discrimination.CoefficientOfDiscrimination(),
-       (3.3 / 5.0) - (2.7 / 1.0)),
+       (3.3 / 5.0) - (1.6 / 5.0)),
       ('relative_coefficient_of_discrimination',
        tjur_discrimination.RelativeCoefficientOfDiscrimination(),
-       (3.3 / 5.0) / (2.7 / 1.0)))
+       (3.3 / 5.0) / (1.6 / 5.0)))
   def testTjuDicriminationMetricsWithWeights(self, metric, expected_value):
     computations = metric.computations()
     shared_metrics = computations[0]
     metric = computations[1]
 
-    # Positive labels: 1.0 * 0.0 + 2.0 * 1.0 + 3.0 * 1.0  = 5.0
-    # Negative labels: 1.0 * 1.0 + 2.0 * 0.0 + 3.0 * 0.0 = 1.0
-    # Positive predictions: 1.0 * 0.0 + 2.0 * 0.3 + 3.0 * 0.9 = 3.3
-    # Negative predictions: 1.0 * 1.0 + 2.0 * 0.7 + 3.0 * 0.1 = 2.7
+    # Positive labels: 1.0 * 0.0 + 2.0 * 1.0 + 3.0 * 1.0 + 4.0 * 0.0 = 5.0
+    # Negative labels: 1.0 * 1.0 + 2.0 * 0.0 + 3.0 * 0.0 + 4.0 * 1.0 = 5.0
+    # Positive predictions: 1.0 * 0.0 * 0.8 + 2.0 * 1.0 * 0.3 + 3.0 * 1.0 * 0.9
+    #                       + 4.0 * 0.0 * 0.2 = 3.3
+    # Negative predictions: 1.0 * 1.0 * 0.8 + 2.0 * 0.0 * 0.7 + 3.0 * 0.0 * 0.1
+    #                       + 4.0 * 1.0 * 0.2 = 1.6
     example1 = {
         'labels': np.array([0.0]),
-        'predictions': np.array([0.0]),
+        'predictions': np.array([0.8]),
         'example_weights': np.array([1.0]),
     }
     example2 = {
@@ -123,12 +125,17 @@ class TjurDisriminationTest(testutil.TensorflowModelAnalysisTest,
         'predictions': np.array([0.9]),
         'example_weights': np.array([3.0]),
     }
+    example4 = {
+        'labels': np.array([0.0]),
+        'predictions': np.array([0.2]),
+        'example_weights': np.array([4.0]),
+    }
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([example1, example2, example3])
+          | 'Create' >> beam.Create([example1, example2, example3, example4])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           |

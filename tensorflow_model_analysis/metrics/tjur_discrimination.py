@@ -237,10 +237,11 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
       accumulator.total_negative_weighted_labels += ((1.0 - label) *
                                                      example_weight)
       accumulator.total_positive_weighted_labels += label * example_weight
-      accumulator.total_negative_weighted_predictions += ((1.0 - prediction) *
+      accumulator.total_negative_weighted_predictions += ((1.0 - label) *
+                                                          prediction *
                                                           example_weight)
       accumulator.total_positive_weighted_predictions += (
-          prediction * example_weight)
+          label * prediction * example_weight)
     return accumulator
 
   def merge_accumulators(
