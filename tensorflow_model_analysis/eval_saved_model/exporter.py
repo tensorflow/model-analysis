@@ -156,13 +156,14 @@ class LatestExporter(tf.estimator.Exporter):
   """
 
   @tfma_util.kwargs_only
-  def __init__(
-      self,
-      name: Text,
-      eval_input_receiver_fn: Callable[[], export.EvalInputReceiverType],
-      serving_input_receiver_fn: Optional[
-          Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
-      exports_to_keep: int = 5):
+  def __init__(self,
+               name: Text,
+               eval_input_receiver_fn: Callable[[],
+                                                export.EvalInputReceiverType],
+               serving_input_receiver_fn: Optional[Callable[
+                   [], tf.estimator.export.ServingInputReceiver]] = None,
+               exports_to_keep: int = 5,
+               assets_extra: Optional[Dict[Text, Text]] = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
@@ -176,6 +177,13 @@ class LatestExporter(tf.estimator.Exporter):
       exports_to_keep: Number of exports to keep.  Older exports will be
         garbage-collected.  Defaults to 5.  Set to `None` to disable garbage
         collection.
+      assets_extra: An optional dict specifying how to populate the assets.extra
+        directory within the exported SavedModel.  Each key should give the
+        destination path (including the filename) relative to the assets.extra
+        directory.  The corresponding value gives the full path of the source
+        file to be copied.  For example, the simple case of copying a single
+        file without renaming it is specified as
+        `{'my_asset_file.txt': '/path/to/my_asset_file.txt'}`.
 
     Raises:
       ValueError: if exports_to_keep is set to a non-positive value.
@@ -183,7 +191,8 @@ class LatestExporter(tf.estimator.Exporter):
     self._eval_saved_model_exporter = _EvalSavedModelExporter(
         name=name,
         eval_input_receiver_fn=eval_input_receiver_fn,
-        serving_input_receiver_fn=serving_input_receiver_fn)
+        serving_input_receiver_fn=serving_input_receiver_fn,
+        assets_extra=assets_extra)
     self._exports_to_keep = exports_to_keep
     if exports_to_keep is not None and exports_to_keep <= 0:
       raise ValueError(
