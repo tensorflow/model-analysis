@@ -249,13 +249,13 @@ setup_args = {
     # protobuf) with TF.
     'install_requires': [
         # Sort alphabetically
+        'absl-py>=0.7,<0.9',
         'apache-beam[gcp]>=2.17,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
         'protobuf>=3.7,<4',
-        # TODO(b/126957988): Stop pinning scipy when possible.
-        'scipy==1.1.0',
+        'scipy==1.2.2',
         'six>=1.12,<2',
         'tensorflow>=1.15,<3',
         'tensorflow-metadata>=0.21,<0.22',
