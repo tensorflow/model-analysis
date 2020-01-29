@@ -277,6 +277,7 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
         metric_util.to_label_prediction_example_weight(
             element,
             eval_config=self._eval_config,
+            model_name=self._key.model_name,
             output_name=self._key.output_name,
             sub_key=self._key.sub_key,
             class_weights=self._class_weights,

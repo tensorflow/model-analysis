@@ -140,9 +140,15 @@ def tf_metric_computations(
         metric_types.MetricComputation(
             keys=metric_keys,
             preprocessor=None,
-            combiner=_CompilableMetricsCombiner(metric_configs, loss_configs,
-                                                custom_objects, sub_key,
-                                                class_weights, batch_size)))
+            combiner=_CompilableMetricsCombiner(
+                metric_configs,
+                loss_configs,
+                custom_objects,
+                model_name,
+                sub_key,
+                class_weights,
+                batch_size,
+            )))
 
   if non_compilable_metrics:
     computations.append(
@@ -572,12 +578,14 @@ class _CompilableMetricsCombiner(beam.CombineFn):
                metric_configs: Dict[Text, List[Dict[Text, Any]]],
                loss_configs: Dict[Text, List[Dict[Text, Any]]],
                custom_objects: Dict[Text, Type[Any]],
+               model_name: Optional[Text],
                sub_key: Optional[metric_types.SubKey],
                class_weights: Dict[int, float],
                batch_size: Optional[int] = None):
     # Use parallel lists to store output_names and configs to guarantee
     # consistent ordering and for natural alignment with the accumulator where
     # lists are used instead of dicts for efficency.
+    self._model_name = model_name
     self._output_names = sorted(metric_configs.keys())
     self._metric_configs = [metric_configs[n] for n in self._output_names]
     self._loss_configs = [loss_configs[n] for n in self._output_names]
@@ -634,7 +642,8 @@ class _CompilableMetricsCombiner(beam.CombineFn):
               output_name=output_name,
               sub_key=self._sub_key,
               class_weights=self._class_weights,
-              flatten=self._class_weights is not None)):
+              flatten=self._class_weights is not None,
+              model_name=self._model_name)):
         accumulator.add_input(i, label, prediction, example_weight)
     if accumulator.len_inputs() >= self._batch_size:
       self._process_batch(accumulator)
