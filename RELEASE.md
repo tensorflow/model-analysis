@@ -63,6 +63,7 @@
     -   Adding an option to "Select all" metrics in UI.
 *   Added auto slice key extractor based on statistics.
 *   Depends on 'tensorflow-metadata>=0.21,<0.22'.
+*   Made InputProcessor externally visible.
 
 ## Breaking changes
 
