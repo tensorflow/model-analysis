@@ -62,11 +62,19 @@ def _WriteMetricsAndPlots(
                         add_metrics_callbacks=add_metrics_callbacks))
 
   if constants.METRICS_KEY in output_paths:
+    # We only use a single shard here because metrics are usually single values,
+    # so even with 1M slices and a handful of metrics the size requirements will
+    # only be a few hundred MB.
     _ = metrics | 'WriteMetrics' >> beam.io.WriteToTFRecord(
         file_path_prefix=output_paths[constants.METRICS_KEY],
         shard_name_template='')
 
   if constants.PLOTS_KEY in output_paths:
+    # We only use a single shard here because we are assuming that plots will
+    # not be enabled when millions of slices are in use. By default plots are
+    # stored with 1K thresholds with each plot entry taking up to 7 fields
+    # (tp, fp, ... recall) so if this assumption is false the output can end up
+    # in the hundreds of GB.
     _ = plots | 'WritePlots' >> beam.io.WriteToTFRecord(
         file_path_prefix=output_paths[constants.PLOTS_KEY],
         shard_name_template='')
