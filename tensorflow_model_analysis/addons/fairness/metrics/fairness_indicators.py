@@ -37,12 +37,14 @@ FAIRNESS_INDICATORS_SUB_METRICS = (
     'negative_rate',
 )
 
+DEFAULT_THERSHOLDS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+
 
 class FairnessIndicators(metric_types.Metric):
   """Fairness indicators metrics."""
 
   def __init__(self,
-               thresholds: List[float],
+               thresholds: List[float] = DEFAULT_THERSHOLDS,
                name: Text = FAIRNESS_INDICATORS_METRICS_NAME):
     """Initializes fairness indicators metrics.
 
@@ -57,6 +59,11 @@ class FairnessIndicators(metric_types.Metric):
         name=name)
 
 
+def calculate_digits(thresholds):
+  digits = [len(str(t)) - 2 for t in thresholds]
+  return max(max(digits), 1)
+
+
 def _fairness_indicators_metrics_at_thresholds(
     thresholds: List[float],
     name: Text = FAIRNESS_INDICATORS_METRICS_NAME,
@@ -69,11 +76,13 @@ def _fairness_indicators_metrics_at_thresholds(
   """Returns computations for fairness metrics at thresholds."""
   metric_key_by_name_by_threshold = collections.defaultdict(dict)
   keys = []
+  digits_num = calculate_digits(thresholds)
   for t in thresholds:
     for m in FAIRNESS_INDICATORS_SUB_METRICS:
       key = metric_types.MetricKey(
-          name='%s/%s@%s' %
-          (name, m, t),  # e.g. "fairness_indicators_metrics/positive_rate@0.5"
+          name='%s/%s@%.*f' %
+          (name, m, digits_num,
+           t),  # e.g. "fairness_indicators_metrics/positive_rate@0.5"
           model_name=model_name,
           output_name=output_name,
           sub_key=sub_key)
