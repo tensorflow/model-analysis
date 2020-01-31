@@ -305,13 +305,13 @@ def default_multi_class_classification_specs(
   metrics.append(
       multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot())
   if binarize is not None:
-    for top_k in binarize.top_k_list:
+    for top_k in binarize.top_k_list.values:
       metrics.extend([
           tf.keras.metrics.Precision(name='precision', top_k=top_k),
           tf.keras.metrics.Recall(name='recall', top_k=top_k)
       ])
     binarize = config.BinarizationOptions().CopyFrom(binarize)
-    binarize.ClearField('top_k')
+    binarize.ClearField('top_k_list')
   multi_class_metrics = specs_from_metrics(
       metrics, model_names=model_names, output_names=output_names)
   if aggregate is None:
@@ -526,14 +526,14 @@ def _create_sub_keys(
   sub_keys = None
   if spec.HasField('binarize'):
     sub_keys = []
-    if spec.binarize.class_ids:
-      for v in spec.binarize.class_ids:
+    if spec.binarize.class_ids.values:
+      for v in spec.binarize.class_ids.values:
         sub_keys.append(metric_types.SubKey(class_id=v))
-    if spec.binarize.k_list:
-      for v in spec.binarize.k_list:
+    if spec.binarize.k_list.values:
+      for v in spec.binarize.k_list.values:
         sub_keys.append(metric_types.SubKey(k=v))
-    if spec.binarize.top_k_list:
-      for v in spec.binarize.top_k_list:
+    if spec.binarize.top_k_list.values:
+      for v in spec.binarize.top_k_list.values:
         sub_keys.append(metric_types.SubKey(top_k=v))
     if spec.aggregate.micro_average:
       # Micro averaging is performed by flattening the labels and predictions

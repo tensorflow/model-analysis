@@ -402,7 +402,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
           config.MetricConfig(
               class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
     for class_id in (0, 5, 9):
-      metrics_spec.binarize.class_ids.append(class_id)
+      metrics_spec.binarize.class_ids.values.append(class_id)
     eval_config = config.EvalConfig(
         model_specs=[config.ModelSpec(label_key='label')],
         metrics_specs=[metrics_spec])
@@ -470,7 +470,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         slicing_specs=slicing_specs,
         metrics_specs=metric_specs.specs_from_metrics(
             [ndcg.NDCG(gain_key='age', name='ndcg')],
-            binarize=config.BinarizationOptions(top_k_list=[1]),
+            binarize=config.BinarizationOptions(top_k_list={'values': [1]}),
             query_key='language'))
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, tags=[tf.saved_model.SERVING])

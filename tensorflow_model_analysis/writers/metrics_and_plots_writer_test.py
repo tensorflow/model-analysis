@@ -59,7 +59,8 @@ class MetricsAndPlotsWriterTest(testutil.TensorflowModelAnalysisTest):
             None, temp_eval_export_dir))
     eval_config = config.EvalConfig(
         model_specs=[config.ModelSpec()],
-        options=config.Options(disabled_outputs=['eval_config.json']))
+        options=config.Options(
+            disabled_outputs={'values': ['eval_config.json']}))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=[

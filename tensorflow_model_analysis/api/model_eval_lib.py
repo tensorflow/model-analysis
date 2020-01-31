@@ -363,7 +363,6 @@ def default_evaluators(  # pylint: disable=invalid-name
     desired_batch_size: Optional[int] = None,
     serialize: bool = False,
     random_seed_for_testing: Optional[int] = None) -> List[evaluator.Evaluator]:
-
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
@@ -378,8 +377,8 @@ def default_evaluators(  # pylint: disable=invalid-name
     random_seed_for_testing: Provide for deterministic tests only.
   """
   disabled_outputs = []
-  if eval_config and eval_config.options:
-    disabled_outputs = eval_config.options.disabled_outputs
+  if eval_config:
+    disabled_outputs = eval_config.options.disabled_outputs.values
   if (constants.METRICS_KEY in disabled_outputs and
       constants.PLOTS_KEY in disabled_outputs):
     return []
@@ -702,7 +701,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     options.compute_confidence_intervals.value = compute_confidence_intervals
     options.k_anonymization_count.value = k_anonymization_count
     if not write_config:
-      options.disabled_outputs.append(_EVAL_CONFIG_FILE)
+      options.disabled_outputs.values.append(_EVAL_CONFIG_FILE)
     eval_config = config.EvalConfig(
         model_specs=model_specs, slicing_specs=slicing_specs, options=options)
 
@@ -744,7 +743,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
           extractors=extractors, evaluators=evaluators)
       | 'WriteResults' >> WriteResults(writers=writers))
 
-  if _EVAL_CONFIG_FILE not in eval_config.options.disabled_outputs:
+  if _EVAL_CONFIG_FILE not in eval_config.options.disabled_outputs.values:
     data_location = '<user provided PCollection>'
     if display_only_data_location is not None:
       data_location = display_only_data_location
@@ -781,7 +780,8 @@ def run_model_analysis(
     compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
     desired_batch_size: Optional[int] = None,
-    random_seed_for_testing: Optional[int] = None) -> Union[EvalResult, EvalResults]:
+    random_seed_for_testing: Optional[int] = None
+) -> Union[EvalResult, EvalResults]:
   """Runs TensorFlow model analysis.
 
   It runs a Beam pipeline to compute the slicing metrics exported in TensorFlow
@@ -856,7 +856,7 @@ def run_model_analysis(
     options.compute_confidence_intervals.value = compute_confidence_intervals
     options.k_anonymization_count.value = k_anonymization_count
     if not write_config:
-      options.disabled_outputs.append(_EVAL_CONFIG_FILE)
+      options.disabled_outputs.values.append(_EVAL_CONFIG_FILE)
     eval_config = config.EvalConfig(
         model_specs=model_specs, slicing_specs=slicing_specs, options=options)
 

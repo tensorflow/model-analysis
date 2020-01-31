@@ -598,7 +598,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicing_specs=[config.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics(
             [calibration.MeanLabel('mean_label')],
-            binarize=config.BinarizationOptions(class_ids=range(n_classes))))
+            binarize=config.BinarizationOptions(
+                class_ids={'values': range(n_classes)})))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
 
@@ -898,7 +899,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         ],
         metrics_specs=metric_specs.specs_from_metrics(
             [ndcg.NDCG(gain_key='fixed_float', name='ndcg')],
-            binarize=config.BinarizationOptions(top_k_list=[1, 2]),
+            binarize=config.BinarizationOptions(top_k_list={'values': [1, 2]}),
             query_key='fixed_string'))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])

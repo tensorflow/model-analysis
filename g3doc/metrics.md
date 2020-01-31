@@ -192,7 +192,7 @@ from google.protobuf import text_format
 
 metrics_specs = text_format.Parse("""
   metrics_specs {
-    binarize: { class_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+    binarize: { class_ids: { values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] } }
     // Metrics to binarize
     metrics { class_name: "AUC" }
     ...
@@ -209,7 +209,8 @@ metrics = [
     ...
 ]
 metrics_specs = tfma.metrics.specs_from_metrics(
-    metrics, binarize=tfma.BinarizationOptions(class_ids=[0,1,2,3,4,5,6,7,8,9]))
+    metrics, binarize=tfma.BinarizationOptions(
+        class_ids={'values': [0,1,2,3,4,5,6,7,8,9]}))
 ```
 
 ### Multi-class/Multi-label Aggregate Metrics
@@ -259,7 +260,7 @@ from google.protobuf import text_format
 
 metrics_specs = text_format.Parse("""
   metrics_specs {
-    binarize: { class_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+    binarize: { class_ids: { values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] } }
     aggregeate: { macro_average: true }
     // Metrics to both binarize and aggregate
     metrics { class_name: "AUC" }
@@ -278,7 +279,8 @@ metrics = [
 ]
 metrics_specs = tfma.metrics.specs_from_metrics(
     metrics,
-    binarize=tfma.BinarizationOptions(class_ids=[0,1,2,3,4,5,6,7,8,9]),
+    binarize=tfma.BinarizationOptions(
+        class_ids={'values': [0,1,2,3,4,5,6,7,8,9]}),
     aggregate=tfma.AggregationOptions(macro_average=True))
 ```
 
@@ -293,7 +295,7 @@ from google.protobuf import text_format
 metrics_specs = text_format.Parse("""
   metrics_specs {
     query_key: "doc_id"
-    binarize { top_k: [1, 2] }
+    binarize { top_k_list: { values: [1, 2] } }
     metrics { class_name: "NDCG" config: '"gain_key": "gain"' }
   }
   metrics_specs {
@@ -310,7 +312,8 @@ metrics = [
     tfma.metrics.NDCG(name='ndcg', gain_key='gain'),
 ]
 metrics_specs = tfma.metrics.specs_from_metrics(
-    metrics, query_key='doc_id', binarize=tfma.BinarizationOptions(top_k=[1,2]))
+    metrics, query_key='doc_id', binarize=tfma.BinarizationOptions(
+        top_k_list={'values': [1,2]}))
 
 metrics = [
     tfma.metrics.MinLabelPosition(name='min_label_position')

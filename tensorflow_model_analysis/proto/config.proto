@@ -119,17 +119,19 @@ message AggregationOptions {
 message BinarizationOptions {
   // Creates binary classification metrics based on one-vs-rest for each
   // value of class_id provided.
-  repeated int32 class_ids = 1;
+  RepeatedInt32Value class_ids = 4;
   // Creates binary classification metrics based on the kth predicted value
   // for each value of k provided.
-  repeated int32 k_list = 2;
+  RepeatedInt32Value k_list = 5;
   // Creates binary classification metrics based on the top k predicted values
   // for each value of top_k provided. When used to create calibration plots
   // the histogram will contain a mix of all labels and predictions in the top
   // k predictions. Note that precision@k and recall@k can also be configured
   // directly as multi-class classification metrics by setting top_k on the
   // metric itself.
-  repeated int32 top_k_list = 3;
+  RepeatedInt32Value top_k_list = 6;
+
+  reserved 1, 2, 3;
 }
 
 // Metric configuration.
@@ -183,9 +185,9 @@ message Options {
   google.protobuf.Int32Value k_anonymization_count = 3;
   // List of outputs that should not be written (e.g.  'metrics', 'plots',
   // 'analysis', 'eval_config.json').
-  repeated string disabled_outputs = 6;
+  RepeatedStringValue disabled_outputs = 7;
 
-  reserved 4, 5;
+  reserved 4, 5, 6;
 }
 
 // Tensorflow model analaysis config settings.
@@ -217,6 +219,16 @@ message EvalConfig {
   Options options = 6;
 
   reserved 1, 3, 7;
+}
+
+// Repeated string value. Used to allow a default if no values are given.
+message RepeatedStringValue {
+  repeated string values = 1;
+}
+
+// Repeated int32 value. Used to allow a default if no values are given.
+message RepeatedInt32Value {
+  repeated int32 values = 1;
 }
 
 // Config and version.

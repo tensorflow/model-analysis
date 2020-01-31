@@ -12,6 +12,10 @@
 
 ## Breaking changes
 
+*   `tfma.BinarizeOptions.class_ids`, `tfma.BinarizeOptions.k_list`,
+    `tfma.BinarizeOptions.top_k_list`, and `tfma.Options.disabled_outputs` are
+    now wrapped in an additional proto message.
+
 ## Deprecations
 
 # Release 0.21.0

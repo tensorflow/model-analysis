@@ -42,7 +42,7 @@ class MetricSpecsTest(tf.test.TestCase):
             ]
         },
         model_names=['model_name1', 'model_name2'],
-        binarize=config.BinarizationOptions(class_ids=[0, 1]),
+        binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
         aggregate=config.AggregationOptions(macro_average=True))
 
     self.assertLen(metrics_specs, 5)
@@ -80,7 +80,7 @@ class MetricSpecsTest(tf.test.TestCase):
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1'],
-            binarize=config.BinarizationOptions(class_ids=[0, 1]),
+            binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
             aggregate=config.AggregationOptions(macro_average=True)))
     self.assertProtoEquals(
         metrics_specs[3],
@@ -109,7 +109,7 @@ class MetricSpecsTest(tf.test.TestCase):
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name2'],
-            binarize=config.BinarizationOptions(class_ids=[0, 1]),
+            binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
             aggregate=config.AggregationOptions(macro_average=True)))
 
   def testToComputations(self):
@@ -122,7 +122,7 @@ class MetricSpecsTest(tf.test.TestCase):
                 ]
             },
             model_names=['model_name'],
-            binarize=config.BinarizationOptions(class_ids=[0, 1]),
+            binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
             aggregate=config.AggregationOptions(macro_average=True)),
         config.EvalConfig())
 
