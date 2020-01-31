@@ -1,3 +1,20 @@
+# Release 0.21.2
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+*   Adding SciPy dependency for both Python2 and Python3
+*   Increased table and tooltip font in Fairness Indicators.
+
+## Breaking changes
+
+*   `tfma.BinarizeOptions.class_ids`, `tfma.BinarizeOptions.k_list`,
+    `tfma.BinarizeOptions.top_k_list`, and `tfma.Options.disabled_outputs` are
+    now wrapped in an additional proto message.
+
+## Deprecations
+
 # Release 0.21.1
 
 ## Major Features and Improvements
@@ -8,13 +25,8 @@
     value in tfma.run_model_analysis API for testing or experimental purposes.
 *   Fixed calculation of `tfma.metrics.CoefficientOfDiscrimination` and
     `tfma.metrics.RelativeCoefficientOfDiscrimination`.
-*   Increased table and tooltip font in Fairness Indicators.
 
 ## Breaking changes
-
-*   `tfma.BinarizeOptions.class_ids`, `tfma.BinarizeOptions.k_list`,
-    `tfma.BinarizeOptions.top_k_list`, and `tfma.Options.disabled_outputs` are
-    now wrapped in an additional proto message.
 
 ## Deprecations
 
