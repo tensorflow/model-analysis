@@ -25,14 +25,8 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
-# pylint: disable=bad-inline-option,broad-except,g-import-not-at-top
-try:
-  # TODO(b/144161598): Workaround for cloud tests that fail to load TFX_BSL
-  from tfx_bsl.coders import example_coder
-except Exception:
-  pass
+from tfx_bsl.coders import example_coder
 from typing import Any, Dict, List, Optional, Text, Tuple, Union
-# pylint: enable=bad-inline-option,broad-except,g-import-not-at-top
 
 INPUT_EXTRACTOR_STAGE_NAME = 'ExtractInputs'
 
