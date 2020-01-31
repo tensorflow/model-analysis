@@ -59,7 +59,7 @@ function buildTooltips() {
   return d3.tip === undefined ?
       undefined :
       d3.tip()
-          .style('font-size', '10px')
+          .style('font-size', '12px')
           .style('padding', '2px')
           .style('background-color', '#616161')
           .style('color', '#fff')
@@ -150,7 +150,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    * @param {string} baseline slice of the metrics.
    * @param {boolean} isAttached Whether this element is attached to
    *     the DOM.
-   // * @param {!d3.tip.x} tip for bar chart.
+   * @param {!d3.tip.x} tip for bar chart.
    * @private
    */
   initializePlotGraph_(data, metrics, slices, baseline, isAttached, tip) {

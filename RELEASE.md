@@ -8,6 +8,7 @@
     value in tfma.run_model_analysis API for testing or experimental purposes.
 *   Fixed calculation of `tfma.metrics.CoefficientOfDiscrimination` and
     `tfma.metrics.RelativeCoefficientOfDiscrimination`.
+*   Increased table and tooltip font in Fairness Indicators.
 
 ## Breaking changes
 

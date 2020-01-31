@@ -23,6 +23,7 @@ template.innerHTML = `
     background: #f8f9fa;
     border: 1px solid black;
     margin: inherit;
+    font-size: 14px;
   }
   .table-row,
   .table-head-row {
@@ -67,7 +68,6 @@ template.innerHTML = `
     text-align: left;
     padding-top: 8px;
     padding-bottom: 8px;
-    font-size: 12px;
     min-height: min-content;
     width: 100%;
     padding-left: 6px;
