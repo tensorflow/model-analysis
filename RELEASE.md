@@ -49,6 +49,8 @@
     `tfma.addons.fairness.metrics.FairnessIndicators`.
 *   Updated documentation for new metrics infrastructure and newly supported
     models (keras, etc).
+*   Added support for model diff metrics. Users need to turn on "is_baseline" in
+    the corresponding ModelSpec.
 
 ## Bug fixes and other changes
 

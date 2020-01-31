@@ -89,7 +89,8 @@ class SubKey(
 @functools.total_ordering
 class MetricKey(
     NamedTuple('MetricKey', [('name', Text), ('model_name', Text),
-                             ('output_name', Text), ('sub_key', SubKey)])):
+                             ('output_name', Text), ('sub_key', SubKey),
+                             ('is_diff', bool)])):
   """A MetricKey uniquely identifies a metric.
 
   Attributes:
@@ -98,23 +99,25 @@ class MetricKey(
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
+    is_diff: Optional flag to indicate whether this metrics is a diff metric.
   """
 
   def __new__(cls,
               name: Text,
               model_name: Text = '',
               output_name: Text = '',
-              sub_key: Optional[SubKey] = None):
+              sub_key: Optional[SubKey] = None,
+              is_diff: Optional[bool] = False):
     return super(MetricKey, cls).__new__(cls, name, model_name, output_name,
-                                         sub_key)
+                                         sub_key, is_diff)
 
   def __eq__(self, other):
     return tuple(self) == other
 
   def __lt__(self, other):
     # Python3 does not allow comparison of NoneType, remove if present.
-    return (tuple(self[:-1])
-            if self.sub_key is None else tuple(self) < tuple(other[:-1])
+    return (tuple(self[:-2])
+            if self.sub_key is None else tuple(self) < tuple(other[:-2])
             if other.sub_key is None else tuple(other))
 
   def __hash__(self):
@@ -131,7 +134,13 @@ class MetricKey(
       metric_key.output_name = self.output_name
     if self.sub_key:
       metric_key.sub_key.CopyFrom(self.sub_key.to_proto())
+    if self.is_diff:
+      metric_key.is_diff = self.is_diff
     return metric_key
+
+  # Generate a copy of the key except that the is_diff is True.
+  def make_diff_key(self) -> 'MetricKey':
+    return self._replace(is_diff=True)
 
 
 # A separate version from proto is used here because protos are not hashable and
@@ -265,7 +274,8 @@ class Metric(object):
                    output_names: Optional[List[Text]] = None,
                    sub_keys: Optional[List[SubKey]] = None,
                    class_weights: Optional[Dict[int, float]] = None,
-                   query_key: Optional[Text] = None) -> MetricComputations:
+                   query_key: Optional[Text] = None,
+                   is_diff: Optional[bool] = False) -> MetricComputations:
     """Creates computations associated with metric."""
     if hasattr(inspect, 'getfullargspec'):
       args = inspect.getfullargspec(self.create_computations_fn).args
@@ -284,6 +294,8 @@ class Metric(object):
       kwargs['class_weights'] = class_weights
     if 'query_key' in args:
       kwargs['query_key'] = query_key
+    if 'is_diff' in args:
+      kwargs['is_diff'] = is_diff
     return self.create_computations_fn(**kwargs)
 
 

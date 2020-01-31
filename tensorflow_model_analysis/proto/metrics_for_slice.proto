@@ -47,6 +47,9 @@ message MetricKey {
   string output_name = 2;
   // Optional sub key associated with metric.
   SubKey sub_key = 3;
+  // If True, this metric is a diff metric based on a comparison with the
+  // baseline.
+  bool is_diff = 5;
 }
 // LINT.ThenChange(../metrics/metric_types.py)
 
@@ -250,10 +253,10 @@ message MetricsForSlice {
 
   // DEPRECATED
 
-  //A map to store metrics. Currently we convert the post_export_metric
+  // A map to store metrics. Currently we convert the post_export_metric
   // provided by TFMA to its appropriate type for better visualization, and map
   // all other metrics to DoubleValue type.
-  map<string, MetricValue> metrics = 2 [deprecated=true];
+  map<string, MetricValue> metrics = 2 [deprecated = true];
 }
 
 message CalibrationHistogramBuckets {
@@ -326,9 +329,11 @@ message PlotData {
   // For auc curve and auprc curve.
   ConfusionMatrixAtThresholds confusion_matrix_at_thresholds = 2;
   // For multi-class confusion matrix.
-  MultiClassConfusionMatrixAtThresholds multi_class_confusion_matrix_at_thresholds = 4;
+  MultiClassConfusionMatrixAtThresholds
+      multi_class_confusion_matrix_at_thresholds = 4;
   // For multi-label confusion matrix.
-  MultiLabelConfusionMatrixAtThresholds multi_label_confusion_matrix_at_thresholds = 5;
+  MultiLabelConfusionMatrixAtThresholds
+      multi_label_confusion_matrix_at_thresholds = 5;
 
   // This field will contain a generic message to be used to communicate any
   // extra information, such as in a scenario when no data is aggregated for a

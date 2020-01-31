@@ -61,6 +61,120 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
 
+  def _getBaselineDir(self):
+    return os.path.join(self._getTempDir(), 'baseline_export_dir')
+
+  def testEvaluateWithKerasAndDiffMetrics(self):
+
+    def _build_keras_model(model_dir, mul):
+      input_layer = tf.keras.layers.Input(shape=(1,), name='input')
+      output_layer = tf.keras.layers.Lambda(
+          lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul})(
+              input_layer)
+      model = tf.keras.models.Model([input_layer], output_layer)
+      model.compile(
+          optimizer=tf.keras.optimizers.Adam(lr=.001),
+          loss=tf.keras.losses.BinaryCrossentropy(),
+          metrics=['accuracy'])
+
+      model.fit(x=[[0], [1]], y=[[0], [1]], steps_per_epoch=1)
+      model.save(model_dir, save_format='tf')
+      return self.createTestEvalSharedModel(
+          eval_saved_model_path=model_dir, tags=[tf.saved_model.SERVING])
+
+    model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
+    eval_shared_model = _build_keras_model(model_dir, mul=0)
+    baseline_eval_shared_model = _build_keras_model(baseline_dir, mul=1)
+
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(
+                name='candidate',
+                label_key='label',
+                example_weight_key='example_weight'),
+            config.ModelSpec(
+                name='baseline',
+                label_key='label',
+                example_weight_key='example_weight',
+                is_baseline=True)
+        ],
+        slicing_specs=[config.SlicingSpec()],
+        metrics_specs=metric_specs.specs_from_metrics(
+            [
+                calibration.MeanLabel('mean_label'),
+                calibration.MeanPrediction('mean_prediction')
+            ],
+            model_names=['candidate', 'baseline']))
+
+    slice_spec = [
+        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
+    ]
+    eval_shared_models = {
+        'candidate': eval_shared_model,
+        'baseline': baseline_eval_shared_model
+    }
+    extractors = [
+        input_extractor.InputExtractor(eval_config),
+        predict_extractor_v2.PredictExtractor(
+            eval_shared_model=eval_shared_models, eval_config=eval_config),
+        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_models)
+    ]
+
+    examples = [
+        self._makeExample(
+            input=0.0,
+            label=1.0,
+            example_weight=1.0,
+            extra_feature='non_model_feature'),
+        self._makeExample(
+            input=1.0,
+            label=0.0,
+            example_weight=0.5,
+            extra_feature='non_model_feature'),
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      metrics = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_metrics(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          # check only the diff metrics.
+          weighted_example_count_key = metric_types.MetricKey(
+              name='weighted_example_count',
+              model_name='candidate',
+              is_diff=True)
+          prediction_key = metric_types.MetricKey(
+              name='mean_prediction', model_name='candidate', is_diff=True)
+          label_key = metric_types.MetricKey(
+              name='mean_label', model_name='candidate', is_diff=True)
+          self.assertDictElementsAlmostEqual(
+              got_metrics, {
+                  weighted_example_count_key: 0,
+                  label_key: 0,
+                  prediction_key: 0 - (0 * 1 + 1 * 0.5) / (1 + 0.5)
+              })
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(
+          metrics[constants.METRICS_KEY], check_metrics, label='metrics')
+
   def testEvaluateWithSlicing(self):
     temp_export_dir = self._getExportDir()
     _, export_dir = (

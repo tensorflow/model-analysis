@@ -22,11 +22,12 @@ from __future__ import print_function
 import copy
 import datetime
 from typing import Any, Dict, Iterable, List, Optional, Text, Tuple, Type, Union
-
 import apache_beam as beam
 import numpy as np
+
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.evaluators import eval_saved_model_util
@@ -37,6 +38,7 @@ from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from google.protobuf import message
 
 _COMBINER_INPUTS_KEY = '_combiner_inputs'
 _DEFAULT_COMBINER_INPUT_KEY = '_default_combiner_input'
@@ -405,7 +407,8 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     computations: List[metric_types.MetricComputation],
     derived_computations: List[metric_types.DerivedMetricComputation],
     compute_with_sampling: Optional[bool] = False,
-    random_seed_for_testing: Optional[int] = None) -> beam.pvalue.PCollection:
+    random_seed_for_testing: Optional[int] = None,
+    baseline_model_name: Optional[Text] = None) -> beam.pvalue.PCollection:
   """PTransform for computing, aggregating and combining metrics and plots.
 
   Args:
@@ -414,6 +417,7 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     derived_computations: List of DerivedMetricComputations.
     compute_with_sampling: True to compute with sampling.
     random_seed_for_testing: Seed to use for unit testing.
+    baseline_model_name: Name for baseline model.
 
   Returns:
     PCollection of (slice key, dict of metrics).
@@ -438,6 +442,34 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
         result.pop(k)
     return (sliced_results[0], result)
 
+  def add_diff_metrics(
+      sliced_metrics: Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey,
+                                                      Any]],
+      baseline_model_name: Text,
+  ) -> Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]:
+    """Add diff metrics if there is a baseline model."""
+
+    def _baseline_key(key: metric_types.MetricKey) -> metric_types.MetricKey:
+      return metric_types.MetricKey(
+          name=key.name,
+          model_name=baseline_model_name,
+          output_name=key.output_name,
+          sub_key=key.sub_key,
+          is_diff=False)
+
+    result = copy.copy(sliced_metrics[1])
+
+    if baseline_model_name:
+      diff_result = {}
+      for k, v in result.items():
+        if k.model_name != baseline_model_name and _baseline_key(k) in result:
+          # plots will not be diffed.
+          if not isinstance(v, message.Message):
+            diff_result[k.make_diff_key()] = v - result[_baseline_key(k)]
+      result.update(diff_result)
+
+    return (sliced_metrics[0], result)
+
   # A fanout of 8 is used here to reduce stragglers that occur during the
   # merger of large datasets such as historgram buckets. This has little effect
   # on the msec profiles, but can impact the wall time and memory usage. If
@@ -451,7 +483,8 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
                   random_seed_for_testing=random_seed_for_testing))
           .with_hot_key_fanout(8)
           | 'ConvertAndAddDerivedValues' >> beam.Map(
-              convert_and_add_derived_values, derived_computations))
+              convert_and_add_derived_values, derived_computations)
+          | 'AddDiffMetrics' >> beam.Map(add_diff_metrics, baseline_model_name))
 
 
 def _filter_by_key_type(
@@ -530,6 +563,10 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
             eval_saved_model_util.metric_computations_using_eval_saved_model(
                 model_name, model_loader))
 
+  # Find out which model is baseline.
+  baseline_spec = model_util.get_baseline_model_spec(eval_config)
+  baseline_model_name = baseline_spec.name if baseline_spec else None
+
   # pylint: disable=no-value-for-parameter
 
   # Input: Single extract per example (or list of extracts if query_key used)
@@ -574,6 +611,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
           _ComputePerSlice,
           computations=computations,
           derived_computations=derived_computations,
+          baseline_model_name=baseline_model_name,
           num_bootstrap_samples=(
               poisson_bootstrap.DEFAULT_NUM_BOOTSTRAP_SAMPLES if
               eval_config.options.compute_confidence_intervals.value else 1)))
