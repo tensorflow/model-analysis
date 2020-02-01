@@ -134,6 +134,52 @@ message BinarizationOptions {
   reserved 1, 2, 3;
 }
 
+// Determines how to compute the deltas.
+// This might be used in the following ways:
+// - For metrics where a higher value is better (e.g. AUC),
+//   set the direction to HIGHER_IS_BETTER, and set the threshold to be
+//   the "slack", so we fail if say auc_new - auc_old  < slack.
+// - For metrics where a lower value is better (e.g. loss),
+//   set the direction to LOWER_IS_BETTER, and set the threshold to be the
+//   "slack", so we fail if say loss_new - loss_old > slack.
+enum MetricDirection {
+  UNKNOWN = 0;
+  LOWER_IS_BETTER = 1;
+  HIGHER_IS_BETTER = 2;
+}
+
+// Generic change threshold message.
+message GenericChangeThreshold {
+  // Let delta by determined as in the comments for Direction below.
+  // If delta  > absolute, fail the validation.
+  double absolute = 1;
+  // Let delta by determined as in the comments for Direction below.
+  // If delta / X_old > relative, fail the validation.
+  double relative = 2;
+  // Metric direction.
+  MetricDirection direction = 3;
+}
+
+// Generic value threshold message.
+// Fail the validation if the value does not lie in [lower_bound,
+// upper_bound], both boundaries inclusive.
+message GenericValueThreshold {
+  // Lower bound. Assumed to be -Infinity if not set.
+  double lower_bound = 1;
+  // Upper bound. Assumed to be +Infinity if not set.
+  double upper_bound = 2;
+}
+
+// Metric threshold configuration.
+message MetricThreshold {
+  oneof validate_absolute {
+    GenericValueThreshold value_threshold = 1;
+  }
+  oneof validate_relative {
+    GenericChangeThreshold change_threshold = 2;
+  }
+}
+
 // Metric configuration.
 message MetricConfig {
   // Name of a class derived for either tf.keras.metrics.Metric or
@@ -150,6 +196,8 @@ message MetricConfig {
   //
   // Example: '"name": "my_metric", "thresholds": [0.5]'
   string config = 3;
+  // Optional threshold for model validation.
+  MetricThreshold threshold = 4;
 }
 
 // Metrics specification.
