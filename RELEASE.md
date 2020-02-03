@@ -6,6 +6,9 @@
 
 ## Breaking changes
 
+*   Populate TDistributionValue metric when confidence intervals is enabled in
+    V2.
+
 ## Deprecations
 
 # Release 0.21.2
