@@ -325,6 +325,58 @@ def default_multi_class_classification_specs(
   return multi_class_metrics
 
 
+def metric_thresholds_from_metric_specs(
+    metrics_specs: List[config.MetricsSpec]
+) -> Dict[metric_types.MetricKey, Union[config.GenericChangeThreshold,
+                                        config.GenericValueThreshold]]:
+  """Returns thesholds associated with given metrics specs."""
+  result = {}
+
+  tfma_metric_classes = metric_types.registered_metrics()
+
+  for spec in metrics_specs:
+    sub_keys = _create_sub_keys(spec) or [None]
+    if spec.aggregate.macro_average or spec.aggregate.weighted_macro_average:
+      sub_keys.append(None)
+
+    for metric in spec.metrics:
+      if not metric.HasField('threshold'):
+        continue
+
+      if metric.class_name in tfma_metric_classes:
+        name = _deserialize_tfma_metric(metric, tfma_metric_classes).name
+      elif not metric.module:
+        name = _deserialize_tf_metric(metric, {}).name
+      else:
+        cls = getattr(importlib.import_module(metric.module), metric.class_name)
+        if issubclass(cls, tf.keras.metrics.Metric):
+          name = _deserialize_tf_metric(metric, {metric.class_name: cls}).name
+        else:
+          name = _deserialize_tfma_metric(metric, {metric.class_name: cls}).name
+
+      for model_name in spec.model_names or ['']:
+        for output_name in spec.output_names or ['']:
+          for sub_key in sub_keys:
+            if metric.threshold.HasField('value_threshold'):
+              key = metric_types.MetricKey(
+                  name=name,
+                  model_name=model_name,
+                  output_name=output_name,
+                  sub_key=sub_key,
+                  is_diff=False)
+              result[key] = metric.threshold.value_threshold
+            elif metric.threshold.HasField('change_threshold'):
+              key = metric_types.MetricKey(
+                  name=name,
+                  model_name=model_name,
+                  output_name=output_name,
+                  sub_key=sub_key,
+                  is_diff=True)
+              result[key] = metric.threshold.change_threshold
+
+  return result
+
+
 def to_computations(
     metrics_specs: List[config.MetricsSpec],
     eval_config: Optional[config.EvalConfig] = None,

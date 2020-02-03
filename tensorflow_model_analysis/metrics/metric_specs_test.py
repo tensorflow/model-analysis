@@ -112,6 +112,107 @@ class MetricSpecsTest(tf.test.TestCase):
             binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
             aggregate=config.AggregationOptions(macro_average=True)))
 
+  def testMetricThresholdsFromMetricsSpecs(self):
+    metrics_specs = [
+        config.MetricsSpec(metrics=[
+            config.MetricConfig(
+                class_name='ExampleCount',
+                config=json.dumps({'name': 'example_count'}),
+                threshold=config.MetricThreshold(
+                    value_threshold=config.GenericValueThreshold()))
+        ]),
+        config.MetricsSpec(
+            metrics=[
+                config.MetricConfig(
+                    class_name='WeightedExampleCount',
+                    config=json.dumps({'name': 'weighted_example_count'}),
+                    threshold=config.MetricThreshold(
+                        value_threshold=config.GenericValueThreshold()))
+            ],
+            model_names=['model_name1', 'model_name2'],
+            output_names=['output_name1', 'output_name2']),
+        config.MetricsSpec(
+            metrics=[
+                config.MetricConfig(
+                    class_name='MeanSquaredError',
+                    config=json.dumps({'name': 'mse'}),
+                    threshold=config.MetricThreshold(
+                        change_threshold=config.GenericChangeThreshold())),
+                config.MetricConfig(
+                    class_name='MeanLabel',
+                    config=json.dumps({'name': 'mean_label'}),
+                    threshold=config.MetricThreshold(
+                        change_threshold=config.GenericChangeThreshold()))
+            ],
+            model_names=['model_name'],
+            output_names=['output_name'],
+            binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
+            aggregate=config.AggregationOptions(macro_average=True))
+    ]
+    thresholds = metric_specs.metric_thresholds_from_metric_specs(metrics_specs)
+    self.assertLen(thresholds, 11)
+    self.assertIn(metric_types.MetricKey(name='example_count'), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='weighted_example_count',
+            model_name='model_name1',
+            output_name='output_name1'), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='weighted_example_count',
+            model_name='model_name1',
+            output_name='output_name2'), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='weighted_example_count',
+            model_name='model_name2',
+            output_name='output_name1'), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='weighted_example_count',
+            model_name='model_name2',
+            output_name='output_name2'), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='mse',
+            model_name='model_name',
+            output_name='output_name',
+            sub_key=metric_types.SubKey(class_id=0),
+            is_diff=True), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='mse',
+            model_name='model_name',
+            output_name='output_name',
+            sub_key=metric_types.SubKey(class_id=1),
+            is_diff=True), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='mse',
+            model_name='model_name',
+            output_name='output_name',
+            is_diff=True), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='mean_label',
+            model_name='model_name',
+            output_name='output_name',
+            sub_key=metric_types.SubKey(class_id=0),
+            is_diff=True), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='mean_label',
+            model_name='model_name',
+            output_name='output_name',
+            sub_key=metric_types.SubKey(class_id=1),
+            is_diff=True), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='mean_label',
+            model_name='model_name',
+            output_name='output_name',
+            is_diff=True), thresholds)
+
   def testToComputations(self):
     computations = metric_specs.to_computations(
         metric_specs.specs_from_metrics(

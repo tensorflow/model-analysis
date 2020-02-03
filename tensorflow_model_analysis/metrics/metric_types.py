@@ -263,6 +263,10 @@ class Metric(object):
     """
     self.create_computations_fn = create_computations_fn
     self.kwargs = kwargs
+    if 'name' in kwargs:
+      self.name = kwargs['name']
+    else:
+      self.name = None
 
   def get_config(self) -> Dict[Text, Any]:
     """Returns serializable config."""

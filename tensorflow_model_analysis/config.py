@@ -27,6 +27,10 @@ BinarizationOptions = config_pb2.BinarizationOptions
 AggregationOptions = config_pb2.AggregationOptions
 MetricConfig = config_pb2.MetricConfig
 MetricsSpec = config_pb2.MetricsSpec
+MetricDirection = config_pb2.MetricDirection
+GenericChangeThreshold = config_pb2.GenericChangeThreshold
+GenericValueThreshold = config_pb2.GenericValueThreshold
+MetricThreshold = config_pb2.MetricThreshold
 Options = config_pb2.Options
 EvalConfig = config_pb2.EvalConfig
 
