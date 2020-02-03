@@ -619,7 +619,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   if eval_config.options.k_anonymization_count.value > 1:
     sliced_metrics_and_plots = (
         sliced_metrics_and_plots
-        | 'FilteForSmallSlices' >> slicer.FilterOutSlices(
+        | 'FilterForSmallSlices' >> slicer.FilterOutSlices(
             slices_count, eval_config.options.k_anonymization_count.value))
 
   sliced_metrics = (

@@ -456,9 +456,10 @@ def FanoutSlices(
 @beam.typehints.with_input_types(Tuple[SliceKeyType, types.Extracts])
 @beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
 def FilterOutSlices(  # pylint: disable=invalid-name
-    values: beam.pvalue.PCollection, slices_count: beam.pvalue.PCollection,
+    values: beam.pvalue.PCollection,
+    slices_count: beam.pvalue.PCollection,
     k_anonymization_count: int,
-    error_metric_key: Text) -> beam.pvalue.PCollection:
+    error_metric_key: Text = '__ERROR__') -> beam.pvalue.PCollection:
   """Filter out slices with examples count lower than k_anonymization_count.
 
   Since we might filter out certain slices to preserve privacy in the case of
