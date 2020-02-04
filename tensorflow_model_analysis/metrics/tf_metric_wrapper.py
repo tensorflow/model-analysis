@@ -682,7 +682,10 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     for output_index, output_name in enumerate(self._output_names):
       for metric_index, metric in enumerate(self._metrics[output_name]):
         key = metric_types.MetricKey(
-            name=metric.name, output_name=output_name, sub_key=self._sub_key)
+            name=metric.name,
+            model_name=self._model_name,
+            output_name=output_name,
+            sub_key=self._sub_key)
         weights = accumulator.get_weights(output_index, metric_index)
         if weights is not None:
           metric.set_weights(weights)

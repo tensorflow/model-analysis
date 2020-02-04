@@ -4,6 +4,8 @@
 
 ## Bug fixes and other changes
 
+*   Fixed issue with model_name not being set in keras metrics.
+
 ## Breaking changes
 
 *   Populate TDistributionValue metric when confidence intervals is enabled in
