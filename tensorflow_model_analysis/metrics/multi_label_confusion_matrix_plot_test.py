@@ -19,17 +19,19 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import multi_label_confusion_matrix_plot
 
 
-class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
+class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
+                                        parameterized.TestCase):
 
   def testMultiLabelConfusionMatrixPlot(self):
     computation = (
@@ -136,10 +138,15 @@ class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testMultiLabelConfusionMatrixPlotWithThresholds(self):
+  @parameterized.named_parameters(('using_num_thresholds', {
+      'num_thresholds': 3
+  }), ('using_thresholds', {
+      'thresholds': [0.0, 0.5, 1.0]
+  }))
+  def testMultiLabelConfusionMatrixPlotWithThresholds(self, kwargs):
     computation = (
         multi_label_confusion_matrix_plot.MultiLabelConfusionMatrixPlot(
-            thresholds=[0.2, 0.5]).computations()[0])
+            **kwargs).computations()[0])
 
     example1 = {
         'labels': np.array([1.0, 1.0, 0.0]),
@@ -184,7 +191,7 @@ class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
           self.assertProtoEquals(
               """
               matrices {
-                threshold: 0.2
+                threshold: 0.0
                 entries {
                   actual_class_id: 0
                   predicted_class_id: 0
@@ -205,8 +212,8 @@ class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
                   actual_class_id: 0
                   predicted_class_id: 2
                   false_negatives: 0.0
-                  true_negatives: 1.25
-                  false_positives: 0.0
+                  true_negatives: 0.0
+                  false_positives: 1.25
                   true_positives: 0.0
                 }
                 entries {
@@ -229,8 +236,8 @@ class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
                   actual_class_id: 1
                   predicted_class_id: 2
                   false_negatives: 0.0
-                  false_positives: 0.0
-                  true_negatives: 0.75
+                  false_positives: 0.75
+                  true_negatives: 0.0
                   true_positives: 0.0
                 }
               }
@@ -283,6 +290,36 @@ class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
                   false_positives: 0.0
                   true_negatives: 0.75
                   true_positives: 0.0
+                }
+              }
+              matrices {
+                threshold: 1.0
+                entries {
+                  false_negatives: 1.25
+                }
+                entries {
+                  predicted_class_id: 1
+                  false_negatives: 0.25
+                  true_negatives: 1.0
+                }
+                entries {
+                  predicted_class_id: 2
+                  true_negatives: 1.25
+                }
+                entries {
+                  actual_class_id: 1
+                  false_negatives: 0.25
+                  true_negatives: 0.5
+                }
+                entries {
+                  actual_class_id: 1
+                  predicted_class_id: 1
+                  false_negatives: 0.75
+                }
+                entries {
+                  actual_class_id: 1
+                  predicted_class_id: 2
+                  true_negatives: 0.75
                 }
               }
           """, got_matrix)

@@ -34,6 +34,8 @@ MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME = ('multi_class_confusion_matrix_plot')
 # the top prediction was less than the threshold.
 NO_PREDICTED_CLASS_ID = -1
 
+_EPSILON = 1e-7
+
 
 class MultiClassConfusionMatrixPlot(metric_types.Metric):
   """Multi-class confusion matrix plot.
@@ -48,6 +50,7 @@ class MultiClassConfusionMatrixPlot(metric_types.Metric):
 
   def __init__(self,
                thresholds: Optional[List[float]] = None,
+               num_thresholds: Optional[int] = None,
                name: Text = MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME):
     """Initializes multi-class confusion matrix.
 
@@ -55,13 +58,20 @@ class MultiClassConfusionMatrixPlot(metric_types.Metric):
       thresholds: Optional thresholds. If the top prediction is less than a
         threshold then the associated example will be assumed to have no
         prediction associated with it (the predicted_class_id will be set to
-        NO_PREDICTED_CLASS_ID). Defaults to [0.0].
+        NO_PREDICTED_CLASS_ID). Only one of either thresholds or num_thresholds
+        should be used. If both are unset, then [0.0] will be assumed.
+      num_thresholds: Number of thresholds to use. The thresholds will be evenly
+        spaced between 0.0 and 1.0 and inclusive of the boundaries (i.e. to
+        configure the thresholds to [0.0, 0.25, 0.5, 0.75, 1.0], the parameter
+        should be set to 5). Only one of either thresholds or num_thresholds
+        should be used.
       name: Metric name.
     """
     super(MultiClassConfusionMatrixPlot, self).__init__(
         metric_util.merge_per_key_computations(
             _multi_class_confusion_matrix_plot),
         thresholds=thresholds,
+        num_thresholds=num_thresholds,
         name=name)
 
 
@@ -70,12 +80,24 @@ metric_types.register_metric(MultiClassConfusionMatrixPlot)
 
 def _multi_class_confusion_matrix_plot(
     thresholds: Optional[List[float]] = None,
+    num_thresholds: Optional[int] = None,
     name: Text = MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME,
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
 ) -> metric_types.MetricComputations:
   """Returns computations for multi-class confusion matrix at thresholds."""
+  if num_thresholds is not None and thresholds is not None:
+    raise ValueError(
+        'only one of thresholds or num_thresholds can be set at a time')
+  if num_thresholds is None and thresholds is None:
+    thresholds = [0.0]
+  if num_thresholds is not None:
+    thresholds = [
+        (i + 1) * 1.0 / (num_thresholds - 1) for i in range(num_thresholds - 2)
+    ]
+    thresholds = [-_EPSILON] + thresholds + [1.0 + _EPSILON]
+
   key = metric_types.PlotKey(
       name=name, model_name=model_name, output_name=output_name)
   return [
@@ -160,7 +182,14 @@ class _MultiClassConfusionMatrixPlotCombiner(beam.CombineFn):
             metrics_for_slice_pb2.MultiClassConfusionMatrixAtThresholds]:
     pb = metrics_for_slice_pb2.MultiClassConfusionMatrixAtThresholds()
     for threshold in sorted(accumulator.keys()):
-      matrix = pb.matrices.add(threshold=threshold)
+      # Convert -epsilon and 1.0+epsilon back to 0.0 and 1.0.
+      if threshold == -_EPSILON:
+        t = 0.0
+      elif threshold == 1.0 + _EPSILON:
+        t = 1.0
+      else:
+        t = threshold
+      matrix = pb.matrices.add(threshold=t)
       for k in sorted(accumulator[threshold].keys()):
         matrix.entries.add(
             actual_class_id=k.actual_class_id,

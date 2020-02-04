@@ -19,17 +19,19 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_plot
 
 
-class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
+class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
+                                        parameterized.TestCase):
 
   def testMultiClassConfusionMatrixPlot(self):
     computation = (
@@ -119,10 +121,15 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testMultiClassConfusionMatrixPlotWithThresholds(self):
+  @parameterized.named_parameters(('using_num_thresholds', {
+      'num_thresholds': 3
+  }), ('using_thresholds', {
+      'thresholds': [0.0, 0.5, 1.0]
+  }))
+  def testMultiClassConfusionMatrixPlotWithThresholds(self, kwargs):
     computation = (
         multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot(
-            thresholds=[0.0, 0.5]).computations()[0])
+            **kwargs).computations()[0])
 
     example1 = {
         'labels': np.array([2.0]),
@@ -223,6 +230,23 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
                   num_weighted_examples: 2.0
                 }
               }
+              matrices {
+                threshold: 1.0
+                entries {
+                  predicted_class_id: -1
+                  num_weighted_examples: 1.0
+                }
+                entries {
+                  actual_class_id: 1
+                  predicted_class_id: -1
+                  num_weighted_examples: 3.0
+                }
+                entries {
+                  actual_class_id: 2
+                  predicted_class_id: -1
+                  num_weighted_examples: 2.0
+               }
+             }
           """, got_matrix)
 
         except AssertionError as err:
