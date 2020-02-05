@@ -34,6 +34,9 @@
 
 ## Major Features and Improvements
 
+*   Adding a TFLite predict extractor to enable obtaining inferences from TFLite
+    models.
+
 ## Bug fixes and other changes
 
 *   Adding support to compute deterministic confidence intervals using a seed
