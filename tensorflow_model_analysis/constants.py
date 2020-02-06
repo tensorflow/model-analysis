@@ -65,6 +65,9 @@ EXAMPLE_SCORE_KEY = 'example_score'
 METRICS_KEY = 'metrics'
 # Plots output key.
 PLOTS_KEY = 'plots'
+
+# Validations key.
+VALIDATIONS_KEY = 'validations'
 # Analysis output key.
 ANALYSIS_KEY = 'analysis'
 

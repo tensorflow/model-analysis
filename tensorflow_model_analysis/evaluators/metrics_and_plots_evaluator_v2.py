@@ -32,6 +32,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.evaluators import eval_saved_model_util
 from tensorflow_model_analysis.evaluators import evaluator
+from tensorflow_model_analysis.evaluators import metrics_validator
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.metrics import metric_specs
@@ -449,23 +450,17 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
   ) -> Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]:
     """Add diff metrics if there is a baseline model."""
 
-    def _baseline_key(key: metric_types.MetricKey) -> metric_types.MetricKey:
-      return metric_types.MetricKey(
-          name=key.name,
-          model_name=baseline_model_name,
-          output_name=key.output_name,
-          sub_key=key.sub_key,
-          is_diff=False)
-
     result = copy.copy(sliced_metrics[1])
 
     if baseline_model_name:
       diff_result = {}
       for k, v in result.items():
-        if k.model_name != baseline_model_name and _baseline_key(k) in result:
+        if k.model_name != baseline_model_name and k.make_baseline_key(
+            baseline_model_name) in result:
           # plots will not be diffed.
           if not isinstance(v, message.Message):
-            diff_result[k.make_diff_key()] = v - result[_baseline_key(k)]
+            diff_result[k.make_diff_key(
+            )] = v - result[k.make_baseline_key(baseline_model_name)]
       result.update(diff_result)
 
     return (sliced_metrics[0], result)
@@ -643,7 +638,8 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     eval_config: config.EvalConfig,
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
-    plots_key: Text = constants.PLOTS_KEY) -> evaluator.Evaluation:
+    plots_key: Text = constants.PLOTS_KEY,
+    validations_key: Text = constants.VALIDATIONS_KEY) -> evaluator.Evaluation:
   """Evaluates metrics and plots.
 
   Args:
@@ -659,6 +655,7 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
      required if there are metrics to be computed in-graph using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
+    validations_key: Name to use for validation key in Evaluation output.
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
@@ -701,9 +698,16 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
             eval_shared_models=eval_shared_models,
             metrics_key=metrics_key,
             plots_key=plots_key))
+
     for k, v in evaluation.items():
       if k not in evaluations:
         evaluations[k] = []
       evaluations[k].append(v)
+  metrics_and_plots = evaluator.combine_dict_based_evaluations(evaluations)
 
-  return evaluator.combine_dict_based_evaluations(evaluations)
+  validations = (
+      metrics_and_plots[metrics_key]
+      | 'ValidateMetrics' >> beam.Map(metrics_validator.validate_metrics,
+                                      eval_config))
+  metrics_and_plots[validations_key] = validations
+  return metrics_and_plots

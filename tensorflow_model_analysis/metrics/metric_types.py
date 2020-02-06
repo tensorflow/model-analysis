@@ -142,6 +142,10 @@ class MetricKey(
   def make_diff_key(self) -> 'MetricKey':
     return self._replace(is_diff=True)
 
+  # Generate a copy of the key with a different model name and is_diff False.
+  def make_baseline_key(self, model_name: Text) -> 'MetricKey':
+    return self._replace(model_name=model_name, is_diff=False)
+
 
 # A separate version from proto is used here because protos are not hashable and
 # SerializeToString is not guaranteed to be stable between different binaries.

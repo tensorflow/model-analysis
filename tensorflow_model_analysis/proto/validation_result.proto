@@ -16,8 +16,26 @@ syntax = "proto3";
 
 package tensorflow_model_analysis;
 
+import "tensorflow_model_analysis/proto/metrics_for_slice.proto";
+
+// Information about failure per metric.
+message ValidationFailure {
+  MetricKey metric_key = 1;
+}
+
+message MetricsValidationForSlice {
+  // SliceKey of a given slice.
+  SliceKey slice_key = 2;
+
+  // All failures under a slice.
+  repeated ValidationFailure failures = 3;
+}
+
 message ValidationResult {
   // True if there are no metric validation failures or data anomalies, else
   // false.
   bool validation_ok = 1;
+
+  // Details about which threshold is blocking which metric.
+  repeated MetricsValidationForSlice metric_validations_per_slice = 2;
 }

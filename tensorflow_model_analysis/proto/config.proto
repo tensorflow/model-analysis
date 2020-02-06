@@ -152,11 +152,10 @@ enum MetricDirection {
 message GenericChangeThreshold {
   // Let delta by determined as in the comments for Direction below.
   // If delta  > absolute, fail the validation.
-  double absolute = 1;
+  google.protobuf.DoubleValue absolute = 1;
   // Let delta by determined as in the comments for Direction below.
   // If delta / X_old > relative, fail the validation.
-  double relative = 2;
-  // Metric direction.
+  google.protobuf.DoubleValue relative = 2;
   MetricDirection direction = 3;
 }
 
@@ -165,12 +164,12 @@ message GenericChangeThreshold {
 // upper_bound], both boundaries inclusive.
 message GenericValueThreshold {
   // Lower bound. Assumed to be -Infinity if not set.
-  double lower_bound = 1;
+  google.protobuf.DoubleValue lower_bound = 1;
+
   // Upper bound. Assumed to be +Infinity if not set.
-  double upper_bound = 2;
+  google.protobuf.DoubleValue upper_bound = 2;
 }
 
-// Metric threshold configuration.
 message MetricThreshold {
   oneof validate_absolute {
     GenericValueThreshold value_threshold = 1;

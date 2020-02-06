@@ -1,5 +1,8 @@
 # Current version (not yet released; still in development)
 
+*   Added support for model validation using either value threshold or diff
+    threshold.
+
 ## Major Features and Improvements
 
 ## Bug fixes and other changes

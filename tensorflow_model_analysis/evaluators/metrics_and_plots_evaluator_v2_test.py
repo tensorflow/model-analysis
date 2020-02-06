@@ -42,7 +42,9 @@ from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metrics as metric_fns
+from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from google.protobuf import text_format
 
 
 def _addExampleCountMetricCallback(  # pylint: disable=invalid-name
@@ -64,27 +66,169 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
   def _getBaselineDir(self):
     return os.path.join(self._getTempDir(), 'baseline_export_dir')
 
-  def testEvaluateWithKerasAndDiffMetrics(self):
+  def _build_keras_model(self, model_dir, mul):
+    input_layer = tf.keras.layers.Input(shape=(1,), name='input')
+    output_layer = tf.keras.layers.Lambda(
+        lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul})(
+            input_layer)
+    model = tf.keras.models.Model([input_layer], output_layer)
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(lr=.001),
+        loss=tf.keras.losses.BinaryCrossentropy(),
+        metrics=['accuracy'])
 
-    def _build_keras_model(model_dir, mul):
-      input_layer = tf.keras.layers.Input(shape=(1,), name='input')
-      output_layer = tf.keras.layers.Lambda(
-          lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul})(
-              input_layer)
-      model = tf.keras.models.Model([input_layer], output_layer)
-      model.compile(
-          optimizer=tf.keras.optimizers.Adam(lr=.001),
-          loss=tf.keras.losses.BinaryCrossentropy(),
-          metrics=['accuracy'])
+    model.fit(x=[[0], [1]], y=[[0], [1]], steps_per_epoch=1)
+    model.save(model_dir, save_format='tf')
+    return self.createTestEvalSharedModel(
+        eval_saved_model_path=model_dir, tags=[tf.saved_model.SERVING])
 
-      model.fit(x=[[0], [1]], y=[[0], [1]], steps_per_epoch=1)
-      model.save(model_dir, save_format='tf')
-      return self.createTestEvalSharedModel(
-          eval_saved_model_path=model_dir, tags=[tf.saved_model.SERVING])
-
+  def testEvaluateWithKerasAndValidatefMetrics(self):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
-    eval_shared_model = _build_keras_model(model_dir, mul=0)
-    baseline_eval_shared_model = _build_keras_model(baseline_dir, mul=1)
+    eval_shared_model = self._build_keras_model(model_dir, mul=0)
+    baseline_eval_shared_model = self._build_keras_model(baseline_dir, mul=1)
+
+    examples = [
+        self._makeExample(
+            input=0.0,
+            label=1.0,
+            example_weight=1.0,
+            extra_feature='non_model_feature'),
+        self._makeExample(
+            input=1.0,
+            label=0.0,
+            example_weight=0.5,
+            extra_feature='non_model_feature'),
+    ]
+
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(
+                name='candidate',
+                label_key='label',
+                example_weight_key='example_weight'),
+            config.ModelSpec(
+                name='baseline',
+                label_key='label',
+                example_weight_key='example_weight',
+                is_baseline=True)
+        ],
+        slicing_specs=[config.SlicingSpec()],
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='WeightedExampleCount',
+                        # 1.5 < 1, NOT OK.
+                        threshold=config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                upper_bound={'value': 1}))),
+                    config.MetricConfig(
+                        class_name='ExampleCount',
+                        # 2 > 10, NOT OK.
+                        threshold=config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                lower_bound={'value': 10}))),
+                    config.MetricConfig(
+                        class_name='MeanLabel',
+                        # 0 > 0 and 0 > 0%: NOT OK.
+                        threshold=config.MetricThreshold(
+                            change_threshold=config.GenericChangeThreshold(
+                                direction=config.MetricDirection
+                                .HIGHER_IS_BETTER,
+                                relative={'value': 0},
+                                absolute={'value': 0}))),
+                    config.MetricConfig(
+                        # MeanPrediction = (0+0)/(1+0.5) = 0
+                        class_name='MeanPrediction',
+                        # -.01 < 0 < .01, OK.
+                        threshold=config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                upper_bound={'value': .01},
+                                lower_bound={'value': -.01}))),
+                    config.MetricConfig(
+                        # MeanPrediction = (0+1*0.5)/(1+0.5) = .333
+                        class_name='MeanPrediction',
+                        # Diff% = -.333/.333 = -100% < -99%, OK.
+                        # Diff = 0 - .333 = -.333 < 0, OK.
+                        threshold=config.MetricThreshold(
+                            change_threshold=config.GenericChangeThreshold(
+                                direction=config.MetricDirection
+                                .LOWER_IS_BETTER,
+                                relative={'value': -.99},
+                                absolute={'value': 0})))
+                ],
+                model_names=['candidate', 'baseline']),
+        ],
+    )
+    slice_spec = [
+        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
+    ]
+    eval_shared_models = {
+        'candidate': eval_shared_model,
+        'baseline': baseline_eval_shared_model
+    }
+    extractors = [
+        input_extractor.InputExtractor(eval_config),
+        predict_extractor_v2.PredictExtractor(
+            eval_shared_model=eval_shared_models, eval_config=eval_config),
+        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_models)
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      evaluations = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'ExtractEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_validations(got):
+        try:
+          self.assertLen(got, 1)
+          got = got[0]
+          expected_metric_validations_per_slice = [
+              text_format.Parse(
+                  """
+                  metric_key {
+                    name: "example_count"
+                  }""", validation_result_pb2.ValidationFailure()),
+              text_format.Parse(
+                  """
+                  metric_key {
+                    name: "weighted_example_count"
+                    model_name: "candidate"
+                  }""", validation_result_pb2.ValidationFailure()),
+              text_format.Parse(
+                  """
+                  metric_key {
+                    name: "mean_label"
+                    model_name: "candidate"
+                    is_diff: true
+                  }""", validation_result_pb2.ValidationFailure()),
+          ]
+          self.assertFalse(got.validation_ok)
+          self.assertLen(got.metric_validations_per_slice, 1)
+          self.assertLen(got.metric_validations_per_slice[0].failures, 3)
+          self.assertCountEqual(got.metric_validations_per_slice[0].failures,
+                                expected_metric_validations_per_slice)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(evaluations[constants.VALIDATIONS_KEY],
+                       check_validations)
+
+  def testEvaluateWithKerasAndDiffMetrics(self):
+    model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
+    eval_shared_model = self._build_keras_model(model_dir, mul=0)
+    baseline_eval_shared_model = self._build_keras_model(baseline_dir, mul=1)
 
     eval_config = config.EvalConfig(
         model_specs=[

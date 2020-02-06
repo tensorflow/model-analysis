@@ -27,3 +27,16 @@ py_proto_library(
         "@com_google_protobuf//:protobuf_python",
     ],
 )
+
+py_proto_library(
+    name = "validation_result",
+    srcs = [
+        "validation_result.proto",
+    ],
+    default_runtime = "@com_google_protobuf//:protobuf_python",
+    protoc = "@com_google_protobuf//:protoc",
+    deps = [
+        ":metrics_for_slice_py_pb2",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)
