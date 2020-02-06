@@ -344,35 +344,41 @@ def metric_thresholds_from_metric_specs(
         continue
 
       if metric.class_name in tfma_metric_classes:
-        name = _deserialize_tfma_metric(metric, tfma_metric_classes).name
+        instance = _deserialize_tfma_metric(metric, tfma_metric_classes)
       elif not metric.module:
-        name = _deserialize_tf_metric(metric, {}).name
+        instance = _deserialize_tf_metric(metric, {})
       else:
         cls = getattr(importlib.import_module(metric.module), metric.class_name)
         if issubclass(cls, tf.keras.metrics.Metric):
-          name = _deserialize_tf_metric(metric, {metric.class_name: cls}).name
+          instance = _deserialize_tf_metric(metric, {metric.class_name: cls})
         else:
-          name = _deserialize_tfma_metric(metric, {metric.class_name: cls}).name
+          instance = _deserialize_tfma_metric(metric, {metric.class_name: cls})
 
-      for model_name in spec.model_names or ['']:
-        for output_name in spec.output_names or ['']:
-          for sub_key in sub_keys:
-            if metric.threshold.HasField('value_threshold'):
-              key = metric_types.MetricKey(
-                  name=name,
-                  model_name=model_name,
-                  output_name=output_name,
-                  sub_key=sub_key,
-                  is_diff=False)
-              result[key] = metric.threshold.value_threshold
-            elif metric.threshold.HasField('change_threshold'):
-              key = metric_types.MetricKey(
-                  name=name,
-                  model_name=model_name,
-                  output_name=output_name,
-                  sub_key=sub_key,
-                  is_diff=True)
-              result[key] = metric.threshold.change_threshold
+      if (hasattr(instance, 'is_model_independent') and
+          instance.is_model_independent()):
+        if metric.threshold.HasField('value_threshold'):
+          key = metric_types.MetricKey(name=instance.name, is_diff=False)
+          result[key] = metric.threshold.value_threshold
+      else:
+        for model_name in spec.model_names or ['']:
+          for output_name in spec.output_names or ['']:
+            for sub_key in sub_keys:
+              if metric.threshold.HasField('value_threshold'):
+                key = metric_types.MetricKey(
+                    name=instance.name,
+                    model_name=model_name,
+                    output_name=output_name,
+                    sub_key=sub_key,
+                    is_diff=False)
+                result[key] = metric.threshold.value_threshold
+              elif metric.threshold.HasField('change_threshold'):
+                key = metric_types.MetricKey(
+                    name=instance.name,
+                    model_name=model_name,
+                    output_name=output_name,
+                    sub_key=sub_key,
+                    is_diff=True)
+                result[key] = metric.threshold.change_threshold
 
   return result
 

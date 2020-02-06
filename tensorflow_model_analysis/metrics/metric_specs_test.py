@@ -114,13 +114,18 @@ class MetricSpecsTest(tf.test.TestCase):
 
   def testMetricThresholdsFromMetricsSpecs(self):
     metrics_specs = [
-        config.MetricsSpec(metrics=[
-            config.MetricConfig(
-                class_name='ExampleCount',
-                config=json.dumps({'name': 'example_count'}),
-                threshold=config.MetricThreshold(
-                    value_threshold=config.GenericValueThreshold()))
-        ]),
+        config.MetricsSpec(
+            metrics=[
+                config.MetricConfig(
+                    class_name='ExampleCount',
+                    config=json.dumps({'name': 'example_count'}),
+                    threshold=config.MetricThreshold(
+                        value_threshold=config.GenericValueThreshold()))
+            ],
+            # Model names and output_names should be ignored because
+            # ExampleCount is model independent.
+            model_names=['model_name1', 'model_name2'],
+            output_names=['output_name1', 'output_name2']),
         config.MetricsSpec(
             metrics=[
                 config.MetricConfig(

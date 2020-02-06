@@ -267,10 +267,18 @@ class Metric(object):
       self.name = kwargs['name']
     else:
       self.name = None
+    if hasattr(inspect, 'getfullargspec'):
+      self._args = inspect.getfullargspec(self.create_computations_fn).args
+    else:
+      self._args = inspect.getargspec(self.create_computations_fn).args
 
   def get_config(self) -> Dict[Text, Any]:
     """Returns serializable config."""
     return self.kwargs
+
+  def is_model_independent(self) -> bool:
+    """Returns true if the metric does not depend on a model."""
+    return 'model_names' not in self._args
 
   def computations(self,
                    eval_config: Optional[config.EvalConfig] = None,
@@ -281,24 +289,20 @@ class Metric(object):
                    query_key: Optional[Text] = None,
                    is_diff: Optional[bool] = False) -> MetricComputations:
     """Creates computations associated with metric."""
-    if hasattr(inspect, 'getfullargspec'):
-      args = inspect.getfullargspec(self.create_computations_fn).args
-    else:
-      args = inspect.getargspec(self.create_computations_fn).args
     kwargs = self.kwargs.copy()
-    if 'eval_config' in args:
+    if 'eval_config' in self._args:
       kwargs['eval_config'] = eval_config
-    if 'model_names' in args:
+    if 'model_names' in self._args:
       kwargs['model_names'] = model_names
-    if 'output_names' in args:
+    if 'output_names' in self._args:
       kwargs['output_names'] = output_names
-    if 'sub_keys' in args:
+    if 'sub_keys' in self._args:
       kwargs['sub_keys'] = sub_keys
-    if 'class_weights' in args:
+    if 'class_weights' in self._args:
       kwargs['class_weights'] = class_weights
-    if 'query_key' in args:
+    if 'query_key' in self._args:
       kwargs['query_key'] = query_key
-    if 'is_diff' in args:
+    if 'is_diff' in self._args:
       kwargs['is_diff'] = is_diff
     return self.create_computations_fn(**kwargs)
 
