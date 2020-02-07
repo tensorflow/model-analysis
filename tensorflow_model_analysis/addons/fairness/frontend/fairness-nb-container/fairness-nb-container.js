@@ -78,6 +78,7 @@ export class FairnessNbContainer extends SelectEventMixin
 
       /**
        * The list of run numbers that's available to select.
+       * Used by TensorBoard. Empty otherwise.
        * @type {!Array<string>}
        */
       availableEvaluationRuns: {type: Array, value: []},
