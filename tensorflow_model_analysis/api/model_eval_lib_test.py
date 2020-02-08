@@ -154,6 +154,26 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         data_location=data_location,
         output_path=self._getTempDir())
 
+  def testMixedEvalAndNonEvalSignatures(self):
+    examples = [self._makeExample(age=3.0, language='english', label=1.0)]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    eval_config = config.EvalConfig(model_specs=[
+        config.ModelSpec(name='model1'),
+        config.ModelSpec(name='model2', signature_name='eval')
+    ])
+    eval_shared_models = {
+        'model1': types.EvalSharedModel(model_path='/model1/path'),
+        'model2': types.EvalSharedModel(model_path='/model2/path')
+    }
+    with self.assertRaisesRegexp(
+        NotImplementedError,
+        'support for mixing eval and non-eval models is not implemented'):
+      model_eval_lib.run_model_analysis(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_models,
+          data_location=data_location,
+          output_path=self._getTempDir())
+
   def testRunModelAnalysisExtraFieldsPlusFeatureExtraction(self):
     model_location = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
@@ -306,6 +326,99 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                      config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
+
+  def testRunModelAnalysisMultipleModels(self):
+    examples = [
+        self._makeExample(age=3.0, language='english', label=1.0),
+        self._makeExample(age=3.0, language='chinese', label=0.0),
+        self._makeExample(age=4.0, language='english', label=1.0),
+        self._makeExample(age=5.0, language='chinese', label=1.0)
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    model_specs = [
+        config.ModelSpec(
+            name='model1', signature_name='eval', example_weight_key='age'),
+        config.ModelSpec(
+            name='model2', signature_name='eval', example_weight_key='age')
+    ]
+    metrics_specs = [
+        config.MetricsSpec(
+            metrics=[
+                config.MetricConfig(class_name='ExampleCount'),
+                config.MetricConfig(class_name='WeightedExampleCount')
+            ],
+            model_names=['model1', 'model2'])
+    ]
+    slicing_specs = [config.SlicingSpec(feature_values={'language': 'english'})]
+    options = config.Options()
+    eval_config = config.EvalConfig(
+        model_specs=model_specs,
+        metrics_specs=metrics_specs,
+        slicing_specs=slicing_specs,
+        options=options)
+    model_location1 = self._exportEvalSavedModel(
+        linear_classifier.simple_linear_classifier)
+    model1 = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location1, eval_config=eval_config)
+    model_location2 = self._exportEvalSavedModel(
+        linear_classifier.simple_linear_classifier)
+    model2 = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location2, eval_config=eval_config)
+    eval_shared_models = {'model1': model1, 'model2': model2}
+    eval_results = model_eval_lib.run_model_analysis(
+        eval_shared_model=eval_shared_models,
+        eval_config=eval_config,
+        data_location=data_location,
+        output_path=self._getTempDir())
+    # We only check some of the metrics to ensure that the end-to-end
+    # pipeline works.
+    expected_result_1 = {
+        (('language', 'english'),): {
+            'example_count': {
+                'doubleValue': 2.0
+            },
+            'weighted_example_count': {
+                'doubleValue': 7.0
+            },
+            'my_mean_label': {
+                'doubleValue': 1.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
+        }
+    }
+    expected_result_2 = {
+        (('language', 'english'),): {
+            'example_count': {
+                'doubleValue': 2.0
+            },
+            'weighted_example_count': {
+                'doubleValue': 7.0
+            },
+            'my_mean_label': {
+                'doubleValue': 1.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
+        }
+    }
+    self.assertLen(eval_results._results, 2)
+    eval_result_1 = eval_results._results[0]
+    eval_result_2 = eval_results._results[1]
+    self.assertEqual(eval_result_1.model_location, model_location1.decode())
+    self.assertEqual(eval_result_2.model_location, model_location2.decode())
+    self.assertEqual(eval_result_1.data_location, data_location)
+    self.assertEqual(eval_result_2.data_location, data_location)
+    self.assertEqual(eval_result_1.config.slicing_specs[0],
+                     config.SlicingSpec(feature_values={'language': 'english'}))
+    self.assertEqual(eval_result_2.config.slicing_specs[0],
+                     config.SlicingSpec(feature_values={'language': 'english'}))
+    self.assertMetricsAlmostEqual(eval_result_1.slicing_metrics,
+                                  expected_result_1)
+    self.assertMetricsAlmostEqual(eval_result_2.slicing_metrics,
+                                  expected_result_2)
 
   def testRunModelAnalysisWithModelAgnosticPredictions(self):
     examples = [

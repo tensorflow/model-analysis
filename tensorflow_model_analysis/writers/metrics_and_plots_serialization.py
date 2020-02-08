@@ -157,6 +157,14 @@ def load_and_deserialize_metrics(
     if model_name in model_metrics_map:
       # Use the provided model name if there is a match.
       metrics_map = model_metrics_map[model_name]
+      # Add model-independent (e.g. example_count) metrics to all models.
+      if model_name and '' in model_metrics_map:
+        for output_name, output_dict in model_metrics_map[''].items():
+          for sub_key_id, sub_key_dict in output_dict.items():
+            for name, value in sub_key_dict.items():
+              metrics_map.setdefault(output_name,
+                                     {}).setdefault(sub_key_id,
+                                                    {})[name] = value
     elif not model_name and len(keys) == 1:
       # Show result of the only model if no model name is specified.
       metrics_map = model_metrics_map[keys[0]]

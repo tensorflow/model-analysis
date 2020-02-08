@@ -5,6 +5,8 @@
 
 ## Major Features and Improvements
 
+*   Added support for multi-model evaluation using EvalSavedModels.
+
 ## Bug fixes and other changes
 
 *   Fixed issue with model_name not being set in keras metrics.

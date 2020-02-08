@@ -89,42 +89,6 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           plots_key=plots_key))
 
 
-# Temporary support for legacy format. This is only required if a
-# V1 PredictExtractor is used in place of a V2 PredictExtractor in the pipeline
-# (i.e. when running V2 evaluation based on inference done from an eval
-# saved_model vs from a serving saved_model).
-def _convert_legacy_fpl(
-    extracts: types.Extracts,
-    example_weight_key: Union[Text, Dict[Text, Text]]) -> types.Extracts:
-  """Converts from legacy FPL types to features, labels, predictions."""
-  if constants.FEATURES_PREDICTIONS_LABELS_KEY not in extracts:
-    return extracts
-
-  remove_node = lambda d: {k: list(v.values())[0] for k, v in d.items()}
-  remove_batch = lambda v: v[0] if len(v.shape) > 1 and v.shape[0] == 1 else v
-  remove_batches = lambda d: {k: remove_batch(v) for k, v in d.items()}
-  remove_default_key = lambda d: list(d.values())[0] if len(d) == 1 else d
-
-  extracts = copy.copy(extracts)
-  fpl = extracts.pop(constants.FEATURES_PREDICTIONS_LABELS_KEY)
-  features = remove_node(fpl.features)
-  example_weights = np.array([1.0])
-  if example_weight_key:
-    if isinstance(example_weight_key, dict):
-      example_weights = {}
-      for k, v in example_weight_key.items():
-        example_weights[k] = remove_batch(features[v])
-    else:
-      example_weights = remove_batch(features[example_weight_key])
-  labels = remove_default_key(remove_batches(remove_node(fpl.labels)))
-  predictions = remove_default_key(remove_batches(remove_node(fpl.predictions)))
-  extracts[constants.FEATURES_KEY] = features
-  extracts[constants.PREDICTIONS_KEY] = predictions
-  extracts[constants.LABELS_KEY] = labels
-  extracts[constants.EXAMPLE_WEIGHTS_KEY] = example_weights
-  return extracts
-
-
 def _filter_and_separate_computations(
     computations: metric_types.MetricComputations
 ) -> Tuple[List[metric_types.MetricComputation],
@@ -675,9 +639,6 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     metrics_specs_by_query_key[''] = [config.MetricsSpec()]
 
   # pylint: disable=no-value-for-parameter
-
-  extracts = extracts | 'ConvertLegacyFPL' >> beam.Map(
-      _convert_legacy_fpl, eval_config.model_specs[0].example_weight_key)
 
   evaluations = {}
   for query_key, metrics_specs in metrics_specs_by_query_key.items():

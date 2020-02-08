@@ -125,7 +125,7 @@ eval_config = text_format.Parse("""
 """, tfma.EvalConfig())
 
 eval_shared_model = tfma.default_eval_shared_model(
-    eval_saved_model_path='/path/to/saved/model', tags=[tf.saved_model.SERVING])
+    eval_saved_model_path='/path/to/saved/model', eval_config=eval_config)
 
 with beam.Pipeline(runner=...) as p:
   _ = (p

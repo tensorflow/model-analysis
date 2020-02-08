@@ -79,6 +79,25 @@ def _check_version(version: Text, path: Text):
   # compatibility issues.
 
 
+def _is_legacy_eval(eval_shared_model: Optional[types.EvalSharedModel],
+                    eval_config: Optional[config.EvalConfig]):
+  """Returns True if legacy evaluation is being used."""
+  # A legacy evaluation is an evalution that uses only a single EvalSharedModel,
+  # has no tags (or uses "eval" as its tag), and does not specify an eval_config
+  # (or specifies an eval_config with no metrics). The legacy evaluation is
+  # based on using add_metrics_callbacks to create a modified version of the
+  # graph saved with an EvalSavedModel. The newer version of evaluation supports
+  # both add_metrics_callbacks as well as metrics defined in MetricsSpecs inside
+  # of EvalConfig. The newer version works with both "eval" and serving models
+  # and also supports multi-model evaluation. This function is used by code to
+  # support backwards compatibility for callers that have not updated to use the
+  # new EvalConfig.
+  return (eval_shared_model and not isinstance(eval_shared_model, dict) and
+          ((not eval_shared_model.model_loader.tags or
+            eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags) and
+           (not eval_config or not eval_config.metrics_specs)))
+
+
 def _serialize_eval_run(eval_config: config.EvalConfig, data_location: Text,
                         file_format: Text, model_locations: Dict[Text,
                                                                  Text]) -> Text:
@@ -235,7 +254,8 @@ def default_eval_shared_model(
     example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
     additional_fetches: Optional[List[Text]] = None,
     blacklist_feature_fetches: Optional[List[Text]] = None,
-    tags: Optional[List[Text]] = None) -> types.EvalSharedModel:
+    tags: Optional[List[Text]] = None,
+    eval_config: Optional[config.EvalConfig] = None) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
 
   Args:
@@ -258,9 +278,23 @@ def default_eval_shared_model(
       scenarios where features are large (e.g. images) and can lead to excessive
       memory use if stored.
     tags: Model tags (e.g. 'serve' for serving or 'eval' for EvalSavedModel).
+    eval_config: Eval config. Only used for setting default tags.
   """
   if tags is None:
-    tags = [eval_constants.EVAL_TAG]
+    if eval_config:
+      # Default to serving unless all the signature_names are eval. We do not
+      # support running with a mixture of eval and non-eval tags.
+      signatures = [s.signature_name for s in eval_config.model_specs]
+      if eval_constants.EVAL_TAG in signatures:
+        if not all(s == eval_constants.EVAL_TAG for s in signatures):
+          tf.compat.v1.logging.warning(
+              'mixture of eval and non-eval signatures used: '
+              'eval_config={}'.format(eval_config))
+        tags = [eval_constants.EVAL_TAG]
+      else:
+        tags = [tf.saved_model.SERVING]
+    else:
+      tags = [eval_constants.EVAL_TAG]
 
   # Backwards compatibility for legacy add_metrics_callbacks implementation.
   if tags == [eval_constants.EVAL_TAG]:
@@ -320,14 +354,15 @@ def default_extractors(  # pylint: disable=invalid-name
     slice_spec: Deprecated (use EvalConfig).
     desired_batch_size: Optional batch size for batching in Predict.
     materialize: True to have extractors create materialized output.
+
+  Raises:
+    NotImplementedError: If eval_config contains mixed serving and eval models.
   """
   if eval_config is not None:
     slice_spec = [
         slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
     ]
-  if (eval_shared_model and not isinstance(eval_shared_model, dict) and
-      (not eval_shared_model.model_loader.tags or
-       eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags)):
+  if _is_legacy_eval(eval_shared_model, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     return [
         predict_extractor.PredictExtractor(
@@ -336,15 +371,32 @@ def default_extractors(  # pylint: disable=invalid-name
             slice_spec, materialize=materialize)
     ]
   elif eval_shared_model:
-    return [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config,
-            eval_shared_model=eval_shared_model,
-            desired_batch_size=desired_batch_size),
-        slice_key_extractor.SliceKeyExtractor(
-            slice_spec, materialize=materialize)
-    ]
+    if (eval_config and all(s.signature_name == eval_constants.EVAL_TAG
+                            for s in eval_config.model_specs)):
+      return [
+          predict_extractor.PredictExtractor(
+              eval_shared_model,
+              desired_batch_size,
+              materialize=materialize,
+              eval_config=eval_config),
+          slice_key_extractor.SliceKeyExtractor(
+              slice_spec, materialize=materialize)
+      ]
+    elif (eval_config and any(s.signature_name == eval_constants.EVAL_TAG
+                              for s in eval_config.model_specs)):
+      raise NotImplementedError(
+          'support for mixing eval and non-eval models is not implemented: '
+          'eval_config={}'.format(eval_config))
+    else:
+      return [
+          input_extractor.InputExtractor(eval_config=eval_config),
+          predict_extractor_v2.PredictExtractor(
+              eval_config=eval_config,
+              eval_shared_model=eval_shared_model,
+              desired_batch_size=desired_batch_size),
+          slice_key_extractor.SliceKeyExtractor(
+              slice_spec, materialize=materialize)
+      ]
   else:
     return [
         input_extractor.InputExtractor(eval_config=eval_config),
@@ -382,10 +434,7 @@ def default_evaluators(  # pylint: disable=invalid-name
   if (constants.METRICS_KEY in disabled_outputs and
       constants.PLOTS_KEY in disabled_outputs):
     return []
-  if (eval_shared_model and not isinstance(eval_shared_model, dict) and
-      ((not eval_shared_model.model_loader.tags or
-        eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags) and
-       (not eval_config or not eval_config.metrics_specs))):
+  if _is_legacy_eval(eval_shared_model, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     if eval_config is not None:
       if eval_config.options.HasField('compute_confidence_intervals'):
@@ -423,12 +472,16 @@ def default_writers(
       required if legacy add_metrics_callbacks are used.
   """
   add_metric_callbacks = []
-  if eval_shared_model:
-    eval_shared_models = eval_shared_model
-    if not isinstance(eval_shared_model, dict):
-      eval_shared_models = {'': eval_shared_model}
-    for v in eval_shared_models.values():
-      add_metric_callbacks.extend(v.add_metrics_callbacks)
+  # The add_metric_callbacks are used in the metrics and plots serialization
+  # code to post process the metric data by calling populate_stats_and_pop.
+  # While both the legacy (V1) and new (V2) evaluation implementations support
+  # EvalSavedModels using add_metric_callbacks, this particular code is only
+  # required for the legacy evaluation based on the MetricsAndPlotsEvaluator.
+  # The V2 MetricsAndPlotsEvaluator output requires no additional processing.
+  # Since the V1 code only supports a single EvalSharedModel, we only set the
+  # add_metrics_callbacks if a dict is not passed.
+  if eval_shared_model and not isinstance(eval_shared_model, dict):
+    add_metric_callbacks = eval_shared_model.add_metrics_callbacks
 
   output_paths = {
       constants.METRICS_KEY: os.path.join(output_path, constants.METRICS_KEY),
@@ -623,7 +676,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   Example usage:
     eval_config = tfma.EvalConfig(slicing_specs=[...], metrics_specs=[...])
     eval_shared_model = tfma.default_eval_shared_model(
-        eval_saved_model_path=model_location)
+        eval_saved_model_path=model_location, eval_config=eval_config)
     with beam.Pipeline(runner=...) as p:
       _ = (p
            | 'ReadData' >> beam.io.ReadFromTFRecord(data_location)

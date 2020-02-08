@@ -30,6 +30,7 @@ from apache_beam.testing import util
 
 import tensorflow as tf
 
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -72,7 +73,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
           # aggregating functions do not use this interface.
           | beam.Map(lambda x: {constants.INPUT_KEY: x})
           | 'Predict' >> predict_extractor._TFMAPredict(
-              eval_shared_model=eval_shared_model, desired_batch_size=3))
+              eval_shared_models={'': eval_shared_model}, desired_batch_size=3))
 
       def check_result(got):
         try:
@@ -90,6 +91,64 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
               self.assertNotIn(feature, fpl.features)
             self.assertAlmostEqual(fpl.features['label'],
                                    fpl.labels['__labels'])
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(predict_extracts, check_result)
+
+  def testMultiModelPredict(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, model1_dir = linear_classifier.simple_linear_classifier(
+        None, temp_eval_export_dir)
+    model1 = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model1_dir)
+    _, model2_dir = linear_classifier.simple_linear_classifier(
+        None, temp_eval_export_dir)
+    model2 = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model2_dir)
+    eval_config = config.EvalConfig(model_specs=[
+        config.ModelSpec(name='model1', example_weight_key='age'),
+        config.ModelSpec(name='model2', example_weight_key='age')
+    ])
+
+    with beam.Pipeline() as pipeline:
+      examples = [
+          self._makeExample(age=3.0, language='english', label=1.0),
+          self._makeExample(age=3.0, language='chinese', label=0.0),
+          self._makeExample(age=4.0, language='english', label=1.0),
+          self._makeExample(age=5.0, language='chinese', label=0.0),
+      ]
+      serialized_examples = [e.SerializeToString() for e in examples]
+
+      predict_extracts = (
+          pipeline
+          | beam.Create(serialized_examples, reshuffle=False)
+          # Our diagnostic outputs, pass types.Extracts throughout, however our
+          # aggregating functions do not use this interface.
+          | beam.Map(lambda x: {constants.INPUT_KEY: x})
+          | 'Predict' >> predict_extractor._TFMAPredict(
+              eval_shared_models={
+                  'model1': model1,
+                  'model2': model2
+              },
+              desired_batch_size=3,
+              eval_config=eval_config))
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 4)
+          for item in got:
+            self.assertIn(constants.FEATURES_KEY, item)
+            for feature in ('language', 'age'):
+              self.assertIn(feature, item[constants.FEATURES_KEY])
+            self.assertIn(constants.LABELS_KEY, item)
+            self.assertIn(constants.PREDICTIONS_KEY, item)
+            for model in ('model1', 'model2'):
+              self.assertIn(model, item[constants.PREDICTIONS_KEY])
+            self.assertIn(constants.EXAMPLE_WEIGHTS_KEY, item)
+            self.assertAlmostEqual(item[constants.FEATURES_KEY]['age'],
+                                   item[constants.EXAMPLE_WEIGHTS_KEY])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -117,8 +176,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
           # Our diagnostic outputs, pass types.Extracts throughout, however our
           # aggregating functions do not use this interface.
           | beam.Map(lambda x: {constants.INPUT_KEY: x})
-          | 'Predict' >>
-          predict_extractor._TFMAPredict(eval_shared_model=eval_shared_model))
+          | 'Predict' >> predict_extractor._TFMAPredict(
+              eval_shared_models={'': eval_shared_model}))
 
       def check_result(got):
         self.assertLen(got, 4)
@@ -164,7 +223,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
           # aggregating functions do not use this interface.
           | beam.Map(lambda x: {constants.INPUT_KEY: x})
           | 'Predict' >> predict_extractor._TFMAPredict(
-              eval_shared_model=eval_shared_model, desired_batch_size=3))
+              eval_shared_models={'': eval_shared_model}, desired_batch_size=3))
 
       util.assert_that(predict_extracts, check_result)
 

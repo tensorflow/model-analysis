@@ -343,7 +343,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model=eval_shared_model),
+        predict_extractor.PredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -1201,7 +1202,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        predict_extractor.PredictExtractor(
+            eval_shared_model, eval_config=eval_config),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
