@@ -339,6 +339,29 @@ def metric_thresholds_from_metric_specs(
     if spec.aggregate.macro_average or spec.aggregate.weighted_macro_average:
       sub_keys.append(None)
 
+    # Add thresholds for metrics computed in-graph.
+    for metric_name, threshold in spec.thresholds.items():
+      for model_name in spec.model_names or ['']:
+        for output_name in spec.output_names or ['']:
+          for sub_key in sub_keys:
+            if threshold.HasField('value_threshold'):
+              key = metric_types.MetricKey(
+                  name=metric_name,
+                  model_name=model_name,
+                  output_name=output_name,
+                  sub_key=sub_key,
+                  is_diff=False)
+              result[key] = threshold.value_threshold
+            elif threshold.HasField('change_threshold'):
+              key = metric_types.MetricKey(
+                  name=metric_name,
+                  model_name=model_name,
+                  output_name=output_name,
+                  sub_key=sub_key,
+                  is_diff=True)
+              result[key] = threshold.change_threshold
+
+    # Thresholds in MetricConfig override thresholds in MetricsSpec.
     for metric in spec.metrics:
       if not metric.HasField('threshold'):
         continue

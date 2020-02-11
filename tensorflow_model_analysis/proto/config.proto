@@ -195,7 +195,8 @@ message MetricConfig {
   //
   // Example: '"name": "my_metric", "thresholds": [0.5]'
   string config = 3;
-  // Optional threshold for model validation.
+  // Optional threshold for model validation. Thresholds defined here override
+  // any overlapping definitions from the MetricsSpec.
   MetricThreshold threshold = 4;
 }
 
@@ -218,6 +219,12 @@ message MetricsSpec {
   AggregationOptions aggregate = 6;
   // Optional query key for query/ranking based metrics.
   string query_key = 5;
+  // Optional thresholds for model validation keyed by the associated metric
+  // name (e.g. 'auc', etc). Thresholds defined here are intended to be used for
+  // metrics that were saved with the model and computed by default without
+  // requiring a metric config. All other thresholds should be defined in the
+  // MetricConfig associated with the metric.
+  map<string, MetricThreshold> thresholds = 7;
 }
 
 // Additional configuration options.

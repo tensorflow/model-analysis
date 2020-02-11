@@ -115,6 +115,23 @@ class MetricSpecsTest(tf.test.TestCase):
   def testMetricThresholdsFromMetricsSpecs(self):
     metrics_specs = [
         config.MetricsSpec(
+            thresholds={
+                'auc':
+                    config.MetricThreshold(
+                        value_threshold=config.GenericValueThreshold()),
+                'mean/label':
+                    config.MetricThreshold(
+                        change_threshold=config.GenericChangeThreshold()),
+                # The mse metric will be overridden by MetricConfig below.
+                'mse':
+                    config.MetricThreshold(
+                        change_threshold=config.GenericChangeThreshold())
+            },
+            # Model names and output_names should be ignored because
+            # ExampleCount is model independent.
+            model_names=['model_name'],
+            output_names=['output_name']),
+        config.MetricsSpec(
             metrics=[
                 config.MetricConfig(
                     class_name='ExampleCount',
@@ -155,7 +172,17 @@ class MetricSpecsTest(tf.test.TestCase):
             aggregate=config.AggregationOptions(macro_average=True))
     ]
     thresholds = metric_specs.metric_thresholds_from_metric_specs(metrics_specs)
-    self.assertLen(thresholds, 11)
+    self.assertLen(thresholds, 13)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='auc', model_name='model_name', output_name='output_name'),
+        thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='mean/label',
+            model_name='model_name',
+            output_name='output_name',
+            is_diff=True), thresholds)
     self.assertIn(metric_types.MetricKey(name='example_count'), thresholds)
     self.assertIn(
         metric_types.MetricKey(
