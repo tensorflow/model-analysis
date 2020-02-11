@@ -18,11 +18,8 @@ const NUM_SLICES = 100;
 
 (() => {
   var metrics = [];
-  for (var i = 0; i < 7; i++) {
-    metrics.push('auprc_' + i);
-    metrics.push('count_' + i);
-    metrics.push('boundedAuc_' + i);
-  }
+  metrics.push('false_negative_rate@0.50');
+  metrics.push('false_negative_rate@0.50 against Overall');
 
   const table = document.getElementById('table');
   table.metrics = metrics;
@@ -30,21 +27,16 @@ const NUM_SLICES = 100;
   var data = [];
   var exampleCounts = [];
 
+  const baseline = Math.random();
+
   for (var i = 0; i < NUM_SLICES; i++) {
     var entry = {};
     entry['slice'] = 'col:' + i;
 
     var metric = {};
-    for (var j = 0; j < 7; j++) {
-      metric['auprc_' + j] = '100';
-      metric['count_' + j] = 0.7;
-      metric['boundedAuc_' + j] = {
-        'value': 0.61,
-        'lowerBound': 0.60,
-        'upperBound': 0.62
-      };
-      metric['random_' + j] = 'rand';
-    }
+    metric['false_negative_rate@0.50'] = Math.random();
+    metric['false_negative_rate@0.50 against Overall'] =
+        metric['false_negative_rate@0.50'] - baseline;
 
     entry['metrics'] = metric;
     data.push(entry);

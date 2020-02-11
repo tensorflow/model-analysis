@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import '@polymer/iron-icons/iron-icons.js';
+
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './fairness-metrics-table-template.html.js';
 

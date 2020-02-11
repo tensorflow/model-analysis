@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-import '@polymer/paper-button/paper-button.js';
+import '@polymer/iron-icons/iron-icons.js';
 import '@polymer/iron-label/iron-label.js';
+import '@polymer/paper-button/paper-button.js';
 import '@polymer/paper-dialog/paper-dialog.js';
 import '@polymer/paper-icon-button/paper-icon-button.js';
 import '@polymer/paper-item/paper-item.js';
