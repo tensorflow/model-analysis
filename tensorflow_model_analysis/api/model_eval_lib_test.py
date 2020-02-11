@@ -46,6 +46,7 @@ from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 LegacyConfig = NamedTuple(
     'LegacyConfig',
@@ -482,25 +483,28 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
   def testRunModelAnalysisWithKerasModel(self):
-    input_layer = tf.keras.layers.Input(shape=(28 * 28,), name='data')
-    output_layer = tf.keras.layers.Dense(
-        10, activation=tf.nn.softmax)(
-            input_layer)
-    model = tf.keras.models.Model(input_layer, output_layer)
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.categorical_crossentropy)
 
-    features = {'data': [[0.0] * 28 * 28]}
-    labels = [[0, 0, 0, 0, 0, 0, 0, 1, 0, 0]]
-    example_weights = [1.0]
-    dataset = tf.data.Dataset.from_tensor_slices(
-        (features, labels, example_weights))
-    dataset = dataset.shuffle(buffer_size=1).repeat().batch(1)
-    model.fit(dataset, steps_per_epoch=1)
-
-    model_location = os.path.join(self._getTempDir(), 'export_dir')
-    model.save(model_location, save_format='tf')
+    def _build_keras_model(name='export_dir'):
+      input_layer = tf.keras.layers.Input(shape=(28 * 28,), name='data')
+      output_layer = tf.keras.layers.Dense(
+          10, activation=tf.nn.softmax)(
+              input_layer)
+      model = tf.keras.models.Model(input_layer, output_layer)
+      model.compile(
+          optimizer=tf.keras.optimizers.Adam(lr=.001),
+          loss=tf.keras.losses.categorical_crossentropy)
+      features = {'data': [[0.0] * 28 * 28]}
+      labels = [[0, 0, 0, 0, 0, 0, 0, 1, 0, 0]]
+      example_weights = [1.0]
+      dataset = tf.data.Dataset.from_tensor_slices(
+          (features, labels, example_weights))
+      dataset = dataset.shuffle(buffer_size=1).repeat().batch(1)
+      model.fit(dataset, steps_per_epoch=1)
+      model_location = os.path.join(self._getTempDir(), name)
+      model.save(model_location, save_format='tf')
+      return model_eval_lib.default_eval_shared_model(
+          eval_saved_model_path=model_location,
+          tags=[tf.saved_model.SERVING]), model_location
 
     examples = [
         self._makeExample(data=[0.0] * 28 * 28, label=1.0),
@@ -508,46 +512,81 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(data=[1.0] * 28 * 28, label=9.0),
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
+
     metrics_spec = config.MetricsSpec()
+    metrics_spec.model_names.extend(['candidate', 'baseline'])
     for metric in (tf.keras.metrics.AUC(),):
       cfg = tf.keras.utils.serialize_keras_object(metric)
       metrics_spec.metrics.append(
           config.MetricConfig(
               class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
+    metrics_spec.metrics.append(
+        config.MetricConfig(
+            class_name='WeightedExampleCount',
+            # 2 > 10, NOT OK.
+            threshold=config.MetricThreshold(
+                value_threshold=config.GenericValueThreshold(
+                    lower_bound={'value': 0}))))
     for class_id in (0, 5, 9):
       metrics_spec.binarize.class_ids.values.append(class_id)
     eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(label_key='label')],
+        model_specs=[
+            config.ModelSpec(name='candidate', label_key='label'),
+            config.ModelSpec(
+                name='baseline', label_key='label', is_baseline=True),
+        ],
         metrics_specs=[metrics_spec])
-    eval_result = model_eval_lib.run_model_analysis(
+
+    model, model_location = _build_keras_model()
+    baseline, baseline_model_location = _build_keras_model('baseline_export')
+    output_path = self._getTempDir()
+    eval_results = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location,
-            tags=[tf.saved_model.SERVING]),
+        eval_shared_model={
+            'candidate': model,
+            'baseline': baseline
+        },
         data_location=data_location,
-        output_path=self._getTempDir())
-    self.assertEqual(eval_result.model_location, model_location)
-    self.assertEqual(eval_result.data_location, data_location)
-    self.assertLen(eval_result.slicing_metrics, 1)
-    got_slice_key, got_metrics = eval_result.slicing_metrics[0]
-    self.assertEqual(got_slice_key, ())
-    self.assertIn('', got_metrics)  # output_name
-    got_metrics = got_metrics['']
-    expected_metrics = {
-        'classId:0': {
-            'auc': True,
-        },
-        'classId:5': {
-            'auc': True,
-        },
-        'classId:9': {
-            'auc': True,
-        },
-    }
-    for class_id in expected_metrics:
-      self.assertIn(class_id, got_metrics)
-      for k in expected_metrics[class_id]:
-        self.assertIn(k, got_metrics[class_id])
+        output_path=output_path)
+
+    # Directly check validaton file since it is not in EvalResult.
+    validations_file = os.path.join(output_path, constants.VALIDATIONS_KEY)
+    self.assertTrue(os.path.exists(validations_file))
+    validation_records = []
+    for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
+      validation_records.append(
+          validation_result_pb2.ValidationResult.FromString(record))
+    self.assertLen(validation_records, 1)
+    self.assertTrue(validation_records[0].validation_ok)
+
+    def check_eval_result(eval_result, model_location):
+      self.assertEqual(eval_result.model_location, model_location)
+      self.assertEqual(eval_result.data_location, data_location)
+      self.assertLen(eval_result.slicing_metrics, 1)
+      got_slice_key, got_metrics = eval_result.slicing_metrics[0]
+      self.assertEqual(got_slice_key, ())
+      self.assertIn('', got_metrics)  # output_name
+      got_metrics = got_metrics['']
+      expected_metrics = {
+          'classId:0': {
+              'auc': True,
+          },
+          'classId:5': {
+              'auc': True,
+          },
+          'classId:9': {
+              'auc': True,
+          },
+      }
+      for class_id in expected_metrics:
+        self.assertIn(class_id, got_metrics)
+        for k in expected_metrics[class_id]:
+          self.assertIn(k, got_metrics[class_id])
+
+    self.assertLen(eval_results._results, 2)
+    eval_result_0, eval_result_1 = eval_results._results
+    check_eval_result(eval_result_0, model_location)
+    check_eval_result(eval_result_1, baseline_model_location)
 
   def testRunModelAnalysisWithQueryBasedMetrics(self):
     input_layer = tf.keras.layers.Input(shape=(1,), name='age')

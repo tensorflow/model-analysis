@@ -16,11 +16,15 @@ syntax = "proto3";
 
 package tensorflow_model_analysis;
 
+import "tensorflow_model_analysis/proto/config.proto";
 import "tensorflow_model_analysis/proto/metrics_for_slice.proto";
 
 // Information about failure per metric.
 message ValidationFailure {
   MetricKey metric_key = 1;
+  MetricThreshold metric_threshold = 2;
+  MetricValue metric_value = 3;
+  string message = 4;
 }
 
 message MetricsValidationForSlice {

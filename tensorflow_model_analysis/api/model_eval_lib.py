@@ -14,6 +14,8 @@
 # limitations under the License.
 """API for Tensorflow Model Analysis."""
 
+# TODO(b/149126671): Put ValidationResultsWriter in a separate file.
+
 from __future__ import absolute_import
 from __future__ import division
 # Standard __future__ imports
@@ -47,9 +49,8 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.validators import validator
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
-from tensorflow_model_analysis.writers import metrics_and_plots_writer
+from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 from tensorflow_model_analysis.writers import writer
-
 from google.protobuf import json_format
 
 _EVAL_CONFIG_FILE = 'eval_config.json'
@@ -484,12 +485,17 @@ def default_writers(
     add_metric_callbacks = eval_shared_model.add_metrics_callbacks
 
   output_paths = {
-      constants.METRICS_KEY: os.path.join(output_path, constants.METRICS_KEY),
-      constants.PLOTS_KEY: os.path.join(output_path, constants.PLOTS_KEY)
+      constants.METRICS_KEY:
+          os.path.join(output_path, constants.METRICS_KEY),
+      constants.PLOTS_KEY:
+          os.path.join(output_path, constants.PLOTS_KEY),
+      constants.VALIDATIONS_KEY:
+          os.path.join(output_path, constants.VALIDATIONS_KEY)
   }
   return [
-      metrics_and_plots_writer.MetricsAndPlotsWriter(
-          output_paths=output_paths, add_metrics_callbacks=add_metric_callbacks)
+      metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
+          output_paths=output_paths,
+          add_metrics_callbacks=add_metric_callbacks),
   ]
 
 

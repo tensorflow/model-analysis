@@ -43,7 +43,7 @@ def validate_metrics(
   thresholds = metric_specs.metric_thresholds_from_metric_specs(
       eval_config.metrics_specs)
 
-  def _check_threshold(key: metric_types.MetricKey, metric: Any):
+  def _check_threshold(key: metric_types.MetricKey, metric: Any) -> bool:
     """Verify a metric given its metric key and metric value."""
     threshold = thresholds[key]
     if isinstance(threshold, config.GenericValueThreshold):
@@ -71,22 +71,45 @@ def validate_metrics(
       elif threshold.direction == config.MetricDirection.HIGHER_IS_BETTER:
         return diff > absolute and ratio > relative
 
+  def _copy_metric(metric, to):
+    # Will add more types when more MetricValue are supported.
+    to.double_value.value = float(metric)
+
+  def _copy_threshold(threshold, to):
+    if isinstance(threshold, config.GenericValueThreshold):
+      to.value_threshold.CopyFrom(threshold)
+    if isinstance(threshold, config.GenericChangeThreshold):
+      to.change_threshold.CopyFrom(threshold)
+
   # Empty metrics per slice is considered validated.
   result = validation_result_pb2.ValidationResult(validation_ok=True)
   validation_for_slice = validation_result_pb2.MetricsValidationForSlice()
   for metric_key, metric in metrics.items():
     # Not meaningful to check threshold for baseline model, thus always return
-    # True if such threshold is configured.
-    if (metric_key in thresholds and
-        metric_key.model_name != baseline_model_name and
-        not _check_threshold(metric_key, metric)):
-      # TODO(jinhuang) Add failure message.
+    # True if such threshold is configured. We also do not compare Message type
+    # metrics.
+    if (metric_key.model_name == baseline_model_name or
+        metric_key not in thresholds):
+      continue
+    msg = ''
+    # We try to convert to float values.
+    try:
+      metric = float(metric)
+    except (TypeError, ValueError):
+      msg = """
+        Invalid threshold config: This metric is not comparable to the
+        threshold. The type of the threshold is: {}, and the metric value is:
+        \n{}""".format(type(metric), metric)
+    if not _check_threshold(metric_key, metric):
       failure = validation_for_slice.failures.add()
       failure.metric_key.CopyFrom(metric_key.to_proto())
+      _copy_metric(metric, failure.metric_value)
+      _copy_threshold(thresholds[metric_key], failure.metric_threshold)
+      failure.message = msg
+  # Any failure leads to overall failure.
   if validation_for_slice.failures:
     validation_for_slice.slice_key.CopyFrom(
         slicer.serialize_slice_key(sliced_key))
-    # Any failure leads to overall failure.
     result.validation_ok = False
     result.metric_validations_per_slice.append(validation_for_slice)
   return result

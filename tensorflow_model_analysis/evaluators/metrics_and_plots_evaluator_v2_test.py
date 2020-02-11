@@ -141,16 +141,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                         # MeanPrediction = (0+0)/(1+0.5) = 0
                         class_name='MeanPrediction',
                         # -.01 < 0 < .01, OK.
-                        threshold=config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
-                                upper_bound={'value': .01},
-                                lower_bound={'value': -.01}))),
-                    config.MetricConfig(
-                        # MeanPrediction = (0+1*0.5)/(1+0.5) = .333
-                        class_name='MeanPrediction',
                         # Diff% = -.333/.333 = -100% < -99%, OK.
                         # Diff = 0 - .333 = -.333 < 0, OK.
                         threshold=config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                upper_bound={'value': .01},
+                                lower_bound={'value': -.01}),
                             change_threshold=config.GenericChangeThreshold(
                                 direction=config.MetricDirection
                                 .LOWER_IS_BETTER,
@@ -197,21 +193,64 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
               text_format.Parse(
                   """
                   metric_key {
-                    name: "example_count"
-                  }""", validation_result_pb2.ValidationFailure()),
+                    name: "weighted_example_count"
+                    model_name: "candidate"
+                  }
+                  metric_threshold {
+                    value_threshold {
+                      upper_bound {
+                        value: 1.0
+                      }
+                    }
+                  }
+                  metric_value {
+                    double_value {
+                      value: 1.5
+                    }
+                  }
+                  """, validation_result_pb2.ValidationFailure()),
               text_format.Parse(
                   """
                   metric_key {
-                    name: "weighted_example_count"
-                    model_name: "candidate"
-                  }""", validation_result_pb2.ValidationFailure()),
+                    name: "example_count"
+                  }
+                  metric_threshold {
+                    value_threshold {
+                      lower_bound {
+                        value: 10.0
+                      }
+                    }
+                  }
+                  metric_value {
+                    double_value {
+                      value: 2.0
+                    }
+                  }
+                  """, validation_result_pb2.ValidationFailure()),
               text_format.Parse(
                   """
                   metric_key {
                     name: "mean_label"
                     model_name: "candidate"
                     is_diff: true
-                  }""", validation_result_pb2.ValidationFailure()),
+                  }
+                  metric_threshold {
+                    change_threshold {
+                      absolute {
+                        value: 0.0
+                      }
+                      relative {
+                        value: 0.0
+                      }
+                      direction: HIGHER_IS_BETTER
+                    }
+                  }
+                  metric_value {
+                    double_value {
+                      value: 0.0
+                    }
+                  }
+                  """, validation_result_pb2.ValidationFailure()),
           ]
           self.assertFalse(got.validation_ok)
           self.assertLen(got.metric_validations_per_slice, 1)

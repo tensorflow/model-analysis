@@ -1,9 +1,10 @@
 # Current version (not yet released; still in development)
 
+## Major Features and Improvements
+
 *   Added support for model validation using either value threshold or diff
     threshold.
-
-## Major Features and Improvements
+*   Added a writer to output model validation result (ValidationResult).
 
 *   Added support for multi-model evaluation using EvalSavedModels.
 
@@ -15,6 +16,7 @@
 
 *   Populate TDistributionValue metric when confidence intervals is enabled in
     V2.
+*   Rename the writer MetricsAndPlotsWriter to MetricsPlotsAndValidationsWriter.
 
 ## Deprecations
 

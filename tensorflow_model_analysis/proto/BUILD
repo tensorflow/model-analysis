@@ -36,6 +36,7 @@ py_proto_library(
     default_runtime = "@com_google_protobuf//:protobuf_python",
     protoc = "@com_google_protobuf//:protoc",
     deps = [
+        ":config_py_pb2",
         ":metrics_for_slice_py_pb2",
         "@com_google_protobuf//:protobuf_python",
     ],

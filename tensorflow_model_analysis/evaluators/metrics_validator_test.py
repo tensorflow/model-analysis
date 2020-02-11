@@ -24,9 +24,60 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_validator
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.proto import validation_result_pb2
+from google.protobuf import text_format
 
 
 class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest):
+
+  def testValidateMetricsMetricValueAndThreshold(self):
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(),
+        ],
+        slicing_specs=[config.SlicingSpec()],
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='WeightedExampleCount',
+                        # 1.5 < 1, NOT OK.
+                        threshold=config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                upper_bound={'value': 1}))),
+                ],
+                model_names=['']),
+        ],
+    )
+    sliced_metrics = ((()), {
+        metric_types.MetricKey(name='weighted_example_count'): 1.5,
+    })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertFalse(result.validation_ok)
+    expected = text_format.Parse(
+        """
+        metric_validations_per_slice {
+          slice_key {
+          }
+          failures {
+            metric_key {
+              name: "weighted_example_count"
+            }
+            metric_threshold {
+              value_threshold {
+                upper_bound {
+                  value: 1.0
+                }
+              }
+            }
+            metric_value {
+              double_value {
+                value: 1.5
+              }
+            }
+          }
+        }""", validation_result_pb2.ValidationResult())
+    self.assertEqual(result, expected)
 
   def testValidateMetricsValueThresholdUpperBoundFail(self):
     eval_config = config.EvalConfig(
