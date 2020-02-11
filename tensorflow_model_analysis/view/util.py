@@ -21,6 +21,8 @@ import os
 
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.api import model_eval_lib
+from tensorflow_model_analysis.metrics import example_count
+from tensorflow_model_analysis.metrics import weighted_example_count
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from typing import Any, Dict, List, Optional, Text, Tuple, Union
@@ -355,8 +357,11 @@ def get_slicing_config(
   Returns:
     A dictionary containing configuration of the slicing metrics evalaution.
   """
-  # For legacy reasons, default to post_export_metric example_count to start.
-  default_column = metric_keys.EXAMPLE_COUNT
+  if eval_config.metrics_specs:
+    default_column = example_count.EXAMPLE_COUNT_NAME
+  else:
+    # Legacy post_export_metric
+    default_column = metric_keys.EXAMPLE_COUNT
 
   # For now we only support one candidate model, so pick first.
   model_spec = None
@@ -367,12 +372,12 @@ def get_slicing_config(
         break
 
   if model_spec:
-    # For legacy reasons, update default to post_export_metric
-    # example_weight_count if feasible (multi-output models not supported yet).
     if model_spec.example_weight_key:
-      default_column = metric_keys.EXAMPLE_WEIGHT
-
-    # TODO(mdreves): Add support for new metrics.
+      if eval_config.metrics_specs:
+        # Legacy post_export_metric
+        default_column = weighted_example_count.WEIGHTED_EXAMPLE_COUNT_NAME
+      else:
+        default_column = metric_keys.EXAMPLE_WEIGHT
 
   return {
       'weightedExamplesColumn':
