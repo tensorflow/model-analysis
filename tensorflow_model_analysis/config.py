@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from absl import logging
 from tensorflow_model_analysis.proto import config_pb2
 
 # Define types here to avoid type errors between OSS and internal code.
@@ -55,3 +57,32 @@ def verify_eval_config(eval_config: EvalConfig):
         raise ValueError('only one model_spec may be a baseline, found: '
                          '{} and {}'.format(spec, baseline))
       baseline = spec
+
+
+def update_config_with_defaults(eval_config: EvalConfig):
+  """Returns a new config with default settings applied."""
+  updated_config = EvalConfig()
+  updated_config.CopyFrom(eval_config)
+  if not updated_config.model_specs:
+    updated_config.model_specs.add()
+  baseline_spec = None
+  model_names = []
+  for spec in updated_config.model_specs:
+    if spec.is_baseline:
+      baseline_spec = spec
+    model_names.append(spec.name)
+  if len(model_names) == 1:
+    logging.info(
+        'single ModelSpec is being used, name "%s" will be ignored: '
+        'config=%s', model_names[0], eval_config)
+    updated_config.model_specs[0].name = ''
+    model_names = ['']
+  for spec in updated_config.metrics_specs:
+    if not spec.model_names:
+      spec.model_names.extend(model_names)
+    elif len(model_names) == 1:
+      del spec.model_names[:]
+      spec.model_names.append('')
+    elif baseline_spec and baseline_spec.name not in spec.model_names:
+      spec.model_names.append(baseline_spec.name)
+  return updated_config

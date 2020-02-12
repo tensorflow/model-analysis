@@ -20,7 +20,15 @@ import "google/protobuf/wrappers.proto";
 
 // Model specification.
 message ModelSpec {
-  // Model name (required if more than one model).
+  // Name used to distinguish different models when multiple instances are being
+  // evaluated. Note that this name is not necessarily the name of the model as
+  // seen by a trainer, etc. This name is more of an alias for both a model name
+  // and a particular version and/or format. For example, common names to use
+  // here might be "candidate" or "baseline" when referring to different
+  // versions of the same model that are being evaluated for the purpose of
+  // model validation. Note also that if only a single ModelSpec is used in the
+  // config, then no model_name will be set in any metrics keys that are output
+  // regardless of whether a name was provided here or not.
   string name = 2;
   // Name of signature to use (e.g. 'serving_default')
   string signature_name = 3;
@@ -204,8 +212,10 @@ message MetricConfig {
 message MetricsSpec {
   // List of metric configurations.
   repeated MetricConfig metrics = 1;
-  // Names of models the metrics should be calculated for. For metrics that have
-  // diffing enabled, the baseline will be added automatically.
+  // Names of models (as defined by model_specs) the metrics should be
+  // calculated for. If a baseline is configured in the model_specs, it will be
+  // added automatically. If this list is empty then all the names defined in
+  // the model_specs will be assumed.
   repeated string model_names = 2;
   // Optional names of outputs the metrics should be calculated for (for
   // multi-output models).

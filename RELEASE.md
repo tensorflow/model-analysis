@@ -5,8 +5,8 @@
 *   Added support for model validation using either value threshold or diff
     threshold.
 *   Added a writer to output model validation result (ValidationResult).
-
 *   Added support for multi-model evaluation using EvalSavedModels.
+*   Added support for inserting model_names by default to metrics_specs.
 
 ## Bug fixes and other changes
 

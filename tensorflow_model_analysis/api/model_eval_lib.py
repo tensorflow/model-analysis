@@ -360,6 +360,7 @@ def default_extractors(  # pylint: disable=invalid-name
     NotImplementedError: If eval_config contains mixed serving and eval models.
   """
   if eval_config is not None:
+    eval_config = config.update_config_with_defaults(eval_config)
     slice_spec = [
         slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
     ]
@@ -431,6 +432,7 @@ def default_evaluators(  # pylint: disable=invalid-name
   """
   disabled_outputs = []
   if eval_config:
+    eval_config = config.update_config_with_defaults(eval_config)
     disabled_outputs = eval_config.options.disabled_outputs.values
   if (constants.METRICS_KEY in disabled_outputs and
       constants.PLOTS_KEY in disabled_outputs):
@@ -763,14 +765,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       options.disabled_outputs.values.append(_EVAL_CONFIG_FILE)
     eval_config = config.EvalConfig(
         model_specs=model_specs, slicing_specs=slicing_specs, options=options)
-
-  # Add default ModelSpec if empty.
-  if (eval_shared_models and len(eval_shared_models) == 1 and
-      not eval_config.model_specs):
-    tmp_config = config.EvalConfig()
-    tmp_config.CopyFrom(eval_config)
-    eval_config = tmp_config
-    eval_config.model_specs.add()
+  else:
+    eval_config = config.update_config_with_defaults(eval_config)
 
   config.verify_eval_config(eval_config)
 
