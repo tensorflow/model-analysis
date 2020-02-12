@@ -63,11 +63,11 @@ export class FairnessMetricsTable extends PolymerElement {
 
       /**
        * Metrics table data.
-       * @type {!Object}
+       * @type {!Array}
        */
       data: {
-        type: Object,
-        value: () => ({}),
+        type: Array,
+        value: () => ([]),
       },
 
       /**
@@ -103,7 +103,7 @@ export class FairnessMetricsTable extends PolymerElement {
 
   /**
    * Computes the data table.
-   * @param {!Object} data
+   * @param {!Array} data
    * @param {!Array<string>} metrics
    * @param {!Object<string>} headerOverride
    * @return {!Array<!Array>|undefined}
@@ -113,7 +113,7 @@ export class FairnessMetricsTable extends PolymerElement {
     if (!data || !metrics || !headerOverride) {
       return undefined;
     }
-    if (Object.keys(data).length == 0) {
+    if (data.length == 0) {
       // No need to compute plot data if data is empty.
       return [[]];
     }
@@ -125,9 +125,9 @@ export class FairnessMetricsTable extends PolymerElement {
     headerRow = headerRow.map(metric => headerOverride[metric] || metric);
 
     var tableData = [];
-    Object.keys(data).forEach(key => {
-      const metricsData = data[key]['metrics'];
-      const slice = data[key]['slice'];
+    data.forEach(row => {
+      const metricsData = row['metrics'];
+      const slice = row['slice'];
 
       if (metricsData === undefined || slice === undefined) {
         return;
@@ -135,7 +135,7 @@ export class FairnessMetricsTable extends PolymerElement {
 
       var tableRow = [slice];
       metrics.forEach(entry => {
-        tableRow.push(this.formatData_(metricsData[entry]));
+        tableRow.push(this.formatCell_(metricsData[entry]));
       });
       tableData.push(tableRow);
     });
@@ -144,21 +144,21 @@ export class FairnessMetricsTable extends PolymerElement {
   }
 
   /**
-   * Formats data so that it can be rendered in the table.
-   * @param {number|string|!Object} data
+   * Formats cell data so that it can be rendered in the table.
+   * @param {number|string|!Object} cell_data
    * @return {string}
    * @private
    */
-  formatData_(data) {
+  formatCell_(cell_data) {
     // TODO(b/137209618): Handle other data types as well.
-    if (typeof data === 'object' && this.isBoundedValue_(data)) {
-      return this.formatFloatValue_(data['value']) + ' (' +
-          this.formatFloatValue_(data['lowerBound']) + ', ' +
-          this.formatFloatValue_(data['upperBound']) + ')';
-    } else if (typeof data === 'string') {
-      return data;
+    if (typeof cell_data === 'object' && this.isBoundedValue_(cell_data)) {
+      return this.formatFloatValue_(cell_data['value']) + ' (' +
+          this.formatFloatValue_(cell_data['lowerBound']) + ', ' +
+          this.formatFloatValue_(cell_data['upperBound']) + ')';
+    } else if (typeof cell_data === 'string') {
+      return cell_data;
     } else {
-      return JSON.stringify(data);
+      return JSON.stringify(cell_data);
     }
   }
 
