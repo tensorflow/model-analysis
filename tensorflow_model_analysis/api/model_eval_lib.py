@@ -46,6 +46,7 @@ from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.validators import validator
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
@@ -159,6 +160,21 @@ EvalResult = NamedTuple(  # pylint: disable=invalid-name
      ('plots', List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]),
      ('config', config.EvalConfig), ('data_location', Text),
      ('file_format', Text), ('model_location', Text)])
+
+
+# Define types here to avoid type errors between OSS and internal code.
+ValidationResult = validation_result_pb2.ValidationResult
+
+
+def load_validation_result(
+    validations_file: Text) -> Optional[ValidationResult]:
+  """Read and deserialize the ValidationResult."""
+  validation_records = []
+  for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
+    validation_records.append(ValidationResult.FromString(record))
+  if validation_records:
+    assert len(validation_records) == 1
+    return validation_records[0]
 
 
 class EvalResults(object):

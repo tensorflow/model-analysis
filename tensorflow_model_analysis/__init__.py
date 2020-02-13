@@ -31,11 +31,13 @@ from tensorflow_model_analysis.api.model_eval_lib import ExtractEvaluateAndWrite
 from tensorflow_model_analysis.api.model_eval_lib import InputsToExtracts
 from tensorflow_model_analysis.api.model_eval_lib import load_eval_result
 from tensorflow_model_analysis.api.model_eval_lib import load_eval_results
+from tensorflow_model_analysis.api.model_eval_lib import load_validation_result
 from tensorflow_model_analysis.api.model_eval_lib import make_eval_results
 from tensorflow_model_analysis.api.model_eval_lib import multiple_data_analysis
 from tensorflow_model_analysis.api.model_eval_lib import multiple_model_analysis
 from tensorflow_model_analysis.api.model_eval_lib import run_model_analysis
 from tensorflow_model_analysis.api.model_eval_lib import WriteResults
+from tensorflow_model_analysis.api.model_eval_lib import ValidationResult
 
 from tensorflow_model_analysis.api.verifier_lib import Validate
 

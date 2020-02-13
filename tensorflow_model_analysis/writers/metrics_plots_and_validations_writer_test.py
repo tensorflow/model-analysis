@@ -80,7 +80,8 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
     eval_shared_model = self._build_keras_model(model_dir, mul=0)
     baseline_eval_shared_model = self._build_keras_model(baseline_dir, mul=1)
-    validations_file = os.path.join(self._getTempDir(), 'validations')
+    validations_file = os.path.join(self._getTempDir(),
+                                    constants.VALIDATIONS_KEY)
     examples = [
         self._makeExample(
             input=0.0,
@@ -192,10 +193,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
               writers=writers))
       # pylint: enable=no-value-for-parameter
 
-    validation_records = []
-    for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
-      validation_records.append(
-          validation_result_pb2.ValidationResult.FromString(record))
+    validation_result = model_eval_lib.load_validation_result(validations_file)
 
     expected_validations = [
         text_format.Parse(
@@ -260,13 +258,11 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
             }
             """, validation_result_pb2.ValidationFailure()),
     ]
-    self.assertEqual(1, len(validation_records),
-                     'validations: %s' % validation_records)
-    self.assertFalse(validation_records[0].validation_ok)
-    self.assertLen(validation_records[0].metric_validations_per_slice, 1)
+    self.assertFalse(validation_result.validation_ok)
+    self.assertLen(validation_result.metric_validations_per_slice, 1)
     self.assertCountEqual(
         expected_validations,
-        validation_records[0].metric_validations_per_slice[0].failures)
+        validation_result.metric_validations_per_slice[0].failures)
 
   def testWriteMetricsAndPlots(self):
     metrics_file = os.path.join(self._getTempDir(), 'metrics')
