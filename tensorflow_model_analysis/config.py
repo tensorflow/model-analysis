@@ -59,7 +59,7 @@ def verify_eval_config(eval_config: EvalConfig):
       baseline = spec
 
 
-def update_config_with_defaults(eval_config: EvalConfig):
+def update_eval_config_with_defaults(eval_config: EvalConfig):
   """Returns a new config with default settings applied."""
   updated_config = EvalConfig()
   updated_config.CopyFrom(eval_config)

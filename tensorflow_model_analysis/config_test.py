@@ -44,7 +44,7 @@ class ConfigTest(tf.test.TestCase):
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
                                              config.EvalConfig())
 
-    got_eval_config = config.update_config_with_defaults(eval_config)
+    got_eval_config = config.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsEmtpyModelName(self):
@@ -66,7 +66,7 @@ class ConfigTest(tf.test.TestCase):
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
                                              config.EvalConfig())
 
-    got_eval_config = config.update_config_with_defaults(eval_config)
+    got_eval_config = config.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsSingleModel(self):
@@ -96,7 +96,7 @@ class ConfigTest(tf.test.TestCase):
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
                                              config.EvalConfig())
 
-    got_eval_config = config.update_config_with_defaults(eval_config)
+    got_eval_config = config.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsMultiModel(self):
@@ -128,7 +128,7 @@ class ConfigTest(tf.test.TestCase):
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
                                              config.EvalConfig())
 
-    got_eval_config = config.update_config_with_defaults(eval_config)
+    got_eval_config = config.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsBaselineModel(self):
@@ -152,7 +152,7 @@ class ConfigTest(tf.test.TestCase):
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
                                              config.EvalConfig())
 
-    got_eval_config = config.update_config_with_defaults(eval_config)
+    got_eval_config = config.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
 
