@@ -83,6 +83,23 @@ class SubKey(
       sub_key.top_k.value = self.top_k
     return sub_key
 
+  @staticmethod
+  def from_proto(pb: metrics_for_slice_pb2.SubKey) -> Optional['SubKey']:
+    """Creates class from proto."""
+    class_id = None
+    if pb.HasField('class_id'):
+      class_id = pb.class_id.value
+    k = None
+    if pb.HasField('k'):
+      k = pb.k.value
+    top_k = None
+    if pb.HasField('top_k'):
+      top_k = pb.top_k.value
+    if class_id is None and k is None and top_k is None:
+      return None
+    else:
+      return SubKey(class_id=class_id, k=k, top_k=top_k)
+
 
 # A separate version from proto is used here because protos are not hashable and
 # SerializeToString is not guaranteed to be stable between different binaries.
@@ -138,6 +155,17 @@ class MetricKey(
       metric_key.is_diff = self.is_diff
     return metric_key
 
+  @staticmethod
+  def from_proto(pb: metrics_for_slice_pb2.MetricKey) -> 'MetricKey':
+    """Configures class from proto."""
+    return MetricKey(
+        name=pb.name,
+        model_name=pb.model_name,
+        output_name=pb.output_name,
+        sub_key=SubKey.from_proto(pb.sub_key),
+        # TODO(mdreves): Find out why some tests don't recognize is_diff.
+        is_diff=pb.is_diff if hasattr(pb, 'is_diff') else False)
+
   # Generate a copy of the key except that the is_diff is True.
   def make_diff_key(self) -> 'MetricKey':
     return self._replace(is_diff=True)
@@ -167,6 +195,15 @@ class PlotKey(MetricKey):
     if self.sub_key:
       plot_key.sub_key.CopyFrom(self.sub_key.to_proto())
     return plot_key
+
+  @staticmethod
+  def from_proto(pb: metrics_for_slice_pb2.PlotKey) -> 'PlotKey':
+    """Configures class from proto."""
+    return PlotKey(
+        name='',
+        model_name=pb.model_name,
+        output_name=pb.output_name,
+        sub_key=SubKey.from_proto(pb.sub_key))
 
 
 # LINT.ThenChange(../proto/metrics_for_slice.proto)
