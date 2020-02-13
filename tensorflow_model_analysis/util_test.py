@@ -17,7 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 
 
@@ -121,6 +124,28 @@ class UtilTest(tf.test.TestCase):
       fn(a=1, b=2, e=5)  # pylint: disable=no-value-for-parameter
     with self.assertRaisesRegexp(TypeError, 'with extraneous kwargs'):
       fn(a=1, b=2, c=3, f=11)  # pylint: disable=unexpected-keyword-arg
+
+  def testGetFeaturesFromExtracts(self):
+    self.assertEqual(
+        {'a': np.array([1])},
+        util.get_features_from_extracts({
+            constants.FEATURES_PREDICTIONS_LABELS_KEY:
+                types.FeaturesPredictionsLabels(
+                    input_ref=0,
+                    features={'a': np.array([1])},
+                    predictions={},
+                    labels={})
+        }),
+    )
+    self.assertEqual(
+        {'a': np.array([1])},
+        util.get_features_from_extracts(
+            {constants.FEATURES_KEY: {
+                'a': np.array([1])
+            }}),
+    )
+    with self.assertRaisesRegexp(RuntimeError, 'Features missing'):
+      util.get_features_from_extracts({})
 
 
 if __name__ == '__main__':

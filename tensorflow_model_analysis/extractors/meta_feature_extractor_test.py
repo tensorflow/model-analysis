@@ -137,7 +137,7 @@ class MetaFeatureExtractorTest(testutil.TensorflowModelAnalysisTest):
           | 'WrapFpls' >> beam.Map(wrap_fpl)
           | 'ExtractInterestsNum' >>
           meta_feature_extractor.ExtractMetaFeature(get_num_interests)
-          | 'ExtractSlices' >> slice_key_extractor._ExtractSliceKeys([
+          | 'ExtractSlices' >> slice_key_extractor.ExtractSliceKeys([
               slicer.SingleSliceSpec(),
               slicer.SingleSliceSpec(columns=['num_interests'])
           ])

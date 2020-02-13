@@ -22,7 +22,11 @@ import inspect
 import sys
 import traceback
 import six
-from typing import Any, Dict, List, Optional, Text
+
+from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
+from typing import Any, Dict, List, Optional, Text, Union
+
 
 # Separator used when combining multiple layers of Extracts keys into a single
 # string. Normally we would like to use '.' or '/' as a separator, but the
@@ -240,3 +244,22 @@ def kwargs_only(fn):
     return fn(**kwargs_to_pass)
 
   return wrapped_fn
+
+
+def get_features_from_extracts(
+    element: types.Extracts
+) -> Union[types.DictOfTensorValue, types.DictOfFetchedTensorValues]:
+  """Fetch features from the extracts."""
+  features = None
+  if constants.FEATURES_PREDICTIONS_LABELS_KEY in element:
+    fpl = element[constants.FEATURES_PREDICTIONS_LABELS_KEY]
+    if not isinstance(fpl, types.FeaturesPredictionsLabels):
+      raise TypeError(
+          'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: '
+          '%s of type %s' % (str(fpl), type(fpl)))
+    features = fpl.features
+  elif constants.FEATURES_KEY in element:
+    features = element[constants.FEATURES_KEY]
+  else:
+    raise RuntimeError('Features missing, Please ensure Predict() was called.')
+  return features
