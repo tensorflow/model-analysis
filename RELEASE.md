@@ -1,4 +1,4 @@
-# Current version (not yet released; still in development)
+# Release 0.21.3
 
 ## Major Features and Improvements
 
