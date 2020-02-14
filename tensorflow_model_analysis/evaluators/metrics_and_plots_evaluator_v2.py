@@ -493,20 +493,16 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     tuples where the dict is keyed by either the metrics_key (e.g. 'metrics') or
     plots_key (e.g. 'plots') depending on what the results_dict contains.
   """
+  computations = []
   model_loaders = None
+  # Add default metric computations
   if eval_shared_models:
     model_loaders = {}
-    for k, v in eval_shared_models.items():
-      if v.include_default_metrics:
-        model_loaders[k] = v.model_loader
-  computations, derived_computations = _filter_and_separate_computations(
-      metric_specs.to_computations(
-          metrics_specs, eval_config=eval_config, model_loaders=model_loaders))
-  # Add default metric computations
-  if (model_loaders and eval_config and
-      (not eval_config.options.HasField('include_default_metrics') or
-       eval_config.options.include_default_metrics.value)):
-    for model_name, model_loader in model_loaders.items():
+    for model_name, eval_shared_model in eval_shared_models.items():
+      if not eval_shared_model.include_default_metrics:
+        continue
+      model_loader = eval_shared_model.model_loader
+      model_loaders[model_name] = model_loader
       model_types = model_loader.construct_fn(lambda x: None)()
       if model_types.keras_model is not None:
         # TODO(mdreves): Move handling of keras metrics to here.
@@ -521,6 +517,14 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
         computations.extend(
             eval_saved_model_util.metric_computations_using_eval_saved_model(
                 model_name, model_loader))
+  # Add metric computations from specs
+  computations_from_specs, derived_computations = (
+      _filter_and_separate_computations(
+          metric_specs.to_computations(
+              metrics_specs,
+              eval_config=eval_config,
+              model_loaders=model_loaders)))
+  computations.extend(computations_from_specs)
 
   # Find out which model is baseline.
   baseline_spec = model_util.get_baseline_model_spec(eval_config)
@@ -615,8 +619,8 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
       tfma.EXAMPLE_WEIGHTS_KEY). Usually these will be added by calling the
       default_extractors function.
     eval_config: Eval config.
-   eval_shared_models: Optional dict of shared models keyed by model name. Only
-     required if there are metrics to be computed in-graph using the model.
+    eval_shared_models: Optional dict of shared models keyed by model name. Only
+      required if there are metrics to be computed in-graph using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
     validations_key: Name to use for validation key in Evaluation output.
@@ -648,15 +652,21 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
           extracts
           | 'GroupByQueryKey({})'.format(query_key_text) >>
           _GroupByQueryKey(query_key))
+      include_default_metrics = False
     else:
       extracts_for_evaluation = extracts
+      include_default_metrics = (
+          eval_config and
+          (not eval_config.options.HasField('include_default_metrics') or
+           eval_config.options.include_default_metrics.value))
     evaluation = (
         extracts_for_evaluation
         | 'ComputeMetricsAndPlots({})'.format(query_key_text) >>
         _ComputeMetricsAndPlots(
             eval_config=eval_config,
             metrics_specs=metrics_specs,
-            eval_shared_models=eval_shared_models,
+            eval_shared_models=(eval_shared_models
+                                if include_default_metrics else None),
             metrics_key=metrics_key,
             plots_key=plots_key))
 
