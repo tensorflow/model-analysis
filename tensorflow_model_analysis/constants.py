@@ -28,6 +28,12 @@ DATA_CENTRIC_MODE = 'data_centric_mode'
 PLACEHOLDER = 'placeholder'
 SPARSE_PLACEHOLDER = 'sparse_placeholder'
 
+# Types of models
+TF_ESTIMATOR = 'tf_estimator'
+TF_KERAS = 'tf_keras'
+TF_LITE = 'tf_lite'
+VALID_MODEL_TYPES = ('', TF_ESTIMATOR, TF_KERAS, TF_LITE)
+
 # LINT.IfChange
 METRICS_NAMESPACE = 'tfx.ModelAnalysis'
 # LINT.ThenChange(../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)

@@ -22,6 +22,7 @@ from apache_beam.typehints import Any, Dict, List, Tuple, Union, Optional, Itera
 Callable = None
 Generic = None
 Sequence = None
+Set = None
 Type = None
 # TODO(xinzha): figure out whether we can use six.string_types in beam
 AnyStr = Any

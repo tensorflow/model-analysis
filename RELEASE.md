@@ -17,6 +17,7 @@
 *   Added a writer to output model validation result (ValidationResult).
 *   Added support for multi-model evaluation using EvalSavedModels.
 *   Added support for inserting model_names by default to metrics_specs.
+*   Added support for selecting custom model format evals in config.
 
 ## Bug fixes and other changes
 

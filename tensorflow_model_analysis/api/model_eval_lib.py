@@ -44,6 +44,7 @@ from tensorflow_model_analysis.extractors import input_extractor
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
@@ -389,8 +390,28 @@ def default_extractors(  # pylint: disable=invalid-name
             slice_spec, materialize=materialize)
     ]
   elif eval_shared_model:
-    if (eval_config and all(s.signature_name == eval_constants.EVAL_TAG
-                            for s in eval_config.model_specs)):
+    model_types = model_util.get_model_types(eval_config)
+    if not model_types.issubset(constants.VALID_MODEL_TYPES):
+      raise NotImplementedError(
+          'model type must be one of: {}. evalconfig={}'.format(
+              str(constants.VALID_MODEL_TYPES), eval_config))
+    if model_types == set([constants.TF_LITE]):
+      return [
+          input_extractor.InputExtractor(eval_config=eval_config),
+          tflite_predict_extractor.TFLitePredictExtractor(
+              eval_config=eval_config,
+              eval_shared_model=eval_shared_model,
+              desired_batch_size=desired_batch_size),
+          slice_key_extractor.SliceKeyExtractor(
+              slice_spec, materialize=materialize)
+      ]
+    elif constants.TF_LITE in model_types:
+      raise NotImplementedError(
+          'support for mixing tf_lite and non-tf_lite models is not '
+          'implemented: eval_config={}'.format(eval_config))
+
+    elif (eval_config and all(s.signature_name == eval_constants.EVAL_TAG
+                              for s in eval_config.model_specs)):
       return [
           predict_extractor.PredictExtractor(
               eval_shared_model,
@@ -450,6 +471,17 @@ def default_evaluators(  # pylint: disable=invalid-name
   if eval_config:
     eval_config = config.update_eval_config_with_defaults(eval_config)
     disabled_outputs = eval_config.options.disabled_outputs.values
+    if model_util.get_model_types(eval_config) == set([constants.TF_LITE]):
+      # no in-graph metrics present when tflite is used.
+      if eval_shared_model:
+        if isinstance(eval_shared_model, dict):
+          eval_shared_model = {
+              k: v._replace(include_default_metrics=False)
+              for k, v in eval_shared_model.items()
+          }
+        else:
+          eval_shared_model = eval_shared_model._replace(
+              include_default_metrics=False)
   if (constants.METRICS_KEY in disabled_outputs and
       constants.PLOTS_KEY in disabled_outputs):
     return []

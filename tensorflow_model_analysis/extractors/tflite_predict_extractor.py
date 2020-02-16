@@ -53,7 +53,8 @@ class _TFLitePredictionDoFn(beam.DoFn):
 
   def process(self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
     """Invokes the tflite model on the provided inputs and stores the result."""
-    result = copy.copy(elements)
+    # TODO(dzats): See if we can switch to a shallow copy.
+    result = copy.deepcopy(elements)
 
     batched_features = {}
     for e in elements:

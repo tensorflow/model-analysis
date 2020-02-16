@@ -24,6 +24,8 @@ import tempfile
 
 from typing import Dict, List, NamedTuple, Optional, Text, Union
 
+from absl.testing import parameterized
+
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
@@ -59,7 +61,8 @@ LegacyConfig = NamedTuple(
 _TEST_SEED = 982735
 
 
-class EvaluateTest(testutil.TensorflowModelAnalysisTest):
+class EvaluateTest(testutil.TensorflowModelAnalysisTest,
+                   parameterized.TestCase):
 
   def setUp(self):
     super(EvaluateTest, self).setUp()
@@ -138,8 +141,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     eval_config = config.EvalConfig()
     # No construct_fn should fail when Beam attempts to call the construct_fn.
     eval_shared_model = types.EvalSharedModel(model_path=model_location)
-    with self.assertRaisesRegexp(AttributeError,
-                                 '\'NoneType\' object has no attribute'):
+    with self.assertRaisesRegex(AttributeError,
+                                '\'NoneType\' object has no attribute'):
       model_eval_lib.run_model_analysis(
           eval_config=eval_config,
           eval_shared_model=eval_shared_model,
@@ -166,9 +169,29 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         'model1': types.EvalSharedModel(model_path='/model1/path'),
         'model2': types.EvalSharedModel(model_path='/model2/path')
     }
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         NotImplementedError,
         'support for mixing eval and non-eval models is not implemented'):
+      model_eval_lib.run_model_analysis(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_models,
+          data_location=data_location,
+          output_path=self._getTempDir())
+
+  def testMixedTFLiteAndNotTFLiteFormats(self):
+    examples = [self._makeExample(age=3.0, language='english', label=1.0)]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    eval_config = config.EvalConfig(model_specs=[
+        config.ModelSpec(name='model1'),
+        config.ModelSpec(name='model2', model_type=constants.TF_LITE)
+    ])
+    eval_shared_models = {
+        'model1': types.EvalSharedModel(model_path='/model1/path'),
+        'model2': types.EvalSharedModel(model_path='/model2/path')
+    }
+    with self.assertRaisesRegex(
+        NotImplementedError,
+        'support for mixing tf_lite and non-tf_lite models is not implemented'):
       model_eval_lib.run_model_analysis(
           eval_config=eval_config,
           eval_shared_model=eval_shared_models,
@@ -482,7 +505,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                      config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
-  def testRunModelAnalysisWithKerasModel(self):
+  @parameterized.named_parameters(('without_tflite_conversion', False),
+                                  ('with_tflite_conversion', True))
+  def testRunModelAnalysisWithKerasModel(self, convert_to_tflite):
 
     def _build_keras_model(name='export_dir'):
       input_layer = tf.keras.layers.Input(shape=(28 * 28,), name='data')
@@ -501,7 +526,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
       dataset = dataset.shuffle(buffer_size=1).repeat().batch(1)
       model.fit(dataset, steps_per_epoch=1)
       model_location = os.path.join(self._getTempDir(), name)
-      model.save(model_location, save_format='tf')
+      if convert_to_tflite:
+        converter = tf.compat.v2.lite.TFLiteConverter.from_keras_model(model)
+        tflite_model = converter.convert()
+        tf.io.gfile.makedirs(model_location)
+        with tf.io.gfile.GFile(os.path.join(model_location, 'tflite'),
+                               'wb') as f:
+          f.write(tflite_model)
+      else:
+        model.save(model_location, save_format='tf')
       return model_eval_lib.default_eval_shared_model(
           eval_saved_model_path=model_location,
           tags=[tf.saved_model.SERVING]), model_location
@@ -520,6 +553,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
       metrics_spec.metrics.append(
           config.MetricConfig(
               class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
+    tf.keras.backend.clear_session()
     metrics_spec.metrics.append(
         config.MetricConfig(
             class_name='WeightedExampleCount',
@@ -536,6 +570,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
                 name='baseline', label_key='label', is_baseline=True),
         ],
         metrics_specs=[metrics_spec])
+    if convert_to_tflite:
+      for s in eval_config.model_specs:
+        s.model_type = constants.TF_LITE
 
     model, model_location = _build_keras_model()
     baseline, baseline_model_location = _build_keras_model('baseline_export')
@@ -913,7 +950,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         'recall': 0.5
     }
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected_metrics)
-    self.assertEqual(len(eval_result.plots), 1)
+    self.assertLen(eval_result.plots, 1)
     slice_key, plots = eval_result.plots[0]
     self.assertEqual((), slice_key)
     self.assertDictElementsAlmostEqual(
@@ -955,7 +992,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         'recall': 0.5
     }
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected_metrics)
-    self.assertEqual(len(eval_result.plots), 1)
+    self.assertLen(eval_result.plots, 1)
     slice_key, plots = eval_result.plots[0]
     self.assertEqual((), slice_key)
     self.assertDictElementsAlmostEqual(
@@ -1013,7 +1050,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
         slice_spec=[slicer.SingleSliceSpec(features=[('language', 'english')])])
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
-    self.assertEqual(2, len(eval_results._results))
+    self.assertLen(eval_results._results, 2)
     expected_result_1 = {
         (('language', 'english'),): {
             'my_mean_label': {
@@ -1052,7 +1089,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest):
     eval_results = model_eval_lib.multiple_data_analysis(
         model_location, [data_location_1, data_location_2],
         slice_spec=[slicer.SingleSliceSpec(features=[('language', 'english')])])
-    self.assertEqual(2, len(eval_results._results))
+    self.assertLen(eval_results._results, 2)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected_result_1 = {

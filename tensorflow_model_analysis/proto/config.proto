@@ -30,7 +30,12 @@ message ModelSpec {
   // config, then no model_name will be set in any metrics keys that are output
   // regardless of whether a name was provided here or not.
   string name = 2;
-  // Name of signature to use (e.g. 'serving_default')
+  // The type of the model that is being evaluated. Supported types include
+  // "tf_estimator", "tf_keras" and "tf_lite". If unset, automatically detects
+  // whether the model_type is "tf_keras" or "tf_estimator".
+  string model_type = 12;
+  // Name of signature to use (e.g. 'serving_default'). Ignored if the model
+  // type does not contain signatures (e.g. tflite).
   string signature_name = 3;
   // Signature names (multi-output model) keyed by output_name. If all the
   // outputs for a multi-output model use the same signature name, then a single

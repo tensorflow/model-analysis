@@ -25,7 +25,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
 
-from typing import Any, Callable, Dict, List, Optional, Sequence, Text
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text
 
 KERAS_INPUT_SUFFIX = '_input'
 
@@ -37,6 +37,13 @@ def get_baseline_model_spec(
     if spec.is_baseline:
       return spec
   return None
+
+
+def get_model_types(eval_config: Optional[config.EvalConfig]) -> Set[Text]:
+  """Returns the set of model types seen in eval_config.model_specs."""
+  if eval_config:
+    return {s.model_type for s in eval_config.model_specs}
+  return set()
 
 
 def get_model_spec(eval_config: config.EvalConfig,
