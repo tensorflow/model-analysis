@@ -49,6 +49,7 @@ from tensorflow_model_analysis.config import GenericValueThreshold
 from tensorflow_model_analysis.config import MetricConfig
 from tensorflow_model_analysis.config import MetricDirection
 from tensorflow_model_analysis.config import MetricsSpec
+from tensorflow_model_analysis.config import MetricThreshold
 from tensorflow_model_analysis.config import ModelSpec
 from tensorflow_model_analysis.config import Options
 from tensorflow_model_analysis.config import SlicingSpec
