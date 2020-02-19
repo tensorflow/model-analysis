@@ -598,7 +598,7 @@ class _ExampleCountPreprocessor(beam.DoFn):
 
 class _ExampleCountCombiner(beam.CombineFn):
 
-  def __init__(self, metric_key: tfma.MetricKey):
+  def __init__(self, metric_key: tfma.metrics.MetricKey):
     self._metric_key = metric_key
 
   def create_accumulator(self) -> int:
@@ -614,7 +614,7 @@ class _ExampleCountCombiner(beam.CombineFn):
     return result
 
   def extract_output(self,
-                     accumulator: int) -> Dict[metric_types.MetricKey, int]:
+                     accumulator: int) -> Dict[tfma.metrics.MetricKey, int]:
     return {self._metric_key: accumulator}
 ```
 
