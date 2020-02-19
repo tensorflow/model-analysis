@@ -254,6 +254,74 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
+  def testMultiClassConfusionMatrixPlotWithStringLabels(self):
+    computation = (
+        multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot()
+        .computations()[0])
+
+    # Examples from b/149558504.
+    example1 = {
+        'labels': np.array([['unacc']]),
+        'predictions': {
+            'probabilities':
+                np.array([[
+                    1.0000000e+00, 6.9407083e-24, 2.7419115e-38, 0.0000000e+00
+                ]]),
+            'all_classes':
+                np.array([['unacc', 'acc', 'vgood', 'good']]),
+        },
+        'example_weights': np.array([0.5])
+    }
+    example2 = {
+        'labels': np.array([['vgood']]),
+        'predictions': {
+            'probabilities': np.array([[0.2, 0.3, 0.4, 0.1]]),
+            'all_classes': np.array([['unacc', 'acc', 'vgood', 'good']]),
+        },
+        'example_weights': np.array([1.0])
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([example1, example2])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'ComputePlot' >> beam.CombinePerKey(computation.combiner))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_plots = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertLen(got_plots, 1)
+          key = metric_types.PlotKey(name='multi_class_confusion_matrix_plot')
+          got_matrix = got_plots[key]
+          self.assertProtoEquals(
+              """
+              matrices {
+                threshold: 0.0
+                entries {
+                  actual_class_id: 0
+                  predicted_class_id: 0
+                  num_weighted_examples: 0.5
+                }
+                entries {
+                  actual_class_id: 2
+                  predicted_class_id: 2
+                  num_weighted_examples: 1.0
+                }
+              }
+          """, got_matrix)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
 
 if __name__ == '__main__':
   tf.test.main()

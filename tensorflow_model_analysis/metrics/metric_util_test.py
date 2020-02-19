@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 
@@ -61,6 +61,32 @@ class UtilTest(tf.test.TestCase):
 
     self.assertAllClose(got_label, np.array([2]))
     self.assertAllClose(got_pred, np.array([0, 0.5, 0.3, 0.9]))
+    self.assertAllClose(got_example_weight, np.array([1.0]))
+
+  def testStandardMetricInputsToNumpyWithoutFlattenAndWithSqueeze(self):
+    example = metric_types.StandardMetricInputs(
+        label={'output_name': np.array([[2]])},
+        prediction={'output_name': np.array([[0, 0.5, 0.3, 0.9]])},
+        example_weight={'output_name': np.array([1.0])})
+    got_label, got_pred, got_example_weight = next(
+        metric_util.to_label_prediction_example_weight(
+            example, output_name='output_name', flatten=False))
+
+    self.assertAllClose(got_label, np.array([2]))
+    self.assertAllClose(got_pred, np.array([0, 0.5, 0.3, 0.9]))
+    self.assertAllClose(got_example_weight, np.array([1.0]))
+
+  def testStandardMetricInputsToNumpyWithoutFlattenAndWithoutSqueeze(self):
+    example = metric_types.StandardMetricInputs(
+        label={'output_name': np.array([[2]])},
+        prediction={'output_name': np.array([[0, 0.5, 0.3, 0.9]])},
+        example_weight={'output_name': np.array([1.0])})
+    got_label, got_pred, got_example_weight = next(
+        metric_util.to_label_prediction_example_weight(
+            example, output_name='output_name', flatten=False, squeeze=False))
+
+    self.assertAllClose(got_label, np.array([[2]]))
+    self.assertAllClose(got_pred, np.array([[0, 0.5, 0.3, 0.9]]))
     self.assertAllClose(got_example_weight, np.array([1.0]))
 
   def testStandardMetricInputsWithZeroWeightsToNumpy(self):

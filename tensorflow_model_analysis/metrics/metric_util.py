@@ -24,7 +24,7 @@ import inspect
 from typing import Any, Callable, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
@@ -132,6 +132,7 @@ def to_label_prediction_example_weight(
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None,
     flatten: bool = True,
+    squeeze: bool = True,
     allow_none: bool = False,
 ) -> Iterable[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
   """Yields label, prediction, and example weights for use in calculations.
@@ -199,6 +200,8 @@ def to_label_prediction_example_weight(
       multi-label outputs would be converted into label and prediction pairs
       that could then be processed by a binary classification metric in order to
       compute a micro average over all classes.
+    squeeze: True to squeeze any outputs that have rank > 1. This transforms
+      outputs such as np.array([[1]]) to np.array([1]).
     allow_none: True to allow labels or predictions with None values to be
       returned. The example weight will always be non-None.
 
@@ -300,7 +303,10 @@ def to_label_prediction_example_weight(
   if (not flatten or (label is None and prediction is None) or
       (label is not None and prediction is not None and label.size == 1 and
        prediction.size == 1)):
-    yield label, prediction, example_weight
+    if squeeze:
+      yield _squeeze(label), _squeeze(prediction), _squeeze(example_weight)
+    else:
+      yield label, prediction, example_weight
   elif label is None:
     for p, w in (prediction.flatten(), example_weight.flatten()):
       yield label, np.array([p]), np.array([w])
@@ -322,6 +328,15 @@ def to_label_prediction_example_weight(
         'model_name={}, output_name={}, sub_key={}, StandardMetricInputs={} '
         '\n\nThis is most likely a configuration error.'.format(
             label, prediction, model_name, output_name, sub_key, inputs))
+
+
+def _squeeze(arr: np.ndarray):
+  """Squeezes arr while aways returning an array unless 'arr' is a scalar."""
+  if arr.shape not in ((), (1,)):
+    arr = arr.squeeze()
+    if not arr.shape:
+      arr = np.expand_dims(arr, axis=0)
+  return arr
 
 
 def prepare_labels_and_predictions(
