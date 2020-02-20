@@ -71,6 +71,15 @@ export class FairnessMetricsTable extends PolymerElement {
       },
 
       /**
+       * Metrics table data. Optional - used for model comparison.
+       * @type {!Array}
+       */
+      dataCompare: {
+        type: Array,
+        value: () => ([]),
+      },
+
+      /**
        * A look up table to override header.
        * @type {!Object<string>}
        */
@@ -96,20 +105,83 @@ export class FairnessMetricsTable extends PolymerElement {
        */
       tableData_: {
         type: Array,
-        computed: 'computeTableData_(data, metrics, headerOverride)',
+        computed:
+            'computeTableData_(data, dataCompare, metrics, headerOverride)',
       },
     };
   }
 
   /**
+   * @return {boolean} Returns true if models are being compared.
+   * @private
+   */
+  modelComparison_() {
+    return this.dataCompare.length > 0;
+  }
+
+  /**
+   * Populate header row
+   * @param {!Array<string>} metrics
+   * @param {!Object<string>} headerOverride
+   * @return {!Array<string>}
+   * @private
+   */
+  populateHeaderRow_(metrics, headerOverride) {
+    let headerRow = ['feature'];
+    for (let i = 0; i < metrics.length; i++) {
+      headerRow.push(Util.removeMetricNamePrefix(metrics[i]));
+    }
+    if (this.modelComparison_()) {
+      for (let i = 0; i < metrics.length; i++) {
+        headerRow.push(Util.removeMetricNamePrefix(metrics[i]));
+      }
+    }
+    return headerRow.map(metric => headerOverride[metric] || metric);
+  }
+
+  /**
+   * Populate table rows
+   * @param {!Array<string>} metrics
+   * @param {!Array} data
+   * @param {!Array} dataCompare
+   * @return {!Array<string>}
+   * @private
+   */
+  populateTableRows_(metrics, data, dataCompare) {
+    var tableRows = [];
+    for (let i = 0; i < data.length; i++) {
+      var tableRow = [];
+
+      // slice name
+      tableRow.push(data[i]['slice']);
+
+      // eval 1's metric values
+      metrics.forEach(entry => {
+        tableRow.push(this.formatCell_(data[i]['metrics'][entry]));
+      });
+
+      // eval 2's metric values
+      if (this.modelComparison_()) {
+        metrics.forEach(entry => {
+          tableRow.push(this.formatCell_(dataCompare[i]['metrics'][entry]));
+        });
+      }
+
+      tableRows.push(tableRow);
+    }
+    return tableRows;
+  }
+
+  /**
    * Computes the data table.
    * @param {!Array} data
+   * @param {!Array} dataCompare
    * @param {!Array<string>} metrics
    * @param {!Object<string>} headerOverride
    * @return {!Array<!Array>|undefined}
    * @private
    */
-  computeTableData_(data, metrics, headerOverride) {
+  computeTableData_(data, dataCompare, metrics, headerOverride) {
     if (!data || !metrics || !headerOverride) {
       return undefined;
     }
@@ -118,29 +190,9 @@ export class FairnessMetricsTable extends PolymerElement {
       return [[]];
     }
 
-    let headerRow = ['feature'];
-    for (let i = 0; i < metrics.length; i++) {
-      headerRow.push(Util.removeMetricNamePrefix(metrics[i]));
-    }
-    headerRow = headerRow.map(metric => headerOverride[metric] || metric);
-
-    var tableData = [];
-    data.forEach(row => {
-      const metricsData = row['metrics'];
-      const slice = row['slice'];
-
-      if (metricsData === undefined || slice === undefined) {
-        return;
-      }
-
-      var tableRow = [slice];
-      metrics.forEach(entry => {
-        tableRow.push(this.formatCell_(metricsData[entry]));
-      });
-      tableData.push(tableRow);
-    });
-
-    return [headerRow].concat(tableData);
+    let headerRow = this.populateHeaderRow_(metrics, headerOverride);
+    let tableRows = this.populateTableRows_(metrics, data, dataCompare);
+    return [headerRow].concat(tableRows);
   }
 
   /**
@@ -219,7 +271,7 @@ export class FairnessMetricsTable extends PolymerElement {
   getExampleCount_(rowNum, exampleCounts) {
     // We skip the first row, since it is a header row which does not correspond
     // to a slice.
-    return exampleCounts[parseFloat(rowNum)-1];
+    return exampleCounts[parseFloat(rowNum) - 1];
   }
 
   /**

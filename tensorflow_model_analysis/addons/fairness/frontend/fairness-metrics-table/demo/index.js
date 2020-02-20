@@ -14,35 +14,49 @@
  * limitations under the License.
  */
 
-const NUM_SLICES = 100;
+const NUM_SLICES = 10;
 
 (() => {
   var metrics = [];
   metrics.push('false_negative_rate@0.50');
   metrics.push('false_negative_rate@0.50 against Overall');
 
-  const table = document.getElementById('table');
-  table.metrics = metrics;
-
   var data = [];
+  var dataCompare = [];
   var exampleCounts = [];
 
   const baseline = Math.random();
 
-  for (var i = 0; i < NUM_SLICES; i++) {
+  function generateEntry(sliceName) {
     var entry = {};
-    entry['slice'] = 'col:' + i;
+    entry['slice'] = sliceName;
 
     var metric = {};
     metric['false_negative_rate@0.50'] = Math.random();
     metric['false_negative_rate@0.50 against Overall'] =
         metric['false_negative_rate@0.50'] - baseline;
-
     entry['metrics'] = metric;
-    data.push(entry);
+
+    return entry;
+  }
+
+  for (var i = 0; i < NUM_SLICES; i++) {
+    const slice = 'col:' + i;
+    data.push(generateEntry(slice));
+    dataCompare.push(generateEntry(slice));
     exampleCounts.push(Math.floor(Math.random() * 100));
   }
 
-  table.data = data;
-  table.exampleCounts = exampleCounts;
+  // Table with one model
+  var singleTable = document.getElementById('single_table');
+  singleTable.metrics = metrics;
+  singleTable.data = data;
+  singleTable.exampleCounts = exampleCounts;
+
+  // Table comparing two models
+  var doubleTable = document.getElementById('double_table');
+  doubleTable.metrics = metrics;
+  doubleTable.data = data;
+  doubleTable.dataCompare = dataCompare;
+  doubleTable.exampleCounts = exampleCounts;
 })();
