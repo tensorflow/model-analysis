@@ -23,8 +23,8 @@ import copy
 import importlib
 import json
 import re
-from typing import Any, Dict, List, Optional, Text, Type, Union
-import tensorflow as tf
+from typing import Any, Dict, List, Optional, Text, Type, Union, Tuple
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import aggregation
@@ -39,7 +39,10 @@ from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_plot
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.metrics import weighted_example_count
 
-_TFOrTFMAMetric = Union[tf.keras.metrics.Metric, metric_types.Metric]
+_TF_LOSSES_MODULE = tf.keras.losses.Loss().__class__.__module__
+
+_TFOrTFMAMetric = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss,
+                        metric_types.Metric]
 
 # TF configs that should be treated special by either modifying the class names
 # used or updating the default config settings.
@@ -71,7 +74,7 @@ def specs_from_metrics(
     include_example_count: Optional[bool] = None,
     include_weighted_example_count: Optional[bool] = None
 ) -> List[config.MetricsSpec]:
-  """Returns specs from tf.keras.metrics.Metric or tfma.metrics.Metric classes.
+  """Returns specs for tf.keras.metrics/losses or tfma.metrics classes.
 
   Examples:
 
@@ -100,9 +103,9 @@ def specs_from_metrics(
     })
 
   Args:
-    metrics: List of tf.keras.metrics.Metric or tfma.metrics.Metric. For
-      multi-output models a dict of dicts may be passed where the first dict is
-      indexed by the output_name.
+    metrics: List of tf.keras.metrics.Metric, tf.keras.losses.Loss, or
+      tfma.metrics.Metric. For multi-output models a dict of dicts may be passed
+      where the first dict is indexed by the output_name.
     model_names: Optional model names (if multi-model evaluation).
     output_names: Optional output names (if multi-output models). If the metrics
       are a dict this should not be set.
@@ -151,8 +154,13 @@ def specs_from_metrics(
   for metric in metrics:
     if isinstance(metric, tf.keras.metrics.Metric):
       metric_configs.append(_serialize_tf_metric(metric))
-    else:
+    elif isinstance(metric, tf.keras.losses.Loss):
+      metric_configs.append(_serialize_tf_loss(metric))
+    elif isinstance(metric, metric_types.Metric):
       metric_configs.append(_serialize_tfma_metric(metric))
+    else:
+      raise NotImplementedError('unknown metric type {}: metric={}'.format(
+          type(metric), metric))
   specs.append(
       config.MetricsSpec(
           metrics=metric_configs,
@@ -197,7 +205,8 @@ def example_count_specs(
 def default_regression_specs(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
-    loss_functions: Optional[List[tf.keras.metrics.Metric]] = None,
+    loss_functions: Optional[List[Union[tf.keras.metrics.Metric,
+                                        tf.keras.losses.Loss]]] = None,
     min_value: Optional[float] = None,
     max_value: Optional[float] = None) -> List[config.MetricsSpec]:
   """Returns default metric specs for for regression problems.
@@ -374,8 +383,13 @@ def metric_thresholds_from_metric_specs(
         cls = getattr(importlib.import_module(metric.module), metric.class_name)
         if issubclass(cls, tf.keras.metrics.Metric):
           instance = _deserialize_tf_metric(metric, {metric.class_name: cls})
-        else:
+        elif issubclass(cls, tf.keras.losses.Loss):
+          instance = _deserialize_tf_loss(metric, {metric.class_name: cls})
+        elif isinstance(metric, metric_types.Metric):
           instance = _deserialize_tfma_metric(metric, {metric.class_name: cls})
+        else:
+          raise NotImplementedError('unknown metric type {}: metric={}'.format(
+              type(metric), metric))
 
       if (hasattr(instance, 'is_model_independent') and
           instance.is_model_independent()):
@@ -418,7 +432,7 @@ def to_computations(
   # Split into TF metrics and TFMA metrics
   #
 
-  # Dict[Text, Type[tf.keras.metrics.Metric]]
+  # Dict[Text, Type[Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]]]
   tf_metric_classes = {}  # class_name -> class
   # List[metric_types.MetricsSpec]
   tf_metrics_specs = []
@@ -432,7 +446,7 @@ def to_computations(
   #
   # List[List[_TFOrTFMAMetric]] (offsets align with metrics_specs).
   per_spec_metric_instances = []
-  # List[List[tf.keras.metrics.Metric]] (offsets align with tf_metrics_specs).
+  # List[List[_TFMetricOrLoss]] (offsets align with tf_metrics_specs).
   per_tf_spec_metric_instances = []
   # List[List[metric_types.Metric]]] (offsets align with tfma_metrics_specs).
   per_tfma_spec_metric_instances = []
@@ -450,7 +464,8 @@ def to_computations(
         tf_spec.metrics.append(metric)
       else:
         cls = getattr(importlib.import_module(metric.module), metric.class_name)
-        if issubclass(cls, tf.keras.metrics.Metric):
+        if (issubclass(cls, tf.keras.metrics.Metric) or
+            issubclass(cls, tf.keras.losses.Loss)):
           tf_metric_classes[metric.class_name] = cls
           tf_spec.metrics.append(metric)
         else:
@@ -460,9 +475,15 @@ def to_computations(
     metric_instances = []
     if tf_spec.metrics:
       tf_metrics_specs.append(tf_spec)
-      tf_metric_instances = [
-          _deserialize_tf_metric(m, tf_metric_classes) for m in tf_spec.metrics
-      ]
+      tf_metric_instances = []
+      for m in tf_spec.metrics:
+        # To distinguish losses from metrics, losses are required to set the
+        # module name.
+        if m.module == _TF_LOSSES_MODULE:
+          tf_metric_instances.append(_deserialize_tf_loss(m, tf_metric_classes))
+        else:
+          tf_metric_instances.append(
+              _deserialize_tf_metric(m, tf_metric_classes))
       per_tf_spec_metric_instances.append(tf_metric_instances)
       metric_instances.extend(tf_metric_instances)
     if tfma_spec.metrics:
@@ -649,6 +670,29 @@ def _maybe_add_name_to_config(cfg: Dict[Text, Any],
   return cfg
 
 
+def _tf_class_and_config(
+    metric_config: config.MetricConfig) -> Tuple[Text, Dict[Text, Any]]:
+  """Returns the tensorflow class and config associated with metric_config."""
+  cls_name = metric_config.class_name
+  cfg = _metric_config(metric_config.config)
+  for name, defaults in _TF_CONFIG_DEFAULTS.items():
+    if name == cls_name:
+      if 'class_name' in defaults:
+        cls_name = defaults['class_name']
+      if 'config' in defaults:
+        tmp = cfg
+        cfg = copy.copy(defaults['config'])
+        cfg.update(tmp)
+      break
+
+  # The same metric type may be used for different keys when multi-class metrics
+  # are used (e.g. AUC for class0, # class1, etc). TF tries to generate unique
+  # metric names even though these metrics are already unique within a
+  # MetricKey. To workaroudn this issue, if a name is not set, then add a
+  # default name ourselves.
+  return cls_name, _maybe_add_name_to_config(cfg, cls_name)
+
+
 def _serialize_tf_metric(
     metric: tf.keras.metrics.Metric) -> config.MetricConfig:
   """Serializes TF metric."""
@@ -663,28 +707,28 @@ def _deserialize_tf_metric(
     custom_objects: Dict[Text, Type[tf.keras.metrics.Metric]]
 ) -> tf.keras.metrics.Metric:
   """Deserializes a tf.keras.metrics metric."""
-  cls_name = metric_config.class_name
-  cfg = _metric_config(metric_config.config)
-  for name, defaults in _TF_CONFIG_DEFAULTS.items():
-    if name == cls_name:
-      if 'class_name' in defaults:
-        cls_name = defaults['class_name']
-      if 'config' in defaults:
-        tmp = cfg
-        cfg = copy.copy(defaults['config'])
-        cfg.update(tmp)
-      break
-
-  # The same metric type may be used for different keys when mult-class metrics
-  # are used (e.g. AUC for class0, # class1, etc). TF tries to generate unique
-  # metirc names even though these metrics are already unique within a
-  # MetricKey. To workaroudn this issue, if a name is not set, then add a
-  # default name ourselves.
+  cls_name, cfg = _tf_class_and_config(metric_config)
   with tf.keras.utils.custom_object_scope(custom_objects):
-    return tf.keras.metrics.deserialize({
-        'class_name': cls_name,
-        'config': _maybe_add_name_to_config(cfg, metric_config.class_name)
-    })
+    return tf.keras.metrics.deserialize({'class_name': cls_name, 'config': cfg})
+
+
+def _serialize_tf_loss(loss: tf.keras.losses.Loss) -> config.MetricConfig:
+  """Serializes TF loss."""
+  cfg = metric_util.serialize_loss(loss)
+  return config.MetricConfig(
+      class_name=cfg['class_name'],
+      module=loss.__class__.__module__,
+      config=json.dumps(cfg['config'], sort_keys=True))
+
+
+def _deserialize_tf_loss(
+    metric_config: config.MetricConfig,
+    custom_objects: Dict[Text,
+                         Type[tf.keras.losses.Loss]]) -> tf.keras.losses.Loss:
+  """Deserializes a tf.keras.loss metric."""
+  cls_name, cfg = _tf_class_and_config(metric_config)
+  with tf.keras.utils.custom_object_scope(custom_objects):
+    return tf.keras.losses.deserialize({'class_name': cls_name, 'config': cfg})
 
 
 def _serialize_tfma_metric(metric: metric_types.Metric) -> config.MetricConfig:

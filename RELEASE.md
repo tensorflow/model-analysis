@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Added support for creating metrics specs from tf.keras.losses.
+
 ## Bug fixes and other changes
 
 ## Breaking changes

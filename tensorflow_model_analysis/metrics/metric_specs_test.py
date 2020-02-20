@@ -34,10 +34,12 @@ class MetricSpecsTest(tf.test.TestCase):
         {
             'output_name1': [
                 tf.keras.metrics.MeanSquaredError('mse'),
+                tf.keras.losses.MeanAbsoluteError(name='mae'),
                 calibration.MeanLabel('mean_label')
             ],
             'output_name2': [
                 tf.keras.metrics.RootMeanSquaredError('rmse'),
+                tf.keras.losses.MeanAbsolutePercentageError(name='mape'),
                 calibration.MeanPrediction('mean_prediction')
             ]
         },
@@ -75,6 +77,14 @@ class MetricSpecsTest(tf.test.TestCase):
                     },
                                       sort_keys=True)),
                 config.MetricConfig(
+                    class_name='MeanAbsoluteError',
+                    module=metric_specs._TF_LOSSES_MODULE,
+                    config=json.dumps({
+                        'reduction': 'auto',
+                        'name': 'mae'
+                    },
+                                      sort_keys=True)),
+                config.MetricConfig(
                     class_name='MeanLabel',
                     config=json.dumps({'name': 'mean_label'}))
             ],
@@ -101,6 +111,14 @@ class MetricSpecsTest(tf.test.TestCase):
                     config=json.dumps({
                         'name': 'rmse',
                         'dtype': 'float32'
+                    },
+                                      sort_keys=True)),
+                config.MetricConfig(
+                    class_name='MeanAbsolutePercentageError',
+                    module=metric_specs._TF_LOSSES_MODULE,
+                    config=json.dumps({
+                        'reduction': 'auto',
+                        'name': 'mape'
                     },
                                       sort_keys=True)),
                 config.MetricConfig(
