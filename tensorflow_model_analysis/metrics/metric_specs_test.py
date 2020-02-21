@@ -139,6 +139,7 @@ class MetricSpecsTest(tf.test.TestCase):
                         value_threshold=config.GenericValueThreshold()),
                 'mean/label':
                     config.MetricThreshold(
+                        value_threshold=config.GenericValueThreshold(),
                         change_threshold=config.GenericChangeThreshold()),
                 # The mse metric will be overridden by MetricConfig below.
                 'mse':
@@ -190,7 +191,7 @@ class MetricSpecsTest(tf.test.TestCase):
             aggregate=config.AggregationOptions(macro_average=True))
     ]
     thresholds = metric_specs.metric_thresholds_from_metric_specs(metrics_specs)
-    self.assertLen(thresholds, 13)
+    self.assertLen(thresholds, 14)
     self.assertIn(
         metric_types.MetricKey(
             name='auc', model_name='model_name', output_name='output_name'),
@@ -201,6 +202,12 @@ class MetricSpecsTest(tf.test.TestCase):
             model_name='model_name',
             output_name='output_name',
             is_diff=True), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='mean/label',
+            model_name='model_name',
+            output_name='output_name',
+            is_diff=False), thresholds)
     self.assertIn(metric_types.MetricKey(name='example_count'), thresholds)
     self.assertIn(
         metric_types.MetricKey(

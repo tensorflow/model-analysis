@@ -338,7 +338,7 @@ def metric_thresholds_from_metric_specs(
     metrics_specs: List[config.MetricsSpec]
 ) -> Dict[metric_types.MetricKey, Union[config.GenericChangeThreshold,
                                         config.GenericValueThreshold]]:
-  """Returns thesholds associated with given metrics specs."""
+  """Returns thresholds associated with given metrics specs."""
   result = {}
 
   tfma_metric_classes = metric_types.registered_metrics()
@@ -361,7 +361,7 @@ def metric_thresholds_from_metric_specs(
                   sub_key=sub_key,
                   is_diff=False)
               result[key] = threshold.value_threshold
-            elif threshold.HasField('change_threshold'):
+            if threshold.HasField('change_threshold'):
               key = metric_types.MetricKey(
                   name=metric_name,
                   model_name=model_name,
@@ -408,7 +408,7 @@ def metric_thresholds_from_metric_specs(
                     sub_key=sub_key,
                     is_diff=False)
                 result[key] = metric.threshold.value_threshold
-              elif metric.threshold.HasField('change_threshold'):
+              if metric.threshold.HasField('change_threshold'):
                 key = metric_types.MetricKey(
                     name=instance.name,
                     model_name=model_name,
