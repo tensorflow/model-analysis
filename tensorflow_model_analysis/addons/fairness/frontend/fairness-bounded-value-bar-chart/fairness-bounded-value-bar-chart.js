@@ -86,6 +86,36 @@ function buildTooltips() {
           });
 }
 
+/**
+ * Sorting function for d3 data
+ * @param {string} baseline
+ * @return {function(!Object, !Object): number}
+ */
+function sort(baseline) {
+  return (a, b) => {
+    // Ensure that the baseline slice always appears on the left side.
+    if (a.fullSliceName == baseline) {
+      return -1;
+    }
+    if (b.fullSliceName == baseline) {
+      return 1;
+    }
+    // Sort by the first threshold value if multiple thresholds are present.
+    for (let i = 0; i < a.metricsData.length; i++) {
+      const diff = a.metricsData[i]['value'] - b.metricsData[i]['value'];
+      if (diff != 0) {
+        return diff;
+      }
+    }
+    // If metrics are equal for both slices, go by alphabetical order.
+    if (a['fullSliceName'] <= b['fullSliceName']) {
+      return -1;
+    } else {
+      return 1;
+    }
+  };
+}
+
 
 export class FairnessBoundedValueBarChart extends PolymerElement {
   constructor() {
@@ -153,6 +183,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    * @param {!d3.tip.x} tip for bar chart.
    * @private
    */
+  // TODO(karanshukla): b/149708159
   initializePlotGraph_(data, metrics, slices, baseline, isAttached, tip) {
     if (!data || !metrics || !slices || !baseline || !isAttached) {
       return;
@@ -165,7 +196,21 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       return;
     }
 
-    // Covert the data into the d3 friendly data structure.
+    const d3Data = this.createD3Data_(data, metrics, slices, baseline);
+    const graphConfig = this.buildGraphConfig_(d3Data, metrics);
+    this.drawGraph_(d3Data, baseline, graphConfig, tip);
+  }
+
+  /**
+   * Convert the data into the d3 friendly data structure.
+   * @param {!Object} data for plot.
+   * @param {!Array<string>} metrics list.
+   * @param {!Array<string>} slices list.
+   * @param {string} baseline slice of the metrics.
+   * @return {!Array<!Object>}
+   * @private
+   */
+  createD3Data_(data, metrics, slices, baseline) {
     const d3Data = [];
     slices.forEach((slice) => {
       const sliceMetrics = data.find(d => d['slice'] == slice);
@@ -197,29 +242,18 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         metricsData: metricsData
       });
     });
-    d3Data.sort(function(a, b) {
-      // Ensure that the baseline slice always appears on the left side.
-      if (a.fullSliceName == baseline) {
-        return -1;
-      }
-      if (b.fullSliceName == baseline) {
-        return 1;
-      }
-      // Sort by the first threshold value if multiple thresholds are present.
-      for (let i = 0; i < a.metricsData.length; i++) {
-        const diff = a.metricsData[i]['value'] - b.metricsData[i]['value'];
-        if (diff != 0) {
-          return diff;
-        }
-      }
-      // If metrics are equal for both slices, go by alphabetical order.
-      if (a['fullSliceName'] <= b['fullSliceName']) {
-        return -1;
-      } else {
-        return 1;
-      }
-    });
+    d3Data.sort(sort(baseline));
+    return d3Data;
+  }
 
+  /**
+   * Configure graph.
+   * @param {!Object} d3Data for plot.
+   * @param {!Array<string>} metrics list.
+   * @return {!Object}
+   * @private
+   */
+  buildGraphConfig_(d3Data, metrics) {
     // Build slice scale.
     const slicesX = d3.scaleBand()
                         .domain(d3Data.map(d => d.sliceValue))
@@ -260,7 +294,27 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     const baselineColor = d3.scaleOrdinal().range(BASELINE_BAR_COLOR_);
     const confidenceIntervalColor = d3.scaleOrdinal().range(ERROR_BAR_COLOR_);
 
-    // Draw Graph
+    return {
+      'slicesX': slicesX,
+      'metricsX': metricsX,
+      'y': y,
+      'baselineColor': baselineColor,
+      'metricsColor': metricsColor,
+      'confidenceIntervalColor': confidenceIntervalColor,
+      'configureXAxis': configureXAxis,
+      'configureYAxis': configureYAxis
+    };
+  }
+
+  /**
+   * Render clustered bar chart.
+   * @param {!Object} d3Data
+   * @param {string} baseline
+   * @param {!Object} graphConfig
+   * @param {!d3.tip.x} tip
+   * @private
+   */
+  drawGraph_(d3Data, baseline, graphConfig, tip) {
     const svg = d3.select(this.$['bar-chart']);
     svg.html('');
     const bars =
@@ -270,19 +324,29 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
             .data(d3Data)
             .enter()
             .append('g')
-            .attr('transform', d => `translate(${slicesX(d.sliceValue)},0)`);
+            .attr(
+                'transform',
+                d => `translate(${graphConfig['slicesX'](d.sliceValue)},0)`);
     bars.selectAll('rect')
         .data(d => d.metricsData)
         .enter()
         .append('rect')
-        .attr('x', d => metricsX(d.metricName))
-        .attr('y', d => isNaN(d.value) ? y(0) : y(d.value))
-        .attr('width', metricsX.bandwidth())
-        .attr('height', d => isNaN(d.value) ? 0 : y(0) - y(d.value))
+        .attr('x', d => graphConfig['metricsX'](d.metricName))
+        .attr(
+            'y',
+            d => isNaN(d.value) ? graphConfig['y'](0) :
+                                  graphConfig['y'](d.value))
+        .attr('width', graphConfig['metricsX'].bandwidth())
+        .attr(
+            'height',
+            d => isNaN(d.value) ?
+                0 :
+                graphConfig['y'](0) - graphConfig['y'](d.value))
         .attr(
             'fill',
-            d => d.fullSliceName == baseline ? baselineColor(d.metricName) :
-                                               metricsColor(d.metricName))
+            d => d.fullSliceName == baseline ?
+                graphConfig['baselineColor'](d.metricName) :
+                graphConfig['metricsColor'](d.metricName))
         .on('mouseover', tip ? tip.show : () => {})
         .on('mouseout', tip ? tip.hide : () => {})
         .on('click', (d, i) => {
@@ -294,16 +358,29 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         .data(d => d.metricsData)
         .enter()
         .append('line')
-        .attr('x1', d => metricsX(d.metricName) + (metricsX.bandwidth() / 2))
-        .attr('y1', d => isNaN(d.upperBound) ? y(0) : y(d.upperBound))
-        .attr('x2', d => metricsX(d.metricName) + (metricsX.bandwidth() / 2))
-        .attr('y2', d => isNaN(d.lowerBound) ? y(0) : y(d.lowerBound))
-        .attr('stroke', d => confidenceIntervalColor(d.metricName))
+        .attr(
+            'x1',
+            d => graphConfig['metricsX'](d.metricName) +
+                (graphConfig['metricsX'].bandwidth() / 2))
+        .attr(
+            'y1',
+            d => isNaN(d.upperBound) ? graphConfig['y'](0) :
+                                       graphConfig['y'](d.upperBound))
+        .attr(
+            'x2',
+            d => graphConfig['metricsX'](d.metricName) +
+                (graphConfig['metricsX'].bandwidth() / 2))
+        .attr(
+            'y2',
+            d => isNaN(d.lowerBound) ? graphConfig['y'](0) :
+                                       graphConfig['y'](d.lowerBound))
+        .attr(
+            'stroke', d => graphConfig['confidenceIntervalColor'](d.metricName))
         .attr('stroke-width', 1);
 
     // Draw X Y axis.
-    svg.append('g').attr('id', 'xaxis').call(configureXAxis);
-    svg.append('g').attr('id', 'yaxis').call(configureYAxis);
+    svg.append('g').attr('id', 'xaxis').call(graphConfig['configureXAxis']);
+    svg.append('g').attr('id', 'yaxis').call(graphConfig['configureYAxis']);
     if (tip) {
       svg.call(tip);
     }
