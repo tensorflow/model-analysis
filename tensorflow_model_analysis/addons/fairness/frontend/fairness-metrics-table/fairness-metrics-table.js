@@ -80,13 +80,16 @@ export class FairnessMetricsTable extends PolymerElement {
       },
 
       /**
-       * A look up table to override header.
-       * @type {!Object<string>}
+       * Name of the first model.
+       * @type {string}
        */
-      headerOverride: {
-        type: Object,
-        value: () => ({}),
-      },
+      evalName: {type: String, value: ''},
+
+      /**
+       * Name of the second model. Optional - used for model comparison.
+       * @type {string}
+       */
+      evalNameCompare: {type: String, value: ''},
 
       /**
        * List of example counts for each slice.
@@ -106,7 +109,7 @@ export class FairnessMetricsTable extends PolymerElement {
       tableData_: {
         type: Array,
         computed:
-            'computeTableData_(data, dataCompare, metrics, headerOverride)',
+            'computeTableData_(data, dataCompare, metrics, evalName, evalNameCompare)',
       },
     };
   }
@@ -122,21 +125,23 @@ export class FairnessMetricsTable extends PolymerElement {
   /**
    * Populate header row
    * @param {!Array<string>} metrics
-   * @param {!Object<string>} headerOverride
+   * @param {string} evalName
+   * @param {string} evalNameCompare
    * @return {!Array<string>}
    * @private
    */
-  populateHeaderRow_(metrics, headerOverride) {
-    let headerRow = ['feature'];
-    for (let i = 0; i < metrics.length; i++) {
-      headerRow.push(Util.removeMetricNamePrefix(metrics[i]));
+  populateHeaderRow_(metrics, evalName, evalNameCompare) {
+    const metricCols =
+        metrics.map(metric => Util.removeMetricNamePrefix(metric));
+
+    if (!this.modelComparison_()) {
+      return ['feature'].concat(metricCols);
+    } else {
+      const evalCols = metricCols.map(metric => metric.concat(' - ', evalName));
+      const evalColsCompare =
+          metricCols.map(metric => metric.concat(' - ', evalNameCompare));
+      return ['feature'].concat(evalCols, evalColsCompare);
     }
-    if (this.modelComparison_()) {
-      for (let i = 0; i < metrics.length; i++) {
-        headerRow.push(Util.removeMetricNamePrefix(metrics[i]));
-      }
-    }
-    return headerRow.map(metric => headerOverride[metric] || metric);
   }
 
   /**
@@ -177,12 +182,13 @@ export class FairnessMetricsTable extends PolymerElement {
    * @param {!Array} data
    * @param {!Array} dataCompare
    * @param {!Array<string>} metrics
-   * @param {!Object<string>} headerOverride
+   * @param {string} evalName
+   * @param {string} evalNameCompare
    * @return {!Array<!Array>|undefined}
    * @private
    */
-  computeTableData_(data, dataCompare, metrics, headerOverride) {
-    if (!data || !metrics || !headerOverride) {
+  computeTableData_(data, dataCompare, metrics, evalName, evalNameCompare) {
+    if (!data || !metrics) {
       return undefined;
     }
     if (data.length == 0) {
@@ -190,7 +196,7 @@ export class FairnessMetricsTable extends PolymerElement {
       return [[]];
     }
 
-    let headerRow = this.populateHeaderRow_(metrics, headerOverride);
+    let headerRow = this.populateHeaderRow_(metrics, evalName, evalNameCompare);
     let tableRows = this.populateTableRows_(metrics, data, dataCompare);
     return [headerRow].concat(tableRows);
   }

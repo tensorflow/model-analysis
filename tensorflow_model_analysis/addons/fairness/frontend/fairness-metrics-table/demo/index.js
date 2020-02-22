@@ -52,6 +52,7 @@ const NUM_SLICES = 10;
   singleTable.metrics = metrics;
   singleTable.data = data;
   singleTable.exampleCounts = exampleCounts;
+  singleTable.modelName = "modelA";
 
   // Table comparing two models
   var doubleTable = document.getElementById('double_table');
@@ -59,4 +60,6 @@ const NUM_SLICES = 10;
   doubleTable.data = data;
   doubleTable.dataCompare = dataCompare;
   doubleTable.exampleCounts = exampleCounts;
+  doubleTable.modelName = "modelA";
+  doubleTable.modelNameCompare = "modelB";
 })();

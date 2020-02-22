@@ -19,7 +19,7 @@ suite('fairness-metrics-table tests', () => {
     {
       'slice': 'col:1',
       'metrics': {
-        'logisticLoss': 0.7,
+        'loss': 0.7,
         'averageLabel': 0.5,
         'count': '1000000',
         'auprc': 0.7,
@@ -33,7 +33,7 @@ suite('fairness-metrics-table tests', () => {
     {
       'slice': 'col:2',
       'metrics': {
-        'logisticLoss': 0.72,
+        'loss': 0.72,
         'averageLabel': 0.52,
         'count': '1000002',
         'auprc': 0.72,
@@ -44,7 +44,7 @@ suite('fairness-metrics-table tests', () => {
     {
       'slice': 'col:3',
       'metrics': {
-        'logisticLoss': 0.73,
+        'loss': 0.73,
         'count': '2000003',
         'auprc': 0.73,
         'boundedAuc':
@@ -56,7 +56,7 @@ suite('fairness-metrics-table tests', () => {
     {
       'slice': 'col:1',
       'metrics': {
-        'logisticLoss': 0.5,
+        'loss': 0.5,
         'averageLabel': 0.7,
         'count': '1000000',
         'auprc': 0.5,
@@ -70,7 +70,7 @@ suite('fairness-metrics-table tests', () => {
     {
       'slice': 'col:2',
       'metrics': {
-        'logisticLoss': 0.52,
+        'loss': 0.52,
         'averageLabel': 0.72,
         'count': '1000002',
         'auprc': 0.52,
@@ -81,7 +81,7 @@ suite('fairness-metrics-table tests', () => {
     {
       'slice': 'col:3',
       'metrics': {
-        'logisticLoss': 0.53,
+        'loss': 0.53,
         'count': '2000003',
         'auprc': 0.53,
         'boundedAuc':
@@ -90,11 +90,12 @@ suite('fairness-metrics-table tests', () => {
     }
   ];
 
-  const METRICS = ['logisticLoss', 'count', 'boundedAuc', 'auprc'];
-
-  const HEADER_OVERRIDE = {'logisticLoss': 'loss'};
+  const METRICS = ['loss', 'count', 'boundedAuc', 'auprc'];
 
   const EXAMPLE_COUNTS = [34, 84, 49];
+
+  const MODEL_A_NAME = 'ModelA';
+  const MODEL_B_NAME = 'ModelB';
 
   let table;
 
@@ -104,8 +105,8 @@ suite('fairness-metrics-table tests', () => {
     const fillData = () => {
       table.metrics = METRICS;
       table.data = TABLE_DATA;
-      table.headerOverride = HEADER_OVERRIDE;
       table.exampleCounts = EXAMPLE_COUNTS;
+      table.evalName = MODEL_A_NAME;
       setTimeout(CheckProperties, 500);
     };
 
@@ -142,35 +143,37 @@ suite('fairness-metrics-table tests', () => {
     setTimeout(fillData, 0);
   });
 
-  test('ComputingTableData', done => {
+  test('ComputingTableData_ModelComparison', done => {
     table = fixture('test-fixture');
 
     const fillData = () => {
       table.metrics = METRICS;
       table.data = TABLE_DATA;
       table.dataCompare = TABLE_DATA_TO_COMPARE;
-      table.headerOverride = HEADER_OVERRIDE;
       table.exampleCounts = EXAMPLE_COUNTS;
+      table.evalName = MODEL_A_NAME;
+      table.evalNameCompare = MODEL_B_NAME;
       setTimeout(CheckProperties, 500);
     };
 
     const CheckProperties = () => {
       const expected_data = [
         [
-          'feature', 'loss', 'count', 'boundedAuc', 'auprc', 'loss', 'count',
-          'boundedAuc', 'auprc'
+          'feature', 'loss - ModelA', 'count - ModelA', 'boundedAuc - ModelA',
+          'auprc - ModelA', 'loss - ModelB', 'count - ModelB',
+          'boundedAuc - ModelB', 'auprc - ModelB'
         ],
         [
           'col:1', '0.7', '1000000', '0.61111 (0.60111, 0.62111)', '0.7', '0.5',
-          '1000000', '0.41111 (0.40111, 0.42111)', '0.5', '0.7'
+          '1000000', '0.41111 (0.40111, 0.42111)', '0.5'
         ],
         [
           'col:2', '0.72', '1000002', '0.61200 (0.60200, 0.62200)', '0.72',
-          '0.52', '1000002', '0.41200 (0.40200, 0.42200)', '0.52', '0.72'
+          '0.52', '1000002', '0.41200 (0.40200, 0.42200)', '0.52'
         ],
         [
           'col:3', '0.73', '2000003', '0.61300 (0.60300, 0.62300)', '0.73',
-          '0.53', '2000003', '0.41300 (0.40300, 0.42300)', '0.53', '0.73'
+          '0.53', '2000003', '0.41300 (0.40300, 0.42300)', '0.53'
         ],
       ];
 
