@@ -74,8 +74,9 @@ template.innerHTML = `
                                  baseline="[[baseline]]">
 </fairness-bounded-value-bar-chart>
 <fairness-metrics-table id="table" metrics="[[metricsForTable_]]" data="[[tableData_]]"
-                        example-counts="[[exampleCounts_]]"
-                        model-name="modelA" model-name-compare="modelB">
+                        data-compare="[[tableDataCompare_]]"
+                        example-counts="[[exampleCounts_]]" eval-name="EvalA"
+                        eval-name-compare="[[evalNameCompare]]">
 </fairness-metrics-table>
 <paper-dialog id="settings">
   <div class="header">

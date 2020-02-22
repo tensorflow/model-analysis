@@ -53,6 +53,18 @@ suite('fairness-metric-summary tests', () => {
       }
     };
   });
+  const DOUBLE_VALUE_DATA_COMPARE = SLICES.map((slice) => {
+    return {
+      'slice': slice,
+      'sliceValue': slice.split(':')[1] || 'Overall',
+      'metrics': {
+        'accuracy': 0.3,
+        'post_export_metrics/false_negative_rate@0.30': NaN,
+        'post_export_metrics/false_negative_rate@0.50': 0.5,
+        'post_export_metrics/false_negative_rate@0.70': 0.8
+      }
+    };
+  });
   const BOUNDED_VALUE_DATA = SLICES.map((slice) => {
     return {
       'slice': slice,
@@ -129,9 +141,9 @@ suite('fairness-metric-summary tests', () => {
         'post_export_metrics/false_negative_rate@0.50 against Overall'
       ]);
 
-      assert.deepEqual(metricSummary.$['bar-chart'].metrics, [
-        'post_export_metrics/false_negative_rate@0.50'
-      ]);
+      assert.deepEqual(
+          metricSummary.$['bar-chart'].metrics,
+          ['post_export_metrics/false_negative_rate@0.50']);
       assert.deepEqual(
           metricSummary.$['bar-chart'].slices,
           SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT + 1));
@@ -178,6 +190,44 @@ suite('fairness-metric-summary tests', () => {
       done();
     };
     setUpAndCheck(fillDoubleValue, checkValue);
+  });
+
+  test('PropertiesValueCheckForDataCompare', done => {
+    metricSummary = fixture('main');
+
+    const fillBothValues = () => {
+      metricSummary.slices = SLICES;
+      metricSummary.data = BOUNDED_VALUE_DATA;
+      metricSummary.dataCompare = DOUBLE_VALUE_DATA;
+      metricSummary.metric = 'accuracy';
+      metricSummary.baseline = 'Overall';
+    };
+
+    const checkValue = () => {
+      assert.deepEqual(
+          metricSummary.$['metric-header'].innerText.trim(), 'accuracy');
+      assert.deepEqual(
+          metricSummary.$['table'].metrics,
+          ['accuracy', 'accuracy against Overall']);
+
+      assert.deepEqual(metricSummary.$['bar-chart'].metrics, ['accuracy']);
+      assert.deepEqual(
+          metricSummary.$['bar-chart'].slices,
+          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT + 1));
+      assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
+      assert.deepEqual(
+          metricSummary.$['bar-chart'].data, BOUNDED_VALUE_DATA);
+      // TODO(karanshukla): after b/149708159 is fixed, uncomment below
+      // assert.deepEqual(
+      //     metricSummary.$['bar-chart'].dataCompare, DOUBLE_VALUE_DATA);
+      assert.deepEqual(
+          metricSummary.computeExampleCounts_(
+              'Overall', BOUNDED_VALUE_DATA,
+              ['Slice:15', 'Slice:7', 'Slice:4']),
+          [524, 54, 95, 52]);
+      done();
+    };
+    setUpAndCheck(fillBothValues, checkValue);
   });
 
   test('ChooseSlicesAndTapUpdate', done => {
@@ -259,9 +309,9 @@ suite('fairness-metric-summary tests', () => {
     };
 
     const CheckProperties = () => {
-      assert.deepEqual(metricSummary.$['bar-chart'].metrics, [
-        'post_export_metrics/false_negative_rate@0.50'
-      ]);
+      assert.deepEqual(
+          metricSummary.$['bar-chart'].metrics,
+          ['post_export_metrics/false_negative_rate@0.50']);
       done();
     };
 
@@ -296,6 +346,7 @@ suite('fairness-metric-summary tests', () => {
       metricSummary.baseline = 'Overall';
       metricSummary.slices = SLICES.slice(0, 3);
       metricSummary.data = DOUBLE_VALUE_DATA.slice(0, 3);
+      metricSummary.dataCompare = DOUBLE_VALUE_DATA_COMPARE.slice(0, 3);
     };
 
     const CheckProperties = () => {
@@ -303,6 +354,11 @@ suite('fairness-metric-summary tests', () => {
         {'slice': 'Overall', 'metrics': {'accuracy': 0.2}},
         {'slice': 'Slice:1', 'metrics': {'accuracy': 0.2}},
         {'slice': 'Slice:2', 'metrics': {'accuracy': 0.2}}
+      ];
+      const expected_data_compare = [
+        {'slice': 'Overall', 'metrics': {'accuracy': 0.3}},
+        {'slice': 'Slice:1', 'metrics': {'accuracy': 0.3}},
+        {'slice': 'Slice:2', 'metrics': {'accuracy': 0.3}}
       ];
 
       assert.equal(metricSummary.$['table'].data.length, expected_data.length);
@@ -314,6 +370,15 @@ suite('fairness-metric-summary tests', () => {
         assert.equal(
             actualVal['metrics']['accuracy'],
             expectedVal['metrics']['accuracy']);
+
+        const actualCompareVal = metricSummary.$['table'].dataCompare[i];
+        const expectedCompareVal = expected_data_compare[i];
+        assert.deepEqual(
+            Object.keys(actualCompareVal), Object.keys(expectedCompareVal));
+        assert.equal(actualCompareVal['slice'], expectedCompareVal['slice']);
+        assert.equal(
+            actualCompareVal['metrics']['accuracy'],
+            expectedCompareVal['metrics']['accuracy']);
       }
       done();
     };

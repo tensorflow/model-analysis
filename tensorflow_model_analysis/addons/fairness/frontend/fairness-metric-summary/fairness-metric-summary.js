@@ -58,6 +58,13 @@ export class FairnessMetricSummary extends PolymerElement {
       data: {type: Array},
 
       /**
+       * Data dictionary for the second eval. Optional.
+       * @type {!Array<!Object>}
+       *
+       */
+      dataCompare: {type: Array},
+
+      /**
        * The name of the metric.
        * @type {string}
        */
@@ -87,6 +94,12 @@ export class FairnessMetricSummary extends PolymerElement {
        * @type {string}
        */
       baseline: {type: String},
+
+      /**
+       * The name of the second eval. Optional.
+       * @type {string}
+       */
+      evalNameCompare: {type: String},
 
       /**
        * All available slices.
@@ -127,6 +140,15 @@ export class FairnessMetricSummary extends PolymerElement {
       },
 
       /**
+       * The diff ratios for the second eval.
+       * @private {!Object}
+       */
+      diffRatiosCompare_: {
+        type: Object,
+        computed: 'computeDiffRatios_(baseline, dataCompare, slices, metrics_)'
+      },
+
+      /**
        * The slices to plot.
        * @private {!Array<string>}
        */
@@ -149,6 +171,16 @@ export class FairnessMetricSummary extends PolymerElement {
         type: Object,
         computed: 'computeTableData_(baseline, data, metrics_, ' +
             'slicesToPlot_, diffRatios_)'
+      },
+
+      /**
+       * The data backing the table view for the second eval.
+       * @private {!tfma.Data}
+       */
+      tableDataCompare_: {
+        type: Object,
+        computed: 'computeTableData_(baseline, dataCompare, metrics_, ' +
+            'slicesToPlot_, diffRatiosCompare_)'
       },
 
       /**

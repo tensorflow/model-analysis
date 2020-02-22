@@ -115,10 +115,10 @@ export class FairnessMetricsTable extends PolymerElement {
   }
 
   /**
-   * @return {boolean} Returns true if models are being compared.
+   * @return {boolean} Returns true if evals are being compared.
    * @private
    */
-  modelComparison_() {
+  evalComparison_() {
     return this.dataCompare.length > 0;
   }
 
@@ -131,10 +131,9 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   populateHeaderRow_(metrics, evalName, evalCompareName) {
-    const metricCols =
-        metrics.map(Util.removeMetricNamePrefix);
+    const metricCols = metrics.map(Util.removeMetricNamePrefix);
 
-    if (!this.modelComparison_()) {
+    if (!this.evalComparison_()) {
       return ['feature'].concat(metricCols);
     } else {
       const evalCols = metricCols.map(metric => metric.concat(' - ', evalName));
@@ -167,7 +166,7 @@ export class FairnessMetricsTable extends PolymerElement {
         tableRow.push(this.formatCell_(metricsData[entry]));
       });
 
-      if (this.modelComparison_()) {
+      if (this.evalComparison_()) {
         // Second Eval column
         const metricsDataCompare = dataCompare[i]['metrics'];
         metrics.forEach(entry => {
@@ -177,8 +176,13 @@ export class FairnessMetricsTable extends PolymerElement {
         // Comparison column
         const evalMetric = metricsData[metrics[0]];
         const evalCompareMetric = metricsDataCompare[metrics[0]];
-        const comparison = (evalCompareMetric / evalMetric) - 1;
-        tableRow.push(comparison);
+        const getValue = (metric) =>
+            (typeof metric === 'object' && this.isBoundedValue_(metric)) ?
+            metric['value'] :
+            metric;
+        const comparison =
+            (getValue(evalCompareMetric) / getValue(evalMetric)) - 1;
+        tableRow.push(comparison.toString());
       }
 
       tableRows.push(tableRow);
@@ -193,7 +197,7 @@ export class FairnessMetricsTable extends PolymerElement {
    * @param {!Array<string>} metrics
    * @param {string} evalName
    * @param {string} evalNameCompare
-   * @return {!Array<!Array>|undefined}
+   * @return {!Array<!Array<string>>|undefined}
    * @private
    */
   computeTableData_(data, dataCompare, metrics, evalName, evalNameCompare) {
@@ -239,9 +243,9 @@ export class FairnessMetricsTable extends PolymerElement {
     if (value === undefined || value == 'NaN') {
       return 'NaN';
     } else {
-      return (typeof (value) == 'string') ?
-          parseFloat(value).toFixed(FLOATING_POINT_PRECISION) :
-          value.toFixed(FLOATING_POINT_PRECISION);
+      return this.toFixedNumber_(
+          typeof (value) == 'string' ? parseFloat(value) : value,
+          FLOATING_POINT_PRECISION);
     }
   }
 
@@ -252,7 +256,26 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   toPercentage_(value) {
-    return (100 * value).toFixed(tfma.FLOATING_POINT_PRECISION) + '%';
+    return this.toFixedNumber_(100 * value, FLOATING_POINT_PRECISION) + '%';
+  }
+
+  /**
+   * Format a number with up to `digits` decimal places.
+   *
+   * We use this instead of JavaScript's built-in toFixed() function because
+   *   toFixed() returns a string with exactly `digits` decimals, and pads with
+   *   0's if needed.
+   *
+   * This function returns up to `digits` decimals, cutting off trailing 0's.
+   *
+   * @param {number} num
+   * @param {number} digits
+   * @return {string}
+   * @private
+   */
+  toFixedNumber_(num, digits) {
+    var pow = Math.pow(10, digits);
+    return (Math.round(num * pow) / pow).toString();
   }
 
   /**
