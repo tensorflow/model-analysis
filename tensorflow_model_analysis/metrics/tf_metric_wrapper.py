@@ -25,11 +25,8 @@ from typing import Any, Dict, List, Optional, Text, Type, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
-import tensorflow as tf
-from tensorflow_model_analysis import config
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -46,11 +43,9 @@ _TFMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]
 
 def tf_metric_computations(
     metrics: Union[List[_TFMetricOrLoss], Dict[Text, List[_TFMetricOrLoss]]],
-    eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None,
-    model_loader: Optional[types.ModelLoader] = None,
     batch_size: Optional[int] = None) -> metric_types.MetricComputations:
   """Returns metric computations for the given TF metrics.
 
@@ -61,31 +56,18 @@ def tf_metric_computations(
   Args:
     metrics: Dict from metric name to tf.keras.metrics.Metric or
       tf.keras.metrics.Loss. For multi-output models a dict of dicts may be
-      passed where the first dict is indexed by the output_name. If the
-      include_default_metrics option is enabled in the eval_config then the
-      model's metrics will be merged with these metrics with the metrics passed
-      here taking precendence.
-    eval_config: Eval config.
+      passed where the first dict is indexed by the output_name.
     model_name: Optional model name (if multi-model evaluation).
     sub_key: Optional sub key.
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions. This should only be used when micro averaging is
       being used.
-    model_loader: Optional model loader. Only the non-compilable metrics will be
-      evaluated using the model, all other metrics will be calculated directly
-      in eager mode. However, the model is also used to add default metrics.
     batch_size: Batch size to use when calling TF metrics (testing only).
 
   Returns:
     Metric computations.
   """
-  if (sub_key is None and model_loader is not None and eval_config and
-      (not eval_config.options.HasField('include_default_metrics') or
-       eval_config.options.include_default_metrics.value)):
-    metrics = _combine_with_default_metrics(
-        metrics,
-        model_loader.construct_fn(lambda x: None)().keras_model)
-  elif not isinstance(metrics, dict):
+  if not isinstance(metrics, dict):
     metrics = {'': metrics}
 
   if class_weights is not None:
@@ -100,15 +82,13 @@ def tf_metric_computations(
 
   computations = []
 
-  # For efficency, metrics are separated into compilable vs non-compilable
-  # with the compilable metrics being further separated into confusion matrix
-  # based vs non-confusion matrix based metrics. Non-compilable metrics are
-  # calculated by calling model.evaluate() with the raw inputs expected by the
-  # model's input layer. Since the confusion matrix based metrics can all be
-  # calculated from the calibration histogram, these metrics are computed
-  # separately as derived metrics. The remaining non-confusion matrix metrics
-  # are calculated using batches of predictions/labels in eager mode (possibly
-  # with additional pre-processing of the values to perform binarization, etc).
+  # For efficency, metrics are separated into confusion matrix based vs
+  # non-confusion matrix based metrics. Since the confusion matrix based metrics
+  # can all be calculated from the calibration histogram, these metrics are
+  # computed separately as derived metrics. The remaining non-confusion matrix
+  # metrics are calculated using batches of predictions/labels in eager mode
+  # (possibly with additional pre-processing of the values to perform
+  # binarization, etc).
   #
   # Note that in theory if a model was provided, all the metrics could be
   # calculated by calling model.evaluate(). However, this call is inefficient
@@ -121,10 +101,8 @@ def tf_metric_computations(
   # for each specific use case. It also allows evaluations that are not
   # associated with a model (i.e. raw predictions are passed as input) to share
   # the same code path as model based evaluations where possible.
-  compilable_metrics, non_compilable_metrics = _separate_compilable_metrics(
-      metrics)
   confusion_matrix_metrics, non_confusion_matrix_metrics = (
-      _separate_confusion_matrix_metrics(compilable_metrics))
+      _separate_confusion_matrix_metrics(metrics))
 
   for output_name, metrics in confusion_matrix_metrics.items():
     for metric in metrics:
@@ -149,13 +127,6 @@ def tf_metric_computations(
                 class_weights,
                 batch_size,
             )))
-
-  if non_compilable_metrics:
-    computations.append(
-        metric_types.MetricComputation(
-            keys=metric_keys,
-            preprocessor=None,
-            combiner=_NonCompilableMetricsCombiner(model_loader, sub_key)))
 
   return computations
 
@@ -193,80 +164,6 @@ def _sparse_metrics(
           results[k] = []
         results[k].append(m)
   return results
-
-
-def _combine_with_default_metrics(
-    metrics: Union[List[_TFMetricOrLoss], Dict[Text, List[_TFMetricOrLoss]]],
-    model: Optional[tf.keras.models.Model]
-) -> Dict[Optional[Text], List[_TFMetricOrLoss]]:
-  """Combines metrics with default metrics provided by model."""
-  if model is None:
-    if not isinstance(metrics, dict):
-      return {'': metrics}
-    else:
-      return metrics
-
-  def metrics_for_output(output_name: Text) -> List[_TFMetricOrLoss]:
-    if isinstance(metrics, dict):
-      if output_name not in metrics:
-        raise ValueError('output_name "{}" not found in metrics: '
-                         'metrics={}'.format(output_name, metrics))
-      return metrics[output_name]
-    else:
-      return metrics
-
-  def default_metrics_for_output(output_name: Text) -> List[_TFMetricOrLoss]:
-    """Returns default metrics for given output name."""
-    output_metrics = []
-    if isinstance(model.metrics, dict):
-      if output_name not in model.metrics:
-        raise ValueError('output_name "{}" not found in model.metrics: '
-                         'model.metrics={}'.format(output_name, model.metrics))
-      output_metrics.extend(model.metrics[output_name])
-    else:
-      output_metrics.extend(model.metrics)
-    if isinstance(model.loss_functions, dict):
-      if output_name not in model.metrics:
-        raise ValueError('output_name "{}" not found in model.loss_functions: '
-                         'model.loss_functions={}'.format(
-                             output_name, model.loss_functions))
-      output_metrics.extend(model.loss_functions[output_name])
-    else:
-      output_metrics.extend(model.loss_functions)
-    return output_metrics
-
-  def merge(metrics: List[_TFMetricOrLoss],
-            default_metrics: List[_TFMetricOrLoss]) -> List[_TFMetricOrLoss]:
-    merged = metrics[:]
-    exists = {m.__class__.__name__: m for m in metrics}
-    for m in default_metrics:
-      if m.__class__.__name__ not in exists:
-        merged.append(m)
-    return merged
-
-  output_names = []
-  if isinstance(metrics, dict):
-    output_names = list(metrics.keys())
-  if isinstance(model.metrics, dict):
-    output_names = output_names.extend(model.metrics.keys())
-  output_names = list(set(output_names))
-  if not output_names:
-    output_names = ['']
-  combined = {}
-  for output_name in output_names:
-    combined[output_name] = merge(
-        metrics_for_output(output_name),
-        default_metrics_for_output(output_name))
-  return combined
-
-
-def _separate_compilable_metrics(
-    metrics: Dict[Optional[Text], List[_TFMetricOrLoss]]
-) -> Tuple[Dict[Optional[Text], List[_TFMetricOrLoss]], Dict[
-    Optional[Text], List[_TFMetricOrLoss]]]:
-  """Separates the compilable metrics from non-compilable metrics."""
-  # TODO(mdreves): Add support once compilable flag added to keras metrics
-  return metrics, {}
 
 
 def _separate_confusion_matrix_metrics(
@@ -693,40 +590,3 @@ class _CompilableMetricsCombiner(beam.CombineFn):
           metric.reset_states()
         result[key] = metric.result().numpy()
     return result
-
-
-class _NonCompilableMetricsAccumulator(object):
-  pass
-
-
-class _NonCompilableMetricsCombiner(model_util.CombineFnWithModels):
-  """Combines non-compilable metric weights and computes result."""
-
-  def __init__(self, model_loader: types.ModelLoader,
-               sub_key: Optional[metric_types.SubKey]):
-    super(_NonCompilableMetricsCombiner, self).__init__({'': model_loader})
-    self._sub_key = sub_key
-
-  def _setup_if_needed(self):
-    super(_NonCompilableMetricsCombiner, self)._setup_if_needed()
-    raise NotImplementedError('not implemented')
-
-  def _process_batch(self, accumulator: _NonCompilableMetricsAccumulator):
-    self._setup_if_needed()
-    raise NotImplementedError('not implemented')
-
-  def create_accumulator(self) -> _NonCompilableMetricsAccumulator:
-    raise NotImplementedError('not implemented')
-
-  def add_input(self, accumulator: _NonCompilableMetricsAccumulator,
-                element: Any) -> _NonCompilableMetricsAccumulator:
-    raise NotImplementedError('not implemented')
-
-  def merge_accumulators(
-      self, accumulators: List[_NonCompilableMetricsAccumulator]
-  ) -> _NonCompilableMetricsAccumulator:
-    raise NotImplementedError('not implemented')
-
-  def extract_output(self,
-                     accumulator: _NonCompilableMetricsAccumulator) -> Any:
-    raise NotImplementedError('not implemented')

@@ -19,16 +19,11 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-import os.path
-
 from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
-import tensorflow as tf
-from tensorflow_model_analysis import config
-from tensorflow_model_analysis import model_util
-from tensorflow_model_analysis import types
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -97,7 +92,7 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   )
   def testMetricsWithoutWeights(self, metric_name, expected_value):
     computations = tf_metric_wrapper.tf_metric_computations(
-        [self._tf_metric_by_name(metric_name)], config.EvalConfig())
+        [self._tf_metric_by_name(metric_name)])
     histogram = computations[0]
     matrix = computations[1]
     metric = computations[2]
@@ -166,7 +161,7 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   )
   def testMetricsWithWeights(self, metric_name, expected_value):
     computations = tf_metric_wrapper.tf_metric_computations(
-        [self._tf_metric_by_name(metric_name)], config.EvalConfig())
+        [self._tf_metric_by_name(metric_name)])
     histogram = computations[0]
     matrix = computations[1]
     metric = computations[2]
@@ -224,7 +219,7 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   )
   def testMultiClassMetrics(self, metric_name, expected_value):
     computations = tf_metric_wrapper.tf_metric_computations(
-        [self._tf_metric_by_name(metric_name)], config.EvalConfig())
+        [self._tf_metric_by_name(metric_name)])
     histogram = computations[0]
     matrix = computations[1]
     metric = computations[2]
@@ -286,7 +281,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
 
   def testSimpleMetric(self):
     computation = tf_metric_wrapper.tf_metric_computations(
-        [tf.keras.metrics.MeanSquaredError(name='mse')], config.EvalConfig())[0]
+        [tf.keras.metrics.MeanSquaredError(name='mse')])[0]
 
     example = {
         'labels': [0, 0, 1, 1],
@@ -322,7 +317,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
     computation = tf_metric_wrapper.tf_metric_computations([
         tf.keras.metrics.SparseCategoricalCrossentropy(
             name='sparse_categorical_crossentropy')
-    ], config.EvalConfig())[0]
+    ])[0]
 
     # Simulate a multi-class problem with 3 labels.
     example = {
@@ -362,13 +357,11 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
           tf.keras.metrics.SparseCategoricalCrossentropy(
               name='sparse_categorical_crossentropy')
       ],
-                                               config.EvalConfig(),
                                                class_weights={})
 
   def testMetricWithClassWeights(self):
     computation = tf_metric_wrapper.tf_metric_computations(
         [tf.keras.metrics.MeanSquaredError(name='mse')],
-        config.EvalConfig(),
         class_weights={
             0: 0.1,
             1: 0.2,
@@ -412,8 +405,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result, label='result')
 
   def testCustomTFMetric(self):
-    metric = tf_metric_wrapper.tf_metric_computations([_CustomMetric()],
-                                                      config.EvalConfig())[0]
+    metric = tf_metric_wrapper.tf_metric_computations([_CustomMetric()])[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.2], 'example_weights': [1.0]}
     example2 = {'labels': [0.0], 'predictions': [0.8], 'example_weights': [1.0]}
@@ -447,10 +439,9 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result, label='result')
 
   def testMultiOutputTFMetric(self):
-    computation = tf_metric_wrapper.tf_metric_computations(
-        {
-            'output_name': [tf.keras.metrics.MeanSquaredError(name='mse')],
-        }, config.EvalConfig())[0]
+    computation = tf_metric_wrapper.tf_metric_computations({
+        'output_name': [tf.keras.metrics.MeanSquaredError(name='mse')],
+    })[0]
 
     extracts = {
         'labels': {
@@ -494,7 +485,6 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
   def testTFMetricWithClassID(self):
     computation = tf_metric_wrapper.tf_metric_computations(
         [tf.keras.metrics.MeanSquaredError(name='mse')],
-        config.EvalConfig(),
         sub_key=metric_types.SubKey(class_id=1))[0]
 
     example1 = {
@@ -549,7 +539,6 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
     computation = tf_metric_wrapper.tf_metric_computations(
         [_CustomMetric(),
          tf.keras.metrics.MeanSquaredError(name='mse')],
-        config.EvalConfig(),
         batch_size=2)[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.0], 'example_weights': [1.0]}
@@ -593,9 +582,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
 
   def testMergeAccumulators(self):
     computation = tf_metric_wrapper.tf_metric_computations(
-        [tf.keras.metrics.MeanSquaredError(name='mse')],
-        config.EvalConfig(),
-        batch_size=2)[0]
+        [tf.keras.metrics.MeanSquaredError(name='mse')], batch_size=2)[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.0], 'example_weights': [1.0]}
     example2 = {'labels': [0.0], 'predictions': [0.5], 'example_weights': [1.0]}
@@ -622,23 +609,12 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
 
 class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
 
-  def testWithDefaultMetricsProvidedByModel(self):
-    export_dir = os.path.join(self._getTempDir(), 'export_dir')
-    dummy_layer = tf.keras.layers.Input(shape=(1,))
-    model = tf.keras.models.Model([dummy_layer], [dummy_layer])
-    model.compile(
-        loss=tf.keras.losses.BinaryCrossentropy(),
-        metrics=[tf.keras.metrics.MeanSquaredError(name='mse')])
-    model.save(export_dir, save_format='tf')
-    model_loader = types.ModelLoader(
-        tags=[tf.saved_model.SERVING],
-        construct_fn=model_util.model_construct_fn(
-            eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING]))
-
-    computations = tf_metric_wrapper.tf_metric_computations(
-        [tf.keras.metrics.AUC(name='auc')],
-        config.EvalConfig(),
-        model_loader=model_loader)
+  def testWithMixedMetrics(self):
+    computations = tf_metric_wrapper.tf_metric_computations([
+        tf.keras.metrics.AUC(name='auc'),
+        tf.keras.losses.BinaryCrossentropy(name='binary_crossentropy'),
+        tf.keras.metrics.MeanSquaredError(name='mse')
+    ])
 
     confusion_histogram = computations[0]
     confusion_matrix = computations[1].result

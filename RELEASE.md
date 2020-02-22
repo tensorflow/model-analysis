@@ -6,6 +6,9 @@
 
 ## Bug fixes and other changes
 
+*   Fixed issue with keras metrics saved with the model not being calculated
+    unless a keras metric was added to the config.
+
 ## Breaking changes
 
 ## Deprecations

@@ -32,6 +32,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.evaluators import eval_saved_model_util
 from tensorflow_model_analysis.evaluators import evaluator
+from tensorflow_model_analysis.evaluators import keras_util
 from tensorflow_model_analysis.evaluators import metrics_validator
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import slice_key_extractor
@@ -494,19 +495,18 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     plots_key (e.g. 'plots') depending on what the results_dict contains.
   """
   computations = []
-  model_loaders = None
   # Add default metric computations
   if eval_shared_models:
-    model_loaders = {}
     for model_name, eval_shared_model in eval_shared_models.items():
       if not eval_shared_model.include_default_metrics:
         continue
       model_loader = eval_shared_model.model_loader
-      model_loaders[model_name] = model_loader
       model_types = model_loader.construct_fn(lambda x: None)()
       if model_types.keras_model is not None:
-        # TODO(mdreves): Move handling of keras metrics to here.
-        pass
+        keras_specs = keras_util.metrics_specs_from_keras(
+            model_name, model_loader)
+        metrics_specs = keras_specs + metrics_specs[:]
+        # TODO(mdreves): Add support for calling keras.evaluate().
       elif model_types.eval_saved_model is not None:
         # Note that there is the possibility for metric naming collisions here
         # (e.g. 'auc' calculated within the EvalSavedModel as well as by AUC
@@ -520,10 +520,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   # Add metric computations from specs
   computations_from_specs, derived_computations = (
       _filter_and_separate_computations(
-          metric_specs.to_computations(
-              metrics_specs,
-              eval_config=eval_config,
-              model_loaders=model_loaders)))
+          metric_specs.to_computations(metrics_specs, eval_config=eval_config)))
   computations.extend(computations_from_specs)
 
   # Find out which model is baseline.

@@ -26,7 +26,6 @@ import re
 from typing import Any, Dict, List, Optional, Text, Type, Union, Tuple
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import aggregation
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import calibration
@@ -423,7 +422,6 @@ def metric_thresholds_from_metric_specs(
 def to_computations(
     metrics_specs: List[config.MetricsSpec],
     eval_config: Optional[config.EvalConfig] = None,
-    model_loaders: Optional[Dict[Text, types.ModelLoader]] = None
 ) -> metric_types.MetricComputations:
   """Returns computations associated with given metrics specs."""
   computations = []
@@ -537,20 +535,15 @@ def to_computations(
           if '' not in metrics_by_output:
             metrics_by_output[''] = []  # '' is name used when only one output
           metrics_by_output[''].extend(metrics)
-      model_loader = None
-      if model_loaders and model_name in model_loaders:
-        model_loader = model_loaders[model_name]
       class_weights = None
       if tf_metrics_specs[i].HasField('aggregate'):
         class_weights = dict(tf_metrics_specs[i].aggregate.class_weights)
       computations.extend(
           tf_metric_wrapper.tf_metric_computations(
               metrics_by_output,
-              eval_config=eval_config,
               model_name=model_name,
               sub_key=sub_key,
-              class_weights=class_weights,
-              model_loader=model_loader))
+              class_weights=class_weights))
 
   #
   # Group TFMA metric specs by the metric classes

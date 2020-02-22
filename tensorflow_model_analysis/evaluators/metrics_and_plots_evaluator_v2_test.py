@@ -74,7 +74,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     model = tf.keras.models.Model([input_layer], output_layer)
     model.compile(
         optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.BinaryCrossentropy(),
+        loss=tf.keras.losses.BinaryCrossentropy(name='binary_crossentropy'),
         metrics=['accuracy'])
 
     model.fit(x=[[0], [1]], y=[[0], [1]], steps_per_epoch=1)
@@ -82,7 +82,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     return self.createTestEvalSharedModel(
         eval_saved_model_path=model_dir, tags=[tf.saved_model.SERVING])
 
-  def testEvaluateWithKerasAndValidatefMetrics(self):
+  def testEvaluateWithKerasAndValidateMetrics(self):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
     eval_shared_model = self._build_keras_model(model_dir, mul=0)
     baseline_eval_shared_model = self._build_keras_model(baseline_dir, mul=1)
@@ -153,6 +153,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                                 relative={'value': -.99},
                                 absolute={'value': 0})))
                 ],
+                thresholds={
+                    'binary_crossentropy':
+                        config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                upper_bound={'value': 0}))
+                },
                 model_names=['candidate', 'baseline']),
         ],
     )
@@ -251,10 +257,38 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                     }
                   }
                   """, validation_result_pb2.ValidationFailure()),
+              text_format.Parse(
+                  """
+                  metric_key {
+                    name: "binary_crossentropy"
+                    model_name: "candidate"
+                  }
+                  metric_threshold {
+                    value_threshold {
+                      upper_bound {
+                        value: 0.0
+                      }
+                    }
+                  }
+                  metric_value {
+                    double_value {
+                      value: 0.0
+                    }
+                  }
+                  """, validation_result_pb2.ValidationFailure()),
           ]
           self.assertFalse(got.validation_ok)
           self.assertLen(got.metric_validations_per_slice, 1)
-          self.assertLen(got.metric_validations_per_slice[0].failures, 3)
+          # TODO(b/149995449): Keras does not support re-loading metrics with
+          # its new API so the loss added at compile time will be missing.
+          # Re-enable after this is fixed.
+          if hasattr(
+              eval_shared_model.model_loader.construct_fn(lambda x: None)
+              ().keras_model, 'compiled_metrics'):
+            expected_metric_validations_per_slice = (
+                expected_metric_validations_per_slice[:3])
+          self.assertLen(got.metric_validations_per_slice[0].failures,
+                         len(expected_metric_validations_per_slice))
           self.assertCountEqual(got.metric_validations_per_slice[0].failures,
                                 expected_metric_validations_per_slice)
 
@@ -970,7 +1004,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(
           metrics[constants.METRICS_KEY], check_metrics, label='metrics')
 
-  def testEvaluateWithKerasModel(self):
+  def testEvaluateWithKerasModelWithDefaultMetrics(self):
     input1 = tf.keras.layers.Input(shape=(1,), name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), name='input2')
     inputs = [input1, input2]
@@ -981,8 +1015,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     model = tf.keras.models.Model(inputs, output_layer)
     model.compile(
         optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.BinaryCrossentropy(),
-        metrics=['accuracy'])
+        loss=tf.keras.losses.BinaryCrossentropy('binary_crossentropy'),
+        metrics=[tf.keras.metrics.BinaryAccuracy(name='binary_accuracy')])
 
     features = {'input1': [[0.0], [1.0]], 'input2': [[1.0], [0.0]]}
     labels = [[1], [0]]
@@ -991,6 +1025,11 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         (features, labels, example_weights))
     dataset = dataset.shuffle(buffer_size=1).repeat().batch(2)
     model.fit(dataset, steps_per_epoch=1)
+
+    # TODO(b/149995449): Keras does not support re-loading metrics with the new
+    #   API. Re-enable after this is fixed
+    if hasattr(model, 'compiled_metrics'):
+      return
 
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
@@ -1055,6 +1094,11 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           weighted_example_count_key = metric_types.MetricKey(
               name='weighted_example_count')
           label_key = metric_types.MetricKey(name='mean_label')
+          binary_accuracy_key = metric_types.MetricKey(name='binary_accuracy')
+          self.assertIn(binary_accuracy_key, got_metrics)
+          binary_crossentropy_key = metric_types.MetricKey(
+              name='binary_crossentropy')
+          self.assertIn(binary_crossentropy_key, got_metrics)
           self.assertDictElementsAlmostEqual(
               got_metrics, {
                   example_count_key: 2,
