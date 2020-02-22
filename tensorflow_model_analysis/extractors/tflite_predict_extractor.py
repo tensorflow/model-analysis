@@ -19,6 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import collections
 import copy
 import os
 from typing import Dict, List, Optional, Union, Sequence, Text
@@ -35,9 +36,14 @@ TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
 
 # TODO(dzats): Determine whether we should standardize on model filename for
 # tflite models.
-TFLITE_FILE_NAME = 'tflite'
+_TFLITE_FILE_NAME = 'tflite'
 
 
+# TODO(b/149947174) Once this is addressed, subclass
+# BatchReducibleDoFnWithModels instead so we obtain telemetry data and load
+# a single model using a shared handle.
+#
+# TODO(b/149981535) Determine if we should merge with RunInference.
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
 class _TFLitePredictionDoFn(beam.DoFn):
@@ -47,20 +53,27 @@ class _TFLitePredictionDoFn(beam.DoFn):
                eval_shared_models: Dict[Text, types.EvalSharedModel]) -> None:
     self._eval_config = eval_config
     self._model_paths = {
-        k: os.path.join(v.model_path, TFLITE_FILE_NAME)
+        k: os.path.join(v.model_path, _TFLITE_FILE_NAME)
         for k, v in eval_shared_models.items()
     }
+
+  def setup(self):
+    self._interpreters = {}
+    for model_name, model_path in self._model_paths.items():
+      with tf.io.gfile.GFile(model_path, 'rb') as model_file:
+        self._interpreters[model_name] = tf.lite.Interpreter(
+            model_content=model_file.read())
 
   def process(self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
     """Invokes the tflite model on the provided inputs and stores the result."""
     # TODO(dzats): See if we can switch to a shallow copy.
     result = copy.deepcopy(elements)
 
-    batched_features = {}
+    batched_features = collections.defaultdict(list)
     for e in elements:
       features = e[constants.FEATURES_KEY]
       for key, value in features.items():
-        batched_features.setdefault(key, []).append(value)
+        batched_features[key].append(value)
 
     for spec in self._eval_config.model_specs:
       model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
@@ -68,9 +81,7 @@ class _TFLitePredictionDoFn(beam.DoFn):
         raise ValueError('model path for "{}" not found: eval_config={}'.format(
             spec.name, self._eval_config))
 
-      interpreter = None
-      with tf.io.gfile.GFile(self._model_paths[model_name], 'rb') as model_file:
-        interpreter = tf.lite.Interpreter(model_content=model_file.read())
+      interpreter = self._interpreters[model_name]
 
       input_details = interpreter.get_input_details()
       output_details = interpreter.get_output_details()

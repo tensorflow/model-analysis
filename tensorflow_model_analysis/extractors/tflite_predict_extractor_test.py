@@ -151,7 +151,7 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create(predict_features, reshuffle=False)
+          | 'Create' >> beam.Create(predict_features)
           | 'FeaturesToExtracts' >>
           beam.Map(lambda x: {constants.FEATURES_KEY: x})
           | predictor.stage_name >> predictor.ptransform)
