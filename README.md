@@ -25,6 +25,25 @@ The recommended way to install TFMA is using the
 pip install tensorflow-model-analysis
 </pre>
 
+pip install from the HEAD of the git:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+pip install git+https://github.com/tensorflow/model-analysis.git#egg=tensorflow_model_analysis
+</pre>
+
+pip install from a released version directly from git:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+pip install git+https://github.com/tensorflow/model-analysis.git@v0.21.3#egg=tensorflow_model_analysis
+</pre>
+
+If you have cloned the repository locally, and want to test your local change,
+pip install from a local folder:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+pip install -e $FOLDER_OF_THE_LOCAL_LOCATION
+</pre>
+
 Currently, TFMA requires that TensorFlow is installed but does not have an
 explicit dependency on the TensorFlow PyPI package. See the
 [TensorFlow install guides](https://www.tensorflow.org/install/) for instructions.

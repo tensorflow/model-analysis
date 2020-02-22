@@ -27,6 +27,7 @@ from setuptools import Command
 from setuptools import find_packages
 from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
+from setuptools.command.develop import develop as _develop
 from setuptools.command.egg_info import egg_info
 from setuptools.command.sdist import sdist
 
@@ -99,20 +100,30 @@ def generate_proto(source, require=True):
       sys.exit(-1)
 
 
+def generate_tfma_protos():
+  """Generate necessary .proto file if it doesn't exist."""
+  generate_proto('tensorflow_model_analysis/proto/config.proto', False)
+  generate_proto('tensorflow_model_analysis/proto/metrics_for_slice.proto',
+                 False)
+  generate_proto('tensorflow_model_analysis/proto/validation_result.proto',
+                 False)
+
+
 class build_py(_build_py):  # pylint: disable=invalid-name
   """Build necessary dependencies."""
 
   def run(self):
-    # Generate necessary .proto file if it doesn't exist.
-    generate_proto('tensorflow_model_analysis/proto/config.proto', False)
-    # Generate necessary .proto file if it doesn't exist.
-    generate_proto('tensorflow_model_analysis/proto/metrics_for_slice.proto',
-                   False)
-    # Generate necessary .proto file if it doesn't exist.
-    generate_proto('tensorflow_model_analysis/proto/validation_result.proto',
-                   False)
+    generate_tfma_protos()
     # _build_py is an old-style class, so super() doesn't work.
     _build_py.run(self)
+
+
+class develop(_develop):  # pylint: disable=invalid-name
+  """Build necessary dependencies in develop mode."""
+
+  def run(self):
+    generate_tfma_protos()
+    _develop.run(self)
 
 
 def js_prerelease(command, strict=False):
@@ -274,6 +285,7 @@ setup_args = {
     'zip_safe': False,
     'cmdclass': {
         'build_py': js_prerelease(build_py),
+        'develop': js_prerelease(develop),
         'egg_info': js_prerelease(egg_info),
         'sdist': js_prerelease(sdist, strict=True),
         'jsdeps': NPM,
