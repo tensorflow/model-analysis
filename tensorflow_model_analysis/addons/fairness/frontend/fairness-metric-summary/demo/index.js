@@ -86,4 +86,13 @@
   element_double.metric = 'accuracy';
   element_double.thresholds = [];
   element_double.baseline = 'Overall';
+
+  let element_compare = document.getElementById('model-comparison');
+  element_compare.slices = SLICES;
+  element_compare.data = BOUNDED_VALUE_DATA;
+  element_compare.evalNameCompare = "EvalB";
+  element_compare.dataCompare = DOUBLE_VALUE_DATA;
+  element_compare.metric = 'accuracy';
+  element_compare.thresholds = [];
+  element_compare.baseline = 'Overall';
 })();

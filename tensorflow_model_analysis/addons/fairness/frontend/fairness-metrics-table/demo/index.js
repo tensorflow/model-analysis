@@ -20,6 +20,8 @@ const NUM_SLICES = 10;
   var metrics = [];
   metrics.push('false_negative_rate@0.50');
   metrics.push('false_negative_rate@0.50 against Overall');
+  metrics.push('false_negative_rate@0.25');
+  metrics.push('false_negative_rate@0.25 against Overall');
 
   var data = [];
   var dataCompare = [];
@@ -35,6 +37,9 @@ const NUM_SLICES = 10;
     metric['false_negative_rate@0.50'] = Math.random();
     metric['false_negative_rate@0.50 against Overall'] =
         metric['false_negative_rate@0.50'] - baseline;
+    metric['false_negative_rate@0.25'] = Math.random();
+    metric['false_negative_rate@0.25 against Overall'] =
+        metric['false_negative_rate@0.25'] - baseline;
     entry['metrics'] = metric;
 
     return entry;
@@ -52,7 +57,7 @@ const NUM_SLICES = 10;
   singleTable.metrics = metrics;
   singleTable.data = data;
   singleTable.exampleCounts = exampleCounts;
-  singleTable.modelName = "modelA";
+  singleTable.evalName = "modelA";
 
   // Table comparing two models
   var doubleTable = document.getElementById('double_table');
@@ -60,6 +65,6 @@ const NUM_SLICES = 10;
   doubleTable.data = data;
   doubleTable.dataCompare = dataCompare;
   doubleTable.exampleCounts = exampleCounts;
-  doubleTable.modelName = "modelA";
-  doubleTable.modelNameCompare = "modelB";
+  doubleTable.evalName = "modelA";
+  doubleTable.evalNameCompare = "modelB";
 })();

@@ -139,8 +139,16 @@ export class FairnessMetricsTable extends PolymerElement {
       const evalCols = metricCols.map(metric => metric.concat(' - ', evalName));
       const evalCompareCols =
           metricCols.map(metric => metric.concat(' - ', evalCompareName));
-      const comparisonCol = [evalCompareName.concat(' against ', evalName)];
-      return ['feature'].concat(evalCols, evalCompareCols, comparisonCol);
+
+      const againstCols = [];
+      for (let j = 0; j < metrics.length; j += 2) {
+        var againstCol = evalCompareName.concat(' against ', evalName);
+        const threshold = metricCols[j].split('@')[1];
+        againstCols.push(
+            threshold ? againstCol.concat('@', threshold) : againstCol);
+      }
+
+      return ['feature'].concat(evalCols, evalCompareCols, againstCols);
     }
   }
 
@@ -166,23 +174,25 @@ export class FairnessMetricsTable extends PolymerElement {
         tableRow.push(this.formatCell_(metricsData[entry]));
       });
 
+      // Second Eval column
       if (this.evalComparison_()) {
-        // Second Eval column
         const metricsDataCompare = dataCompare[i]['metrics'];
         metrics.forEach(entry => {
           tableRow.push(this.formatCell_(metricsDataCompare[entry]));
         });
 
-        // Comparison column
-        const evalMetric = metricsData[metrics[0]];
-        const evalCompareMetric = metricsDataCompare[metrics[0]];
-        const getValue = (metric) =>
-            (typeof metric === 'object' && this.isBoundedValue_(metric)) ?
-            metric['value'] :
-            metric;
-        const comparison =
-            (getValue(evalCompareMetric) / getValue(evalMetric)) - 1;
-        tableRow.push(comparison.toString());
+        // Comparison columns
+        for (let j = 0; j < metrics.length; j += 2) {
+          const evalMetric = metricsData[metrics[j]];
+          const evalCompareMetric = metricsDataCompare[metrics[j]];
+          const getValue = (metric) =>
+              (typeof metric === 'object' && this.isBoundedValue_(metric)) ?
+              metric['value'] :
+              metric;
+          const comparison =
+              (getValue(evalCompareMetric) / getValue(evalMetric)) - 1;
+          tableRow.push(comparison.toString());
+        }
       }
 
       tableRows.push(tableRow);
@@ -297,10 +307,14 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   isDiffWithBaselineColumn_(index) {
-    // 2: diff between First Model and Baseline
-    // 4: diff between Second Model and Baseline
-    // 5: diff between Second Model and First Model
-    return index === 2 || index === 4 || index === 5;
+    const isFeatureCol = index === 0;
+    const isMetricCol = !isFeatureCol && index <= 2 * this.metrics.length;
+    const isMetricAgainstBaselineCol = isMetricCol && !(index % 2);
+    const isExampleCountCol = index === this.tableData_[0].length;
+    const isEvalComparisonCol =
+        this.dataCompare && !isFeatureCol && !isMetricCol && !isExampleCountCol;
+
+    return isMetricAgainstBaselineCol || isEvalComparisonCol;
   }
 
   /**

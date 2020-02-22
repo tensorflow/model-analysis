@@ -289,7 +289,6 @@ suite('fairness-metrics-table tests', () => {
       done();
     };
 
-    // TODO(karanshukla): fails when both are active?
     setTimeout(() => {
       fillData(TABLE_DATA, TABLE_DATA_TO_COMPARE, false);
     }, 0);
