@@ -20,35 +20,21 @@ suite('fairness-metrics-table tests', () => {
       'slice': 'col:1',
       'metrics': {
         'loss': 0.7,
-        'averageLabel': 0.5,
-        'count': '1000000',
-        'auprc': 0.7,
-        'boundedAuc': {
-          'value': 0.611111,
-          'lowerBound': 0.6011111,
-          'upperBound': 0.6211111
-        },
+        'loss against Overall': 0.5,
       }
     },
     {
       'slice': 'col:2',
       'metrics': {
         'loss': 0.72,
-        'averageLabel': 0.52,
-        'count': '1000002',
-        'auprc': 0.72,
-        'boundedAuc':
-            {'value': 0.612, 'lowerBound': 0.602, 'upperBound': 0.622},
+        'loss against Overall': 0.52,
       }
     },
     {
       'slice': 'col:3',
       'metrics': {
-        'loss': 0.73,
-        'count': '2000003',
-        'auprc': 0.73,
-        'boundedAuc':
-            {'value': 0.613, 'lowerBound': 0.603, 'upperBound': 0.623},
+        'loss': 0.74,
+        'loss against Overall': 0.54,
       },
     }
   ];
@@ -56,46 +42,33 @@ suite('fairness-metrics-table tests', () => {
     {
       'slice': 'col:1',
       'metrics': {
-        'loss': 0.5,
-        'averageLabel': 0.7,
-        'count': '1000000',
-        'auprc': 0.5,
-        'boundedAuc': {
-          'value': 0.411111,
-          'lowerBound': 0.4011111,
-          'upperBound': 0.4211111
-        },
+        'loss': 0.35,
+        'loss against Overall': 0.15,
       }
     },
     {
       'slice': 'col:2',
       'metrics': {
-        'loss': 0.52,
-        'averageLabel': 0.72,
-        'count': '1000002',
-        'auprc': 0.52,
-        'boundedAuc':
-            {'value': 0.412, 'lowerBound': 0.402, 'upperBound': 0.422},
+        'loss': 0.36,
+        'loss against Overall': 0.16,
       }
     },
     {
       'slice': 'col:3',
       'metrics': {
-        'loss': 0.53,
-        'count': '2000003',
-        'auprc': 0.53,
-        'boundedAuc':
-            {'value': 0.413, 'lowerBound': 0.403, 'upperBound': 0.423},
+        'loss': 0.37,
+        'loss against Overall': 0.17,
       },
     }
   ];
 
-  const METRICS = ['loss', 'count', 'boundedAuc', 'auprc'];
-
+  const METRICS = ['loss', 'loss against Overall'];
   const EXAMPLE_COUNTS = [34, 84, 49];
 
   const MODEL_A_NAME = 'ModelA';
   const MODEL_B_NAME = 'ModelB';
+
+  const NUM_ROWS = 4;
 
   let table;
 
@@ -112,29 +85,35 @@ suite('fairness-metrics-table tests', () => {
 
     const CheckProperties = () => {
       const expected_data = [
-        ['feature', 'loss', 'count', 'boundedAuc', 'auprc'],
-        ['col:1', '0.7', '1000000', '0.61111 (0.60111, 0.62111)', '0.7'],
-        ['col:2', '0.72', '1000002', '0.61200 (0.60200, 0.62200)', '0.72'],
-        ['col:3', '0.73', '2000003', '0.61300 (0.60300, 0.62300)', '0.73'],
+        ['feature', 'loss', 'loss against Overall'],
+        ['col:1', '0.7', '0.5'],
+        ['col:2', '0.72', '0.52'],
+        ['col:3', '0.74', '0.54'],
       ];
 
       assert.equal(table.tableData_.length, expected_data.length);
-      for (var i = 0; i < 4; i++) {
-        for (var j = 0; j < 5; j++) {
+      for (var i = 0; i < NUM_ROWS; i++) {
+        for (var j = 0; j < 3; j++) {
           assert.equal(table.tableData_[i][j], expected_data[i][j]);
         }
       }
 
       table.shadowRoot.querySelectorAll('.table-row').forEach(function(row) {
-        const cells = row.querySelectorAll('.table-entry');
-        for (var i = 0; i < cells.length; i++) {
-          const content = cells[i].textContent.trim();
-          if (i % 2) {
-            assert.isTrue(content[content.length - 1] === '%');
-          } else {
-            assert.isTrue(content[content.length - 1] != '%');
-          }
-        }
+        const tableEntries = row.querySelectorAll('.table-entry');
+
+        // Three values: metric, metricAgainstBaseline, and exampleCount
+        assert.equal(tableEntries.length, 3);
+
+        // metric and exampleCount should not be percentages
+        const metric = tableEntries[0].textContent.trim();
+        assert.isTrue(metric[metric.length - 1] !== '%');
+        const count = tableEntries[2].textContent.trim();
+        assert.isTrue(count[count.length - 1] !== '%');
+
+        // metricAgainstBaseline should be a percentage
+        const metricAgainstBaseline = tableEntries[1].textContent.trim();
+        assert.isTrue(
+            metricAgainstBaseline[metricAgainstBaseline.length - 1] === '%');
       });
 
       done();
@@ -159,41 +138,44 @@ suite('fairness-metrics-table tests', () => {
     const CheckProperties = () => {
       const expected_data = [
         [
-          'feature', 'loss - ModelA', 'count - ModelA', 'boundedAuc - ModelA',
-          'auprc - ModelA', 'loss - ModelB', 'count - ModelB',
-          'boundedAuc - ModelB', 'auprc - ModelB'
+          'feature', 'loss - ModelA', 'loss against Overall - ModelA',
+          'loss - ModelB', 'loss against Overall - ModelB',
+          'ModelB against ModelA'
         ],
-        [
-          'col:1', '0.7', '1000000', '0.61111 (0.60111, 0.62111)', '0.7', '0.5',
-          '1000000', '0.41111 (0.40111, 0.42111)', '0.5'
-        ],
-        [
-          'col:2', '0.72', '1000002', '0.61200 (0.60200, 0.62200)', '0.72',
-          '0.52', '1000002', '0.41200 (0.40200, 0.42200)', '0.52'
-        ],
-        [
-          'col:3', '0.73', '2000003', '0.61300 (0.60300, 0.62300)', '0.73',
-          '0.53', '2000003', '0.41300 (0.40300, 0.42300)', '0.53'
-        ],
+        ['col:1', '0.7', '0.5', '0.35', '0.15', '-0.5'],
+        ['col:2', '0.72', '0.52', '0.36', '0.16', '-0.5'],
+        ['col:3', '0.74', '0.54', '0.37', '0.17', '-0.5'],
       ];
 
       assert.equal(table.tableData_.length, expected_data.length);
-      for (var i = 0; i < 4; i++) {
-        for (var j = 0; j < 9; j++) {
+      for (var i = 0; i < NUM_ROWS; i++) {
+        for (var j = 0; j < 6; j++) {
           assert.equal(table.tableData_[i][j], expected_data[i][j]);
         }
       }
 
       table.shadowRoot.querySelectorAll('.table-row').forEach(function(row) {
-        const cells = row.querySelectorAll('.table-entry');
-        for (var i = 0; i < cells.length; i++) {
-          const content = cells[i].textContent.trim();
-          if (i % 2) {
-            assert.isTrue(content[content.length - 1] === '%');
-          } else {
-            assert.isTrue(content[content.length - 1] != '%');
-          }
-        }
+        const tableEntries = row.querySelectorAll('.table-entry');
+
+        // Six values
+        //   The first eval run's metric, metricAgainstBaseline,
+        //   The second eval run's metric, metricAgainstBaseline,
+        //   evalAgainstEval, and exampleCount
+        assert.equal(tableEntries.length, 6);
+
+        // metric and exampleCount should not be percentages
+        const noPercIndices = [0, 2, 5];
+        noPercIndices.forEach(i => {
+          const text = tableEntries[i].textContent.trim();
+          assert.isTrue(text[text.length - 1] !== '%');
+        });
+
+        // metricAgainstBaseline and evalAgainstEval should be a percentage
+        const percIndices = [1, 3, 4];
+        percIndices.forEach(i => {
+          const text = tableEntries[i].textContent.trim();
+          assert.isTrue(text[text.length - 1] === '%');
+        });
       });
 
       done();

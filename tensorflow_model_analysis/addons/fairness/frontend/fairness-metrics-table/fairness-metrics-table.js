@@ -126,21 +126,22 @@ export class FairnessMetricsTable extends PolymerElement {
    * Populate header row
    * @param {!Array<string>} metrics
    * @param {string} evalName
-   * @param {string} evalNameCompare
+   * @param {string} evalCompareName
    * @return {!Array<string>}
    * @private
    */
-  populateHeaderRow_(metrics, evalName, evalNameCompare) {
+  populateHeaderRow_(metrics, evalName, evalCompareName) {
     const metricCols =
-        metrics.map(metric => Util.removeMetricNamePrefix(metric));
+        metrics.map(Util.removeMetricNamePrefix);
 
     if (!this.modelComparison_()) {
       return ['feature'].concat(metricCols);
     } else {
       const evalCols = metricCols.map(metric => metric.concat(' - ', evalName));
-      const evalColsCompare =
-          metricCols.map(metric => metric.concat(' - ', evalNameCompare));
-      return ['feature'].concat(evalCols, evalColsCompare);
+      const evalCompareCols =
+          metricCols.map(metric => metric.concat(' - ', evalCompareName));
+      const comparisonCol = [evalCompareName.concat(' against ', evalName)];
+      return ['feature'].concat(evalCols, evalCompareCols, comparisonCol);
     }
   }
 
@@ -160,16 +161,24 @@ export class FairnessMetricsTable extends PolymerElement {
       // slice name
       tableRow.push(data[i]['slice']);
 
-      // eval 1's metric values
+      // First Eval column
+      const metricsData = data[i]['metrics'];
       metrics.forEach(entry => {
-        tableRow.push(this.formatCell_(data[i]['metrics'][entry]));
+        tableRow.push(this.formatCell_(metricsData[entry]));
       });
 
-      // eval 2's metric values
       if (this.modelComparison_()) {
+        // Second Eval column
+        const metricsDataCompare = dataCompare[i]['metrics'];
         metrics.forEach(entry => {
-          tableRow.push(this.formatCell_(dataCompare[i]['metrics'][entry]));
+          tableRow.push(this.formatCell_(metricsDataCompare[entry]));
         });
+
+        // Comparison column
+        const evalMetric = metricsData[metrics[0]];
+        const evalCompareMetric = metricsDataCompare[metrics[0]];
+        const comparison = (evalCompareMetric / evalMetric) - 1;
+        tableRow.push(comparison);
       }
 
       tableRows.push(tableRow);
@@ -265,7 +274,10 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   isDiffWithBaselineColumn_(index) {
-    return index > 0 && !(index % 2);
+    // 2: diff between First Model and Baseline
+    // 4: diff between Second Model and Baseline
+    // 5: diff between Second Model and First Model
+    return index === 2 || index === 4 || index === 5;
   }
 
   /**
@@ -317,21 +329,21 @@ export class FairnessMetricsTable extends PolymerElement {
   }
 
   /**
-   * @param {(string)} s
+   * @param {(string|number)} s
    * @return {boolean} Returns true if string represents a positive number.
    * @private
    */
   isPositive_(s) {
-    return s.charAt(0) != '-';
+    return s.toString().charAt(0) != '-';
   }
 
   /**
-   * @param {(string)} s
+   * @param {(string|number)} s
    * @return {boolean} Returns true if string represents a negative number.
    * @private
    */
   isNegative_(s) {
-    return s.charAt(0) == '-';
+    return s.toString().charAt(0) == '-';
   }
 }
 
