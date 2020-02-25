@@ -89,6 +89,7 @@
 
   let element_compare = document.getElementById('model-comparison');
   element_compare.slices = SLICES;
+  element_compare.evalName = "EvalA";
   element_compare.data = BOUNDED_VALUE_DATA;
   element_compare.evalNameCompare = "EvalB";
   element_compare.dataCompare = DOUBLE_VALUE_DATA;

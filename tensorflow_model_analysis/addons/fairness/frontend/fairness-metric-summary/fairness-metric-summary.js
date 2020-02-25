@@ -96,6 +96,12 @@ export class FairnessMetricSummary extends PolymerElement {
       baseline: {type: String},
 
       /**
+       * The name of the first eval.
+       * @type {string}
+       */
+      evalName: {type: String},
+
+      /**
        * The name of the second eval. Optional.
        * @type {string}
        */
