@@ -161,15 +161,6 @@ export class FairnessMetricSummary extends PolymerElement {
       slicesToPlot_: {type: Array, value: []},
 
       /**
-       * The header override for the table view.
-       * @private {!Object}
-       */
-      headerOverride_: {
-        type: Object,
-        computed: 'computeHeaderOverride_(baseline, metrics_)'
-      },
-
-      /**
        * The data backing the table view.
        * @private {!tfma.Data}
        */
@@ -327,23 +318,6 @@ export class FairnessMetricSummary extends PolymerElement {
   }
 
   /**
-   * Constructs the header override for the table view.
-   * @param {string} baseline
-   * @param {!Array<string>} metrics
-   * @return {!Object}
-   * @private
-   */
-  computeHeaderOverride_(baseline, metrics) {
-    if (!baseline || !metrics) {
-      return {};
-    }
-    return metrics.reduce((acc, metric) => {
-      acc[this.metricDiffName_(metric, baseline)] = 'Diff. w. baseline';
-      return acc;
-    }, {});
-  }
-
-  /**
    * Computes the ratio of difference for all metrics between each slice and the
    * baseline.
    * @param {string} baseline
@@ -354,7 +328,8 @@ export class FairnessMetricSummary extends PolymerElement {
    * @private
    */
   computeDiffRatios_(baseline, data, slices, metrics) {
-    if (!baseline || !data || !slices || !metrics || metrics.length == 0) {
+    if (!baseline || !data || data.length == 0 || !slices || !metrics ||
+        metrics.length == 0) {
       return undefined;
     }
 

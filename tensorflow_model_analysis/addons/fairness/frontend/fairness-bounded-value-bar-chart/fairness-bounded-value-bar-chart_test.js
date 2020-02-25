@@ -206,4 +206,53 @@ suite('fairness-bounded-value-bar-chart tests', () => {
     };
     setTimeout(fillData, 0);
   });
+
+  test('BarCheckForBoundedValueEvalComparison', done => {
+    barChart = fixture('main');
+
+    const fillData = () => {
+      barChart.data = BOUNDED_VALUE_DATA;
+      barChart.dataCompare = BOUNDED_VALUE_DATA;
+      barChart.metrics = [
+        'post_export_metrics/false_negative_rate@0.30',
+        'post_export_metrics/false_negative_rate@0.50'
+      ];
+      barChart.baseline = SLICES[0];
+      barChart.slices = SLICES.slice(1);
+      setTimeout(checkValue, 100);
+    };
+
+    const checkValue = () => {
+      // One group for every slice
+      assert.equal(
+          d3.select(barChart.shadowRoot.querySelector('svg'))
+              .select('#bars')
+              .selectAll('g')
+              .nodes()
+              .length,
+          barChart.slices.length + 1);
+
+      // One bar for every slice-metric pair
+      const numBars =
+          2 * ((barChart.slices.length + 1) * barChart.metrics.length);
+      assert.equal(
+          d3.select(barChart.shadowRoot.querySelector('svg'))
+              .select('#bars')
+              .selectAll('rect')
+              .nodes()
+              .length,
+          numBars);
+
+      // One line per bar
+      assert.equal(
+          d3.select(barChart.shadowRoot.querySelector('svg'))
+              .select('#bars')
+              .selectAll('line')
+              .nodes()
+              .length,
+          numBars);
+      done();
+    };
+    setTimeout(fillData, 0);
+  });
 });

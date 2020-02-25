@@ -217,9 +217,8 @@ suite('fairness-metric-summary tests', () => {
       assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
       assert.deepEqual(
           metricSummary.$['bar-chart'].data, BOUNDED_VALUE_DATA);
-      // TODO(karanshukla): after b/149708159 is fixed, uncomment below
-      // assert.deepEqual(
-      //     metricSummary.$['bar-chart'].dataCompare, DOUBLE_VALUE_DATA);
+      assert.deepEqual(
+          metricSummary.$['bar-chart'].dataCompare, DOUBLE_VALUE_DATA);
       assert.deepEqual(
           metricSummary.computeExampleCounts_(
               'Overall', BOUNDED_VALUE_DATA,

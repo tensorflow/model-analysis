@@ -20,7 +20,23 @@
     'slice:13', 'slice:14', 'slice:15', 'slice:16'
   ];
 
-  const BOUNDED_VALUE_DATA = SLICES.map(slice => {
+  // use smaller set of slices for eval comparison, for easier visualization
+  const SLICES_COMPARE = ['Overall', 'slice:1', 'slice:2'];
+
+  const METRICS = [
+    'post_export_metrics/false_negative_rate@0.30',
+    'post_export_metrics/false_negative_rate@0.50',
+    'post_export_metrics/false_negative_rate@0.70',
+  ];
+  const MORE_METRICS = [
+    'post_export_metrics/false_negative_rate@0.10',
+    'post_export_metrics/false_negative_rate@0.30',
+    'post_export_metrics/false_negative_rate@0.50',
+    'post_export_metrics/false_negative_rate@0.70',
+    'post_export_metrics/false_negative_rate@0.90',
+  ];
+
+  const generateBoundedValueData = (slices) => slices.map(slice => {
     return {
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
@@ -53,8 +69,52 @@
       }
     };
   });
-
-  const DOUBLE_VALUE_DATA = SLICES.map(slice => {
+  const generateBoundedValueDataMoreThresholds = (slices) => slices.map(slice => {
+    return {
+      'slice': slice,
+      'sliceValue': slice.split(':')[1] || 'Overall',
+      'metrics': {
+        'accuracy': {
+          'lowerBound': Math.random() * 0.3,
+          'upperBound': Math.random() * 0.3 + 0.6,
+          'value': Math.random() * 0.3 + 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+        'post_export_metrics/false_negative_rate@0.10': {
+          'lowerBound': Math.random() * 0.2,
+          'upperBound': Math.random() * 0.2 + 0.4,
+          'value': Math.random() * 0.2 + 0.2,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+        'post_export_metrics/false_negative_rate@0.30': {
+          'lowerBound': Math.random() * 0.2,
+          'upperBound': Math.random() * 0.2 + 0.4,
+          'value': Math.random() * 0.2 + 0.2,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+        'post_export_metrics/false_negative_rate@0.50': {
+          'lowerBound': Math.random() * 0.3,
+          'upperBound': Math.random() * 0.3 + 0.6,
+          'value': Math.random() * 0.3 + 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+        'post_export_metrics/false_negative_rate@0.70': {
+          'lowerBound': Math.random() * 0.4,
+          'upperBound': Math.random() * 0.4 + 0.6,
+          'value': Math.random() * 0.4 + 0.4,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+        'post_export_metrics/false_negative_rate@0.90': {
+          'lowerBound': Math.random() * 0.4,
+          'upperBound': Math.random() * 0.4 + 0.6,
+          'value': Math.random() * 0.4 + 0.4,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+        'post_export_metrics/example_count': Math.floor(Math.random() * 100),
+      }
+    };
+  });
+  const generateDoubleValueData = (slices) => slices.map(slice => {
     return {
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
@@ -68,22 +128,32 @@
   });
 
   let element = document.getElementById('bounded-value');
-  element.data = BOUNDED_VALUE_DATA;
-  element.metrics = [
-    'post_export_metrics/false_negative_rate@0.30',
-    'post_export_metrics/false_negative_rate@0.50',
-    'post_export_metrics/false_negative_rate@0.70',
-  ];
+  element.data = generateBoundedValueData(SLICES);
+  element.metrics = METRICS;
   element.baseline = 'Overall';
   element.slices = SLICES.slice(1, 16);
 
   element = document.getElementById('double-value');
-  element.data = DOUBLE_VALUE_DATA;
-  element.metrics = [
-    'post_export_metrics/false_negative_rate@0.30',
-    'post_export_metrics/false_negative_rate@0.50',
-    'post_export_metrics/false_negative_rate@0.70'
-  ];
+  element.data = generateDoubleValueData(SLICES);
+  element.metrics = METRICS;
   element.baseline = 'Overall';
   element.slices = SLICES.slice(1, 16);
+
+  element = document.getElementById('bounded-compare');
+  element.data = generateBoundedValueDataMoreThresholds(SLICES_COMPARE);
+  element.dataCompare = generateBoundedValueDataMoreThresholds(SLICES_COMPARE);
+  element.metrics = MORE_METRICS;
+  element.baseline = 'Overall';
+  element.slices = SLICES_COMPARE.slice(1, 2);
+  element.evalName = 'EvalA';
+  element.evalNameCompare = 'EvalB';
+
+  element = document.getElementById('compare');
+  element.data = generateDoubleValueData(SLICES_COMPARE);
+  element.dataCompare = generateDoubleValueData(SLICES_COMPARE);
+  element.metrics = METRICS;
+  element.baseline = 'Overall';
+  element.slices = SLICES_COMPARE.slice(1, 2);
+  element.evalName = 'EvalA';
+  element.evalNameCompare = 'EvalB';
 })();

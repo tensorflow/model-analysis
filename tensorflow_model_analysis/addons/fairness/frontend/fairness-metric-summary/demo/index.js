@@ -59,7 +59,7 @@
     };
   });
 
-  const DOUBLE_VALUE_DATA = SLICES.map((slice) => {
+  const generateDoubleValueData = () => SLICES.map((slice) => {
     return {
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
@@ -82,7 +82,7 @@
 
   let element_double = document.getElementById('double-value');
   element_double.slices = SLICES;
-  element_double.data = DOUBLE_VALUE_DATA;
+  element_double.data = generateDoubleValueData();
   element_double.metric = 'accuracy';
   element_double.thresholds = [];
   element_double.baseline = 'Overall';
@@ -90,9 +90,9 @@
   let element_compare = document.getElementById('model-comparison');
   element_compare.slices = SLICES;
   element_compare.evalName = "EvalA";
-  element_compare.data = BOUNDED_VALUE_DATA;
+  element_compare.data = generateDoubleValueData();
   element_compare.evalNameCompare = "EvalB";
-  element_compare.dataCompare = DOUBLE_VALUE_DATA;
+  element_compare.dataCompare = generateDoubleValueData();
   element_compare.metric = 'accuracy';
   element_compare.thresholds = [];
   element_compare.baseline = 'Overall';
