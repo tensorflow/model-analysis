@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import model_util
 
 
@@ -65,6 +65,40 @@ class ModelUtilTest(tf.test.TestCase):
         extracts, input_names=['a', 'b'], input_specs=input_specs)
     self.assertEqual(expected, got)
     self.assertNotIsInstance(got['a'][0], np.ndarray)
+
+  def testFilterTensorsByInputNames(self):
+    tensors = {
+        'f1': tf.constant([[1.1], [2.1]], dtype=tf.float32),
+        'f2': tf.constant([[1], [2]], dtype=tf.int64),
+        'f3': tf.constant([['hello'], ['world']], dtype=tf.string)
+    }
+    filtered_tensors = model_util.filter_tensors_by_input_names(
+        tensors, ['f1', 'f3'])
+    self.assertLen(filtered_tensors, 2)
+    self.assertAllEqual(
+        tf.constant([[1.1], [2.1]], dtype=tf.float32), filtered_tensors['f1'])
+    self.assertAllEqual(
+        tf.constant([['hello'], ['world']], dtype=tf.string),
+        filtered_tensors['f3'])
+
+  def testFilterTensorsByInputNamesKeras(self):
+    tensors = {
+        'f1': tf.constant([[1.1], [2.1]], dtype=tf.float32),
+        'f2': tf.constant([[1], [2]], dtype=tf.int64),
+        'f3': tf.constant([['hello'], ['world']], dtype=tf.string)
+    }
+    filtered_tensors = model_util.filter_tensors_by_input_names(
+        tensors, [
+            'f1' + model_util.KERAS_INPUT_SUFFIX,
+            'f3' + model_util.KERAS_INPUT_SUFFIX
+        ])
+    self.assertLen(filtered_tensors, 2)
+    self.assertAllEqual(
+        tf.constant([[1.1], [2.1]], dtype=tf.float32),
+        filtered_tensors['f1' + model_util.KERAS_INPUT_SUFFIX])
+    self.assertAllEqual(
+        tf.constant([['hello'], ['world']], dtype=tf.string),
+        filtered_tensors['f3' + model_util.KERAS_INPUT_SUFFIX])
 
 
 if __name__ == '__main__':

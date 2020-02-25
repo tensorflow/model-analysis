@@ -123,6 +123,56 @@ def rebatch_by_input_names(
   return inputs
 
 
+def find_input_name_in_features(features: Set[Text],
+                                input_name: Text) -> Optional[Text]:
+  """Maps input name to an entry in features. Returns None if not found."""
+  if input_name in features:
+    return input_name
+  # Some keras models prepend '_input' to the names of the inputs
+  # so try under '<name>_input' as well.
+  elif (input_name.endswith(KERAS_INPUT_SUFFIX) and
+        input_name[:-len(KERAS_INPUT_SUFFIX)] in features):
+    return input_name[:-len(KERAS_INPUT_SUFFIX)]
+  return None
+
+
+def filter_tensors_by_input_names(
+    tensors: Dict[Text,
+                  Any], input_names: List[Text]) -> Optional[Dict[Text, Any]]:
+  """Filter tensors by input names.
+
+  In case we don't find the specified input name in the tensors and there
+  exists only one input name, we assume we are feeding serialized examples to
+  the model and return None.
+
+  Args:
+    tensors: Dict of tensors.
+    input_names: List of input names.
+
+  Returns:
+    Filtered tensors.
+
+  Raises:
+    RuntimeError: When the specified input tensor cannot be found.
+  """
+  if not input_names:
+    return None
+  result = {}
+  tensor_keys = set(tensors.keys())
+  for name in input_names:
+    tensor_name = find_input_name_in_features(tensor_keys, name)
+    if tensor_name is None:
+      # This should happen only in the case where the model takes serialized
+      # examples as input. Else raise an exception.
+      if len(input_names) == 1:
+        return None
+      raise RuntimeError(
+          'Input tensor not found: {}. Existing keys: {}.'.format(
+              name, ','.join(tensors.keys())))
+    result[name] = tensors[tensor_name]
+  return result
+
+
 def model_construct_fn(  # pylint: disable=invalid-name
     eval_saved_model_path: Optional[Text] = None,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
@@ -214,6 +264,9 @@ class DoFnWithModels(beam.DoFn):
       self._model_load_seconds = None
 
 
+# TODO(pachristopher): Define a new base class for Arrow based batched DoFn
+# and inherit from this class. This would allow new Arrow based batched predict
+# predict extractors to share code.
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
 class BatchReducibleDoFnWithModels(DoFnWithModels):

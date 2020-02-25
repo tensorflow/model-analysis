@@ -28,6 +28,7 @@ import tempfile
 from typing import Any, Dict, List, NamedTuple, Optional, Text, Tuple, Union
 
 import apache_beam as beam
+import pyarrow as pa
 import six
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
@@ -555,7 +556,19 @@ def default_writers(
 def InputsToExtracts(  # pylint: disable=invalid-name
     inputs: beam.pvalue.PCollection):
   """Converts serialized inputs (e.g. examples) to Extracts."""
-  return inputs | beam.Map(lambda x: {constants.INPUT_KEY: x})
+  return (inputs
+          | 'AddInputKey' >> beam.Map(lambda x: {constants.INPUT_KEY: x}))
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(pa.RecordBatch)
+@beam.typehints.with_output_types(types.Extracts)
+def BatchedInputsToExtracts(  # pylint: disable=invalid-name
+    batched_inputs: beam.pvalue.PCollection):
+  """Converts Arrow RecordBatch inputs to Extracts."""
+  return (batched_inputs
+          | 'AddArrowRecordBatchKey' >>
+          beam.Map(lambda x: {constants.ARROW_RECORD_BATCH_KEY: x}))
 
 
 @beam.ptransform_fn

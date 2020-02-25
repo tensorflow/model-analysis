@@ -8,6 +8,8 @@
 
 *   Fixed issue with keras metrics saved with the model not being calculated
     unless a keras metric was added to the config.
+*   Depends on `pandas>=0.24,<2`.
+*   Depends on `pyarrow>=0.15,<1`.
 
 ## Breaking changes
 

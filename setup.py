@@ -265,14 +265,20 @@ setup_args = {
     'install_requires': [
         # Sort alphabetically
         'absl-py>=0.7,<0.9',
-        'apache-beam[gcp]>=2.17,<3',
         # TODO(b/149399451): This is a workaround for broken avro-python3 1.9.2
         # release. Remove once having a healthy new release.
-        'avro-python3>=1.8.1,!=1.9.2,<2.0.0; python_version >= "3.0"',
+        'avro-python3>=1.8.1,!=1.9.2.*,!=<2.0.0; python_version>="3.0"',
+        'apache-beam[gcp]>=2.17,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
+        # Upgrade min version to 1.0 once we deprecate support for
+        # Python 2.7 and 3.5
+        'pandas>=0.24,<2',
         'protobuf>=3.7,<4',
+        'pyarrow>=0.15,<1',
+        # TODO(b/149775493): Avoid pinning scipy version once TF resolves
+        # the scipy issue.
         'scipy == 1.4.1;python_version>="3"',
         'scipy == 1.2.2;python_version<"3"',
         'six>=1.12,<2',
