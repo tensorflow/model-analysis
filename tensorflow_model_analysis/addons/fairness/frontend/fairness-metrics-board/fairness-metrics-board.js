@@ -63,6 +63,15 @@ export class FairnessMetricsBoard extends PolymerElement {
       data: {type: Array},
 
       /** @type {string} */
+      evalName: {type: String},
+
+      /** @type {!Array<!Object>} */
+      dataCompare: {type: Array},
+
+      /** @type {string} */
+      evalNameCompare: {type: String},
+
+      /** @type {string} */
       weightColumn: {type: String},
 
       /** @type {!Array<string>} */

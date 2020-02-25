@@ -41,8 +41,9 @@ template.innerHTML = `
   </span>
 </div>
 <template is="dom-repeat" items="[[metrics]]">
-  <fairness-metric-summary data="[[data]]"
-                           metric="[[item]]" slices="[[slices_]]" baseline="[[baseline_]]">
+  <fairness-metric-summary data="[[data]]" eval-name="[[evalName]]"
+                           metric="[[item]]" slices="[[slices_]]" baseline="[[baseline_]]"
+                           data-compare="[[dataCompare]]" eval-name-compare="[[evalNameCompare]]">
   </fairness-metric-summary>
 </template>
 `;

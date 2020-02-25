@@ -27,7 +27,7 @@ suite('fairness-metrics-board tests', () => {
     'sex:male', 'year:10', 'year:11', 'year:12', 'year:9'
   ];
 
-  function generate_bounded_value_data(slice) {
+  function generateBoundedValueData(slice) {
     return {
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
@@ -61,9 +61,41 @@ suite('fairness-metrics-board tests', () => {
     };
   }
 
-  const BOUNDED_VALUE_DATA = SLICES.map(generate_bounded_value_data);
-  const BOUNDED_VALUE_DATA_SORTED =
-      SLICES_SORTED.map(generate_bounded_value_data);
+  const BOUNDED_VALUE_DATA = SLICES.map(generateBoundedValueData);
+  const BOUNDED_VALUE_DATA_SORTED = SLICES_SORTED.map(generateBoundedValueData);
+  const BOUNDED_VALUE_DATA2 = SLICES.map((slice) => {
+    return {
+      'slice': slice,
+      'sliceValue': slice.split(':')[1] || 'Overall',
+      'metrics': {
+        'totalWeightedExamples': 100,
+        'accuracy': {
+          'lowerBound': 0.2,
+          'upperBound': 0.4,
+          'value': 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+        'post_export_metrics/false_negative_rate@0.30': {
+          'lowerBound': 0.3,
+          'upperBound': 0.4,
+          'value': 0.35,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+        'post_export_metrics/false_negative_rate@0.50': {
+          'lowerBound': 0.5,
+          'upperBound': 0.5,
+          'value': 0.5,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+        'post_export_metrics/false_negative_rate@0.70': {
+          'lowerBound': 0.2,
+          'upperBound': 0.4,
+          'value': 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        },
+      }
+    };
+  });
 
   const BOUNDED_VALUE_DATA_WITH_OMITTED_SLICE = Array.from(BOUNDED_VALUE_DATA);
   BOUNDED_VALUE_DATA_WITH_OMITTED_SLICE.push({
@@ -90,6 +122,45 @@ suite('fairness-metrics-board tests', () => {
           fairness.shadowRoot.querySelector('fairness-metric-summary');
 
       assert.deepEqual(metricSummary.data, BOUNDED_VALUE_DATA);
+      assert.deepEqual(
+          metricSummary.metric, 'post_export_metrics/false_negative_rate');
+      assert.deepEqual(
+          metricSummary.slices, BOUNDED_VALUE_DATA_SORTED.map(v => v['slice']));
+      assert.deepEqual(metricSummary.baseline, 'Overall');
+
+      done();
+    };
+
+    setTimeout(fillData, 0);
+  });
+
+  test('checkMetrics_evalCompare', done => {
+    fairness = fixture('test-fixture');
+
+    const fillData = () => {
+      debugger;
+      fairness.data = BOUNDED_VALUE_DATA;
+      fairness.evalName = 'EvalA';
+      fairness.dataCompare = BOUNDED_VALUE_DATA2;
+      fairness.evalNameCompare = 'EvalB';
+      fairness.weightColumn = 'totalWeightedExamples';
+      fairness.metrics = ['post_export_metrics/false_negative_rate'];
+      fairness.thresholdedMetrics =
+          new Set(['post_export_metrics/false_negative_rate']);
+      fairness.showFullTable_ = true;
+      setTimeout(checkMetricsValue, 1);
+    };
+
+    const checkMetricsValue = () => {
+      debugger;
+
+      let metricSummary =
+          fairness.shadowRoot.querySelector('fairness-metric-summary');
+
+      assert.deepEqual(metricSummary.data, BOUNDED_VALUE_DATA);
+      assert.deepEqual(metricSummary.evalName, 'EvalA');
+      assert.deepEqual(metricSummary.evalNameCompare, 'EvalB');
+      assert.deepEqual(metricSummary.dataCompare, BOUNDED_VALUE_DATA2);
       assert.deepEqual(
           metricSummary.metric, 'post_export_metrics/false_negative_rate');
       assert.deepEqual(
