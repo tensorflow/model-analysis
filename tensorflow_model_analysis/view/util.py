@@ -166,8 +166,16 @@ _SUPPORTED_PLOT_KEYS = {
         'metricName': 'calibrationHistogramBuckets',
         'dataSeries': 'buckets',
     },
-    'aucPlot': {
+    'confusionMatrixPlot': {
         'metricName': 'confusionMatrixAtThresholds',
+        'dataSeries': 'matrices',
+    },
+    'multiClassConfusionMatrixPlot': {
+        'metricName': 'multiClassConfusionMatrixAtThresholds',
+        'dataSeries': 'matrices',
+    },
+    'multiLabelConfusionMatrixPlot': {
+        'metricName': 'multiLabelConfusionMatrixAtThresholds',
         'dataSeries': 'matrices',
     }
 }
