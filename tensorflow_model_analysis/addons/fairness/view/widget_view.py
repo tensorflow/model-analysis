@@ -128,7 +128,8 @@ def convert_eval_result_to_ui_input(
 
 
 def render_fairness_indicator(
-    eval_result: model_eval_lib.EvalResult,
+    eval_result: Optional[model_eval_lib.EvalResult] = None,
+    multi_eval_results: Optional[Dict[Text, model_eval_lib.EvalResult]] = None,
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     output_name: Text = '',
@@ -139,6 +140,8 @@ def render_fairness_indicator(
 
   Args:
     eval_result: An tfma.EvalResult.
+    multi_eval_results: A map of {string: tfma.EvalResult}. The key is the eval
+      or model name.
     slicing_column: The slicing column to to filter results. If both
       slicing_column and slicing_spec are None, show all eval results.
     slicing_spec: The slicing spec to filter results. If both slicing_column and
@@ -152,7 +155,27 @@ def render_fairness_indicator(
   Returns:
     A FairnessIndicatorViewer object if in Jupyter notebook; None if in Colab.
   """
-  data = convert_eval_result_to_ui_input(eval_result, slicing_column,
-                                         slicing_spec, output_name,
-                                         multi_class_key)
-  return visualization.render_fairness_indicator(data, event_handlers)
+  if ((eval_result and multi_eval_results) or
+      (not eval_result and not multi_eval_results)):
+    raise ValueError(
+        'Exactly one of the "eval_result" and "multi_eval_results" '
+        'parameters must be set.')
+
+  if (multi_eval_results and len(multi_eval_results) != 2):
+    raise ValueError(
+        '"multi_eval_results" parameter only accept 2 eval results.')
+
+  data = None
+  multi_data = None
+  if eval_result:
+    data = convert_eval_result_to_ui_input(eval_result, slicing_column,
+                                           slicing_spec, output_name,
+                                           multi_class_key)
+  else:
+    multi_data = {}
+    for eval_name in multi_eval_results:
+      multi_data[eval_name] = convert_eval_result_to_ui_input(
+          multi_eval_results[eval_name], slicing_column, slicing_spec,
+          output_name, multi_class_key)
+  return visualization.render_fairness_indicator(data, multi_data,
+                                                 event_handlers)

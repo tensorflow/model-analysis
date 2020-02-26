@@ -17,16 +17,28 @@
 from tensorflow_model_analysis.addons.fairness.notebook.jupyter import widget
 
 
-def render_fairness_indicator(slicing_metrics, event_handlers=None) -> None:
+def render_fairness_indicator(slicing_metrics=None,
+                              multi_slicing_metrics=None,
+                              event_handlers=None):
   """Renders the fairness indicator view in Colab.
 
   Args:
     slicing_metrics: A dictionary containing data for visualization.
+    multi_slicing_metrics: A dictionary that maps eval name to the
+      slicing_metrics. Only two eval results will be accepted.
     event_handlers: The event handler callback.
 
   Returns:
     FairnessIndicatorViewer object
   """
+  if ((slicing_metrics and multi_slicing_metrics) or
+      (not slicing_metrics and not multi_slicing_metrics)):
+    raise ValueError(
+        'Exactly one of the "slicing_metrics" and "multi_slicing_metrics" '
+        'parameters must be set.')
+  if multi_slicing_metrics:
+    raise ValueError('"multi_slicing_metrics" is not supported on Jupyter yet.')
+
   view = widget.FairnessIndicatorViewer()
   view.slicingMetrics = slicing_metrics
   view.eventHandlers = event_handlers
