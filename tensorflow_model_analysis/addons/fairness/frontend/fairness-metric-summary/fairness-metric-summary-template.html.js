@@ -72,7 +72,7 @@ template.innerHTML = `
 <fairness-bounded-value-bar-chart id="bar-chart" metrics="[[metrics_]]"
                                   data="[[data]]" data-compare="[[dataCompare]]"
                                   slices="{{slicesToPlot_}}" baseline="[[baseline]]"
-                                  eval-name="EvalA" eval-name-compare="[[evalNameCompare]]">
+                                  eval-name="[[evalName]]" eval-name-compare="[[evalNameCompare]]">
 </fairness-bounded-value-bar-chart>
 <fairness-metrics-table id="table" metrics="[[metricsForTable_]]" data="[[tableData_]]"
                         data-compare="[[tableDataCompare_]]"
