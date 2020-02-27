@@ -66,7 +66,18 @@
     });
     return acc;
   }, []);
+  const input2 = SLICES.reduce((acc, slice) => {
+    acc.push({
+      'slice': slice,
+      'sliceValue': slice.split(':')[1] || 'Overall',
+      'metrics': createSliceMetrics(),
+    });
+    return acc;
+  }, []);
   const element = document.getElementsByTagName('fairness-nb-container')[0];
   element.slicingMetrics = input;
+  element.slicingMetricsCompare = input2;
+  element.evalName = 'Eval1';
+  element.evalNameCompare = 'Eval2';
   element.availbleEvaluationRuns = ['1', '2', '3'];
 })();

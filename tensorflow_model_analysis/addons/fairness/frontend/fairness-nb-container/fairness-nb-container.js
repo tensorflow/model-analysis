@@ -77,6 +77,25 @@ export class FairnessNbContainer extends SelectEventMixin
       slicingMetrics: {type: Array, observer: 'slicingMetricsChanged_'},
 
       /**
+       * The name of the evaluation result.
+       * @type {string}
+       */
+      evalName: {type: String},
+
+      /**
+       * The slicing metrics of the second evaluation result. Optional.
+       * @type {!Array<!Object>}
+       */
+      slicingMetricsCompare:
+          {type: Array, observer: 'slicingMetricsCompareChanged_'},
+
+      /**
+       * The name of the second evaluation result. Optional
+       * @type {string}
+       */
+      evalNameCompare: {type: String},
+
+      /**
        * The list of run numbers that's available to select.
        * Used by TensorBoard. Empty otherwise.
        * @type {!Array<string>}
@@ -125,6 +144,17 @@ export class FairnessNbContainer extends SelectEventMixin
         this.computeAvailableMetricsNames_(slicingMetrics);
     this.updateSelectableMetrics_(this.availableMetricsNames_);
   }
+  /**
+   * @param {!Array<!Object>} slicingMetricsCompare
+   * @return {undefined}
+   * @private
+   */
+  slicingMetricsCompareChanged_(slicingMetricsCompare) {
+    if (slicingMetricsCompare) {
+      tfma.Data.flattenMetrics(slicingMetricsCompare, 'metrics');
+    }
+  }
+
   /**
    * @param {!Array<!Object>} slicingMetrics
    * @return {!Array<string>|undefined} An array of names of all metrics

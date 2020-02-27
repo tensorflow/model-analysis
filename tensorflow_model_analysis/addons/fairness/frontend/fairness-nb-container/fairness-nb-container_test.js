@@ -22,11 +22,8 @@ suite('fairness-nb-container tests', () => {
   ];
 
   let fairnessContainer;
-  let sliceingMetrics;
-
-  setup(() => {
-    fairnessContainer = fixture('test-fixture');
-    sliceingMetrics = SLICES_NAMES.map((slice) => {
+  const generateSlicingMetrics = () => {
+    return SLICES_NAMES.map((slice) => {
       return {
         'slice': slice,
         'sliceValue': slice.split(':')[1] || 'Overall',
@@ -56,12 +53,17 @@ suite('fairness-nb-container tests', () => {
         }
       };
     });
+  };
+
+  setup(() => {
+    fairnessContainer = fixture('test-fixture');
   });
+
   test('testMetricsAndSliceList', done => {
     fairnessContainer = fixture('test-fixture');
 
     const fillData = () => {
-      fairnessContainer.slicingMetrics = sliceingMetrics;
+      fairnessContainer.slicingMetrics = generateSlicingMetrics();
       setTimeout(checkValue, 0);
     };
     const checkValue = () => {
@@ -82,11 +84,11 @@ suite('fairness-nb-container tests', () => {
     setTimeout(fillData, 0);
   });
 
-  test('testFairnessTable', done => {
+  test('testFairnessBoard', done => {
     fairnessContainer = fixture('test-fixture');
 
     const fillData = () => {
-      fairnessContainer.slicingMetrics = sliceingMetrics;
+      fairnessContainer.slicingMetrics = generateSlicingMetrics();
       setTimeout(checkValue, 0);
     };
     const checkValue = () => {
@@ -99,9 +101,31 @@ suite('fairness-nb-container tests', () => {
     setTimeout(fillData, 0);
   });
 
+  test('testFairnessBoard_EvalCompare', done => {
+    fairnessContainer = fixture('test-fixture');
+
+    const fillData = () => {
+      fairnessContainer.slicingMetrics = generateSlicingMetrics();
+      fairnessContainer.slicingMetricsCompare = generateSlicingMetrics();
+      fairnessContainer.evalName = 'EvalA';
+      fairnessContainer.evalNameCompare = 'EvalB';
+      setTimeout(checkValue, 0);
+    };
+    const checkValue = () => {
+      let fairnessElement =
+          fairnessContainer.shadowRoot.querySelector('fairness-metrics-board');
+      assert.deepEqual(
+          fairnessElement.metrics, ['post_export_metrics/false_positive_rate']);
+      assert.deepEqual(fairnessElement.evalName, 'EvalA');
+      assert.deepEqual(fairnessElement.evalNameCompare, 'EvalB');
+      done();
+    };
+    setTimeout(fillData, 0);
+  });
+
   test('testRunSelectorHidden', done => {
     const fillData = () => {
-      fairnessContainer.slicingMetrics = sliceingMetrics;
+      fairnessContainer.slicingMetrics = generateSlicingMetrics();
       setTimeout(checkRunSelectorIsInvisibale, 0);
     };
     const checkRunSelectorIsInvisibale = () => {
@@ -115,7 +139,7 @@ suite('fairness-nb-container tests', () => {
 
   test('testRunSelectorVisible', done => {
     const fillData = () => {
-      fairnessContainer.slicingMetrics = sliceingMetrics;
+      fairnessContainer.slicingMetrics = generateSlicingMetrics();
       fairnessContainer.availableEvaluationRuns = ['1', '2', '3'];
       setTimeout(checkRunSelectorIsInvisibale, 0);
     };

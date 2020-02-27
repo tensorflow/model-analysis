@@ -183,14 +183,10 @@ export class FairnessMetricsTable extends PolymerElement {
 
         // Comparison columns
         for (let j = 0; j < metrics.length; j += 2) {
-          const evalMetric = metricsData[metrics[j]];
-          const evalCompareMetric = metricsDataCompare[metrics[j]];
-          const getValue = (metric) =>
-              (typeof metric === 'object' && this.isBoundedValue_(metric)) ?
-              metric['value'] :
-              metric;
-          const comparison =
-              (getValue(evalCompareMetric) / getValue(evalMetric)) - 1;
+          const evalMetric = this.formatCell_(metricsData[metrics[j]]);
+          const evalCompareMetric =
+              this.formatCell_(metricsDataCompare[metrics[j]]);
+          const comparison = evalCompareMetric / evalMetric - 1;
           tableRow.push(comparison.toString());
         }
       }
