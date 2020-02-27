@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 (() => {
-  const createSliceMetrics = () => {
+  const createSliceMetrics1 = () => {
     return {
       'accuracy': {
         'boundedValue': {
@@ -27,10 +27,7 @@
       'post_export_metrics/positive_rate@0.50': {
         'doubleValue': NaN,
       },
-      'post_export_metrics/true_positive_rate@0.50': {
-        'doubleValue': Math.random(),
-      },
-      'post_export_metrics/false_positive_rate@0.50': {
+      'post_export_metrics/negative_rate@0.50': {
         'doubleValue': Math.random(),
       },
       'post_export_metrics/positive_rate@0.60': {
@@ -41,11 +38,115 @@
           'methodology': 'POISSON_BOOTSTRAP'
         }
       },
-      'post_export_metrics/true_positive_rate@0.60': {
+      'post_export_metrics/negative_rate@0.60': {
+        'boundedValue': {
+          'lowerBound': Math.random() * 0.3,
+          'upperBound': Math.random() * 0.3 + 0.6,
+          'value': Math.random() * 0.3 + 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
+      },
+      'post_export_metrics/positive_rate@0.70': {
+        'doubleValue': NaN,
+      },
+      'post_export_metrics/negative_rate@0.70': {
+        'boundedValue': {
+          'lowerBound': Math.random() * 0.3,
+          'upperBound': Math.random() * 0.3 + 0.6,
+          'value': Math.random() * 0.3 + 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
+      },
+      'post_export_metrics/positive_rate@0.80': {
+        'boundedValue': {
+          'lowerBound': NaN,
+          'upperBound': NaN,
+          'value': NaN,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
+      },
+      'post_export_metrics/negative_rate@0.80': {
         'doubleValue': Math.random(),
       },
-      'post_export_metrics/false_positive_rate@0.60': {
+      'post_export_metrics/example_count':
+          {'doubleValue': Math.floor(Math.random() * 100)},
+      'totalWeightedExamples': {'doubleValue': 2000 * (Math.random() + 0.8)},
+
+      // These two metrics only exist inside this eval result
+      'addtionalMetrics1': {'doubleValue': 2000 * (Math.random() + 0.8)},
+      'addtionalMetrics2': {
+        'boundedValue': {
+          'lowerBound': Math.random() * 0.3,
+          'upperBound': Math.random() * 0.3 + 0.6,
+          'value': Math.random() * 0.3 + 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
+      }
+    };
+  };
+
+  const createSliceMetrics2 = () => {
+    return {
+      'accuracy': {
+        'boundedValue': {
+          'lowerBound': Math.random() * 0.3,
+          'upperBound': Math.random() * 0.3 + 0.6,
+          'value': Math.random() * 0.3 + 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
+      },
+      // doubleValue NaN vs doubleValue NaN
+      'post_export_metrics/positive_rate@0.50': {
+        'doubleValue': NaN,
+      },
+      // doubleValue vs doubleValue
+      'post_export_metrics/negative_rate@0.50': {
         'doubleValue': Math.random(),
+      },
+      // boundedValue NaN vs boundedValue NaN
+      'post_export_metrics/positive_rate@0.60': {
+        'boundedValue': {
+          'lowerBound': NaN,
+          'upperBound': NaN,
+          'value': NaN,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
+      },
+      // boundedValue vs boundedValue
+      'post_export_metrics/negative_rate@0.60': {
+        'boundedValue': {
+          'lowerBound': Math.random() * 0.3,
+          'upperBound': Math.random() * 0.3 + 0.6,
+          'value': Math.random() * 0.3 + 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
+      },
+      // Double NaN vs boundedValue
+      'post_export_metrics/positive_rate@0.70': {
+        'boundedValue': {
+          'lowerBound': Math.random() * 0.3,
+          'upperBound': Math.random() * 0.3 + 0.6,
+          'value': Math.random() * 0.3 + 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
+      },
+      // boundedValue vs doubleValue
+      'post_export_metrics/negative_rate@0.70': {
+        'doubleValue': Math.random(),
+      },
+      // doubleValue NaN vs Double
+      'post_export_metrics/positive_rate@0.80': {
+        'doubleValue': Math.random(),
+
+      },
+      // doubleValue vs boundedValue
+      'post_export_metrics/negative_rate@0.80': {
+        'boundedValue': {
+          'lowerBound': Math.random() * 0.3,
+          'upperBound': Math.random() * 0.3 + 0.6,
+          'value': Math.random() * 0.3 + 0.3,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
       },
       'post_export_metrics/example_count':
           {'doubleValue': Math.floor(Math.random() * 100)},
@@ -58,11 +159,11 @@
     'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10', 'Slice:11', 'Slice:12',
     'Slice:13', 'Slice:14', 'Slice:15', 'Slice:16'
   ];
-  const input = SLICES.reduce((acc, slice) => {
+  const input1 = SLICES.reduce((acc, slice) => {
     acc.push({
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
-      'metrics': createSliceMetrics(),
+      'metrics': createSliceMetrics1(),
     });
     return acc;
   }, []);
@@ -70,12 +171,13 @@
     acc.push({
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
-      'metrics': createSliceMetrics(),
+      'metrics': createSliceMetrics2(),
     });
     return acc;
   }, []);
+
   const element = document.getElementsByTagName('fairness-nb-container')[0];
-  element.slicingMetrics = input;
+  element.slicingMetrics = input1;
   element.slicingMetricsCompare = input2;
   element.evalName = 'Eval1';
   element.evalNameCompare = 'Eval2';
