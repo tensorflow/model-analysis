@@ -3,6 +3,7 @@
 ## Major Features and Improvements
 
 *   Added support for creating metrics specs from tf.keras.losses.
+*   Added evaluation comparison feature to the Fairness Indicators UI in Colab.
 
 ## Bug fixes and other changes
 

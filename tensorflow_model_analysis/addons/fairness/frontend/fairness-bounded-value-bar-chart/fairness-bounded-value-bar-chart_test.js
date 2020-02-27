@@ -213,6 +213,8 @@ suite('fairness-bounded-value-bar-chart tests', () => {
     const fillData = () => {
       barChart.data = BOUNDED_VALUE_DATA;
       barChart.dataCompare = BOUNDED_VALUE_DATA;
+      barChart.evalName = 'EvalUno';
+      barChart.evalNameCompare = 'EvalDos';
       barChart.metrics = [
         'post_export_metrics/false_negative_rate@0.30',
         'post_export_metrics/false_negative_rate@0.50'
@@ -223,18 +225,18 @@ suite('fairness-bounded-value-bar-chart tests', () => {
     };
 
     const checkValue = () => {
-      // One group for every slice
+      // One group for every eval-slice pair
+      const numClusters = 2 * (barChart.slices.length + 1);
       assert.equal(
           d3.select(barChart.shadowRoot.querySelector('svg'))
               .select('#bars')
               .selectAll('g')
               .nodes()
               .length,
-          barChart.slices.length + 1);
+          numClusters);
 
-      // One bar for every slice-metric pair
-      const numBars =
-          2 * ((barChart.slices.length + 1) * barChart.metrics.length);
+      // One bar for every cluster-metric pair
+      const numBars = numClusters * barChart.metrics.length;
       assert.equal(
           d3.select(barChart.shadowRoot.querySelector('svg'))
               .select('#bars')

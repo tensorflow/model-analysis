@@ -144,16 +144,16 @@
   element.dataCompare = generateBoundedValueDataMoreThresholds(SLICES_COMPARE);
   element.metrics = MORE_METRICS;
   element.baseline = 'Overall';
-  element.slices = SLICES_COMPARE.slice(1, 2);
+  element.slices = SLICES_COMPARE.slice(1, 3);
   element.evalName = 'EvalA';
   element.evalNameCompare = 'EvalB';
 
-  element = document.getElementById('compare');
+  element = document.getElementById('double-compare');
   element.data = generateDoubleValueData(SLICES_COMPARE);
   element.dataCompare = generateDoubleValueData(SLICES_COMPARE);
   element.metrics = METRICS;
   element.baseline = 'Overall';
-  element.slices = SLICES_COMPARE.slice(1, 2);
+  element.slices = SLICES_COMPARE.slice(1, 3);
   element.evalName = 'EvalA';
   element.evalNameCompare = 'EvalB';
 })();

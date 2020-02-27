@@ -42,10 +42,6 @@ const CHART_BAR_COLOR_ = [
 const BASELINE_BAR_COLOR_ = [
   '#FF9230', '#3C7DBF', '#FFC700', '#7647EA', '#FC4F61', '#1F978A', '#B22A72'
 ];
-const ERROR_BAR_COLOR_ = [
-  '#ba4a0d', '#184889', '#b48014', '#270086', '#b12d33', '#006067', '#632440',
-  '#515050'
-];
 const NUM_DECIMAL_PLACES = 5;
 
 
@@ -84,7 +80,6 @@ function buildTooltips() {
           });
 }
 
-// TODO(karanshukla): in a future CL, use darken for error instead of compare
 const DARKEN_COMPARE = 80;
 
 /**
@@ -99,70 +94,6 @@ function darken_(color) {
   const b = bounded(((num >> 8) & 0x00FF) - DARKEN_COMPARE);
   const g = bounded((num & 0x0000FF) - DARKEN_COMPARE);
   return '#' + (g | (b << 8) | (r << 16)).toString(16);
-}
-
-/**
- * Given an array of colors, generate a new array of colors for eval comparison.
- * @param {!Array<string>} colors
- * @param {number} numColors
- * @return {!Array<string>}
- */
-function generateComparisonColors(colors, numColors) {
-  const comparisonColors = [];
-  for (let i = 0; 2 * i < numColors; i++) {
-    comparisonColors.push(colors[i]);
-    comparisonColors.push(darken_(colors[i]));
-  }
-  return comparisonColors;
-}
-
-/**
- * Sorting function for d3 data
- * @param {string} baseline
- * @return {function(!Object, !Object): number}
- */
-function sortD3_(baseline) {
-  return (a, b) => {
-    // Ensure that the baseline slice always appears on the left side.
-    if (a.fullSliceName == baseline) {
-      return -1;
-    }
-    if (b.fullSliceName == baseline) {
-      return 1;
-    }
-    // Sort by the first threshold value if multiple thresholds are present.
-    for (let i = 0; i < a.metricsData.length; i++) {
-      const diff = a.metricsData[i]['value'] - b.metricsData[i]['value'];
-      if (diff != 0) {
-        return diff;
-      }
-    }
-    // If metrics are equal for both slices, go by alphabetical order.
-    if (a['fullSliceName'] <= b['fullSliceName']) {
-      return -1;
-    } else {
-      return 1;
-    }
-  };
-}
-
-/**
- * Sorting function for metric@threshold-eval pairs
- * @param {string} metricThresholdEval1 string; "metric@threshold - eval"
- * @param {string} metricThresholdEval2 string; "metric@threshold - eval"
- * @return {number}
- */
-function sortMetricThresholdEvals_(metricThresholdEval1, metricThresholdEval2) {
-  const metricThresholdEval1Split = metricThresholdEval1.split(' - ');
-  const eval1 = metricThresholdEval1Split[1];
-  const metricThreshold1 = metricThresholdEval1Split[0];
-
-  const metricThresholdEval2Split = metricThresholdEval2.split(' - ');
-  const eval2 = metricThresholdEval2Split[1];
-  const metricThreshold2 = metricThresholdEval2Split[0];
-
-  return eval1 === eval2 ? metricThreshold1.localeCompare(metricThreshold2) :
-                           eval1.localeCompare(eval2);
 }
 
 
@@ -258,7 +189,8 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
   initializePlotGraph_(
       data, dataCompare, metrics, slices, baseline, evalName, evalNameCompare,
       isAttached, tip) {
-    if (!data || !metrics || !slices || !baseline || !isAttached) {
+    if (!data || !metrics || !slices || !baseline || !isAttached ||
+        (this.evalComparison_() && (!evalName || !evalNameCompare))) {
       return;
     }
 
@@ -290,13 +222,47 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    */
   createD3Data_(
       data, dataCompare, metrics, slices, baseline, evalName, evalNameCompare) {
+    // d3DataObjects = metrics data for each slice
+    const d3DataObject = (sliceMetrics, metricsData, evalName) => {
+      return {
+        fullSliceName: this.evalComparison_() ?
+            evalName + ' - ' + sliceMetrics['slice'] :
+            sliceMetrics['slice'],
+        sliceValue: this.evalComparison_() ?
+            evalName + ' - ' + sliceMetrics['sliceValue'] :
+            sliceMetrics['sliceValue'],
+        metricsData: metricsData
+      };
+    };
+    // d3Data = array of d3DataObjects, returned by createD3Data_()
     const d3Data = [];
+
+    // metricDataObjects = the values in a slice-eval-metric-threshold tuple
+    const metricDataObject = (sliceMetrics, evalName, metric) => {
+      const bounds = this.getMetricBounds_(sliceMetrics['metrics'][metric]);
+      return {
+        fullSliceName: this.evalComparison_() ?
+            evalName + ' - ' + sliceMetrics['slice'] :
+            sliceMetrics['slice'],
+        sliceValue: this.evalComparison_() ?
+            evalName + ' - ' + sliceMetrics['sliceValue'] :
+            sliceMetrics['sliceValue'],
+        metricName: metric,
+        value: tfma.CellRenderer.maybeExtractBoundedValue(
+            sliceMetrics['metrics'][metric]),
+        upperBound: bounds.min,
+        lowerBound: bounds.max,
+        exampleCount:
+            sliceMetrics['metrics']['post_export_metrics/example_count']
+      };
+    };
+
     slices.forEach((slice) => {
+      // sliceMetrics = all the metrics for one slice
       const sliceMetrics = data.find(d => d['slice'] == slice);
       const sliceMetricsCompare = this.evalComparison_() ?
           dataCompare.find(d => d['slice'] == slice) :
           undefined;
-      const metricsData = [];
 
       var undefinedMetrics = metrics.filter(
           metric => sliceMetrics['metrics'][metric] === undefined);
@@ -304,37 +270,25 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         return;
       }
 
-      const parseMetricData = (sliceMetrics, evalName, metric) => {
-        const bounds = this.getMetricBounds_(sliceMetrics['metrics'][metric]);
-        return {
-          fullSliceName: sliceMetrics['slice'],
-          sliceValue: sliceMetrics['sliceValue'],
-          metricName: this.evalComparison_() ? metric + ' - ' + evalName :
-                                               metric,
-          value: tfma.CellRenderer.maybeExtractBoundedValue(
-              sliceMetrics['metrics'][metric]),
-          upperBound: bounds.min,
-          lowerBound: bounds.max,
-          exampleCount:
-              sliceMetrics['metrics']['post_export_metrics/example_count']
-        };
-      };
-
+      // metricsData = array of metrics data for all thresholds
+      const metricsData = [];
+      const metricsDataCompare = [];
       metrics.forEach((metric) => {
-        metricsData.push(parseMetricData(sliceMetrics, evalName, metric));
+        metricsData.push(metricDataObject(sliceMetrics, evalName, metric));
         if (this.evalComparison_()) {
-          metricsData.push(
-              parseMetricData(sliceMetricsCompare, evalNameCompare, metric));
+          metricsDataCompare.push(
+              metricDataObject(sliceMetricsCompare, evalNameCompare, metric));
         }
       });
 
-      d3Data.push({
-        fullSliceName: sliceMetrics['slice'],
-        sliceValue: sliceMetrics['sliceValue'],
-        metricsData: metricsData
-      });
+      d3Data.push(d3DataObject(sliceMetrics, metricsData, evalName));
+      if (this.evalComparison_()) {
+        d3Data.push(d3DataObject(
+            sliceMetricsCompare, metricsDataCompare, evalNameCompare));
+      }
     });
-    d3Data.sort(sortD3_(baseline));
+
+    d3Data.sort(this.sortD3_(baseline));
     return d3Data;
   }
 
@@ -350,15 +304,14 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
                         .domain(d3Data.map(d => d.sliceValue))
                         .rangeRound([GRAPH_BOUND.left, GRAPH_BOUND.right])
                         .padding(SLICES_PADDING);
+
     // Build metrics scale - these are individual bars.
     const metricNames = d3Data.reduce((set, slice) => {
       slice.metricsData.forEach(metricData => set.add(metricData.metricName));
       return set;
     }, new Set());
-    const metricNamesSorted =
-        Array.from(metricNames).sort(sortMetricThresholdEvals_);
     const metricsX = d3.scaleBand()
-                         .domain(metricNamesSorted)
+                         .domain(Array.from(metricNames))
                          .rangeRound([0, slicesX.bandwidth()])
                          .paddingInner(METRICS_PADDING);
     let metricsValueMin = 0;
@@ -387,15 +340,10 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
             });
     const configureYAxis = g =>
         g.attr('transform', `translate(${MARGIN.left},0)`).call(d3.axisLeft(y));
-    const metricsColor = d3.scaleOrdinal().range(
-        this.evalComparison_() ?
-            generateComparisonColors(CHART_BAR_COLOR_, metricNames.size) :
-            CHART_BAR_COLOR_);
-    const baselineColor = d3.scaleOrdinal().range(
-        this.evalComparison_() ?
-            generateComparisonColors(BASELINE_BAR_COLOR_, metricNames.size) :
-            BASELINE_BAR_COLOR_);
-    const confidenceIntervalColor = d3.scaleOrdinal().range(ERROR_BAR_COLOR_);
+    const metricsColor = d3.scaleOrdinal().range(CHART_BAR_COLOR_);
+    const baselineColor = d3.scaleOrdinal().range(BASELINE_BAR_COLOR_);
+    const confidenceIntervalColor =
+        d3.scaleOrdinal().range(CHART_BAR_COLOR_.map(darken_));
 
     return {
       'slicesX': slicesX,
@@ -451,7 +399,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
                 graphConfig['y'](0) - graphConfig['y'](d.value))
         .attr(
             'fill',
-            d => d.fullSliceName == baseline ?
+            d => d.fullSliceName.endsWith(baseline) ?
                 graphConfig['baselineColor'](d.metricName) :
                 graphConfig['metricsColor'](d.metricName))
         .on('mouseover', tip ? tip.show : () => {})
@@ -518,6 +466,65 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    */
   evalComparison_() {
     return this.dataCompare && this.dataCompare.length > 0;
+  }
+
+  /**
+   * Sorting function for d3 data
+   * @param {string} baseline
+   * @return {function(!Object, !Object): number}
+   * @private
+  */
+  sortD3_(baseline) {
+    if (this.evalComparison_()) {
+      return (a, b) => {
+        // Ensure that the baseline slice always appears on the left side.
+        if (a.fullSliceName.endsWith(baseline) &&
+            b.fullSliceName.endsWith(baseline)) {
+          return a.fullSliceName.localeCompare(b.fullSliceName);
+        }
+        if (a.fullSliceName.endsWith(baseline)) {
+          return -1;
+        }
+        if (b.fullSliceName.endsWith(baseline)) {
+          return 1;
+        }
+
+        // Sort by slice name first, split ties on eval name
+        const evalSlice1Split = a.fullSliceName.split(' - ');
+        const slice1 = evalSlice1Split[1];
+        const eval1 = evalSlice1Split[0];
+
+        const evalSlice2Split = b.fullSliceName.split(' - ');
+        const slice2 = evalSlice2Split[1];
+        const eval2 = evalSlice2Split[0];
+
+        return slice1 === slice2 ? eval1.localeCompare(eval2) :
+                                   slice1.localeCompare(slice2);
+      };
+    } else {
+      return (a, b) => {
+        // Ensure that the baseline slice always appears on the left side.
+        if (a.fullSliceName == baseline) {
+          return -1;
+        }
+        if (b.fullSliceName == baseline) {
+          return 1;
+        }
+        // Sort by the first threshold value if multiple thresholds are present.
+        for (let i = 0; i < a.metricsData.length; i++) {
+          const diff = a.metricsData[i]['value'] - b.metricsData[i]['value'];
+          if (diff != 0) {
+            return diff;
+          }
+        }
+        // If metrics are equal for both slices, go by alphabetical order.
+        if (a['fullSliceName'] <= b['fullSliceName']) {
+          return -1;
+        } else {
+          return 1;
+        }
+      };
+    }
   }
 }
 
