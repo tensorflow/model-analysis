@@ -121,6 +121,7 @@ def load_and_deserialize_metrics(
     path: Text,
     model_name: Optional[Text] = None) -> List[Tuple[slicer.SliceKeyType, Any]]:
   """Loads metrics from the given location and builds a metric map for it."""
+  # TODO(b/150413770): support metrics from multiple candidates.
   result = []
   for record in tf.compat.v1.python_io.tf_record_iterator(path):
     metrics_for_slice = metrics_for_slice_pb2.MetricsForSlice.FromString(record)
@@ -133,6 +134,7 @@ def load_and_deserialize_metrics(
           }
       }
 
+    default_model_name = None
     if metrics_for_slice.metric_keys_and_values:
       for kv in metrics_for_slice.metric_keys_and_values:
         current_model_name = kv.key.model_name
@@ -148,24 +150,33 @@ def load_and_deserialize_metrics(
             kv.key.sub_key) if kv.key.HasField('sub_key') else ''
         if sub_key_id not in sub_key_metrics_map:
           sub_key_metrics_map[sub_key_id] = {}
-        metric_name = kv.key.name
+        if kv.key.is_diff:
+          if default_model_name is None:
+            default_model_name = current_model_name
+          elif default_model_name != current_model_name:
+            # Setting '' to trigger no match found ValueError below.
+            default_model_name = ''
+          metric_name = '{}_diff'.format(kv.key.name)
+        else:
+          metric_name = kv.key.name
         sub_key_metrics_map[sub_key_id][
             metric_name] = json_format.MessageToDict(kv.value)
 
     metrics_map = None
     keys = list(model_metrics_map.keys())
-    if model_name in model_metrics_map:
+    tmp_model_name = model_name or default_model_name
+    if tmp_model_name in model_metrics_map:
       # Use the provided model name if there is a match.
-      metrics_map = model_metrics_map[model_name]
+      metrics_map = model_metrics_map[tmp_model_name]
       # Add model-independent (e.g. example_count) metrics to all models.
-      if model_name and '' in model_metrics_map:
+      if tmp_model_name and '' in model_metrics_map:
         for output_name, output_dict in model_metrics_map[''].items():
           for sub_key_id, sub_key_dict in output_dict.items():
             for name, value in sub_key_dict.items():
               metrics_map.setdefault(output_name,
                                      {}).setdefault(sub_key_id,
                                                     {})[name] = value
-    elif not model_name and len(keys) == 1:
+    elif not tmp_model_name and len(keys) == 1:
       # Show result of the only model if no model name is specified.
       metrics_map = model_metrics_map[keys[0]]
     else:
