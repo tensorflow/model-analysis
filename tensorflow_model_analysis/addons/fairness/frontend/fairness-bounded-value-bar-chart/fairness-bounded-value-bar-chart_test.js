@@ -19,7 +19,7 @@ suite('fairness-bounded-value-bar-chart tests', () => {
 
   const SLICES = [
     'Overall', 'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4', 'Slice:5', 'Slice:6',
-    'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10'
+    'Slice:7', 'Slice:8', 'Slice:9'
   ];
 
   const FNR_AT_30_VALUES = {
@@ -253,6 +253,40 @@ suite('fairness-bounded-value-bar-chart tests', () => {
               .nodes()
               .length,
           numBars);
+      done();
+    };
+    setTimeout(fillData, 0);
+  });
+
+  test('BarCheckForBoundedValueEvalComparisonWithUnequalSlices', done => {
+    barChart = fixture('main');
+
+    const fillData = () => {
+      barChart.data = BOUNDED_VALUE_DATA;
+      // Remove one slice to make the difference between data and dataCompare.
+      barChart.dataCompare =
+          BOUNDED_VALUE_DATA.slice(0, BOUNDED_VALUE_DATA.length - 1);
+      barChart.evalName = 'Eval A';
+      barChart.evalNameCompare = 'Eval B';
+      barChart.metrics = [
+        'post_export_metrics/false_negative_rate@0.30',
+      ];
+      barChart.baseline = SLICES[0];
+      barChart.slices = SLICES.slice();
+      setTimeout(checkValue, 100);
+    };
+
+    const checkValue = () => {
+      // One group for every eval-slice pair
+      const numClusters = 2 * (barChart.slices.length + 1);
+      const numBars = numClusters * barChart.metrics.length;
+      let bars = d3.select(barChart.shadowRoot.querySelector('svg'))
+                     .select('#bars')
+                     .selectAll('rect')
+                     .nodes();
+      assert.equal(bars.length, numBars);
+      // The last bar's height is 0.
+      assert.equal(bars[bars.length - 1].getAttribute('height'), 0);
       done();
     };
     setTimeout(fillData, 0);

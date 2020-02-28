@@ -201,6 +201,27 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       return;
     }
 
+    // Make sure that data and dataCompare have the same slices.
+    if (this.evalComparison_()) {
+      data.forEach((slicingMetric) => {
+        if (!dataCompare.find(d => d['slice'] == slicingMetric['slice'])) {
+          let value = {
+            'slice': slicingMetric['slice'],
+            'sliceValue': slicingMetric['sliceValue'],
+            'metrics': Object.keys(slicingMetric['metrics'])
+                           .reduce(
+                               (acc, metricName) => {
+                                 acc[metricName] = NaN;
+                                 return acc;
+                               },
+                               {})
+          };
+          dataCompare.push(value);
+        }
+      });
+    }
+
+
     const d3Data = this.createD3Data_(
         data, dataCompare, metrics, slices, baseline, evalName,
         evalNameCompare);
@@ -238,8 +259,8 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     const d3Data = [];
 
     // metricDataObjects = the values in a slice-eval-metric-threshold tuple
-    const metricDataObject = (sliceMetrics, evalName, metric) => {
-      const bounds = this.getMetricBounds_(sliceMetrics['metrics'][metric]);
+    const metricDataObject = (sliceMetrics, evalName, metricName) => {
+      const bounds = this.getMetricBounds_(sliceMetrics['metrics'][metricName]);
       return {
         fullSliceName: this.evalComparison_() ?
             evalName + ' - ' + sliceMetrics['slice'] :
@@ -247,9 +268,9 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         sliceValue: this.evalComparison_() ?
             evalName + ' - ' + sliceMetrics['sliceValue'] :
             sliceMetrics['sliceValue'],
-        metricName: metric,
+        metricName: metricName,
         value: tfma.CellRenderer.maybeExtractBoundedValue(
-            sliceMetrics['metrics'][metric]),
+            sliceMetrics['metrics'][metricName]),
         upperBound: bounds.min,
         lowerBound: bounds.max,
         exampleCount:
@@ -273,11 +294,11 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       // metricsData = array of metrics data for all thresholds
       const metricsData = [];
       const metricsDataCompare = [];
-      metrics.forEach((metric) => {
-        metricsData.push(metricDataObject(sliceMetrics, evalName, metric));
+      metrics.forEach((metricName) => {
+        metricsData.push(metricDataObject(sliceMetrics, evalName, metricName));
         if (this.evalComparison_()) {
-          metricsDataCompare.push(
-              metricDataObject(sliceMetricsCompare, evalNameCompare, metric));
+          metricsDataCompare.push(metricDataObject(
+              sliceMetricsCompare, evalNameCompare, metricName));
         }
       });
 

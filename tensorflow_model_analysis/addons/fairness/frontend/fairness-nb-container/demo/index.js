@@ -154,27 +154,31 @@
     };
   };
 
-  const SLICES = [
+  const SLICES1 = [
+    'Overall', 'Slice:unique', 'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4',
+    'Slice:5', 'Slice:6', 'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10',
+    'Slice:11', 'Slice:12', 'Slice:13', 'Slice:14', 'Slice:15', 'Slice:16'
+  ];
+  const input1 = SLICES1.map((slice) => {
+    return {
+      'slice': slice,
+      'sliceValue': slice.split(':')[1] || 'Overall',
+      'metrics': createSliceMetrics1(),
+    };
+  });
+
+  const SLICES2 = [
     'Overall', 'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4', 'Slice:5', 'Slice:6',
     'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10', 'Slice:11', 'Slice:12',
     'Slice:13', 'Slice:14', 'Slice:15', 'Slice:16'
   ];
-  const input1 = SLICES.reduce((acc, slice) => {
-    acc.push({
-      'slice': slice,
-      'sliceValue': slice.split(':')[1] || 'Overall',
-      'metrics': createSliceMetrics1(),
-    });
-    return acc;
-  }, []);
-  const input2 = SLICES.reduce((acc, slice) => {
-    acc.push({
+  const input2 = SLICES2.map((slice) => {
+    return {
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
       'metrics': createSliceMetrics2(),
-    });
-    return acc;
-  }, []);
+    };
+  });
 
   const element = document.getElementsByTagName('fairness-nb-container')[0];
   element.slicingMetrics = input1;
