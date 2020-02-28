@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 var path = require('path');
-var version = require('./package.json').version;
+var package = require('./package.json');
 
 // Custom webpack rules are generally the same for all webpack bundles, hence
 // stored in a separate local variable.
-var rules = [{test: /\.css$/, use: ['style-loader', 'css-loader']}];
+var rules = [{ test: /\.css$/, use: ['style-loader', 'css-loader'] }];
 
 
 module.exports = [
@@ -52,7 +52,7 @@ module.exports = [
       libraryTarget: 'amd'
     },
     devtool: 'source-map',
-    module: {rules: rules},
+    module: { rules: rules },
     externals: ['@jupyter-widgets/base']
   },
   {
@@ -75,10 +75,10 @@ module.exports = [
       filename: 'index.js',
       path: path.resolve(__dirname, 'dist'),
       libraryTarget: 'amd',
-      publicPath: 'https://unpkg.com/tfma_widget_js@' + version + '/dist/'
+      publicPath: `https://unpkg.com/${package.name}@${package.version}/dist/`
     },
     devtool: 'source-map',
-    module: {rules: rules},
+    module: { rules: rules },
     externals: ['@jupyter-widgets/base']
   }
 ];
