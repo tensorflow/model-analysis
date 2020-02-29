@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import copy
 
-from typing import Dict, List, Optional, Sequence, Text, Union
+from typing import Dict, List, Optional, Sequence, Text
 
 import apache_beam as beam
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
@@ -38,8 +38,7 @@ PREDICT_SIGNATURE_DEF_KEY = 'predict'
 
 def PredictExtractor(
     eval_config: config.EvalConfig,
-    eval_shared_model: Union[types.EvalSharedModel,
-                             Dict[Text, types.EvalSharedModel]],
+    eval_shared_model: types.MaybeMultipleEvalSharedModels,
     desired_batch_size: Optional[int] = None) -> extractor.Extractor:
   """Creates an extractor for performing predictions.
 
@@ -52,27 +51,22 @@ def PredictExtractor(
 
   Args:
     eval_config: Eval config.
-    eval_shared_model: Shared model (single-model evaluation) or dict of shared
-      models keyed by model name (multi-model evaluation).
+    eval_shared_model: Shared model (single-model evaluation) or list of shared
+      models (multi-model evaluation).
     desired_batch_size: Optional batch size.
 
   Returns:
     Extractor for extracting predictions.
   """
-  eval_shared_models = eval_shared_model
-  if not isinstance(eval_shared_model, dict):
-    eval_shared_models = {'': eval_shared_model}
-  # To maintain consistency between settings where single models are used,
-  # always use '' as the model name regardless of whether a name is passed.
-  if len(eval_shared_models) == 1:
-    eval_shared_models = {'': list(eval_shared_models.values())[0]}
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractPredictions(
           eval_config=eval_config,
-          eval_shared_models=eval_shared_models,
+          eval_shared_models={m.model_name: m for m in eval_shared_models},
           desired_batch_size=desired_batch_size))
 
 
@@ -100,15 +94,11 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
             'loaded model for "{}" not found: eval_config={}'.format(
                 spec.name, self._eval_config))
       loaded_model = self._loaded_models[model_name]
-      signatures = None
-      if loaded_model.keras_model:
-        signatures = loaded_model.keras_model.signatures
-      elif loaded_model.saved_model:
-        signatures = loaded_model.saved_model.signatures
-      if not signatures:
+      if not hasattr(loaded_model, 'signatures'):
         raise ValueError(
             'PredictExtractor V2 requires a keras model or a serving model. '
             'If using EvalSavedModel then you must use PredictExtractor V1.')
+      signatures = loaded_model.signatures
 
       signature_key = spec.signature_name
       # TODO(mdreves): Add support for multiple signatures per output.
@@ -138,11 +128,11 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
           isinstance(signature.structured_input_signature[1], dict)):
         input_names = [name for name in signature.structured_input_signature[1]]
         input_specs = signature.structured_input_signature[1]
-      elif loaded_model.keras_model is not None:
+      elif hasattr(loaded_model, 'input_names'):
         # Calling keras_model.input_names does not work properly in TF 1.15.0.
         # As a work around, make sure the signature.structured_input_signature
         # check is before this check (see b/142807137).
-        input_names = loaded_model.keras_model.input_names
+        input_names = loaded_model.input_names
       inputs = None
       if input_names is not None:
         inputs = model_util.rebatch_by_input_names(batch_of_extracts,

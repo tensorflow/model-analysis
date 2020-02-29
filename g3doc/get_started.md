@@ -35,29 +35,39 @@ pipeline.
 
 The following table summarizes the models supported by default:
 
-| Model Type | Standard Training Metrics | Custom Training Metrics | Standard Post Training Metrics | Custom Post Training Metrics |
-| --- | --- | --- | --- | --- |
-| TF (keras) | Y | Not supported yet. | Y | Y |
-| TF2 Signatures | N/A | N/A | Y | Y |
-| EvalSavedModel (estimator) | Y | Y | Y | Y |
+| Model Type     | Standard | Custom        | Standard Post | Custom Post      |
+:                : Training : Training      : Training      : Training Metrics :
+:                : Metrics  : Metrics       : Metrics       :                  :
+| -------------- | -------- | ------------- | ------------- | ---------------- |
+| TF2 (keras)    | Y        | Not supported | Y             | Y                |
+:                :          : yet.          :               :                  :
+| TF2 (generic)  | N/A      | N/A           | Y             | Y                |
+| EvalSavedModel | Y        | Y             | Y             | Y                |
+: (estimator)    :          :               :               :                  :
 
 *   Standard metrics refers to metrics that are defined based only on label
     (i.e. `y_true`), prediction (i.e. `y_pred`), and example weight (i.e.
     `sample_weight`).
 *   Training metrics refers to metrics defined at training time and saved with
     the model (either TFMA EvalSavedModel or keras saved model).
+*   Generic TF2 models are custom models that export signatures that can be
+    used for inference and are not based on either keras or estimator.
 
 See [FAQ](faq.md) for more information no how to setup and configure these
 different model types.
 
-## Example
+## Examples
+
+### Single Model Evaluation
 
 The following uses `tfma.run_model_analysis` to perform evaluation on a serving
 model. For an explanation of the different settings needed see the
-[setup](setup.md) guide. To run with an `EvalSavedModel`, just set
-`signature_name: "eval"` in the model spec.
+[setup](setup.md) guide.
 
-Note this uses Beam's local runner which is mainly for local, small-scale
+Note: To run with an `EvalSavedModel`, just set `signature_name: "eval"` in the
+model spec.
+
+Note: this uses Beam's local runner which is mainly for local, small-scale
 experimentation.
 
 ```python
@@ -73,17 +83,16 @@ eval_config = text_format.Parse("""
   metrics_spec {
     # This assumes a binary classification model.
     metrics { class_name: "AUC" }
-    ... other metrics ...
+    # ... other metrics ...
   }
   slicing_specs {}
   slicing_specs {
     feature_keys: ["age"]
   }
-}
 """, tfma.EvalConfig())
 
 eval_shared_model = tfma.default_eval_shared_model(
-    eval_saved_model_path='/path/to/saved/model', tags=[tf.saved_model.SERVING])
+    eval_saved_model_path='/path/to/saved/model', eval_config=eval_config)
 
 eval_result = tfma.run_model_analysis(
     eval_shared_model=eval_shared_model,
@@ -91,7 +100,7 @@ eval_result = tfma.run_model_analysis(
     # This assumes your data is a TFRecords file containing records in the
     # tf.train.Example format.
     data_location="/path/to/file/containing/tfrecords",
-    output_path="/path/for/metrics_for_slice_proto")
+    output_path="/path/for/output")
 
 tfma.view.render_slicing_metrics(eval_result)
 ```
@@ -100,7 +109,9 @@ For distributed evaluation, construct an [Apache Beam](http://beam.apache.org)
 pipeline using a distributed runner. In the pipeline, use the
 `tfma.ExtractEvaluateAndWriteResults` for evaluation and to write out the
 results. The results can be loaded for visualization using
-`tfma.load_eval_result`. For example:
+`tfma.load_eval_result`.
+
+For example:
 
 ```python
 # To run the pipeline.
@@ -115,13 +126,12 @@ eval_config = text_format.Parse("""
   metrics_specs {
     # This assumes a binary classification model.
     metrics { class_name: "AUC" }
-    ... other metrics ...
+    # ... other metrics ...
   }
   slicing_specs {}
   slicing_specs {
     feature_keys: ["age"]
   }
-}
 """, tfma.EvalConfig())
 
 eval_shared_model = tfma.default_eval_shared_model(
@@ -138,13 +148,77 @@ with beam.Pipeline(runner=...) as p:
        tfma.ExtractEvaluateAndWriteResults(
             eval_shared_model=eval_shared_model,
             eval_config=eval_config,
-            output_path="/path/for/metrics_for_slice_proto"))
+            output_path="/path/for/output"))
 
 # To load and visualize results.
 # Note that this code should be run in a Jupyter Notebook.
 result = tfma.load_eval_result(
     output_path=eval_config.output_data_specs[0].location)
 tfma.view.render_slicing_metrics(result)
+```
+
+### Model Validation
+
+To perform model validation against a candiate and baseline, update the config
+to include a threshold setting and pass two models to `tfma.run_model_analysis`.
+
+For example:
+
+```python
+# Run in a Jupyter Notebook.
+from google.protobuf import text_format
+
+eval_config = text_format.Parse("""
+  model_specs {
+    # This assumes a serving model with a "serving_default" signature.
+    label_key: "label"
+    example_weight_key: "weight"
+  }
+  metrics_spec {
+    # This assumes a binary classification model.
+    metrics { class_name: "AUC" }
+    # ... other metrics ...
+    thresholds {
+      key: "binary_accuracy"
+      value: {
+        value_threshold {
+          lower_bound { value: 0.9 }
+        }
+        change_threshold {
+          direction: HIGHER_IS_BETTER
+          absolute { value: -1e-10 }
+        }
+      }
+    }
+    # ... other thresholds ...
+  }
+  slicing_specs {}
+  slicing_specs {
+    feature_keys: ["age"]
+  }
+""", tfma.EvalConfig())
+
+eval_shared_models = [
+  tfma.default_eval_shared_model(
+      model_name=tfma.CANDIDATE_KEY,
+      eval_saved_model_path='/path/to/saved/candiate/model',
+      eval_config=eval_config),
+  tfma.default_eval_shared_model(
+      model_name=tfma.BASELINE_KEY,
+      eval_saved_model_path='/path/to/saved/baseline/model',
+      eval_config=eval_config),
+]
+
+eval_result = tfma.run_model_analysis(
+    eval_shared_models,
+    eval_config=eval_config,
+    # This assumes your data is a TFRecords file containing records in the
+    # tf.train.Example format.
+    data_location="/path/to/file/containing/tfrecords",
+    output_path="/path/for/output")
+
+tfma.view.render_slicing_metrics(eval_result)
+tfma.load_validation_result(output_path)
 ```
 
 ## Visualization

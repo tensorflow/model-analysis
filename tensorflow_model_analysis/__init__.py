@@ -31,10 +31,14 @@ from tensorflow_model_analysis.api.model_eval_lib import ExtractEvaluateAndWrite
 from tensorflow_model_analysis.api.model_eval_lib import InputsToExtracts
 from tensorflow_model_analysis.api.model_eval_lib import load_eval_result
 from tensorflow_model_analysis.api.model_eval_lib import load_eval_results
+from tensorflow_model_analysis.api.model_eval_lib import load_metrics
+from tensorflow_model_analysis.api.model_eval_lib import load_plots
 from tensorflow_model_analysis.api.model_eval_lib import load_validation_result
 from tensorflow_model_analysis.api.model_eval_lib import make_eval_results
+from tensorflow_model_analysis.api.model_eval_lib import MetricsForSlice
 from tensorflow_model_analysis.api.model_eval_lib import multiple_data_analysis
 from tensorflow_model_analysis.api.model_eval_lib import multiple_model_analysis
+from tensorflow_model_analysis.api.model_eval_lib import PlotsForSlice
 from tensorflow_model_analysis.api.model_eval_lib import run_model_analysis
 from tensorflow_model_analysis.api.model_eval_lib import WriteResults
 from tensorflow_model_analysis.api.model_eval_lib import ValidationResult
@@ -80,9 +84,11 @@ from tensorflow_model_analysis.constants import MODEL_CENTRIC_MODE
 from tensorflow_model_analysis.constants import PLOTS_KEY
 from tensorflow_model_analysis.constants import PREDICTIONS_KEY
 from tensorflow_model_analysis.constants import SLICE_KEY_TYPES_KEY
+from tensorflow_model_analysis.constants import TF_GENERIC
 from tensorflow_model_analysis.constants import TF_ESTIMATOR
 from tensorflow_model_analysis.constants import TF_LITE
 from tensorflow_model_analysis.constants import TF_KERAS
+from tensorflow_model_analysis.constants import VALIDATIONS_KEY
 
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import export
@@ -90,6 +96,7 @@ from tensorflow_model_analysis.eval_saved_model import exporter
 
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 
+from tensorflow_model_analysis.model_util import get_model_type
 from tensorflow_model_analysis.model_util import model_construct_fn
 
 from tensorflow_model_analysis.types import AddMetricsCallbackType
@@ -99,6 +106,7 @@ from tensorflow_model_analysis.types import Extracts
 from tensorflow_model_analysis.types import FeaturesPredictionsLabels
 # TODO(b/120222218): Remove after passing of native FPL supported.
 from tensorflow_model_analysis.types import MaterializedColumn
+from tensorflow_model_analysis.types import MaybeMultipleEvalSharedModels
 from tensorflow_model_analysis.types import ModelLoader
 from tensorflow_model_analysis.types import TensorType
 from tensorflow_model_analysis.types import TensorTypeMaybeDict

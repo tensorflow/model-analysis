@@ -30,6 +30,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
+from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.evaluators import eval_saved_model_util
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import keras_util
@@ -48,9 +49,7 @@ _DEFAULT_COMBINER_INPUT_KEY = '_default_combiner_input'
 
 def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     eval_config: config.EvalConfig,
-    eval_shared_model: Optional[Union[types.EvalSharedModel,
-                                      Dict[Text,
-                                           types.EvalSharedModel]]] = None,
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME
@@ -59,9 +58,9 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
 
   Args:
     eval_config: Eval config.
-    eval_shared_model: Optional shared model (single-model evaluation) or dict
-      of shared models keyed by model name (multi-model evaluation). Only
-      required if there are metrics to be computed in-graph using the model.
+    eval_shared_model: Optional shared model (single-model evaluation) or list
+      of shared models (multi-model evaluation). Only required if there are
+      metrics to be computed in-graph using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
     run_after: Extractor to run after (None means before any extractors).
@@ -70,14 +69,10 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     Evaluator for evaluating metrics and plots. The output will be stored under
     'metrics' and 'plots' keys.
   """
-  eval_shared_models = eval_shared_model
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
   if eval_shared_models:
-    if not isinstance(eval_shared_model, dict):
-      eval_shared_models = {'': eval_shared_model}
-    # To maintain consistency between settings where single models are used,
-    # always use '' as the model name regardless of whether a name is passed.
-    if len(eval_shared_models) == 1:
-      eval_shared_models = {'': list(eval_shared_models.values())[0]}
+    eval_shared_models = {m.model_name: m for m in eval_shared_models}
 
   # pylint: disable=no-value-for-parameter
   return evaluator.Evaluator(
@@ -500,14 +495,13 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     for model_name, eval_shared_model in eval_shared_models.items():
       if not eval_shared_model.include_default_metrics:
         continue
-      model_loader = eval_shared_model.model_loader
-      model_types = model_loader.construct_fn(lambda x: None)()
-      if model_types.keras_model is not None:
+      if eval_shared_model.model_type == constants.TF_KERAS:
         keras_specs = keras_util.metrics_specs_from_keras(
-            model_name, model_loader)
+            model_name, eval_shared_model.model_loader)
         metrics_specs = keras_specs + metrics_specs[:]
         # TODO(mdreves): Add support for calling keras.evaluate().
-      elif model_types.eval_saved_model is not None:
+      elif (eval_shared_model.model_type == constants.TF_ESTIMATOR and
+            eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags):
         # Note that there is the possibility for metric naming collisions here
         # (e.g. 'auc' calculated within the EvalSavedModel as well as by AUC
         # metric computation performed outside the model). Currently all the
@@ -516,7 +510,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
         # by the model which is the desired behavior.
         computations.extend(
             eval_saved_model_util.metric_computations_using_eval_saved_model(
-                model_name, model_loader))
+                model_name, eval_shared_model.model_loader))
   # Add metric computations from specs
   computations_from_specs, derived_computations = (
       _filter_and_separate_computations(

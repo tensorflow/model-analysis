@@ -230,9 +230,7 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
 
     if self._eval_metrics_graph is None:
       self._setup_if_needed()
-      if self._loaded_models[''].eval_saved_model is None:
-        raise ValueError('ModelLoader does not support eval_saved_model.')
-      self._eval_metrics_graph = self._loaded_models[''].eval_saved_model
+      self._eval_metrics_graph = self._loaded_models['']
     batch_size = len(accumulator.inputs)
     if force or batch_size >= self._desired_batch_size:
       if accumulator.inputs:
@@ -314,7 +312,7 @@ class _ExtractOutputDoFn(model_util.DoFnWithModels):
   ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
     (slice_key, metric_variables) = element
     if metric_variables:
-      eval_saved_model = self._loaded_models[''].eval_saved_model
+      eval_saved_model = self._loaded_models['']
       result = eval_saved_model.metrics_set_variables_and_get_values(
           metric_variables)
       yield (slice_key, result)

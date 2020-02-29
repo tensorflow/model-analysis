@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import copy
 
-from typing import Dict, Optional, Text, Union
+from typing import Dict, Optional, Text
 
 import apache_beam as beam
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
@@ -32,7 +32,6 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tfx_bsl.tfxio import tensor_adapter
 
-
 BATCHED_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractBatchPredictions'
 
 PREDICT_SIGNATURE_DEF_KEY = 'predict'
@@ -40,8 +39,7 @@ PREDICT_SIGNATURE_DEF_KEY = 'predict'
 
 def BatchedPredictExtractor(
     eval_config: config.EvalConfig,
-    eval_shared_model: Union[types.EvalSharedModel,
-                             Dict[Text, types.EvalSharedModel]],
+    eval_shared_model: types.MaybeMultipleEvalSharedModels,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions over a batch.
@@ -55,8 +53,8 @@ def BatchedPredictExtractor(
 
   Args:
     eval_config: Eval config.
-    eval_shared_model: Shared model (single-model evaluation) or dict of shared
-      models keyed by model name (multi-model evaluation).
+    eval_shared_model: Shared model (single-model evaluation) or list of shared
+      models (multi-model evaluation).
     tensor_adapter_config: Tensor adapter config which specifies how to obtain
       tensors from the Arrow RecordBatch. If None, we feed the raw examples to
       the model.
@@ -64,20 +62,15 @@ def BatchedPredictExtractor(
   Returns:
     Extractor for extracting predictions.
   """
-  eval_shared_models = eval_shared_model
-  if not isinstance(eval_shared_model, dict):
-    eval_shared_models = {'': eval_shared_model}
-  # To maintain consistency between settings where single models are used,
-  # always use '' as the model name regardless of whether a name is passed.
-  if len(eval_shared_models) == 1:
-    eval_shared_models = {'': list(eval_shared_models.values())[0]}
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=BATCHED_PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractBatchedPredictions(
           eval_config=eval_config,
-          eval_shared_models=eval_shared_models,
+          eval_shared_models={m.model_name: m for m in eval_shared_models},
           tensor_adapter_config=tensor_adapter_config))
 
 
@@ -90,11 +83,12 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
   """A DoFn that loads the models and predicts."""
 
   def __init__(
-      self, eval_config: config.EvalConfig,
+      self,
+      eval_config: config.EvalConfig,
       eval_shared_models: Dict[Text, types.EvalSharedModel],
       tensor_adapter_config: Optional[
           tensor_adapter.TensorAdapterConfig] = None,
-      ) -> None:
+  ) -> None:
     super(_BatchedPredictionDoFn, self).__init__(
         {k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
@@ -122,15 +116,11 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
             'loaded model for "{}" not found: eval_config={}'.format(
                 spec.name, self._eval_config))
       loaded_model = self._loaded_models[model_name]
-      signatures = None
-      if loaded_model.keras_model:
-        signatures = loaded_model.keras_model.signatures
-      elif loaded_model.saved_model:
-        signatures = loaded_model.saved_model.signatures
-      if not signatures:
+      if not hasattr(loaded_model, 'signatures'):
         raise ValueError(
             'PredictExtractor V2 requires a keras model or a serving model. '
             'If using EvalSavedModel then you must use PredictExtractor V1.')
+      signatures = loaded_model.signatures
 
       signature_key = spec.signature_name
       # TODO(mdreves): Add support for multiple signatures per output.
@@ -158,11 +148,11 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
           len(signature.structured_input_signature) == 2 and
           isinstance(signature.structured_input_signature[1], dict)):
         input_names = [name for name in signature.structured_input_signature[1]]
-      elif loaded_model.keras_model is not None:
+      elif hasattr(loaded_model, 'input_names'):
         # Calling keras_model.input_names does not work properly in TF 1.15.0.
         # As a work around, make sure the signature.structured_input_signature
         # check is before this check (see b/142807137).
-        input_names = loaded_model.keras_model.input_names
+        input_names = loaded_model.input_names
       inputs = None
       if input_names:
         get_tensors = True
@@ -196,7 +186,7 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
         else:
           if predictions[i] is None:
             predictions[i] = {}
-          predictions[i][spec.name] = output   # pytype: disable=unsupported-operands
+          predictions[i][spec.name] = output  # pytype: disable=unsupported-operands
     result[constants.BATCHED_PREDICTIONS_KEY] = predictions
     return [result]
 
@@ -217,8 +207,9 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       record_batch = element[constants.ARROW_RECORD_BATCH_KEY]
       for i in range(batch_size):
         self._batch_size.update(1)
-        result.extend(self._batch_reducible_process(
-            {constants.ARROW_RECORD_BATCH_KEY: record_batch.slice(i, 1)}))
+        result.extend(
+            self._batch_reducible_process(
+                {constants.ARROW_RECORD_BATCH_KEY: record_batch.slice(i, 1)}))
       self._num_instances.inc(len(result))
       return result
 
@@ -227,7 +218,8 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractBatchedPredictions(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection, eval_config: config.EvalConfig,
+    extracts: beam.pvalue.PCollection,
+    eval_config: config.EvalConfig,
     eval_shared_models: Dict[Text, types.EvalSharedModel],
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
 ) -> beam.pvalue.PCollection:
@@ -246,9 +238,9 @@ def _ExtractBatchedPredictions(  # pylint: disable=invalid-name
     PCollection of Extracts updated with the predictions.
   """
 
-  return (
-      extracts
-      | 'Predict' >> beam.ParDo(
-          _BatchedPredictionDoFn(
-              eval_config=eval_config, eval_shared_models=eval_shared_models,
-              tensor_adapter_config=tensor_adapter_config)))
+  return (extracts
+          | 'Predict' >> beam.ParDo(
+              _BatchedPredictionDoFn(
+                  eval_config=eval_config,
+                  eval_shared_models=eval_shared_models,
+                  tensor_adapter_config=tensor_adapter_config)))

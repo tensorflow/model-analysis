@@ -333,7 +333,7 @@ def default_multi_class_classification_specs(
   return multi_class_metrics
 
 
-def metric_thresholds_from_metric_specs(
+def metric_thresholds_from_metrics_specs(
     metrics_specs: List[config.MetricsSpec]
 ) -> Dict[metric_types.MetricKey, Union[config.GenericChangeThreshold,
                                         config.GenericValueThreshold]]:

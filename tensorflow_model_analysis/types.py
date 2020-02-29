@@ -118,28 +118,6 @@ def is_tensor(obj):
   return isinstance(obj, tf.Tensor) or isinstance(obj, tf.SparseTensor)
 
 
-class ModelTypes(object):
-  """Instances of different model types.
-
-  Only one instance can be set at a time.
-
-  Attributes:
-    saved_model: Saved model.
-    keras_model: Keras model.
-    eval_saved_model: EvalSavedModel model.
-  """
-  # C++ APIs need the __weakref__ to be set.
-  __slots__ = ['saved_model', 'keras_model', 'eval_saved_model', '__weakref__']
-
-  def __init__(self,
-               saved_model: Optional[Any] = None,
-               keras_model: Optional[tf.keras.Model] = None,
-               eval_saved_model: Optional[Any] = None):
-    self.saved_model = saved_model
-    self.keras_model = keras_model
-    self.eval_saved_model = eval_saved_model
-
-
 class ModelLoader(
     NamedTuple('ModelLoader', [('tags', List[Text]),
                                ('shared_handle', shared.Shared),
@@ -150,10 +128,10 @@ class ModelLoader(
     tags: Model tags (e.g. 'serve' for serving or 'eval' for EvalSavedModel).
     shared_handle: Optional handle to a shared.Shared object for sharing the
       in-memory model within / between stages. Used in combination with the
-      construct_fn to load the ModelTypes for the shared model.
+      construct_fn to load the shared model.
     construct_fn: A callable which creates a construct function to load the
-      ModelTypes instance. Callable takes a beam.metrics distribution to track
-      model load times.
+      model instance. Callable takes a beam.metrics distribution to track model
+      load times.
   """
 
   def __new__(cls,
@@ -180,6 +158,8 @@ class EvalSharedModel(
             ('example_weight_key', Union[Text, Dict[Text, Text]]),
             ('additional_fetches', List[Text]),
             ('model_loader', ModelLoader),
+            ('model_name', Text),
+            ('model_type', Text),
         ])):
   # pyformat: disable
   """Shared model used during extraction and evaluation.
@@ -200,6 +180,8 @@ class EvalSharedModel(
       "features" and "labels" tensors are handled automatically and should not
       be included in this list.
     model_loader: Model loader.
+    model_name: Model name (should align with ModelSpecs.name).
+    model_type: Model type (tfma.TF_KERAS, tfma.TF_LITE, tfma.TF_ESTIMATOR, ..).
 
   More details on add_metrics_callbacks:
 
@@ -232,6 +214,8 @@ class EvalSharedModel(
       example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
       additional_fetches: Optional[List[Text]] = None,
       model_loader: Optional[ModelLoader] = None,
+      model_name: Text = '',
+      model_type: Text = '',
       construct_fn: Optional[Callable[..., Any]] = None):
     if not add_metrics_callbacks:
       add_metrics_callbacks = []
@@ -245,4 +229,13 @@ class EvalSharedModel(
     return super(EvalSharedModel,
                  cls).__new__(cls, model_path, add_metrics_callbacks,
                               include_default_metrics, example_weight_key,
-                              additional_fetches, model_loader)
+                              additional_fetches, model_loader, model_name,
+                              model_type)
+
+
+# MaybeMultipleEvalSharedModels represents a parameter that can take on a single
+# model or a list of models.
+#
+# TODO(b/150416505): Deprecate support for dict.
+MaybeMultipleEvalSharedModels = Union[EvalSharedModel, List[EvalSharedModel],
+                                      Dict[Text, EvalSharedModel]]

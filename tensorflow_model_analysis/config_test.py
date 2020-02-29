@@ -155,6 +155,116 @@ class ConfigTest(tf.test.TestCase):
     got_eval_config = config.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
+  def testUpdateConfigWithDefaultsAutomaticallyAddsBaselineModel(self):
+    eval_config_pbtxt = """
+      model_specs { label_key: "my_label" }
+      metrics_specs {
+        metrics { class_name: "WeightedExampleCount" }
+      }
+    """
+    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+
+    expected_eval_config_pbtxt = """
+      model_specs { name: "candidate" label_key: "my_label" }
+      model_specs { name: "baseline" label_key: "my_label" is_baseline: true }
+      metrics_specs {
+        metrics { class_name: "WeightedExampleCount" }
+        model_names: ["candidate", "baseline"]
+      }
+    """
+    expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
+                                             config.EvalConfig())
+
+    got_eval_config = config.update_eval_config_with_defaults(
+        eval_config, maybe_add_baseline=True)
+    self.assertProtoEquals(got_eval_config, expected_eval_config)
+
+  def testUpdateConfigWithDefaultsDoesNotAutomaticallyAddBaselineModel(self):
+    eval_config_pbtxt = """
+      model_specs { name: "model1" }
+      model_specs { name: "model2" is_baseline: true }
+      metrics_specs {
+        metrics { class_name: "WeightedExampleCount" }
+      }
+    """
+    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+
+    expected_eval_config_pbtxt = """
+      model_specs { name: "model1" }
+      model_specs { name: "model2" is_baseline: true }
+      metrics_specs {
+        metrics { class_name: "WeightedExampleCount" }
+        model_names: ["model1", "model2"]
+      }
+    """
+    expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
+                                             config.EvalConfig())
+
+    got_eval_config = config.update_eval_config_with_defaults(eval_config)
+    self.assertProtoEquals(got_eval_config, expected_eval_config)
+
+  def testUpdateConfigWithDefaultsRemoveBaselineModel(self):
+    eval_config_pbtxt = """
+      model_specs { name: "candidate" }
+      model_specs { name: "baseline" is_baseline: true }
+      metrics_specs {
+        metrics {
+          class_name: "MeanLabel"
+          threshold {
+            value_threshold {
+              lower_bound { value: 0.9 }
+            }
+            change_threshold {
+              direction: HIGHER_IS_BETTER
+              absolute{ value: -1e-10 }
+            }
+          }
+        }
+        thresholds {
+          key: "my_metric"
+          value {
+            value_threshold {
+              lower_bound { value: 0.9 }
+            }
+            change_threshold {
+              direction: HIGHER_IS_BETTER
+              absolute{ value: -1e-10 }
+            }
+          }
+        }
+      }
+    """
+    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+
+    expected_eval_config_pbtxt = """
+      model_specs {}
+      metrics_specs {
+        metrics {
+          class_name: "MeanLabel"
+          threshold {
+            value_threshold {
+              lower_bound { value: 0.9 }
+            }
+          }
+        }
+        thresholds {
+          key: "my_metric"
+          value {
+            value_threshold {
+              lower_bound { value: 0.9 }
+            }
+          }
+        }
+        model_names: [""]
+      }
+    """
+    expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
+                                             config.EvalConfig())
+
+    got_eval_config = config.update_eval_config_with_defaults(
+        eval_config, maybe_remove_baseline=True)
+    self.assertProtoEquals(got_eval_config, expected_eval_config)
+
 
 if __name__ == '__main__':
   tf.test.main()

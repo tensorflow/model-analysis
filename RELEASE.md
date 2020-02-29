@@ -4,6 +4,8 @@
 
 *   Added support for creating metrics specs from tf.keras.losses.
 *   Added evaluation comparison feature to the Fairness Indicators UI in Colab.
+*   Added better defaults handling for eval config so that a single model spec
+    can be used for both candidate and baseline.
 
 ## Bug fixes and other changes
 

@@ -190,7 +190,8 @@ class MetricSpecsTest(tf.test.TestCase):
             binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
             aggregate=config.AggregationOptions(macro_average=True))
     ]
-    thresholds = metric_specs.metric_thresholds_from_metric_specs(metrics_specs)
+    thresholds = metric_specs.metric_thresholds_from_metrics_specs(
+        metrics_specs)
     self.assertLen(thresholds, 14)
     self.assertIn(
         metric_types.MetricKey(

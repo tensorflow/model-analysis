@@ -39,13 +39,6 @@ def get_baseline_model_spec(
   return None
 
 
-def get_model_types(eval_config: Optional[config.EvalConfig]) -> Set[Text]:
-  """Returns the set of model types seen in eval_config.model_specs."""
-  if eval_config:
-    return {s.model_type for s in eval_config.model_specs}
-  return set()
-
-
 def get_model_spec(eval_config: config.EvalConfig,
                    model_name: Text) -> Optional[config.ModelSpec]:
   """Returns model spec with given model name."""
@@ -55,6 +48,105 @@ def get_model_spec(eval_config: config.EvalConfig,
     if spec.name == model_name:
       return spec
   return None
+
+
+def get_model_type(model_spec: config.ModelSpec,
+                   model_path: Optional[Text] = '',
+                   tags: Optional[List[Text]] = None) -> Text:
+  """Returns model type for given model spec taking into account defaults.
+
+  The defaults are chosen such that if a model_path is provided and the model
+  can be loaded as a keras model then TF_KERAS is assumed. Next, if tags
+  are provided and the tags contains 'eval' then TF_ESTIMATOR is assumed.
+  Lastly, if the model spec contains an 'eval' signature TF_ESTIMATOR is assumed
+  otherwise TF_GENERIC is assumed.
+
+  Args:
+    model_spec: Model spec.
+    model_path: Optional model path to verify if keras model.
+    tags: Options tags to verify if eval is used.
+  """
+  if model_spec and model_spec.model_type:
+    return model_spec.model_type
+
+  if model_path:
+    try:
+      keras_model = tf.keras.models.load_model(model_path)
+      # In some cases, tf.keras.models.load_model can successfully load a
+      # saved_model but it won't actually be a keras model.
+      if isinstance(keras_model, tf.keras.models.Model):
+        return constants.TF_KERAS
+    except Exception:  # pylint: disable=broad-except
+      pass
+
+  if tags:
+    if tags and eval_constants.EVAL_TAG in tags:
+      return constants.TF_ESTIMATOR
+    else:
+      return constants.TF_GENERIC
+
+  signature_names = []
+  if model_spec:
+    if model_spec.signature_name:
+      signature_names.append(model_spec.signature_name)
+    elif model_spec.signature_names:
+      for signature_name in model_spec.signature_names:
+        signature_names.append(signature_name)
+    else:
+      signature_names.append(tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY)
+
+  # Default to serving unless estimator is used and eval signature is used.
+  if eval_constants.EVAL_TAG in signature_names:
+    return constants.TF_ESTIMATOR
+  else:
+    return constants.TF_GENERIC
+
+
+def verify_and_update_eval_shared_models(
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels]
+) -> Optional[List[types.EvalSharedModel]]:
+  """Verifies eval shared models and normnalizes to produce a single list.
+
+  The output is normalized such that if a list or dict contains a single entry,
+  the model name will always be empty.
+
+  Args:
+    eval_shared_model: None, a single model, a list of models, or a dict of
+      models keyed by model name.
+
+  Returns:
+    A list of models.
+
+  Raises:
+    ValueError if dict is passed and keys don't match model names or a
+    multi-item list is passed without model names.
+  """
+  if not eval_shared_model:
+    return None
+  eval_shared_models = []
+  if isinstance(eval_shared_model, dict):
+    for k, v in eval_shared_model.items():
+      if v.model_name and k and k != v.model_name:
+        raise ValueError('keys for EvalSharedModel dict do not match '
+                         'model_names: dict={}'.format(eval_shared_model))
+      if not v.model_name and k:
+        v = v._replace(model_name=k)
+      eval_shared_models.append(v)
+  elif isinstance(eval_shared_model, list):
+    eval_shared_models = eval_shared_model
+  else:
+    eval_shared_models = [eval_shared_model]
+  if len(eval_shared_models) > 1:
+    for v in eval_shared_models:
+      if not v.model_name:
+        raise ValueError(
+            'model_name is required when passing multiple EvalSharedModels: '
+            'eval_shared_models={}'.format(eval_shared_models))
+  # To maintain consistency between settings where single models are used,
+  # always use '' as the model name regardless of whether a name is passed.
+  elif len(eval_shared_models) == 1 and eval_shared_models[0].model_name:
+    eval_shared_models[0] = eval_shared_models[0]._replace(model_name='')
+  return eval_shared_models
 
 
 def rebatch_by_input_names(
@@ -179,8 +271,9 @@ def model_construct_fn(  # pylint: disable=invalid-name
     include_default_metrics: Optional[bool] = None,
     additional_fetches: Optional[List[Text]] = None,
     blacklist_feature_fetches: Optional[List[Text]] = None,
-    tags: Optional[List[Text]] = None):
-  """Returns function for constructing shared ModelTypes."""
+    tags: Optional[List[Text]] = None,
+    model_type: Optional[Text] = constants.TF_ESTIMATOR):
+  """Returns function for constructing shared models."""
   if tags is None:
     tags = [eval_constants.EVAL_TAG]
 
@@ -188,45 +281,33 @@ def model_construct_fn(  # pylint: disable=invalid-name
     """Thin wrapper for the actual construct to allow for load time metrics."""
 
     def construct():  # pylint: disable=invalid-name
-      """Function for constructing shared ModelTypes."""
+      """Function for constructing shared models."""
       start_time = datetime.datetime.now()
-      saved_model = None
-      keras_model = None
-      eval_saved_model = None
       # If we are evaluating on TPU, initialize the TPU.
       # TODO(b/143484017): Add model warmup for TPU.
       if tf.saved_model.TPU in tags:
         tf.tpu.experimental.initialize_tpu_system()
-      if eval_constants.EVAL_TAG in tags:
-        eval_saved_model = load.EvalSavedModel(
+      if (model_type == constants.TF_ESTIMATOR and
+          eval_constants.EVAL_TAG in tags):
+        model = load.EvalSavedModel(
             eval_saved_model_path,
             include_default_metrics,
             additional_fetches=additional_fetches,
             blacklist_feature_fetches=blacklist_feature_fetches,
             tags=tags)
         if add_metrics_callbacks:
-          eval_saved_model.register_add_metric_callbacks(add_metrics_callbacks)
-        eval_saved_model.graph_finalize()
-      else:
+          model.register_add_metric_callbacks(add_metrics_callbacks)
+        model.graph_finalize()
+      elif model_type == constants.TF_KERAS:
         # TODO(b/141524386, b/141566408): TPU Inference is not supported
         # for Keras saved_model yet.
-        try:
-          keras_model = tf.keras.models.load_model(eval_saved_model_path)
-          # In some cases, tf.keras.models.load_model can successfully load a
-          # saved_model but it won't actually be a keras model.
-          if not isinstance(keras_model, tf.keras.models.Model):
-            keras_model = None
-        except Exception:  # pylint: disable=broad-except
-          keras_model = None
-        if keras_model is None:
-          saved_model = tf.compat.v1.saved_model.load_v2(
-              eval_saved_model_path, tags=tags)
+        model = tf.keras.models.load_model(eval_saved_model_path)
+      else:
+        model = tf.compat.v1.saved_model.load_v2(
+            eval_saved_model_path, tags=tags)
       end_time = datetime.datetime.now()
       model_load_seconds_callback(int((end_time - start_time).total_seconds()))
-      return types.ModelTypes(
-          saved_model=saved_model,
-          keras_model=keras_model,
-          eval_saved_model=eval_saved_model)
+      return model
 
     return construct
 
@@ -239,7 +320,7 @@ class DoFnWithModels(beam.DoFn):
   def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
     """Initializes DoFn using dict of model loaders keyed by model location."""
     self._model_loaders = model_loaders
-    self._loaded_models = None  # types.ModelTypes
+    self._loaded_models = None
     self._model_load_seconds = None
     self._model_load_seconds_distribution = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'model_load_seconds')
@@ -322,7 +403,7 @@ class CombineFnWithModels(beam.CombineFn):
   def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
     """Initializes CombineFn using dict of loaders keyed by model location."""
     self._model_loaders = model_loaders
-    self._loaded_models = None  # types.ModelTypes
+    self._loaded_models = None
     self._model_load_seconds = None
     self._model_load_seconds_distribution = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'model_load_seconds')

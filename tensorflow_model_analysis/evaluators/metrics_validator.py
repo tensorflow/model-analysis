@@ -40,7 +40,7 @@ def validate_metrics(
   baseline_model_name = baseline_spec.name if baseline_spec else None
 
   sliced_key, metrics = sliced_metrics
-  thresholds = metric_specs.metric_thresholds_from_metric_specs(
+  thresholds = metric_specs.metric_thresholds_from_metrics_specs(
       eval_config.metrics_specs)
 
   def _check_threshold(key: metric_types.MetricKey, metric: Any) -> bool:

@@ -62,7 +62,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
     model.save(export_dir, save_format='tf')
 
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir)
 
     metrics_specs = (
         keras_util.metrics_specs_from_keras('', eval_shared_model.model_loader))
@@ -124,7 +124,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
     model.save(export_dir, save_format='tf')
 
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir)
 
     metrics_specs = (
         keras_util.metrics_specs_from_keras('', eval_shared_model.model_loader))

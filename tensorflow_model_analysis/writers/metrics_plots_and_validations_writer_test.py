@@ -193,7 +193,8 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
               writers=writers))
       # pylint: enable=no-value-for-parameter
 
-    validation_result = model_eval_lib.load_validation_result(validations_file)
+    validation_result = model_eval_lib.load_validation_result(
+        os.path.dirname(validations_file))
 
     expected_validations = [
         text_format.Parse(

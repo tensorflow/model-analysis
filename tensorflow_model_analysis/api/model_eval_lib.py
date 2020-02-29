@@ -25,7 +25,7 @@ import os
 import pickle
 import tempfile
 
-from typing import Any, Dict, List, NamedTuple, Optional, Text, Tuple, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Set, Text, Tuple, Union
 
 import apache_beam as beam
 import pyarrow as pa
@@ -48,6 +48,7 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.validators import validator
@@ -83,8 +84,9 @@ def _check_version(version: Text, path: Text):
   # compatibility issues.
 
 
-def _is_legacy_eval(eval_shared_model: Optional[types.EvalSharedModel],
-                    eval_config: Optional[config.EvalConfig]):
+def _is_legacy_eval(
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels],
+    eval_config: Optional[config.EvalConfig]):
   """Returns True if legacy evaluation is being used."""
   # A legacy evaluation is an evalution that uses only a single EvalSharedModel,
   # has no tags (or uses "eval" as its tag), and does not specify an eval_config
@@ -97,9 +99,35 @@ def _is_legacy_eval(eval_shared_model: Optional[types.EvalSharedModel],
   # support backwards compatibility for callers that have not updated to use the
   # new EvalConfig.
   return (eval_shared_model and not isinstance(eval_shared_model, dict) and
+          not isinstance(eval_shared_model, list) and
           ((not eval_shared_model.model_loader.tags or
             eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags) and
            (not eval_config or not eval_config.metrics_specs)))
+
+
+def _model_types(
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels]
+) -> Optional[Set[Text]]:
+  """Returns model types associated with given EvalSharedModels."""
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
+  if not eval_shared_models:
+    return None
+  else:
+    return set([m.model_type for m in eval_shared_models])
+
+
+def _update_eval_config_with_defaults(
+    eval_config: config.EvalConfig,
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels]
+) -> config.EvalConfig:
+  """Returns updated eval config with default values."""
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
+  maybe_add_baseline = eval_shared_models and len(eval_shared_models) == 2
+
+  return config.update_eval_config_with_defaults(
+      eval_config, maybe_add_baseline=maybe_add_baseline)
 
 
 def _serialize_eval_run(eval_config: config.EvalConfig, data_location: Text,
@@ -147,6 +175,51 @@ def _load_eval_run(
                               })
 
 
+MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice
+
+
+def load_metrics(output_path: Text) -> List[MetricsForSlice]:
+  """Read and deserialize the MetricsForSlice records."""
+  records = []
+  filepath = os.path.join(output_path, constants.METRICS_KEY)
+  if not tf.io.gfile.exists(filepath):
+    filepath = output_path  # Allow full file to be passed.
+  for record in tf.compat.v1.python_io.tf_record_iterator(filepath):
+    records.append(MetricsForSlice.FromString(record))
+  return records
+
+
+PlotsForSlice = metrics_for_slice_pb2.PlotsForSlice
+
+
+def load_plots(output_path: Text) -> List[PlotsForSlice]:
+  """Read and deserialize the PlotsForSlice records."""
+  records = []
+  filepath = os.path.join(output_path, constants.PLOTS_KEY)
+  if not tf.io.gfile.exists(filepath):
+    filepath = output_path  # Allow full file to be passed.
+  for record in tf.compat.v1.python_io.tf_record_iterator(filepath):
+    records.append(PlotsForSlice.FromString(record))
+  return records
+
+
+# Define types here to avoid type errors between OSS and internal code.
+ValidationResult = validation_result_pb2.ValidationResult
+
+
+def load_validation_result(output_path: Text) -> Optional[ValidationResult]:
+  """Read and deserialize the ValidationResult."""
+  validation_records = []
+  filepath = os.path.join(output_path, constants.VALIDATIONS_KEY)
+  if not tf.io.gfile.exists(filepath):
+    filepath = output_path  # Allow full file to be passed.
+  for record in tf.compat.v1.python_io.tf_record_iterator(filepath):
+    validation_records.append(ValidationResult.FromString(record))
+  if validation_records:
+    assert len(validation_records) == 1
+    return validation_records[0]
+
+
 # The field slicing_metrics is a nested dictionaries representing metrics for
 # different configuration as defined by MetricKey in metrics_for_slice.proto.
 # The levels corresponds to output name, class id, metric name and metric value
@@ -162,21 +235,6 @@ EvalResult = NamedTuple(  # pylint: disable=invalid-name
      ('plots', List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]),
      ('config', config.EvalConfig), ('data_location', Text),
      ('file_format', Text), ('model_location', Text)])
-
-
-# Define types here to avoid type errors between OSS and internal code.
-ValidationResult = validation_result_pb2.ValidationResult
-
-
-def load_validation_result(
-    validations_file: Text) -> Optional[ValidationResult]:
-  """Read and deserialize the ValidationResult."""
-  validation_records = []
-  for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
-    validation_records.append(ValidationResult.FromString(record))
-  if validation_records:
-    assert len(validation_records) == 1
-    return validation_records[0]
 
 
 class EvalResults(object):
@@ -274,6 +332,7 @@ def default_eval_shared_model(
     additional_fetches: Optional[List[Text]] = None,
     blacklist_feature_fetches: Optional[List[Text]] = None,
     tags: Optional[List[Text]] = None,
+    model_name: Text = '',
     eval_config: Optional[config.EvalConfig] = None) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
 
@@ -297,26 +356,31 @@ def default_eval_shared_model(
       scenarios where features are large (e.g. images) and can lead to excessive
       memory use if stored.
     tags: Model tags (e.g. 'serve' for serving or 'eval' for EvalSavedModel).
+    model_name: Optional name of the model being created (should match
+      ModelSpecs.name). The name should only be provided if multiple models are
+      being evaluated.
     eval_config: Eval config. Only used for setting default tags.
   """
-  if tags is None:
-    if eval_config:
-      # Default to serving unless all the signature_names are eval. We do not
-      # support running with a mixture of eval and non-eval tags.
-      signatures = [s.signature_name for s in eval_config.model_specs]
-      if eval_constants.EVAL_TAG in signatures:
-        if not all(s == eval_constants.EVAL_TAG for s in signatures):
-          tf.compat.v1.logging.warning(
-              'mixture of eval and non-eval signatures used: '
-              'eval_config={}'.format(eval_config))
+  if not eval_config:
+    model_type = constants.TF_ESTIMATOR
+    if tags is None:
+      tags = [eval_constants.EVAL_TAG]
+  else:
+    model_spec = model_util.get_model_spec(eval_config, model_name)
+    if not model_spec:
+      raise ValueError('ModelSpec for model name {} not found in EvalConfig: '
+                       'config={}'.format(model_name, eval_config))
+    model_type = model_util.get_model_type(model_spec, eval_saved_model_path,
+                                           tags)
+    if tags is None:
+      # Default to serving unless estimator is used.
+      if model_type == constants.TF_ESTIMATOR:
         tags = [eval_constants.EVAL_TAG]
       else:
         tags = [tf.saved_model.SERVING]
-    else:
-      tags = [eval_constants.EVAL_TAG]
 
   # Backwards compatibility for legacy add_metrics_callbacks implementation.
-  if tags == [eval_constants.EVAL_TAG]:
+  if model_type == constants.TF_ESTIMATOR and eval_constants.EVAL_TAG in tags:
     # PyType doesn't know about the magic exports we do in post_export_metrics.
     # Additionally, the lines seem to get reordered in compilation, so we can't
     # just put the disable-attr on the add_metrics_callbacks lines.
@@ -339,6 +403,8 @@ def default_eval_shared_model(
     # pytype: enable=module-attr
 
   return types.EvalSharedModel(
+      model_name=model_name,
+      model_type=model_type,
       model_path=eval_saved_model_path,
       add_metrics_callbacks=add_metrics_callbacks,
       include_default_metrics=include_default_metrics,
@@ -352,12 +418,12 @@ def default_eval_shared_model(
               include_default_metrics=include_default_metrics,
               additional_fetches=additional_fetches,
               blacklist_feature_fetches=blacklist_feature_fetches,
+              model_type=model_type,
               tags=tags)))
 
 
 def default_extractors(  # pylint: disable=invalid-name
-    eval_shared_model: Union[types.EvalSharedModel,
-                             Dict[Text, types.EvalSharedModel]] = None,
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: config.EvalConfig = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     desired_batch_size: Optional[int] = None,
@@ -365,10 +431,9 @@ def default_extractors(  # pylint: disable=invalid-name
   """Returns the default extractors for use in ExtractAndEvaluate.
 
   Args:
-    eval_shared_model: Shared model (single-model evaluation) or dict of shared
-      models keyed by model name (multi-model evaluation). Required unless the
-      predictions are provided alongside of the features (i.e. model-agnostic
-      evaluations).
+    eval_shared_model: Shared model (single-model evaluation) or list of shared
+      models (multi-model evaluation). Required unless the predictions are
+      provided alongside of the features (i.e. model-agnostic evaluations).
     eval_config: Eval config.
     slice_spec: Deprecated (use EvalConfig).
     desired_batch_size: Optional batch size for batching in Predict.
@@ -378,7 +443,8 @@ def default_extractors(  # pylint: disable=invalid-name
     NotImplementedError: If eval_config contains mixed serving and eval models.
   """
   if eval_config is not None:
-    eval_config = config.update_eval_config_with_defaults(eval_config)
+    eval_config = _update_eval_config_with_defaults(eval_config,
+                                                    eval_shared_model)
     slice_spec = [
         slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
     ]
@@ -391,7 +457,10 @@ def default_extractors(  # pylint: disable=invalid-name
             slice_spec, materialize=materialize)
     ]
   elif eval_shared_model:
-    model_types = model_util.get_model_types(eval_config)
+    model_types = _model_types(eval_shared_model)
+    eval_shared_models = model_util.verify_and_update_eval_shared_models(
+        eval_shared_model)
+
     if not model_types.issubset(constants.VALID_MODEL_TYPES):
       raise NotImplementedError(
           'model type must be one of: {}. evalconfig={}'.format(
@@ -411,8 +480,9 @@ def default_extractors(  # pylint: disable=invalid-name
           'support for mixing tf_lite and non-tf_lite models is not '
           'implemented: eval_config={}'.format(eval_config))
 
-    elif (eval_config and all(s.signature_name == eval_constants.EVAL_TAG
-                              for s in eval_config.model_specs)):
+    elif (eval_config and model_types == set([constants.TF_ESTIMATOR]) and
+          all(eval_constants.EVAL_TAG in m.model_loader.tags
+              for m in eval_shared_models)):
       return [
           predict_extractor.PredictExtractor(
               eval_shared_model,
@@ -422,11 +492,12 @@ def default_extractors(  # pylint: disable=invalid-name
           slice_key_extractor.SliceKeyExtractor(
               slice_spec, materialize=materialize)
       ]
-    elif (eval_config and any(s.signature_name == eval_constants.EVAL_TAG
-                              for s in eval_config.model_specs)):
+    elif (eval_config and constants.TF_ESTIMATOR in model_types and
+          any(eval_constants.EVAL_TAG in m.model_loader.tags
+              for m in eval_shared_models)):
       raise NotImplementedError(
-          'support for mixing eval and non-eval models is not implemented: '
-          'eval_config={}'.format(eval_config))
+          'support for mixing eval and non-eval estimator models is not '
+          'implemented: eval_config={}'.format(eval_config))
     else:
       return [
           input_extractor.InputExtractor(eval_config=eval_config),
@@ -446,9 +517,7 @@ def default_extractors(  # pylint: disable=invalid-name
 
 
 def default_evaluators(  # pylint: disable=invalid-name
-    eval_shared_model: Optional[Union[types.EvalSharedModel,
-                                      Dict[Text,
-                                           types.EvalSharedModel]]] = None,
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: config.EvalConfig = None,
     compute_confidence_intervals: Optional[bool] = False,
     k_anonymization_count: int = 1,
@@ -458,9 +527,9 @@ def default_evaluators(  # pylint: disable=invalid-name
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
-    eval_shared_model: Optional shared model (single-model evaluation) or dict
-      of shared models keyed by model name (multi-model evaluation). Only
-      required if there are metrics to be computed in-graph using the model.
+    eval_shared_model: Optional shared model (single-model evaluation) or list
+      of shared models (multi-model evaluation). Only required if there are
+      metrics to be computed in-graph using the model.
     eval_config: Eval config.
     compute_confidence_intervals: Deprecated (use eval_config).
     k_anonymization_count: Deprecated (use eval_config).
@@ -470,9 +539,10 @@ def default_evaluators(  # pylint: disable=invalid-name
   """
   disabled_outputs = []
   if eval_config:
-    eval_config = config.update_eval_config_with_defaults(eval_config)
+    eval_config = _update_eval_config_with_defaults(eval_config,
+                                                    eval_shared_model)
     disabled_outputs = eval_config.options.disabled_outputs.values
-    if model_util.get_model_types(eval_config) == set([constants.TF_LITE]):
+    if _model_types(eval_shared_model) == set([constants.TF_LITE]):
       # no in-graph metrics present when tflite is used.
       if eval_shared_model:
         if isinstance(eval_shared_model, dict):
@@ -480,6 +550,11 @@ def default_evaluators(  # pylint: disable=invalid-name
               k: v._replace(include_default_metrics=False)
               for k, v in eval_shared_model.items()
           }
+        elif isinstance(eval_shared_model, list):
+          eval_shared_model = [
+              v._replace(include_default_metrics=False)
+              for v in eval_shared_model
+          ]
         else:
           eval_shared_model = eval_shared_model._replace(
               include_default_metrics=False)
@@ -512,16 +587,15 @@ def default_evaluators(  # pylint: disable=invalid-name
 
 def default_writers(
     output_path: Optional[Text],
-    eval_shared_model: Optional[Union[types.EvalSharedModel,
-                                      Dict[Text, types.EvalSharedModel]]] = None
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None
 ) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
 
   Args:
     output_path: Output path.
-    eval_shared_model: Optional shared model (single-model evaluation) or dict
-      of shared models keyed by model name (multi-model evaluation). Only
-      required if legacy add_metrics_callbacks are used.
+    eval_shared_model: Optional shared model (single-model evaluation) or list
+      of shared models (multi-model evaluation). Only required if legacy
+      add_metrics_callbacks are used.
   """
   add_metric_callbacks = []
   # The add_metric_callbacks are used in the metrics and plots serialization
@@ -532,7 +606,8 @@ def default_writers(
   # The V2 MetricsAndPlotsEvaluator output requires no additional processing.
   # Since the V1 code only supports a single EvalSharedModel, we only set the
   # add_metrics_callbacks if a dict is not passed.
-  if eval_shared_model and not isinstance(eval_shared_model, dict):
+  if (eval_shared_model and not isinstance(eval_shared_model, dict) and
+      not isinstance(eval_shared_model, list)):
     add_metric_callbacks = eval_shared_model.add_metrics_callbacks
 
   output_paths = {
@@ -721,9 +796,7 @@ def WriteEvalConfig(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     examples: beam.pvalue.PCollection,
-    eval_shared_model: Optional[Union[types.EvalSharedModel,
-                                      Dict[Text,
-                                           types.EvalSharedModel]]] = None,
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: config.EvalConfig = None,
     extractors: Optional[List[extractor.Extractor]] = None,
     evaluators: Optional[List[evaluator.Evaluator]] = None,
@@ -764,10 +837,10 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   Args:
     examples: PCollection of input examples. Can be any format the model accepts
       (e.g. string containing CSV row, TensorFlow.Example, etc).
-    eval_shared_model: Optional shared model (single-model evaluation) or dict
-      of shared models keyed by model name (multi-model evaluation). Only
-      required if needed by default extractors, evaluators, or writers and for
-      display purposes of the model path.
+    eval_shared_model: Optional shared model (single-model evaluation) or list
+      of shared models (multi-model evaluation). Only required if needed by
+      default extractors, evaluators, or writers and for display purposes of the
+      model path.
     eval_config: Eval config.
     extractors: Optional list of Extractors to apply to Extracts. Typically
       these will be added by calling the default_extractors function. If no
@@ -799,13 +872,12 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   Returns:
     PDone.
   """
-  eval_shared_models = eval_shared_model
-  if not isinstance(eval_shared_model, dict):
-    eval_shared_models = {'': eval_shared_model}
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
 
   if eval_config is None:
     model_specs = []
-    for model_name, shared_model in eval_shared_models.items():
+    for shared_model in eval_shared_models:
       example_weight_key = shared_model.example_weight_key
       example_weight_keys = {}
       if example_weight_key and isinstance(example_weight_key, dict):
@@ -813,7 +885,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         example_weight_key = ''
       model_specs.append(
           config.ModelSpec(
-              name=model_name,
+              name=shared_model.model_name,
               example_weight_key=example_weight_key,
               example_weight_keys=example_weight_keys))
     slicing_specs = None
@@ -827,7 +899,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     eval_config = config.EvalConfig(
         model_specs=model_specs, slicing_specs=slicing_specs, options=options)
   else:
-    eval_config = config.update_eval_config_with_defaults(eval_config)
+    eval_config = _update_eval_config_with_defaults(eval_config,
+                                                    eval_shared_model)
 
   config.verify_eval_config(eval_config)
 
@@ -867,7 +940,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     if display_only_file_format is not None:
       file_format = display_only_file_format
     model_locations = {}
-    for k, v in eval_shared_models.items():
+    for v in (eval_shared_models or [None]):
+      k = '' if v is None else v.model_name
       model_locations[k] = ('<unknown>' if v is None or v.model_path is None
                             else v.model_path)
     _ = (
@@ -880,9 +954,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
 
 
 def run_model_analysis(
-    eval_shared_model: Optional[Union[types.EvalSharedModel,
-                                      Dict[Text,
-                                           types.EvalSharedModel]]] = None,
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: config.EvalConfig = None,
     data_location: Text = '',
     file_format: Text = 'tfrecords',
@@ -908,9 +980,9 @@ def run_model_analysis(
   Evaluate PTransform instead.
 
   Args:
-    eval_shared_model: Optional shared model (single-model evaluation) or dict
-      of shared models keyed by model name (multi-model evaluation). Only
-      required if needed by default extractors, evaluators, or writers.
+    eval_shared_model: Optional shared model (single-model evaluation) or list
+      of shared models (multi-model evaluation). Only required if needed by
+      default extractors, evaluators, or writers.
     eval_config: Eval config.
     data_location: The location of the data files.
     file_format: The file format of the data, can be either 'text' or
@@ -951,10 +1023,9 @@ def run_model_analysis(
 
   if eval_config is None:
     model_specs = []
-    eval_shared_models = eval_shared_model
-    if not isinstance(eval_shared_model, dict):
-      eval_shared_models = {'': eval_shared_model}
-    for model_name, shared_model in eval_shared_models.items():
+    eval_shared_models = model_util.verify_and_update_eval_shared_models(
+        eval_shared_model)
+    for shared_model in eval_shared_models:
       example_weight_key = shared_model.example_weight_key
       example_weight_keys = {}
       if example_weight_key and isinstance(example_weight_key, dict):
@@ -962,7 +1033,7 @@ def run_model_analysis(
         example_weight_key = ''
       model_specs.append(
           config.ModelSpec(
-              name=model_name,
+              name=shared_model.model_name,
               example_weight_key=example_weight_key,
               example_weight_keys=example_weight_keys))
     slicing_specs = None
@@ -975,6 +1046,9 @@ def run_model_analysis(
       options.disabled_outputs.values.append(_EVAL_CONFIG_FILE)
     eval_config = config.EvalConfig(
         model_specs=model_specs, slicing_specs=slicing_specs, options=options)
+  else:
+    eval_config = _update_eval_config_with_defaults(eval_config,
+                                                    eval_shared_model)
 
   with beam.Pipeline(options=pipeline_options) as p:
     if file_format == 'tfrecords':

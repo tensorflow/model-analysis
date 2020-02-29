@@ -66,7 +66,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
   def _getBaselineDir(self):
     return os.path.join(self._getTempDir(), 'baseline_export_dir')
 
-  def _build_keras_model(self, model_dir, mul):
+  def _build_keras_model(self, model_name, model_dir, mul):
     input_layer = tf.keras.layers.Input(shape=(1,), name='input')
     output_layer = tf.keras.layers.Lambda(
         lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul})(
@@ -80,12 +80,13 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     model.fit(x=[[0], [1]], y=[[0], [1]], steps_per_epoch=1)
     model.save(model_dir, save_format='tf')
     return self.createTestEvalSharedModel(
-        eval_saved_model_path=model_dir, tags=[tf.saved_model.SERVING])
+        model_name=model_name, eval_saved_model_path=model_dir)
 
   def testEvaluateWithKerasAndValidateMetrics(self):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
-    eval_shared_model = self._build_keras_model(model_dir, mul=0)
-    baseline_eval_shared_model = self._build_keras_model(baseline_dir, mul=1)
+    eval_shared_model = self._build_keras_model('candidate', model_dir, mul=0)
+    baseline_eval_shared_model = self._build_keras_model(
+        'baseline', baseline_dir, mul=1)
 
     examples = [
         self._makeExample(
@@ -165,10 +166,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     slice_spec = [
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
-    eval_shared_models = {
-        'candidate': eval_shared_model,
-        'baseline': baseline_eval_shared_model
-    }
+    eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
         input_extractor.InputExtractor(eval_config),
         predict_extractor_v2.PredictExtractor(
@@ -283,8 +281,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           # its new API so the loss added at compile time will be missing.
           # Re-enable after this is fixed.
           if hasattr(
-              eval_shared_model.model_loader.construct_fn(lambda x: None)
-              ().keras_model, 'compiled_metrics'):
+              eval_shared_model.model_loader.construct_fn(lambda x: None)(),
+              'compiled_metrics'):
             expected_metric_validations_per_slice = (
                 expected_metric_validations_per_slice[:3])
           self.assertLen(got.metric_validations_per_slice[0].failures,
@@ -300,8 +298,9 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
 
   def testEvaluateWithKerasAndDiffMetrics(self):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
-    eval_shared_model = self._build_keras_model(model_dir, mul=0)
-    baseline_eval_shared_model = self._build_keras_model(baseline_dir, mul=1)
+    eval_shared_model = self._build_keras_model('candidate', model_dir, mul=0)
+    baseline_eval_shared_model = self._build_keras_model(
+        'baseline', baseline_dir, mul=1)
 
     eval_config = config.EvalConfig(
         model_specs=[
@@ -326,10 +325,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     slice_spec = [
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
-    eval_shared_models = {
-        'candidate': eval_shared_model,
-        'baseline': baseline_eval_shared_model
-    }
+    eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
         input_extractor.InputExtractor(eval_config),
         predict_extractor_v2.PredictExtractor(
@@ -1043,7 +1039,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         metrics_specs=metric_specs.specs_from_metrics(
             [calibration.MeanLabel('mean_label')]))
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir)
 
     slice_spec = [
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs

@@ -165,13 +165,20 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         config.ModelSpec(name='model1'),
         config.ModelSpec(name='model2', signature_name='eval')
     ])
-    eval_shared_models = {
-        'model1': types.EvalSharedModel(model_path='/model1/path'),
-        'model2': types.EvalSharedModel(model_path='/model2/path')
-    }
+    eval_shared_models = [
+        model_eval_lib.default_eval_shared_model(
+            model_name='model1',
+            eval_saved_model_path='/model1/path',
+            eval_config=eval_config),
+        model_eval_lib.default_eval_shared_model(
+            model_name='model2',
+            eval_saved_model_path='/model2/path',
+            eval_config=eval_config),
+    ]
     with self.assertRaisesRegex(
         NotImplementedError,
-        'support for mixing eval and non-eval models is not implemented'):
+        'support for mixing eval and non-eval estimator models is not '
+        'implemented'):
       model_eval_lib.run_model_analysis(
           eval_config=eval_config,
           eval_shared_model=eval_shared_models,
@@ -185,10 +192,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         config.ModelSpec(name='model1'),
         config.ModelSpec(name='model2', model_type=constants.TF_LITE)
     ])
-    eval_shared_models = {
-        'model1': types.EvalSharedModel(model_path='/model1/path'),
-        'model2': types.EvalSharedModel(model_path='/model2/path')
-    }
+    eval_shared_models = [
+        model_eval_lib.default_eval_shared_model(
+            model_name='model1',
+            eval_saved_model_path='/model1/path',
+            eval_config=eval_config),
+        model_eval_lib.default_eval_shared_model(
+            model_name='model2',
+            eval_saved_model_path='/model2/path',
+            eval_config=eval_config)
+    ]
     with self.assertRaisesRegex(
         NotImplementedError,
         'support for mixing tf_lite and non-tf_lite models is not implemented'):
@@ -383,12 +396,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     model_location1 = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
     model1 = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location1, eval_config=eval_config)
+        model_name='model1',
+        eval_saved_model_path=model_location1,
+        eval_config=eval_config)
     model_location2 = self._exportEvalSavedModel(
         linear_classifier.simple_linear_classifier)
     model2 = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location2, eval_config=eval_config)
-    eval_shared_models = {'model1': model1, 'model2': model2}
+        model_name='model2',
+        eval_saved_model_path=model_location2,
+        eval_config=eval_config)
+    eval_shared_models = [model1, model2]
     eval_results = model_eval_lib.run_model_analysis(
         eval_shared_model=eval_shared_models,
         eval_config=eval_config,
@@ -509,7 +526,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                                   ('with_tflite_conversion', True))
   def testRunModelAnalysisWithKerasModel(self, convert_to_tflite):
 
-    def _build_keras_model(name='export_dir'):
+    def _build_keras_model(eval_config, name='export_dir'):
       input_layer = tf.keras.layers.Input(shape=(28 * 28,), name='data')
       output_layer = tf.keras.layers.Dense(
           10, activation=tf.nn.softmax)(
@@ -537,7 +554,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         model.save(model_location, save_format='tf')
       return model_eval_lib.default_eval_shared_model(
           eval_saved_model_path=model_location,
-          tags=[tf.saved_model.SERVING]), model_location
+          eval_config=eval_config), model_location
 
     examples = [
         self._makeExample(data=[0.0] * 28 * 28, label=1.0),
@@ -547,7 +564,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     data_location = self._writeTFExamplesToTFRecords(examples)
 
     metrics_spec = config.MetricsSpec()
-    metrics_spec.model_names.extend(['candidate', 'baseline'])
     for metric in (tf.keras.metrics.AUC(),):
       cfg = tf.keras.utils.serialize_keras_object(metric)
       metrics_spec.metrics.append(
@@ -564,18 +580,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     for class_id in (0, 5, 9):
       metrics_spec.binarize.class_ids.values.append(class_id)
     eval_config = config.EvalConfig(
-        model_specs=[
-            config.ModelSpec(name='candidate', label_key='label'),
-            config.ModelSpec(
-                name='baseline', label_key='label', is_baseline=True),
-        ],
+        model_specs=[config.ModelSpec(label_key='label')],
         metrics_specs=[metrics_spec])
     if convert_to_tflite:
       for s in eval_config.model_specs:
         s.model_type = constants.TF_LITE
 
-    model, model_location = _build_keras_model()
-    baseline, baseline_model_location = _build_keras_model('baseline_export')
+    model, model_location = _build_keras_model(eval_config)
+    baseline, baseline_model_location = _build_keras_model(
+        eval_config, 'baseline_export')
     output_path = self._getTempDir()
     eval_results = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
@@ -662,7 +675,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             binarize=config.BinarizationOptions(top_k_list={'values': [1]}),
             query_key='language'))
     eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=model_location, eval_config=eval_config)
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,

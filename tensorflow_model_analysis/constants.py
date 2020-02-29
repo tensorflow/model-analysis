@@ -31,8 +31,9 @@ SPARSE_PLACEHOLDER = 'sparse_placeholder'
 # Types of models
 TF_ESTIMATOR = 'tf_estimator'
 TF_KERAS = 'tf_keras'
+TF_GENERIC = 'tf_generic'
 TF_LITE = 'tf_lite'
-VALID_MODEL_TYPES = ('', TF_ESTIMATOR, TF_KERAS, TF_LITE)
+VALID_MODEL_TYPES = ('', TF_GENERIC, TF_ESTIMATOR, TF_KERAS, TF_LITE)
 
 # LINT.IfChange
 METRICS_NAMESPACE = 'tfx.ModelAnalysis'

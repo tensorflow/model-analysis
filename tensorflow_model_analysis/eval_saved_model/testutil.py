@@ -21,8 +21,10 @@ from __future__ import print_function
 import math
 import tempfile
 import tensorflow as tf
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import util
 from typing import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
@@ -152,24 +154,38 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     self.assertEqual(expected_sparse_tensor_value.dense_shape.dtype,
                      got_sparse_tensor_value.dense_shape.dtype)
 
-  def createTestEvalSharedModel(
-      self,
-      eval_saved_model_path: Optional[Text] = None,
-      add_metrics_callbacks: Optional[List[
-          types.AddMetricsCallbackType]] = None,
-      include_default_metrics: Optional[bool] = True,
-      example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
-      additional_fetches: Optional[List[Text]] = None,
-      tags: Optional[Text] = None) -> types.EvalSharedModel:
+  def createTestEvalSharedModel(self,
+                                eval_saved_model_path: Optional[Text] = None,
+                                add_metrics_callbacks: Optional[List[
+                                    types.AddMetricsCallbackType]] = None,
+                                include_default_metrics: Optional[bool] = True,
+                                example_weight_key: Optional[Union[Text, Dict[
+                                    Text, Text]]] = None,
+                                additional_fetches: Optional[List[Text]] = None,
+                                tags: Optional[Text] = None,
+                                model_type: Optional[Text] = None,
+                                model_name: Text = '') -> types.EvalSharedModel:
+
+    if not model_type:
+      model_type = model_util.get_model_type(None, eval_saved_model_path, tags)
+    if not tags:
+      if model_type in (constants.TF_GENERIC, constants.TF_ESTIMATOR):
+        model_type = constants.TF_ESTIMATOR
+        tags = [eval_constants.EVAL_TAG]
+      else:
+        tags = [tf.saved_model.SERVING]
 
     return types.EvalSharedModel(
-        eval_saved_model_path,
+        model_name=model_name,
+        model_type=model_type,
+        model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks,
         example_weight_key=example_weight_key,
         model_loader=types.ModelLoader(
             tags=tags,
             construct_fn=model_util.model_construct_fn(
                 eval_saved_model_path=eval_saved_model_path,
+                model_type=model_type,
                 add_metrics_callbacks=add_metrics_callbacks,
                 include_default_metrics=include_default_metrics,
                 additional_fetches=additional_fetches,

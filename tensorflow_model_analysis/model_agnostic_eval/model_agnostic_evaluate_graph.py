@@ -51,10 +51,7 @@ def make_construct_fn(  # pylint: disable=invalid-name
                                                        config)
       end_time = datetime.datetime.now()
       model_load_seconds_callback(int((end_time - start_time).total_seconds()))
-      return types.ModelTypes(
-          saved_model=None,
-          keras_model=None,
-          eval_saved_model=model_agnostic_eval)
+      return model_agnostic_eval
 
     return construct
 

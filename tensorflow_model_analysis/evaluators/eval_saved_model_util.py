@@ -57,8 +57,8 @@ def metric_computations_using_eval_saved_model(
       metric_types.MetricComputation(
           keys=[None],
           preprocessor=_EvalSavedModelPreprocessor(model_name, model_loader),
-          combiner=_EvalSavedModelCombiner(
-              model_name, model_loader, batch_size))
+          combiner=_EvalSavedModelCombiner(model_name, model_loader,
+                                           batch_size))
   ]
 
 
@@ -187,7 +187,9 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
   # TODO(b/73789023): Figure out how to make this batch size dynamic.
   _BATCH_SIZE = 1000
 
-  def __init__(self, model_name: Text, model_loader: types.ModelLoader,
+  def __init__(self,
+               model_name: Text,
+               model_loader: types.ModelLoader,
                batch_size: Optional[int] = None):
     super(_EvalSavedModelCombiner, self).__init__({model_name: model_loader})
     self._model_name = model_name
@@ -213,10 +215,7 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
 
     if self._eval_metrics_graph is None:
       self._setup_if_needed()
-      if self._loaded_models[self._model_name].eval_saved_model is None:
-        raise ValueError('ModelLoader does not support eval_saved_model.')
-      self._eval_metrics_graph = (
-          self._loaded_models[self._model_name].eval_saved_model)
+      self._eval_metrics_graph = self._loaded_models[self._model_name]
     batch_size = len(accumulator.inputs)
     if force or batch_size >= self._batch_size:
       if accumulator.inputs:
@@ -269,7 +268,7 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
     self._maybe_do_batch(accumulator, force=True)
     result = {}
     if accumulator.metric_variables:
-      eval_saved_model = self._loaded_models[self._model_name].eval_saved_model
+      eval_saved_model = self._loaded_models[self._model_name]
       grouped_metrics = _metrics_by_output_name(
           eval_saved_model.metrics_set_variables_and_get_values(
               accumulator.metric_variables))

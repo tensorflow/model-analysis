@@ -31,7 +31,7 @@ def metrics_specs_from_keras(
     model_loader: types.ModelLoader,
 ) -> List[config.MetricsSpec]:
   """Returns metrics specs for metrics and losses associated with the model."""
-  model = model_loader.construct_fn(lambda x: None)().keras_model
+  model = model_loader.construct_fn(lambda x: None)()
   if model is None:
     return []
 
@@ -65,7 +65,7 @@ def metrics_specs_from_keras(
 
   specs = []
 
-  if len(model.output_names) > 1:
+  if hasattr(model, 'output_names') and len(model.output_names) > 1:
     unmatched_metrics = {m for m in metrics}
     for output_name in model.output_names:
       per_output_metrics = []

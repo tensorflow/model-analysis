@@ -31,7 +31,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import feature_extractor
-from typing import Any, Dict, List, Optional, Sequence, Text, Union
+from typing import Any, Dict, List, Optional, Sequence, Text
 
 PREDICT_EXTRACTOR_STAGE_NAME = 'Predict'
 
@@ -43,8 +43,7 @@ _FEATURES_PREDICTIONS_LABELS_KEY_MAP = {
 
 
 def PredictExtractor(
-    eval_shared_model: Union[types.EvalSharedModel,
-                             Dict[Text, types.EvalSharedModel]],
+    eval_shared_model: types.MaybeMultipleEvalSharedModels,
     desired_batch_size: Optional[int] = None,
     materialize: Optional[bool] = True,
     eval_config: Optional[config.EvalConfig] = None) -> extractor.Extractor:
@@ -58,8 +57,8 @@ def PredictExtractor(
   tfma.FEATURES_KEY, tfma.PREDICTIONS_KEY, and tfma.LABELS_KEY respectively.
 
   Args:
-    eval_shared_model: Shared model (single-model evaluation) or dict of shared
-      models keyed by model name (multi-model evaluation).
+    eval_shared_model: Shared model (single-model evaluation) or list of shared
+      models (multi-model evaluation).
     desired_batch_size: Optional batch size for batching in Aggregate.
     materialize: True to call the FeatureExtractor to add MaterializedColumn
       entries for the features, predictions, and labels.
@@ -69,19 +68,14 @@ def PredictExtractor(
     Extractor for extracting features, predictions, labels, and other tensors
     during predict.
   """
-  eval_shared_models = eval_shared_model
-  if not isinstance(eval_shared_model, dict):
-    eval_shared_models = {'': eval_shared_model}
-  # To maintain consistency between settings where single models are used,
-  # always use '' as the model name regardless of whether a name is passed.
-  if len(eval_shared_models) == 1:
-    eval_shared_models = {'': list(eval_shared_models.values())[0]}
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_TFMAPredict(
-          eval_shared_models=eval_shared_models,
+          eval_shared_models={m.model_name: m for m in eval_shared_models},
           desired_batch_size=desired_batch_size,
           materialize=materialize,
           eval_config=eval_config))
@@ -130,7 +124,7 @@ class _TFMAPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
     result = []
     for model_name, loaded_model in self._loaded_models.items():
       for i, fetched in enumerate(
-          loaded_model.eval_saved_model.predict_list(serialized_examples)):
+          loaded_model.predict_list(serialized_examples)):
         if i >= len(result):
           element_copy = copy.copy(elements[fetched.input_ref])
           for key in fetched.values:
@@ -147,8 +141,7 @@ class _TFMAPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
           if len(self._loaded_models) == 1:
             if not self._eval_config:
               element_copy[constants.FEATURES_PREDICTIONS_LABELS_KEY] = (
-                  loaded_model.eval_saved_model.as_features_predictions_labels(
-                      [fetched])[0])
+                  loaded_model.as_features_predictions_labels([fetched])[0])
           else:
             if not self._eval_config:
               raise ValueError(
