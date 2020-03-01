@@ -276,6 +276,7 @@ suite('fairness-metrics-table tests', () => {
         noPercIndices.forEach(i => {
           const text = tableEntries[i].textContent.trim();
           assert.isTrue(text[text.length - 1] !== '%');
+          assert.isFalse(text.startsWith('NaN'));
         });
 
         // metricAgainstBaseline and evalAgainstEval should be a percentage
@@ -283,6 +284,7 @@ suite('fairness-metrics-table tests', () => {
         percIndices.forEach(i => {
           const text = tableEntries[i].textContent.trim();
           assert.isTrue(text[text.length - 1] === '%');
+          assert.isFalse(text.startsWith('NaN'));
         });
       });
 
@@ -294,6 +296,9 @@ suite('fairness-metrics-table tests', () => {
     }, 0);
     setTimeout(() => {
       fillData(BOUNDED_VALUE_DATA, BOUNDED_VALUE_DATA_TO_COMPARE, true);
-    }, 5000);  // 5000ms to ensure the second test happens after the first
+    }, 5000);  // 5000ms to ensure previous test finishes before this one begins
+    setTimeout(() => {
+      fillData(TABLE_DATA, BOUNDED_VALUE_DATA_TO_COMPARE, true);
+    }, 5000);  // 5000ms to ensure previous test finishes before this one begins
   });
 });
