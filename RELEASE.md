@@ -1,4 +1,4 @@
-# Current Version(Still in development)
+# Release 0.21.4
 
 ## Major Features and Improvements
 
@@ -13,6 +13,9 @@
     unless a keras metric was added to the config.
 *   Depends on `pandas>=0.24,<2`.
 *   Depends on `pyarrow>=0.15,<1`.
+*   Depends on 'tfx-bsl>=0.21.3,<0.23',
+*   Depends on 'tensorflow>=1.15,!=2.0.*,<3',
+*   Depends on 'apache-beam[gcp]>=2.17,<2.18',
 
 ## Breaking changes
 
