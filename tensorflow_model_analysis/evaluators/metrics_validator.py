@@ -30,8 +30,12 @@ from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 
+# TODO(b/142683826): Beam type check error in
+# //third_party/tfx/components/evaluator:executor_test.python3
+# _EvaluateMetricsAndPlots is passing str instead of MetricKey, remove quotes
+# around metric_types.MetricKey below when fixed.
 def validate_metrics(
-    sliced_metrics: Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey,
+    sliced_metrics: Tuple[slicer.SliceKeyType, Dict['metric_types.MetricKey',
                                                     Any]],
     eval_config: config.EvalConfig) -> validation_result_pb2.ValidationResult:
   """Check the metrics and check whether they should be validated."""

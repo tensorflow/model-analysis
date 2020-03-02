@@ -167,8 +167,13 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
   missing_query_id_counter = beam.metrics.Metrics.counter(
       constants.METRICS_NAMESPACE, 'missing_query_id')
 
-  def key_by_query_id(extract: types.Extracts,
-                      query_id: Text) -> Optional[Tuple[Text, types.Extracts]]:
+  # TODO(b/142683826): Beam type check error in
+  # //third_party/py/tensorflow_model_analysis/api:model_eval_lib_test.python3
+  # External issue: https://issues.apache.org/jira/browse/BEAM-9377
+  # Remove quotes on return type when fixed.
+  def key_by_query_id(
+      extract: types.Extracts,
+      query_id: Text) -> 'Optional[Tuple[Text, types.Extracts]]':
     """Extract the query ID from the extract and key by that."""
     features = extract[constants.FEATURES_PREDICTIONS_LABELS_KEY].features
     if query_id not in features:

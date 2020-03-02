@@ -153,9 +153,8 @@ def _GroupByQueryKey(  # pylint: disable=invalid-name
   missing_query_key_counter = beam.metrics.Metrics.counter(
       constants.METRICS_NAMESPACE, 'missing_query_key')
 
-  def key_by_query_key(
-      extracts: types.Extracts,
-      query_key: Text) -> Optional[Tuple[Text, types.Extracts]]:
+  def key_by_query_key(extracts: types.Extracts,
+                       query_key: Text) -> Tuple[Text, types.Extracts]:
     """Extract the query key from the extract and key by that."""
     value = metric_util.to_scalar(
         util.get_by_keys(
@@ -406,7 +405,7 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
   def add_diff_metrics(
       sliced_metrics: Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey,
                                                       Any]],
-      baseline_model_name: Text,
+      baseline_model_name: Optional[Text],
   ) -> Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]:
     """Add diff metrics if there is a baseline model."""
 

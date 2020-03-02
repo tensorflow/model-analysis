@@ -98,10 +98,14 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
 class _MergeBootstrap(beam.DoFn):
   """Merge the bootstrap values and fit a T-distribution to get confidence."""
 
+  # TODO(b/142683826): Beam type check error in
+  # //third_party/py/tensorflow_model_analysis/evaluators:metrics_and_plots_evaluator_v2_test.python3
+  # There is some disagreement regarding key types (Text or MetricKey).
+  # Remove quotes around Text below when resolved.
   def process(
-      self, element: Tuple[slicer.SliceKeyType, Iterable[Dict[Text, Any]]],
+      self, element: Tuple[slicer.SliceKeyType, Iterable[Dict['Text', Any]]],
       unsampled_results: Dict[slicer.SliceKeyType, Dict[Text, Any]]
-  ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
+  ) -> Generator[Tuple[slicer.SliceKeyType, Dict['Text', Any]], None, None]:
     """Merge the bootstrap values.
 
     Args:
