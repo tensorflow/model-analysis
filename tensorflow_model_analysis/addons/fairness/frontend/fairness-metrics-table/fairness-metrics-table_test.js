@@ -234,8 +234,8 @@ suite('fairness-metrics-table tests', () => {
     const CheckProperties = (bounded) => {
       const expected_data = [
         [
-          'feature', 'loss - ModelA', 'loss against Overall - ModelA',
-          'loss - ModelB', 'loss against Overall - ModelB',
+          'feature', 'ModelA', 'ModelA against Overall',
+          'ModelB', 'ModelB against Overall',
           'ModelB against ModelA'
         ],
         ['col:1', '0.7', '0.5', '0.35', '0.15', '-0.5'],

@@ -22,7 +22,7 @@ import {template} from './fairness-metrics-table-template.html.js';
 const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
 
 /** @const {number} */
-const FLOATING_POINT_PRECISION = 5;
+const FLOATING_POINT_PRECISION = 2;
 
 /**
  * @enum {string}
@@ -133,13 +133,22 @@ export class FairnessMetricsTable extends PolymerElement {
   populateHeaderRow_(metrics, evalName, evalCompareName) {
     const metricCols = metrics.map(Util.removeMetricNamePrefix);
 
+    const colName = (metricName, evalName) => {
+      const threshold = metricName.split('@')[1];
+      const baseline = metricName.split('against')[1];
+      return threshold ?
+          evalName.concat('@', threshold) :
+          baseline ? evalName.concat(' against', baseline) : evalName;
+    };
+
     if (!this.evalComparison_()) {
       return ['feature'].concat(metricCols);
     } else {
-      const evalCols = metricCols.map(metric => metric.concat(' - ', evalName));
+      const evalCols = metricCols.map(metric => colName(metric, evalName));
       const evalCompareCols =
-          metricCols.map(metric => metric.concat(' - ', evalCompareName));
+          metricCols.map(metric => colName(metric, evalCompareName));
 
+      // +=2 to skip 'against Baseline' columns
       const againstCols = [];
       for (let j = 0; j < metrics.length; j += 2) {
         var againstCol = evalCompareName.concat(' against ', evalName);
