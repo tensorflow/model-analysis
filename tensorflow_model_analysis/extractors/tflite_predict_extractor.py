@@ -151,6 +151,10 @@ def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
   if desired_batch_size is not None:
     batch_args = dict(
         min_batch_size=desired_batch_size, max_batch_size=desired_batch_size)
+  else:
+    # TODO(b/150635972): Remove the following and allow dynamic batch sizing
+    # once the bug is addressed.
+    batch_args = dict(min_batch_size=1, max_batch_size=1)
 
   return (
       extracts
