@@ -6,6 +6,9 @@
 
 ## Breaking changes
 
+*   Rollback populating TDistributionValue metric when confidence intervals is
+    enabled in V2.
+
 ## Deprecations
 
 # Release 0.21.4

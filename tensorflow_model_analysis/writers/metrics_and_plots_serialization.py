@@ -273,29 +273,15 @@ def convert_slice_metrics(
     if isinstance(value, metrics_for_slice_pb2.ConfusionMatrixAtThresholds):
       metric_value.confusion_matrix_at_thresholds.CopyFrom(value)
     elif isinstance(value, types.ValueWithTDistribution):
-      if isinstance(key, metric_types.MetricKey):
-        # We check if the key is of type MetricKey to verify that V2 is in use.
-        # Note that in V1, we used string keys and the metrics are stored in a
-        # map.
-        metric_value.t_distribution_value.sample_mean.value = (
-            value.sample_mean)
-        metric_value.t_distribution_value.sample_standard_deviation.value = (
-            value.sample_standard_deviation)
-        metric_value.t_distribution_value.sample_degrees_of_freedom.value = (
-            value.sample_degrees_of_freedom)
-        metric_value.t_distribution_value.unsampled_value.value = (
-            value.unsampled_value)
-      else:
-        # Populating bounded value is deprecated in V2. t distribution value
-        # will be populated in V2.
-        # Convert to a bounded value. 95% confidence level is computed here.
-        sample_mean, lower_bound, upper_bound = (
-            math_util.calculate_confidence_interval(value))
-        metric_value.bounded_value.value.value = sample_mean
-        metric_value.bounded_value.lower_bound.value = lower_bound
-        metric_value.bounded_value.upper_bound.value = upper_bound
-        metric_value.bounded_value.methodology = (
-            metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
+      # Convert to a bounded value. 95% confidence level is computed here.
+      # Will populate t distribution value instead after migration.
+      sample_mean, lower_bound, upper_bound = (
+          math_util.calculate_confidence_interval(value))
+      metric_value.bounded_value.value.value = sample_mean
+      metric_value.bounded_value.lower_bound.value = lower_bound
+      metric_value.bounded_value.upper_bound.value = upper_bound
+      metric_value.bounded_value.methodology = (
+          metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
     elif isinstance(value, (six.binary_type, six.text_type)):
       # Convert textual types to string metrics.
       metric_value.bytes_value = value
