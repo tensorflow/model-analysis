@@ -65,6 +65,8 @@ def metrics_specs_from_keras(
 
   specs = []
 
+  # Need to check if model.output_names exists because the keras Sequential
+  # model doesn't always contain output_names (b/150510258).
   if hasattr(model, 'output_names') and len(model.output_names) > 1:
     unmatched_metrics = {m for m in metrics}
     for output_name in model.output_names:
