@@ -29,6 +29,7 @@ import numpy as np
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 
@@ -186,18 +187,13 @@ def TFLitePredictExtractor(
   Returns:
     Extractor for extracting predictions.
   """
-  eval_shared_models = eval_shared_model
-  if not isinstance(eval_shared_model, dict):
-    eval_shared_models = {'': eval_shared_model}
-  # To maintain consistency between settings where single models are used,
-  # always use '' as the model name regardless of whether a name is passed.
-  if len(eval_shared_models) == 1:
-    eval_shared_models = {'': list(eval_shared_models.values())[0]}
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=TFLITE_PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractTFLitePredictions(
           eval_config=eval_config,
-          eval_shared_models=eval_shared_models,
+          eval_shared_models={m.model_name: m for m in eval_shared_models},
           desired_batch_size=desired_batch_size))
