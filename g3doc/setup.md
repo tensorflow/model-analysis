@@ -9,15 +9,15 @@ for input data, output data, model specifications, metric specifications, and
 slicing specifications.
 
 All TFMA pipelines are associated with a baseline (primary) model and zero or
-more candiate (secondary) models. The baseline and candidate model are defined
+more candidate (secondary) models. The baseline and candidate model are defined
 by the user at the start of the pipeline and each require a unique name. The
 following are examples of typical configuration setups a user may use:
 
 *   Single model evaluation:
-    *   `my_model`
+    *   `` (i.e. no name)
 *   Validation-based evaluation:
-    *   `my_model:baseline`
-    *   `my_model:candidate`
+    *   `baseline`
+    *   `candidate`
 *   Model comparison evaluation:
     *   `my_model_a`
     *   `my_model_b`
@@ -31,7 +31,7 @@ evaluation:
 
 *   `name` - name of model (if multiple models used)
 *   `signature_name` - name of signature used for predictions (default is
-    `serving_default`).
+    `serving_default`). Use `eval` if using an EvalSavedModel.
 *   `label_key` - name of the feature associated with the label.
 *   `example_weight_key` - name of the feature assocated with the example
     weight.

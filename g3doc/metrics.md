@@ -229,7 +229,7 @@ from google.protobuf import text_format
 
 metrics_specs = text_format.Parse("""
   metrics_specs {
-    aggregeate: { micro_average: true }
+    aggregate: { micro_average: true }
     // Metrics to aggregate
     metrics { class_name: "AUC" }
     ...
@@ -261,7 +261,7 @@ from google.protobuf import text_format
 metrics_specs = text_format.Parse("""
   metrics_specs {
     binarize: { class_ids: { values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] } }
-    aggregeate: { macro_average: true }
+    aggregate: { macro_average: true }
     // Metrics to both binarize and aggregate
     metrics { class_name: "AUC" }
     ...

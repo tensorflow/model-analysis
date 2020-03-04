@@ -1,6 +1,3 @@
-{% setvar github_path %}tensorflow/model-analysis{% endsetvar %}
-{% include "_templates/github-bug.html" %}
-
 # TensorFlow Model Analysis
 
 *TensorFlow Model Analysis* (TFMA) is a library for evaluating TensorFlow models.
@@ -30,7 +27,6 @@ To enable TFMA visualization in Jupyter Notebook:
 
 <pre class="prettyprint">
   <code class="devsite-terminal">jupyter nbextension enable --py widgetsnbextension</code>
-  <code class="devsite-terminal">jupyter nbextension install --py --symlink tensorflow_model_analysis</code>
   <code class="devsite-terminal">jupyter nbextension enable --py tensorflow_model_analysis</code>
 </pre>
 
