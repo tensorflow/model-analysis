@@ -14,7 +14,7 @@ by the user at the start of the pipeline and each require a unique name. The
 following are examples of typical configuration setups a user may use:
 
 *   Single model evaluation:
-    *   `` (i.e. no name)
+    *   N/A (i.e. no name)
 *   Validation-based evaluation:
     *   `baseline`
     *   `candidate`
