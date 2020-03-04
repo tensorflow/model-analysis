@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Now publish NPM under `tensorflow_model_analysis` for UI components.
+
 ## Bug fixes and other changes
 
 ## Breaking changes

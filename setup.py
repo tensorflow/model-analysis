@@ -254,7 +254,7 @@ setup_args = {
     'long_description': _LONG_DESCRIPTION,
     'long_description_content_type': 'text/markdown',
     'include_package_data': True,
-    'data_files': [('share/jupyter/nbextensions/tfma_widget_js', [
+    'data_files': [('share/jupyter/nbextensions/tensorflow_model_analysis', [
         'tensorflow_model_analysis/static/extension.js',
         'tensorflow_model_analysis/static/index.js',
         'tensorflow_model_analysis/static/index.js.map',

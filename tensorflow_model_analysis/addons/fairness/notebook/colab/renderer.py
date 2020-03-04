@@ -45,7 +45,7 @@ def render_fairness_indicator(slicing_metrics=None,
   if slicing_metrics:
     display.display(
         display.HTML("""
-            <script src="/nbextensions/tfma_widget_js/vulcanized_tfma.js">
+            <script src="/nbextensions/tensorflow_model_analysis/vulcanized_tfma.js">
             </script>
             <fairness-nb-container id="component"></fairness-nb-container>
             <script>
@@ -64,7 +64,7 @@ def render_fairness_indicator(slicing_metrics=None,
     slicing_metrics_compare = multi_slicing_metrics[eval_name_compare]
     display.display(
         display.HTML("""
-            <script src="/nbextensions/tfma_widget_js/vulcanized_tfma.js">
+            <script src="/nbextensions/tensorflow_model_analysis/vulcanized_tfma.js">
             </script>
             <fairness-nb-container id="component"></fairness-nb-container>
             <script>

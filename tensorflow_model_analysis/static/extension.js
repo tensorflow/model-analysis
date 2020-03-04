@@ -105,7 +105,7 @@ if (window.require) {
   window.require.config({
     map: {
       '*': {
-        'tfma_widget_js': 'nbextensions/tfma_widget_js/index',
+        'tensorflow_model_analysis': 'nbextensions/tensorflow_model_analysis/index',
       }
     }
   });

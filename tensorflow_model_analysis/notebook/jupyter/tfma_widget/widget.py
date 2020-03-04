@@ -13,6 +13,7 @@
 # limitations under the License.
 """Defines TFMA's Jupyter notebook widgets."""
 import ipywidgets as widgets
+from tensorflow_model_analysis.version import VERSION_STRING
 import traitlets
 
 
@@ -21,10 +22,10 @@ class SlicingMetricsViewer(widgets.DOMWidget):
   """The slicing metrics visualization widget."""
   _view_name = traitlets.Unicode('SlicingMetricsView').tag(sync=True)
   _model_name = traitlets.Unicode('SlicingMetricsModel').tag(sync=True)
-  _view_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
-  _model_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
-  _view_module_version = traitlets.Unicode('0.1.0').tag(sync=True)
-  _model_module_version = traitlets.Unicode('0.1.0').tag(sync=True)
+  _view_module = traitlets.Unicode('tensorflow_model_analysis').tag(sync=True)
+  _model_module = traitlets.Unicode('tensorflow_model_analysis').tag(sync=True)
+  _view_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
+  _model_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
   data = traitlets.List([]).tag(sync=True)
   config = traitlets.Dict(dict()).tag(sync=True)
 
@@ -50,10 +51,10 @@ class TimeSeriesViewer(widgets.DOMWidget):
   """The time series visualization widget."""
   _view_name = traitlets.Unicode('TimeSeriesView').tag(sync=True)
   _model_name = traitlets.Unicode('TimeSeriesModel').tag(sync=True)
-  _view_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
-  _model_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
-  _view_module_version = traitlets.Unicode('0.1.0').tag(sync=True)
-  _model_module_version = traitlets.Unicode('0.1.0').tag(sync=True)
+  _view_module = traitlets.Unicode('tensorflow_model_analysis').tag(sync=True)
+  _model_module = traitlets.Unicode('tensorflow_model-analysis').tag(sync=True)
+  _view_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
+  _model_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
   data = traitlets.List([]).tag(sync=True)
   config = traitlets.Dict(dict()).tag(sync=True)
 
@@ -63,9 +64,9 @@ class PlotViewer(widgets.DOMWidget):
   """The time series visualization widget."""
   _view_name = traitlets.Unicode('PlotView').tag(sync=True)
   _model_name = traitlets.Unicode('PlotModel').tag(sync=True)
-  _view_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
-  _model_module = traitlets.Unicode('tfma_widget_js').tag(sync=True)
-  _view_module_version = traitlets.Unicode('0.1.0').tag(sync=True)
-  _model_module_version = traitlets.Unicode('0.1.0').tag(sync=True)
+  _view_module = traitlets.Unicode('tensorflow_model_analysis').tag(sync=True)
+  _model_module = traitlets.Unicode('tensorflow_model-analysis').tag(sync=True)
+  _view_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
+  _model_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
   data = traitlets.Dict([]).tag(sync=True)
   config = traitlets.Dict(dict()).tag(sync=True)

@@ -56,7 +56,7 @@ module.exports = [
     externals: ['@jupyter-widgets/base']
   },
   {
-    // Embeddable tfma_widget_js bundle
+    // Embeddable tensorflow_model_analysis bundle
     //
     // This bundle is generally almost identical to the notebook bundle
     // containing the custom widget views and models.

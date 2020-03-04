@@ -91,7 +91,7 @@ define(["@jupyter-widgets/base"], function(__WEBPACK_EXTERNAL_MODULE_2__) { retu
 // dynamically.
 __webpack_require__.p =
     document.querySelector('body').getAttribute('data-base-url') +
-    'nbextensions/tfma_widget_js/';
+    'nbextensions/tensorflow_model_analysis/';
 
 // Export widget models and views, and the npm package version number.
 module.exports = __webpack_require__(1);
@@ -143,9 +143,9 @@ function delayedRender(cb) {
   setTimeout(cb, 0);
 }
 
-const MODULE_NAME = 'tfma_widget_js';
-const MODEL_VERSION = '0.1.0';
-const VIEW_VERSION = '0.1.0';
+const MODULE_NAME = 'tensorflow_model-analysis';
+const MODEL_VERSION = module.exports['version'];
+const VIEW_VERSION = module.exports['version'];
 const SLICING_METRICS_MODEL_NAME = 'SlicingMetricsModel';
 const SLICING_METRICS_VIEW_NAME = 'SlicingMetricsView';
 const SLICING_METRICS_ELEMENT_NAME = 'tfma-nb-slicing-metrics';

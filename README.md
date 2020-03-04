@@ -52,7 +52,6 @@ To enable TFMA visualization in Jupyter Notebook:
 
 <pre class="prettyprint">
   <code class="devsite-terminal">jupyter nbextension enable --py widgetsnbextension</code>
-  <code class="devsite-terminal">jupyter nbextension install --py --symlink tensorflow_model_analysis</code>
   <code class="devsite-terminal">jupyter nbextension enable --py tensorflow_model_analysis</code>
 </pre>
 

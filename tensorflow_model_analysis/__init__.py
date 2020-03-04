@@ -134,6 +134,6 @@ def _jupyter_nbextension_paths():
   return [{
     'section': 'notebook',
     'src': 'static',
-    'dest': 'tfma_widget_js',
-    'require': 'tfma_widget_js/extension'
+    'dest': 'tensorflow_model_analysis',
+    'require': 'tensorflow_model_analysis/extension'
   }]

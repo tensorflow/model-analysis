@@ -15,6 +15,7 @@
  */
 const widgets = require('@jupyter-widgets/base');
 const _ = require('lodash');
+const version = require('../package.json').version;
 
 /**
  * Helper method to load the vulcanized templates.
@@ -39,9 +40,9 @@ function delayedRender(cb) {
   setTimeout(cb, 0);
 }
 
-const MODULE_NAME = 'tfma_widget_js';
-const MODEL_VERSION = '0.1.0';
-const VIEW_VERSION = '0.1.0';
+const MODULE_NAME = 'tensorflow_model_analysis';
+const MODEL_VERSION = version;
+const VIEW_VERSION = version;
 const SLICING_METRICS_MODEL_NAME = 'SlicingMetricsModel';
 const SLICING_METRICS_VIEW_NAME = 'SlicingMetricsView';
 const SLICING_METRICS_ELEMENT_NAME = 'tfma-nb-slicing-metrics';

@@ -96,7 +96,7 @@ def render_component(
 
   display.display(
       display.HTML("""
-          <script src="/nbextensions/tfma_widget_js/vulcanized_tfma.js">
+          <script src="/nbextensions/tensorflow_model_analysis/vulcanized_tfma.js">
           </script>
           <{component_name} id="component"></{component_name}>
           <script>
