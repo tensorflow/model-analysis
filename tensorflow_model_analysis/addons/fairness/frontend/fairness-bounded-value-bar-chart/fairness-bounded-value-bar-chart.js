@@ -494,23 +494,23 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     if (this.evalComparison_()) {
       return (a, b) => {
         // Ensure that the baseline slice always appears on the left side.
-        if (a.fullSliceName.endsWith(baseline) &&
-            b.fullSliceName.endsWith(baseline)) {
-          return a.fullSliceName.localeCompare(b.fullSliceName);
+        if (a.sliceValue.startsWith(baseline) &&
+            b.sliceValue.startsWith(baseline)) {
+          return a.sliceValue.localeCompare(b.sliceValue);
         }
-        if (a.fullSliceName.endsWith(baseline)) {
+        if (a.sliceValue.startsWith(baseline)) {
           return -1;
         }
-        if (b.fullSliceName.endsWith(baseline)) {
+        if (b.sliceValue.startsWith(baseline)) {
           return 1;
         }
 
         // Sort by slice name first, split ties on eval name
-        const evalSlice1Split = a.fullSliceName.split(' - ');
+        const evalSlice1Split = a.sliceValue.split(' - ');
         const slice1 = evalSlice1Split[0];
         const eval1 = evalSlice1Split[1];
 
-        const evalSlice2Split = b.fullSliceName.split(' - ');
+        const evalSlice2Split = b.sliceValue.split(' - ');
         const slice2 = evalSlice2Split[0];
         const eval2 = evalSlice2Split[1];
 

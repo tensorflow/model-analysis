@@ -291,4 +291,61 @@ suite('fairness-bounded-value-bar-chart tests', () => {
     };
     setTimeout(fillData, 0);
   });
+
+  test('Sort', done => {
+    barChart = fixture('main');
+
+    // We define these so that barChart knows we are comparing evals
+    barChart.data = BOUNDED_VALUE_DATA;
+    barChart.dataCompare = BOUNDED_VALUE_DATA;
+
+    const d3DataObject = (sliceValue) => {
+      const obj = new Object();
+      obj.sliceValue = sliceValue;
+      return obj;
+    };
+    const d3Data = [
+      d3DataObject('Overall - eval1'), d3DataObject('A - eval1'),
+      d3DataObject('B - eval1'), d3DataObject('Overall - eval2'),
+      d3DataObject('A - eval2'), d3DataObject('B - eval2')
+    ];
+
+    // Baseline = Overall
+    d3Data.sort(barChart.sortD3_('Overall'));
+    const expectedOverall = [
+      'Overall - eval1', 'Overall - eval2', 'A - eval1',
+      'A - eval2', 'B - eval1', 'B - eval2'
+    ];
+    for (var i = 0; i < d3Data.length; i++) {
+      assert.equal(d3Data[i].sliceValue, expectedOverall[i]);
+    }
+
+    // Baseline = A
+    d3Data.sort(barChart.sortD3_('A'));
+    const expectedA = [
+      'A - eval1',
+      'A - eval2',
+      'B - eval1',
+      'B - eval2',
+      'Overall - eval1',
+      'Overall - eval2',
+    ];
+    for (var i = 0; i < d3Data.length; i++) {
+      assert.equal(d3Data[i].sliceValue, expectedA[i]);
+    }
+
+    // Baseline = B
+    d3Data.sort(barChart.sortD3_('B'));
+    const expectedB = [
+      'B - eval1',
+      'B - eval2',
+      'A - eval1',
+      'A - eval2',
+      'Overall - eval1',
+      'Overall - eval2',
+    ];
+    for (var i = 0; i < d3Data.length; i++) {
+      assert.equal(d3Data[i].sliceValue, expectedB[i]);
+    }
+  });
 });

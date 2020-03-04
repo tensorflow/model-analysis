@@ -102,6 +102,7 @@ suite('fairness-metric-summary tests', () => {
   // The default number and max number of slices to plot, not including
   // baseline.
   const DEFAULT_NUM_OF_SLICES_TO_PLOT = 9;
+  const DEFAULT_NUM_OF_SLICES_TO_PLOT_EVAL_COMPARE = 3;
   const MAX_NUM_OF_SLICES_TO_PLOT = 15;
 
   const THRESHOLDS = ['0.30', '0.50'];
@@ -213,7 +214,7 @@ suite('fairness-metric-summary tests', () => {
       assert.deepEqual(metricSummary.$['bar-chart'].metrics, ['accuracy']);
       assert.deepEqual(
           metricSummary.$['bar-chart'].slices,
-          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT + 1));
+          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT_EVAL_COMPARE + 1));
       assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
       assert.deepEqual(
           metricSummary.$['bar-chart'].data, BOUNDED_VALUE_DATA);

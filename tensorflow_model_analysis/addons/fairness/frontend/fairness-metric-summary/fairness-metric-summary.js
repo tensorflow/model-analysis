@@ -30,6 +30,7 @@ import {template} from './fairness-metric-summary-template.html.js';
 const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
 
 const DEFAULT_NUM_SLICES = 9;
+const DEFAULT_NUM_SLICES_EVAL_COMPARE = 3;
 
 export class FairnessMetricSummary extends PolymerElement {
   constructor() {
@@ -366,6 +367,11 @@ export class FairnessMetricSummary extends PolymerElement {
    * @private
    */
   initializeSlicesToPlot_(baseline, slices, metricsToPlot, diffRatios) {
+
+    // Show up to DEFAULT_NUM_SLICES slices (plus baseline) by default.
+    const numSlices = this.evalComparison_() ? DEFAULT_NUM_SLICES_EVAL_COMPARE :
+                                               DEFAULT_NUM_SLICES;
+
     if (metricsToPlot && metricsToPlot.length && baseline && slices &&
         diffRatios) {
       // Use the first metrics to determine "interesting" slices to plot.
@@ -376,9 +382,7 @@ export class FairnessMetricSummary extends PolymerElement {
                 return Math.abs(
                     diffRatios[metric][sliceB] - diffRatios[metric][sliceA]);
               })
-              .slice(
-                  0, DEFAULT_NUM_SLICES);  // Show up to DEFAULT_NUM_SLICES
-                                           // slices (plus baseline) by default.
+              .slice(0, numSlices);
     } else {
       this.slicesToPlot_ = [];
     }
@@ -511,6 +515,14 @@ export class FairnessMetricSummary extends PolymerElement {
    */
   metricIsThresholded_() {
     return this.thresholds.length > 0;
+  }
+
+  /**
+   * @return {boolean} Returns true if evals are being compared.
+   * @private
+   */
+  evalComparison_() {
+    return this.dataCompare && this.dataCompare.length > 0;
   }
 }
 

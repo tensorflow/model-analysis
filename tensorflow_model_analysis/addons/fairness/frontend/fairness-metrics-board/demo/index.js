@@ -48,8 +48,8 @@
   const element = document.getElementsByTagName('fairness-metrics-board')[0];
   element.data = createTestData();
   element.dataCompare = createTestData();
-  element.evalName = 'evalA';
-  element.evalNameCompare = 'evalB';
+  element.evalName = 'eval1';
+  element.evalNameCompare = 'eval2';
   element.metrics = ['post_export_metrics/false_negative_rate', 'accuracy'];
   element.thresholdedMetrics =
       new Set(['post_export_metrics/false_negative_rate']);
