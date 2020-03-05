@@ -128,7 +128,7 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   evalComparison_() {
-    return this.dataCompare.length > 0;
+    return this.dataCompare && this.dataCompare.length > 0;
   }
 
   /**
