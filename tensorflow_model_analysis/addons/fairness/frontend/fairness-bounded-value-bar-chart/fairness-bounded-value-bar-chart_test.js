@@ -299,53 +299,57 @@ suite('fairness-bounded-value-bar-chart tests', () => {
     barChart.data = BOUNDED_VALUE_DATA;
     barChart.dataCompare = BOUNDED_VALUE_DATA;
 
-    const d3DataObject = (sliceValue) => {
+    const d3DataObject = (fullSliceName, evalName) => {
       const obj = new Object();
-      obj.sliceValue = sliceValue;
+      obj.fullSliceName = fullSliceName;
+      obj.evalName = evalName;
       return obj;
     };
     const d3Data = [
-      d3DataObject('Overall - eval1'), d3DataObject('A - eval1'),
-      d3DataObject('B - eval1'), d3DataObject('Overall - eval2'),
-      d3DataObject('A - eval2'), d3DataObject('B - eval2')
+      d3DataObject('Overall', 'eval1'), d3DataObject('slice:A', 'eval1'),
+      d3DataObject('slice:B', 'eval1'), d3DataObject('Overall', 'eval2'),
+      d3DataObject('slice:A', 'eval2'), d3DataObject('slice:B', 'eval2')
     ];
 
     // Baseline = Overall
     d3Data.sort(barChart.sortD3_('Overall'));
-    const expectedOverall = [
-      'Overall - eval1', 'Overall - eval2', 'A - eval1',
-      'A - eval2', 'B - eval1', 'B - eval2'
-    ];
+    const expectedSlicesOverall =
+        ['Overall', 'Overall', 'slice:A', 'slice:A', 'slice:B', 'slice:B'];
+    const expectedEvals =
+        ['eval1', 'eval2', 'eval1', 'eval2', 'eval1', 'eval2'];
     for (var i = 0; i < d3Data.length; i++) {
-      assert.equal(d3Data[i].sliceValue, expectedOverall[i]);
+      assert.equal(d3Data[i].fullSliceName, expectedSlicesOverall[i]);
+      assert.equal(d3Data[i].evalName, expectedEvals[i]);
     }
 
     // Baseline = A
-    d3Data.sort(barChart.sortD3_('A'));
-    const expectedA = [
-      'A - eval1',
-      'A - eval2',
-      'B - eval1',
-      'B - eval2',
-      'Overall - eval1',
-      'Overall - eval2',
+    d3Data.sort(barChart.sortD3_('slice:A'));
+    const expectedSlicesA = [
+      'slice:A',
+      'slice:A',
+      'slice:B',
+      'slice:B',
+      'Overall',
+      'Overall',
     ];
     for (var i = 0; i < d3Data.length; i++) {
-      assert.equal(d3Data[i].sliceValue, expectedA[i]);
+      assert.equal(d3Data[i].fullSliceName, expectedSlicesA[i]);
+      assert.equal(d3Data[i].evalName, expectedEvals[i]);
     }
 
     // Baseline = B
-    d3Data.sort(barChart.sortD3_('B'));
-    const expectedB = [
-      'B - eval1',
-      'B - eval2',
-      'A - eval1',
-      'A - eval2',
-      'Overall - eval1',
-      'Overall - eval2',
+    d3Data.sort(barChart.sortD3_('slice:B'));
+    const expectedSlicesB = [
+      'slice:B',
+      'slice:B',
+      'slice:A',
+      'slice:A',
+      'Overall',
+      'Overall',
     ];
     for (var i = 0; i < d3Data.length; i++) {
-      assert.equal(d3Data[i].sliceValue, expectedB[i]);
+      assert.equal(d3Data[i].fullSliceName, expectedSlicesB[i]);
+      assert.equal(d3Data[i].evalName, expectedEvals[i]);
     }
   });
 });

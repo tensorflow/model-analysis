@@ -57,7 +57,7 @@ template.innerHTML = `
   </paper-icon-button>
 </div>
 <div class="config" hidden$="[[!metricIsThresholded_(thresholds)]]">
-  <paper-dropdown-menu opened="{{thresholdsMenuOpened_}}" label="Thresholds">
+  &emsp;<paper-dropdown-menu opened="{{thresholdsMenuOpened_}}" label="Thresholds">
     <paper-listbox id="thresholdsList" multi selected-values="{{selectedThresholds_}}"
                    attr-for-selected="threshold"
                    class="dropdown-content" slot="dropdown-content">
