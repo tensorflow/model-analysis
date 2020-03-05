@@ -327,10 +327,10 @@ suite('fairness-bounded-value-bar-chart tests', () => {
     const expectedSlicesA = [
       'slice:A',
       'slice:A',
-      'slice:B',
-      'slice:B',
       'Overall',
       'Overall',
+      'slice:B',
+      'slice:B',
     ];
     for (var i = 0; i < d3Data.length; i++) {
       assert.equal(d3Data[i].fullSliceName, expectedSlicesA[i]);
@@ -342,10 +342,10 @@ suite('fairness-bounded-value-bar-chart tests', () => {
     const expectedSlicesB = [
       'slice:B',
       'slice:B',
-      'slice:A',
-      'slice:A',
       'Overall',
       'Overall',
+      'slice:A',
+      'slice:A',
     ];
     for (var i = 0; i < d3Data.length; i++) {
       assert.equal(d3Data[i].fullSliceName, expectedSlicesB[i]);

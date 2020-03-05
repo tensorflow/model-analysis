@@ -115,15 +115,13 @@ template.innerHTML = `
           <template is="dom-if" if="[[index]]">
             <div class="table-entry" title="[[item]]">
               <template is="dom-if" if="[[isPercentageColumn_(index, headerRow_)]]">
-                <template is="dom-if" if="[[!isZero_(item)]]">
-                  <template is="dom-if" if="[[isPositive_(item)]]">
-                    <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
-                  </template>
-                  <template is="dom-if" if="[[isNegative_(item)]]">
-                    <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
-                  </template>
-                  [[toPercentage_(item)]]
+                <template is="dom-if" if="[[isPositive_(item)]]">
+                  <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
                 </template>
+                <template is="dom-if" if="[[isNegative_(item)]]">
+                  <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
+                </template>
+                [[toPercentage_(item)]]
               </template>
               <template is="dom-if" if="[[!isPercentageColumn_(index, headerRow_)]]">
                 [[formatFloatValue_(item)]]
@@ -145,15 +143,13 @@ template.innerHTML = `
           <template is="dom-if" if="[[index]]">
             <div class="table-entry" title="[[item]]">
               <template is="dom-if" if="[[isPercentageColumn_(index, headerRow_)]]">
-                <template is="dom-if" if="[[!isZero_(item)]]">
-                  <template is="dom-if" if="[[isPositive_(item)]]">
-                    <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
-                  </template>
-                  <template is="dom-if" if="[[isNegative_(item)]]">
-                    <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
-                  </template>
-                  [[toPercentage_(item)]]
+                <template is="dom-if" if="[[isPositive_(item)]]">
+                  <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
                 </template>
+                <template is="dom-if" if="[[isNegative_(item)]]">
+                  <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
+                </template>
+                [[toPercentage_(item)]]
               </template>
               <template is="dom-if" if="[[!isPercentageColumn_(index, headerRow_)]]">
                 [[formatFloatValue_(item)]]

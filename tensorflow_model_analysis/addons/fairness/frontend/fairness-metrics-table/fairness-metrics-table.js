@@ -340,7 +340,8 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   isPercentageColumn_(index, headerRow) {
-    return headerRow && headerRow[index].includes(' against ');
+    return headerRow && index < headerRow.length &&
+        headerRow[index].includes(' against ');
   }
 
   /**
@@ -353,15 +354,6 @@ export class FairnessMetricsTable extends PolymerElement {
     // We skip the first row, since it is a header row which does not correspond
     // to a slice.
     return exampleCounts[parseFloat(rowNum) - 1];
-  }
-
-  /**
-   * @param {(string)} s
-   * @return {boolean} Returns true if string is 0.
-   * @private
-   */
-  isZero_(s) {
-    return parseFloat(s) === 0;
   }
 
   /**
@@ -397,7 +389,7 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   isPositive_(s) {
-    return s.toString().charAt(0) != '-';
+    return parseFloat(s) > 0;
   }
 
   /**
@@ -406,7 +398,7 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   isNegative_(s) {
-    return s.toString().charAt(0) == '-';
+    return parseFloat(s) < 0;
   }
 }
 
