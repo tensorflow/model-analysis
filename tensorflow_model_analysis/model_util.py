@@ -17,6 +17,7 @@
 
 import collections
 import datetime
+from absl import logging
 import apache_beam as beam
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
@@ -208,10 +209,10 @@ def rebatch_by_input_names(
         found[name] = True
         inputs[name].append(input_features)
   if len(found) != len(input_names):
-    tf.compat.v1.logging.warning(
-        'inputs do not match those expected by the '
-        'model: input_names={}, found in extracts={}'.format(
-            input_names, found))
+    logging.log_first_n(
+        logging.WARNING,
+        'inputs do not match those expected by the model: input_names=%s, '
+        'found in extracts=%s', 1, input_names, found)
   return inputs
 
 
