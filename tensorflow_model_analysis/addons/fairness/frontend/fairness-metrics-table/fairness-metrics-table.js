@@ -101,6 +101,15 @@ export class FairnessMetricsTable extends PolymerElement {
       },
 
       /**
+       * Header of the table.
+       * @private {!Array<string>}
+       */
+      headerRow_: {
+        type: Array,
+        computed: 'populateHeaderRow_(metrics, evalName, evalNameCompare)'
+      },
+
+      /**
        * Generated plot data piped to google-chart. It should be 2d array
        * where the each element in the top level array represents a row in
        * the table.
@@ -131,22 +140,28 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   populateHeaderRow_(metrics, evalName, evalCompareName) {
+    if (!metrics) {
+      return [];
+    }
     const metricCols = metrics.map(Util.removeMetricNamePrefix);
-
-    const colName = (metricName, evalName) => {
-      const threshold = metricName.split('@')[1];
-      const baseline = metricName.split('against')[1];
-      return threshold ?
-          evalName.concat('@', threshold) :
-          baseline ? evalName.concat(' against', baseline) : evalName;
-    };
 
     if (!this.evalComparison_()) {
       return ['feature'].concat(metricCols);
     } else {
-      const evalCols = metricCols.map(metric => colName(metric, evalName));
-      const evalCompareCols =
-          metricCols.map(metric => colName(metric, evalCompareName));
+      const colName = (metricName, evalName) => {
+        const threshold = metricName.split('@')[1];
+        const baseline = metricName.split('against')[1];
+        return threshold ?
+            evalName.concat('@', threshold) :
+            baseline ? evalName.concat(' against', baseline) : evalName;
+      };
+
+      const evalCols = [];
+      const evalCompareCols = [];
+      for (let j = 0; j < metricCols.length; j += 2) {
+        evalCols.push(colName(metricCols[j], evalName));
+        evalCompareCols.push(colName(metricCols[j], evalCompareName));
+      }
 
       // +=2 to skip 'against Baseline' columns
       const againstCols = [];
@@ -177,18 +192,20 @@ export class FairnessMetricsTable extends PolymerElement {
       // slice name
       tableRow.push(data[i]['slice']);
 
-      // First Eval column
       const metricsData = data[i]['metrics'];
-      metrics.forEach(entry => {
-        tableRow.push(this.formatCell_(metricsData[entry]));
-      });
 
-      // Second Eval column
+      // In comparison, skip over 'metric against Baseline' (+=2)
       if (this.evalComparison_()) {
+        // First Eval column
+        for (let j = 0; j < metrics.length; j += 2) {
+          tableRow.push(this.formatCell_(metricsData[metrics[j]]));
+        }
+
+        // Second Eval column
         const metricsDataCompare = dataCompare[i]['metrics'];
-        metrics.forEach(entry => {
-          tableRow.push(this.formatCell_(metricsDataCompare[entry]));
-        });
+        for (let j = 0; j < metrics.length; j += 2) {
+          tableRow.push(this.formatCell_(metricsDataCompare[metrics[j]]));
+        }
 
         // Comparison columns
         for (let j = 0; j < metrics.length; j += 2) {
@@ -202,6 +219,13 @@ export class FairnessMetricsTable extends PolymerElement {
           const comparison = evalCompareMetric / evalMetric - 1;
           tableRow.push(comparison.toString());
         }
+      }
+
+      // In non-comparison, include both 'metric' and 'metric against Baseline'
+      else {
+        metrics.forEach(entry => {
+          tableRow.push(this.formatCell_(metricsData[entry]));
+        });
       }
 
       tableRows.push(tableRow);
@@ -221,16 +245,15 @@ export class FairnessMetricsTable extends PolymerElement {
    */
   computeTableData_(data, dataCompare, metrics, evalName, evalNameCompare) {
     if (!data || !metrics) {
-      return undefined;
+      return [];
     }
     if (data.length == 0) {
       // No need to compute plot data if data is empty.
       return [[]];
     }
 
-    let headerRow = this.populateHeaderRow_(metrics, evalName, evalNameCompare);
     let tableRows = this.populateTableRows_(metrics, data, dataCompare);
-    return [headerRow].concat(tableRows);
+    return [this.headerRow_].concat(tableRows);
   }
 
   /**
@@ -311,19 +334,13 @@ export class FairnessMetricsTable extends PolymerElement {
 
   /**
    * @param {(number)} index
+   * @param {!Array} headerRow
    * @return {boolean} Returns true if the given column index corresponds to a
-   * Diff. w. baseline column.
+   * percentage column.
    * @private
    */
-  isDiffWithBaselineColumn_(index) {
-    const isFeatureCol = index === 0;
-    const isMetricCol = !isFeatureCol && index <= 2 * this.metrics.length;
-    const isMetricAgainstBaselineCol = isMetricCol && !(index % 2);
-    const isExampleCountCol = index === this.tableData_[0].length;
-    const isEvalComparisonCol =
-        this.dataCompare && !isFeatureCol && !isMetricCol && !isExampleCountCol;
-
-    return isMetricAgainstBaselineCol || isEvalComparisonCol;
+  isPercentageColumn_(index, headerRow) {
+    return headerRow && headerRow[index].includes(' against ');
   }
 
   /**

@@ -187,7 +187,7 @@ suite('fairness-metrics-table tests', () => {
 
       assert.equal(table.tableData_.length, expected_data.length);
       for (var i = 0; i < NUM_ROWS; i++) {
-        for (var j = 0; j < 3; j++) {
+        for (var j = 0; j < 4; j++) {
           assert.equal(table.tableData_[i][j], expected_data[i][j]);
         }
       }
@@ -233,15 +233,12 @@ suite('fairness-metrics-table tests', () => {
 
     const CheckProperties = (bounded) => {
       const expected_data = [
-        [
-          'feature', 'ModelA', 'ModelA against Overall',
-          'ModelB', 'ModelB against Overall',
-          'ModelB against ModelA'
-        ],
-        ['col:1', '0.7', '0.5', '0.35', '0.15', '-0.5'],
-        ['col:2', '0.72', '0.52', '0.36', '0.16', '-0.5'],
-        ['col:3', '0.74', '0.54', '0.37', '0.17', '-0.5'],
+        ['feature', 'ModelA', 'ModelB', 'ModelB against ModelA'],
+        ['col:1', '0.7', '0.35', '-0.5'],
+        ['col:2', '0.72', '0.36', '-0.5'],
+        ['col:3', '0.74', '0.37', '-0.5'],
       ];
+      const numCol = 4;
 
       // check table dimensions
       assert.equal(table.tableData_.length, expected_data.length);
@@ -253,8 +250,8 @@ suite('fairness-metrics-table tests', () => {
       }
 
       // check table content values
-      for (var i = 1; i < NUM_ROWS; i++) {
-        for (var j = 0; j < 6; j++) {
+      for (var i = 0; i < NUM_ROWS; i++) {
+        for (var j = 0; j < numCol; j++) {
           const actual_data = bounded ? table.tableData_[i][j].split(' ')[0] :
                                         table.tableData_[i][j];
           assert.equal(actual_data, expected_data[i][j]);
@@ -265,27 +262,28 @@ suite('fairness-metrics-table tests', () => {
       table.shadowRoot.querySelectorAll('.table-row').forEach(function(row) {
         const tableEntries = row.querySelectorAll('.table-entry');
 
-        // Six values
-        //   The first eval's metric and metricAgainstBaseline,
-        //   The second eval's metric and metricAgainstBaseline,
-        //   evalAgainstEval, and exampleCount
-        assert.equal(tableEntries.length, 6);
+        // Four values
+        //   The first eval's metric, the second eval's metric, evalAgainstEval,
+        //   and exampleCount
+        assert.equal(tableEntries.length, numCol);
 
-        // metric and exampleCount should not be percentages
-        const noPercIndices = [0, 2, 5];
-        noPercIndices.forEach(i => {
-          const text = tableEntries[i].textContent.trim();
+        // metrics and exampleCount should not be percentages
+        const noPercIndices = [0, 1, 3];
+        noPercIndices.forEach(noPercIndex => {
+          const text = tableEntries[noPercIndex].textContent.trim();
+          console.log(text);
+          console.log('should not have percentage');
           assert.isTrue(text[text.length - 1] !== '%');
           assert.isFalse(text.startsWith('NaN'));
         });
 
-        // metricAgainstBaseline and evalAgainstEval should be a percentage
-        const percIndices = [1, 3, 4];
-        percIndices.forEach(i => {
-          const text = tableEntries[i].textContent.trim();
-          assert.isTrue(text[text.length - 1] === '%');
-          assert.isFalse(text.startsWith('NaN'));
-        });
+        // evalAgainstEval should be a percentage
+        const percIndex = 2;
+        const text = tableEntries[percIndex].textContent.trim();
+          console.log(text);
+          console.log('should have percentage');
+        assert.isTrue(text[text.length - 1] === '%');  // TODO(karanshukla): failing
+        assert.isFalse(text.startsWith('NaN'));
       });
 
       done();
@@ -300,5 +298,11 @@ suite('fairness-metrics-table tests', () => {
     setTimeout(() => {
       fillData(TABLE_DATA, BOUNDED_VALUE_DATA_TO_COMPARE, true);
     }, 5000);  // 5000ms to ensure previous test finishes before this one begins
+  });
+
+  test('ToPercentage', done => {
+    table = fixture('test-fixture');
+    assert.equal(table.toPercentage_(0.25), '25%');
+    assert.equal(table.toPercentage_('0.6'), '60%');
   });
 });
