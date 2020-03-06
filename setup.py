@@ -268,7 +268,7 @@ setup_args = {
         # TODO(b/149399451): This is a workaround for broken avro-python3 1.9.2
         # release. Remove once having a healthy new release.
         'avro-python3>=1.8.1,!=1.9.2.*,!=<2.0.0; python_version>="3.0"',
-        'apache-beam[gcp]>=2.17,<2.18',
+        'apache-beam[gcp]>=2.17,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
@@ -282,9 +282,9 @@ setup_args = {
         'scipy == 1.4.1;python_version>="3"',
         'scipy == 1.2.2;python_version<"3"',
         'six>=1.12,<2',
-        'tensorflow>=1.15,!=2.0.*,<3',
+        'tensorflow>=1.15,<3',
         'tensorflow-metadata>=0.21,<0.22',
-        'tfx-bsl>=0.21.3,<0.23'
+        'tfx-bsl>=0.21.3,<0.22'
     ],
     'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     'packages': find_packages(),

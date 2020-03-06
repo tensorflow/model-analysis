@@ -1,10 +1,14 @@
-# Current Version(Still in development)
+# Release 0.21.5
 
 ## Major Features and Improvements
 
 *   Now publish NPM under `tensorflow_model_analysis` for UI components.
 
 ## Bug fixes and other changes
+
+*   Depends on 'tfx-bsl>=0.21.3,<0.22',
+*   Depends on 'tensorflow>=1.15,<3',
+*   Depends on 'apache-beam[gcp]>=2.17,<3',
 
 ## Breaking changes
 
