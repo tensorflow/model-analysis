@@ -101,7 +101,10 @@ message TDistributionValue {
   google.protobuf.Int64Value sample_degrees_of_freedom = 3;
 
   // Represents the value of data if calculated without bootstrapping.
-  google.protobuf.DoubleValue unsampled_value = 4;
+  // This field is deprecated as going forward we will remove the
+  // TDistributionValue from the oneof in the MetricValue and the unsampled
+  // value will be populated in MetricValue.double_value
+  google.protobuf.DoubleValue unsampled_value = 4 [deprecated = true];
 }
 
 // Value at cutoffs, e.g. for precision@K, recall@K
@@ -207,7 +210,7 @@ message MetricValue {
     // - stop populating the old fields
     google.protobuf.DoubleValue double_value = 1;
     BoundedValue bounded_value = 2;
-    TDistributionValue t_distribution_value = 9;
+    TDistributionValue t_distribution_value = 9 [deprecated = true];
     ValueAtCutoffs value_at_cutoffs = 4;
     ConfusionMatrixAtThresholds confusion_matrix_at_thresholds = 5;
     UnknownType unknown_type = 3;
@@ -220,9 +223,22 @@ message MetricValue {
     // extra information, such as in a scenario when no data is aggregated for a
     // small data slice due to privacy concerns.
     string debug_message = 10;
-
-    // Next tag = 11;
   }
+
+  message ConfidenceInterval {
+    // The lower bound of the range.
+    google.protobuf.DoubleValue lower_bound = 11;
+    // The upper bound of the range.
+    google.protobuf.DoubleValue upper_bound = 12;
+    // The T distribution value used to compute the confidence interval.
+    TDistributionValue t_distribution_value = 13;
+  }
+
+  // Going forward, TFMA will populate this when confidence intervals is
+  // enabled.
+  ConfidenceInterval confidence_interval = 14;
+
+  // Next tag = 15;
 }
 
 // A single slice key.
