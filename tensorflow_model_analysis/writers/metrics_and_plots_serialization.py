@@ -261,7 +261,9 @@ def convert_slice_metrics(
 
   # Convert the metrics from add_metrics_callbacks to the structured output if
   # defined.
-  if add_metrics_callbacks:
+  if add_metrics_callbacks and (not any(
+      isinstance(k, metric_types.MetricKey)
+      for k in slice_metrics_copy.keys())):
     for add_metrics_callback in add_metrics_callbacks:
       if hasattr(add_metrics_callback, 'populate_stats_and_pop'):
         add_metrics_callback.populate_stats_and_pop(slice_key,
@@ -351,7 +353,8 @@ def _convert_slice_plots(
   # Prevent further references to this, so we don't accidentally mutate it.
   del slice_plots
 
-  if add_metrics_callbacks:
+  if add_metrics_callbacks and (not any(
+      isinstance(k, metric_types.MetricKey) for k in slice_plots_copy.keys())):
     for add_metrics_callback in add_metrics_callbacks:
       if hasattr(add_metrics_callback, 'populate_plots_and_pop'):
         add_metrics_callback.populate_plots_and_pop(slice_plots_copy,
