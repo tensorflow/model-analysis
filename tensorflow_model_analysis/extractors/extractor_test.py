@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import apache_beam as beam
 from apache_beam.testing import util
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import extractor
 

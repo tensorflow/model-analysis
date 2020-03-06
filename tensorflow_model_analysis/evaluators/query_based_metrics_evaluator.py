@@ -22,7 +22,7 @@ from __future__ import print_function
 
 import apache_beam as beam
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants

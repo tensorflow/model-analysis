@@ -27,7 +27,7 @@ import itertools
 # Standard Imports
 import apache_beam as beam
 import six
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types

@@ -22,7 +22,7 @@ from __future__ import print_function
 import json
 import os
 
-import tensorflow.compat.v2 as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import keras_util

@@ -23,7 +23,7 @@ import copy
 from absl import logging
 import apache_beam as beam
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types

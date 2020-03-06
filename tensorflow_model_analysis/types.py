@@ -21,7 +21,7 @@ from __future__ import print_function
 # Standard Imports
 import numpy as np
 import six
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx_bsl.beam import shared
 
 from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union, NamedTuple

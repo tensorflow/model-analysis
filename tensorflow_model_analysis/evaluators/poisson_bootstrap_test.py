@@ -19,7 +19,7 @@ from __future__ import print_function
 # Standard Imports
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
 

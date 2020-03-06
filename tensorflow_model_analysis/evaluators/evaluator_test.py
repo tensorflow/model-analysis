@@ -18,7 +18,7 @@ from __future__ import print_function
 
 # Standard Imports
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor
