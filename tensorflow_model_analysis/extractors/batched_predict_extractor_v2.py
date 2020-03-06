@@ -23,6 +23,7 @@ import copy
 
 from typing import Dict, Optional, Text
 
+from absl import logging
 import apache_beam as beam
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
@@ -198,7 +199,7 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       self._num_instances.inc(batch_size)
       return result
     except (ValueError, tf.errors.InvalidArgumentError) as e:
-      tf.compat.v1.logging.warning(
+      logging.warning(
           'Large batch_size %s failed with error %s. '
           'Attempting to run batch through serially. Note that this will '
           'significantly affect the performance.', batch_size, e)

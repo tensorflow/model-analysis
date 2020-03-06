@@ -21,6 +21,7 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Tuple
 
+from absl import logging
 import apache_beam as beam
 
 import numpy as np
@@ -327,9 +328,8 @@ def _serialize_metrics(
   slice_key, slice_metrics = metrics
 
   if metric_keys.ERROR_METRIC in slice_metrics:
-    tf.compat.v1.logging.warning('Error for slice: %s with error message: %s ',
-                                 slice_key,
-                                 slice_metrics[metric_keys.ERROR_METRIC])
+    logging.warning('Error for slice: %s with error message: %s ', slice_key,
+                    slice_metrics[metric_keys.ERROR_METRIC])
     metrics = metrics_for_slice_pb2.MetricsForSlice()
     metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
     metrics.metrics[metric_keys.ERROR_METRIC].debug_message = slice_metrics[
@@ -419,9 +419,8 @@ def _serialize_plots(
   slice_key, slice_plots = plots
 
   if metric_keys.ERROR_METRIC in slice_plots:
-    tf.compat.v1.logging.warning('Error for slice: %s with error message: %s ',
-                                 slice_key,
-                                 slice_plots[metric_keys.ERROR_METRIC])
+    logging.warning('Error for slice: %s with error message: %s ', slice_key,
+                    slice_plots[metric_keys.ERROR_METRIC])
     metrics = metrics_for_slice_pb2.PlotsForSlice()
     metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
     metrics.plots[metric_keys.ERROR_METRIC].debug_message = slice_plots[
