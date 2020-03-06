@@ -265,9 +265,10 @@ setup_args = {
     'install_requires': [
         # Sort alphabetically
         'absl-py>=0.7,<0.9',
-        # TODO(b/149399451): This is a workaround for broken avro-python3 1.9.2
-        # release. Remove once having a healthy new release.
-        'avro-python3>=1.8.1,!=1.9.2.*,!=<2.0.0; python_version>="3.0"',
+        # avro-python3 1.9.2.1 still does not work for MacOS + Py3.5.
+        # TODO(b/149399451): remove once avro has a healthy release.
+        ('avro-python3>=1.8.1,!=1.9.2.*,<2.0.0; '
+         'python_version=="3.5" and platform_system=="Darwin"'),
         'apache-beam[gcp]>=2.17,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
