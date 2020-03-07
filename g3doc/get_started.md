@@ -35,7 +35,7 @@ pipeline.
 
 The following table summarizes the models supported by default:
 
-| Model Type | Standard Training Metrics | Custom Training Metrics | Standard Post Training Metrics | Custom Post Training Metrics |
+| Model Type | Standard Training Time Metrics | Custom Training Time Metrics | Standard Post Training Metrics | Custom Post Training Metrics |
 | --- | --- | --- | --- | --- |
 | TF2 (keras)    | Y | Not supported yet. | Y | Y |
 | TF2 (generic)  | N/A      | N/A | Y | Y |
@@ -44,10 +44,10 @@ The following table summarizes the models supported by default:
 *   Standard metrics refers to metrics that are defined based only on label
     (i.e. `y_true`), prediction (i.e. `y_pred`), and example weight (i.e.
     `sample_weight`).
-*   Training metrics refers to metrics defined at training time and saved with
-    the model (either TFMA EvalSavedModel or keras saved model).
-*   Generic TF2 models are custom models that export signatures that can be
-    used for inference and are not based on either keras or estimator.
+*   Training Time metrics refers to metrics defined at training time and saved
+    with the model (either TFMA EvalSavedModel or keras saved model).
+*   Generic TF2 models are custom models that export signatures that can be used
+    for inference and are not based on either keras or estimator.
 
 See [FAQ](faq.md) for more information no how to setup and configure these
 different model types.
@@ -230,4 +230,5 @@ frontend components included in TFMA. For example:
 *   [Install](install.md)
 *   [Setup](setup.md)
 *   [Metrics](metrics.md)
+*   [Model Validations](model_validations.md)
 *   [Architecture](architecture.md)

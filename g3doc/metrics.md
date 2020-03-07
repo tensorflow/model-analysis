@@ -325,16 +325,28 @@ metrics_specs.extend(
 ### Multi-model Evaluation Metrics
 
 TFMA supports evaluating multiple models at the same time. When multi-model
-evaluation is performed, the names of the models associated with a set of
-metrics must be specified in the `model_names` section of the MetricsSpec. For
-example:
+evaluation is performed, metrics will be calculated for each model. For example:
 
 ```python
 from google.protobuf import text_format
 
 metrics_specs = text_format.Parse("""
   metrics_specs {
-    model_names: ["my-model1", "my-model2"]
+    # no model_names means all models
+    ...
+  }
+""", tfma.EvalConfig()).metrics_specs
+```
+
+If metrics need to be computed for a subset of models, set `model_names` in the
+`metric_specs`. For example:
+
+```python
+from google.protobuf import text_format
+
+metrics_specs = text_format.Parse("""
+  metrics_specs {
+    model_names: ["my-model1"]
     ...
   }
 """, tfma.EvalConfig()).metrics_specs
@@ -347,8 +359,49 @@ metrics = [
     ...
 ]
 metrics_specs = tfma.metrics.specs_from_metrics(
-    metrics, model_names=['my-model1', 'my-model2'])
+    metrics, model_names=['my-model1'])
 ```
+
+### Model Comparison Metrics
+
+TFMA supports evaluating comparison metrics for a candidate model against a
+baseline model. A simple way to setup the candidate and baseline model pair is
+to pass along a eval_shared_model with the proper model names (tfma.BASELINE_KEY
+and tfma.CANDIDATE_KEY):
+
+```python
+
+eval_config = text_format.Parse("""
+  model_specs {
+    # ... model_spec without names ...
+  }
+  metrics_spec {
+    # ... metrics ...
+  }
+""", tfma.EvalConfig())
+
+eval_shared_models = [
+  tfma.default_eval_shared_model(
+      model_name=tfma.CANDIDATE_KEY,
+      eval_saved_model_path='/path/to/saved/candiate/model',
+      eval_config=eval_config),
+  tfma.default_eval_shared_model(
+      model_name=tfma.BASELINE_KEY,
+      eval_saved_model_path='/path/to/saved/baseline/model',
+      eval_config=eval_config),
+]
+
+eval_result = tfma.run_model_analysis(
+    eval_shared_models,
+    eval_config=eval_config,
+    # This assumes your data is a TFRecords file containing records in the
+    # tf.train.Example format.
+    data_location="/path/to/file/containing/tfrecords",
+    output_path="/path/for/output")
+```
+
+Comparison metrics are computed automatically for all of the diff-able metrics
+(currently only scalar value metrics such as accuracy and AUC).
 
 ### Multi-output Model Metrics
 
