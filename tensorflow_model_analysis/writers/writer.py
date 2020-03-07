@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +19,11 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import NamedTuple, Text, Union
+
 import apache_beam as beam
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.validators import validator
-from typing import NamedTuple, Text, Union
 
 # A writer is a PTransform that takes Evaluation or Validation output as input
 # and serializes the associated PCollections of data to a sink.
@@ -37,9 +39,9 @@ Writer = NamedTuple(
 @beam.ptransform_fn
 @beam.typehints.with_input_types(evaluator.Evaluation)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
-def Write(
-    evaluation_or_validation: Union[evaluator.Evaluation, validator.Validation],
-    key: Text, ptransform: beam.PTransform):
+def Write(evaluation_or_validation: Union[evaluator.Evaluation,
+                                          validator.Validation], key: Text,
+          ptransform: beam.PTransform):
   """Writes given Evaluation or Validation data using given writer PTransform.
 
   Args:

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,12 +19,13 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Any, Dict, List, Optional, Text
+
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-from typing import Any, Dict, List, Optional, Text
 
 DEFAULT_NUM_BUCKETS = 1000
 

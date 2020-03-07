@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import os
 import tempfile
-# Standard Imports
 
 from absl.testing import parameterized
 import apache_beam as beam

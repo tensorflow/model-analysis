@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
-# Standard Imports
+
+from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
 import apache_beam as beam
@@ -30,7 +32,6 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.extractors import extractor
-from typing import Any, Dict, List, Optional, Text
 
 # For now, we store only the first N sparse keys in our diagnostics table.
 _MAX_SPARSE_FEATURES_PER_COLUMN = 30
@@ -204,12 +205,12 @@ def _MaterializeFeatures(
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-def _ExtractFeatures(extracts: beam.pvalue.PCollection,
-                     additional_extracts: Optional[List[Text]] = None,
-                     excludes: Optional[List[bytes]] = None,
-                     source: Text = constants.FEATURES_PREDICTIONS_LABELS_KEY,
-                     dest: Text = constants.MATERIALIZE_COLUMNS
-                    ) -> beam.pvalue.PCollection:
+def _ExtractFeatures(
+    extracts: beam.pvalue.PCollection,
+    additional_extracts: Optional[List[Text]] = None,
+    excludes: Optional[List[bytes]] = None,
+    source: Text = constants.FEATURES_PREDICTIONS_LABELS_KEY,
+    dest: Text = constants.MATERIALIZE_COLUMNS) -> beam.pvalue.PCollection:
   """Builds MaterializedColumn extracts from FPL created in evaluate.Predict().
 
   It must be the case that the PredictExtractor was called before calling this

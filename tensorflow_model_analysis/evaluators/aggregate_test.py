@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-# Standard Imports
 
 import apache_beam as beam
 from apache_beam.testing import util
@@ -133,7 +133,7 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
         overall_slice = ()
         english_slice = (('language', 'english'))
         chinese_slice = (('language', 'chinese'))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             list(slices.keys()), [overall_slice, english_slice, chinese_slice])
         self.assertDictElementsAlmostEqual(
             slices[overall_slice], {

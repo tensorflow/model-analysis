@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,12 +19,13 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Any, Dict, List, Optional, Text
+
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from typing import Any, Dict, List, Optional, Text
 
 CALIBRATION_NAME = 'calibration'
 MEAN_LABEL_NAME = 'mean_label'

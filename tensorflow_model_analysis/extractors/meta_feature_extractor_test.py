@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +16,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-# Standard Imports
 
 import apache_beam as beam
 from apache_beam.testing import util
@@ -152,7 +151,7 @@ class MetaFeatureExtractorTest(testutil.TensorflowModelAnalysisTest):
               (('num_interests', 1),),
               (('num_interests', 2),),
           ]
-          self.assertEqual(
+          self.assertCountEqual(
               sorted(slice_key for slice_key, _ in got),
               sorted(expected_slice_keys))
         except AssertionError as err:

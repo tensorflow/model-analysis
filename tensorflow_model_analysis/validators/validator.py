@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +19,9 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-import apache_beam as beam
 from typing import Dict, NamedTuple, Text
+
+import apache_beam as beam
 
 # A validator takes a set of alternative evaluations as input and compares them
 # to produce a Validation output. A typical example of a validator is the

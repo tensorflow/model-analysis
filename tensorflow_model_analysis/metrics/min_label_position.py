@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Dict, List, Optional, Text
+
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import config

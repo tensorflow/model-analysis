@@ -27,7 +27,6 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 
-
 UNBATCH_EXTRACTOR_STAGE_NAME = 'ExtractUnbatchedInputs'
 
 _BATCHED_KEYS_TO_UNBATCHED_KEYS = {
@@ -51,12 +50,11 @@ def UnbatchExtractor() -> extractor.Extractor:
   """
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
-      stage_name=UNBATCH_EXTRACTOR_STAGE_NAME,
-      ptransform=_UnbatchInputs())
+      stage_name=UNBATCH_EXTRACTOR_STAGE_NAME, ptransform=_UnbatchInputs())
 
 
-def _ExtractUnbatchedInputs(batched_extract: types.Extracts
-                           ) -> Sequence[types.Extracts]:
+def _ExtractUnbatchedInputs(
+    batched_extract: types.Extracts) -> Sequence[types.Extracts]:
   """Extract features, predictions, labels and weights from batched extract."""
   keys_to_retain = set(batched_extract.keys())
   keys_to_retain.remove(constants.ARROW_RECORD_BATCH_KEY)
@@ -70,8 +68,8 @@ def _ExtractUnbatchedInputs(batched_extract: types.Extracts
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-def _UnbatchInputs(extracts: beam.pvalue.PCollection
-                  ) -> beam.pvalue.PCollection:
+def _UnbatchInputs(
+    extracts: beam.pvalue.PCollection) -> beam.pvalue.PCollection:
   """Extracts unbatched inputs from batched extracts.
 
   Args:

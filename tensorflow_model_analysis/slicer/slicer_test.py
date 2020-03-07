@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +17,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-# Standard Imports
 
 import apache_beam as beam
 from apache_beam.testing import util
@@ -113,7 +112,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
         """, metrics_for_slice_pb2.SliceKey())
 
     got_slice_key = slicer.deserialize_slice_key(slice_metrics)
-    self.assertItemsEqual([('age', 5), ('language', 'english'), ('price', 1.0)],
+    self.assertCountEqual([('age', 5), ('language', 'english'), ('price', 1.0)],
                           got_slice_key)
 
   def testSliceEquality(self):
@@ -143,8 +142,8 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
     self.assertNotEqual(age_column, age_and_gender)
     self.assertNotEqual(age_feature, age_and_gender)
 
-    self.assertItemsEqual([slicer.SingleSliceSpec()], [overall])
-    self.assertItemsEqual([
+    self.assertCountEqual([slicer.SingleSliceSpec()], [overall])
+    self.assertCountEqual([
         slicer.SingleSliceSpec(columns=['age']),
         slicer.SingleSliceSpec(),
         slicer.SingleSliceSpec(features=[('age', 5)]),
@@ -283,7 +282,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
 
     slice_spec = [spec_overall, spec_age, spec_age4, spec_age5_gender]
     expected = [(), (('age', 5),), (('age', 5), ('gender', 'f'))]
-    self.assertItemsEqual(
+    self.assertCountEqual(
         expected, slicer.get_slices_for_features_dict(features_dict,
                                                       slice_spec))
 
@@ -377,7 +376,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
               ((('gender', 'f'),), wrap_fpl(fpls[0])),
               ((('gender', 'm'),), wrap_fpl(fpls[1])),
           ]
-          self.assertEqual(
+          self.assertCountEqual(
               sorted(got, key=lambda x: x[0]),
               sorted(expected_result, key=lambda x: x[0]))
         except AssertionError as err:

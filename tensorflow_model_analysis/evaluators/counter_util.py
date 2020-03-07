@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +19,12 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import List
+
 import apache_beam as beam
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from typing import List
 
 
 @beam.ptransform_fn

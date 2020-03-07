@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +17,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-# Standard Imports
 
 # Mode for multiple model analysis runs
 UNKNOWN_EVAL_MODE = 'unknown_eval_mode'

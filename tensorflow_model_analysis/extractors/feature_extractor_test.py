@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,6 @@ from __future__ import print_function
 
 import os
 import tempfile
-# Standard Imports
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
@@ -89,7 +89,7 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
     }
     fpl = extracts[constants.FEATURES_PREDICTIONS_LABELS_KEY]
     result = feature_extractor._MaterializeFeatures(extracts)
-    self.assertTrue(isinstance(result, dict))
+    self.assertIsInstance(result, dict)
     self.assertEqual(result[constants.FEATURES_PREDICTIONS_LABELS_KEY],
                      fpl)  # should still be there.
     self.assertEqual(result['features__f'],
@@ -158,7 +158,7 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
     input_example = extracts[constants.INPUT_KEY]
     result = feature_extractor._MaterializeFeatures(
         extracts, source=constants.INPUT_KEY)
-    self.assertTrue(isinstance(result, dict))
+    self.assertIsInstance(result, dict)
     self.assertEqual(result[constants.INPUT_KEY],
                      input_example)  # should still be there.
     self.assertEqual(
@@ -209,7 +209,7 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
                 labels=labels)
     }
     result = feature_extractor._MaterializeFeatures(extracts, excludes=['s'])
-    self.assertFalse('features__s' in result)
+    self.assertNotIn('features__s', result)
 
 
 if __name__ == '__main__':

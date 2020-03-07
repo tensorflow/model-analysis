@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,8 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-# Standard Imports
+from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
+
 import apache_beam as beam
 import numpy as np
 
@@ -27,7 +29,6 @@ from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
 
 @beam.ptransform_fn

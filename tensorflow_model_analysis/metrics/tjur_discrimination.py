@@ -24,6 +24,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text
+
 import apache_beam as beam
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types

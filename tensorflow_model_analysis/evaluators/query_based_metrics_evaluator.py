@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-# Standard Imports
+from typing import Any, Dict, List, Optional, Text, Tuple
 
 import apache_beam as beam
 import numpy as np
@@ -32,7 +33,6 @@ from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
-from typing import Any, Dict, List, Optional, Text, Tuple
 
 
 def QueryBasedMetricsEvaluator(  # pylint: disable=invalid-name
@@ -94,8 +94,8 @@ class CreateQueryExamples(beam.CombineFn):
     accumulator.append(extract)
     return accumulator
 
-  def merge_accumulators(self, accumulators: List[List[types.Extracts]]
-                        ) -> List[types.Extracts]:
+  def merge_accumulators(
+      self, accumulators: List[List[types.Extracts]]) -> List[types.Extracts]:
     result = []
     for acc in accumulators:
       result.extend(acc)
@@ -188,8 +188,8 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
                        (query_id, feature_value.size(), feature_value))
     return ('{}'.format(np.asscalar(feature_value)), extract)
 
-  def merge_dictionaries(dictionaries: Tuple[Dict[Text, Any], ...]
-                        ) -> Dict[Text, Any]:
+  def merge_dictionaries(
+      dictionaries: Tuple[Dict[Text, Any], ...]) -> Dict[Text, Any]:
     """Merge dictionaries in a tuple into a single dictionary."""
     result = dict()
     for d in dictionaries:

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +25,8 @@ from __future__ import print_function
 
 import itertools
 
-# Standard Imports
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
+
 import apache_beam as beam
 import six
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
@@ -33,7 +35,6 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slice_accessor
-from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
 # FeatureValueType represents a value that a feature could take.
 FeatureValueType = Union[Text, int, float]  # pylint: disable=invalid-name
@@ -432,7 +433,7 @@ def _TrackDistinctSliceKeys(  # pylint: disable=invalid-name
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
-def FanoutSlices(
+def FanoutSlices(  # pylint: disable=invalid-name
     pcoll: beam.pvalue.PCollection,
     include_slice_keys_in_output: Optional[bool] = False
 ) -> beam.pvalue.PCollection:  # pylint: disable=invalid-name

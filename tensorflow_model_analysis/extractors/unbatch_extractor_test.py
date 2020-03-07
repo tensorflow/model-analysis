@@ -18,8 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Standard Imports
-
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -432,6 +430,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +22,11 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-# Standard Imports
+from typing import List, Text, Union
+
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import types
-
-from typing import List, Text, Union
 
 
 class SliceAccessor(object):

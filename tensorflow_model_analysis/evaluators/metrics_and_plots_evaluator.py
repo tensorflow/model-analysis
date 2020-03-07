@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-# Standard Imports
+from typing import Any, Dict, Optional, Text, Tuple
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -32,7 +33,6 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
-from typing import Any, Dict, Optional, Text, Tuple
 
 
 # TODO(mdreves): Perhaps keep this as the only public method and privatize

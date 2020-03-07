@@ -31,13 +31,12 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 
-
 # TODO(b/150029186): Avoid referring to extractors by stage names.
 INPUT_EXTRACTOR_STAGE_NAME = 'ExtractBatchedInputs'
 
 
-def BatchedInputExtractor(eval_config: config.EvalConfig
-                         ) -> extractor.Extractor:
+def BatchedInputExtractor(
+    eval_config: config.EvalConfig) -> extractor.Extractor:
   """Creates an extractor for extracting features, labels, and example weights.
 
   The extractor's PTransform extracts features, labels, and example weights from
@@ -75,8 +74,7 @@ def BatchedInputExtractor(eval_config: config.EvalConfig
 
 
 def _IsListLike(arrow_type: pa.DataType) -> bool:
-  return (pa.types.is_list(arrow_type) or
-          pa.types.is_large_list(arrow_type))
+  return pa.types.is_list(arrow_type) or pa.types.is_large_list(arrow_type)
 
 
 def _IsBinaryLike(arrow_type: pa.DataType) -> bool:
@@ -87,8 +85,7 @@ def _IsBinaryLike(arrow_type: pa.DataType) -> bool:
 
 
 def _IsSupportedArrowValueType(arrow_type: pa.DataType) -> bool:
-  return (pa.types.is_integer(arrow_type) or
-          pa.types.is_floating(arrow_type) or
+  return (pa.types.is_integer(arrow_type) or pa.types.is_floating(arrow_type) or
           _IsBinaryLike(arrow_type))
 
 
@@ -105,24 +102,24 @@ def _DropUnsupportedColumnsAndFetchRawDataColumn(
   """
   column_names, column_arrays = [], []
   serialized_examples = None
-  for column_name, column_array in zip(
-      record_batch.schema.names, record_batch.columns):
+  for column_name, column_array in zip(record_batch.schema.names,
+                                       record_batch.columns):
     column_type = column_array.type
     if column_name == constants.BATCHED_INPUT_KEY:
-      assert (
-          _IsListLike(column_type) and _IsBinaryLike(column_type.value_type)), (
-              'Invalid type for batched input key: {}. '
-              'Expected binary like.'.format(column_type))
+      assert (_IsListLike(column_type) and
+              _IsBinaryLike(column_type.value_type)), (
+                  'Invalid type for batched input key: {}. '
+                  'Expected binary like.'.format(column_type))
       serialized_examples = np.asarray(column_array.flatten())
     # Currently we only handle columns of type list<primitive|binary_like>.
     # We ignore other columns as we cannot efficiently convert them into an
     # instance dict format.
-    elif (_IsListLike(column_type)
-          and _IsSupportedArrowValueType(column_type.value_type)):
+    elif (_IsListLike(column_type) and
+          _IsSupportedArrowValueType(column_type.value_type)):
       column_names.append(column_name)
       column_arrays.append(column_array)
-  return (pa.RecordBatch.from_arrays(column_arrays, column_names),
-          serialized_examples)
+  return (pa.RecordBatch.from_arrays(column_arrays,
+                                     column_names), serialized_examples)
 
 
 def _ExtractInputs(batched_extract: types.Extracts,
@@ -176,8 +173,8 @@ def _ExtractInputs(batched_extract: types.Extracts,
       predictions_df[spec.name] = dataframe[spec.prediction_key]
       keys_to_remove.add(spec.prediction_key)
     elif spec.prediction_keys:
-      predictions_df[spec.name] = _get_proj_df_dict(
-          dataframe, spec.prediction_keys)
+      predictions_df[spec.name] = _get_proj_df_dict(dataframe,
+                                                    spec.prediction_keys)
       keys_to_remove.update(set(spec.prediction_keys.values()))
 
   _add_proj_df(labels_df, result, constants.BATCHED_LABELS_KEY)
@@ -198,9 +195,9 @@ def _ExtractInputs(batched_extract: types.Extracts,
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-def _ExtractBatchedInputs(extracts: beam.pvalue.PCollection,
-                          eval_config: config.EvalConfig
-                         ) -> beam.pvalue.PCollection:
+def _ExtractBatchedInputs(
+    extracts: beam.pvalue.PCollection,
+    eval_config: config.EvalConfig) -> beam.pvalue.PCollection:
   """Extracts features, labels and weights from batched extracts.
 
   Args:

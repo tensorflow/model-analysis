@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +21,9 @@ from __future__ import print_function
 
 import math
 import tempfile
+
+from typing import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
+
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
@@ -27,9 +31,6 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import util
-from typing import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
-
-from tensorflow.core.example import example_pb2
 
 
 class TensorflowModelAnalysisTest(tf.test.TestCase):
@@ -41,7 +42,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
   def _getTempDir(self) -> Text:
     return tempfile.mkdtemp()
 
-  def _makeExample(self, **kwargs) -> example_pb2.Example:
+  def _makeExample(self, **kwargs) -> tf.train.Example:
     return util.make_example(**kwargs)
 
   def assertHasKeyWithTDistributionAlmostEqual(

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +19,12 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-# Standard Imports
+from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union, NamedTuple
+
 import numpy as np
 import six
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx_bsl.beam import shared
-
-from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union, NamedTuple
 
 # pylint: disable=invalid-name
 

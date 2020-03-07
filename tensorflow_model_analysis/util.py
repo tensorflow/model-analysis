@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +22,12 @@ from __future__ import print_function
 import inspect
 import sys
 import traceback
-import six
 
-from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
 from typing import Any, Dict, List, Optional, Text, Union
 
+import six
+from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
 
 # Separator used when combining multiple layers of Extracts keys into a single
 # string. Normally we would like to use '.' or '/' as a separator, but the
@@ -200,7 +201,7 @@ def kwargs_only(fn):
     keywords = args.varkw
   else:
     # For Python 2
-    args = inspect.getargspec(fn)
+    args = inspect.getargspec(fn)  # pylint: disable=deprecated-method
     varargs = args.varargs
     keywords = args.keywords
   if varargs is not None:

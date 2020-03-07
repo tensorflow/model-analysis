@@ -23,7 +23,9 @@ import copy
 import importlib
 import json
 import re
+
 from typing import Any, Dict, List, Optional, Text, Type, Union, Tuple
+
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import aggregation

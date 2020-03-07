@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,20 +19,19 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-# Standard Imports
+from typing import Dict, List, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.validators import validator
-from typing import Dict, List, Text
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(validator.Validation)
 def Validate(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection,
-    alternatives: Dict[Text, beam.PTransform],
+    extracts: beam.pvalue.PCollection, alternatives: Dict[Text,
+                                                          beam.PTransform],
     validators: List[validator.Validator]):
   """Performs validation of alternative evaluations.
 

@@ -18,8 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Standard Imports
-
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -105,42 +103,39 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
         try:
           self.assertLen(got, 1)
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][0],
-              {
+              got[0][constants.BATCHED_FEATURES_KEY][0], {
                   'fixed_int': np.array([1]),
                   'fixed_float': np.array([1.0]),
               })
           self.assertEqual(
               got[0][constants.BATCHED_FEATURES_KEY][0]['fixed_string'],
               np.array([b'fixed_string1']))
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_LABELS_KEY][0], np.array([1.0]))
+          self.assertAlmostEqual(got[0][constants.BATCHED_LABELS_KEY][0],
+                                 np.array([1.0]))
           self.assertAlmostEqual(
               got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][0], np.array([0.5]))
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][1],
-              {
+              got[0][constants.BATCHED_FEATURES_KEY][1], {
                   'fixed_int': np.array([1]),
                   'fixed_float': np.array([1.0]),
               })
           self.assertEqual(
               got[0][constants.BATCHED_FEATURES_KEY][1]['fixed_string'],
               np.array([b'fixed_string2']))
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_LABELS_KEY][1], np.array([0.0]))
+          self.assertAlmostEqual(got[0][constants.BATCHED_LABELS_KEY][1],
+                                 np.array([0.0]))
           self.assertAlmostEqual(
               got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][1], np.array([0.0]))
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][2],
-              {
+              got[0][constants.BATCHED_FEATURES_KEY][2], {
                   'fixed_int': np.array([2]),
                   'fixed_float': np.array([0.0]),
               })
           self.assertEqual(
               got[0][constants.BATCHED_FEATURES_KEY][2]['fixed_string'],
               np.array([b'fixed_string3']))
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_LABELS_KEY][2], np.array([0.0]))
+          self.assertAlmostEqual(got[0][constants.BATCHED_LABELS_KEY][2],
+                                 np.array([0.0]))
           self.assertAlmostEqual(
               got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][2], np.array([1.0]))
 
@@ -231,8 +226,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
         try:
           self.assertLen(got, 1)
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][0],
-              {
+              got[0][constants.BATCHED_FEATURES_KEY][0], {
                   'fixed_int': np.array([1]),
                   'fixed_float': np.array([1.0]),
               })
@@ -250,8 +244,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
                   'output2': np.array([0.5])
               })
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][1],
-              {
+              got[0][constants.BATCHED_FEATURES_KEY][1], {
                   'fixed_int': np.array([1]),
                   'fixed_float': np.array([1.0]),
               })
@@ -378,8 +371,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
         try:
           self.assertLen(got, 1)
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][0],
-              {
+              got[0][constants.BATCHED_FEATURES_KEY][0], {
                   'fixed_int': np.array([1]),
               })
           self.assertEqual(
@@ -417,8 +409,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
               })
 
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][1],
-              {
+              got[0][constants.BATCHED_FEATURES_KEY][1], {
                   'fixed_int': np.array([1]),
               })
           self.assertEqual(
@@ -459,6 +450,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
 
 if __name__ == '__main__':
   tf.test.main()

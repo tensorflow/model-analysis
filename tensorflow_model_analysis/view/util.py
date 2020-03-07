@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +17,11 @@ from __future__ import absolute_import
 from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
+
 import json
 import os
+
+from typing import Any, Dict, List, Optional, Text, Tuple, Union
 
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.api import model_eval_lib
@@ -25,7 +29,6 @@ from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import weighted_example_count
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-from typing import Any, Dict, List, Optional, Text, Tuple, Union
 
 
 def get_slicing_metrics(

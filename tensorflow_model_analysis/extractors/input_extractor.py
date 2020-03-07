@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +20,8 @@ from __future__ import print_function
 
 import copy
 
+from typing import Any, Dict, List, Optional, Text, Tuple, Union
+
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import config
@@ -26,7 +29,6 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tfx_bsl.coders import example_coder
-from typing import Any, Dict, List, Optional, Text, Tuple, Union
 
 INPUT_EXTRACTOR_STAGE_NAME = 'ExtractInputs'
 

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +20,6 @@ from __future__ import print_function
 
 import os
 
-# Standard Imports
-
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
@@ -40,6 +39,7 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
+    super(QueryBasedMetricsEvaluatorTest, self).setUp()
     self.longMessage = True  # pylint: disable=invalid-name
 
   def _getEvalExportDir(self):

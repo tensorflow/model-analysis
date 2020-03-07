@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +20,8 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
-# Standard Imports
+
+from typing import List, Optional
 
 import apache_beam as beam
 
@@ -29,14 +31,12 @@ from tensorflow_model_analysis import util
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
-from typing import List, Optional
-
 SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSliceKeys'
 
 
-def SliceKeyExtractor(slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-                      materialize: Optional[bool] = True
-                     ) -> extractor.Extractor:
+def SliceKeyExtractor(
+    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+    materialize: Optional[bool] = True) -> extractor.Extractor:
   """Creates an extractor for extracting slice keys.
 
   The incoming Extracts must contain a FeaturesPredictionsLabels extract keyed

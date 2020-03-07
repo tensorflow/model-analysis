@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +16,6 @@
 
 from __future__ import division
 from __future__ import print_function
-
-# Standard Imports
 
 import apache_beam as beam
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import

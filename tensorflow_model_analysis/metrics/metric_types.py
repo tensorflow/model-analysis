@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +22,14 @@ from __future__ import print_function
 import copy
 import functools
 import inspect
+
+from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Text, Type, Union
+
 import apache_beam as beam
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Text, Type, Union
 
 # LINT.IfChange
 
@@ -311,7 +314,7 @@ class Metric(object):
     if hasattr(inspect, 'getfullargspec'):
       self._args = inspect.getfullargspec(self.create_computations_fn).args
     else:
-      self._args = inspect.getargspec(self.create_computations_fn).args
+      self._args = inspect.getargspec(self.create_computations_fn).args  # pylint: disable=deprecated-method
 
   def get_config(self) -> Dict[Text, Any]:
     """Returns serializable config."""

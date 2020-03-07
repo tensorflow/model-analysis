@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +20,8 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
-# Standard Imports
+
+from typing import Any, Dict, List, Optional, Sequence, Text
 
 import apache_beam as beam
 import numpy as np
@@ -31,7 +33,6 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import feature_extractor
-from typing import Any, Dict, List, Optional, Sequence, Text
 
 PREDICT_EXTRACTOR_STAGE_NAME = 'Predict'
 

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +18,9 @@
 
 import collections
 import datetime
+
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text
+
 from absl import logging
 import apache_beam as beam
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
@@ -25,8 +29,6 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
-
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text
 
 KERAS_INPUT_SUFFIX = '_input'
 

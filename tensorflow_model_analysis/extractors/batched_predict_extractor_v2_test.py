@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-# Standard Imports
 
 import apache_beam as beam
 from apache_beam.testing import util
@@ -85,7 +84,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         tensor_representations=tfx_io.TensorRepresentations())
     input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
     predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model,
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
 
     examples = [
@@ -165,7 +165,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         tensor_representations=tfx_io.TensorRepresentations())
     input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
     predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model,
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
 
     examples = [
@@ -232,7 +233,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         tensor_representations=tfx_io.TensorRepresentations())
     input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
     predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model,
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
 
     examples = [
@@ -307,7 +309,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         tensor_representations=tfx_io.TensorRepresentations())
     input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
     predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model,
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
 
     examples = [
@@ -465,11 +468,11 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
             for pred in item[constants.BATCHED_PREDICTIONS_KEY]:
               for model_name in ('model1', 'model2'):
                 self.assertIn(model_name, pred)
-                for output_name in (
-                    'chinese_head', 'english_head', 'other_head'):
+                for output_name in ('chinese_head', 'english_head',
+                                    'other_head'):
                   for pred_key in ('logistic', 'probabilities', 'all_classes'):
-                    self.assertIn(
-                        output_name + '/' + pred_key, pred[model_name])
+                    self.assertIn(output_name + '/' + pred_key,
+                                  pred[model_name])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -490,8 +493,10 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         loss=tf.keras.losses.binary_crossentropy,
         metrics=['accuracy'])
 
-    train_features = {'input1': [[0.0, 0.0], [1.0, 1.0]],
-                      'input2': [[1.0, 1.0], [0.0, 0.0]]}
+    train_features = {
+        'input1': [[0.0, 0.0], [1.0, 1.0]],
+        'input2': [[1.0, 1.0], [0.0, 0.0]]
+    }
     labels = [[1], [0]]
     example_weights = [1.0, 0.5]
     dataset = tf.data.Dataset.from_tensor_slices(
@@ -550,17 +555,16 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         tensor_representations=tfx_io.TensorRepresentations())
     input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
     predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model,
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
 
     examples = [
         self._makeExample(
-            input1=[0.0, 0.0],
-            input2=[1.0, 1.0],
+            input1=[0.0, 0.0], input2=[1.0, 1.0],
             non_model_feature=0),  # should be ignored by model
         self._makeExample(
-            input1=[1.0, 1.0],
-            input2=[0.0, 0.0],
+            input1=[1.0, 1.0], input2=[0.0, 0.0],
             non_model_feature=1),  # should be ignored by model
     ]
 
@@ -646,18 +650,17 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         tensor_representations=tfx_io.TensorRepresentations())
     input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
     predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model,
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
 
     # Notice that the features are 'test' but the model expects 'test_input'.
     # This tests that the PredictExtractor properly handles this case.
     examples = [
-        self._makeExample(
-            test=[0.0, 0.0],
-            non_model_feature=0),  # should be ignored by model
-        self._makeExample(
-            test=[1.0, 1.0],
-            non_model_feature=1),  # should be ignored by model
+        self._makeExample(test=[0.0, 0.0],
+                          non_model_feature=0),  # should be ignored by model
+        self._makeExample(test=[1.0, 1.0],
+                          non_model_feature=1),  # should be ignored by model
     ]
 
     with beam.Pipeline() as pipeline:
@@ -716,7 +719,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         tensor_representations=tfx_io.TensorRepresentations())
     input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
     predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model,
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
 
     examples = []
@@ -745,6 +749,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           raise util.BeamAssertException(err)
 
       util.assert_that(predict_extracts, check_result, label='result')
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

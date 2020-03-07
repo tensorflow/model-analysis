@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +23,8 @@ import bisect
 import copy
 import itertools
 
+from typing import Dict, List, Optional, Text
+
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import types
@@ -29,8 +32,6 @@ from tensorflow_model_analysis import util
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-
-from typing import Dict, List, Optional, Text
 
 from tensorflow_metadata.proto.v0 import statistics_pb2
 
@@ -157,8 +158,7 @@ def _get_slicable_categorical_features(
 def slice_spec_from_stats(  # pylint: disable=invalid-name
     statistics: statistics_pb2.DatasetFeatureStatisticsList,
     categorical_uniques_threshold: int = 100,
-    max_cross_size: int = 2
-) -> List[slicer.SingleSliceSpec]:
+    max_cross_size: int = 2) -> List[slicer.SingleSliceSpec]:
   """Generates slicing spec from statistics.
 
   Args:
@@ -180,7 +180,7 @@ def slice_spec_from_stats(  # pylint: disable=invalid-name
                                  feature.path.step[0])
 
   result = []
-  for i in range(1, max_cross_size+1):
+  for i in range(1, max_cross_size + 1):
     for cross in itertools.combinations(slicable_column_names, i):
       result.append(
           slicer.SingleSliceSpec(

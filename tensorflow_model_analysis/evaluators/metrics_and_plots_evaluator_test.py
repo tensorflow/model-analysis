@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-
-# Standard Imports
 
 import apache_beam as beam
 from apache_beam.testing import util
@@ -81,6 +80,7 @@ def _addPyFuncMetricCallback(  # pylint: disable=invalid-name
 class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
+    super(EvaluateMetricsAndPlotsTest, self).setUp()
     self.longMessage = True  # pylint: disable=invalid-name
 
   def _getEvalExportDir(self):
@@ -189,7 +189,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             overall_slice = ()
             first_slice = (('slice_key', b'first_slice'),)
             second_slice = (('slice_key', b'second_slice'),)
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 list(slices.keys()), [overall_slice, first_slice, second_slice])
             self.assertDictElementsAlmostEqual(
                 slices[overall_slice], {
@@ -280,7 +280,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             overall_slice = ()
             first_slice = (('slice_key', b'first_slice'),)
             second_slice = (('slice_key', b'second_slice'),)
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 list(slices.keys()), [overall_slice, first_slice, second_slice])
             self.assertDictElementsWithTDistributionAlmostEqual(
                 slices[overall_slice], {

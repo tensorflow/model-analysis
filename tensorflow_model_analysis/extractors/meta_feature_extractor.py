@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +23,7 @@ from __future__ import print_function
 
 import copy
 
-# Standard Imports
+from typing import Any, Callable, Text
 
 import apache_beam as beam
 import numpy as np
@@ -31,7 +32,6 @@ import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import encoding
-from typing import Any, Callable, Text
 
 
 def get_feature_value(fpl: types.FeaturesPredictionsLabels,
@@ -82,8 +82,9 @@ def update_fpl_features(fpl: types.FeaturesPredictionsLabels,
 
 def _ExtractMetaFeature(  # pylint: disable=invalid-name
     extracts: types.Extracts,
-    new_features_fn: Callable[[types.FeaturesPredictionsLabels], types
-                              .DictOfFetchedTensorValues]) -> types.Extracts:
+    new_features_fn: Callable[[types.FeaturesPredictionsLabels],
+                              types.DictOfFetchedTensorValues]
+) -> types.Extracts:
   """Augments FPL dict with new feature(s)."""
   # Create a new feature from existing ones.
   fpl_copy = get_fpl_copy(extracts)
@@ -102,8 +103,8 @@ def _ExtractMetaFeature(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(types.Extracts)
 def ExtractMetaFeature(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    new_features_fn: Callable[[types.FeaturesPredictionsLabels], types
-                              .DictOfFetchedTensorValues]
+    new_features_fn: Callable[[types.FeaturesPredictionsLabels],
+                              types.DictOfFetchedTensorValues]
 ) -> beam.pvalue.PCollection:
   """Extracts meta-features derived from existing features.
 

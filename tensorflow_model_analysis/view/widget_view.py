@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +18,13 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Callable, Dict, Optional, Text, Union
+
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 import tensorflow_model_analysis.notebook.visualization as visualization
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.view import util
-from typing import Callable, Dict, Optional, Text, Union
 
 
 def render_slicing_metrics(

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +17,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-# Standard Imports
 
 import apache_beam as beam
 from apache_beam.testing import util
@@ -204,7 +203,7 @@ class AutoSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
           for item in got:
             self.assertIn(constants.SLICE_KEY_TYPES_KEY, item)
             got_results.append(sorted(item[constants.SLICE_KEY_TYPES_KEY]))
-          self.assertEqual(sorted(got_results), sorted(expected_results))
+          self.assertCountEqual(sorted(got_results), sorted(expected_results))
         except AssertionError as err:
           raise util.BeamAssertException(err)
 

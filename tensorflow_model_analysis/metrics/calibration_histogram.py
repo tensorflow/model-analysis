@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +24,12 @@ import heapq
 import itertools
 import operator
 
+from typing import Dict, List, Optional, NamedTuple, Text
+
 import apache_beam as beam
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from typing import Dict, List, Optional, NamedTuple, Text
 
 CALIBRATION_HISTOGRAM_NAME = '_calibration_histogram'
 

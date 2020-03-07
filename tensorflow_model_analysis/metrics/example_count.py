@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +19,11 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Dict, Iterable, List, Text
+
 import apache_beam as beam
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
-from typing import Dict, Iterable, List, Text
 
 EXAMPLE_COUNT_NAME = 'example_count'
 
