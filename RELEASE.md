@@ -4,6 +4,9 @@
 
 ## Bug fixes and other changes
 
+*   Populate confidence_interval field in addition to bounded_value when
+    confidence intervals is enabled.
+
 ## Breaking changes
 
 ## Deprecations

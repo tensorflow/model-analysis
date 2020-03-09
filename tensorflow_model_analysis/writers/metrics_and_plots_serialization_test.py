@@ -499,6 +499,28 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
               }
               methodology: POISSON_BOOTSTRAP
             }
+            confidence_interval {
+              lower_bound {
+                value: 0.5737843
+              }
+              upper_bound {
+                value: 1.0262157
+              }
+              t_distribution_value {
+                sample_mean {
+                  value: 0.8
+                }
+                sample_standard_deviation {
+                  value: 0.1
+                }
+                sample_degrees_of_freedom {
+                  value: 9
+                }
+                unsampled_value {
+                  value: 0.8
+                }
+              }
+            }
           }
         }
         metrics {
@@ -729,6 +751,28 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
               }
               methodology: POISSON_BOOTSTRAP
             }
+            confidence_interval {
+              lower_bound {
+                value: -1.1824463
+              }
+              upper_bound {
+                value: 5.1824463
+              }
+              t_distribution_value {
+                sample_mean {
+                  value: 2.0
+                }
+                sample_standard_deviation {
+                  value: 1.0
+                }
+                sample_degrees_of_freedom {
+                  value: 3
+                }
+                unsampled_value {
+                  value: 2.0
+                }
+              }
+            }
           }
         }
         metrics {
@@ -745,6 +789,28 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
                 value: nan
               }
               methodology: POISSON_BOOTSTRAP
+            }
+            confidence_interval {
+              lower_bound {
+                value: nan
+              }
+              upper_bound {
+                value: nan
+              }
+              t_distribution_value {
+                sample_mean {
+                  value: nan
+                }
+                sample_standard_deviation {
+                  value: nan
+                }
+                sample_degrees_of_freedom {
+                  value: -1
+                }
+                unsampled_value {
+                  value: nan
+                }
+              }
             }
           }
         }
