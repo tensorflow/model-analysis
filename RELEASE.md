@@ -1,4 +1,4 @@
-# Current Version(Still in development)
+# Release 0.21.6
 
 ## Major Features and Improvements
 
@@ -6,6 +6,7 @@
 
 *   Populate confidence_interval field in addition to bounded_value when
     confidence intervals is enabled.
+*   Only requires `avro-python3>=1.8.1,!=1.9.2.*,<2.0.0` on Python 3.5 + MacOS
 
 ## Breaking changes
 
@@ -18,7 +19,6 @@
 *   Now publish NPM under `tensorflow_model_analysis` for UI components.
 
 ## Bug fixes and other changes
-*   Only requires `avro-python3>=1.8.1,!=1.9.2.*,<2.0.0` on Python 3.5 + MacOS
 
 *   Depends on 'tfx-bsl>=0.21.3,<0.22',
 *   Depends on 'tensorflow>=1.15,<3',
