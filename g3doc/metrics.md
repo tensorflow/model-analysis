@@ -17,7 +17,7 @@ TFMA supports the following metrics:
     [`tfma.metrics.Metric`](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/metrics/metric_types.py)
     using custom beam combiners or metrics derived from other metrics).
 
-TFMA also provides built-in support for coverting binary classification metrics
+TFMA also provides built-in support for converting binary classification metrics
 for use with multi-class/multi-label problems:
 
 *   Binarization based on class ID, top K, etc.
@@ -252,7 +252,7 @@ metrics_specs = tfma.metrics.specs_from_metrics(
 #### Macro / Weighted Macro Average
 
 Macro averaging must be performed as part of a binarization of metrics in
-conjunctiopn with the `maro_average` or `weighted_macro_average` options within
+conjunction with the `maro_average` or `weighted_macro_average` options within
 `tfma.AggregationOptions`. For example:
 
 ```python
