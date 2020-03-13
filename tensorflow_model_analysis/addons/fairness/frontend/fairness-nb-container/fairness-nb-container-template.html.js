@@ -22,6 +22,7 @@ template.innerHTML = `
   }
   #metrics {
     width: 100%;
+    min-width: 600px;
   }
   #metrics-and-slice-selector {
     height: 100%

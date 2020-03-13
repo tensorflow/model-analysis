@@ -18,7 +18,7 @@ template.innerHTML = `
 <style>
   #bar-chart {
     height: 360px;
-    width: 100%;
+    width: 600px;
   }
 </style>
 <svg id="bar-chart"></svg>
