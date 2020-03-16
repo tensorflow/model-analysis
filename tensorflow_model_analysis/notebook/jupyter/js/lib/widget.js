@@ -175,6 +175,9 @@ const FairnessIndicatorModel = widgets.DOMWidgetModel.extend({
     _model_module_version: MODEL_VERSION,
     _view_module_version: VIEW_VERSION,
     slicingMetrics: [],
+    slicingMetricsCompare: [],
+    evalName: '',
+    evalNameCompare: '',
     js_events: [],
   })
 });
@@ -192,11 +195,29 @@ const FairnessIndicatorView = widgets.DOMWidgetView.extend({
 
     delayedRender(() => {
       this.slicingMetricsChanged_();
+      this.slicingMetricsCompareChanged_();
+      this.evalNameChanged_();
+      this.evalNameCompareChanged_();
       this.model.on('change:slicingMetrics', this.slicingMetricsChanged_, this);
+      this.model.on(
+          'change:slicingMetricsCompare', this.slicingMetricsCompareChanged_,
+          this);
+      this.model.on('change:evalName', this.evalNameChanged_, this);
+      this.model.on(
+          'change:evalNameCompare', this.evalNameCompareChanged_, this);
     });
   },
   slicingMetricsChanged_: function() {
     this.view_.slicingMetrics = this.model.get('slicingMetrics');
+  },
+  slicingMetricsCompareChanged_: function() {
+    this.view_.slicingMetricsCompare = this.model.get('slicingMetricsCompare');
+  },
+  evalNameChanged_: function() {
+    this.view_.evalName = this.model.get('evalName');
+  },
+  evalNameCompareChanged_: function() {
+    this.view_.evalNameCompare = this.model.get('evalNameCompare');
   },
 });
 

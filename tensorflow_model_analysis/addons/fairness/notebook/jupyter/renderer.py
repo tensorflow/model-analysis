@@ -36,10 +36,18 @@ def render_fairness_indicator(slicing_metrics=None,
     raise ValueError(
         'Exactly one of the "slicing_metrics" and "multi_slicing_metrics" '
         'parameters must be set.')
-  if multi_slicing_metrics:
-    raise ValueError('"multi_slicing_metrics" is not supported on Jupyter yet.')
 
   view = widget.FairnessIndicatorViewer()
-  view.slicingMetrics = slicing_metrics
+  if slicing_metrics:
+    view.slicingMetrics = slicing_metrics
+  else:  # multi_slicing_metrics
+    eval_name, eval_name_compare = multi_slicing_metrics.keys()
+    slicing_metrics = multi_slicing_metrics[eval_name]
+    slicing_metrics_compare = multi_slicing_metrics[eval_name_compare]
+    view.slicingMetrics = slicing_metrics
+    view.slicingMetricsCompare = slicing_metrics_compare
+    view.evalName = eval_name
+    view.evalNameCompare = eval_name_compare
+
   view.eventHandlers = event_handlers
   return view

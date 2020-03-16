@@ -29,6 +29,9 @@ class FairnessIndicatorViewer(widgets.DOMWidget):
   _model_module = Unicode('tensorflow_model_analysis').tag(sync=True)
   _model_module_version = Unicode(VERSION_STRING).tag(sync=True)
   slicingMetrics = List().tag(sync=True)
+  slicingMetricsCompare = List().tag(sync=True)
+  evalName = Unicode().tag(sync=True)
+  evalNameCompare = Unicode().tag(sync=True)
 
   # Used for handling on the js side.
   eventHandlers = {}

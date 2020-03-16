@@ -1,4 +1,4 @@
-define(["@jupyter-widgets/base"], function(__WEBPACK_EXTERNAL_MODULE_2__) { return /******/ (function(modules) { // webpackBootstrap
+define(["@jupyter-widgets/base"], function(__WEBPACK_EXTERNAL_MODULE_3__) { return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
 /******/
@@ -60,11 +60,17 @@ define(["@jupyter-widgets/base"], function(__WEBPACK_EXTERNAL_MODULE_2__) { retu
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ 	return __webpack_require__(__webpack_require__.s = 1);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
+/***/ (function(module, exports) {
+
+module.exports = {"name":"tensorflow_model_analysis","version":"0.22.0dev","homepage":"https://github.com/tensorflow/model-analysis","bugs":"https://github.com/tensorflow/model-analysis/issues","license":"Apache-2.0","repository":{"type":"git","url":"https://github.com/tensorflow/model-analysis.git"},"main":"lib/index.js","files":["lib/**/*.js","dist/*.js","README.md","LICENSE"],"scripts":{"clean":"rimraf dist/","prepare":"webpack && ./collect-files-before-publish.sh","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"webpack":"^3.5.5","rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.0.0","lodash":"^4.17.4"}}
+
+/***/ }),
+/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /**
@@ -94,12 +100,12 @@ __webpack_require__.p =
     'nbextensions/tensorflow_model_analysis/';
 
 // Export widget models and views, and the npm package version number.
-module.exports = __webpack_require__(1);
-module.exports['version'] = __webpack_require__(6).version;
+module.exports = __webpack_require__(2);
+module.exports['version'] = __webpack_require__(0).version;
 
 
 /***/ }),
-/* 1 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /**
@@ -117,8 +123,9 @@ module.exports['version'] = __webpack_require__(6).version;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const widgets = __webpack_require__(2);
-const _ = __webpack_require__(3);
+const widgets = __webpack_require__(3);
+const _ = __webpack_require__(4);
+const version = __webpack_require__(0).version;
 
 /**
  * Helper method to load the vulcanized templates.
@@ -143,9 +150,9 @@ function delayedRender(cb) {
   setTimeout(cb, 0);
 }
 
-const MODULE_NAME = 'tensorflow_model-analysis';
-const MODEL_VERSION = module.exports['version'];
-const VIEW_VERSION = module.exports['version'];
+const MODULE_NAME = 'tensorflow_model_analysis';
+const MODEL_VERSION = version;
+const VIEW_VERSION = version;
 const SLICING_METRICS_MODEL_NAME = 'SlicingMetricsModel';
 const SLICING_METRICS_VIEW_NAME = 'SlicingMetricsView';
 const SLICING_METRICS_ELEMENT_NAME = 'tfma-nb-slicing-metrics';
@@ -278,6 +285,9 @@ const FairnessIndicatorModel = widgets.DOMWidgetModel.extend({
     _model_module_version: MODEL_VERSION,
     _view_module_version: VIEW_VERSION,
     slicingMetrics: [],
+    slicingMetricsCompare: [],
+    evalName: '',
+    evalNameCompare: '',
     js_events: [],
   })
 });
@@ -295,11 +305,29 @@ const FairnessIndicatorView = widgets.DOMWidgetView.extend({
 
     delayedRender(() => {
       this.slicingMetricsChanged_();
+      this.slicingMetricsCompareChanged_();
+      this.evalNameChanged_();
+      this.evalNameCompareChanged_();
       this.model.on('change:slicingMetrics', this.slicingMetricsChanged_, this);
+      this.model.on(
+          'change:slicingMetricsCompare', this.slicingMetricsCompareChanged_,
+          this);
+      this.model.on('change:evalName', this.evalNameChanged_, this);
+      this.model.on(
+          'change:evalNameCompare', this.evalNameCompareChanged_, this);
     });
   },
   slicingMetricsChanged_: function() {
     this.view_.slicingMetrics = this.model.get('slicingMetrics');
+  },
+  slicingMetricsCompareChanged_: function() {
+    this.view_.slicingMetricsCompare = this.model.get('slicingMetricsCompare');
+  },
+  evalNameChanged_: function() {
+    this.view_.evalName = this.model.get('evalName');
+  },
+  evalNameCompareChanged_: function() {
+    this.view_.evalNameCompare = this.model.get('evalNameCompare');
   },
 });
 
@@ -330,13 +358,13 @@ module.exports = {
 
 
 /***/ }),
-/* 2 */
+/* 3 */
 /***/ (function(module, exports) {
 
-module.exports = __WEBPACK_EXTERNAL_MODULE_2__;
+module.exports = __WEBPACK_EXTERNAL_MODULE_3__;
 
 /***/ }),
-/* 3 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, module) {var __WEBPACK_AMD_DEFINE_RESULT__;/**
@@ -15139,10 +15167,9 @@ module.exports = __WEBPACK_EXTERNAL_MODULE_2__;
       , 'g');
 
       // Use a sourceURL for easier debugging.
-      // The sourceURL gets injected into the source that's eval-ed, so be
-      // careful with lookup (in case of e.g. prototype pollution), and strip
-      // newlines if any. A newline wouldn't be a valid sourceURL anyway, and
-      // it'd enable code injection.
+      // The sourceURL gets injected into the source that's eval-ed, so be careful
+      // with lookup (in case of e.g. prototype pollution), and strip newlines if any.
+      // A newline wouldn't be a valid sourceURL anyway, and it'd enable code injection.
       var sourceURL = '//# sourceURL=' +
         (hasOwnProperty.call(options, 'sourceURL')
           ? (options.sourceURL + '').replace(/[\r\n]/g, ' ')
@@ -17454,10 +17481,10 @@ module.exports = __WEBPACK_EXTERNAL_MODULE_2__;
   }
 }.call(this));
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(4), __webpack_require__(5)(module)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(5), __webpack_require__(6)(module)))
 
 /***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports) {
 
 var g;
@@ -17484,7 +17511,7 @@ module.exports = g;
 
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports) {
 
 module.exports = function(module) {
@@ -17510,12 +17537,6 @@ module.exports = function(module) {
 	return module;
 };
 
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports) {
-
-module.exports = {"main":"lib/index.js","files":["lib/**/*.js","dist/*.js"],"scripts":{"clean":"rimraf dist/","prepublish":"webpack","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"webpack":"^3.5.5","rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.0.0","lodash":"^4.17.4"}}
 
 /***/ })
 /******/ ])});;
