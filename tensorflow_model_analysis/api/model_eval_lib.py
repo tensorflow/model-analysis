@@ -169,7 +169,7 @@ def _load_eval_run(
     options = config.Options()
     options.compute_confidence_intervals.value = (
         old_config.compute_confidence_intervals)
-    options.k_anonymization_count.value = old_config.k_anonymization_count
+    options.min_slice_size.value = old_config.k_anonymization_count
     return (config.EvalConfig(slicing_specs=slicing_specs,
                               options=options), old_config.data_location, '', {
                                   '': old_config.model_location
@@ -521,7 +521,7 @@ def default_evaluators(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: config.EvalConfig = None,
     compute_confidence_intervals: Optional[bool] = False,
-    k_anonymization_count: int = 1,
+    min_slice_size: int = 1,
     desired_batch_size: Optional[int] = None,
     serialize: bool = False,
     random_seed_for_testing: Optional[int] = None) -> List[evaluator.Evaluator]:
@@ -533,7 +533,7 @@ def default_evaluators(  # pylint: disable=invalid-name
       metrics to be computed in-graph using the model.
     eval_config: Eval config.
     compute_confidence_intervals: Deprecated (use eval_config).
-    k_anonymization_count: Deprecated (use eval_config).
+    min_slice_size: Deprecated (use eval_config).
     desired_batch_size: Optional batch size for batching in combiner.
     serialize: Deprecated.
     random_seed_for_testing: Provide for deterministic tests only.
@@ -568,13 +568,13 @@ def default_evaluators(  # pylint: disable=invalid-name
       if eval_config.options.HasField('compute_confidence_intervals'):
         compute_confidence_intervals = (
             eval_config.options.compute_confidence_intervals.value)
-      if eval_config.options.HasField('k_anonymization_count'):
-        k_anonymization_count = eval_config.options.k_anonymization_count.value
+      if eval_config.options.HasField('min_slice_size'):
+        min_slice_size = eval_config.options.min_slice_size.value
     return [
         metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
             eval_shared_model,
             compute_confidence_intervals=compute_confidence_intervals,
-            k_anonymization_count=k_anonymization_count,
+            min_slice_size=min_slice_size,
             desired_batch_size=desired_batch_size,
             serialize=serialize,
             random_seed_for_testing=random_seed_for_testing)
@@ -808,7 +808,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     write_config: Optional[bool] = True,
     compute_confidence_intervals: Optional[bool] = False,
-    k_anonymization_count: int = 1,
+    min_slice_size: int = 1,
     desired_batch_size: Optional[int] = None,
     random_seed_for_testing: Optional[int] = None) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
@@ -862,7 +862,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     slice_spec: Deprecated (use EvalConfig).
     write_config: Deprecated (use EvalConfig).
     compute_confidence_intervals: Deprecated (use EvalConfig).
-    k_anonymization_count: Deprecated (use EvalConfig).
+    min_slice_size: Deprecated (use EvalConfig).
     desired_batch_size: Optional batch size for batching in Predict.
     random_seed_for_testing: Provide for deterministic tests only.
 
@@ -894,7 +894,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       slicing_specs = [s.to_proto() for s in slice_spec]
     options = config.Options()
     options.compute_confidence_intervals.value = compute_confidence_intervals
-    options.k_anonymization_count.value = k_anonymization_count
+    options.min_slice_size.value = min_slice_size
     if not write_config:
       options.disabled_outputs.values.append(_EVAL_CONFIG_FILE)
     eval_config = config.EvalConfig(
@@ -967,7 +967,7 @@ def run_model_analysis(
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     write_config: Optional[bool] = True,
     compute_confidence_intervals: Optional[bool] = False,
-    k_anonymization_count: int = 1,
+    min_slice_size: int = 1,
     desired_batch_size: Optional[int] = None,
     random_seed_for_testing: Optional[int] = None
 ) -> Union[EvalResult, EvalResults]:
@@ -1005,7 +1005,7 @@ def run_model_analysis(
     slice_spec: Deprecated (use EvalConfig).
     write_config: Deprecated (use EvalConfig).
     compute_confidence_intervals: Deprecated (use EvalConfig).
-    k_anonymization_count: Deprecated (use EvalConfig).
+    min_slice_size: Deprecated (use EvalConfig).
     desired_batch_size: Optional batch size for batching in Predict.
     random_seed_for_testing: Provide for deterministic tests only.
 
@@ -1042,7 +1042,7 @@ def run_model_analysis(
       slicing_specs = [s.to_proto() for s in slice_spec]
     options = config.Options()
     options.compute_confidence_intervals.value = compute_confidence_intervals
-    options.k_anonymization_count.value = k_anonymization_count
+    options.min_slice_size.value = min_slice_size
     if not write_config:
       options.disabled_outputs.values.append(_EVAL_CONFIG_FILE)
     eval_config = config.EvalConfig(

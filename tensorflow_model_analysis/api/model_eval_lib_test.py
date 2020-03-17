@@ -308,7 +308,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
     options = config.Options()
-    options.k_anonymization_count.value = 2
+    options.min_slice_size.value = 2
     eval_config = config.EvalConfig(
         slicing_specs=slicing_specs, options=options)
     eval_result = model_eval_lib.run_model_analysis(
@@ -785,7 +785,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
     options = config.Options()
     options.compute_confidence_intervals.value = True
-    options.k_anonymization_count.value = 2
+    options.min_slice_size.value = 2
     eval_config = config.EvalConfig(
         slicing_specs=slicing_specs, options=options)
     eval_result = model_eval_lib.run_model_analysis(
@@ -859,7 +859,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
     options = config.Options()
     options.compute_confidence_intervals.value = True
-    options.k_anonymization_count.value = 2
+    options.min_slice_size.value = 2
     eval_config = config.EvalConfig(
         slicing_specs=slicing_specs, options=options)
     eval_result = model_eval_lib.run_model_analysis(
@@ -1149,7 +1149,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     options = config.Options()
     options.compute_confidence_intervals.value = (
         old_config.compute_confidence_intervals)
-    options.k_anonymization_count.value = old_config.k_anonymization_count
+    options.min_slice_size.value = old_config.k_anonymization_count
     eval_config = config.EvalConfig(
         slicing_specs=[
             config.SlicingSpec(
@@ -1176,7 +1176,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     output_path = self._getTempDir()
     options = config.Options()
     options.compute_confidence_intervals.value = False
-    options.k_anonymization_count.value = 1
+    options.min_slice_size.value = 1
     eval_config = config.EvalConfig(
         slicing_specs=[
             config.SlicingSpec(

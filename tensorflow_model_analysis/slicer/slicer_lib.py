@@ -459,7 +459,7 @@ def FanoutSlices(  # pylint: disable=invalid-name
 def FilterOutSlices(  # pylint: disable=invalid-name
     values: beam.pvalue.PCollection,
     slices_count: beam.pvalue.PCollection,
-    k_anonymization_count: int,
+    min_slice_size: int,
     error_metric_key: Text = '__ERROR__') -> beam.pvalue.PCollection:
   """Filter out slices with examples count lower than k_anonymization_count.
 
@@ -470,15 +470,15 @@ def FilterOutSlices(  # pylint: disable=invalid-name
   Args:
     values: PCollection of aggregated data keyed at slice_key
     slices_count: PCollection of slice keys and their example count.
-    k_anonymization_count: If the number of examples in a specific slice is less
-      than k_anonymization_count, then an error will be returned for that slice.
-      This will be useful to ensure privacy by not displaying the aggregated
-      data for smaller number of examples.
+    min_slice_size: If the number of examples in a specific slice is less than
+      min_slice_size, then an error will be returned for that slice. This will
+      be useful to ensure privacy by not displaying the aggregated data for
+      smaller number of examples.
     error_metric_key: The special metric key to indicate errors.
 
   Returns:
     A PCollection keyed at all the possible slice_key and aggregated data for
-    slice keys with example count more than k_anonymization_count and error
+    slice keys with example count more than min_slice_size and error
     message for filtered out slices.
   """
 
@@ -494,7 +494,7 @@ def FilterOutSlices(  # pylint: disable=invalid-name
       """Filter out small slices.
 
       For slices (excluding overall slice) with examples count lower than
-      k_anonymization_count, it adds an error message.
+      min_slice_size, it adds an error message.
 
       Args:
         element: Tuple containing slice key and a dictionary containing
@@ -505,14 +505,14 @@ def FilterOutSlices(  # pylint: disable=invalid-name
       """
       (slice_key, value) = element
       if value['values']:
-        if (not slice_key or value['slices_count'][0] >= k_anonymization_count):
+        if (not slice_key or value['slices_count'][0] >= min_slice_size):
           yield (slice_key, value['values'][0])
         else:
           yield (slice_key, {
               self.error_metric_key:
                   'Example count for this slice key is lower than '
                   'the minimum required value: %d. No data is aggregated for '
-                  'this slice.' % k_anonymization_count
+                  'this slice.' % min_slice_size
           })
 
   return ({

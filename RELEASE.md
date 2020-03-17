@@ -120,6 +120,8 @@
 
 ## Breaking changes
 
+*   Renaming k_anonymization_count field name to min_slice_size.
+
 ## Deprecations
 
 # Release 0.21.0

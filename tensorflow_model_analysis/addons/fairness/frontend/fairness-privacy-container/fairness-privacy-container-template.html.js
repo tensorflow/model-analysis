@@ -40,10 +40,10 @@ template.innerHTML = `
   more.
 </h3>
 <paper-dialog id="privacy-dialog">
-  <h2>Privacy: k-anonymity</h2>
+  <h2>Privacy: min-slice-size</h2>
   <div class="popup">
     <p>
-      If the number of examples for a specific slice is smaller than the k_anonymization_count
+      If the number of examples for a specific slice is smaller than the min_slice_size
       specified as part of your model evaluation, then aggregated data for that slice won't
       be displayed. This will be useful to ensure privacy.
     </p>

@@ -45,7 +45,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     plots_key: Text = constants.PLOTS_KEY,
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     compute_confidence_intervals: Optional[bool] = False,
-    k_anonymization_count: int = 1,
+    min_slice_size: int = 1,
     serialize=False,
     random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
@@ -58,8 +58,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     run_after: Extractor to run after (None means before any extractors).
     compute_confidence_intervals: Whether or not to compute confidence
       intervals.
-    k_anonymization_count: If the number of examples in a specific slice is less
-      than k_anonymization_count, then an error will be returned for that slice.
+    min_slice_size: If the number of examples in a specific slice is less
+      than min_slice_size, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
       data for smaller number of examples.
     serialize: If true, serialize the metrics to protos as part of the
@@ -80,7 +80,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           metrics_key=metrics_key,
           plots_key=plots_key,
           compute_confidence_intervals=compute_confidence_intervals,
-          k_anonymization_count=k_anonymization_count,
+          min_slice_size=min_slice_size,
           serialize=serialize,
           random_seed_for_testing=random_seed_for_testing))
 
@@ -178,7 +178,7 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
     compute_confidence_intervals: Optional[bool] = False,
-    k_anonymization_count: int = 1,
+    min_slice_size: int = 1,
     serialize: bool = False,
     random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
   """Evaluates metrics and plots using the EvalSavedModel.
@@ -197,8 +197,8 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     plots_key: Name to use for plots key in Evaluation output.
     compute_confidence_intervals: Whether or not to compute confidence
       intervals.
-    k_anonymization_count: If the number of examples in a specific slice is less
-      than k_anonymization_count, then an error will be returned for that slice.
+    min_slice_size: If the number of examples in a specific slice is less
+      than min_slice_size, then an error will be returned for that slice.
       This will be useful to ensure privacy by not displaying the aggregated
       data for smaller number of examples.
     serialize: If true, serialize the metrics to protos as part of the
@@ -219,15 +219,15 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
           compute_confidence_intervals=compute_confidence_intervals,
           random_seed_for_testing=random_seed_for_testing))
 
-  if k_anonymization_count > 1:
+  if min_slice_size > 1:
     metrics = (
         metrics
         | 'FilterMetricsForSmallSlices' >> slicer.FilterOutSlices(
-            slices_count, k_anonymization_count, metric_keys.ERROR_METRIC))
+            slices_count, min_slice_size, metric_keys.ERROR_METRIC))
     plots = (
         plots
         | 'FilterPlotsForSmallSlices' >> slicer.FilterOutSlices(
-            slices_count, k_anonymization_count, metric_keys.ERROR_METRIC))
+            slices_count, min_slice_size, metric_keys.ERROR_METRIC))
 
   if serialize:
     metrics, plots = (

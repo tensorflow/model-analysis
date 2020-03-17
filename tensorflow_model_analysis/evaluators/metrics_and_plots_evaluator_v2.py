@@ -569,11 +569,11 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
               poisson_bootstrap.DEFAULT_NUM_BOOTSTRAP_SAMPLES if
               eval_config.options.compute_confidence_intervals.value else 1)))
 
-  if eval_config.options.k_anonymization_count.value > 1:
+  if eval_config.options.min_slice_size.value > 1:
     sliced_metrics_and_plots = (
         sliced_metrics_and_plots
         | 'FilterForSmallSlices' >> slicer.FilterOutSlices(
-            slices_count, eval_config.options.k_anonymization_count.value))
+            slices_count, eval_config.options.min_slice_size.value))
 
   sliced_metrics = (
       sliced_metrics_and_plots

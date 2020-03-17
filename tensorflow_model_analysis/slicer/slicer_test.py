@@ -416,7 +416,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
           | 'CreateValuesPColl' >> beam.Create(values_list)
           | 'FilterOutSlices' >> slicer.FilterOutSlices(
               slice_counts_pcoll,
-              k_anonymization_count=2,
+              min_slice_size=2,
               error_metric_key=metric_keys.ERROR_METRIC))
       util.assert_that(output_dict, check_output)
 
