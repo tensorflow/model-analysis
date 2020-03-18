@@ -87,10 +87,16 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       ('false_positives', 'false_positives', 0.0),
       ('true_negatives', 'true_negatives', 2.0),
       ('false_negatives', 'false_negatives', 1.0),
-      ('specificity_at_sensitivity', 'specificity_at_sensitivity', 0.5),
+      ('specificity_at_sensitivity', 'specificity_at_sensitivity', 1.0),
       ('sensitivity_at_specificity', 'sensitivity_at_specificity', 1.0),
   )
   def testMetricsWithoutWeights(self, metric_name, expected_value):
+    # TODO (b/151636380): remove when CL/299961405 is propagated through Kokoro.
+    if metric_name == 'specificity_at_sensitivity':
+      fix_present = hasattr(tf.keras.metrics.SpecificityAtSensitivity,
+                            '_find_max_under_constraint')
+      if not fix_present:
+        expected_value = 0.5
     computations = tf_metric_wrapper.tf_metric_computations(
         [self._tf_metric_by_name(metric_name)])
     histogram = computations[0]
@@ -156,10 +162,17 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       ('false_positives', 'false_positives', 0.5),
       ('true_negatives', 'true_negatives', 0.9),
       ('false_negatives', 'false_negatives', 0.0),
-      ('specificity_at_sensitivity', 'specificity_at_sensitivity', 0.0),
+      ('specificity_at_sensitivity', 'specificity_at_sensitivity', 0.642857),
       ('sensitivity_at_specificity', 'sensitivity_at_specificity', 1.0),
   )
   def testMetricsWithWeights(self, metric_name, expected_value):
+    # TODO (b/151636380): remove when CL/299961405 is propagated through Kokoro.
+    if metric_name == 'specificity_at_sensitivity':
+      fix_present = hasattr(tf.keras.metrics.SpecificityAtSensitivity,
+                            '_find_max_under_constraint')
+      if not fix_present:
+        expected_value = 0.0
+
     computations = tf_metric_wrapper.tf_metric_computations(
         [self._tf_metric_by_name(metric_name)])
     histogram = computations[0]

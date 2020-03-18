@@ -17,6 +17,9 @@
 *   Populate confidence_interval field in addition to bounded_value when
     confidence intervals is enabled.
 *   Only requires `avro-python3>=1.8.1,!=1.9.2.*,<2.0.0` on Python 3.5 + MacOS
+*   Fix bug in SensitivitySpecificityBase derived metrics: guarantee well
+    defined behaviour when the constraint lies between feasible points (see
+    updated docstrings).
 
 ## Breaking changes
 
