@@ -413,6 +413,14 @@ class UtilTest(tf.test.TestCase):
     self.assertSequenceEqual(list(got_labels), ['', 'c'])
     self.assertSequenceEqual(list(got_preds), ['b', 'd'])
 
+  def testSelectTopKWithBinaryClassification(self):
+    labels = np.array([0])
+    preds = np.array([0.2, 0.8])
+    got_labels, got_preds = metric_util.select_top_k(1, labels, preds)
+
+    self.assertAllClose(got_labels, np.array([0]))
+    self.assertAllClose(got_preds, np.array([0.8]))
+
 
 if __name__ == '__main__':
   tf.test.main()

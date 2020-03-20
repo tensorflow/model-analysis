@@ -607,10 +607,6 @@ def select_top_k(top_k: int,
   if labels.size == 0 or predictions.size == 0:
     return (labels, predictions)
 
-  if predictions.shape[-1] <= 2:
-    raise ValueError('select_top_k requires predictions.shape > 2: '
-                     'predictions = {}'.format(predictions))
-
   if scores is not None:
     scores = to_numpy(scores)
     if scores.shape != predictions.shape:
