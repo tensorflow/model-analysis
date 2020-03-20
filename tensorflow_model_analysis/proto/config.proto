@@ -255,6 +255,14 @@ message Options {
   google.protobuf.BoolValue compute_confidence_intervals = 2;
   // Int value to omit slices with example count < min_slice_size.
   google.protobuf.Int32Value min_slice_size = 3;
+  enum ConfidenceIntervalMethod {
+    UNKNOWN_CONFIDENCE_INTERVAL_METHOD = 0;
+    POISSON_BOOTSTRAP = 1;
+    JACKKNIFE = 2;
+  }
+  // Method used for computing a confidence interval. This will apply to all
+  // metrics in an evaluation.
+  ConfidenceIntervalMethod confidence_interval_method = 8;
   // List of outputs that should not be written (e.g.  'metrics', 'plots',
   // 'analysis', 'eval_config.json').
   RepeatedStringValue disabled_outputs = 7;

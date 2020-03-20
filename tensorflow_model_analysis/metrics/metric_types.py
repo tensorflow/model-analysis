@@ -115,7 +115,8 @@ class MetricKey(
 
   Attributes:
     name: Metric name. Names starting with '_' are private and will be filtered
-      from the final results.
+      from the final results. Names starting with two underscores, '__' are
+      reserved for internal use.
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
@@ -176,6 +177,10 @@ class MetricKey(
   # Generate a copy of the key with a different model name and is_diff False.
   def make_baseline_key(self, model_name: Text) -> 'MetricKey':
     return self._replace(model_name=model_name, is_diff=False)
+
+
+# The output type of a MetricComputation combiner.
+MetricsDict = Dict[MetricKey, Any]
 
 
 # A separate version from proto is used here because protos are not hashable and
@@ -323,6 +328,19 @@ class Metric(object):
   def is_model_independent(self) -> bool:
     """Returns true if the metric does not depend on a model."""
     return 'model_names' not in self._args
+
+  @property
+  def compute_confidence_interval(self) -> bool:
+    """Whether to compute confidence intervals for this metric.
+
+    Note that this may not completely remove the computational overhead
+    involved in computing a given metric. This is only respected by the
+    jackknife confidence interval method.
+
+    Returns:
+      Whether to compute confidence intervals for this metric.
+    """
+    return True
 
   def computations(self,
                    eval_config: Optional[config.EvalConfig] = None,

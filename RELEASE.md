@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Added support for jackknife-based confidence intervals.
+
 ## Bug fixes and other changes
 
 ## Breaking changes

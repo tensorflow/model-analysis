@@ -510,6 +510,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
     options = config.Options()
     options.compute_confidence_intervals.value = True
+    options.confidence_interval_method = config.Options.POISSON_BOOTSTRAP
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
@@ -618,6 +619,228 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(
           metrics[constants.METRICS_KEY], check_metrics, label='metrics')
+
+  def testEvaluateWithJackknife(self):
+    temp_export_dir = self._getExportDir()
+    _, export_dir = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
+    options = config.Options()
+    options.include_default_metrics.value = False
+    options.compute_confidence_intervals.value = True
+    options.confidence_interval_method = config.Options.JACKKNIFE
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(
+                label_key='label', example_weight_key='fixed_float')
+        ],
+        slicing_specs=[
+            config.SlicingSpec(),
+            config.SlicingSpec(feature_keys=['fixed_string']),
+        ],
+        metrics_specs=metric_specs.specs_from_metrics([
+            calibration.MeanLabel('mean_label'),
+            calibration.MeanPrediction('mean_prediction')
+        ]),
+        options=options)
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+
+    slice_spec = [
+        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
+    ]
+    extractors = [
+        input_extractor.InputExtractor(eval_config=eval_config),
+        predict_extractor_v2.PredictExtractor(
+            eval_config=eval_config, eval_shared_model=eval_shared_model),
+        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
+    ]
+
+    # fixed_float used as example_weight key
+    examples = [
+        self._makeExample(
+            prediction=0.2,
+            label=1.0,
+            fixed_int=1,
+            fixed_float=1.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.8,
+            label=0.0,
+            fixed_int=1,
+            fixed_float=1.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.5,
+            label=0.0,
+            fixed_int=2,
+            fixed_float=2.0,
+            fixed_string='fixed_string2')
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      metrics = (
+          pipeline
+          | 'Create' >> beam.Create(
+              [e.SerializeToString() for e in examples * 100])
+          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_metrics(got):
+        try:
+          self.assertLen(got, 3)
+          slices = {}
+          for slice_key, value in got:
+            slices[slice_key] = value
+          overall_slice = ()
+          fixed_string1_slice = (('fixed_string', b'fixed_string1'),)
+          fixed_string2_slice = (('fixed_string', b'fixed_string2'),)
+          self.assertCountEqual(
+              list(slices.keys()),
+              [overall_slice, fixed_string1_slice, fixed_string2_slice])
+          example_count_key = metric_types.MetricKey(name='example_count')
+          weighted_example_count_key = metric_types.MetricKey(
+              name='weighted_example_count')
+          label_key = metric_types.MetricKey(name='mean_label')
+          pred_key = metric_types.MetricKey(name='mean_prediction')
+          self.assertDictElementsWithTDistributionAlmostEqual(
+              slices[overall_slice], {
+                  weighted_example_count_key: 400.0,
+                  label_key: (1.0 + 0.0 + 2 * 0.0) / (1.0 + 1.0 + 2.0),
+                  pred_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0),
+              })
+          self.assertDictElementsAlmostEqual(slices[overall_slice], {
+              example_count_key: 300,
+          })
+          self.assertDictElementsWithTDistributionAlmostEqual(
+              slices[fixed_string1_slice], {
+                  weighted_example_count_key: 200.0,
+                  label_key: (1.0 + 0.0) / (1.0 + 1.0),
+                  pred_key: (0.2 + 0.8) / (1.0 + 1.0),
+              })
+          self.assertDictElementsAlmostEqual(slices[fixed_string1_slice],
+                                             {example_count_key: 200})
+          self.assertDictElementsWithTDistributionAlmostEqual(
+              slices[fixed_string2_slice], {
+                  weighted_example_count_key: 200.0,
+                  label_key: (2 * 0.0) / 2.0,
+                  pred_key: (2 * 0.5) / 2.0,
+              })
+          self.assertDictElementsAlmostEqual(slices[fixed_string2_slice],
+                                             {example_count_key: 100})
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(metrics[constants.METRICS_KEY], check_metrics)
+
+  def testEvaluateWithJackknifeAndDiffMetrics(self):
+    model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
+    eval_shared_model = self._build_keras_model('candidate', model_dir, mul=0)
+    baseline_eval_shared_model = self._build_keras_model(
+        'baseline', baseline_dir, mul=1)
+
+    options = config.Options()
+    options.compute_confidence_intervals.value = True
+    options.confidence_interval_method = config.Options.JACKKNIFE
+
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(
+                name='candidate',
+                label_key='label',
+                example_weight_key='example_weight'),
+            config.ModelSpec(
+                name='baseline',
+                label_key='label',
+                example_weight_key='example_weight',
+                is_baseline=True)
+        ],
+        slicing_specs=[config.SlicingSpec()],
+        metrics_specs=metric_specs.specs_from_metrics(
+            [
+                calibration.MeanLabel('mean_label'),
+                calibration.MeanPrediction('mean_prediction')
+            ],
+            model_names=['candidate', 'baseline']),
+        options=options)
+
+    slice_spec = [
+        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
+    ]
+    eval_shared_models = {
+        'candidate': eval_shared_model,
+        'baseline': baseline_eval_shared_model
+    }
+    extractors = [
+        input_extractor.InputExtractor(eval_config),
+        predict_extractor_v2.PredictExtractor(
+            eval_shared_model=eval_shared_models, eval_config=eval_config),
+        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_models)
+    ]
+
+    examples = [
+        self._makeExample(
+            input=0.0,
+            label=1.0,
+            example_weight=1.0,
+            extra_feature='non_model_feature'),
+        self._makeExample(
+            input=1.0,
+            label=0.0,
+            example_weight=0.5,
+            extra_feature='non_model_feature'),
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      metrics = (
+          pipeline
+          | 'Create' >> beam.Create(
+              [e.SerializeToString() for e in examples * 100])
+          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_metrics(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          # check only the diff metrics.
+          weighted_example_count_key = metric_types.MetricKey(
+              name='weighted_example_count',
+              model_name='candidate',
+              is_diff=True)
+          prediction_key = metric_types.MetricKey(
+              name='mean_prediction', model_name='candidate', is_diff=True)
+          label_key = metric_types.MetricKey(
+              name='mean_label', model_name='candidate', is_diff=True)
+          self.assertDictElementsWithTDistributionAlmostEqual(
+              got_metrics, {
+                  weighted_example_count_key: 0,
+                  label_key: 0,
+                  prediction_key: 0 - (0 * 1 + 1 * 0.5) / (1 + 0.5)
+              })
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(metrics[constants.METRICS_KEY], check_metrics)
 
   def testEvaluateWithRegressionModel(self):
     temp_export_dir = self._getExportDir()

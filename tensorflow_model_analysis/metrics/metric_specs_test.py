@@ -130,6 +130,38 @@ class MetricSpecsTest(tf.test.TestCase):
             binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
             aggregate=config.AggregationOptions(macro_average=True)))
 
+  def testMetricKeysToSkipForConfidenceIntervals(self):
+    metrics_specs = [
+        config.MetricsSpec(
+            metrics=[
+                config.MetricConfig(
+                    class_name='ExampleCount',
+                    config=json.dumps({'name': 'example_count'}),
+                    threshold=config.MetricThreshold(
+                        value_threshold=config.GenericValueThreshold())),
+                config.MetricConfig(
+                    class_name='MeanLabel',
+                    config=json.dumps({'name': 'mean_label'}),
+                    threshold=config.MetricThreshold(
+                        change_threshold=config.GenericChangeThreshold())),
+                config.MetricConfig(
+                    class_name='MeanSquaredError',
+                    config=json.dumps({'name': 'mse'}),
+                    threshold=config.MetricThreshold(
+                        change_threshold=config.GenericChangeThreshold()))
+            ],
+            # Model names and output_names should be ignored because
+            # ExampleCount is model independent.
+            model_names=['model_name1', 'model_name2'],
+            output_names=['output_name1', 'output_name2']),
+    ]
+    metrics_specs += metric_specs.specs_from_metrics(
+        [tf.keras.metrics.MeanSquaredError('mse')])
+    keys = metric_specs.metric_keys_to_skip_for_confidence_intervals(
+        metrics_specs)
+    self.assertLen(keys, 1)
+    self.assertIn(metric_types.MetricKey(name='example_count'), keys)
+
   def testMetricThresholdsFromMetricsSpecs(self):
     metrics_specs = [
         config.MetricsSpec(

@@ -37,7 +37,21 @@ class ExampleCount(metric_types.Metric):
     Args:
       name: Metric name.
     """
+
     super(ExampleCount, self).__init__(_example_count, name=name)
+
+  @property
+  def compute_confidence_interval(self) -> bool:
+    """Always disable confidence intervals for ExampleCount.
+
+    Confidence intervals capture uncertainty in a metric if it were computed on
+    more examples. For ExampleCount, this sort of uncertainty is not meaningful,
+    so confidence intervals are disabled.
+
+    Returns:
+      Whether to compute confidence intervals.
+    """
+    return False
 
 
 metric_types.register_metric(ExampleCount)

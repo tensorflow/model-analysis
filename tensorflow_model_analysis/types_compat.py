@@ -17,14 +17,15 @@
 import collections
 import sys
 
-from apache_beam.typehints import Any, Dict, List, Tuple, Union, Optional, Iterable, Generator  # pylint: disable=unused-import,g-multiple-import
+from apache_beam.typehints import Any, Dict, List, Tuple, Union, Optional, Iterable, Iterator, Generator, TypeVariable  # pylint: disable=unused-import,g-multiple-import
 
 # pylint: disable=invalid-name
 Callable = None
-Generic = None
+FrozenSet = None
 Sequence = None
 Set = None
 Type = None
+TypeVar = TypeVariable
 # TODO(xinzha): figure out whether we can use six.string_types in beam
 AnyStr = Any
 Text = Any

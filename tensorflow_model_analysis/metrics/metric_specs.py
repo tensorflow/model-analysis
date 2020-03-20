@@ -24,7 +24,7 @@ import importlib
 import json
 import re
 
-from typing import Any, Dict, List, Optional, Text, Type, Union, Tuple
+from typing import Any, Dict, FrozenSet, Iterator, Iterable, List, Optional, Text, Type, Union, Tuple
 
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tensorflow_model_analysis import config
@@ -335,14 +335,82 @@ def default_multi_class_classification_specs(
   return multi_class_metrics
 
 
+def _keys_for_metric(
+    metric_name: Text, spec: config.MetricsSpec,
+    sub_keys: Optional[List[metric_types.SubKey]]
+) -> Iterator[metric_types.MetricKey]:
+  """Yields all non-diff keys for a specific metric name."""
+  for model_name in spec.model_names or ['']:
+    for output_name in spec.output_names or ['']:
+      for sub_key in sub_keys:
+        key = metric_types.MetricKey(
+            name=metric_name,
+            model_name=model_name,
+            output_name=output_name,
+            sub_key=sub_key)
+        yield key
+
+
+def _keys_and_metrics_from_specs(
+    metrics_specs: Iterable[config.MetricsSpec]
+) -> Iterator[Tuple[metric_types.MetricKey, config.MetricConfig,
+                    metric_types.Metric]]:
+  """Yields key, config, instance tuples for each non-diff metric in specs."""
+  tfma_metric_classes = metric_types.registered_metrics()
+  for spec in metrics_specs:
+    sub_keys = _create_sub_keys(spec) or [None]
+    if spec.aggregate.macro_average or spec.aggregate.weighted_macro_average:
+      sub_keys.append(None)
+
+    for metric_config in spec.metrics:
+      if metric_config.class_name in tfma_metric_classes:
+        instance = _deserialize_tfma_metric(metric_config, tfma_metric_classes)
+      elif not metric_config.module:
+        instance = _deserialize_tf_metric(metric_config, {})
+      else:
+        cls = getattr(
+            importlib.import_module(metric_config.module),
+            metric_config.class_name)
+        if issubclass(cls, tf.keras.metrics.Metric):
+          instance = _deserialize_tf_metric(metric_config,
+                                            {metric_config.class_name: cls})
+        elif issubclass(cls, tf.keras.losses.Loss):
+          instance = _deserialize_tf_loss(metric_config,
+                                          {metric_config.class_name: cls})
+        elif isinstance(metric_config, metric_types.Metric):
+          instance = _deserialize_tfma_metric(metric_config,
+                                              {metric_config.class_name: cls})
+        else:
+          raise NotImplementedError('unknown metric type {}: metric={}'.format(
+              type(metric_config), metric_config))
+
+      if (hasattr(instance, 'is_model_independent') and
+          instance.is_model_independent()):
+        key = metric_types.MetricKey(name=instance.name)
+        yield key, metric_config, instance
+      else:
+        for key in _keys_for_metric(instance.name, spec, sub_keys):
+          yield key, metric_config, instance
+
+
+def metric_keys_to_skip_for_confidence_intervals(
+    metrics_specs: Iterable[config.MetricsSpec]
+) -> FrozenSet[metric_types.MetricKey]:
+  """Returns metric keys not to be displayed with confidence intervals."""
+  skipped_keys = []
+  for key, _, instance in _keys_and_metrics_from_specs(metrics_specs):
+    # if metric does not implement compute_confidence_interval, do not skip
+    if not getattr(instance, 'compute_confidence_interval', True):
+      skipped_keys.append(key)
+  return frozenset(skipped_keys)
+
+
 def metric_thresholds_from_metrics_specs(
     metrics_specs: List[config.MetricsSpec]
 ) -> Dict[metric_types.MetricKey, Union[config.GenericChangeThreshold,
                                         config.GenericValueThreshold]]:
   """Returns thresholds associated with given metrics specs."""
   result = {}
-
-  tfma_metric_classes = metric_types.registered_metrics()
 
   for spec in metrics_specs:
     sub_keys = _create_sub_keys(spec) or [None]
@@ -351,72 +419,28 @@ def metric_thresholds_from_metrics_specs(
 
     # Add thresholds for metrics computed in-graph.
     for metric_name, threshold in spec.thresholds.items():
-      for model_name in spec.model_names or ['']:
-        for output_name in spec.output_names or ['']:
-          for sub_key in sub_keys:
-            if threshold.HasField('value_threshold'):
-              key = metric_types.MetricKey(
-                  name=metric_name,
-                  model_name=model_name,
-                  output_name=output_name,
-                  sub_key=sub_key,
-                  is_diff=False)
-              result[key] = threshold.value_threshold
-            if threshold.HasField('change_threshold'):
-              key = metric_types.MetricKey(
-                  name=metric_name,
-                  model_name=model_name,
-                  output_name=output_name,
-                  sub_key=sub_key,
-                  is_diff=True)
-              result[key] = threshold.change_threshold
+      for key in _keys_for_metric(metric_name, spec, sub_keys):
+        if threshold.HasField('value_threshold'):
+          result[key] = threshold.value_threshold
+        if threshold.HasField('change_threshold'):
+          key = key.make_diff_key()
+          result[key] = threshold.change_threshold
 
-    # Thresholds in MetricConfig override thresholds in MetricsSpec.
-    for metric in spec.metrics:
-      if not metric.HasField('threshold'):
-        continue
-
-      if metric.class_name in tfma_metric_classes:
-        instance = _deserialize_tfma_metric(metric, tfma_metric_classes)
-      elif not metric.module:
-        instance = _deserialize_tf_metric(metric, {})
-      else:
-        cls = getattr(importlib.import_module(metric.module), metric.class_name)
-        if issubclass(cls, tf.keras.metrics.Metric):
-          instance = _deserialize_tf_metric(metric, {metric.class_name: cls})
-        elif issubclass(cls, tf.keras.losses.Loss):
-          instance = _deserialize_tf_loss(metric, {metric.class_name: cls})
-        elif isinstance(metric, metric_types.Metric):
-          instance = _deserialize_tfma_metric(metric, {metric.class_name: cls})
-        else:
-          raise NotImplementedError('unknown metric type {}: metric={}'.format(
-              type(metric), metric))
-
-      if (hasattr(instance, 'is_model_independent') and
-          instance.is_model_independent()):
-        if metric.threshold.HasField('value_threshold'):
-          key = metric_types.MetricKey(name=instance.name, is_diff=False)
-          result[key] = metric.threshold.value_threshold
-      else:
-        for model_name in spec.model_names or ['']:
-          for output_name in spec.output_names or ['']:
-            for sub_key in sub_keys:
-              if metric.threshold.HasField('value_threshold'):
-                key = metric_types.MetricKey(
-                    name=instance.name,
-                    model_name=model_name,
-                    output_name=output_name,
-                    sub_key=sub_key,
-                    is_diff=False)
-                result[key] = metric.threshold.value_threshold
-              if metric.threshold.HasField('change_threshold'):
-                key = metric_types.MetricKey(
-                    name=instance.name,
-                    model_name=model_name,
-                    output_name=output_name,
-                    sub_key=sub_key,
-                    is_diff=True)
-                result[key] = metric.threshold.change_threshold
+  # Thresholds in MetricConfig override thresholds in MetricsSpec.
+  for key, metric_config, instance in _keys_and_metrics_from_specs(
+      metrics_specs):
+    if not metric_config.HasField('threshold'):
+      continue
+    if (hasattr(instance, 'is_model_independent') and
+        instance.is_model_independent()):
+      if metric_config.threshold.HasField('value_threshold'):
+        result[key] = metric_config.threshold.value_threshold
+    else:
+      if metric_config.threshold.HasField('value_threshold'):
+        result[key] = metric_config.threshold.value_threshold
+      if metric_config.threshold.HasField('change_threshold'):
+        key = key.make_diff_key()
+        result[key] = metric_config.threshold.change_threshold
 
   return result
 
