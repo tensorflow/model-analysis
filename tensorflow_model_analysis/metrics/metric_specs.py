@@ -377,12 +377,12 @@ def _keys_and_metrics_from_specs(
         elif issubclass(cls, tf.keras.losses.Loss):
           instance = _deserialize_tf_loss(metric_config,
                                           {metric_config.class_name: cls})
-        elif isinstance(cls, metric_types.Metric):
+        elif issubclass(cls, metric_types.Metric):
           instance = _deserialize_tfma_metric(metric_config,
                                               {metric_config.class_name: cls})
         else:
           raise NotImplementedError('unknown metric type {}: metric={}'.format(
-              type(cls), metric_config))
+              cls, metric_config))
 
       if (hasattr(instance, 'is_model_independent') and
           instance.is_model_independent()):
