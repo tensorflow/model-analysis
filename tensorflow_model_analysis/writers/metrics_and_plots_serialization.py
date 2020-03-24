@@ -26,7 +26,7 @@ import apache_beam as beam
 
 import numpy as np
 import six
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 
 from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types

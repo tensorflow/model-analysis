@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 
 import apache_beam as beam
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis.api import tfma_unit
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields

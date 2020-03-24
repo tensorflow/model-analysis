@@ -26,7 +26,7 @@ import re
 
 from typing import Any, Dict, FrozenSet, Iterator, Iterable, List, Optional, Text, Type, Union, Tuple
 
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import aggregation
 from tensorflow_model_analysis.metrics import binary_confusion_matrices

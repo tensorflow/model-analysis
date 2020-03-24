@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional, Text, Tuple
 
 import apache_beam as beam
 import numpy as np
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants

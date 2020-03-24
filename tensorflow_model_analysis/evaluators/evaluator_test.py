@@ -17,7 +17,7 @@
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor

@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import apache_beam as beam
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.writers import writer
 

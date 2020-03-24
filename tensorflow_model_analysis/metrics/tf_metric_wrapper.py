@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Text, Type, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types

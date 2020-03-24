@@ -24,7 +24,7 @@ import inspect
 from typing import Any, Callable, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 import numpy as np
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types

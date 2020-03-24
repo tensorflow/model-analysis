@@ -27,7 +27,7 @@ from typing import Any, Callable, Text
 
 import apache_beam as beam
 import numpy as np
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types

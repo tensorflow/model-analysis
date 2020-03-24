@@ -24,7 +24,7 @@ import tempfile
 
 from typing import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
 
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types

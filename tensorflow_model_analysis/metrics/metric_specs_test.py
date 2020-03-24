@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import metric_specs

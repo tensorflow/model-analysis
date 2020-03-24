@@ -23,7 +23,7 @@ from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union, Name
 
 import numpy as np
 import six
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tfx_bsl.beam import shared
 
 # pylint: disable=invalid-name

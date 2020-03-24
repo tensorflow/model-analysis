@@ -22,7 +22,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import six
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil

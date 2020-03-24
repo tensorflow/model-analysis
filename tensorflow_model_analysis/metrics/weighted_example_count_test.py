@@ -22,7 +22,7 @@ from __future__ import print_function
 from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util

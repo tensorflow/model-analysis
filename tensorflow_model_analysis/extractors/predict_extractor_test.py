@@ -28,7 +28,7 @@ import apache_beam as beam
 
 from apache_beam.testing import util
 
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants

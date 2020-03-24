@@ -29,7 +29,7 @@ from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tex
 
 import apache_beam as beam
 import six
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types

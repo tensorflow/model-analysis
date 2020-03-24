@@ -25,7 +25,7 @@ from __future__ import print_function
 from typing import List, Text, Union
 
 import numpy as np
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 from tensorflow_model_analysis import types
 
 
