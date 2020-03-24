@@ -59,12 +59,19 @@ Note: If Jupyter notebook is already installed in your home directory, add
 `--user` to these commands. If Jupyter is installed as root, or using a virtual
 environment, the parameter `--sys-prefix` might be required.
 
-### Dependencies
+### Notable Dependencies
 
-[Apache Beam](https://beam.apache.org/) is required to run distributed analysis.
-By default, Apache Beam runs in local mode but can also run in distributed mode
-using [Google Cloud Dataflow](https://cloud.google.com/dataflow/). TFMA is
-designed to be extensible for other Apache Beam runners.
+TensorFlow is required.
+
+[Apache Beam](https://beam.apache.org/) is required; it's the way that efficient
+distributed computation is supported. By default, Apache Beam runs in local
+mode but can also run in distributed mode using
+[Google Cloud Dataflow](https://cloud.google.com/dataflow/) and other Apache
+Beam
+[runners](https://beam.apache.org/documentation/runners/capability-matrix/).
+
+[Apache Arrow](https://arrow.apache.org/) is also required. TFMA uses Arrow to
+represent data internally in order to make use of vectorized numpy functions.
 
 ## Getting Started
 
