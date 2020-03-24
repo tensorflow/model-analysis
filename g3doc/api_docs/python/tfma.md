@@ -16,7 +16,7 @@
 <meta itemprop="property" content="MODEL_CENTRIC_MODE"/>
 <meta itemprop="property" content="PLOTS_KEY"/>
 <meta itemprop="property" content="PREDICTIONS_KEY"/>
-<meta itemprop="property" content="VERSION_STRING"/>
+<meta itemprop="property" content="VERSION"/>
 </div>
 
 # Module: tfma
@@ -168,4 +168,4 @@ current keys.
 
 <h3 id="PREDICTIONS_KEY"><code>PREDICTIONS_KEY</code></h3>
 
-<h3 id="VERSION_STRING"><code>VERSION_STRING</code></h3>
+<h3 id="VERSION"><code>VERSION</code></h3>

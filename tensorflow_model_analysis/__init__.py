@@ -117,7 +117,8 @@ from tensorflow_model_analysis.util import create_values_key
 from tensorflow_model_analysis.util import compound_key
 from tensorflow_model_analysis.util import unique_key
 
-from tensorflow_model_analysis.version import VERSION_STRING
+# Import VERSION as __version__ for compatibility with other TFX components.
+from tensorflow_model_analysis.version import VERSION as __version__
 
 # TODO(b/73882264): The orders should be kept in order to make benchmark on
 # DataFlow work. We need to look into why the import orders matters for the

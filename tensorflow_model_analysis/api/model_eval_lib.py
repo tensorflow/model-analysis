@@ -137,7 +137,7 @@ def _serialize_eval_run(eval_config: config.EvalConfig, data_location: Text,
   return json_format.MessageToJson(
       config_pb2.EvalRun(
           eval_config=eval_config,
-          version=tfma_version.VERSION_STRING,
+          version=tfma_version.VERSION,
           data_location=data_location,
           file_format=file_format,
           model_locations=model_locations))

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Defines TFMA's Jupyter notebook widgets."""
 import ipywidgets as widgets
-from tensorflow_model_analysis.version import VERSION_STRING
+from tensorflow_model_analysis.version import VERSION
 import traitlets
 
 
@@ -24,8 +24,8 @@ class SlicingMetricsViewer(widgets.DOMWidget):
   _model_name = traitlets.Unicode('SlicingMetricsModel').tag(sync=True)
   _view_module = traitlets.Unicode('tensorflow_model_analysis').tag(sync=True)
   _model_module = traitlets.Unicode('tensorflow_model_analysis').tag(sync=True)
-  _view_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
-  _model_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
+  _view_module_version = traitlets.Unicode(VERSION).tag(sync=True)
+  _model_module_version = traitlets.Unicode(VERSION).tag(sync=True)
   data = traitlets.List([]).tag(sync=True)
   config = traitlets.Dict(dict()).tag(sync=True)
 
@@ -53,8 +53,8 @@ class TimeSeriesViewer(widgets.DOMWidget):
   _model_name = traitlets.Unicode('TimeSeriesModel').tag(sync=True)
   _view_module = traitlets.Unicode('tensorflow_model_analysis').tag(sync=True)
   _model_module = traitlets.Unicode('tensorflow_model-analysis').tag(sync=True)
-  _view_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
-  _model_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
+  _view_module_version = traitlets.Unicode(VERSION).tag(sync=True)
+  _model_module_version = traitlets.Unicode(VERSION).tag(sync=True)
   data = traitlets.List([]).tag(sync=True)
   config = traitlets.Dict(dict()).tag(sync=True)
 
@@ -66,7 +66,7 @@ class PlotViewer(widgets.DOMWidget):
   _model_name = traitlets.Unicode('PlotModel').tag(sync=True)
   _view_module = traitlets.Unicode('tensorflow_model_analysis').tag(sync=True)
   _model_module = traitlets.Unicode('tensorflow_model-analysis').tag(sync=True)
-  _view_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
-  _model_module_version = traitlets.Unicode(VERSION_STRING).tag(sync=True)
+  _view_module_version = traitlets.Unicode(VERSION).tag(sync=True)
+  _model_module_version = traitlets.Unicode(VERSION).tag(sync=True)
   data = traitlets.Dict([]).tag(sync=True)
   config = traitlets.Dict(dict()).tag(sync=True)

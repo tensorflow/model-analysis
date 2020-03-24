@@ -122,7 +122,7 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
         constants.SIGNATURE_DEF_ITERATOR_INITIALIZER_KEY] = (
             tf.constant(iterator_initializer))
   updated_receiver_tensors[constants.SIGNATURE_DEF_TFMA_VERSION_KEY] = (
-      tf.constant(version.VERSION_STRING))
+      tf.constant(version.VERSION))
 
   # TODO(b/119308261): Remove once all evaluator binaries have been updated.
   _add_tfma_collections(features, labels, input_refs)
@@ -260,7 +260,7 @@ def _add_tfma_collections(features: types.TensorTypeMaybeDict,
   example_ref_collection.append(encoding.encode_tensor_node(input_refs))
 
   tf.compat.v1.add_to_collection(encoding.TFMA_VERSION_COLLECTION,
-                                 version.VERSION_STRING)
+                                 version.VERSION)
 
 
 def _encode_and_add_to_node_collection(collection_prefix: Text,

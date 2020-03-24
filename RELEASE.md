@@ -6,6 +6,8 @@
 
 ## Bug fixes and other changes
 
+*   Version is now available under `tfma.version.VERSION` or `tfma.__version__`.
+
 ## Breaking changes
 
 ## Deprecations

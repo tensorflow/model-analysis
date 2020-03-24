@@ -13,7 +13,7 @@
 # limitations under the License.
 """Defines Fairness Indicator's Jupyter notebook widgets."""
 import ipywidgets as widgets
-from tensorflow_model_analysis.version import VERSION_STRING
+from tensorflow_model_analysis.version import VERSION
 import traitlets
 from traitlets import List
 from traitlets import Unicode
@@ -24,10 +24,10 @@ class FairnessIndicatorViewer(widgets.DOMWidget):
   """The fairness indicator visualization widget."""
   _view_name = Unicode('FairnessIndicatorView').tag(sync=True)
   _view_module = Unicode('tensorflow_model_analysis').tag(sync=True)
-  _view_module_version = Unicode(VERSION_STRING).tag(sync=True)
+  _view_module_version = Unicode(VERSION).tag(sync=True)
   _model_name = Unicode('FairnessIndicatorModel').tag(sync=True)
   _model_module = Unicode('tensorflow_model_analysis').tag(sync=True)
-  _model_module_version = Unicode(VERSION_STRING).tag(sync=True)
+  _model_module_version = Unicode(VERSION).tag(sync=True)
   slicingMetrics = List().tag(sync=True)
   slicingMetricsCompare = List().tag(sync=True)
   evalName = Unicode().tag(sync=True)

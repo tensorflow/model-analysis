@@ -1140,7 +1140,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         compute_confidence_intervals=False,
         k_anonymization_count=1)
     final_dict = {}
-    final_dict['tfma_version'] = tfma_version.VERSION_STRING
+    final_dict['tfma_version'] = tfma_version.VERSION
     final_dict['eval_config'] = old_config
     with tf.io.TFRecordWriter(os.path.join(output_path, 'eval_config')) as w:
       w.write(pickle.dumps(final_dict))

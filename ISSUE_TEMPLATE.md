@@ -30,7 +30,7 @@ Overflow.
 
 You can obtain the TensorFlow Model Analysis version with
 
-`python -c "import tensorflow_model_analysis as tfma; print(tfma.VERSION_STRING)"`
+`python -c "import tensorflow_model_analysis as tfma; print(tfma.version.VERSION)"`
 
 ### Describe the problem
 
