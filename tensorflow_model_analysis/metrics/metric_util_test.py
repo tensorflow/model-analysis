@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 
@@ -204,6 +205,29 @@ class UtilTest(tf.test.TestCase):
                   1: 0.5,
                   2: 0.25
               }, flatten=False))
+
+  def testStandardMetricInputsWithCustomLabelKeys(self):
+    example = metric_types.StandardMetricInputs(
+        label={
+            'custom_label': np.array([2]),
+            'other_label': np.array([0])
+        },
+        prediction={'custom_prediction': np.array([0, 0.5, 0.3, 0.9])},
+        example_weight=np.array([1.0]))
+    eval_config = config.EvalConfig(model_specs=[
+        config.ModelSpec(
+            label_key='custom_label', prediction_key='custom_prediction')
+    ])
+    iterable = metric_util.to_label_prediction_example_weight(
+        example, eval_config=eval_config)
+
+    for expected_label, expected_prediction in zip((0.0, 0.0, 1.0, 0.0),
+                                                   (0.0, 0.5, 0.3, 0.9)):
+      got_label, got_pred, got_example_weight = next(iterable)
+      self.assertAllClose(got_label, np.array([expected_label]), atol=0, rtol=0)
+      self.assertAllClose(
+          got_pred, np.array([expected_prediction]), atol=0, rtol=0)
+      self.assertAllClose(got_example_weight, np.array([1.0]), atol=0, rtol=0)
 
   def testPrepareLabelsAndPredictions(self):
     labels = [0]

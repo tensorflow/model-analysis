@@ -216,7 +216,23 @@ def to_label_prediction_example_weight(
         return new_value
     return value
 
+  prediction_key = ''
+  label_key = ''
+  if eval_config and eval_config.model_specs:
+    for spec in eval_config.model_specs:
+      # To maintain consistency between settings where single models are used,
+      # always use '' as the model name regardless of whether a name is passed.
+      spec_name = spec.name if len(eval_config.model_specs) > 1 else ''
+      if spec_name == model_name:
+        prediction_key = spec.prediction_key
+        label_key = spec.label_key
+        break
+
   label = inputs.label
+  if label_key:
+    # This is to support a custom EvalSavedModel where the labels are a dict
+    # but the keys are not output_names.
+    label = optionally_get_by_keys(label, [label_key])
   prediction = inputs.prediction
   example_weight = inputs.example_weight
   if example_weight is None:
@@ -231,15 +247,6 @@ def to_label_prediction_example_weight(
     # Labels and example weights can optionally be keyed by output name.
     label = optionally_get_by_keys(label, [output_name])
     example_weight = optionally_get_by_keys(example_weight, [output_name])
-  prediction_key = ''
-  if eval_config and eval_config.model_specs:
-    for spec in eval_config.model_specs:
-      # To maintain consistency between settings where single models are used,
-      # always use '' as the model name regardless of whether a name is passed.
-      spec_name = spec.name if len(eval_config.model_specs) > 1 else ''
-      if spec_name == model_name:
-        prediction_key = spec.prediction_key
-        break
   label, prediction = prepare_labels_and_predictions(label, prediction,
                                                      prediction_key)
 
