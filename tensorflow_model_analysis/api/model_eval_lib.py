@@ -427,7 +427,6 @@ def default_extractors(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: config.EvalConfig = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-    desired_batch_size: Optional[int] = None,
     materialize: Optional[bool] = True) -> List[extractor.Extractor]:
   """Returns the default extractors for use in ExtractAndEvaluate.
 
@@ -437,7 +436,6 @@ def default_extractors(  # pylint: disable=invalid-name
       provided alongside of the features (i.e. model-agnostic evaluations).
     eval_config: Eval config.
     slice_spec: Deprecated (use EvalConfig).
-    desired_batch_size: Optional batch size for batching in Predict.
     materialize: True to have extractors create materialized output.
 
   Raises:
@@ -453,7 +451,7 @@ def default_extractors(  # pylint: disable=invalid-name
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     return [
         predict_extractor.PredictExtractor(
-            eval_shared_model, desired_batch_size, materialize=materialize),
+            eval_shared_model, materialize=materialize),
         slice_key_extractor.SliceKeyExtractor(
             slice_spec, materialize=materialize)
     ]
@@ -470,9 +468,7 @@ def default_extractors(  # pylint: disable=invalid-name
       return [
           input_extractor.InputExtractor(eval_config=eval_config),
           tflite_predict_extractor.TFLitePredictExtractor(
-              eval_config=eval_config,
-              eval_shared_model=eval_shared_model,
-              desired_batch_size=desired_batch_size),
+              eval_config=eval_config, eval_shared_model=eval_shared_model),
           slice_key_extractor.SliceKeyExtractor(
               slice_spec, materialize=materialize)
       ]
@@ -487,7 +483,6 @@ def default_extractors(  # pylint: disable=invalid-name
       return [
           predict_extractor.PredictExtractor(
               eval_shared_model,
-              desired_batch_size,
               materialize=materialize,
               eval_config=eval_config),
           slice_key_extractor.SliceKeyExtractor(
@@ -503,9 +498,7 @@ def default_extractors(  # pylint: disable=invalid-name
       return [
           input_extractor.InputExtractor(eval_config=eval_config),
           predict_extractor_v2.PredictExtractor(
-              eval_config=eval_config,
-              eval_shared_model=eval_shared_model,
-              desired_batch_size=desired_batch_size),
+              eval_config=eval_config, eval_shared_model=eval_shared_model),
           slice_key_extractor.SliceKeyExtractor(
               slice_spec, materialize=materialize)
       ]
@@ -522,7 +515,6 @@ def default_evaluators(  # pylint: disable=invalid-name
     eval_config: config.EvalConfig = None,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
-    desired_batch_size: Optional[int] = None,
     serialize: bool = False,
     random_seed_for_testing: Optional[int] = None) -> List[evaluator.Evaluator]:
   """Returns the default evaluators for use in ExtractAndEvaluate.
@@ -534,7 +526,6 @@ def default_evaluators(  # pylint: disable=invalid-name
     eval_config: Eval config.
     compute_confidence_intervals: Deprecated (use eval_config).
     min_slice_size: Deprecated (use eval_config).
-    desired_batch_size: Optional batch size for batching in combiner.
     serialize: Deprecated.
     random_seed_for_testing: Provide for deterministic tests only.
   """
@@ -575,7 +566,6 @@ def default_evaluators(  # pylint: disable=invalid-name
             eval_shared_model,
             compute_confidence_intervals=compute_confidence_intervals,
             min_slice_size=min_slice_size,
-            desired_batch_size=desired_batch_size,
             serialize=serialize,
             random_seed_for_testing=random_seed_for_testing)
     ]
@@ -809,7 +799,6 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     write_config: Optional[bool] = True,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
-    desired_batch_size: Optional[int] = None,
     random_seed_for_testing: Optional[int] = None) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
 
@@ -863,7 +852,6 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     write_config: Deprecated (use EvalConfig).
     compute_confidence_intervals: Deprecated (use EvalConfig).
     min_slice_size: Deprecated (use EvalConfig).
-    desired_batch_size: Optional batch size for batching in Predict.
     random_seed_for_testing: Provide for deterministic tests only.
 
   Raises:
@@ -909,8 +897,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     extractors = default_extractors(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
-        materialize=False,
-        desired_batch_size=desired_batch_size)
+        materialize=False)
 
   if not evaluators:
     evaluators = default_evaluators(
@@ -968,7 +955,6 @@ def run_model_analysis(
     write_config: Optional[bool] = True,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
-    desired_batch_size: Optional[int] = None,
     random_seed_for_testing: Optional[int] = None
 ) -> Union[EvalResult, EvalResults]:
   """Runs TensorFlow model analysis.
@@ -1006,7 +992,6 @@ def run_model_analysis(
     write_config: Deprecated (use EvalConfig).
     compute_confidence_intervals: Deprecated (use EvalConfig).
     min_slice_size: Deprecated (use EvalConfig).
-    desired_batch_size: Optional batch size for batching in Predict.
     random_seed_for_testing: Provide for deterministic tests only.
 
   Returns:
@@ -1073,7 +1058,6 @@ def run_model_analysis(
             extractors=extractors,
             evaluators=evaluators,
             writers=writers,
-            desired_batch_size=desired_batch_size,
             random_seed_for_testing=random_seed_for_testing))
     # pylint: enable=no-value-for-parameter
 

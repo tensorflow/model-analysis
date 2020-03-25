@@ -11,6 +11,11 @@
 
 ## Breaking changes
 
+*   Remove desired_batch_size as an option. Large batch failures can be handled
+    via serially processing the failed batch which also acts as a deterent from
+    scaling up batch sizes further. Batch size can be handled via BEAM batch
+    size tuning.
+
 ## Deprecations
 
 # Release 0.21.6
