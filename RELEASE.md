@@ -1,4 +1,4 @@
-# Current Version(Still in Development)
+# Current Version (Still in Development)
 
 ## Major Features and Improvements
 
@@ -21,6 +21,11 @@
 # Release 0.21.6
 
 ## Major Features and Improvements
+
+*   Integrate TFXIO in TFMA. Use batched input and predict extractor in V2.
+    Results in ~40% reduction in CPU seconds over existing TFMA v2
+    (InputExtractor + PredictExtractorV2). Modify TFMA public API to take an
+    optional tensor adapter config as input.
 
 ## Bug fixes and other changes
 

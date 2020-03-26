@@ -50,6 +50,10 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+
+from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import schema_pb2
+
 LegacyConfig = NamedTuple(
     'LegacyConfig',
     [('model_location', Text), ('data_location', Text),
@@ -563,6 +567,32 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
 
+    schema = text_format.Parse(
+        """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "data"
+              value {
+                dense_tensor {
+                  column_name: "data"
+                  shape { dim { size: 784 } }
+                }
+              }
+            }
+          }
+        }
+        feature {
+          name: "data"
+          type: FLOAT
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        """, schema_pb2.Schema())
+
     metrics_spec = config.MetricsSpec()
     for metric in (tf.keras.metrics.AUC(),):
       cfg = tf.keras.utils.serialize_keras_object(metric)
@@ -597,7 +627,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             'baseline': baseline
         },
         data_location=data_location,
-        output_path=output_path)
+        output_path=output_path,
+        schema=schema)
 
     # Directly check validaton file since it is not in EvalResult.
     validations_file = os.path.join(output_path, constants.VALIDATIONS_KEY)
@@ -659,6 +690,44 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     model_location = os.path.join(self._getTempDir(), 'export_dir')
     model.save(model_location, save_format='tf')
 
+    schema = text_format.Parse(
+        """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "age"
+              value {
+                dense_tensor {
+                  column_name: "age"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+            tensor_representation {
+              key: "language"
+              value {
+                dense_tensor {
+                  column_name: "language"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+          }
+        }
+        feature {
+          name: "age"
+          type: FLOAT
+        }
+        feature {
+          name: "language"
+          type: BYTES
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        """, schema_pb2.Schema())
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0),
         self._makeExample(age=5.0, language='chinese', label=0.0),
@@ -684,7 +753,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         evaluators=[
             metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
                 eval_config=eval_config, eval_shared_model=eval_shared_model)
-        ])
+        ],
+        schema=schema)
 
     self.assertEqual(eval_result.model_location, model_location)
     self.assertEqual(eval_result.data_location, data_location)
@@ -1207,7 +1277,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertEqual(data_location, got_data_location)
     self.assertEqual(file_format, got_file_format)
     self.assertEqual({'': model_location}, got_model_locations)
-
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

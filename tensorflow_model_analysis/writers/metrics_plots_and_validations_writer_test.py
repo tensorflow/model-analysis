@@ -30,16 +30,20 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
-from tensorflow_model_analysis.extractors import input_extractor
+from tensorflow_model_analysis.extractors import batched_input_extractor
+from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
 from tensorflow_model_analysis.extractors import predict_extractor
-from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
+from tfx_bsl.tfxio import tensor_adapter
+from tfx_bsl.tfxio import test_util
 from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
@@ -80,6 +84,44 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
     baseline_eval_shared_model = self._build_keras_model(baseline_dir, mul=1)
     validations_file = os.path.join(self._getTempDir(),
                                     constants.VALIDATIONS_KEY)
+    schema = text_format.Parse(
+        """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "input"
+              value {
+                dense_tensor {
+                  column_name: "input"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+          }
+        }
+        feature {
+          name: "input"
+          type: FLOAT
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        feature {
+          name: "example_weight"
+          type: FLOAT
+        }
+        feature {
+          name: "extra_feature"
+          type: BYTES
+        }
+        """, schema_pb2.Schema())
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
     examples = [
         self._makeExample(
             input=0.0,
@@ -159,9 +201,12 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
         'baseline': baseline_eval_shared_model
     }
     extractors = [
-        input_extractor.InputExtractor(eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_shared_model=eval_shared_models, eval_config=eval_config),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_models,
+            eval_config=eval_config,
+            tensor_adapter_config=tensor_adapter_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -177,18 +222,15 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
     ]
 
     with beam.Pipeline() as pipeline:
-
       # pylint: disable=no-value-for-parameter
       _ = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'ExtractEvaluateAndWriteResults' >>
-          model_eval_lib.ExtractEvaluateAndWriteResults(
-              eval_config=eval_config,
-              eval_shared_model=eval_shared_model,
-              extractors=extractors,
-              evaluators=evaluators,
-              writers=writers))
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | 'ExtractEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators)
+          | 'WriteResults' >> model_eval_lib.WriteResults(writers=writers))
       # pylint: enable=no-value-for-parameter
 
     validation_result = model_eval_lib.load_validation_result(

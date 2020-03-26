@@ -23,7 +23,6 @@ import copy
 
 from typing import Dict, Optional, Text
 
-from absl import logging
 import apache_beam as beam
 import tensorflow as tf
 from tensorflow_model_analysis import config
@@ -75,12 +74,9 @@ def BatchedPredictExtractor(
           tensor_adapter_config=tensor_adapter_config))
 
 
-# TODO(pachristopher): Define a new base class for Arrow based batched DoFn
-# and inherit from this class. This would allow new Arrow based batched predict
-# predict extractors to share code.
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-class _BatchedPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
+class _BatchedPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   """A DoFn that loads the models and predicts."""
 
   def __init__(
@@ -190,29 +186,6 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
           predictions[i][spec.name] = output  # pytype: disable=unsupported-operands
     result[constants.BATCHED_PREDICTIONS_KEY] = predictions
     return [result]
-
-  def process(self, element: types.Extracts) -> types.Extracts:
-    batch_size = element[constants.ARROW_RECORD_BATCH_KEY].num_rows
-    try:
-      result = self._batch_reducible_process(element)
-      self._batch_size.update(batch_size)
-      self._num_instances.inc(batch_size)
-      return result
-    except (ValueError, tf.errors.InvalidArgumentError) as e:
-      logging.warning(
-          'Large batch_size %s failed with error %s. '
-          'Attempting to run batch through serially. Note that this will '
-          'significantly affect the performance.', batch_size, e)
-      self._batch_size_failed.update(batch_size)
-      result = []
-      record_batch = element[constants.ARROW_RECORD_BATCH_KEY]
-      for i in range(batch_size):
-        self._batch_size.update(1)
-        result.extend(
-            self._batch_reducible_process(
-                {constants.ARROW_RECORD_BATCH_KEY: record_batch.slice(i, 1)}))
-      self._num_instances.inc(len(result))
-      return result
 
 
 @beam.ptransform_fn

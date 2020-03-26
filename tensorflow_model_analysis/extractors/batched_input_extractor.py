@@ -138,7 +138,8 @@ def _ExtractInputs(batched_extract: types.Extracts,
   def _get_proj_df_dict(original, keys_dict):  # pylint: disable=invalid-name
     df_proj = pd.DataFrame()
     for output_name, key in keys_dict.items():
-      df_proj[output_name] = original[key]
+      if key in original_keys:
+        df_proj[output_name] = original[key]
     return df_proj.to_dict(orient='records')
 
   def _add_proj_df(proj_df, result, key):  # pylint: disable=invalid-name
@@ -169,13 +170,15 @@ def _ExtractInputs(batched_extract: types.Extracts,
           dataframe, spec.example_weight_keys)
       keys_to_remove.update(set(spec.example_weight_keys.values()))
 
-    if spec.prediction_key:
+    if spec.prediction_key and spec.prediction_key in original_keys:
       predictions_df[spec.name] = dataframe[spec.prediction_key]
       keys_to_remove.add(spec.prediction_key)
     elif spec.prediction_keys:
-      predictions_df[spec.name] = _get_proj_df_dict(dataframe,
-                                                    spec.prediction_keys)
-      keys_to_remove.update(set(spec.prediction_keys.values()))
+      proj_df_dict = _get_proj_df_dict(dataframe, spec.prediction_keys)
+      if proj_df_dict:
+        predictions_df[spec.name] = _get_proj_df_dict(dataframe,
+                                                      spec.prediction_keys)
+        keys_to_remove.update(set(spec.prediction_keys.values()))
 
   _add_proj_df(labels_df, result, constants.BATCHED_LABELS_KEY)
   _add_proj_df(example_weights_df, result,
@@ -184,7 +187,8 @@ def _ExtractInputs(batched_extract: types.Extracts,
 
   # Add a separate column with the features dict.
   feature_keys = original_keys.difference(keys_to_remove)
-  _add_proj_df(dataframe[feature_keys], result, constants.BATCHED_FEATURES_KEY)
+  result[constants.BATCHED_FEATURES_KEY] = dataframe[feature_keys].to_dict(
+      orient='records')
 
   # TODO(pachristopher): Consider avoiding setting this key if we don't need
   # this any further in the pipeline. This can avoid a potentially costly copy.

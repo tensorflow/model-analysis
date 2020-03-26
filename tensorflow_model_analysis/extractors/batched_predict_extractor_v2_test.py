@@ -688,8 +688,102 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  # TODO(b/149920292): Add batch size limit test with Keras model once
-  # TensorAdapter works on sliced RecordBatch.
+  def testBatchSizeLimitWithKerasModel(self):
+    input1 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input1')
+    input2 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input2')
+
+    inputs = [input1, input2]
+    input_layer = tf.keras.layers.concatenate(inputs)
+
+    def add_1(tensor):
+      return tf.add_n([tensor, tf.constant(1.0, shape=(1, 2))])
+
+    assert_layer = tf.keras.layers.Lambda(add_1)(input_layer)
+
+    model = tf.keras.models.Model(inputs, assert_layer)
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(lr=.001),
+        loss=tf.keras.losses.binary_crossentropy,
+        metrics=['accuracy'])
+
+    export_dir = self._getExportDir()
+    model.save(export_dir, save_format='tf')
+
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+    schema = text_format.Parse(
+        """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "input1"
+              value {
+                dense_tensor {
+                  column_name: "input1"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+            tensor_representation {
+              key: "input2"
+              value {
+                dense_tensor {
+                  column_name: "input2"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+          }
+        }
+        feature {
+          name: "input1"
+          type: FLOAT
+        }
+        feature {
+          name: "input2"
+          type: FLOAT
+        }
+        """, schema_pb2.Schema())
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
+    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
+    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
+        tensor_adapter_config=tensor_adapter_config)
+
+    examples = []
+    for _ in range(4):
+      examples.append(self._makeExample(input1=0.0, input2=1.0))
+
+    with beam.Pipeline() as pipeline:
+      predict_extracts = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=1)
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | input_extractor.stage_name >> input_extractor.ptransform
+          | predict_extractor.stage_name >> predict_extractor.ptransform)
+
+      # pylint: enable=no-value-for-parameter
+      def check_result(got):
+        try:
+          self.assertLen(got, 4)
+          # We can't verify the actual predictions, but we can verify the keys.
+          for item in got:
+            self.assertIn(constants.BATCHED_PREDICTIONS_KEY, item)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(predict_extracts, check_result, label='result')
+
   def testBatchSizeLimit(self):
     temp_export_dir = self._getExportDir()
     _, export_dir = batch_size_limited_classifier.simple_batch_size_limited_classifier(

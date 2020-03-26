@@ -41,12 +41,15 @@ from tensorflow_model_analysis.eval_saved_model import constants as eval_constan
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
+from tensorflow_model_analysis.extractors import batched_input_extractor
+from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import input_extractor
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
+from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -56,9 +59,15 @@ from tensorflow_model_analysis.validators import validator
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 from tensorflow_model_analysis.writers import writer
+from tfx_bsl.tfxio import tensor_adapter
+from tfx_bsl.tfxio import tf_example_record
 from google.protobuf import json_format
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 _EVAL_CONFIG_FILE = 'eval_config.json'
+# TODO(pachristopher): After TFMA is released, enable batched extractors by
+# default.
+_ENABLE_BATCHED_EXTRACTORS = False
 
 
 def _assert_tensorflow_version():
@@ -427,7 +436,10 @@ def default_extractors(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: config.EvalConfig = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-    materialize: Optional[bool] = True) -> List[extractor.Extractor]:
+    materialize: Optional[bool] = True,
+    enable_batched_extractors: Optional[bool] = False,
+    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
+) -> List[extractor.Extractor]:
   """Returns the default extractors for use in ExtractAndEvaluate.
 
   Args:
@@ -437,6 +449,10 @@ def default_extractors(  # pylint: disable=invalid-name
     eval_config: Eval config.
     slice_spec: Deprecated (use EvalConfig).
     materialize: True to have extractors create materialized output.
+    enable_batched_extractors: True if batched extractors should be used.
+    tensor_adapter_config: Tensor adapter config which specifies how to obtain
+      tensors from the Arrow RecordBatch. If None, we feed the raw examples to
+      the model.
 
   Raises:
     NotImplementedError: If eval_config contains mixed serving and eval models.
@@ -447,6 +463,7 @@ def default_extractors(  # pylint: disable=invalid-name
     slice_spec = [
         slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
     ]
+
   if _is_legacy_eval(eval_shared_model, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     return [
@@ -495,19 +512,41 @@ def default_extractors(  # pylint: disable=invalid-name
           'support for mixing eval and non-eval estimator models is not '
           'implemented: eval_config={}'.format(eval_config))
     else:
+      if enable_batched_extractors:
+        return [
+            batched_input_extractor.BatchedInputExtractor(
+                eval_config=eval_config),
+            batched_predict_extractor_v2.BatchedPredictExtractor(
+                eval_config=eval_config,
+                eval_shared_model=eval_shared_model,
+                tensor_adapter_config=tensor_adapter_config),
+            unbatch_extractor.UnbatchExtractor(),
+            slice_key_extractor.SliceKeyExtractor(
+                slice_spec, materialize=materialize)
+        ]
+      else:
+        return [
+            input_extractor.InputExtractor(eval_config=eval_config),
+            predict_extractor_v2.PredictExtractor(
+                eval_config=eval_config, eval_shared_model=eval_shared_model),
+            slice_key_extractor.SliceKeyExtractor(
+                slice_spec, materialize=materialize)
+        ]
+  else:
+    if enable_batched_extractors:
       return [
-          input_extractor.InputExtractor(eval_config=eval_config),
-          predict_extractor_v2.PredictExtractor(
-              eval_config=eval_config, eval_shared_model=eval_shared_model),
+          batched_input_extractor.BatchedInputExtractor(
+              eval_config=eval_config),
+          unbatch_extractor.UnbatchExtractor(),
           slice_key_extractor.SliceKeyExtractor(
               slice_spec, materialize=materialize)
       ]
-  else:
-    return [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        slice_key_extractor.SliceKeyExtractor(
-            slice_spec, materialize=materialize)
-    ]
+    else:
+      return [
+          input_extractor.InputExtractor(eval_config=eval_config),
+          slice_key_extractor.SliceKeyExtractor(
+              slice_spec, materialize=materialize)
+      ]
 
 
 def default_evaluators(  # pylint: disable=invalid-name
@@ -783,6 +822,40 @@ def WriteEvalConfig(  # pylint: disable=invalid-name
           os.path.join(output_path, _EVAL_CONFIG_FILE), shard_name_template=''))
 
 
+def is_batched_input(eval_shared_model: Optional[
+    types.MaybeMultipleEvalSharedModels] = None,
+                     eval_config: config.EvalConfig = None) -> bool:
+  """Returns true if batched input should be used.
+
+   We will keep supporting the legacy unbatched V1 PredictExtractor as it parses
+   the features and labels, and is the only solution currently that allows for
+   slicing on transformed features. Eventually we should have support for
+   transformed features via keras preprocessing layers.
+
+  Args:
+    eval_shared_model: Shared model (single-model evaluation) or list of shared
+      models (multi-model evaluation). Required unless the predictions are
+      provided alongside of the features (i.e. model-agnostic evaluations).
+    eval_config: Eval config.
+
+  Returns:
+    A boolean indicating if batched extractors should be used.
+  """
+  if _is_legacy_eval(eval_shared_model, eval_config):
+    return False
+  elif eval_shared_model:
+    model_types = _model_types(eval_shared_model)
+    eval_shared_models = model_util.verify_and_update_eval_shared_models(
+        eval_shared_model)
+    if model_types == set([constants.TF_LITE]):
+      return False
+    elif (eval_config and model_types == set([constants.TF_ESTIMATOR]) and
+          all(eval_constants.EVAL_TAG in m.model_loader.tags
+              for m in eval_shared_models)):
+      return False
+  return True
+
+
 @beam.ptransform_fn
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
@@ -799,7 +872,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     write_config: Optional[bool] = True,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
-    random_seed_for_testing: Optional[int] = None) -> beam.pvalue.PDone:
+    random_seed_for_testing: Optional[int] = None,
+    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
+) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -825,8 +900,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   read the results.
 
   Args:
-    examples: PCollection of input examples. Can be any format the model accepts
-      (e.g. string containing CSV row, TensorFlow.Example, etc).
+    examples: PCollection of input examples or Arrow Record batches. Examples
+      can be any format the model accepts (e.g. string containing CSV row,
+      TensorFlow.Example, etc).
     eval_shared_model: Optional shared model (single-model evaluation) or list
       of shared models (multi-model evaluation). Only required if needed by
       default extractors, evaluators, or writers and for display purposes of the
@@ -853,6 +929,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     compute_confidence_intervals: Deprecated (use EvalConfig).
     min_slice_size: Deprecated (use EvalConfig).
     random_seed_for_testing: Provide for deterministic tests only.
+    tensor_adapter_config: Tensor adapter config which specifies how to obtain
+      tensors from the Arrow RecordBatch. If None, we feed the raw examples to
+      the model.
 
   Raises:
     ValueError: If EvalConfig invalid or matching Extractor not found for an
@@ -897,7 +976,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     extractors = default_extractors(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
-        materialize=False)
+        materialize=False,
+        enable_batched_extractors=_ENABLE_BATCHED_EXTRACTORS,
+        tensor_adapter_config=tensor_adapter_config)
 
   if not evaluators:
     evaluators = default_evaluators(
@@ -913,9 +994,16 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         output_path=output_path, eval_shared_model=eval_shared_model)
 
   # pylint: disable=no-value-for-parameter
+  if (_ENABLE_BATCHED_EXTRACTORS and
+      is_batched_input(eval_shared_model, eval_config)):
+    extracts = (
+        examples
+        | 'BatchedInputsToExtracts' >> BatchedInputsToExtracts())
+  else:
+    extracts = (examples | 'InputsToExtracts' >> InputsToExtracts())
+
   _ = (
-      examples
-      | 'InputsToExtracts' >> InputsToExtracts()
+      extracts
       | 'ExtractAndEvaluate' >> ExtractAndEvaluate(
           extractors=extractors, evaluators=evaluators)
       | 'WriteResults' >> WriteResults(writers=writers))
@@ -955,7 +1043,8 @@ def run_model_analysis(
     write_config: Optional[bool] = True,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
-    random_seed_for_testing: Optional[int] = None
+    random_seed_for_testing: Optional[int] = None,
+    schema: Optional[schema_pb2.Schema] = None,
 ) -> Union[EvalResult, EvalResults]:
   """Runs TensorFlow model analysis.
 
@@ -993,6 +1082,7 @@ def run_model_analysis(
     compute_confidence_intervals: Deprecated (use EvalConfig).
     min_slice_size: Deprecated (use EvalConfig).
     random_seed_for_testing: Provide for deterministic tests only.
+    schema: Optional tf.Metadata schema of the input data.
 
   Returns:
     An EvalResult that can be used with the TFMA visualization functions.
@@ -1036,11 +1126,24 @@ def run_model_analysis(
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
 
+  tensor_adapter_config = None
   with beam.Pipeline(options=pipeline_options) as p:
     if file_format == 'tfrecords':
-      data = p | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
-          file_pattern=data_location,
-          compression_type=beam.io.filesystem.CompressionTypes.AUTO)
+      if (_ENABLE_BATCHED_EXTRACTORS and
+          is_batched_input(eval_shared_model, eval_config)):
+        tfxio = tf_example_record.TFExampleRecord(
+            file_pattern=data_location,
+            schema=schema,
+            raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        if schema is not None:
+          tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+              arrow_schema=tfxio.ArrowSchema(),
+              tensor_representations=tfxio.TensorRepresentations())
+        data = p | 'ReadFromTFRecordToArrow' >> tfxio.BeamSource()
+      else:
+        data = p | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
+            file_pattern=data_location,
+            compression_type=beam.io.filesystem.CompressionTypes.AUTO)
     elif file_format == 'text':
       data = p | 'ReadFromText' >> beam.io.textio.ReadFromText(data_location)
     else:
@@ -1058,7 +1161,8 @@ def run_model_analysis(
             extractors=extractors,
             evaluators=evaluators,
             writers=writers,
-            random_seed_for_testing=random_seed_for_testing))
+            random_seed_for_testing=random_seed_for_testing,
+            tensor_adapter_config=tensor_adapter_config))
     # pylint: enable=no-value-for-parameter
 
   if len(eval_config.model_specs) <= 1:

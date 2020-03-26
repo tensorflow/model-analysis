@@ -31,6 +31,7 @@ from tensorflow_model_analysis.api.model_eval_lib import EvalResult
 from tensorflow_model_analysis.api.model_eval_lib import ExtractAndEvaluate
 from tensorflow_model_analysis.api.model_eval_lib import ExtractEvaluateAndWriteResults
 from tensorflow_model_analysis.api.model_eval_lib import InputsToExtracts
+from tensorflow_model_analysis.api.model_eval_lib import is_batched_input
 from tensorflow_model_analysis.api.model_eval_lib import load_eval_result
 from tensorflow_model_analysis.api.model_eval_lib import load_eval_results
 from tensorflow_model_analysis.api.model_eval_lib import load_metrics
@@ -100,6 +101,7 @@ from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 
 from tensorflow_model_analysis.model_util import get_model_type
 from tensorflow_model_analysis.model_util import model_construct_fn
+from tensorflow_model_analysis.model_util import verify_and_update_eval_shared_models
 
 from tensorflow_model_analysis.types import AddMetricsCallbackType
 from tensorflow_model_analysis.types import EvalSharedModel

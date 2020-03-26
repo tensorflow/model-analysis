@@ -348,9 +348,8 @@ class DoFnWithModels(beam.DoFn):
       self._model_load_seconds = None
 
 
-# TODO(pachristopher): Define a new base class for Arrow based batched DoFn
-# and inherit from this class. This would allow new Arrow based batched predict
-# predict extractors to share code.
+# TODO(pachristopher): Remove this class once non-batched predict extractor v2
+# is deleted and override the process method directly in predict extractor v1.
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
 class BatchReducibleDoFnWithModels(DoFnWithModels):
@@ -392,6 +391,58 @@ class BatchReducibleDoFnWithModels(DoFnWithModels):
       for element in elements:
         self._batch_size.update(1)
         result.extend(self._batch_reducible_process([element]))
+      self._num_instances.inc(len(result))
+      return result
+
+
+@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_output_types(types.Extracts)
+class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
+  """Abstract class for DoFns that need the shared models.
+
+  This DoFn operates on batched Arrow RecordBatch as input. This DoFn will try
+  to use a large batch size at first. If a functional failure is caught, an
+  attempt will be made to process the elements serially at batch size 1.
+  """
+
+  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
+    super(BatchReducibleBatchedDoFnWithModels, self).__init__(model_loaders)
+    self._batch_size = (
+        beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
+                                          'batch_size'))
+    self._batch_size_failed = (
+        beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
+                                          'batch_size_failed'))
+    self._num_instances = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_instances')
+
+  def _batch_reducible_process(
+      self, batched_extract: types.Extracts) -> types.Extracts:
+    raise NotImplementedError('Subclasses are expected to override this.')
+
+  def process(self, element: types.Extracts) -> types.Extracts:
+    batch_size = element[constants.ARROW_RECORD_BATCH_KEY].num_rows
+    try:
+      result = self._batch_reducible_process(element)
+      self._batch_size.update(batch_size)
+      self._num_instances.inc(batch_size)
+      return result
+    except (ValueError, tf.errors.InvalidArgumentError) as e:
+      logging.warning(
+          'Large batch_size %s failed with error %s. '
+          'Attempting to run batch through serially. Note that this will '
+          'significantly affect the performance.', batch_size, e)
+      self._batch_size_failed.update(batch_size)
+      result = []
+      record_batch = element[constants.ARROW_RECORD_BATCH_KEY]
+      serialized_examples = element[constants.BATCHED_INPUT_KEY]
+      for i in range(batch_size):
+        self._batch_size.update(1)
+        result.extend(
+            self._batch_reducible_process({
+                constants.ARROW_RECORD_BATCH_KEY: record_batch.slice(i, 1),
+                constants.BATCHED_INPUT_KEY: [serialized_examples[i]]
+            }))
       self._num_instances.inc(len(result))
       return result
 

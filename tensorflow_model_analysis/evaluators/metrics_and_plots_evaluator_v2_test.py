@@ -32,10 +32,11 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_pr
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
-from tensorflow_model_analysis.extractors import input_extractor
+from tensorflow_model_analysis.extractors import batched_input_extractor
+from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
 from tensorflow_model_analysis.extractors import predict_extractor
-from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import metric_specs
@@ -44,7 +45,10 @@ from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metrics as metric_fns
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tfx_bsl.tfxio import tensor_adapter
+from tfx_bsl.tfxio import test_util
 from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 def _addExampleCountMetricCallback(  # pylint: disable=invalid-name
@@ -87,6 +91,45 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_shared_model = self._build_keras_model('candidate', model_dir, mul=0)
     baseline_eval_shared_model = self._build_keras_model(
         'baseline', baseline_dir, mul=1)
+
+    schema = text_format.Parse(
+        """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "input"
+              value {
+                dense_tensor {
+                  column_name: "input"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+          }
+        }
+        feature {
+          name: "input"
+          type: FLOAT
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        feature {
+          name: "example_weight"
+          type: FLOAT
+        }
+        feature {
+          name: "extra_feature"
+          type: BYTES
+        }
+        """, schema_pb2.Schema())
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
 
     examples = [
         self._makeExample(
@@ -168,9 +211,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     ]
     eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
-        input_extractor.InputExtractor(eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_shared_model=eval_shared_models, eval_config=eval_config),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_models,
+            eval_config=eval_config,
+            tensor_adapter_config=tensor_adapter_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -183,7 +229,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
       evaluations = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -302,6 +349,58 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     baseline_eval_shared_model = self._build_keras_model(
         'baseline', baseline_dir, mul=1)
 
+    schema = text_format.Parse(
+        """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "input"
+              value {
+                dense_tensor {
+                  column_name: "input"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+          }
+        }
+        feature {
+          name: "input"
+          type: FLOAT
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        feature {
+          name: "example_weight"
+          type: FLOAT
+        }
+        feature {
+          name: "extra_feature"
+          type: BYTES
+        }
+        """, schema_pb2.Schema())
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
+
+    examples = [
+        self._makeExample(
+            input=0.0,
+            label=1.0,
+            example_weight=1.0,
+            extra_feature='non_model_feature'),
+        self._makeExample(
+            input=1.0,
+            label=0.0,
+            example_weight=0.5,
+            extra_feature='non_model_feature'),
+    ]
+
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
@@ -327,9 +426,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     ]
     eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
-        input_extractor.InputExtractor(eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_shared_model=eval_shared_models, eval_config=eval_config),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_models,
+            eval_config=eval_config,
+            tensor_adapter_config=tensor_adapter_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -337,25 +439,13 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             eval_config=eval_config, eval_shared_model=eval_shared_models)
     ]
 
-    examples = [
-        self._makeExample(
-            input=0.0,
-            label=1.0,
-            example_weight=1.0,
-            extra_feature='non_model_feature'),
-        self._makeExample(
-            input=1.0,
-            label=0.0,
-            example_weight=0.5,
-            extra_feature='non_model_feature'),
-    ]
-
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -532,9 +622,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
     extractors = [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_model=eval_shared_model),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -564,12 +655,15 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             fixed_string='fixed_string2')
     ]
 
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        raw_record_column_name=constants.BATCHED_INPUT_KEY)
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -650,9 +744,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
     extractors = [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_model=eval_shared_model),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -682,13 +777,16 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             fixed_string='fixed_string2')
     ]
 
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        raw_record_column_name=constants.BATCHED_INPUT_KEY)
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create(
               [e.SerializeToString() for e in examples * 100])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -780,16 +878,45 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         'candidate': eval_shared_model,
         'baseline': baseline_eval_shared_model
     }
-    extractors = [
-        input_extractor.InputExtractor(eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_shared_model=eval_shared_models, eval_config=eval_config),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
-    ]
-    evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_model=eval_shared_models)
-    ]
+
+    schema = text_format.Parse(
+        """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "input"
+              value {
+                dense_tensor {
+                  column_name: "input"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+          }
+        }
+        feature {
+          name: "input"
+          type: FLOAT
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        feature {
+          name: "example_weight"
+          type: FLOAT
+        }
+        feature {
+          name: "extra_feature"
+          type: BYTES
+        }
+        """, schema_pb2.Schema())
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
 
     examples = [
         self._makeExample(
@@ -804,13 +931,28 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             extra_feature='non_model_feature'),
     ]
 
+    extractors = [
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_models,
+            eval_config=eval_config,
+            tensor_adapter_config=tensor_adapter_config),
+        unbatch_extractor.UnbatchExtractor(),
+        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_models)
+    ]
+
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create(
               [e.SerializeToString() for e in examples * 100])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -864,9 +1006,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
     extractors = [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_model=eval_shared_model),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -896,12 +1039,15 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             fixed_string='fixed_string2')
     ]
 
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        raw_record_column_name=constants.BATCHED_INPUT_KEY)
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -955,9 +1101,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
     extractors = [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_model=eval_shared_model),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -971,12 +1118,15 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=3.0, language='chinese', label=0.0),
     ]
 
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        raw_record_column_name=constants.BATCHED_INPUT_KEY)
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics_and_plots = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -1044,9 +1194,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
     extractors = [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_model=eval_shared_model),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -1061,12 +1212,15 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         self._makeExample(age=4.0, language='chinese', label=1),
     ]
 
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        raw_record_column_name=constants.BATCHED_INPUT_KEY)
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -1136,9 +1290,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
     extractors = [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_model=eval_shared_model),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -1173,12 +1328,15 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             other_label=1.0),
     ]
 
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        raw_record_column_name=constants.BATCHED_INPUT_KEY)
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -1267,16 +1425,6 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     slice_spec = [
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
-    extractors = [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_model=eval_shared_model),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
-    ]
-    evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_model=eval_shared_model)
-    ]
 
     examples = [
         self._makeExample(
@@ -1293,12 +1441,77 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             extra_feature='non_model_feature'),
     ]
 
+    schema = text_format.Parse(
+        """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "input1"
+              value {
+                dense_tensor {
+                  column_name: "input1"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+            tensor_representation {
+              key: "input2"
+              value {
+                dense_tensor {
+                  column_name: "input2"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+          }
+        }
+        feature {
+          name: "input1"
+          type: FLOAT
+        }
+        feature {
+          name: "input2"
+          type: FLOAT
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        feature {
+          name: "example_weight"
+          type: FLOAT
+        }
+        feature {
+          name: "extra_feature"
+          type: BYTES
+        }
+        """, schema_pb2.Schema())
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
+    extractors = [
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_model,
+            eval_config=eval_config,
+            tensor_adapter_config=tensor_adapter_config),
+        unbatch_extractor.UnbatchExtractor(),
+        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
+    ]
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -1354,9 +1567,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
     ]
     extractors = [
-        input_extractor.InputExtractor(eval_config=eval_config),
-        predict_extractor_v2.PredictExtractor(
-            eval_config=eval_config, eval_shared_model=eval_shared_model),
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
@@ -1406,12 +1620,15 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             fixed_int=3)
     ]
 
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        raw_record_column_name=constants.BATCHED_INPUT_KEY)
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
