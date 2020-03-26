@@ -230,21 +230,35 @@ def load_validation_result(output_path: Text) -> Optional[ValidationResult]:
     return validation_records[0]
 
 
-# The field slicing_metrics is a nested dictionaries representing metrics for
-# different configuration as defined by MetricKey in metrics_for_slice.proto.
-# The levels corresponds to output name, class id, metric name and metric value
-# in this order. Note MetricValue uses oneof so metric values will always
-# contain only a single key representing the type in the oneof and the actual
-# metric value is in the value.
-EvalResult = NamedTuple(  # pylint: disable=invalid-name
-    'EvalResult',
-    [('slicing_metrics',
-      List[Tuple[slicer.SliceKeyType,
-                 Dict[Text, Dict[Text, Dict[Text, Dict[Text, Dict[Text,
-                                                                  Any]]]]]]]),
-     ('plots', List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]]),
-     ('config', config.EvalConfig), ('data_location', Text),
-     ('file_format', Text), ('model_location', Text)])
+_Plot = Dict[Text, Any]
+_Metrics = Dict[Text, Any]
+_MetricsBySubKey = Dict[Text, _Metrics]
+_MetricsByOutputName = Dict[Text, Dict[Text, Dict[Text, _MetricsBySubKey]]]
+
+
+class EvalResult(
+    NamedTuple('EvalResult',
+               [('slicing_metrics', List[Tuple[slicer.SliceKeyType,
+                                               _MetricsByOutputName]]),
+                ('plots', List[Tuple[slicer.SliceKeyType, _Plot]]),
+                ('config', config.EvalConfig), ('data_location', Text),
+                ('file_format', Text), ('model_location', Text)])):
+  """Class for the result of single model analysis run.
+
+  Attributes:
+    slicing_metrics: Nested dictionary representing metrics for different
+      configurations as defined by MetricKey in metrics_for_slice.proto. The
+      levels corresponds to output name, sub key, metric name and metric value
+      in this order. The sub key is an encoding of class_id, top_k, and k
+      values. Note that MetricValue uses oneof, so metric values will always
+      contain only a single key representing the type in the oneof and the
+      actual metric value is in the value.
+    plots: List of slice-plot pairs.
+    config: The config containing slicing and metrics specification.
+    data_location: Optional location for data used with config.
+    file_format: Optional format for data used with config.
+    model_location: Optional location(s) for model(s) used with config.
+  """
 
 
 class EvalResults(object):
