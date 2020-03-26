@@ -286,7 +286,8 @@ setup_args = {
         'six>=1.12,<2',
         'tensorflow>=1.15,<3',
         'tensorflow-metadata>=0.21,<0.22',
-        'tfx-bsl>=0.21.3,<0.22'
+        # TODO(mdreves): Revisit this dependency before releasing.
+        'tfx-bsl>=0.21.3,<0.23'
     ],
     'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     'packages': find_packages(),
