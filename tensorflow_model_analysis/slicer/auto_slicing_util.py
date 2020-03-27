@@ -22,10 +22,14 @@ from __future__ import print_function
 import math
 import operator
 from typing import List, NamedTuple, Text
+import numpy as np
 from scipy import stats
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.extractors import auto_slice_key_extractor
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
+
+from tensorflow_metadata.proto.v0 import statistics_pb2
 
 
 # Reference: https://stats.idre.ucla.edu/other/mult-pkg/faq/general/faq-what-are-the-differences-between-one-tailed-and-two-tailed-tests/  pylint: disable=line-too-long
@@ -59,24 +63,30 @@ class SliceComparisonResult(
     NamedTuple('SliceComparisonResult', [
         ('slice_key', Text),
         ('num_examples', int),
+        ('slice_metric', float),
+        ('base_metric', float),
         ('pvalue', float),
         ('effect_size', float),
     ])):
   """Represents the result of comparing a slice with the base dataset.
 
-  It includes the slice key, number of examples in the slice, the pvalue
-  computed when doing significance testing and the effect size.
+  It includes the slice key, number of examples in the slice, slice metric,
+  base metric, the pvalue computed when doing significance testing and the
+  effect size.
   """
 
   def __new__(
       cls,
       slice_key: Text,
       num_examples: int,
+      slice_metric: float,
+      base_metric: float,
       pvalue: float,
       effect_size: float,
   ):
     return super(SliceComparisonResult,
-                 cls).__new__(cls, slice_key, num_examples, pvalue, effect_size)
+                 cls).__new__(cls, slice_key, num_examples, slice_metric,
+                              base_metric, pvalue, effect_size)
 
 
 # Perform one sided Welch's t-test.
@@ -125,19 +135,42 @@ def _get_metrics_as_dict(metrics):
   """Convert slice metrics to a Dict of types.ValueWithTDistribution."""
   result = {}
   for metric in metrics.metric_keys_and_values:
-    t_distribution_value = metric.value.confidence_interval.t_distribution_value
-    result[metric.key.name] = types.ValueWithTDistribution(
-        sample_mean=t_distribution_value.sample_mean.value,
-        sample_standard_deviation=t_distribution_value.sample_standard_deviation
-        .value,
-        sample_degrees_of_freedom=t_distribution_value.sample_degrees_of_freedom
-        .value,
-        unsampled_value=t_distribution_value.unsampled_value.value)
+    value_type = metric.value.WhichOneof('type')
+    if value_type == 'bounded_value':
+      t_distribution_value = (
+          metric.value.confidence_interval.t_distribution_value)
+      result[metric.key.name] = types.ValueWithTDistribution(
+          sample_mean=t_distribution_value.sample_mean.value,
+          sample_standard_deviation=t_distribution_value
+          .sample_standard_deviation.value,
+          sample_degrees_of_freedom=t_distribution_value
+          .sample_degrees_of_freedom.value,
+          unsampled_value=t_distribution_value.unsampled_value.value)
+    elif value_type == 'double_value':
+      result[metric.key.name] = types.ValueWithTDistribution(
+          sample_mean=-1,
+          sample_standard_deviation=-1,
+          sample_degrees_of_freedom=-1,
+          unsampled_value=metric.value.double_value.value)
   return result
+
+
+def _bucket_to_range(bucket: int, boundaries: List[float]) -> bytes:
+  """Returns boundaries of bucket as string."""
+  if bucket == len(boundaries):
+    end = 'inf'
+  else:
+    end = str(boundaries[bucket])
+  if bucket == 0:
+    start = '-inf'
+  else:
+    start = str(boundaries[bucket - 1])
+  return ('[' + start + ', ' + end + ']').encode()
 
 
 def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
                     metric_key: Text,
+                    statistics: statistics_pb2.DatasetFeatureStatisticsList,
                     comparison_type: Text = 'HIGHER',
                     min_num_examples: int = 10,
                     num_top_slices: int = 10,
@@ -149,6 +182,7 @@ def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
     MetricValue.confidence_interval field populated. This will be populated when
       the metrics computed with confidence intervals enabled.
     metric_key: Name of the metric based on which significance testing is done.
+    statistics: Data statistics used to configure AutoSliceKeyExtractor.
     comparison_type: Type of comparison indicating if we are looking for slices
       whose metric is higher (`HIGHER`) or lower (`LOWER`) than the metric
       of the base slice (overall dataset).
@@ -171,6 +205,7 @@ def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
   overall_slice_metrics = metrics_dict[()]
   del metrics_dict[()]
 
+  boundaries = auto_slice_key_extractor._get_bucket_boundaries(statistics)  # pylint: disable=protected-access
   overall_metrics_dict = _get_metrics_as_dict(overall_slice_metrics)
   to_be_sorted_slices = []
   for slice_key, slice_metrics in metrics_dict.items():
@@ -179,6 +214,8 @@ def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
     if num_examples < min_num_examples:
       continue
     # Prune non-interesting slices.
+    if np.isnan(slice_metrics_dict[metric_key].unsampled_value):
+      continue
     if comparison_type == 'HIGHER':
       comparison_fn = operator.le
     else:
@@ -199,7 +236,15 @@ def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
       continue
     # Format the slice info (feature names, values) in the proto into a
     # slice key.
-    slice_key = slicer_lib.stringify_slice_key(slice_key)
+    transformed_slice_key = []
+    for (feature, value) in slice_key:
+      if feature.startswith(
+          auto_slice_key_extractor.TRANSFORMED_FEATURE_PREFIX):
+        feature = feature[len(auto_slice_key_extractor
+                              .TRANSFORMED_FEATURE_PREFIX):]
+        value = _bucket_to_range(value, boundaries[feature])
+      transformed_slice_key.append((feature, value))
+    slice_key = slicer_lib.stringify_slice_key(tuple(transformed_slice_key))
     # Compute effect size for the slice.
     effect_size = _compute_effect_size(
         slice_metrics_dict[metric_key].unsampled_value,
@@ -207,7 +252,10 @@ def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
         overall_metrics_dict[metric_key].unsampled_value,
         overall_metrics_dict[metric_key].sample_standard_deviation)
     to_be_sorted_slices.append(
-        SliceComparisonResult(slice_key, num_examples, pvalue, effect_size))
+        SliceComparisonResult(slice_key, num_examples,
+                              slice_metrics_dict[metric_key].unsampled_value,
+                              overall_metrics_dict[metric_key].unsampled_value,
+                              pvalue, effect_size))
   # Rank the slices.
   ranking_fn, reverse = operator.attrgetter('effect_size'), True
   if rank_by == 'PVALUE':

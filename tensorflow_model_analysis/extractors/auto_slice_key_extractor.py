@@ -75,7 +75,8 @@ def _get_bucket_boundaries(
     boundaries = None
     for histogram in feature.num_stats.histograms:
       if histogram.type == statistics_pb2.Histogram.QUANTILES:
-        boundaries = [bucket.high_value for bucket in histogram.buckets]
+        boundaries = [bucket.low_value for bucket in histogram.buckets]
+        boundaries.append(histogram.buckets[-1].high_value)
         break
     assert boundaries is not None
     result[feature.path.step[0]] = boundaries
@@ -99,7 +100,7 @@ class _BucketizeNumericFeaturesFn(beam.DoFn):
       if feature_name in features:
         transformed_values = []
         for value in features[feature_name]:
-          transformed_values.append(bisect.bisect(boundaries, value))
+          transformed_values.append(bisect.bisect_left(boundaries, value))
         features[TRANSFORMED_FEATURE_PREFIX +
                  feature_name] = np.array(transformed_values)
     return [element_copy]

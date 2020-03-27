@@ -181,13 +181,13 @@ class AutoSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
               [(), (('gender', 'f'),),
                (
                    ('gender', 'f'),
-                   (transformed_age_feat_name, 0),
-               ), ((transformed_age_feat_name, 0),)],
+                   (transformed_age_feat_name, 1),
+               ), ((transformed_age_feat_name, 1),)],
               [(), (('gender', 'm'),),
                (
                    ('gender', 'm'),
-                   (transformed_age_feat_name, 1),
-               ), ((transformed_age_feat_name, 1),)],
+                   (transformed_age_feat_name, 2),
+               ), ((transformed_age_feat_name, 2),)],
               [(), (('gender', 'f'),),
                (
                    ('gender', 'f'),
@@ -196,8 +196,8 @@ class AutoSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
               [(), (('gender', 'm'),),
                (
                    ('gender', 'm'),
-                   (transformed_age_feat_name, 2),
-               ), ((transformed_age_feat_name, 2),)],
+                   (transformed_age_feat_name, 3),
+               ), ((transformed_age_feat_name, 3),)],
           ])
           got_results = []
           for item in got:
