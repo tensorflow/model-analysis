@@ -131,6 +131,9 @@ def _get_slicable_numeric_features(
       continue
     stats_type = feature.WhichOneof('stats')
     if stats_type == 'num_stats':
+      # Ignore features which have the same value in all examples.
+      if feature.num_stats.min == feature.num_stats.max:
+        continue
       result.append(feature)
   return result
 
@@ -150,7 +153,7 @@ def _get_slicable_categorical_features(
     if stats_type == 'string_stats':
       # TODO(pachristopher): Consider slicing on top-K values for features
       # with high cardinality.
-      if 0 < feature.string_stats.unique <= categorical_uniques_threshold:
+      if 1 < feature.string_stats.unique <= categorical_uniques_threshold:
         result.append(feature)
   return result
 

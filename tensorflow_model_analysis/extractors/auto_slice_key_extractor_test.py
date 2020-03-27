@@ -69,12 +69,24 @@ class AutoSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
             path { step: 'feature5' }
             type: INT
             num_stats: {
+              min: 1
+              max: 10
             }
           }
           features: {
             path { step: 'feature6' }
             type: FLOAT
             num_stats: {
+              min: 1
+              max: 10
+            }
+          }
+          features: {
+            path { step: 'feature7' }
+            type: FLOAT
+            num_stats: {
+              min: 1
+              max: 1
             }
           }
         }
@@ -133,6 +145,8 @@ class AutoSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
             path { step: 'age' }
             type: INT
             num_stats: {
+              min: 1
+              max: 10
               histograms {
                 buckets {
                   low_value:  18

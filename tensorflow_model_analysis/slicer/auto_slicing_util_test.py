@@ -49,6 +49,8 @@ class AutoSlicingUtilTest(tf.test.TestCase):
                 min_num_values: 1
                 max_num_values: 1
               }
+              min: 1
+              max: 18
               histograms {
                 buckets {
                   low_value: 1
