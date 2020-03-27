@@ -62,6 +62,11 @@ class MetricTypesTest(tf.test.TestCase):
       got_key = metric_types.PlotKey.from_proto(key.to_proto())
       self.assertEqual(key, got_key, '{} != {}'.format(key, got_key))
 
+  def testSubKeyStr(self):
+    self.assertEqual(str(metric_types.SubKey(class_id=1)), 'classId:1')
+    self.assertEqual(str(metric_types.SubKey(top_k=2)), 'topK:2')
+    self.assertEqual(str(metric_types.SubKey(k=3)), 'k:3')
+
 
 if __name__ == '__main__':
   tf.test.main()

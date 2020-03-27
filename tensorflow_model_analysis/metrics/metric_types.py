@@ -75,6 +75,16 @@ class SubKey(
   def __hash__(self):
     return hash(tuple(self))
 
+  def __str__(self) -> Text:
+    if self.class_id is not None:
+      return 'classId:' + str(self.class_id)
+    elif self.k is not None:
+      return 'k:' + str(self.k)
+    elif self.top_k is not None:
+      return 'topK:' + str(self.top_k)
+    else:
+      raise NotImplementedError()
+
   def to_proto(self) -> metrics_for_slice_pb2.SubKey:
     """Converts key to proto."""
     sub_key = metrics_for_slice_pb2.SubKey()
