@@ -435,14 +435,15 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
       self._batch_size_failed.update(batch_size)
       result = []
       record_batch = element[constants.ARROW_RECORD_BATCH_KEY]
-      serialized_examples = element[constants.BATCHED_INPUT_KEY]
       for i in range(batch_size):
         self._batch_size.update(1)
-        result.extend(
-            self._batch_reducible_process({
-                constants.ARROW_RECORD_BATCH_KEY: record_batch.slice(i, 1),
-                constants.BATCHED_INPUT_KEY: [serialized_examples[i]]
-            }))
+        unbatched_element = {}
+        for key in element.keys():
+          if key == constants.ARROW_RECORD_BATCH_KEY:
+            unbatched_element[key] = record_batch.slice(i, 1)
+          else:
+            unbatched_element[key] = [element[key][i]]
+        result.extend(self._batch_reducible_process(unbatched_element))
       self._num_instances.inc(len(result))
       return result
 
