@@ -23,7 +23,7 @@ import bisect
 import copy
 import itertools
 
-from typing import Dict, List, Optional, Text
+from typing import Dict, List, Optional, Text, Tuple
 
 import apache_beam as beam
 import numpy as np
@@ -66,7 +66,7 @@ def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
       ptransform=_AutoExtractSliceKeys(slice_spec, statistics, materialize))
 
 
-def _get_bucket_boundaries(
+def _get_quantile_boundaries(
     statistics: statistics_pb2.DatasetFeatureStatisticsList
 ) -> Dict[Text, List[float]]:
   """Get quantile bucket boundaries from statistics proto."""
@@ -83,6 +83,25 @@ def _get_bucket_boundaries(
   return result
 
 
+def _bin_value(value: float, boundaries: List[float]) -> int:
+  """Bin value based the bucket boundaries."""
+  return bisect.bisect_left(boundaries, value)
+
+
+def _get_bucket_boundary(bucket: int,
+                         boundaries: List[float]) -> Tuple[float, float]:
+  """Given bucket index, return the bucket boundary."""
+  if bucket == len(boundaries):
+    end = float('inf')
+  else:
+    end = boundaries[bucket]
+  if bucket == 0:
+    start = float('-inf')
+  else:
+    start = boundaries[bucket - 1]
+  return (start, end)
+
+
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 class _BucketizeNumericFeaturesFn(beam.DoFn):
@@ -90,7 +109,7 @@ class _BucketizeNumericFeaturesFn(beam.DoFn):
 
   def __init__(self, statistics: statistics_pb2.DatasetFeatureStatisticsList):
     # Get bucket boundaries for numeric features
-    self._bucket_boundaries = _get_bucket_boundaries(statistics)
+    self._bucket_boundaries = _get_quantile_boundaries(statistics)
 
   def process(self, element: types.Extracts) -> List[types.Extracts]:
     # Make a a shallow copy, so we don't mutate the original.
@@ -100,7 +119,7 @@ class _BucketizeNumericFeaturesFn(beam.DoFn):
       if feature_name in features:
         transformed_values = []
         for value in features[feature_name]:
-          transformed_values.append(bisect.bisect_left(boundaries, value))
+          transformed_values.append(_bin_value(value, boundaries))
         features[TRANSFORMED_FEATURE_PREFIX +
                  feature_name] = np.array(transformed_values)
     return [element_copy]

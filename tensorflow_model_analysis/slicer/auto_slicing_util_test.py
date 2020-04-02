@@ -29,50 +29,6 @@ from tensorflow_metadata.proto.v0 import statistics_pb2
 class AutoSlicingUtilTest(tf.test.TestCase):
 
   def test_find_top_slices(self):
-    statistics = text_format.Parse(
-        """
-        datasets{
-          num_examples: 1500
-          features {
-            path { step: 'country' }
-            type: STRING
-            string_stats {
-              unique: 10
-            }
-          }
-          features {
-            path { step: 'age' }
-            type: INT
-            num_stats {
-              common_stats {
-                num_non_missing: 1500
-                min_num_values: 1
-                max_num_values: 1
-              }
-              min: 1
-              max: 18
-              histograms {
-                buckets {
-                  low_value: 1
-                  high_value: 6.0
-                  sample_count: 500
-                }
-                buckets {
-                  low_value: 6.0
-                  high_value: 12.0
-                  sample_count: 500
-                }
-                buckets {
-                  low_value: 12.0
-                  high_value: 18.0
-                  sample_count: 500
-                }
-                type: QUANTILES
-              }
-            }
-          }
-        }
-        """, statistics_pb2.DatasetFeatureStatisticsList())
     metrics = [
         text_format.Parse(
             """
@@ -125,8 +81,8 @@ class AutoSlicingUtilTest(tf.test.TestCase):
             """
         slice_key {
           single_slice_keys {
-            column: 'transformed_age'
-            int64_value: 1
+            column: 'age'
+            bytes_value: '[1.0, 6.0)'
           }
         }
         metric_keys_and_values {
@@ -176,8 +132,8 @@ class AutoSlicingUtilTest(tf.test.TestCase):
             """
         slice_key {
           single_slice_keys {
-            column: 'transformed_age'
-            int64_value: 2
+            column: 'age'
+            bytes_value: '[6.0, 12.0)'
           }
         }
         metric_keys_and_values {
@@ -227,8 +183,8 @@ class AutoSlicingUtilTest(tf.test.TestCase):
             """
         slice_key {
           single_slice_keys {
-            column: 'transformed_age'
-            int64_value: 3
+            column: 'age'
+            bytes_value: '[12.0, 18.0)'
           }
         }
         metric_keys_and_values {
@@ -328,12 +284,9 @@ class AutoSlicingUtilTest(tf.test.TestCase):
     ]
     self.assertCountEqual(
         auto_slicing_util.find_top_slices(
-            metrics,
-            metric_key='accuracy',
-            statistics=statistics,
-            comparison_type='LOWER'), [
+            metrics, metric_key='accuracy', comparison_type='LOWER'), [
                 auto_slicing_util.SliceComparisonResult(
-                    slice_key=u'age:[1.0, 6.0]',
+                    slice_key=(('age', '[1.0, 6.0)'),),
                     num_examples=500.0,
                     slice_metric=0.4,
                     base_metric=0.8,
@@ -342,25 +295,137 @@ class AutoSlicingUtilTest(tf.test.TestCase):
             ])
     self.assertCountEqual(
         auto_slicing_util.find_top_slices(
-            metrics,
-            metric_key='accuracy',
-            statistics=statistics,
-            comparison_type='HIGHER'), [
+            metrics, metric_key='accuracy', comparison_type='HIGHER'), [
                 auto_slicing_util.SliceComparisonResult(
-                    slice_key=u'age:[12.0, 18.0]',
+                    slice_key=(('age', '[12.0, 18.0)'),),
                     num_examples=500.0,
                     slice_metric=0.9,
                     base_metric=0.8,
                     pvalue=7.356017854191938e-70,
                     effect_size=0.9999999999999996),
                 auto_slicing_util.SliceComparisonResult(
-                    slice_key=u'country:USA',
+                    slice_key=(('country', 'USA'),),
                     num_examples=500.0,
                     slice_metric=0.9,
                     base_metric=0.8,
                     pvalue=7.356017854191938e-70,
                     effect_size=0.9999999999999996)
             ])
+
+  def test_revert_slice_keys_for_transformed_features(self):
+    statistics = text_format.Parse(
+        """
+        datasets{
+          num_examples: 1500
+          features {
+            path { step: 'country' }
+            type: STRING
+            string_stats {
+              unique: 10
+            }
+          }
+          features {
+            path { step: 'age' }
+            type: INT
+            num_stats {
+              common_stats {
+                num_non_missing: 1500
+                min_num_values: 1
+                max_num_values: 1
+              }
+              min: 1
+              max: 18
+              histograms {
+                buckets {
+                  low_value: 1
+                  high_value: 6.0
+                  sample_count: 500
+                }
+                buckets {
+                  low_value: 6.0
+                  high_value: 12.0
+                  sample_count: 500
+                }
+                buckets {
+                  low_value: 12.0
+                  high_value: 18.0
+                  sample_count: 500
+                }
+                type: QUANTILES
+              }
+            }
+          }
+        }
+        """, statistics_pb2.DatasetFeatureStatisticsList())
+    metrics = [
+        text_format.Parse("""
+        slice_key {
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice()),
+        text_format.Parse(
+            """
+        slice_key {
+          single_slice_keys {
+            column: 'transformed_age'
+            int64_value: 1
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice()),
+        text_format.Parse(
+            """
+        slice_key {
+          single_slice_keys {
+            column: 'transformed_age'
+            int64_value: 2
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice()),
+        text_format.Parse(
+            """
+        slice_key {
+          single_slice_keys {
+            column: 'country'
+            bytes_value: 'USA'
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+    ]
+    expected_metrics = [
+        text_format.Parse("""
+        slice_key {
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice()),
+        text_format.Parse(
+            """
+        slice_key {
+          single_slice_keys {
+            column: 'age'
+            bytes_value: '[1.0, 6.0)'
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice()),
+        text_format.Parse(
+            """
+        slice_key {
+          single_slice_keys {
+            column: 'age'
+            bytes_value: '[6.0, 12.0)'
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice()),
+        text_format.Parse(
+            """
+        slice_key {
+          single_slice_keys {
+            column: 'country'
+            bytes_value: 'USA'
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+    ]
+    actual = auto_slicing_util.revert_slice_keys_for_transformed_features(
+        metrics, statistics)
+    self.assertEqual(actual, expected_metrics)
 
 
 if __name__ == '__main__':

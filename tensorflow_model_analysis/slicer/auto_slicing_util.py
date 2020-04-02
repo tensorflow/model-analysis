@@ -21,8 +21,9 @@ from __future__ import print_function
 
 import math
 import operator
-from typing import List, NamedTuple, Text
+from typing import List, NamedTuple, Optional, Text
 import numpy as np
+import pandas as pd
 from scipy import stats
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import auto_slice_key_extractor
@@ -61,7 +62,7 @@ def _two_sided_to_one_sided_pvalue(pvalue: float, delta: float,
 
 class SliceComparisonResult(
     NamedTuple('SliceComparisonResult', [
-        ('slice_key', Text),
+        ('slice_key', slicer_lib.SliceKeyType),
         ('num_examples', int),
         ('slice_metric', float),
         ('base_metric', float),
@@ -77,7 +78,7 @@ class SliceComparisonResult(
 
   def __new__(
       cls,
-      slice_key: Text,
+      slice_key: slicer_lib.SliceKeyType,
       num_examples: int,
       slice_metric: float,
       base_metric: float,
@@ -155,26 +156,50 @@ def _get_metrics_as_dict(metrics):
   return result
 
 
-def _bucket_to_range(bucket: int, boundaries: List[float]) -> bytes:
-  """Returns boundaries of bucket as string."""
-  if bucket == len(boundaries):
-    end = 'inf'
-  else:
-    end = str(boundaries[bucket])
-  if bucket == 0:
-    start = '-inf'
-  else:
-    start = str(boundaries[bucket - 1])
-  return ('[' + start + ', ' + end + ']').encode()
+def _format_boundary(start: float, end: float) -> bytes:
+  """Formats bucket boundary as a string."""
+  return ('[' + str(start) + ', ' + str(end) + ')').encode()
 
 
-def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
-                    metric_key: Text,
-                    statistics: statistics_pb2.DatasetFeatureStatisticsList,
-                    comparison_type: Text = 'HIGHER',
-                    min_num_examples: int = 10,
-                    num_top_slices: int = 10,
-                    rank_by: Text = 'EFFECT_SIZE'):
+def revert_slice_keys_for_transformed_features(
+    metrics: List[metrics_for_slice_pb2.MetricsForSlice],
+    statistics: statistics_pb2.DatasetFeatureStatisticsList):
+  """Revert the slice keys for the transformed features.
+
+  Args:
+    metrics: List of slice metrics protos.
+    statistics: Data statistics used to configure AutoSliceKeyExtractor.
+
+  Returns:
+    List of slice metrics protos where transformed features are mapped back to
+    raw features in the slice keys.
+  """
+  result = []
+  boundaries = auto_slice_key_extractor._get_quantile_boundaries(statistics)  # pylint: disable=protected-access
+  for slice_metrics in metrics:
+    transformed_metrics = metrics_for_slice_pb2.MetricsForSlice()
+    transformed_metrics.CopyFrom(slice_metrics)
+    for single_slice_key in transformed_metrics.slice_key.single_slice_keys:
+      if single_slice_key.column.startswith(
+          auto_slice_key_extractor.TRANSFORMED_FEATURE_PREFIX):
+        raw_feature = single_slice_key.column[len(auto_slice_key_extractor
+                                                  .TRANSFORMED_FEATURE_PREFIX):]
+        single_slice_key.column = raw_feature
+        (start, end) = auto_slice_key_extractor._get_bucket_boundary(  # pylint: disable=protected-access
+            getattr(single_slice_key, single_slice_key.WhichOneof('kind')),
+            boundaries[raw_feature])
+        single_slice_key.bytes_value = _format_boundary(start, end)
+    result.append(transformed_metrics)
+  return result
+
+
+def find_top_slices(
+    metrics: List[metrics_for_slice_pb2.MetricsForSlice],
+    metric_key: Text,
+    comparison_type: Text = 'HIGHER',
+    min_num_examples: int = 10,
+    num_top_slices: int = 10,
+    rank_by: Text = 'EFFECT_SIZE') -> List[SliceComparisonResult]:
   """Finds top-k slices.
 
   Args:
@@ -182,7 +207,6 @@ def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
     MetricValue.confidence_interval field populated. This will be populated when
       the metrics computed with confidence intervals enabled.
     metric_key: Name of the metric based on which significance testing is done.
-    statistics: Data statistics used to configure AutoSliceKeyExtractor.
     comparison_type: Type of comparison indicating if we are looking for slices
       whose metric is higher (`HIGHER`) or lower (`LOWER`) than the metric
       of the base slice (overall dataset).
@@ -205,7 +229,6 @@ def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
   overall_slice_metrics = metrics_dict[()]
   del metrics_dict[()]
 
-  boundaries = auto_slice_key_extractor._get_bucket_boundaries(statistics)  # pylint: disable=protected-access
   overall_metrics_dict = _get_metrics_as_dict(overall_slice_metrics)
   to_be_sorted_slices = []
   for slice_key, slice_metrics in metrics_dict.items():
@@ -234,17 +257,6 @@ def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
         overall_metrics_dict['example_count'].unsampled_value, comparison_type)
     if not is_significant:
       continue
-    # Format the slice info (feature names, values) in the proto into a
-    # slice key.
-    transformed_slice_key = []
-    for (feature, value) in slice_key:
-      if feature.startswith(
-          auto_slice_key_extractor.TRANSFORMED_FEATURE_PREFIX):
-        feature = feature[len(auto_slice_key_extractor
-                              .TRANSFORMED_FEATURE_PREFIX):]
-        value = _bucket_to_range(value, boundaries[feature])
-      transformed_slice_key.append((feature, value))
-    slice_key = slicer_lib.stringify_slice_key(tuple(transformed_slice_key))
     # Compute effect size for the slice.
     effect_size = _compute_effect_size(
         slice_metrics_dict[metric_key].unsampled_value,
@@ -263,3 +275,55 @@ def find_top_slices(metrics: List[metrics_for_slice_pb2.MetricsForSlice],
   result = sorted(
       to_be_sorted_slices, key=ranking_fn, reverse=reverse)[:num_top_slices]
   return result
+
+
+# TODO(pachristopher): Modify API to get MetricKey proto instead of metric name
+# in order to handle multi-model evaluation.
+def display_top_slices(slices: List[SliceComparisonResult],
+                       metrics: List[metrics_for_slice_pb2.MetricsForSlice],
+                       additional_metric_names: Optional[List[Text]] = None):
+  """Display top slices as a dataframe.
+
+  Args:
+    slices: List of ordered slices.
+    metrics: List of slice metrics protos.
+    additional_metric_names: An optional list of additional metric names to
+      display
+  """
+  metrics_dict = {
+      slicer_lib.deserialize_slice_key(slice_metrics.slice_key): slice_metrics
+      for slice_metrics in metrics
+  }
+  rows = []
+  for slice_info in slices:
+    slice_metrics = _get_metrics_as_dict(metrics_dict[slice_info.slice_key])
+    slice_key = ''
+    for column, value in slice_info.slice_key:
+      slice_key += column + ' : ' + str(value) + '\n'
+    row = {
+        'Slice': slice_key,
+        'Size': slice_info.num_examples,
+        'Slice metric': slice_info.slice_metric,
+        'Base metric': slice_info.base_metric,
+        'P-Value': slice_info.pvalue,
+        'Effect size': slice_info.effect_size
+    }
+    if additional_metric_names:
+      for metric_key in additional_metric_names:
+        row[metric_key] = slice_metrics[metric_key].unsampled_value
+    rows.append(row)
+
+  ordered_columns = [
+      'Slice', 'Size', 'Slice metric', 'Base metric', 'P-Value', 'Effect size'
+  ]
+  if additional_metric_names:
+    ordered_columns.extend(additional_metric_names)
+  dataframe = pd.DataFrame(rows, columns=ordered_columns)
+  dataframe.set_index('Slice', inplace=True)
+  pd.set_option('max_colwidth', -1)
+  try:
+    from IPython.display import display  # pylint: disable=g-import-not-at-top,import-outside-toplevel
+    from IPython.display import HTML  # pylint: disable=g-import-not-at-top,import-outside-toplevel
+  except ImportError:
+    raise ImportError('Could not import IPython.')
+  display(HTML(dataframe.to_html().replace('\\n', '<br>')))
