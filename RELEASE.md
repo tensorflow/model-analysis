@@ -8,6 +8,7 @@
 
 *   Version is now available under `tfma.version.VERSION` or `tfma.__version__`.
 *   Add auto slicing utilities for significance testing.
+*   Fixed error when a metric and loss with the same classname are used.
 
 ## Breaking changes
 

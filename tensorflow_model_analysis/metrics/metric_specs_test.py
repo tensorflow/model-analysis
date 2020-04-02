@@ -309,6 +309,9 @@ class MetricSpecsTest(tf.test.TestCase):
             {
                 'output_name': [
                     tf.keras.metrics.MeanSquaredError('mse'),
+                    # Add a loss exactly same as metric
+                    # (https://github.com/tensorflow/tfx/issues/1550)
+                    tf.keras.losses.MeanSquaredError(name='loss'),
                     calibration.MeanLabel('mean_label')
                 ]
             },
@@ -322,7 +325,7 @@ class MetricSpecsTest(tf.test.TestCase):
       for k in m.keys:
         if not k.name.startswith('_'):
           keys.append(k)
-    self.assertLen(keys, 8)
+    self.assertLen(keys, 11)
     self.assertIn(metric_types.MetricKey(name='example_count'), keys)
     self.assertIn(
         metric_types.MetricKey(
@@ -344,6 +347,22 @@ class MetricSpecsTest(tf.test.TestCase):
     self.assertIn(
         metric_types.MetricKey(
             name='mse', model_name='model_name', output_name='output_name'),
+        keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='loss',
+            model_name='model_name',
+            output_name='output_name',
+            sub_key=metric_types.SubKey(class_id=0)), keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='loss',
+            model_name='model_name',
+            output_name='output_name',
+            sub_key=metric_types.SubKey(class_id=1)), keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='loss', model_name='model_name', output_name='output_name'),
         keys)
     self.assertIn(
         metric_types.MetricKey(

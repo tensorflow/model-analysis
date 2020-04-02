@@ -456,8 +456,10 @@ def to_computations(
   # Split into TF metrics and TFMA metrics
   #
 
-  # Dict[Text, Type[Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]]]
+  # Dict[Text, Type[tf.keras.metrics.Metric]]
   tf_metric_classes = {}  # class_name -> class
+  # Dict[Text, Type[tf.keras.losses.Loss]]
+  tf_loss_classes = {}  # class_name -> class
   # List[metric_types.MetricsSpec]
   tf_metrics_specs = []
   # Dict[Text, Type[metric_types.Metric]]
@@ -488,9 +490,11 @@ def to_computations(
         tf_spec.metrics.append(metric)
       else:
         cls = getattr(importlib.import_module(metric.module), metric.class_name)
-        if (issubclass(cls, tf.keras.metrics.Metric) or
-            issubclass(cls, tf.keras.losses.Loss)):
+        if issubclass(cls, tf.keras.metrics.Metric):
           tf_metric_classes[metric.class_name] = cls
+          tf_spec.metrics.append(metric)
+        elif issubclass(cls, tf.keras.losses.Loss):
+          tf_loss_classes[metric.class_name] = cls
           tf_spec.metrics.append(metric)
         else:
           tfma_metric_classes[metric.class_name] = cls
@@ -504,7 +508,7 @@ def to_computations(
         # To distinguish losses from metrics, losses are required to set the
         # module name.
         if m.module == _TF_LOSSES_MODULE:
-          tf_metric_instances.append(_deserialize_tf_loss(m, tf_metric_classes))
+          tf_metric_instances.append(_deserialize_tf_loss(m, tf_loss_classes))
         else:
           tf_metric_instances.append(
               _deserialize_tf_metric(m, tf_metric_classes))
