@@ -163,10 +163,19 @@ def _make_loo_accumulators(
     yield acc
 
 
+# TODO(b/152812821): Disble Beam annotations support due to failure in:
+# //third_party/py/tensorflow_model_analysis/evaluators:jackknife_test.python3
+# Output type hint violation at JackknifeCombinePerKey: expected Tuple[Union[
+# Tuple[Tuple[str, Union[float, int, str]], ...], Tuple[]], Tuple[Dict[
+# MetricKey, Any], ...]], got Tuple[Union[Tuple[Tuple[str, Union[float, int,
+# str]], ...], Tuple[]], Dict[MetricKey, Any]]
+#
+# Since @beam.typehints.no_annotations is not available yet, part of the output
+# type is put in quotes, which currently makes Beam ignore the hint.
 def _make_jackknife_samples(
     slice_partitions: Tuple[slicer.SliceKeyType,
                             Sequence[_PartitionInfo]], combiner: beam.CombineFn
-) -> Iterator[Tuple[slicer.SliceKeyType, metric_types.MetricsDict]]:
+) -> Iterator[Tuple[slicer.SliceKeyType, 'metric_types.MetricsDict']]:
   """Computes leave-one-out and unsampled ouputs for the combiner.
 
   This function creates leave-one-out combiner outputs by combining all but one

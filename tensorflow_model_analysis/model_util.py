@@ -417,10 +417,10 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
         constants.METRICS_NAMESPACE, 'num_instances')
 
   def _batch_reducible_process(
-      self, batched_extract: types.Extracts) -> types.Extracts:
+      self, batched_extract: types.Extracts) -> Sequence[types.Extracts]:
     raise NotImplementedError('Subclasses are expected to override this.')
 
-  def process(self, element: types.Extracts) -> types.Extracts:
+  def process(self, element: types.Extracts) -> Sequence[types.Extracts]:
     batch_size = element[constants.ARROW_RECORD_BATCH_KEY].num_rows
     try:
       result = self._batch_reducible_process(element)
