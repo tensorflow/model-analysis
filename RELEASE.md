@@ -3,6 +3,8 @@
 ## Major Features and Improvements
 
 *   Added support for jackknife-based confidence intervals.
+*   Add EvalResult.get_metrics(), which extracts slice metrics in dictionary
+    format from EvalResults.
 
 ## Bug fixes and other changes
 

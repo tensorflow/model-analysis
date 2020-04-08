@@ -109,13 +109,8 @@ def _convert_proto_map_to_dict(proto_map: Any) -> Dict[Text, Dict[Text, Any]]:
   return {k: json_format.MessageToDict(proto_map[k]) for k in proto_map}
 
 
-def _get_sub_key_id(sub_key):
-  if sub_key.HasField('class_id'):
-    return 'classId:' + str(sub_key.class_id.value)
-  elif sub_key.HasField('top_k'):
-    return 'topK:' + str(sub_key.top_k.value)
-  elif sub_key.HasField('k'):
-    return 'k:' + str(sub_key.k.value)
+def _get_sub_key_id(sub_key: metrics_for_slice_pb2.SubKey):
+  return str(metric_types.SubKey.from_proto(sub_key))
 
 
 def load_and_deserialize_metrics(

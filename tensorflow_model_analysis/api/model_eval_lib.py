@@ -25,7 +25,7 @@ import os
 import pickle
 import tempfile
 
-from typing import Any, Dict, List, NamedTuple, Optional, Set, Text, Tuple, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Set, Text, Tuple, Union
 
 from absl import logging
 import apache_beam as beam
@@ -50,6 +50,7 @@ from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
+from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -259,6 +260,86 @@ class EvalResult(
     file_format: Optional format for data used with config.
     model_location: Optional location(s) for model(s) used with config.
   """
+
+  def get_metrics(self,
+                  slice_name: slicer.SliceKeyType = (),
+                  output_name: Text = '',
+                  class_id: Optional[int] = None,
+                  k: Optional[int] = None,
+                  top_k: Optional[int] = None) -> Union[_Metrics, None]:
+    """Get metric names and values for a slice.
+
+    Args:
+      slice_name: A tuple of the form (column, value), indicating which slice to
+        get metrics from. Optional; if excluded, return overall metrics.
+      output_name: The name of the output. Optional, only used for multi-output
+        models.
+      class_id: Used with multi-class metrics to identify a specific class ID.
+      k: Used with multi-class metrics to identify the kth predicted value.
+      top_k: Used with multi-class and ranking metrics to identify top-k
+        predicted values.
+
+    Returns:
+      Dictionary containing metric names and values for the specified slice.
+    """
+
+    sub_key = metric_types.SubKey(class_id, k, top_k)
+
+    def equals_slice_name(slice_key):
+      if not slice_key:
+        return not slice_name
+      else:
+        return slice_key == slice_name
+
+    for slicing_metric in self.slicing_metrics:
+      slice_key = slicing_metric[0]
+      slice_val = slicing_metric[1]
+      if equals_slice_name(slice_key):
+        return slice_val[output_name][str(sub_key)]
+
+    # if slice could not be found, return None
+    return None
+
+  def get_metrics_for_all_slices(
+      self,
+      output_name: Text = '',
+      class_id: Optional[int] = None,
+      k: Optional[int] = None,
+      top_k: Optional[int] = None) -> Dict[Text, _Metrics]:
+    """Get metric names and values for every slice.
+
+    Args:
+      output_name: The name of the output (optional, only used for multi-output
+        models).
+      class_id: Used with multi-class metrics to identify a specific class ID.
+      k: Used with multi-class metrics to identify the kth predicted value.
+      top_k: Used with multi-class and ranking metrics to identify top-k
+        predicted values.
+
+    Returns:
+      Dictionary mapping slices to metric names and values.
+    """
+
+    sub_key = metric_types.SubKey(class_id, k, top_k)
+
+    sliced_metrics = {}
+    for slicing_metric in self.slicing_metrics:
+      slice_name = slicing_metric[0]
+      metrics = slicing_metric[1][output_name][str(sub_key)]
+      sliced_metrics[slice_name] = {
+          metric_name: metric_value
+          for metric_name, metric_value in metrics.items()
+      }
+    return sliced_metrics
+
+  def get_slices(self) -> Sequence[Text]:
+    """Get names of slices.
+
+    Returns:
+      List of slice names.
+    """
+
+    return [slicing_metric[0] for slicing_metric in self.slicing_metrics]
 
 
 class EvalResults(object):

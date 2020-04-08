@@ -50,6 +50,7 @@ class SubKey(
       values.
   """
 
+  # LINT.IfChange
   def __new__(cls,
               class_id: Optional[int] = None,
               k: Optional[int] = None,
@@ -63,6 +64,7 @@ class SubKey(
       raise ValueError(
           'attempt to create metric with top_k < 1: top_k={}'.format(top_k))
     return super(SubKey, cls).__new__(cls, class_id, k, top_k)
+  # LINT.ThenChange(../api/model_eval_lib.py)
 
   def __eq__(self, other):
     return tuple(self) == other
