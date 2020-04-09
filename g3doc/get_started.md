@@ -49,7 +49,7 @@ The following table summarizes the models supported by default:
 *   Generic TF2 models are custom models that export signatures that can be used
     for inference and are not based on either keras or estimator.
 
-See [FAQ](faq.md) for more information no how to setup and configure these
+See [FAQ](faq.md) for more information on how to setup and configure these
 different model types.
 
 ## Examples
