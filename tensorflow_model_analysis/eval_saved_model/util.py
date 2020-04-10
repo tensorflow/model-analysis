@@ -64,7 +64,7 @@ def wrap_tensor_or_dict_of_tensors_in_identity(
   # pyformat: enable
 
   def _wrap_tensor_in_identity(tensor: types.TensorType) -> types.TensorType:
-    if isinstance(tensor, tf.Tensor):
+    if isinstance(tensor, (tf.Tensor, tf.RaggedTensor)):
       return tf.identity(tensor)
     elif isinstance(tensor, tf.SparseTensor):
       return tf.SparseTensor(
@@ -430,6 +430,8 @@ def split_tensor_value(
   """
   if isinstance(tensor_value, tf.compat.v1.SparseTensorValue):
     return _sparse_slice_rows(tensor_value)
+  elif isinstance(tensor_value, tf.compat.v1.ragged.RaggedTensorValue):
+    return tensor_value.to_list()
   elif isinstance(tensor_value, np.ndarray):
     if tensor_value.shape[0] != 0:
       return np.split(
