@@ -121,6 +121,11 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
         values['tn'] + values['fn'],
         values['tp'] + values['fp'] + values['tn'] + values['fn'])
 
+    values['false_discovery_rate'] = tf.math.divide_no_nan(
+        values['fp'], values['fp'] + values['tp'])
+    values['false_omission_rate'] = tf.math.divide_no_nan(
+        values['fn'], values['fn'] + values['tn'])
+
     # pytype: enable=unsupported-operands
 
     update_op = tf.group(update_ops['fn'], update_ops['tn'], update_ops['fp'],
@@ -164,6 +169,14 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
           metric_keys.base_key(
               'false_negative_rate@%.*f' %
               (self._key_digits, threshold)))] = (values['fnr'][i], update_op)
+      output_dict[self._metric_key(
+          metric_keys.base_key('false_discovery_rate@%.*f' %
+                               (self._key_digits, threshold)))] = (
+                                   values['false_discovery_rate'][i], update_op)
+      output_dict[self._metric_key(
+          metric_keys.base_key('false_omission_rate@%.*f' %
+                               (self._key_digits, threshold)))] = (
+                                   values['false_omission_rate'][i], update_op)
     return output_dict  # pytype: disable=bad-return-type
 
   def populate_stats_and_pop(
