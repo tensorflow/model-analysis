@@ -1091,11 +1091,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   # pylint: disable=no-value-for-parameter
   if (_ENABLE_BATCHED_EXTRACTORS and
       is_batched_input(eval_shared_model, eval_config)):
-    extracts = (
-        examples
-        | 'BatchedInputsToExtracts' >> BatchedInputsToExtracts())
+    extracts = examples | 'BatchedInputsToExtracts' >> BatchedInputsToExtracts()
   else:
-    extracts = (examples | 'InputsToExtracts' >> InputsToExtracts())
+    extracts = examples | 'InputsToExtracts' >> InputsToExtracts()
 
   _ = (
       extracts
@@ -1117,9 +1115,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
                             else v.model_path)
     _ = (
         examples.pipeline
-        | WriteEvalConfig(eval_config, output_path, data_location, file_format,
-                          model_locations))
-  # pylint: enable=no-value-for-parameter
+        | 'WriteEvalConfig' >>
+        WriteEvalConfig(eval_config, output_path, data_location, file_format,
+                        model_locations))
 
   return beam.pvalue.PDone(examples.pipeline)
 
