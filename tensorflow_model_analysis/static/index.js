@@ -67,7 +67,7 @@ define(["@jupyter-widgets/base"], function(__WEBPACK_EXTERNAL_MODULE_3__) { retu
 /* 0 */
 /***/ (function(module, exports) {
 
-module.exports = {"name":"tensorflow_model_analysis","version":"0.22.0dev","homepage":"https://github.com/tensorflow/model-analysis","bugs":"https://github.com/tensorflow/model-analysis/issues","license":"Apache-2.0","repository":{"type":"git","url":"https://github.com/tensorflow/model-analysis.git"},"main":"lib/index.js","files":["lib/**/*.js","dist/*.js","README.md","LICENSE"],"scripts":{"clean":"rimraf dist/","prepare":"webpack && ./collect-files-before-publish.sh","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"webpack":"^3.5.5","rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.0.0","lodash":"^4.17.4"}}
+module.exports = {"name":"tensorflow_model_analysis","version":"0.22.0.dev","homepage":"https://github.com/tensorflow/model-analysis","bugs":"https://github.com/tensorflow/model-analysis/issues","license":"Apache-2.0","repository":{"type":"git","url":"https://github.com/tensorflow/model-analysis.git"},"main":"lib/index.js","files":["lib/**/*.js","dist/*.js","README.md","LICENSE"],"scripts":{"clean":"rimraf dist/","prepare":"webpack && ./collect-files-before-publish.sh","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"webpack":"^3.5.5","rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.0.0","lodash":"^4.17.4"}}
 
 /***/ }),
 /* 1 */
