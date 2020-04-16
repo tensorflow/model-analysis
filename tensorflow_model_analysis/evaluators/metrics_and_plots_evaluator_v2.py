@@ -452,11 +452,12 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
       compute_with_sampling=compute_with_sampling,
       random_seed_for_testing=random_seed_for_testing)
   if num_jackknife_samples:
+    # We do not use the hotkey fanout hint used by the non-jacknife path because
+    # the random jackknife partitioning naturally mitigates hot keys.
     sliced_combiner_outputs = (
         sliced_extracts
         | 'JackknifeCombinePerSliceKey' >> jackknife.JackknifeCombinePerKey(
-            combiner, num_jackknife_samples,
-            _COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT))
+            combiner, num_jackknife_samples))
   else:
     sliced_combiner_outputs = (
         sliced_extracts

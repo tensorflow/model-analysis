@@ -237,11 +237,9 @@ class JackknifeCombinePerKey(beam.PTransform):
   def __init__(self,
                combiner: beam.CombineFn,
                num_jackknife_samples: int,
-               hot_key_fanout: Optional[int] = None,
                random_seed: Optional[int] = None):
     self._combiner = combiner
     self._num_jackknife_samples = num_jackknife_samples
-    self._hot_key_fanout = hot_key_fanout
     self._random_state = np.random.RandomState(random_seed)
 
   def expand(self, sliced_extracts):
@@ -272,8 +270,7 @@ class JackknifeCombinePerKey(beam.PTransform):
           | 'CombinePartition[{}]'.format(i) >> beam.CombinePerKey(
               beam.transforms.combiners.SingleInputTupleCombineFn(
                   _AccumulateOnlyCombiner(combiner=self._combiner),
-                  beam.transforms.combiners.CountCombineFn())
-          ).with_hot_key_fanout(self._hot_key_fanout)
+                  beam.transforms.combiners.CountCombineFn()))
           | 'AddPartitionId[{}]'.format(i) >> beam.MapTuple(
               add_partition_index, i))
 
