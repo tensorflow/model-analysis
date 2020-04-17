@@ -19,9 +19,11 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import collections
+import itertools
 import math
 import operator
-from typing import List, NamedTuple, Optional, Text
+from typing import Dict, List, NamedTuple, Optional, Text
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -193,26 +195,68 @@ def revert_slice_keys_for_transformed_features(
   return result
 
 
+def _is_subset_slice(
+    slice_key: slicer_lib.SliceKeyType,
+    selected_slices: Dict[slicer_lib.SliceKeyType,
+                          SliceComparisonResult]) -> bool:
+  """Checks if a slice is a subset of the already selected slices."""
+  for i in range(1, len(slice_key)):
+    for cross in itertools.combinations(slice_key, i):
+      # TODO(pachristopher): Should we consider pruning a subset slice only if
+      # it has a smaller effect size than the parent slice?
+      if cross in selected_slices:
+        return True
+  return False
+
+
+def remove_subset_slices(
+    slices: List[SliceComparisonResult]) -> List[SliceComparisonResult]:
+  """Prune slices that are subset of other slices."""
+  if len(slices) < 2:
+    return slices
+  # Group slices based on the number of predicates.
+  slices_per_length = collections.defaultdict(list)
+  for slice_comparison_result in slices:
+    slices_per_length[len(
+        slice_comparison_result.slice_key)].append(slice_comparison_result)
+
+  selected_slices = {}
+  for length in sorted(slices_per_length.keys()):
+    for slice_comparison_result in slices_per_length[length]:
+      # Check if this slice is a subset of any of the already selected slices.
+      # TODO(pachristopher): Also keep track of the subset slices which are
+      # pruned as it can help drill down a problematic slice. Another idea is to
+      # capture the subset relationships between slices as a graph.
+      if (length == 1 or not _is_subset_slice(slice_comparison_result.slice_key,
+                                              selected_slices)):
+        selected_slices[
+            slice_comparison_result.slice_key] = slice_comparison_result
+  return list(selected_slices.values())
+
+
 def find_top_slices(
     metrics: List[metrics_for_slice_pb2.MetricsForSlice],
     metric_key: Text,
     comparison_type: Text = 'HIGHER',
     min_num_examples: int = 10,
     num_top_slices: int = 10,
-    rank_by: Text = 'EFFECT_SIZE') -> List[SliceComparisonResult]:
+    rank_by: Text = 'EFFECT_SIZE',
+    prune_subset_slices: bool = True) -> List[SliceComparisonResult]:
   """Finds top-k slices.
 
   Args:
     metrics: List of slice metrics protos. We assume that the metrics have
-    MetricValue.confidence_interval field populated. This will be populated when
-      the metrics computed with confidence intervals enabled.
+      MetricValue.confidence_interval field populated. This will be populated
+      when the metrics computed with confidence intervals enabled.
     metric_key: Name of the metric based on which significance testing is done.
     comparison_type: Type of comparison indicating if we are looking for slices
-      whose metric is higher (`HIGHER`) or lower (`LOWER`) than the metric
-      of the base slice (overall dataset).
+      whose metric is higher (`HIGHER`) or lower (`LOWER`) than the metric of
+      the base slice (overall dataset).
     min_num_examples: Minimum number of examples that a slice should have.
     num_top_slices: Number of top slices to return.
     rank_by: Indicates how the slices should be ordered in the result.
+    prune_subset_slices: Boolean indicating if the slices which are subsets of
+      other slices should be pruned from the result.
 
   Returns:
     List of ordered slices.
@@ -223,8 +267,8 @@ def find_top_slices(
   assert rank_by in ['EFFECT_SIZE', 'PVALUE']
 
   metrics_dict = {
-      slicer_lib.deserialize_slice_key(slice_metrics.slice_key): slice_metrics
-      for slice_metrics in metrics
+      tuple(sorted(slicer_lib.deserialize_slice_key(slice_metrics.slice_key))):
+      slice_metrics for slice_metrics in metrics
   }
   overall_slice_metrics = metrics_dict[()]
   del metrics_dict[()]
@@ -268,6 +312,10 @@ def find_top_slices(
                               slice_metrics_dict[metric_key].unsampled_value,
                               overall_metrics_dict[metric_key].unsampled_value,
                               pvalue, effect_size))
+  # Prune subset slices if enabled.
+  if prune_subset_slices:
+    to_be_sorted_slices = remove_subset_slices(to_be_sorted_slices)
+
   # Rank the slices.
   ranking_fn, reverse = operator.attrgetter('effect_size'), True
   if rank_by == 'PVALUE':

@@ -280,6 +280,61 @@ class AutoSlicingUtilTest(tf.test.TestCase):
             }
           }
         }
+        """, metrics_for_slice_pb2.MetricsForSlice()),
+        text_format.Parse(
+            """
+        slice_key {
+          single_slice_keys {
+            column: 'country'
+            bytes_value: 'USA'
+          }
+          single_slice_keys {
+            column: 'age'
+            bytes_value: '[12.0, 18.0)'
+          }
+        }
+        metric_keys_and_values {
+          key { name: "accuracy" }
+          value {
+            bounded_value {
+              value { value: 0.9 }
+              lower_bound { value: 0.5737843 }
+              upper_bound { value: 1.0262157 }
+              methodology: POISSON_BOOTSTRAP
+            }
+            confidence_interval {
+              lower_bound { value: 0.5737843 }
+              upper_bound { value: 1.0262157 }
+              t_distribution_value {
+                sample_mean { value: 0.9 }
+                sample_standard_deviation { value: 0.1 }
+                sample_degrees_of_freedom { value: 9 }
+                unsampled_value { value: 0.9 }
+              }
+            }
+          }
+        }
+        metric_keys_and_values {
+          key { name: "example_count" }
+          value {
+            bounded_value {
+              value { value: 500 }
+              lower_bound { value: 500 }
+              upper_bound { value: 500 }
+              methodology: POISSON_BOOTSTRAP
+            }
+            confidence_interval {
+              lower_bound { value: 500 }
+              upper_bound { value: 500 }
+              t_distribution_value {
+                sample_mean { value: 500 }
+                sample_standard_deviation { value: 0 }
+                sample_degrees_of_freedom { value: 9 }
+                unsampled_value { value: 500}
+              }
+            }
+          }
+        }
         """, metrics_for_slice_pb2.MetricsForSlice())
     ]
     self.assertCountEqual(
@@ -295,7 +350,10 @@ class AutoSlicingUtilTest(tf.test.TestCase):
             ])
     self.assertCountEqual(
         auto_slicing_util.find_top_slices(
-            metrics, metric_key='accuracy', comparison_type='HIGHER'), [
+            metrics,
+            metric_key='accuracy',
+            comparison_type='HIGHER',
+            prune_subset_slices=True), [
                 auto_slicing_util.SliceComparisonResult(
                     slice_key=(('age', '[12.0, 18.0)'),),
                     num_examples=500.0,
@@ -305,6 +363,34 @@ class AutoSlicingUtilTest(tf.test.TestCase):
                     effect_size=0.9999999999999996),
                 auto_slicing_util.SliceComparisonResult(
                     slice_key=(('country', 'USA'),),
+                    num_examples=500.0,
+                    slice_metric=0.9,
+                    base_metric=0.8,
+                    pvalue=7.356017854191938e-70,
+                    effect_size=0.9999999999999996)
+            ])
+    self.assertCountEqual(
+        auto_slicing_util.find_top_slices(
+            metrics,
+            metric_key='accuracy',
+            comparison_type='HIGHER',
+            prune_subset_slices=False), [
+                auto_slicing_util.SliceComparisonResult(
+                    slice_key=(('age', '[12.0, 18.0)'),),
+                    num_examples=500.0,
+                    slice_metric=0.9,
+                    base_metric=0.8,
+                    pvalue=7.356017854191938e-70,
+                    effect_size=0.9999999999999996),
+                auto_slicing_util.SliceComparisonResult(
+                    slice_key=(('country', 'USA'),),
+                    num_examples=500.0,
+                    slice_metric=0.9,
+                    base_metric=0.8,
+                    pvalue=7.356017854191938e-70,
+                    effect_size=0.9999999999999996),
+                auto_slicing_util.SliceComparisonResult(
+                    slice_key=(('age', '[12.0, 18.0)'), ('country', 'USA')),
                     num_examples=500.0,
                     slice_metric=0.9,
                     base_metric=0.8,
@@ -426,6 +512,57 @@ class AutoSlicingUtilTest(tf.test.TestCase):
     actual = auto_slicing_util.revert_slice_keys_for_transformed_features(
         metrics, statistics)
     self.assertEqual(actual, expected_metrics)
+
+  def test_remove_subset_slices(self):
+    input_slices = [
+        auto_slicing_util.SliceComparisonResult(
+            slice_key=(('age', '[12.0, 18.0)'),),
+            num_examples=500.0,
+            slice_metric=0.9,
+            base_metric=0.8,
+            pvalue=0,
+            effect_size=0.9),
+        auto_slicing_util.SliceComparisonResult(
+            slice_key=(('age', '[12.0, 18.0)'), ('country', 'USA')),
+            num_examples=500.0,
+            slice_metric=0.9,
+            base_metric=0.8,
+            pvalue=0,
+            effect_size=0.9),
+        auto_slicing_util.SliceComparisonResult(
+            slice_key=(('age', '[6.0, 12.0)'), ('country', 'UK')),
+            num_examples=500.0,
+            slice_metric=0.9,
+            base_metric=0.8,
+            pvalue=0,
+            effect_size=0.9),
+        auto_slicing_util.SliceComparisonResult(
+            slice_key=(('age', '[6.0, 12.0)'), ('country', 'UK'), ('sex', 'M')),
+            num_examples=500.0,
+            slice_metric=0.9,
+            base_metric=0.8,
+            pvalue=0,
+            effect_size=0.9),
+    ]
+    expected_slices = [
+        auto_slicing_util.SliceComparisonResult(
+            slice_key=(('age', '[12.0, 18.0)'),),
+            num_examples=500.0,
+            slice_metric=0.9,
+            base_metric=0.8,
+            pvalue=0,
+            effect_size=0.9),
+        auto_slicing_util.SliceComparisonResult(
+            slice_key=(('age', '[6.0, 12.0)'), ('country', 'UK')),
+            num_examples=500.0,
+            slice_metric=0.9,
+            base_metric=0.8,
+            pvalue=0,
+            effect_size=0.9),
+    ]
+    self.assertCountEqual(
+        auto_slicing_util.remove_subset_slices(input_slices), expected_slices)
+    self.assertCountEqual(auto_slicing_util.remove_subset_slices([]), [])
 
 
 if __name__ == '__main__':
