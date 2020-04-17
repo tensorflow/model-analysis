@@ -334,13 +334,13 @@ export class FairnessMetricSummary extends PolymerElement {
       return undefined;
     }
 
-    const sliceValue = (metric, slice) =>
+    const getSliceValue = (metric, slice) =>
         tfma.CellRenderer.maybeExtractBoundedValue(
             data.find(d => d['slice'] == slice)['metrics'][metric]);
 
     const baselineValues = {};
     metrics.forEach(function(metric) {
-      baselineValues[metric] = sliceValue(metric, baseline);
+      baselineValues[metric] = getSliceValue(metric, baseline);
     });
 
     return metrics.reduce((diffRatiosByMetric, metric) => {
@@ -348,7 +348,7 @@ export class FairnessMetricSummary extends PolymerElement {
           slices.reduce((diffRatiosForMetricBySlice, slice) => {
             if (data.find(d => d['slice'] == slice)) {
               diffRatiosForMetricBySlice[slice] =
-                  (sliceValue(metric, slice) / baselineValues[metric]) - 1;
+                  (getSliceValue(metric, slice) / baselineValues[metric]) - 1;
             }
             return diffRatiosForMetricBySlice;
           }, {});
