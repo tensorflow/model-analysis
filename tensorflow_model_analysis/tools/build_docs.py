@@ -32,11 +32,6 @@ python tensorflow_model_analysis/tools/build_docs.py --output_dir=/tmp/tfma_api
 ```
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import inspect
 import os
 
@@ -66,10 +61,6 @@ FLAGS = flags.FLAGS
 
 # pylint: disable=line-too-long
 suppress_docs_for = [
-    absolute_import,
-    division,
-    google_type_annotations,
-    print_function,
     # Although these are not imported directly in __init__, they appear as
     # module paths.
     tfma.internal,  # pytype: disable=module-attr
