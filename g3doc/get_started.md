@@ -35,19 +35,27 @@ pipeline.
 
 The following table summarizes the models supported by default:
 
-| Model Type | Standard Training Time Metrics | Custom Training Time Metrics | Standard Post Training Metrics | Custom Post Training Metrics |
-| --- | --- | --- | --- | --- |
-| TF2 (keras)    | Y | Not supported yet. | Y | Y |
-| TF2 (generic)  | N/A      | N/A | Y | Y |
-| EvalSavedModel (estimator) | Y | Y | Y | Y |
+Model Type                 | Training Time Metrics | Post Training Metrics
+-------------------------- | --------------------- | ---------------------
+TF2 (keras)                | Y*                    | Y
+TF2 (generic)              | N/A                   | Y
+EvalSavedModel (estimator) | Y                     | Y
 
-*   Standard metrics refers to metrics that are defined based only on label
-    (i.e. `y_true`), prediction (i.e. `y_pred`), and example weight (i.e.
-    `sample_weight`).
 *   Training Time metrics refers to metrics defined at training time and saved
-    with the model (either TFMA EvalSavedModel or keras saved model).
+    with the model (either TFMA EvalSavedModel or keras saved model). Post
+    training metrics refers to metrics added via `tfma.MetricConfig`.
 *   Generic TF2 models are custom models that export signatures that can be used
     for inference and are not based on either keras or estimator.
+
+Note: Only training time metrics added via model.compile (not model.add_metric)
+are currently supported for keras.
+
+Note: When supported, training time metrics are enabled by default. However,
+they can be disabled via the `include_default_metrics` setting in
+`tfma.Options`.
+
+Note: To run with an `EvalSavedModel`, just set `signature_name: "eval"` in the
+model spec.
 
 See [FAQ](faq.md) for more information no how to setup and configure these
 different model types.
@@ -77,9 +85,11 @@ eval_config = text_format.Parse("""
     example_weight_key: "weight"
   }
   metrics_spec {
-    # This assumes a binary classification model.
+    # This adds AUC as a post training metric (i.e. this is only needed if the
+    # model did not already have AUC defined at training time). In this case the
+    # the assumption is that the model is a binary classification model.
     metrics { class_name: "AUC" }
-    # ... other metrics ...
+    # ... other post training metrics ...
   }
   slicing_specs {}
   slicing_specs {
@@ -120,9 +130,11 @@ eval_config = text_format.Parse("""
     example_weight_key: "weight"
   }
   metrics_specs {
-    # This assumes a binary classification model.
+    # This adds AUC as a post training metric (i.e. this is only needed if the
+    # model did not already have AUC defined at training time). In this case the
+    # the assumption is that the model is a binary classification model.
     metrics { class_name: "AUC" }
-    # ... other metrics ...
+    # ... other post training metrics ...
   }
   slicing_specs {}
   slicing_specs {
@@ -171,10 +183,15 @@ eval_config = text_format.Parse("""
     example_weight_key: "weight"
   }
   metrics_spec {
-    # This assumes a binary classification model.
+    # This adds AUC as a post training metric (i.e. this is only needed if the
+    # model did not already have AUC defined at training time). In this case the
+    # the assumption is that the model is a binary classification model.
     metrics { class_name: "AUC" }
-    # ... other metrics ...
+    # ... other post training metrics ...
     thresholds {
+      # This is a threshold setting for a metric that was added at training
+      # time. For post training metrics the threshold may be specified as part
+      # of the MetricConfig.
       key: "binary_accuracy"
       value: {
         value_threshold {
