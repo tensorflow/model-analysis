@@ -472,8 +472,8 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
 
   if num_jackknife_samples:
     return (sliced_derived_values_and_diffs
-            | 'MergeJackknifeSamples' >>
-            jackknife.MergeJackknifeSamples(skip_ci_metric_keys))
+            | 'MergeJackknifeSamples' >> jackknife.MergeJackknifeSamples(
+                num_jackknife_samples, skip_ci_metric_keys))
   else:
     return sliced_derived_values_and_diffs
 

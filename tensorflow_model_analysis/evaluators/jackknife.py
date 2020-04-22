@@ -67,6 +67,7 @@ import six
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 _JACKKNIFE_SAMPLE_ID_KEY = u'_sample_id'
@@ -90,7 +91,7 @@ class _AccumulateOnlyCombiner(beam.CombineFn):
   to subsequently merge the results before calling extract_output. A typical use
   of a _AccumulateOnlyCombiner might look like:
 
-      c= OtherCombiner()
+      c = OtherCombiner()
 
       # combine per key, but don't call extract_output()
       accumulators = [p | beam.CombinePerKey(_AccumulateOnlyCombiner(c)
@@ -324,20 +325,26 @@ class _MergeJacknifeAccumulator(object):
 class _JackknifeSampleCombiner(beam.CombineFn):
   """Computes the jackknife standard error for each metric from samples."""
 
-  def __init__(self,
-               skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None
-              ):
+  def __init__(
+      self,
+      num_jackknife_samples: int,
+      skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None):
     """Initializes a _MergeJackknifeSamples CombineFn.
 
     Args:
+      num_jackknife_samples: The number of samples computed per slice.
       skip_ci_metric_keys: Set of metric keys for which to skip confidence
         interval computation. For metric keys in this set, just the unsampled
         value will be returned.
     """
+    self._num_jackknife_samples = num_jackknife_samples
     self._skip_ci_metric_keys = skip_ci_metric_keys
-    self._bad_samples_counter = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE,
-        'num_cis_computed_with_bad_jackknife_samples')
+    self._num_slices_counter = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_slices')
+    self._missing_samples_counter = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_slices_missing_jackknife_samples')
+    self._small_samples_counter = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_slices_with_small_jackknife_samples')
     self._sample_id_key = metric_types.MetricKey(_JACKKNIFE_SAMPLE_ID_KEY)
 
   def create_accumulator(self) -> _MergeJacknifeAccumulator:
@@ -378,25 +385,39 @@ class _JackknifeSampleCombiner(beam.CombineFn):
     # https://www.stat.berkeley.edu/~hhuang/STAT152/Jackknife-Bootstrap.pdf
     # Rather than normalize by all possible n-choose-d samples, we normalize by
     # the actual number of samples.
-    assert _JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY in accumulator.unsampled_values, (
-        'Expected unsampled jackknife values to contain the example count key: "',
-        _JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY, '". Instead, found keys: ',
-        accumulator.unsampled_values.keys())
-    n = accumulator.unsampled_values.pop(_JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY)
+    self._num_slices_counter.inc(1)
+    unsampled_values = accumulator.unsampled_values
+    assert _JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY in unsampled_values, (
+        'Expected unsampled jackknife values to contain the example count key: '
+        '"{}". Instead, found keys: {}'.format(
+            _JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY, unsampled_values.keys()))
+    n = unsampled_values.pop(_JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY)
+
+    result = {}
+    missing_samples = False
+    # If we don't get at least one example in each sample, don't compute CI.
+    if accumulator.num_samples < self._num_jackknife_samples:
+      self._missing_samples_counter.inc(1)
+      missing_samples = True
+      result[metric_keys.ERROR_METRIC] = (
+          'CI not computed because only {num_samples} samples were non-empty. '
+          'Expected {num_jackknife_samples}.'.format(
+              num_samples=accumulator.num_samples,
+              num_jackknife_samples=self._num_jackknife_samples))
+
     # set d to expected size of a sample holdout
     d = n / float(accumulator.num_samples)
     if d < n**0.5:
       # if d < sqrt(n) the jackknife standard error will behave poorly for some
       # metrics (including the median).
-      self._bad_samples_counter.inc(1)
+      self._small_samples_counter.inc(1)
 
     jackknife_scaling_factor = (n - d) / d
     dof = accumulator.num_samples - 1
     num_samples = accumulator.num_samples
 
-    result = {}
-    for metric_key, unsampled_value in accumulator.unsampled_values.items():
-      if (metric_key not in accumulator.sums or
+    for metric_key, unsampled_value in unsampled_values.items():
+      if (missing_samples or metric_key not in accumulator.sums or
           (self._skip_ci_metric_keys and
            metric_key in self._skip_ci_metric_keys)):
         result[metric_key] = unsampled_value
@@ -427,9 +448,11 @@ class MergeJackknifeSamples(beam.PTransform):
   the standard error of that unsampled value.
   """
 
-  def __init__(self,
-               skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None
-              ):
+  def __init__(
+      self,
+      num_jackknife_samples: int,
+      skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None):
+    self._num_jackknife_samples = num_jackknife_samples
     self._skip_ci_metric_keys = skip_ci_metric_keys
 
   def expand(self, sliced_derived_values_and_diffs):
@@ -438,4 +461,5 @@ class MergeJackknifeSamples(beam.PTransform):
             beam.MapTuple(_move_jackknife_sample_id_to_value)
             | 'CombineJackknifeSamplesPerSlice' >> beam.CombinePerKey(
                 _JackknifeSampleCombiner(
+                    num_jackknife_samples=self._num_jackknife_samples,
                     skip_ci_metric_keys=self._skip_ci_metric_keys)))

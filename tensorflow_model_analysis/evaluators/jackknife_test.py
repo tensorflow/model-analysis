@@ -144,7 +144,7 @@ class JackknifePTransformTest(absltest.TestCase):
           pipeline
           | 'Create' >> beam.Create(sliced_derived_metrics, reshuffle=False)
           | 'JackknifeCombinePerKey' >> jackknife.MergeJackknifeSamples(
-              skip_ci_metric_keys=[example_count_key]))
+              num_jackknife_samples=2, skip_ci_metric_keys=[example_count_key]))
 
       # For standard error calculations, see delete-d jackknife formula in:
       # https://www.stat.berkeley.edu/~hhuang/STAT152/Jackknife-Bootstrap.pdf
@@ -197,7 +197,7 @@ class JackknifePTransformTest(absltest.TestCase):
 
       util.assert_that(result, check_result)
 
-  def test_jackknife_merge_jackknife_samples_bad_samples(self):
+  def test_jackknife_merge_jackknife_samples_small_samples(self):
     metric_key = metric_types.MetricKey(u'metric')
     slice_key1 = (u'slice_feature', 1)
     slice_key2 = (u'slice_feature', 2)
@@ -234,17 +234,74 @@ class JackknifePTransformTest(absltest.TestCase):
       _ = (
           pipeline
           | 'Create' >> beam.Create(sliced_derived_metrics, reshuffle=False)
-          | 'JackknifeCombinePerKey' >> jackknife.MergeJackknifeSamples())
+          | 'MergeJackknifeSamples' >>
+          jackknife.MergeJackknifeSamples(num_jackknife_samples=5))
 
       result = pipeline.run()
       # we expect one bad jackknife samples counter increment for slice1.
       # slice1: num_samples=5, n=16, d=3.2, sqrt(n)=4, d < sqrt(n) = True
       # slice2: num_samples=5, n=10000, d=2000, sqrt(n)=100, d < sqrt(n) = False
       metric_filter = beam.metrics.metric.MetricsFilter().with_name(
-          'num_cis_computed_with_bad_jackknife_samples')
+          'num_slices_with_small_jackknife_samples')
       counters = result.metrics().query(filter=metric_filter)['counters']
       self.assertLen(counters, 1)
       self.assertEqual(1, counters[0].committed)
+
+      # verify total slice counter
+      metric_filter = beam.metrics.metric.MetricsFilter().with_name(
+          'num_slices')
+      counters = result.metrics().query(filter=metric_filter)['counters']
+      self.assertLen(counters, 1)
+      self.assertEqual(2, counters[0].committed)
+
+  def test_jackknife_merge_jackknife_samples_missing_samples(self):
+    metric_key = metric_types.MetricKey(u'metric')
+    slice_key1 = (u'slice_feature', 1)
+    slice_key2 = (u'slice_feature', 2)
+    # the sample value is irrelevant for this test as we only verify counters.
+    sample_value = {metric_key: 42}
+    sliced_derived_metrics = [
+        # unsampled value for slice 1
+        ((slice_key1, (jackknife._JACKKNIFE_SAMPLE_ID_KEY,
+                       jackknife._JACKKNIFE_FULL_SAMPLE_ID)), {
+                           metric_key: 2.1,
+                           jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY: 16
+                       }),
+        # 2 sample values for slice 1
+        ((slice_key1, (jackknife._JACKKNIFE_SAMPLE_ID_KEY, 0)), sample_value),
+        ((slice_key1, (jackknife._JACKKNIFE_SAMPLE_ID_KEY, 1)), sample_value),
+        # unsampled value for slice 2
+        ((slice_key2, (jackknife._JACKKNIFE_SAMPLE_ID_KEY,
+                       jackknife._JACKKNIFE_FULL_SAMPLE_ID)), {
+                           metric_key: 6.3,
+                           jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY: 10000
+                       }),
+        # Only 1 sample value (missing sample ID 1) for slice 2
+        ((slice_key2, (jackknife._JACKKNIFE_SAMPLE_ID_KEY, 0)), sample_value),
+    ]
+
+    with beam.Pipeline() as pipeline:
+      _ = (
+          pipeline
+          | 'Create' >> beam.Create(sliced_derived_metrics, reshuffle=False)
+          | 'MergeJackknifeSamples' >>
+          jackknife.MergeJackknifeSamples(num_jackknife_samples=2))
+
+      result = pipeline.run()
+      # we expect one missing samples counter increment for slice2, since we
+      # expected 2 samples, but only saw 1.
+      metric_filter = beam.metrics.metric.MetricsFilter().with_name(
+          'num_slices_missing_jackknife_samples')
+      counters = result.metrics().query(filter=metric_filter)['counters']
+      self.assertLen(counters, 1)
+      self.assertEqual(1, counters[0].committed)
+
+      # verify total slice counter
+      metric_filter = beam.metrics.metric.MetricsFilter().with_name(
+          'num_slices')
+      counters = result.metrics().query(filter=metric_filter)['counters']
+      self.assertLen(counters, 1)
+      self.assertEqual(2, counters[0].committed)
 
 
 if __name__ == '__main__':

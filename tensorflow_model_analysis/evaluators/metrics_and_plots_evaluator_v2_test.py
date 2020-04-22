@@ -784,7 +784,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
       metrics = (
           pipeline
           | 'Create' >> beam.Create(
-              [e.SerializeToString() for e in examples * 100])
+              [e.SerializeToString() for e in examples * 1000])
           | 'BatchExamples' >> tfx_io.BeamSource()
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
@@ -811,29 +811,29 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           pred_key = metric_types.MetricKey(name='mean_prediction')
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[overall_slice], {
-                  weighted_example_count_key: 400.0,
+                  weighted_example_count_key: 4000.0,
                   label_key: (1.0 + 0.0 + 2 * 0.0) / (1.0 + 1.0 + 2.0),
                   pred_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0),
               })
           self.assertDictElementsAlmostEqual(slices[overall_slice], {
-              example_count_key: 300,
+              example_count_key: 3000,
           })
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[fixed_string1_slice], {
-                  weighted_example_count_key: 200.0,
+                  weighted_example_count_key: 2000.0,
                   label_key: (1.0 + 0.0) / (1.0 + 1.0),
                   pred_key: (0.2 + 0.8) / (1.0 + 1.0),
               })
           self.assertDictElementsAlmostEqual(slices[fixed_string1_slice],
-                                             {example_count_key: 200})
+                                             {example_count_key: 2000})
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[fixed_string2_slice], {
-                  weighted_example_count_key: 200.0,
+                  weighted_example_count_key: 2000.0,
                   label_key: (2 * 0.0) / 2.0,
                   pred_key: (2 * 0.5) / 2.0,
               })
           self.assertDictElementsAlmostEqual(slices[fixed_string2_slice],
-                                             {example_count_key: 100})
+                                             {example_count_key: 1000})
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -950,7 +950,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
       metrics = (
           pipeline
           | 'Create' >> beam.Create(
-              [e.SerializeToString() for e in examples * 100])
+              [e.SerializeToString() for e in examples * 1000])
           | 'BatchExamples' >> tfx_io.BeamSource()
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
