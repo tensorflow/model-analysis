@@ -428,21 +428,15 @@ def _serialize_plots(
   result = metrics_for_slice_pb2.PlotsForSlice()
   slice_key, slice_plots = plots
 
+  result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+
   if metric_keys.ERROR_METRIC in slice_plots:
     logging.warning('Error for slice: %s with error message: %s ', slice_key,
                     slice_plots[metric_keys.ERROR_METRIC])
-    metrics = metrics_for_slice_pb2.PlotsForSlice()
-    metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
-    metrics.plots[metric_keys.ERROR_METRIC].debug_message = slice_plots[
-        metric_keys.ERROR_METRIC]
-    return metrics.SerializeToString()
+    error_metric = slice_plots.pop(metric_keys.ERROR_METRIC)
+    result.plots[metric_keys.ERROR_METRIC].debug_message = error_metric
 
-  # Convert the slice key.
-  result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
-
-  # Convert the slice plots.
   _convert_slice_plots(slice_plots, add_metrics_callbacks, result)  # pytype: disable=wrong-arg-types
-
   return result.SerializeToString()
 
 

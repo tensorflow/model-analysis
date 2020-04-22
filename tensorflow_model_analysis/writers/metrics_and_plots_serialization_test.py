@@ -208,10 +208,8 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
     slice_key = _make_slice_key('fruit', 'apple')
     tfma_plots = {metric_keys.ERROR_METRIC: 'error_message'}
 
-    calibration_plot = (
-        post_export_metrics.calibration_plot_and_prediction_histogram())
     actual_plot = metrics_and_plots_serialization._serialize_plots(
-        (slice_key, tfma_plots), [calibration_plot])
+        (slice_key, tfma_plots), [])
     expected_plot = metrics_for_slice_pb2.PlotsForSlice()
     expected_plot.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
     expected_plot.plots[

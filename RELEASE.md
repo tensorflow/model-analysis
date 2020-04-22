@@ -13,6 +13,8 @@
 *   Fixed error when a metric and loss with the same classname are used.
 *   Adding two new ratios (false discovery rate and false omission rate) in
     Fairness Indicators post_export_metrics.
+*   `MetricValue`s can now contain both a debug message and a value (rather than
+    one or the other).
 
 ## Breaking changes
 
