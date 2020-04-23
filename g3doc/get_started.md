@@ -105,8 +105,8 @@ eval_result = tfma.run_model_analysis(
     eval_config=eval_config,
     # This assumes your data is a TFRecords file containing records in the
     # tf.train.Example format.
-    data_location="/path/to/file/containing/tfrecords",
-    output_path="/path/for/output")
+    data_location='/path/to/file/containing/tfrecords',
+    output_path='/path/for/output')
 
 tfma.view.render_slicing_metrics(eval_result)
 ```
@@ -145,23 +145,24 @@ eval_config = text_format.Parse("""
 eval_shared_model = tfma.default_eval_shared_model(
     eval_saved_model_path='/path/to/saved/model', eval_config=eval_config)
 
+output_path = '/path/for/output'
+
 with beam.Pipeline(runner=...) as p:
   _ = (p
        # You can change the source as appropriate, e.g. read from BigQuery.
        # This assumes your data is a TFRecords file containing records in the
        # tf.train.Example format.
        | 'ReadData' >> beam.io.ReadFromTFRecord(
-           "/path/to/file/containing/tfrecords")
+           '/path/to/file/containing/tfrecords')
        | 'ExtractEvaluateAndWriteResults' >>
        tfma.ExtractEvaluateAndWriteResults(
             eval_shared_model=eval_shared_model,
             eval_config=eval_config,
-            output_path="/path/for/output"))
+            output_path=output_path))
 
 # To load and visualize results.
 # Note that this code should be run in a Jupyter Notebook.
-result = tfma.load_eval_result(
-    output_path=eval_config.output_data_specs[0].location)
+result = tfma.load_eval_result(output_path)
 tfma.view.render_slicing_metrics(result)
 ```
 
@@ -222,13 +223,15 @@ eval_shared_models = [
       eval_config=eval_config),
 ]
 
+output_path = '/path/for/output'
+
 eval_result = tfma.run_model_analysis(
     eval_shared_models,
     eval_config=eval_config,
     # This assumes your data is a TFRecords file containing records in the
     # tf.train.Example format.
-    data_location="/path/to/file/containing/tfrecords",
-    output_path="/path/for/output")
+    data_location='/path/to/file/containing/tfrecords',
+    output_path=output_path)
 
 tfma.view.render_slicing_metrics(eval_result)
 tfma.load_validation_result(output_path)
