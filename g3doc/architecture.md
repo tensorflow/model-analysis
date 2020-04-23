@@ -106,7 +106,7 @@ of a dict whereas keras returns `np.ndarray` values).
 
 The `tfma.extractors.SliceKeyExtractor` uses the slicing spec to determine which
 slices apply to each example input based on the extracted features and adds the
-coresponding slicing values to the extracts for later used by the evaluators.
+coresponding slicing values to the extracts for later use by the evaluators.
 
 ## Evaluation
 
