@@ -38,11 +38,16 @@ pip install git+https://github.com/tensorflow/model-analysis.git@v0.21.3#egg=ten
 </pre>
 
 If you have cloned the repository locally, and want to test your local change,
-pip install from a local folder:
+pip install from a local folder.
 
 <pre class="devsite-terminal devsite-click-to-copy">
 pip install -e $FOLDER_OF_THE_LOCAL_LOCATION
 </pre>
+
+Note that protobuf must be installed correctly for the above option since it is
+building TFMA from source and it requires protoc and all of its includes
+reference-able. Please see [protobuf install instruction](https://github.com/protocolbuffers/protobuf#protocol-compiler-installation)
+for see the latest install instructions.
 
 Currently, TFMA requires that TensorFlow is installed but does not have an
 explicit dependency on the TensorFlow PyPI package. See the
