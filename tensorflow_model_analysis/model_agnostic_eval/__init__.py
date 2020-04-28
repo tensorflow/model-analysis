@@ -11,3 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Init module for TensorFlow Model Analysis model_agnostic_eval."""
+
+from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_evaluate_graph
+from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_extractor
+from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict

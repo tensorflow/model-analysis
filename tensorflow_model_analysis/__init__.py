@@ -136,6 +136,7 @@ from tensorflow_model_analysis import evaluators
 from tensorflow_model_analysis import metrics
 from tensorflow_model_analysis import writers
 from tensorflow_model_analysis import view
+from tensorflow_model_analysis import model_agnostic_eval
 
 def _jupyter_nbextension_paths():
   return [{
