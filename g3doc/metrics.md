@@ -157,10 +157,13 @@ metrics_specs = text_format.Parse("""
     metrics { class_name: "Precision" config: '"top_k": 3' }
     metrics { class_name: "Recall" config: '"top_k": 1' }
     metrics { class_name: "Recall" config: '"top_k": 3' }
-
+    metrics { class_name: "MultiClassConfusionMatrixPlot" }
   }
 """, tfma.EvalConfig()).metrics_specs
 ```
+
+Note: For multi-label there is `MultiLabelConfusionMatrixPlot` instead of
+`MultiClassConfusionMatrixPlot`
 
 This same setup can be created using the following python code:
 
@@ -175,6 +178,8 @@ metrics = [
     tf.keras.metrics.Precision(name='precision', top_k=3),
     tf.keras.metrics.Recall(name='recall', top_k=1),
     tf.keras.metrics.Recall(name='recall', top_k=3),
+    tfma.metrics.MultiClassConfusionMatrixPlot(
+        name='multi_class_confusion_matrix_plot'),
 ]
 metrics_specs = tfma.metrics.specs_from_metrics(metrics)
 ```
