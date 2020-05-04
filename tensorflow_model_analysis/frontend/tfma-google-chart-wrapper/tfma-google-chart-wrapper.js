@@ -16,7 +16,8 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-google-chart-wrapper-template.html.js';
 
-import '@org_googlewebcomponents_google_chart/google-chart/google-chart.js';
+/** @suppress {extraRequire} */
+goog.require('googleWebComponents.googleChart.googleChart');
 
 /**
  * tfma-google-chart-wrapper is a simple wrapper for google-chart component. It

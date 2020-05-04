@@ -16,7 +16,8 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-line-chart-template.html.js';
 
-import '@org_googlewebcomponents_google_chart/google-chart/google-chart.js';
+/** @suppress {extraRequire} */
+goog.require('googleWebComponents.googleChart.googleChart');
 
 /**
  * tfma-line-chart renders the a time series for a single metric.

@@ -24,6 +24,9 @@ import '../tfma-int64/tfma-int64.js';
 import '../tfma-multi-class-confusion-matrix/tfma-multi-class-confusion-matrix.js';
 import '../tfma-value-at-cutoffs/tfma-value-at-cutoffs.js';
 
+/** @suppress {extraRequire} */
+goog.require('googleWebComponents.googleChart.googleChart');
+
 /**
  * tfma-metrics-table renders a table containig computed metrics.
  *

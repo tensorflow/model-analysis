@@ -380,7 +380,7 @@ suite('tests', () => {
     };
     const select = () => {
       element.selectedSlice_ = sliceToSelect;
-      element.$['loader'].dispatchEvent(new Event('google-chart-select'));
+      google.visualization.events.trigger(element.chart_, 'select', null);
       setTimeout(verify, 0);
     };
     const verify = () => {

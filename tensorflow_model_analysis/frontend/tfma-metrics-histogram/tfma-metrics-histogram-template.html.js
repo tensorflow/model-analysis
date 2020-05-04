@@ -78,7 +78,6 @@ template.innerHTML = `
     text-align: center;
   }
 </style>
-<google-chart-loader id="loader" packages="[[chartPackages_]]"></google-chart-loader>
 <div class="ui section">
   <span id="metric-select" class="ui-element ui-input">
     <paper-dropdown-menu label="Select Metric">

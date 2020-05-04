@@ -19,7 +19,8 @@ import {template} from './tfma-slice-overview-template.html.js';
 import '@polymer/paper-dropdown-menu/paper-dropdown-menu.js';
 import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
-import '@org_googlewebcomponents_google_chart/google-chart/google-chart.js';
+
+const {dataTable, load} = goog.require('googleWebComponents.googleChart.loader');
 
 /** @type {string} */
 const DEFAULT_METRIC_TO_SORT = 'Slice';
@@ -88,14 +89,6 @@ export class SliceOverview extends PolymerElement {
        * @private {string}
        */
       metricToSort_: {type: String, value: DEFAULT_METRIC_TO_SORT},
-
-      /**
-       * Google chart packages required for rendering the column chart. This is
-       * used by google-chart-loader to download the necessary code. We do not
-       * expect this property to change.
-       * @private {!Array<string>}
-       */
-      chartPackages_: {type: Array, value: ['corechart']},
 
       /**
        * If the component is visible or not.
@@ -187,19 +180,18 @@ export class SliceOverview extends PolymerElement {
       ]);
     });
 
-    this.$.loader.dataTable(table).then(dataTable => {
+    dataTable(table).then(dataTable => {
       dataTable.sort([{'column': 2}]);
-      this.$.loader.dataView(dataTable).then(dataView => {
-        dataView.setColumns([0, 1]);
-        this.dataView_ = dataView;
-        this.chart_.draw(dataView, {
-          'bar': {'groupWidth': '75%'},
-          'hAxis': {'ticks': []},
-          'legend': {'position': 'top'},
-          'width':
-              Math.max(this.getBoundingClientRect().width, MIN_CHART_WIDTH_PX),
-          'height': CHART_HEIGHT_PX,
-        });
+      const dataView = new google.visualization.DataView(dataTable);
+      dataView.setColumns([0, 1]);
+      this.dataView_ = dataView;
+      this.chart_.draw(dataView, {
+        'bar': {'groupWidth': '75%'},
+        'hAxis': {'ticks': []},
+        'legend': {'position': 'top'},
+        'width':
+            Math.max(this.getBoundingClientRect().width, MIN_CHART_WIDTH_PX),
+        'height': CHART_HEIGHT_PX,
       });
     });
   }
@@ -213,9 +205,11 @@ export class SliceOverview extends PolymerElement {
 
     // Start loading the visualization API and instantiate a column chart
     // object as soon as we can.
-    this.$.loader.create('column', this.$.chart).then(chart => {
-      this.chart_ = chart;
-      this.$.loader.fireOnChartEvent(chart, 'select');
+    load().then(() => {
+      this.chart_ = new google.visualization.ColumnChart(this.$['chart']);
+      google.visualization.events.addListener(this.chart_, 'select', () => {
+        this.handleSelect_();
+      });
     });
     this.displayed = this.getBoundingClientRect().width > 0;
   }

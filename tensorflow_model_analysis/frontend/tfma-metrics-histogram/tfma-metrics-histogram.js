@@ -30,7 +30,8 @@ import '@polymer/paper-listbox/paper-listbox.js';
 import '@polymer/paper-slider/paper-slider.js';
 import '@polymer/paper-toggle-button/paper-toggle-button.js';
 import {mixinBehaviors} from '@polymer/polymer/lib/legacy/class.js';
-import '../../../../javascript/google_chart/google-chart-loader.js';
+
+const {load} = goog.require('googleWebComponents.googleChart.loader');
 
 /**
  * The types of metrics histograms supported.
@@ -242,12 +243,6 @@ export class MetricsHistogram extends mixinBehaviors
       realTimeFocus: {type: Boolean, value: false},
 
       /**
-       * Google chart packages required.
-       * @private {!Array<string>}
-       */
-      chartPackages_: {type: Array, value: ['corechart']},
-
-      /**
        * Previous width used to check whether the size has really changed or is
        * affected by some pop-out elements (e.g. dropdown).
        * @private {number}
@@ -278,8 +273,9 @@ export class MetricsHistogram extends mixinBehaviors
       this.previousWidth_ = this.getDetailsWidth_();
     });
 
-    this.$.loader.create('column', this.$[ElementId.DETAILS]).then(chart => {
-      this.chart_ = chart;
+    load().then(() => {
+      this.chart_ =
+          new google.visualization.ColumnChart(this.$[ElementId.DETAILS]);
       this.render_();
     });
   }
