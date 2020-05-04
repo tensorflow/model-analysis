@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 suite('tests', () => {
-  const CALIBRATION_PLOT = 'matrices';
+  const CALIBRATION_PLOT = 'calibration_plot';
   const CALIBRATION_PLOT_BUCKETS = 'boundaries';
-  const AUC_PLOT = 'auc_matrices';
-  const AUC_MATRICES = 'thresholds';
+  const CONFUSION_MATRIX_PLOT = 'confusion_matrix_plot';
+  const THRESHOLDS = 'thresholds';
   const BUCKETS = [{'v': 1}, {'v': 2}];
   const MATRICES = [{'a': 1}, {'b': 2}, {'c': 3}];
   const DEFAULT_DATA = {
     [CALIBRATION_PLOT]: {
       [CALIBRATION_PLOT_BUCKETS]: BUCKETS,
     },
-    [AUC_PLOT]: {
-      [AUC_MATRICES]: MATRICES,
+    [CONFUSION_MATRIX_PLOT]: {
+      [THRESHOLDS]: MATRICES,
     }
   };
   const DEFAULT_KEYS = {
@@ -33,9 +33,9 @@ suite('tests', () => {
       'metricName': CALIBRATION_PLOT,
       'dataSeries': CALIBRATION_PLOT_BUCKETS,
     },
-    'aucPlot': {
-      'metricName': AUC_PLOT,
-      'dataSeries': AUC_MATRICES,
+    'confusionMatrixPlot': {
+      'metricName': CONFUSION_MATRIX_PLOT,
+      'dataSeries': THRESHOLDS,
     }
   };
 
@@ -71,7 +71,7 @@ suite('tests', () => {
           [tfma.PlotDataFieldNames.CALIBRATION_DATA]:
               {[CALIBRATION_PLOT_BUCKETS]: BUCKETS},
           [tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA]:
-              {[AUC_MATRICES]: MATRICES}
+              {[THRESHOLDS]: MATRICES}
         }
       });
       assert.deepEqual(element.availableTypes_, [

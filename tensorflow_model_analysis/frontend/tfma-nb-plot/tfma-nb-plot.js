@@ -85,8 +85,14 @@ export class NotebookPlotWrapper extends PolymerElement {
         data, metricKeys['calibrationPlot'], plotData,
         tfma.PlotDataFieldNames.CALIBRATION_DATA);
     this.maybeSetPlotData_(
-        data, metricKeys['aucPlot'], plotData,
+        data, metricKeys['confusionMatrixPlot'], plotData,
         tfma.PlotDataFieldNames.PRECISION_RECALL_CURVE_DATA);
+    this.maybeSetPlotData_(
+        data, metricKeys['multiClassConfusionMatrixPlot'], plotData,
+        tfma.PlotDataFieldNames.MULTI_CLASS_CONFUSION_MATRIX_DATA);
+    this.maybeSetPlotData_(
+        data, metricKeys['multiLabelConfusionMatrixPlot'], plotData,
+        tfma.PlotDataFieldNames.MULTI_LABEL_CONFUSION_MATRIX_DATA);
     return {'plotData': plotData};
   }
 

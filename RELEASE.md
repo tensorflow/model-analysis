@@ -15,6 +15,7 @@
     Fairness Indicators post_export_metrics.
 *   `MetricValue`s can now contain both a debug message and a value (rather than
     one or the other).
+*   Fix issue with displaying ConfusionMatrixPlot in colab.
 
 ## Breaking changes
 
