@@ -647,6 +647,7 @@ def default_extractors(  # pylint: disable=invalid-name
 def default_evaluators(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: config.EvalConfig = None,
+    schema: Optional[schema_pb2.Schema] = None,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
     serialize: bool = False,
@@ -658,6 +659,7 @@ def default_evaluators(  # pylint: disable=invalid-name
       of shared models (multi-model evaluation). Only required if there are
       metrics to be computed in-graph using the model.
     eval_config: Eval config.
+    schema: A schema to use for customizing default evaluators.
     compute_confidence_intervals: Deprecated (use eval_config).
     min_slice_size: Deprecated (use eval_config).
     serialize: Deprecated.
@@ -706,7 +708,9 @@ def default_evaluators(  # pylint: disable=invalid-name
   else:
     return [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=eval_config, eval_shared_model=eval_shared_model)
+            eval_config=eval_config,
+            eval_shared_model=eval_shared_model,
+            schema=schema)
     ]
 
 
@@ -968,8 +972,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
     random_seed_for_testing: Optional[int] = None,
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
-) -> beam.pvalue.PDone:
+    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
+    schema: Optional[schema_pb2.Schema] = None) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -1027,6 +1031,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     tensor_adapter_config: Tensor adapter config which specifies how to obtain
       tensors from the Arrow RecordBatch. If None, we feed the raw examples to
       the model.
+    schema: A schema to use for customizing evaluators.
 
   Raises:
     ValueError: If EvalConfig invalid or matching Extractor not found for an
@@ -1079,7 +1084,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     evaluators = default_evaluators(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
-        random_seed_for_testing=random_seed_for_testing)
+        random_seed_for_testing=random_seed_for_testing,
+        schema=schema)
 
   for v in evaluators:
     evaluator.verify_evaluator(v, extractors)
@@ -1255,7 +1261,8 @@ def run_model_analysis(
             evaluators=evaluators,
             writers=writers,
             random_seed_for_testing=random_seed_for_testing,
-            tensor_adapter_config=tensor_adapter_config))
+            tensor_adapter_config=tensor_adapter_config,
+            schema=schema))
     # pylint: enable=no-value-for-parameter
 
   if len(eval_config.model_specs) <= 1:

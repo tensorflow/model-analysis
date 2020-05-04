@@ -31,6 +31,8 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import metric_types
 
+from tensorflow_metadata.proto.v0 import schema_pb2
+
 _ALL_CLASSES = 'all_classes'
 _PREDICTIONS = 'predictions'
 _LOGISTIC = 'logistic'
@@ -683,6 +685,7 @@ def merge_per_key_computations(
   """Wraps create_computations_fn to be called separately for each key."""
 
   def merge_computations_fn(eval_config: Optional[config.EvalConfig] = None,
+                            schema: Optional[schema_pb2.Schema] = None,
                             model_names: Optional[List[Text]] = None,
                             output_names: Optional[List[Text]] = None,
                             sub_keys: Optional[List[Text]] = None,
@@ -704,19 +707,15 @@ def merge_per_key_computations(
             args = inspect.getfullargspec(create_computations_fn).args
           else:
             args = inspect.getargspec(create_computations_fn).args  # pylint: disable=deprecated-method
-          updated_kwargs = kwargs.copy()
-          if 'eval_config' in args:
-            updated_kwargs['eval_config'] = eval_config
+          updated_kwargs = metric_types.update_create_computations_fn_kwargs(
+              args, kwargs.copy(), eval_config, schema, model_names, sub_keys,
+              class_weights, query_key)
           if 'model_name' in args:
             updated_kwargs['model_name'] = model_name
           if 'output_name' in args:
             updated_kwargs['output_name'] = output_name
           if 'sub_key' in args:
             updated_kwargs['sub_key'] = sub_key
-          if 'class_weights' in args:
-            updated_kwargs['class_weights'] = class_weights
-          if 'query_key' in args:
-            updated_kwargs['query_key'] = query_key
           computations.extend(create_computations_fn(**updated_kwargs))
     return computations
 

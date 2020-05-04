@@ -36,6 +36,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_linear_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
+from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_regressor
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
 from tensorflow_model_analysis.evaluators import query_based_metrics_evaluator
@@ -44,6 +45,7 @@ from tensorflow_model_analysis.evaluators.query_metrics import query_statistics
 from tensorflow_model_analysis.extractors import feature_extractor
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
@@ -1001,6 +1003,51 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             0.99999940395, metric['boundedValue']['value'], delta=0.1)
 
     self.assertFalse(eval_result.plots)
+
+  def testRunModelAnalysisWithSchema(self):
+    model_location = self._exportEvalSavedModel(
+        linear_regressor.simple_linear_regressor)
+    examples = [
+        self._makeExample(age=3.0, language='english', label=2.0),
+        self._makeExample(age=3.0, language='chinese', label=1.0),
+        self._makeExample(age=4.0, language='english', label=2.0),
+        self._makeExample(age=5.0, language='chinese', label=2.0),
+        self._makeExample(age=5.0, language='hindi', label=2.0)
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    eval_config = config.EvalConfig(
+        model_specs=[config.ModelSpec(label_key='label')],
+        metrics_specs=metric_specs.specs_from_metrics(
+            [calibration_plot.CalibrationPlot(num_buckets=4)]))
+    schema = text_format.Parse(
+        """
+        feature {
+          name: "label"
+          type: INT
+          int_domain {
+            min: 1
+            max: 2
+          }
+        }
+        """, schema_pb2.Schema())
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
+        schema=schema,
+        eval_shared_model=model_eval_lib.default_eval_shared_model(
+            eval_saved_model_path=model_location, example_weight_key='age'),
+        data_location=data_location,
+        output_path=self._getTempDir())
+
+    expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
+    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected_metrics)
+    self.assertLen(eval_result.plots, 1)
+    slice_key, plots = eval_result.plots[0]
+    self.assertEqual((), slice_key)
+    got_buckets = plots['']['']['calibrationHistogramBuckets']['buckets']
+    # buckets include (-inf, left) and (right, inf) by default, but we are
+    # interested in the values of left and right
+    self.assertEqual(1.0, got_buckets[1]['lowerThresholdInclusive'])
+    self.assertEqual(2.0, got_buckets[-2]['upperThresholdExclusive'])
 
   def testRunModelAnalysisWithPlots(self):
     model_location = self._exportEvalSavedModel(

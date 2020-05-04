@@ -53,6 +53,26 @@ def get_model_spec(eval_config: config.EvalConfig,
   return None
 
 
+def get_label_key(model_spec: config.ModelSpec,
+                  output_name: Text) -> Optional[Text]:
+  """Returns the label_key corresponding to a given output name."""
+  if output_name:
+    if model_spec.label_key:
+      return model_spec.label_key
+    elif model_spec.label_keys:
+      return model_spec.label_keys[output_name]
+    else:
+      return None
+  else:
+    if model_spec.label_key:
+      return model_spec.label_key
+    elif model_spec.label_keys:
+      raise ValueError('When setting label_keys in a model spec, all metrics '
+                       'specs for that model must specify an output_name.')
+    else:
+      return None
+
+
 def get_model_type(model_spec: config.ModelSpec,
                    model_path: Optional[Text] = '',
                    tags: Optional[List[Text]] = None) -> Text:

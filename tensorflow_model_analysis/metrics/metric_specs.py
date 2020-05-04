@@ -39,6 +39,7 @@ from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_plot
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.metrics import weighted_example_count
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 _TF_LOSSES_MODULE = tf.keras.losses.Loss().__class__.__module__
 
@@ -448,6 +449,7 @@ def metric_thresholds_from_metrics_specs(
 def to_computations(
     metrics_specs: List[config.MetricsSpec],
     eval_config: Optional[config.EvalConfig] = None,
+    schema: Optional[schema_pb2.Schema] = None
 ) -> metric_types.MetricComputations:
   """Returns computations associated with given metrics specs."""
   computations = []
@@ -603,6 +605,7 @@ def to_computations(
       computations.extend(
           metric.computations(
               eval_config=eval_config,
+              schema=schema,
               model_names=spec.model_names if spec.model_names else [''],
               output_names=spec.output_names if spec.output_names else [''],
               sub_keys=sub_keys,

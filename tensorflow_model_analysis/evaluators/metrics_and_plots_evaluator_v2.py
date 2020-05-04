@@ -43,6 +43,7 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from google.protobuf import message
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 _COMBINER_INPUTS_KEY = '_combiner_inputs'
 _DEFAULT_COMBINER_INPUT_KEY = '_default_combiner_input'
@@ -63,8 +64,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
-    run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME
-) -> evaluator.Evaluator:
+    run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
+    schema: Optional[schema_pb2.Schema] = None) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -75,6 +76,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
     run_after: Extractor to run after (None means before any extractors).
+    schema: A schema to use for customizing metrics and plots.
 
   Returns:
     Evaluator for evaluating metrics and plots. The output will be stored under
@@ -93,7 +95,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           eval_config=eval_config,
           eval_shared_models=eval_shared_models,
           metrics_key=metrics_key,
-          plots_key=plots_key))
+          plots_key=plots_key,
+          schema=schema))
 
 
 def _filter_and_separate_computations(
@@ -543,7 +546,8 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     metrics_specs: List[config.MetricsSpec],
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
-    plots_key: Text = constants.PLOTS_KEY) -> evaluator.Evaluation:
+    plots_key: Text = constants.PLOTS_KEY,
+    schema: Optional[schema_pb2.Schema] = None) -> evaluator.Evaluation:
   """Computes metrics and plots.
 
   Args:
@@ -556,11 +560,13 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       required if there are metrics to be computed in-graph using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
+    schema: A schema to use for customizing metrics and plots.
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
     tuples where the dict is keyed by either the metrics_key (e.g. 'metrics') or
     plots_key (e.g. 'plots') depending on what the results_dict contains.
+    schema: A schema to use for customizing metrics and plots.
   """
   computations = []
   # Add default metric computations
@@ -587,7 +593,8 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   # Add metric computations from specs
   computations_from_specs, derived_computations = (
       _filter_and_separate_computations(
-          metric_specs.to_computations(metrics_specs, eval_config=eval_config)))
+          metric_specs.to_computations(
+              metrics_specs, eval_config=eval_config, schema=schema)))
   computations.extend(computations_from_specs)
 
   # Find out which model is baseline.
@@ -676,7 +683,8 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
-    validations_key: Text = constants.VALIDATIONS_KEY) -> evaluator.Evaluation:
+    validations_key: Text = constants.VALIDATIONS_KEY,
+    schema: Optional[schema_pb2.Schema] = None) -> evaluator.Evaluation:
   """Evaluates metrics and plots.
 
   Args:
@@ -693,6 +701,7 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
     validations_key: Name to use for validation key in Evaluation output.
+    schema: A schema to use for customizing metrics and plots.
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
@@ -737,7 +746,8 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
             eval_shared_models=(eval_shared_models
                                 if include_default_metrics else None),
             metrics_key=metrics_key,
-            plots_key=plots_key))
+            plots_key=plots_key,
+            schema=schema))
 
     for k, v in evaluation.items():
       if k not in evaluations:

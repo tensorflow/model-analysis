@@ -19,17 +19,23 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 
+from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import schema_pb2
 
-class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest):
+
+class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
+                          parameterized.TestCase):
 
   def testCalibrationPlot(self):
     computations = calibration_plot.CalibrationPlot(
@@ -244,6 +250,197 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest):
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name':
+              'int_single_model',
+          'eval_config':
+              config.EvalConfig(model_specs=[
+                  config.ModelSpec(name='model1', label_key='label'),
+              ]),
+          'schema':
+              text_format.Parse(
+                  """
+              feature {
+                name: "label"
+                type: INT
+                int_domain {
+                  min: 5
+                  max: 15
+                }
+              }
+              """, schema_pb2.Schema()),
+          'model_names': [''],
+          'output_names': [''],
+          'expected_left':
+              5.0,
+          'expected_range':
+              10.0,
+      }, {
+          'testcase_name':
+              'int_single_model_right_only',
+          'eval_config':
+              config.EvalConfig(model_specs=[
+                  config.ModelSpec(name='model1', label_key='label'),
+              ]),
+          'schema':
+              text_format.Parse(
+                  """
+              feature {
+                name: "label"
+                type: INT
+                int_domain {
+                  max: 15
+                }
+              }
+              """, schema_pb2.Schema()),
+          'model_names': [''],
+          'output_names': [''],
+          'expected_left':
+              0.0,
+          'expected_range':
+              15.0,
+      }, {
+          'testcase_name':
+              'int_single_model_schema_missing_domain',
+          'eval_config':
+              config.EvalConfig(model_specs=[
+                  config.ModelSpec(name='model1', label_key='label'),
+              ]),
+          'schema':
+              text_format.Parse(
+                  """
+              feature {
+                name: "label"
+                type: FLOAT
+              }
+              """, schema_pb2.Schema()),
+          'model_names': [''],
+          'output_names': [''],
+          'expected_left':
+              0.0,
+          'expected_range':
+              1.0,
+      }, {
+          'testcase_name':
+              'int_single_model_schema_missing_label',
+          'eval_config':
+              config.EvalConfig(model_specs=[
+                  config.ModelSpec(name='model1', label_key='label'),
+              ]),
+          'schema':
+              text_format.Parse(
+                  """
+              feature {
+                name: "other_feature"
+                type: BYTES
+              }
+              """, schema_pb2.Schema()),
+          'model_names': [''],
+          'output_names': [''],
+          'expected_left':
+              0.0,
+          'expected_range':
+              1.0,
+      }, {
+          'testcase_name':
+              'float_single_model',
+          'eval_config':
+              config.EvalConfig(model_specs=[
+                  config.ModelSpec(name='model1', label_key='label'),
+              ]),
+          'schema':
+              text_format.Parse(
+                  """
+              feature {
+                name: "label"
+                type: FLOAT
+                float_domain {
+                  min: 5.0
+                  max: 15.0
+                }
+              }
+              """, schema_pb2.Schema()),
+          'model_names': [''],
+          'output_names': [''],
+          'expected_left':
+              5.0,
+          'expected_range':
+              10.0
+      }, {
+          'testcase_name':
+              'float_single_model_multiple_outputs',
+          'eval_config':
+              config.EvalConfig(model_specs=[
+                  config.ModelSpec(
+                      name='model1',
+                      label_keys={
+                          'output1': 'label1',
+                          'output2': 'label2'
+                      },
+                      signature_names={
+                          'output1': 'default',
+                          'output2': 'signature2'
+                      }),
+              ]),
+          'schema':
+              text_format.Parse(
+                  """
+              feature {
+                name: "label2"
+                type: FLOAT
+                float_domain {
+                  min: 5.0
+                  max: 15.0
+                }
+              }
+              """, schema_pb2.Schema()),
+          'model_names': [''],
+          'output_names': ['output2'],
+          'expected_left':
+              5.0,
+          'expected_range':
+              10.0
+      }, {
+          'testcase_name':
+              'float_multiple_models',
+          'eval_config':
+              config.EvalConfig(model_specs=[
+                  config.ModelSpec(name='model1', label_key='label1'),
+                  config.ModelSpec(name='model2', label_key='label2')
+              ]),
+          'schema':
+              text_format.Parse(
+                  """
+              feature {
+                name: "label2"
+                type: FLOAT
+                float_domain {
+                  min: 5.0
+                  max: 15.0
+                }
+              }
+              """, schema_pb2.Schema()),
+          'model_names': ['model2'],
+          'output_names': [''],
+          'expected_left':
+              5.0,
+          'expected_range':
+              10.0
+      })
+  def testCalibrationPlotWithSchema(self, eval_config, schema, model_names,
+                                    output_names, expected_left,
+                                    expected_range):
+    computations = calibration_plot.CalibrationPlot(
+        num_buckets=10).computations(
+            eval_config=eval_config,
+            schema=schema,
+            model_names=model_names,
+            output_names=output_names)
+    histogram = computations[0]
+    self.assertEqual(expected_left, histogram.combiner._left)
+    self.assertEqual(expected_range, histogram.combiner._range)
 
 
 if __name__ == '__main__':

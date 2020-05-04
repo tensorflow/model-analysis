@@ -18,12 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import model_util
 
 
-class ModelUtilTest(tf.test.TestCase):
+class ModelUtilTest(tf.test.TestCase, parameterized.TestCase):
 
   def testRebatchByInputNames(self):
     extracts = [{
@@ -99,6 +101,24 @@ class ModelUtilTest(tf.test.TestCase):
     self.assertAllEqual(
         tf.constant([['hello'], ['world']], dtype=tf.string),
         filtered_tensors['f3' + model_util.KERAS_INPUT_SUFFIX])
+
+  @parameterized.named_parameters(
+      ('output_name_and_label_key', config.ModelSpec(label_key='label'),
+       'output', 'label'),
+      ('output_name_and_label_keys',
+       config.ModelSpec(label_keys={'output': 'label'}), 'output', 'label'),
+      ('output_name_and_no_label_keys', config.ModelSpec(), 'output', None),
+      ('no_output_name_and_label_key', config.ModelSpec(label_key='label'), '',
+       'label'),
+      ('no_output_name_and_no_label_keys', config.ModelSpec(), '', None))
+  def test_get_label_key(self, model_spec, output_name, expected_label_key):
+    self.assertEqual(expected_label_key,
+                     model_util.get_label_key(model_spec, output_name))
+
+  def test_get_label_key_no_output_and_label_keys(self):
+    with self.assertRaises(ValueError):
+      model_util.get_label_key(
+          config.ModelSpec(label_keys={'output1': 'label'}), '')
 
 
 if __name__ == '__main__':

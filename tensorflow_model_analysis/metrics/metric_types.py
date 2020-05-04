@@ -31,6 +31,8 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
+from tensorflow_metadata.proto.v0 import schema_pb2
+
 # LINT.IfChange
 
 
@@ -296,6 +298,58 @@ class DerivedMetricComputation(
 MetricComputations = List[Union[MetricComputation, DerivedMetricComputation]]
 
 
+def update_create_computations_fn_kwargs(
+    arg_names: Iterable[Text],
+    kwargs: Dict[Text, Any],
+    eval_config: Optional[config.EvalConfig] = None,
+    schema: Optional[schema_pb2.Schema] = None,
+    model_names: Optional[List[Text]] = None,
+    output_names: Optional[List[Text]] = None,
+    sub_keys: Optional[List[SubKey]] = None,
+    class_weights: Optional[Dict[int, float]] = None,
+    query_key: Optional[Text] = None,
+    is_diff: Optional[bool] = False):
+  """Updates create_computations_fn kwargs based on arg spec.
+
+  Each metric's create_computations_fn is invoked with a variable set of
+  parameters, depending on the argument names of the callable. If an argument
+  name matches one of the reserved names, this function will update the kwargs
+  with the appropriate value for that arg.
+
+  Args:
+    arg_names: The arg_names for the create_computations_fn.
+    kwargs: The existing kwargs for create_computations_fn.
+    eval_config: The value to use when `eval_config` is in arg_names.
+    schema: The value to use when `schema` is in arg_names.
+    model_names: The value to use when `model_names` is in arg_names.
+    output_names: The value to use when `output_names` is in arg_names.
+    sub_keys: The value to use when `sub_keys` is in arg_names.
+    class_weights: The value to use when `class_weights` is in arg_names.
+    query_key: The value to use when `query_key` is in arg_names.
+    is_diff: The value to use when `is_diff` is in arg_names.
+
+  Returns:
+    The kwargs passed as input, updated with the appropriate additional args.
+  """
+  if 'eval_config' in arg_names:
+    kwargs['eval_config'] = eval_config
+  if 'schema' in arg_names:
+    kwargs['schema'] = schema
+  if 'model_names' in arg_names:
+    kwargs['model_names'] = model_names
+  if 'output_names' in arg_names:
+    kwargs['output_names'] = output_names
+  if 'sub_keys' in arg_names:
+    kwargs['sub_keys'] = sub_keys
+  if 'class_weights' in arg_names:
+    kwargs['class_weights'] = class_weights
+  if 'query_key' in arg_names:
+    kwargs['query_key'] = query_key
+  if 'is_diff' in arg_names:
+    kwargs['is_diff'] = is_diff
+  return kwargs
+
+
 class Metric(object):
   """Metric wraps a set of metric computations.
 
@@ -316,8 +370,8 @@ class Metric(object):
     Args:
       create_computations_fn: Function to create the metrics computations (e.g.
         mean_label, etc). This function should take the args passed to __init__
-        as as input along with any of eval_config, model_names, output_names,
-        sub_keys, or query_key (where needed).
+        as as input along with any of eval_config, schema, model_names,
+        output_names, sub_keys, or query_key (where needed).
       **kwargs: Any additional kwargs to pass to create_computations_fn. These
         should only contain primitive types or lists/dicts of primitive types.
         The kwargs passed to computations have precendence over these kwargs.
@@ -356,6 +410,7 @@ class Metric(object):
 
   def computations(self,
                    eval_config: Optional[config.EvalConfig] = None,
+                   schema: Optional[schema_pb2.Schema] = None,
                    model_names: Optional[List[Text]] = None,
                    output_names: Optional[List[Text]] = None,
                    sub_keys: Optional[List[SubKey]] = None,
@@ -363,22 +418,10 @@ class Metric(object):
                    query_key: Optional[Text] = None,
                    is_diff: Optional[bool] = False) -> MetricComputations:
     """Creates computations associated with metric."""
-    kwargs = self.kwargs.copy()
-    if 'eval_config' in self._args:
-      kwargs['eval_config'] = eval_config
-    if 'model_names' in self._args:
-      kwargs['model_names'] = model_names
-    if 'output_names' in self._args:
-      kwargs['output_names'] = output_names
-    if 'sub_keys' in self._args:
-      kwargs['sub_keys'] = sub_keys
-    if 'class_weights' in self._args:
-      kwargs['class_weights'] = class_weights
-    if 'query_key' in self._args:
-      kwargs['query_key'] = query_key
-    if 'is_diff' in self._args:
-      kwargs['is_diff'] = is_diff
-    return self.create_computations_fn(**kwargs)
+    updated_kwargs = update_create_computations_fn_kwargs(
+        self._args, self.kwargs.copy(), eval_config, schema, model_names,
+        output_names, sub_keys, class_weights, query_key, is_diff)
+    return self.create_computations_fn(**updated_kwargs)
 
 
 _METRIC_OBJECTS = {}

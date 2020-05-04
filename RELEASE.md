@@ -5,6 +5,7 @@
 *   Added support for jackknife-based confidence intervals.
 *   Add EvalResult.get_metrics(), which extracts slice metrics in dictionary
     format from EvalResults.
+*   Adds TFMD `Schema` as an available argument to computations callbacks.
 
 ## Bug fixes and other changes
 
@@ -16,6 +17,8 @@
 *   `MetricValue`s can now contain both a debug message and a value (rather than
     one or the other).
 *   Fix issue with displaying ConfusionMatrixPlot in colab.
+*   `CalibrationPlot` now infers `left` and `right` values from schema, when
+    available. This makes the calibration plot useful to regression users.
 
 ## Breaking changes
 
