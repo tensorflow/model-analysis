@@ -399,7 +399,7 @@ class _JackknifeSampleCombiner(beam.CombineFn):
     if accumulator.num_samples < self._num_jackknife_samples:
       self._missing_samples_counter.inc(1)
       missing_samples = True
-      result[metric_keys.ERROR_METRIC] = (
+      result[metric_types.MetricKey(metric_keys.ERROR_METRIC)] = (
           'CI not computed because only {num_samples} samples were non-empty. '
           'Expected {num_jackknife_samples}.'.format(
               num_samples=accumulator.num_samples,

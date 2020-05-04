@@ -295,9 +295,12 @@ def convert_slice_metrics(
       t_dist_value.unsampled_value.value = value.unsampled_value
       metric_value.confidence_interval.t_distribution_value.CopyFrom(
           t_dist_value)
-    elif isinstance(value, (six.binary_type, six.text_type)):
+    elif isinstance(value, six.binary_type):
       # Convert textual types to string metrics.
       metric_value.bytes_value = value
+    elif isinstance(value, six.text_type):
+      # Convert textual types to string metrics.
+      metric_value.bytes_value = value.encode('utf8')
     elif isinstance(value, np.ndarray):
       # Convert NumPy arrays to ArrayValue.
       metric_value.array_value.CopyFrom(_convert_to_array_value(value))
