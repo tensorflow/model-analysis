@@ -168,7 +168,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
                                 model_name: Text = '') -> types.EvalSharedModel:
 
     if not model_type:
-      model_type = model_util.get_model_type(None, eval_saved_model_path, tags)
+      model_type = model_util.get_model_type(None, eval_saved_model_path, tags)  # pytype: disable=wrong-arg-types
     if not tags:
       if model_type in (constants.TF_GENERIC, constants.TF_ESTIMATOR):
         model_type = constants.TF_ESTIMATOR

@@ -44,7 +44,7 @@ class MeanLabel(metric_types.Metric):
       name: Metric name.
     """
     super(MeanLabel, self).__init__(
-        metric_util.merge_per_key_computations(_mean_label), name=name)
+        metric_util.merge_per_key_computations(_mean_label), name=name)  # pytype: disable=wrong-arg-types
 
 
 metric_types.register_metric(MeanLabel)
@@ -102,7 +102,7 @@ class MeanPrediction(metric_types.Metric):
       name: Metric name.
     """
     super(MeanPrediction, self).__init__(
-        metric_util.merge_per_key_computations(_mean_prediction), name=name)
+        metric_util.merge_per_key_computations(_mean_prediction), name=name)  # pytype: disable=wrong-arg-types
 
 
 metric_types.register_metric(MeanPrediction)
@@ -163,7 +163,7 @@ class Calibration(metric_types.Metric):
       name: Metric name.
     """
     super(Calibration, self).__init__(
-        metric_util.merge_per_key_computations(_calibration), name=name)
+        metric_util.merge_per_key_computations(_calibration), name=name)  # pytype: disable=wrong-arg-types
 
 
 metric_types.register_metric(Calibration)

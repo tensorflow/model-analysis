@@ -118,7 +118,7 @@ class _MinLabelPositionCombiner(beam.CombineFn):
               model_name=self._key.model_name,
               output_name=self._key.output_name,
               flatten=False,
-              allow_none=True))
+              allow_none=True))  # pytype: disable=wrong-arg-types
       weight = float(weight)
       if example_weight is None:
         example_weight = weight

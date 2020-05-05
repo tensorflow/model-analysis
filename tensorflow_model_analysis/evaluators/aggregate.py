@@ -213,7 +213,7 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
       poisson_counts = self._random_state.poisson(1, len(accumulator.inputs))
       for i, input_item in enumerate(accumulator.inputs):
         result.extend([input_item] * poisson_counts[i])
-    return result
+    return result  # pytype: disable=bad-return-type
 
   def _maybe_do_batch(self,
                       accumulator: _AggState,

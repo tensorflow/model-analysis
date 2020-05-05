@@ -98,7 +98,7 @@ class MultiLabelConfusionMatrixPlot(metric_types.Metric):
             _multi_label_confusion_matrix_plot),
         thresholds=thresholds,
         num_thresholds=num_thresholds,
-        name=name)
+        name=name)  # pytype: disable=wrong-arg-types
 
 
 metric_types.register_metric(MultiLabelConfusionMatrixPlot)
@@ -177,7 +177,7 @@ class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
-            flatten=False))
+            flatten=False))  # pytype: disable=wrong-arg-types
     if not labels.shape:
       raise ValueError(
           'Labels missing from example: StandardMetricInputs={}'.format(

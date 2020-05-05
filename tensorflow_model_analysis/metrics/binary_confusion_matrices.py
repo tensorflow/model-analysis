@@ -185,4 +185,4 @@ def _to_binary_confusion_matrices(
     else:
       tn[start] += start_neg
       fn[start] += start_pos
-  return Matrices(thresholds, tp, tn, fp, fn)
+  return Matrices(thresholds, tp, tn, fp, fn)  # pytype: disable=wrong-arg-types

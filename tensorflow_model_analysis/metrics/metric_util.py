@@ -719,4 +719,4 @@ def merge_per_key_computations(
           computations.extend(create_computations_fn(**updated_kwargs))
     return computations
 
-  return merge_computations_fn
+  return merge_computations_fn  # pytype: disable=bad-return-type

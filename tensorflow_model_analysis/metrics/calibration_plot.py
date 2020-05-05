@@ -59,7 +59,7 @@ class CalibrationPlot(metric_types.Metric):
         num_buckets=num_buckets,
         left=left,
         right=right,
-        name=name)
+        name=name)  # pytype: disable=wrong-arg-types
 
 
 metric_types.register_metric(CalibrationPlot)

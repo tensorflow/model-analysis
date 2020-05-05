@@ -49,7 +49,7 @@ class Specificity(metric_types.Metric):
     super(Specificity, self).__init__(
         metric_util.merge_per_key_computations(_specificity),
         thresholds=thresholds,
-        name=name)
+        name=name)  # pytype: disable=wrong-arg-types
 
 
 metric_types.register_metric(Specificity)
@@ -92,7 +92,7 @@ class FallOut(metric_types.Metric):
     super(FallOut, self).__init__(
         metric_util.merge_per_key_computations(_fall_out),
         thresholds=thresholds,
-        name=name)
+        name=name)  # pytype: disable=wrong-arg-types
 
 
 metric_types.register_metric(FallOut)
@@ -135,7 +135,7 @@ class MissRate(metric_types.Metric):
     super(MissRate, self).__init__(
         metric_util.merge_per_key_computations(_miss_rate),
         thresholds=thresholds,
-        name=name)
+        name=name)  # pytype: disable=wrong-arg-types
 
 
 metric_types.register_metric(MissRate)
@@ -226,7 +226,7 @@ class ConfusionMatrixAtThresholds(metric_types.Metric):
     super(ConfusionMatrixAtThresholds, self).__init__(
         metric_util.merge_per_key_computations(_confusion_matrix_at_thresholds),
         thresholds=thresholds,
-        name=name)
+        name=name)  # pytype: disable=wrong-arg-types
 
 
 metric_types.register_metric(ConfusionMatrixAtThresholds)
@@ -262,7 +262,7 @@ def _confusion_matrix_at_thresholds(
       metrics: Dict[metric_types.MetricKey,
                     metrics_for_slice_pb2.ConfusionMatrixAtThresholds]
   ) -> Dict[metric_types.MetricKey, Any]:
-    return {key: to_proto(thresholds, metrics[matrices_key])}
+    return {key: to_proto(thresholds, metrics[matrices_key])}  # pytype: disable=wrong-arg-types
 
   derived_computation = metric_types.DerivedMetricComputation(
       keys=[key], result=result)

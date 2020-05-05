@@ -322,7 +322,7 @@ def default_multi_class_classification_specs(
           tf.keras.metrics.Recall(name='recall', top_k=top_k)
       ])
     binarize = config.BinarizationOptions().CopyFrom(binarize)
-    binarize.ClearField('top_k_list')
+    binarize.ClearField('top_k_list')  # pytype: disable=attribute-error
   multi_class_metrics = specs_from_metrics(
       metrics, model_names=model_names, output_names=output_names)
   if aggregate is None:
@@ -333,7 +333,7 @@ def default_multi_class_classification_specs(
           output_names=output_names,
           binarize=binarize,
           aggregate=aggregate))
-  return multi_class_metrics
+  return multi_class_metrics  # pytype: disable=bad-return-type
 
 
 def _keys_for_metric(
@@ -672,7 +672,7 @@ def _create_sub_keys(
       # should always be passed to all metric calculations to ensure they are
       # taken into account when flattening is required.
       sub_keys.append(None)
-  return sub_keys
+  return sub_keys  # pytype: disable=bad-return-type
 
 
 def _metric_config(cfg: Text) -> Dict[Text, Any]:

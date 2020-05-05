@@ -311,7 +311,7 @@ def find_top_slices(
         SliceComparisonResult(slice_key, num_examples,
                               slice_metrics_dict[metric_key].unsampled_value,
                               overall_metrics_dict[metric_key].unsampled_value,
-                              pvalue, effect_size))
+                              pvalue, effect_size))  # pytype: disable=wrong-arg-types
   # Prune subset slices if enabled.
   if prune_subset_slices:
     to_be_sorted_slices = remove_subset_slices(to_be_sorted_slices)

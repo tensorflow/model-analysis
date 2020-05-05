@@ -330,7 +330,7 @@ class EvalResult(
           metric_name: metric_value
           for metric_name, metric_value in metrics.items()
       }
-    return sliced_metrics
+    return sliced_metrics  # pytype: disable=bad-return-type
 
   def get_slices(self) -> Sequence[Text]:
     """Get names of slices.
@@ -339,7 +339,7 @@ class EvalResult(
       List of slice names.
     """
 
-    return [slicing_metric[0] for slicing_metric in self.slicing_metrics]
+    return [slicing_metric[0] for slicing_metric in self.slicing_metrics]  # pytype: disable=bad-return-type
 
 
 class EvalResults(object):

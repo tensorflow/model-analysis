@@ -58,7 +58,7 @@ def metric_computations_using_eval_saved_model(
           keys=[None],
           preprocessor=_EvalSavedModelPreprocessor(model_name, model_loader),
           combiner=_EvalSavedModelCombiner(model_name, model_loader,
-                                           batch_size))
+                                           batch_size))  # pytype: disable=wrong-arg-types
   ]
 
 

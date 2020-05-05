@@ -127,14 +127,14 @@ def _get_target_tensor(maybe_dict: types.TensorTypeMaybeDict,
     the predictions_dict.
   """
   if types.is_tensor(maybe_dict):
-    return maybe_dict
+    return maybe_dict  # pytype: disable=bad-return-type
 
   for key in key_precedence:
     ref_tensor = maybe_dict.get(key)
     if ref_tensor is not None:
       return ref_tensor
 
-  return None
+  return None  # pytype: disable=bad-return-type
 
 
 def _check_feature_present(features_dict: types.TensorTypeMaybeDict,
@@ -1862,7 +1862,7 @@ class _TFMetricBaseClass(_PostExportMetric):
     metric_fn = self._metric_fn(label_tensor, prediction_tensor,
                                 squeezed_weights)
 
-    return {self._metric_key(self._metric_name): metric_fn}
+    return {self._metric_key(self._metric_name): metric_fn}  # pytype: disable=bad-return-type
 
   def populate_stats_and_pop(
       self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,

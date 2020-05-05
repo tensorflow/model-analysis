@@ -45,7 +45,7 @@ def validate_metrics(
 
   sliced_key, metrics = sliced_metrics
   thresholds = metric_specs.metric_thresholds_from_metrics_specs(
-      eval_config.metrics_specs)
+      eval_config.metrics_specs)  # pytype: disable=wrong-arg-types
 
   def _check_threshold(key: metric_types.MetricKey, metric: Any) -> bool:
     """Verify a metric given its metric key and metric value."""

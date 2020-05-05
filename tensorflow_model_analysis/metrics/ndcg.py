@@ -141,7 +141,7 @@ class _NDCGCombiner(beam.CombineFn):
     if gain.size == 1:
       scalar = metric_util.to_scalar(gain)
       if scalar is not None:
-        return scalar
+        return scalar  # pytype: disable=bad-return-type
     raise ValueError('expected {} to be scalar, but instead it has size = {}: '
                      'value={}, metric_keys={}, '
                      'StandardMetricInputs={}'.format(self._gain_key, gain.size,
@@ -161,7 +161,7 @@ class _NDCGCombiner(beam.CombineFn):
               eval_config=self._eval_config,
               model_name=self._model_name,
               output_name=self._output_name,
-              flatten=False))
+              flatten=False))  # pytype: disable=wrong-arg-types
       weight = float(weight)
       if example_weight is None:
         example_weight = weight
@@ -246,4 +246,4 @@ class _NDCGCombiner(beam.CombineFn):
         output[key] = accumulator.ndcg[i] / accumulator.total_weighted_examples
       else:
         output[key] = float('nan')
-    return output
+    return output  # pytype: disable=bad-return-type

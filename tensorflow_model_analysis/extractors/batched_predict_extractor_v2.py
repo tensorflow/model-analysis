@@ -185,7 +185,7 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
             predictions[i] = {}
           predictions[i][spec.name] = output  # pytype: disable=unsupported-operands
     result[constants.BATCHED_PREDICTIONS_KEY] = predictions
-    return [result]
+    return [result]  # pytype: disable=bad-return-type
 
 
 @beam.ptransform_fn

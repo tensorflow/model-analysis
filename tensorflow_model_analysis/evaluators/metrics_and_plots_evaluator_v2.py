@@ -280,7 +280,7 @@ class _PreprocessorDoFn(beam.DoFn):
       for i, e in enumerate(list_of_extracts):
         if features is not None:
           e = copy.copy(e)
-          e.update({constants.FEATURES_KEY: features[i]})
+          e.update({constants.FEATURES_KEY: features[i]})  # pytype: disable=attribute-error
         default_combiner_input.append(
             metric_util.to_standard_metric_inputs(
                 e, include_features=features is not None))
@@ -371,7 +371,7 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
         # counter is a sign that something has gone wrong.
         self._num_bootstrap_empties.inc(1)
       result.append(output)
-    return tuple(result)
+    return tuple(result)  # pytype: disable=bad-return-type
 
 
 @beam.ptransform_fn
@@ -497,7 +497,7 @@ def _filter_by_key_type(
     else:
       if not isinstance(k, metric_types.PlotKey):
         output[k] = v
-  return (slice_value, output)
+  return (slice_value, output)  # pytype: disable=bad-return-type
 
 
 _ConfidenceIntervalParams = NamedTuple(
@@ -534,7 +534,7 @@ def _get_confidence_interval_params(
     elif ci_method == config.Options.POISSON_BOOTSTRAP:
       num_bootstrap_samples = _DEFAULT_NUM_BOOTSTRAP_SAMPLES
   return _ConfidenceIntervalParams(num_jackknife_samples, num_bootstrap_samples,
-                                   skip_ci_metric_keys)
+                                   skip_ci_metric_keys)  # pytype: disable=wrong-arg-types
 
 
 @beam.ptransform_fn
