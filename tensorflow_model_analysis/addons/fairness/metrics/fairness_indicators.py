@@ -28,14 +28,11 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 
 FAIRNESS_INDICATORS_METRICS_NAME = 'fairness_indicators_metrics'
-FAIRNESS_INDICATORS_SUB_METRICS = (
-    'false_positive_rate',
-    'false_negative_rate',
-    'true_positive_rate',
-    'true_negative_rate',
-    'positive_rate',
-    'negative_rate',
-)
+FAIRNESS_INDICATORS_SUB_METRICS = ('false_positive_rate', 'false_negative_rate',
+                                   'true_positive_rate', 'true_negative_rate',
+                                   'positive_rate', 'negative_rate',
+                                   'false_discovery_rate',
+                                   'false_omission_rate')
 
 DEFAULT_THERSHOLDS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
@@ -119,6 +116,9 @@ def _fairness_indicators_metrics_at_thresholds(
       nr = (metric.tn[i] + metric.fn[i]) / (
           (num_positives + num_negatives) or float('nan'))
 
+      fdr = metric.fp[i] / ((metric.fp[i] + metric.tp[i]) or float('nan'))
+      fomr = metric.fn[i] / ((metric.fn[i] + metric.tn[i]) or float('nan'))
+
       output[metric_key_by_name_by_threshold[threshold]
              ['false_positive_rate']] = fpr
       output[metric_key_by_name_by_threshold[threshold]
@@ -129,6 +129,10 @@ def _fairness_indicators_metrics_at_thresholds(
              ['true_negative_rate']] = tnr
       output[metric_key_by_name_by_threshold[threshold]['positive_rate']] = pr
       output[metric_key_by_name_by_threshold[threshold]['negative_rate']] = nr
+      output[metric_key_by_name_by_threshold[threshold]
+             ['false_discovery_rate']] = fdr
+      output[metric_key_by_name_by_threshold[threshold]
+             ['false_omission_rate']] = fomr
 
     return output
 
