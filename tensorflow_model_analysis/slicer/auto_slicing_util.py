@@ -62,34 +62,28 @@ def _two_sided_to_one_sided_pvalue(pvalue: float, delta: float,
   return pvalue
 
 
+# TODO(pachristopher): Replace the named tuple with a proto.
 class SliceComparisonResult(
-    NamedTuple('SliceComparisonResult', [
-        ('slice_key', slicer_lib.SliceKeyType),
-        ('num_examples', int),
-        ('slice_metric', float),
-        ('base_metric', float),
-        ('pvalue', float),
-        ('effect_size', float),
-    ])):
+    NamedTuple('SliceComparisonResult',
+               [('slice_key', slicer_lib.SliceKeyType), ('num_examples', int),
+                ('slice_metric', float), ('base_metric', float),
+                ('p_value', float), ('effect_size', float),
+                ('raw_slice_metrics', metrics_for_slice_pb2.MetricsForSlice)])):
   """Represents the result of comparing a slice with the base dataset.
 
   It includes the slice key, number of examples in the slice, slice metric,
-  base metric, the pvalue computed when doing significance testing and the
-  effect size.
+  base metric, the p_value computed when doing significance testing, the
+  effect size, and the raw slice metrics.
   """
 
-  def __new__(
-      cls,
-      slice_key: slicer_lib.SliceKeyType,
-      num_examples: int,
-      slice_metric: float,
-      base_metric: float,
-      pvalue: float,
-      effect_size: float,
-  ):
+  def __new__(cls, slice_key: slicer_lib.SliceKeyType, num_examples: int,
+              slice_metric: float, base_metric: float, p_value: float,
+              effect_size: float,
+              raw_slice_metrics: metrics_for_slice_pb2.MetricsForSlice):
     return super(SliceComparisonResult,
                  cls).__new__(cls, slice_key, num_examples, slice_metric,
-                              base_metric, pvalue, effect_size)
+                              base_metric, p_value, effect_size,
+                              raw_slice_metrics)
 
 
 # Perform one sided Welch's t-test.
@@ -124,7 +118,8 @@ def _is_significant_slice(slice_metric: float,
 
 
 # We use effect size to capture the magnitude of the metric difference.
-# Reference: https://en.wikipedia.org/wiki/Effect_size#Difference_family:_Effect_sizes_based_on_differences_between_means
+# We define effect size to be the difference in means of the slice metric
+# and the base metric divided by the standard error.
 def _compute_effect_size(slice_metric: float, slice_std_dev: float,
                          base_metric: float, base_std_dev: float):
   """Computes effect size."""
@@ -234,15 +229,13 @@ def remove_subset_slices(
   return list(selected_slices.values())
 
 
-def find_top_slices(
+def find_significant_slices(
     metrics: List[metrics_for_slice_pb2.MetricsForSlice],
     metric_key: Text,
     comparison_type: Text = 'HIGHER',
-    min_num_examples: int = 10,
-    num_top_slices: int = 10,
-    rank_by: Text = 'EFFECT_SIZE',
-    prune_subset_slices: bool = True) -> List[SliceComparisonResult]:
-  """Finds top-k slices.
+    alpha: float = 0.01,
+    min_num_examples: int = 10) -> List[SliceComparisonResult]:
+  """Finds statistically significant slices.
 
   Args:
     metrics: List of slice metrics protos. We assume that the metrics have
@@ -252,19 +245,14 @@ def find_top_slices(
     comparison_type: Type of comparison indicating if we are looking for slices
       whose metric is higher (`HIGHER`) or lower (`LOWER`) than the metric of
       the base slice (overall dataset).
+    alpha: Significance-level for statistical significance testing.
     min_num_examples: Minimum number of examples that a slice should have.
-    num_top_slices: Number of top slices to return.
-    rank_by: Indicates how the slices should be ordered in the result.
-    prune_subset_slices: Boolean indicating if the slices which are subsets of
-      other slices should be pruned from the result.
 
   Returns:
-    List of ordered slices.
+    List of statistically significant slices.
   """
   assert comparison_type in ['HIGHER', 'LOWER']
   assert min_num_examples > 0
-  assert 0 < num_top_slices
-  assert rank_by in ['EFFECT_SIZE', 'PVALUE']
 
   metrics_dict = {
       tuple(sorted(slicer_lib.deserialize_slice_key(slice_metrics.slice_key))):
@@ -274,7 +262,7 @@ def find_top_slices(
   del metrics_dict[()]
 
   overall_metrics_dict = _get_metrics_as_dict(overall_slice_metrics)
-  to_be_sorted_slices = []
+  result = []
   for slice_key, slice_metrics in metrics_dict.items():
     slice_metrics_dict = _get_metrics_as_dict(slice_metrics)
     num_examples = slice_metrics_dict['example_count'].unsampled_value
@@ -292,13 +280,14 @@ def find_top_slices(
       continue
 
     # Only consider statistically significant slices.
-    is_significant, pvalue = _is_significant_slice(
+    is_significant, p_value = _is_significant_slice(
         slice_metrics_dict[metric_key].unsampled_value,
         slice_metrics_dict[metric_key].sample_standard_deviation,
         slice_metrics_dict['example_count'].unsampled_value,
         overall_metrics_dict[metric_key].unsampled_value,
         overall_metrics_dict[metric_key].sample_standard_deviation,
-        overall_metrics_dict['example_count'].unsampled_value, comparison_type)
+        overall_metrics_dict['example_count'].unsampled_value, comparison_type,
+        alpha)
     if not is_significant:
       continue
     # Compute effect size for the slice.
@@ -307,44 +296,65 @@ def find_top_slices(
         slice_metrics_dict[metric_key].sample_standard_deviation,
         overall_metrics_dict[metric_key].unsampled_value,
         overall_metrics_dict[metric_key].sample_standard_deviation)
-    to_be_sorted_slices.append(
+    result.append(
         SliceComparisonResult(slice_key, num_examples,
                               slice_metrics_dict[metric_key].unsampled_value,
                               overall_metrics_dict[metric_key].unsampled_value,
-                              pvalue, effect_size))  # pytype: disable=wrong-arg-types
+                              p_value, effect_size, slice_metrics))  # pytype: disable=wrong-arg-types
+  return result
+
+
+def find_top_slices(
+    slices: List[SliceComparisonResult],
+    min_num_examples: int = 100,
+    num_top_slices: int = 10,
+    rank_by: Text = 'EFFECT_SIZE',
+    prune_subset_slices: bool = True) -> List[SliceComparisonResult]:
+  """Finds top-k slices.
+
+  Args:
+    slices: List of slices.
+    min_num_examples: Minimum number of examples that a slice should have.
+    num_top_slices: Number of top slices to return.
+    rank_by: Indicates how the slices should be ordered in the result.
+    prune_subset_slices: Boolean indicating if the slices which are subsets of
+      other slices should be pruned from the result.
+
+  Returns:
+    List of ordered slices.
+  """
+  assert 0 < num_top_slices
+  assert rank_by in ['EFFECT_SIZE', 'PVALUE']
+
+  # Prune smaller slices.
+  result = list(filter(lambda s: s.num_examples >= min_num_examples, slices))
+
   # Prune subset slices if enabled.
   if prune_subset_slices:
-    to_be_sorted_slices = remove_subset_slices(to_be_sorted_slices)
+    result = remove_subset_slices(result)
 
   # Rank the slices.
   ranking_fn, reverse = operator.attrgetter('effect_size'), True
   if rank_by == 'PVALUE':
-    ranking_fn, reverse = operator.attrgetter('pvalue'), False
-  result = sorted(
-      to_be_sorted_slices, key=ranking_fn, reverse=reverse)[:num_top_slices]
+    ranking_fn, reverse = operator.attrgetter('p_value'), False
+  result = sorted(result, key=ranking_fn, reverse=reverse)[:num_top_slices]
   return result
 
 
 # TODO(pachristopher): Modify API to get MetricKey proto instead of metric name
 # in order to handle multi-model evaluation.
 def display_top_slices(slices: List[SliceComparisonResult],
-                       metrics: List[metrics_for_slice_pb2.MetricsForSlice],
                        additional_metric_names: Optional[List[Text]] = None):
   """Display top slices as a dataframe.
 
   Args:
     slices: List of ordered slices.
-    metrics: List of slice metrics protos.
     additional_metric_names: An optional list of additional metric names to
       display
   """
-  metrics_dict = {
-      slicer_lib.deserialize_slice_key(slice_metrics.slice_key): slice_metrics
-      for slice_metrics in metrics
-  }
   rows = []
   for slice_info in slices:
-    slice_metrics = _get_metrics_as_dict(metrics_dict[slice_info.slice_key])
+    slice_metrics = _get_metrics_as_dict(slice_info.raw_slice_metrics)
     slice_key = ''
     for column, value in slice_info.slice_key:
       slice_key += column + ' : ' + str(value) + '\n'
@@ -353,7 +363,7 @@ def display_top_slices(slices: List[SliceComparisonResult],
         'Size': slice_info.num_examples,
         'Slice metric': slice_info.slice_metric,
         'Base metric': slice_info.base_metric,
-        'P-Value': slice_info.pvalue,
+        'P-Value': slice_info.p_value,
         'Effect size': slice_info.effect_size
     }
     if additional_metric_names:
