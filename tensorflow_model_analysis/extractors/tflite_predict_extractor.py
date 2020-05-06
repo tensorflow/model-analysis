@@ -84,12 +84,17 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
         if input_name not in batched_features:
           raise ValueError(
               'feature "{}" not found in input data'.format(input_name))
-        if len(np.shape(batched_features[input_name][0])) < len(i['shape']):
+        input_shape = i['shape']
+        feature_shape = np.shape(batched_features[input_name][0])
+        if len(feature_shape) == len(input_shape):
+          input_features[input_name] = batched_features[input_name]
+        elif len(feature_shape) == len(input_shape) - 1:
           input_features[input_name] = [
-              np.resize(b, i['shape']) for b in batched_features[input_name]
+              np.expand_dims(b, axis=0) for b in batched_features[input_name]
           ]
         else:
-          input_features[input_name] = batched_features[input_name]
+          raise ValueError(
+              'incompatible shape and data for feature: {}'.format(input_name))
         input_features[input_name] = tf.concat(
             input_features[input_name], axis=0)
         if np.shape(input_features[input_name]) != tuple(i['shape']):
@@ -104,6 +109,11 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       outputs = {
           o['name']: interpreter.get_tensor(o['index']) for o in output_details
       }
+
+      for v in outputs.values():
+        if len(v) != len(elements):
+          raise ValueError('Did not get the expected number of results.')
+
       for i in range(len(elements)):
         output = {k: v[i] for k, v in outputs.items()}
 
@@ -147,8 +157,8 @@ def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
     batch_args = dict(
         min_batch_size=desired_batch_size, max_batch_size=desired_batch_size)
   else:
-    # TODO(b/150635972): Remove the following and allow dynamic batch sizing
-    # once the bug is addressed.
+    # TODO(b/155887292): Remove the following and allow dynamic batch sizing
+    # once the bug is addressed. Also add unit tests to exercise.
     batch_args = dict(min_batch_size=1, max_batch_size=1)
 
   return (
