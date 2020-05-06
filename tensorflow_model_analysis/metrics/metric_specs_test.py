@@ -382,6 +382,21 @@ class MetricSpecsTest(tf.test.TestCase):
             model_name='model_name',
             output_name='output_name'), keys)
 
+  # This tests b/155810786
+  def testToComputationsWithMixedAggregationAndNonAggregationMetrics(self):
+    computations = metric_specs.to_computations([
+        config.MetricsSpec(
+            metrics=[config.MetricConfig(class_name='CategoricalAccuracy')]),
+        config.MetricsSpec(
+            metrics=[config.MetricConfig(class_name='BinaryCrossentropy')],
+            binarize=config.BinarizationOptions(class_ids={'values': [1]}),
+            aggregate=config.AggregationOptions(micro_average=True))
+    ], config.EvalConfig())
+
+    # 3 separate computations should be used (one for aggregated metrics, one
+    # for non-aggregated metrics, and one for metrics associated with class 1)
+    self.assertLen(computations, 3)
+
 
 if __name__ == '__main__':
   tf.test.main()

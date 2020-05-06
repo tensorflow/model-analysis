@@ -19,6 +19,8 @@
 *   Fix issue with displaying ConfusionMatrixPlot in colab.
 *   `CalibrationPlot` now infers `left` and `right` values from schema, when
     available. This makes the calibration plot useful to regression users.
+*   Fix issue with metrics not being computed properly when mixed with specs
+    containing micro-aggregation computations.
 
 ## Breaking changes
 

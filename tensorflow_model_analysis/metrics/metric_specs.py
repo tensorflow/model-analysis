@@ -19,6 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import collections
 import copy
 import importlib
 import json
@@ -555,27 +556,31 @@ def to_computations(
         tf_spec_indices_by_model[model_name].append(i)
   for sub_key, spec_indices_by_model in tf_spec_indices_by_subkey.items():
     for model_name, indices in spec_indices_by_model.items():
-      metrics_by_output = {}
+      # Class weights are a dict that is not hashable, so we store index to spec
+      # containing class weights.
+      metrics_by_class_weights_by_output = collections.defaultdict(dict)
       for i in indices:
-        metrics = per_tf_spec_metric_instances[i]
+        class_weights_i = None
+        if tf_metrics_specs[i].HasField('aggregate'):
+          class_weights_i = i
+        metrics_by_output = metrics_by_class_weights_by_output[class_weights_i]
+        output_names = ['']  # '' is name used when only one output
         if tf_metrics_specs[i].output_names:
-          for output_name in tf_metrics_specs[i].output_names:
-            if output_name not in metrics_by_output:
-              metrics_by_output[output_name] = []
-            metrics_by_output[output_name].extend(metrics)
-        else:
-          if '' not in metrics_by_output:
-            metrics_by_output[''] = []  # '' is name used when only one output
-          metrics_by_output[''].extend(metrics)
-      class_weights = None
-      if tf_metrics_specs[i].HasField('aggregate'):
-        class_weights = dict(tf_metrics_specs[i].aggregate.class_weights)
-      computations.extend(
-          tf_metric_wrapper.tf_metric_computations(
-              metrics_by_output,
-              model_name=model_name,
-              sub_key=sub_key,
-              class_weights=class_weights))
+          output_names = tf_metrics_specs[i].output_names
+        for output_name in output_names:
+          if output_name not in metrics_by_output:
+            metrics_by_output[output_name] = []
+          metrics_by_output[output_name].extend(per_tf_spec_metric_instances[i])
+      for i, metrics_by_output in metrics_by_class_weights_by_output.items():
+        class_weights = None
+        if i is not None:
+          class_weights = dict(tf_metrics_specs[i].aggregate.class_weights)
+        computations.extend(
+            tf_metric_wrapper.tf_metric_computations(
+                metrics_by_output,
+                model_name=model_name,
+                sub_key=sub_key,
+                class_weights=class_weights))
 
   #
   # Group TFMA metric specs by the metric classes
