@@ -60,14 +60,14 @@ def render_slicing_metrics(
 
 def render_time_series(
     results: model_eval_lib.EvalResults,
-    slice_spec: Optional[slicer.SingleSliceSpec] = None,
+    slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     display_full_path: bool = False
 ) -> Optional[visualization.TimeSeriesViewer]:  # pytype: disable=invalid-annotation
   """Renders the time series view as widget.
 
   Args:
     results: An tfma.EvalResults.
-    slice_spec: A slicing spec determining the slice to show time series on.
+    slicing_spec: A slicing spec determining the slice to show time series on.
       Show overall if not set.
     display_full_path: Whether to display the full path to model / data in the
       visualization or just show file name.
@@ -75,7 +75,7 @@ def render_time_series(
   Returns:
     A TimeSeriesViewer object if in Jupyter notebook; None if in Colab.
   """
-  slice_spec_to_use = slice_spec if slice_spec else slicer.SingleSliceSpec()
+  slice_spec_to_use = slicing_spec if slicing_spec else slicer.SingleSliceSpec()
   data = util.get_time_series(results, slice_spec_to_use, display_full_path)
   config = {
       'isModelCentric': results.get_mode() == constants.MODEL_CENTRIC_MODE
