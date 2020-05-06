@@ -18,6 +18,7 @@
 
 import collections
 import datetime
+import os
 
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text
 
@@ -31,6 +32,19 @@ from tensorflow_model_analysis.eval_saved_model import constants as eval_constan
 from tensorflow_model_analysis.eval_saved_model import load
 
 KERAS_INPUT_SUFFIX = '_input'
+
+_TFLITE_FILE_NAME = 'tflite'
+
+
+class ModelContents(object):
+  """Class for storing model contents.
+
+  This class exists because weak references to bytes are not allowed.
+  """
+  __slots__ = ['contents', '__weakref__']
+
+  def __init__(self, contents: bytes):
+    self.contents = contents
 
 
 def get_baseline_model_spec(
@@ -325,6 +339,13 @@ def model_construct_fn(  # pylint: disable=invalid-name
         # TODO(b/141524386, b/141566408): TPU Inference is not supported
         # for Keras saved_model yet.
         model = tf.keras.models.load_model(eval_saved_model_path)
+      elif model_type == constants.TF_LITE:
+        # The tf.lite.Interpreter is not thread-safe so we only load the model
+        # file's contents and leave construction of the Interpreter up to the
+        # PTransform using it.
+        model_filename = os.path.join(eval_saved_model_path, _TFLITE_FILE_NAME)
+        with tf.io.gfile.GFile(model_filename, 'rb') as model_file:
+          model = ModelContents(model_file.read())
       else:
         model = tf.compat.v1.saved_model.load_v2(
             eval_saved_model_path, tags=tags)

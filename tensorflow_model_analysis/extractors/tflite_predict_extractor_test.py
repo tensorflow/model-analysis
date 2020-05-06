@@ -111,19 +111,23 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
     with tf.io.gfile.GFile(os.path.join(tflite_model_dir, 'tflite'), 'wb') as f:
       f.write(tflite_model)
 
-    model_specs = [config.ModelSpec(name='model1')]
+    model_specs = [config.ModelSpec(name='model1', model_type='tf_lite')]
     if multi_model:
-      model_specs.append(config.ModelSpec(name='model2'))
+      model_specs.append(config.ModelSpec(name='model2', model_type='tf_lite'))
 
     eval_config = config.EvalConfig(model_specs=model_specs)
     eval_shared_models = [
         self.createTestEvalSharedModel(
-            model_name='model1', eval_saved_model_path=tflite_model_dir)
+            model_name='model1',
+            eval_saved_model_path=tflite_model_dir,
+            model_type='tf_lite')
     ]
     if multi_model:
       eval_shared_models.append(
           self.createTestEvalSharedModel(
-              model_name='model2', eval_saved_model_path=tflite_model_dir))
+              model_name='model2',
+              eval_saved_model_path=tflite_model_dir,
+              model_type='tf_lite'))
 
     desired_batch_size = 2 if batch_examples else None
     predictor = tflite_predict_extractor.TFLitePredictExtractor(

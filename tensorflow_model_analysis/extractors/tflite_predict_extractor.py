@@ -21,7 +21,6 @@ from __future__ import print_function
 
 import collections
 import copy
-import os
 from typing import Dict, List, Optional, Union, Sequence, Text
 
 import apache_beam as beam
@@ -35,40 +34,32 @@ from tensorflow_model_analysis.extractors import extractor
 
 TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
 
-# TODO(dzats): Determine whether we should standardize on model filename for
-# tflite models.
-_TFLITE_FILE_NAME = 'tflite'
 
-
-# TODO(b/149947174) Once this is addressed, subclass
-# BatchReducibleDoFnWithModels instead so we obtain telemetry data and load
-# a single model using a shared handle.
-#
 # TODO(b/149981535) Determine if we should merge with RunInference.
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
-class _TFLitePredictionDoFn(beam.DoFn):
+class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
   """A DoFn that loads tflite models and predicts."""
 
   def __init__(self, eval_config: config.EvalConfig,
                eval_shared_models: Dict[Text, types.EvalSharedModel]) -> None:
+    super(_TFLitePredictionDoFn, self).__init__(
+        {k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
-    self._model_paths = {
-        k: os.path.join(v.model_path, _TFLITE_FILE_NAME)
-        for k, v in eval_shared_models.items()
-    }
 
   def setup(self):
+    super(_TFLitePredictionDoFn, self).setup()
     self._interpreters = {}
-    for model_name, model_path in self._model_paths.items():
-      with tf.io.gfile.GFile(model_path, 'rb') as model_file:
-        self._interpreters[model_name] = tf.lite.Interpreter(
-            model_content=model_file.read())
+    for model_name, model_contents in self._loaded_models.items():
+      self._interpreters[model_name] = tf.lite.Interpreter(
+          model_content=model_contents.contents)
 
-  def process(self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
+  def _batch_reducible_process(
+      self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
     """Invokes the tflite model on the provided inputs and stores the result."""
-    # TODO(dzats): See if we can switch to a shallow copy.
-    result = copy.deepcopy(elements)
+    # This will be same size as elements, but we rebuild results dynamically
+    # to avoid a deepcopy.
+    result = []
 
     batched_features = collections.defaultdict(list)
     for e in elements:
@@ -78,8 +69,8 @@ class _TFLitePredictionDoFn(beam.DoFn):
 
     for spec in self._eval_config.model_specs:
       model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
-      if model_name not in self._model_paths:
-        raise ValueError('model path for "{}" not found: eval_config={}'.format(
+      if model_name not in self._loaded_models:
+        raise ValueError('model for "{}" not found: eval_config={}'.format(
             spec.name, self._eval_config))
 
       interpreter = self._interpreters[model_name]
@@ -113,11 +104,14 @@ class _TFLitePredictionDoFn(beam.DoFn):
       outputs = {
           o['name']: interpreter.get_tensor(o['index']) for o in output_details
       }
-      for i in range(len(result)):
+      for i in range(len(elements)):
         output = {k: v[i] for k, v in outputs.items()}
 
         if len(output) == 1:
           output = list(output.values())[0]
+
+        if i >= len(result):
+          result.append(copy.copy(elements[i]))
 
         if len(self._eval_config.model_specs) == 1:
           result[i][constants.PREDICTIONS_KEY] = output

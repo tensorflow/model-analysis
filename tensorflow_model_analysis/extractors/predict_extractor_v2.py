@@ -84,7 +84,9 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
   def _batch_reducible_process(
       self,
       batch_of_extracts: List[types.Extracts]) -> Sequence[types.Extracts]:
-    result = copy.deepcopy(batch_of_extracts)
+    # This will be same size as batch_of_extracts, but we rebuild results
+    # dynamically to avoid a deepcopy.
+    result = []
     for spec in self._eval_config.model_specs:
       # To maintain consistency between settings where single models are used,
       # always use '' as the model name regardless of whether a name is passed.
@@ -146,13 +148,15 @@ class _PredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       else:
         outputs = signature(tf.constant(inputs, dtype=tf.string))
 
-      for i in range(len(result)):
+      for i in range(len(batch_of_extracts)):
         output = {k: v[i].numpy() for k, v in outputs.items()}
         # Keras and regression serving models return a dict of predictions even
         # for single-outputs. Convert these to a single tensor for compatibility
         # with the labels (and model.predict API).
         if len(output) == 1:
           output = list(output.values())[0]
+        if i >= len(result):
+          result.append(copy.copy(batch_of_extracts[i]))
         # If only one model, the predictions are stored without using a dict
         if len(self._eval_config.model_specs) == 1:
           result[i][constants.PREDICTIONS_KEY] = output
