@@ -42,11 +42,11 @@ def BatchedInputExtractor(
   The extractor's PTransform extracts features, labels, and example weights from
   the batched features (i.e., Arrow RecordBatch) stored under
   tfma.ARROW_RECORD_BATCH_KEY in the incoming extract and adds it to the output
-  extract under the keys tfma.BATCHED_FEATURES_KEY, tfma.BATCHED_LABELS_KEY, and
-  tfma.BATCHED_EXAMPLE_WEIGHTS_KEY. If the eval_config contains a
+  extract under the keys tfma.FEATURES_KEY, tfma.LABELS_KEY, and
+  tfma.EXAMPLE_WEIGHTS_KEY. If the eval_config contains a
   prediction_key and a corresponding key is found in the parse example, then
   predictions will also be extracted and stored under the
-  tfma.BATCHED_PREDICTIONS_KEY. Any extracts that already exist will be merged
+  tfma.PREDICTIONS_KEY. Any extracts that already exist will be merged
   with the values parsed by this extractor with this extractor's values taking
   precedence when duplicate keys are detected.
 
@@ -105,7 +105,7 @@ def _DropUnsupportedColumnsAndFetchRawDataColumn(
   for column_name, column_array in zip(record_batch.schema.names,
                                        record_batch.columns):
     column_type = column_array.type
-    if column_name == constants.BATCHED_INPUT_KEY:
+    if column_name == constants.ARROW_INPUT_COLUMN:
       assert (_IsListLike(column_type) and
               _IsBinaryLike(column_type.value_type)), (
                   'Invalid type for batched input key: {}. '
@@ -180,19 +180,18 @@ def _ExtractInputs(batched_extract: types.Extracts,
                                                       spec.prediction_keys)
         keys_to_remove.update(set(spec.prediction_keys.values()))
 
-  _add_proj_df(labels_df, result, constants.BATCHED_LABELS_KEY)
-  _add_proj_df(example_weights_df, result,
-               constants.BATCHED_EXAMPLE_WEIGHTS_KEY)
-  _add_proj_df(predictions_df, result, constants.BATCHED_PREDICTIONS_KEY)
+  _add_proj_df(labels_df, result, constants.LABELS_KEY)
+  _add_proj_df(example_weights_df, result, constants.EXAMPLE_WEIGHTS_KEY)
+  _add_proj_df(predictions_df, result, constants.PREDICTIONS_KEY)
 
   # Add a separate column with the features dict.
   feature_keys = original_keys.difference(keys_to_remove)
-  result[constants.BATCHED_FEATURES_KEY] = dataframe[feature_keys].to_dict(
+  result[constants.FEATURES_KEY] = dataframe[feature_keys].to_dict(
       orient='records')
 
   # TODO(pachristopher): Consider avoiding setting this key if we don't need
   # this any further in the pipeline. This can avoid a potentially costly copy.
-  result[constants.BATCHED_INPUT_KEY] = serialized_examples
+  result[constants.INPUT_KEY] = serialized_examples
   return result
 
 
@@ -205,13 +204,12 @@ def _ExtractBatchedInputs(
   """Extracts features, labels and weights from batched extracts.
 
   Args:
-    extracts: PCollection containing batched features under
-      tfma.BATCHED_FEATURES_KEY.
+    extracts: PCollection containing batched features under tfma.FEATURES_KEY.
     eval_config: Eval config.
 
   Returns:
     PCollection of extracts with additional features, labels, and weights added
-    under the keys tfma.BATCHED_FEATURES_KEY, tfma.BATCHED_LABELS_KEY, and
-    tfma.BATCHED_EXAMPLE_WEIGHTS_KEY.
+    under the keys tfma.FEATURES_KEY, tfma.LABELS_KEY, and
+    tfma.EXAMPLE_WEIGHTS_KEY.
   """
   return extracts | 'ExtractInputs' >> beam.Map(_ExtractInputs, eval_config)

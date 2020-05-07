@@ -78,7 +78,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
@@ -125,9 +125,9 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertIn(constants.BATCHED_PREDICTIONS_KEY, got[0])
+          self.assertIn(constants.PREDICTIONS_KEY, got[0])
           expected_preds = [0.2, 0.8, 0.5]
-          self.assertAlmostEqual(got[0][constants.BATCHED_PREDICTIONS_KEY],
+          self.assertAlmostEqual(got[0][constants.PREDICTIONS_KEY],
                                  expected_preds)
 
         except AssertionError as err:
@@ -159,7 +159,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
@@ -193,8 +193,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
-            self.assertIn(constants.BATCHED_PREDICTIONS_KEY, item)
-            for pred in item[constants.BATCHED_PREDICTIONS_KEY]:
+            self.assertIn(constants.PREDICTIONS_KEY, item)
+            for pred in item[constants.PREDICTIONS_KEY]:
               for pred_key in ('logistic', 'probabilities', 'all_classes'):
                 self.assertIn(pred_key, pred)
 
@@ -227,7 +227,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
@@ -262,8 +262,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
-            self.assertIn(constants.BATCHED_PREDICTIONS_KEY, item)
-            for pred in item[constants.BATCHED_PREDICTIONS_KEY]:
+            self.assertIn(constants.PREDICTIONS_KEY, item)
+            for pred in item[constants.PREDICTIONS_KEY]:
               for pred_key in ('probabilities', 'all_classes'):
                 self.assertIn(pred_key, pred)
 
@@ -303,7 +303,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
@@ -358,8 +358,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
-            self.assertIn(constants.BATCHED_PREDICTIONS_KEY, item)
-            for pred in item[constants.BATCHED_PREDICTIONS_KEY]:
+            self.assertIn(constants.PREDICTIONS_KEY, item)
+            for pred in item[constants.PREDICTIONS_KEY]:
               for output_name in ('chinese_head', 'english_head', 'other_head'):
                 for pred_key in ('logistic', 'probabilities', 'all_classes'):
                   self.assertIn(output_name + '/' + pred_key, pred)
@@ -406,7 +406,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
@@ -464,8 +464,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 1)
           for item in got:
             # We can't verify the actual predictions, but we can verify the keys
-            self.assertIn(constants.BATCHED_PREDICTIONS_KEY, item)
-            for pred in item[constants.BATCHED_PREDICTIONS_KEY]:
+            self.assertIn(constants.PREDICTIONS_KEY, item)
+            for pred in item[constants.PREDICTIONS_KEY]:
               for model_name in ('model1', 'model2'):
                 self.assertIn(model_name, pred)
                 for output_name in ('chinese_head', 'english_head',
@@ -549,7 +549,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
@@ -586,7 +586,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
-            self.assertIn(constants.BATCHED_PREDICTIONS_KEY, item)
+            self.assertIn(constants.PREDICTIONS_KEY, item)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -644,7 +644,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
@@ -681,7 +681,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
-            self.assertIn(constants.BATCHED_PREDICTIONS_KEY, item)
+            self.assertIn(constants.PREDICTIONS_KEY, item)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -747,7 +747,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
@@ -777,7 +777,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 4)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
-            self.assertIn(constants.BATCHED_PREDICTIONS_KEY, item)
+            self.assertIn(constants.PREDICTIONS_KEY, item)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -807,7 +807,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
@@ -837,7 +837,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 4)
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
-            self.assertIn(constants.BATCHED_PREDICTIONS_KEY, item)
+            self.assertIn(constants.PREDICTIONS_KEY, item)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

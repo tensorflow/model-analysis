@@ -40,28 +40,16 @@ METRICS_NAMESPACE = 'tfx.ModelAnalysis'
 
 # Keys for Extracts dictionary (keys starting with _ will not be materialized).
 
-# Input key. Could be a serialised tf.train.Example, a CSV row, JSON data, etc
+# Input key. Could be a serialized tf.train.Example, a CSV row, JSON data, etc
 # depending on what the EvalInputReceiver was configured to accept as input.
 INPUT_KEY = 'input'
 
 # This holds an Arrow RecordBatch representing a batch of examples.
 ARROW_RECORD_BATCH_KEY = 'arrow_record_batch'
 
-# Batched input key. Could be a batch of serialized tf.train.Example, CSV
-# row, JSON data etc.
-BATCHED_INPUT_KEY = 'batched_input'
-
-# Batched features key.
-BATCHED_FEATURES_KEY = 'batched_features'
-
-# Batched labels key.
-BATCHED_LABELS_KEY = 'batched_labels'
-
-# Batched predictions key.
-BATCHED_PREDICTIONS_KEY = 'batched_predictions'
-
-# Batched example weights key.
-BATCHED_EXAMPLE_WEIGHTS_KEY = 'batched_example_weights'
+# This holds the column name containing the raw input (Could be a serialized
+# tf.train.Example, a CSV row, JSON data, etc) in an Arrow RecordBatch.
+ARROW_INPUT_COLUMN = '__raw_record__'
 
 # Features, predictions, and labels key.
 FEATURES_PREDICTIONS_LABELS_KEY = '_fpl'

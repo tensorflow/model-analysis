@@ -118,7 +118,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())

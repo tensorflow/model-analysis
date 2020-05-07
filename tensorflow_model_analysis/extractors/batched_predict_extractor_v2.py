@@ -102,7 +102,7 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
       self, batched_extract: types.Extracts) -> types.Extracts:
     result = copy.copy(batched_extract)
     record_batch = batched_extract[constants.ARROW_RECORD_BATCH_KEY]
-    serialized_examples = batched_extract[constants.BATCHED_INPUT_KEY]
+    serialized_examples = batched_extract[constants.INPUT_KEY]
     predictions = [None] * record_batch.num_rows
     for spec in self._eval_config.model_specs:
       # To maintain consistency between settings where single models are used,
@@ -184,7 +184,7 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
           if predictions[i] is None:
             predictions[i] = {}
           predictions[i][spec.name] = output  # pytype: disable=unsupported-operands
-    result[constants.BATCHED_PREDICTIONS_KEY] = predictions
+    result[constants.PREDICTIONS_KEY] = predictions
     return [result]  # pytype: disable=bad-return-type
 
 

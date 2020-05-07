@@ -29,14 +29,6 @@ from tensorflow_model_analysis.extractors import extractor
 
 UNBATCH_EXTRACTOR_STAGE_NAME = 'ExtractUnbatchedInputs'
 
-_BATCHED_KEYS_TO_UNBATCHED_KEYS = {
-    constants.BATCHED_EXAMPLE_WEIGHTS_KEY: constants.EXAMPLE_WEIGHTS_KEY,
-    constants.BATCHED_FEATURES_KEY: constants.FEATURES_KEY,
-    constants.BATCHED_INPUT_KEY: constants.INPUT_KEY,
-    constants.BATCHED_LABELS_KEY: constants.LABELS_KEY,
-    constants.BATCHED_PREDICTIONS_KEY: constants.PREDICTIONS_KEY
-}
-
 
 def UnbatchExtractor() -> extractor.Extractor:
   """Creates an extractor for unbatching batched extracts.
@@ -61,7 +53,6 @@ def _ExtractUnbatchedInputs(
   dataframe = pd.DataFrame()
   for key in keys_to_retain:
     dataframe[key] = batched_extract[key]
-  dataframe.rename(columns=_BATCHED_KEYS_TO_UNBATCHED_KEYS, inplace=True)
   return dataframe.to_dict(orient='records')
 
 

@@ -1233,7 +1233,7 @@ def run_model_analysis(
         tfxio = tf_example_record.TFExampleRecord(
             file_pattern=data_location,
             schema=schema,
-            raw_record_column_name=constants.BATCHED_INPUT_KEY)
+            raw_record_column_name=constants.ARROW_INPUT_COLUMN)
         if schema is not None:
           tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
               arrow_schema=tfxio.ArrowSchema(),

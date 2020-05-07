@@ -21,6 +21,8 @@
     available. This makes the calibration plot useful to regression users.
 *   Fix issue with metrics not being computed properly when mixed with specs
     containing micro-aggregation computations.
+*   Remove batched keys. Instead use the same keys for batched and unbatched
+    extract.
 
 ## Breaking changes
 

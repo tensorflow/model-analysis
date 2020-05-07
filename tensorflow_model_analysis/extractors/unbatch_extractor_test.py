@@ -67,7 +67,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     examples = [
         self._makeExample(
             label=1.0,
@@ -185,7 +185,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
 
     examples = [
         self._makeExample(
@@ -323,7 +323,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
 
     examples = [
         self._makeExample(

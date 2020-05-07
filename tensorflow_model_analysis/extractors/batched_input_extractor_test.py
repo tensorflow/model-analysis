@@ -65,7 +65,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     examples = [
         self._makeExample(
             label=1.0,
@@ -102,42 +102,39 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][0], {
-                  'fixed_int': np.array([1]),
-                  'fixed_float': np.array([1.0]),
-              })
-          self.assertEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][0]['fixed_string'],
-              np.array([b'fixed_string1']))
-          self.assertAlmostEqual(got[0][constants.BATCHED_LABELS_KEY][0],
+          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][0],
+                                             {
+                                                 'fixed_int': np.array([1]),
+                                                 'fixed_float': np.array([1.0]),
+                                             })
+          self.assertEqual(got[0][constants.FEATURES_KEY][0]['fixed_string'],
+                           np.array([b'fixed_string1']))
+          self.assertAlmostEqual(got[0][constants.LABELS_KEY][0],
                                  np.array([1.0]))
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][0], np.array([0.5]))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][1], {
-                  'fixed_int': np.array([1]),
-                  'fixed_float': np.array([1.0]),
-              })
-          self.assertEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][1]['fixed_string'],
-              np.array([b'fixed_string2']))
-          self.assertAlmostEqual(got[0][constants.BATCHED_LABELS_KEY][1],
+          self.assertAlmostEqual(got[0][constants.EXAMPLE_WEIGHTS_KEY][0],
+                                 np.array([0.5]))
+          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][1],
+                                             {
+                                                 'fixed_int': np.array([1]),
+                                                 'fixed_float': np.array([1.0]),
+                                             })
+          self.assertEqual(got[0][constants.FEATURES_KEY][1]['fixed_string'],
+                           np.array([b'fixed_string2']))
+          self.assertAlmostEqual(got[0][constants.LABELS_KEY][1],
                                  np.array([0.0]))
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][1], np.array([0.0]))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][2], {
-                  'fixed_int': np.array([2]),
-                  'fixed_float': np.array([0.0]),
-              })
-          self.assertEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][2]['fixed_string'],
-              np.array([b'fixed_string3']))
-          self.assertAlmostEqual(got[0][constants.BATCHED_LABELS_KEY][2],
+          self.assertAlmostEqual(got[0][constants.EXAMPLE_WEIGHTS_KEY][1],
                                  np.array([0.0]))
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][2], np.array([1.0]))
+          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][2],
+                                             {
+                                                 'fixed_int': np.array([2]),
+                                                 'fixed_float': np.array([0.0]),
+                                             })
+          self.assertEqual(got[0][constants.FEATURES_KEY][2]['fixed_string'],
+                           np.array([b'fixed_string3']))
+          self.assertAlmostEqual(got[0][constants.LABELS_KEY][2],
+                                 np.array([0.0]))
+          self.assertAlmostEqual(got[0][constants.EXAMPLE_WEIGHTS_KEY][2],
+                                 np.array([1.0]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -189,7 +186,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
 
     examples = [
         self._makeExample(
@@ -225,39 +222,35 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 1)
+          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][0],
+                                             {
+                                                 'fixed_int': np.array([1]),
+                                                 'fixed_float': np.array([1.0]),
+                                             })
+          self.assertEqual(got[0][constants.FEATURES_KEY][0]['fixed_string'],
+                           np.array([b'fixed_string1']))
+          self.assertDictElementsAlmostEqual(got[0][constants.LABELS_KEY][0], {
+              'output1': np.array([1.0]),
+              'output2': np.array([0.0])
+          })
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][0], {
-                  'fixed_int': np.array([1]),
-                  'fixed_float': np.array([1.0]),
-              })
-          self.assertEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][0]['fixed_string'],
-              np.array([b'fixed_string1']))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_LABELS_KEY][0], {
-                  'output1': np.array([1.0]),
-                  'output2': np.array([0.0])
-              })
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][0], {
+              got[0][constants.EXAMPLE_WEIGHTS_KEY][0], {
                   'output1': np.array([0.5]),
                   'output2': np.array([0.5])
               })
+          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][1],
+                                             {
+                                                 'fixed_int': np.array([1]),
+                                                 'fixed_float': np.array([1.0]),
+                                             })
+          self.assertEqual(got[0][constants.FEATURES_KEY][1]['fixed_string'],
+                           np.array([b'fixed_string2']))
+          self.assertDictElementsAlmostEqual(got[0][constants.LABELS_KEY][1], {
+              'output1': np.array([1.0]),
+              'output2': np.array([1.0])
+          })
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][1], {
-                  'fixed_int': np.array([1]),
-                  'fixed_float': np.array([1.0]),
-              })
-          self.assertEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][1]['fixed_string'],
-              np.array([b'fixed_string2']))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_LABELS_KEY][1], {
-                  'output1': np.array([1.0]),
-                  'output2': np.array([1.0])
-              })
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][1], {
+              got[0][constants.EXAMPLE_WEIGHTS_KEY][1], {
                   'output1': np.array([0.0]),
                   'output2': np.array([1.0])
               })
@@ -330,7 +323,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.BATCHED_INPUT_KEY)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
 
     examples = [
         self._makeExample(
@@ -370,78 +363,68 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][0], {
-                  'fixed_int': np.array([1]),
-              })
-          self.assertEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][0]['fixed_string'],
-              np.array([b'fixed_string1']))
+          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][0],
+                                             {
+                                                 'fixed_int': np.array([1]),
+                                             })
+          self.assertEqual(got[0][constants.FEATURES_KEY][0]['fixed_string'],
+                           np.array([b'fixed_string1']))
           for model_name in ('model1', 'model2'):
-            self.assertIn(model_name, got[0][constants.BATCHED_LABELS_KEY][0])
-            self.assertIn(model_name,
-                          got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][0])
-            self.assertIn(model_name,
-                          got[0][constants.BATCHED_PREDICTIONS_KEY][0])
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_LABELS_KEY][0]['model1'],
-              np.array([1.0]))
+            self.assertIn(model_name, got[0][constants.LABELS_KEY][0])
+            self.assertIn(model_name, got[0][constants.EXAMPLE_WEIGHTS_KEY][0])
+            self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY][0])
+          self.assertAlmostEqual(got[0][constants.LABELS_KEY][0]['model1'],
+                                 np.array([1.0]))
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_LABELS_KEY][0]['model2'], {
+              got[0][constants.LABELS_KEY][0]['model2'], {
                   'output1': np.array([1.0]),
                   'output2': np.array([0.0])
               })
           self.assertAlmostEqual(
-              got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][0]['model1'],
+              got[0][constants.EXAMPLE_WEIGHTS_KEY][0]['model1'],
               np.array([0.5]))
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][0]['model2'], {
+              got[0][constants.EXAMPLE_WEIGHTS_KEY][0]['model2'], {
                   'output1': np.array([0.5]),
                   'output2': np.array([0.5])
               })
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_PREDICTIONS_KEY][0]['model1'],
-              np.array([1.0]))
+          self.assertAlmostEqual(got[0][constants.PREDICTIONS_KEY][0]['model1'],
+                                 np.array([1.0]))
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_PREDICTIONS_KEY][0]['model2'], {
+              got[0][constants.PREDICTIONS_KEY][0]['model2'], {
                   'output1': np.array([1.0]),
                   'output2': np.array([1.0])
               })
 
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][1], {
-                  'fixed_int': np.array([1]),
-              })
-          self.assertEqual(
-              got[0][constants.BATCHED_FEATURES_KEY][1]['fixed_string'],
-              np.array([b'fixed_string2']))
+          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][1],
+                                             {
+                                                 'fixed_int': np.array([1]),
+                                             })
+          self.assertEqual(got[0][constants.FEATURES_KEY][1]['fixed_string'],
+                           np.array([b'fixed_string2']))
           for model_name in ('model1', 'model2'):
-            self.assertIn(model_name, got[0][constants.BATCHED_LABELS_KEY][1])
-            self.assertIn(model_name,
-                          got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][1])
-            self.assertIn(model_name,
-                          got[0][constants.BATCHED_PREDICTIONS_KEY][1])
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_LABELS_KEY][1]['model1'],
-              np.array([1.0]))
+            self.assertIn(model_name, got[0][constants.LABELS_KEY][1])
+            self.assertIn(model_name, got[0][constants.EXAMPLE_WEIGHTS_KEY][1])
+            self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY][1])
+          self.assertAlmostEqual(got[0][constants.LABELS_KEY][1]['model1'],
+                                 np.array([1.0]))
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_LABELS_KEY][1]['model2'], {
+              got[0][constants.LABELS_KEY][1]['model2'], {
                   'output1': np.array([1.0]),
                   'output2': np.array([1.0])
               })
           self.assertAlmostEqual(
-              got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][1]['model1'],
+              got[0][constants.EXAMPLE_WEIGHTS_KEY][1]['model1'],
               np.array([0.0]))
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_EXAMPLE_WEIGHTS_KEY][1]['model2'], {
+              got[0][constants.EXAMPLE_WEIGHTS_KEY][1]['model2'], {
                   'output1': np.array([0.0]),
                   'output2': np.array([1.0])
               })
-          self.assertAlmostEqual(
-              got[0][constants.BATCHED_PREDICTIONS_KEY][1]['model1'],
-              np.array([2.0]))
+          self.assertAlmostEqual(got[0][constants.PREDICTIONS_KEY][1]['model1'],
+                                 np.array([2.0]))
           self.assertDictElementsAlmostEqual(
-              got[0][constants.BATCHED_PREDICTIONS_KEY][1]['model2'], {
+              got[0][constants.PREDICTIONS_KEY][1]['model2'], {
                   'output1': np.array([2.0]),
                   'output2': np.array([2.0])
               })
