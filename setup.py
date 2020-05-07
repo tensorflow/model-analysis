@@ -278,7 +278,7 @@ setup_args = {
         # Python 2.7 and 3.5
         'pandas>=0.24,<2',
         'protobuf>=3.7,<4',
-        'pyarrow>=0.15,<1',
+        'pyarrow>=0.16,<1',
         # TODO(b/149775493): Avoid pinning scipy version once TF resolves
         # the scipy issue.
         'scipy == 1.4.1;python_version>="3"',

@@ -23,6 +23,7 @@
     containing micro-aggregation computations.
 *   Remove batched keys. Instead use the same keys for batched and unbatched
     extract.
+*   Depends on `pyarrow>=0.16,<1`.
 
 ## Breaking changes
 
