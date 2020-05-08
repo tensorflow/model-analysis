@@ -91,7 +91,8 @@ def convert_eval_result_to_ui_input(
       models).
 
   Returns:
-    A FairnessIndicatorViewer object if in Jupyter notebook; None if in Colab.
+    A list of dicts for each slice, where each dict contains keys 'sliceValue',
+    'slice', and 'metrics'.
 
   Raises:
     ValueError if no related eval result found or both slicing_column and
