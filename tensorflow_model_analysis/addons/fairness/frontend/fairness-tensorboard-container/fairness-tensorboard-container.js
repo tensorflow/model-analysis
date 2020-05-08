@@ -23,6 +23,8 @@ import * as tensorboard_util from '../../../../../../tensorboard/components/expe
 
 // Server end point to get eval results based on run selected by the user.
 const GET_EVAL_RESULTS_ENDPOINT = './get_evaluation_result';
+const GET_EVAL_RESULTS_ENDPOINT_FROM_URL =
+    './get_evaluation_result_from_remote_path';
 
 /**
  * @extends HTMLElement
@@ -32,12 +34,19 @@ export class FairnessTensorboardContainer extends SelectEventMixin
 (PolymerElement) {
   constructor() {
     super();
-    tensorboard_util.runs.getRuns().then(runs => {
-      this.loadEvaluationRuns(runs);
-    });
 
-    tensorboard_util.runs.setOnRunsChanged(
-        (runs) => this.loadEvaluationRuns(runs));
+    tensorboard_util.core.getURLPluginData().then(url => {
+      this.evaluationOutputPath_ = url['evaluation_output_path'];
+
+      if (this.evaluationOutputPath_ == undefined) {
+        tensorboard_util.runs.getRuns().then(runs => {
+          this.loadEvaluationRuns(runs);
+        });
+
+        tensorboard_util.runs.setOnRunsChanged(
+            (runs) => this.loadEvaluationRuns(runs));
+      }
+    });
   }
 
   loadEvaluationRuns(runs) {
@@ -67,11 +76,27 @@ export class FairnessTensorboardContainer extends SelectEventMixin
   static get properties() {
     return {
       /**
+       * Evaluation run selected by the user.
+       * @private {string}
+       */
+      evaluationOutputPath_:
+          {type: String, observer: 'evaluationOutputPathChanged_'},
+
+      /**
        * List of evaluation runs containing slicing metrics which will be
        * rendered in UI.
        * @private {!Array<string>}
        */
-      evaluationRuns_: {type: Array, notify: true},
+      evaluationRuns_: {type: Array, value: []},
+
+      /**
+       * Whether to show "Select evaluation run" drop down or not.
+       * @private {boolean}
+       */
+      hideSelectEvalRunDropDown_: {
+        type: Boolean,
+        computed: 'computeHideSelectEvalRunDropDown_(evaluationOutputPath_)'
+      },
 
       /**
        * Evaluation run selected by the user.
@@ -113,6 +138,23 @@ export class FairnessTensorboardContainer extends SelectEventMixin
         .then(slicingMetrics => {
           this.slicingMetrics_ = slicingMetrics;
         });
+  }
+
+  evaluationOutputPathChanged_(path) {
+    fetch(
+        `${GET_EVAL_RESULTS_ENDPOINT_FROM_URL}?evaluation_output_path=${path}`)
+        .then(res => res.json())
+        .then(slicingMetrics => {
+          this.slicingMetrics_ = slicingMetrics;
+        });
+  }
+
+  computeHideSelectEvalRunDropDown_(evaluationOutputPath) {
+    if (evaluationOutputPath) {
+      return true;
+    }
+
+    return false;
   }
 };
 

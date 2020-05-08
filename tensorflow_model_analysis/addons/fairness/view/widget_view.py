@@ -71,8 +71,8 @@ def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> Text:
   return '_X_'.join(values)
 
 
-def convert_eval_result_to_ui_input(
-    eval_result: model_eval_lib.EvalResult,
+def convert_slicing_metrics_to_ui_input(
+    slicing_metrics: model_eval_lib.EvalResult.slicing_metrics,
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     output_name: Text = '',
@@ -80,7 +80,7 @@ def convert_eval_result_to_ui_input(
   """Renders the Fairness Indicator view.
 
   Args:
-    eval_result: An tfma.EvalResult.
+    slicing_metrics: tfma.EvalResult.slicing_metrics.
     slicing_column: The slicing column to to filter results. If both
       slicing_column and slicing_spec are None, show all eval results.
     slicing_spec: The slicing spec to filter results. If both slicing_column and
@@ -106,7 +106,7 @@ def convert_eval_result_to_ui_input(
     slicing_spec = slicer.SingleSliceSpec(columns=[slicing_column])
 
   data = []
-  for (slice_key, metric_value) in eval_result.slicing_metrics:
+  for (slice_key, metric_value) in slicing_metrics:
     slice_key_ok = (
         slicing_spec is None or not slice_key or
         slicing_spec.is_slice_applicable(slice_key))
@@ -169,14 +169,14 @@ def render_fairness_indicator(
   data = None
   multi_data = None
   if eval_result:
-    data = convert_eval_result_to_ui_input(eval_result, slicing_column,
-                                           slicing_spec, output_name,
-                                           multi_class_key)
+    data = convert_slicing_metrics_to_ui_input(eval_result.slicing_metrics,
+                                               slicing_column, slicing_spec,
+                                               output_name, multi_class_key)
   else:
     multi_data = {}
     for eval_name in multi_eval_results:
-      multi_data[eval_name] = convert_eval_result_to_ui_input(
-          multi_eval_results[eval_name], slicing_column, slicing_spec,
-          output_name, multi_class_key)
+      multi_data[eval_name] = convert_slicing_metrics_to_ui_input(
+          multi_eval_results[eval_name].slicing_metrics, slicing_column,
+          slicing_spec, output_name, multi_class_key)
   return visualization.render_fairness_indicator(data, multi_data,
                                                  event_handlers)

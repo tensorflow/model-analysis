@@ -126,9 +126,9 @@ suite('fairness-nb-container tests', () => {
   test('testRunSelectorHidden', done => {
     const fillData = () => {
       fairnessContainer.slicingMetrics = generateSlicingMetrics();
-      setTimeout(checkRunSelectorIsInvisibale, 0);
+      setTimeout(checkRunSelectorIsInvisible, 0);
     };
-    const checkRunSelectorIsInvisibale = () => {
+    const checkRunSelectorIsInvisible = () => {
       let runSelector =
           fairnessContainer.shadowRoot.querySelector('#run-selector');
       assert.equal(runSelector.hidden, true);
@@ -137,16 +137,32 @@ suite('fairness-nb-container tests', () => {
     setTimeout(fillData, 0);
   });
 
-  test('testRunSelectorVisible', done => {
+  test('testRunSelectorVisibleWhenEvalRunsAvailable', done => {
     const fillData = () => {
       fairnessContainer.slicingMetrics = generateSlicingMetrics();
       fairnessContainer.availableEvaluationRuns = ['1', '2', '3'];
-      setTimeout(checkRunSelectorIsInvisibale, 0);
+      setTimeout(checkRunSelectorIsVisible, 0);
     };
-    const checkRunSelectorIsInvisibale = () => {
+    const checkRunSelectorIsVisible = () => {
       let runSelector =
           fairnessContainer.shadowRoot.querySelector('#run-selector');
       assert.equal(runSelector.hidden, false);
+      done();
+    };
+    setTimeout(fillData, 0);
+  });
+
+  test('testHideSelectEvalRunDropDown', done => {
+    const fillData = () => {
+      fairnessContainer.slicingMetrics = generateSlicingMetrics();
+      fairnessContainer.availableEvaluationRuns = ['1', '2', '3'];
+      fairnessContainer.hideSelectEvalRunDropDown = true;
+      setTimeout(checkRunSelectorIsVisible, 0);
+    };
+    const checkRunSelectorIsVisible = () => {
+      let runSelector =
+          fairnessContainer.shadowRoot.querySelector('#run-selector');
+      assert.equal(runSelector.hidden, true);
       done();
     };
     setTimeout(fillData, 0);

@@ -24,6 +24,10 @@
 *   Remove batched keys. Instead use the same keys for batched and unbatched
     extract.
 *   Depends on `pyarrow>=0.16,<1`.
+*   Adding support to visualize Fairness Indicators in Fairness Indicators
+    TensorBoard Plugin by providing remote evalution path in query parameter:
+    `<tensorboard_url>#fairness_indicators&
+    p.fairness_indicators.evaluation_output_path=<evaluation_path>`
 
 ## Breaking changes
 

@@ -44,7 +44,8 @@ class WidgetViewTest(testutil.TensorflowModelAnalysisTest):
 
   def testConvertEvalResultToUIInputWithAllDefaultParams(self):
     eval_result = self._makeEvalResult()
-    result = widget_view.convert_eval_result_to_ui_input(eval_result)
+    result = widget_view.convert_slicing_metrics_to_ui_input(
+        eval_result.slicing_metrics)
     self.assertEqual(result, [{
         'slice': 'Overall',
         'sliceValue': 'Overall',
@@ -79,8 +80,8 @@ class WidgetViewTest(testutil.TensorflowModelAnalysisTest):
 
   def testConvertEvalResultToUIInputWithSlicingColumn(self):
     eval_result = self._makeEvalResult()
-    result = widget_view.convert_eval_result_to_ui_input(
-        eval_result, slicing_column='slice')
+    result = widget_view.convert_slicing_metrics_to_ui_input(
+        eval_result.slicing_metrics, slicing_column='slice')
     self.assertEqual(result, [{
         'slice': 'Overall',
         'sliceValue': 'Overall',
@@ -115,8 +116,8 @@ class WidgetViewTest(testutil.TensorflowModelAnalysisTest):
 
   def testConvertEvalResultToUIInputWithSlicingSpec(self):
     eval_result = self._makeEvalResult()
-    result = widget_view.convert_eval_result_to_ui_input(
-        eval_result,
+    result = widget_view.convert_slicing_metrics_to_ui_input(
+        eval_result.slicing_metrics,
         slicing_spec=slicer.SingleSliceSpec(columns=['slice']),
     )
     self.assertEqual(result, [{
@@ -154,8 +155,8 @@ class WidgetViewTest(testutil.TensorflowModelAnalysisTest):
   def testConvertEvalResultToUIInputWithNoDataFound(self):
     eval_result = self._makeEvalResult(slices=((('slice', '1'),),))
     with self.assertRaises(ValueError):
-      widget_view.convert_eval_result_to_ui_input(
-          eval_result,
+      widget_view.convert_slicing_metrics_to_ui_input(
+          eval_result.slicing_metrics,
           slicing_spec=slicer.SingleSliceSpec(columns=['unknown']),
       )
 

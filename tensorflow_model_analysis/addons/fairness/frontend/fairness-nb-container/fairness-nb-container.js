@@ -103,6 +103,12 @@ export class FairnessNbContainer extends SelectEventMixin
       availableEvaluationRuns: {type: Array, value: []},
 
       /**
+       * Whether to show "Select evaluation run" drop down or not.
+       * @private {string}
+       */
+      hideSelectEvalRunDropDown: {type: Boolean, value: false},
+
+      /**
        * The full names of metrics available. eg: auc, negative_rate@0.25 or
        * post_export_metrics/head_1/negative_rate@0.25.
        * @private {!Array<string>|undefined}
@@ -209,6 +215,17 @@ export class FairnessNbContainer extends SelectEventMixin
       ...setToArray(thresholdedMetrics).sort((a, b) => a.localeCompare(b)),
       ...setToArray(otherMetrics).sort((a, b) => a.localeCompare(b))
     ];
+  }
+
+  /**
+   * Returns true, if run-selector should be hidden from the users.
+   * @param {boolean} hideSelectEvalRunDropDown
+   * @param {!Array<string>|undefined} availableEvaluationRuns
+   * @return {boolean}
+   * @private
+   */
+  hideRunSelector_(hideSelectEvalRunDropDown, availableEvaluationRuns) {
+    return hideSelectEvalRunDropDown || !availableEvaluationRuns.length;
   }
 };
 

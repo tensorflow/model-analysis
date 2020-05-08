@@ -40,7 +40,8 @@ template.innerHTML = `
 <div class="container">
   <fairness-nb-container available-evaluation-runs="[[evaluationRuns_]]"
                          selected-evaluation-run="{{selectedEvaluationRun_}}"
-                         slicing-metrics="[[slicingMetrics_]]">
+                         slicing-metrics="[[slicingMetrics_]]"
+                         hide-select-eval-run-drop-down="[[hideSelectEvalRunDropDown_]]">
   </fairness-nb-container>
 
   <template is="dom-if" if="[[!slicingMetrics_.length]]">

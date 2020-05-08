@@ -93,7 +93,7 @@ export class FairnessMetricsTable extends PolymerElement {
 
       /**
        * List of example counts for each slice.
-       * @type {!Array<string>}
+       * @type {!Array<number>}
        */
       exampleCounts: {
         type: Array,
@@ -347,10 +347,13 @@ export class FairnessMetricsTable extends PolymerElement {
   /**
    * @param {(string)} rowNum
    * @param {(string)} exampleCounts
-   * @return {boolean} Get example count for the corresponding row.
+   * @return {number} Get example count for the corresponding row.
    * @private
    */
   getExampleCount_(rowNum, exampleCounts) {
+    if (exampleCounts == undefined) {
+      return 0;
+    }
     // We skip the first row, since it is a header row which does not correspond
     // to a slice.
     return exampleCounts[parseFloat(rowNum) - 1];

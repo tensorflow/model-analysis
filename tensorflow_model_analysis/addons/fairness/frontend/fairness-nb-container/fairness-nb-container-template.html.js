@@ -54,7 +54,8 @@ template.innerHTML = `
 
 <div class="flex-row">
   <div class="flex-column">
-    <paper-card id="run-selector" hidden$="[[!availableEvaluationRuns.length]]">
+    <paper-card id="run-selector"
+                hidden$="[[hideRunSelector_(hideSelectEvalRunDropDown, availableEvaluationRuns)]]">
         <paper-dropdown-menu label="Select evaluation run:" title$="[[selectedEvaluationRun]]">
           <paper-listbox selected="{{selectedEvaluationRun}}" attr-for-selected="run"
                          class="dropdown-content" slot="dropdown-content" title$="">
