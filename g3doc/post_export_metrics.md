@@ -6,7 +6,7 @@ evaluation.
 TFMA is packaged with several pre-defined evaluation metrics, like
 example_count, auc, confusion_matrix_at_thresholds, precision_recall_at_k, mse,
 mae, to name a few. (Complete list
-[here](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/post_export_metrics/post_export_metrics.py).)
+[here](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/metrics/__init__.py).)
 
 If you don’t find an existing metrics relevant to your use-case, or want to
 customize a metric, you can define your own custom metric. Read on for the
