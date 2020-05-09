@@ -320,6 +320,39 @@ class UtilTest(tf.test.TestCase):
     self.assertAllClose(got_labels, np.array([0, 1]))
     self.assertAllClose(got_preds, np.array([0.2, 0.8]))
 
+  def testPrepareLabelsAndPredictionsUsingBinaryScores(self):
+    labels = np.array([[0], [1]])
+    preds = {
+        'scores': np.array([[0.9, 0.2], [0.3, 0.7]]),
+        'classes': np.array([['a', 'b'], ['a', 'b']])
+    }
+    got_labels, got_preds = metric_util.prepare_labels_and_predictions(
+        labels, preds)
+
+    self.assertAllClose(got_labels, np.array([[0], [1]]))
+    self.assertAllClose(got_preds, np.array([[0.2], [0.7]]))
+
+  def testPrepareLabelsAndPredictionsUsingBinaryScoresSparse(self):
+    labels = np.array([1, 0])
+    preds = {
+        'scores': np.array([[0.9, 0.2], [0.3, 0.7]]),
+        'classes': np.array([['a', 'b'], ['a', 'b']])
+    }
+    got_labels, got_preds = metric_util.prepare_labels_and_predictions(
+        labels, preds)
+
+    self.assertAllClose(got_labels, np.array([1, 0]))
+    self.assertAllClose(got_preds, np.array([[0.2], [0.7]]))
+
+  def testPrepareLabelsAndPredictionsUsingBinaryScoresUnbatched(self):
+    labels = np.array([1])
+    preds = {'scores': np.array([0.3, 0.7]), 'classes': np.array(['a', 'b'])}
+    got_labels, got_preds = metric_util.prepare_labels_and_predictions(
+        labels, preds)
+
+    self.assertAllClose(got_labels, np.array([1]))
+    self.assertAllClose(got_preds, np.array([0.7]))
+
   def testSelectClassIDSparse(self):
     labels = np.array([2])
     preds = np.array([0.2, 0.7, 0.1])

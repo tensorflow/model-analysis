@@ -436,10 +436,11 @@ def prepare_labels_and_predictions(
     labels = _string_labels_to_class_ids(label_vocabulary, labels)
 
   # Classify scores contain two values intead of one for binary classification
-  # problems, choose top prediction.
+  # problems, choose prediction associated with positive label (we assume the
+  # positive label is at index 1).
   if (prediction_key == tf.saved_model.CLASSIFY_OUTPUT_SCORES and
       predictions.shape[-1] == 2):
-    predictions = np.amax(predictions, -1, keepdims=True)
+    predictions = np.delete(predictions, 0, -1)
 
   return (labels, predictions)
 

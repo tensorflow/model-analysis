@@ -27,7 +27,9 @@
 *   Adding support to visualize Fairness Indicators in Fairness Indicators
     TensorBoard Plugin by providing remote evalution path in query parameter:
     `<tensorboard_url>#fairness_indicators&
-    p.fairness_indicators.evaluation_output_path=<evaluation_path>`
+    p.fairness_indicators.evaluation_output_path=<evaluation_path>`.
+*   Fixed invalid metrics calculations for serving models using the
+    classification API with binary outputs.
 
 ## Breaking changes
 
