@@ -54,6 +54,25 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       self._interpreters[model_name] = tf.lite.Interpreter(
           model_content=model_contents.contents)
 
+  def _get_input_name_from_input_detail(self, input_detail):
+    """Get input name from input detail.
+
+    Args:
+      input_detail: the details for a model input.
+
+    Returns:
+      Input name. The signature key prefix and argument postfix will be removed.
+    """
+    input_name = input_detail['name']
+    # TFLite saved model converter inserts the signature key name at beginning
+    # of the input names. TFLite rewriter assumes that the default signature key
+    # ('serving_default') will be used as an exported name when saving.
+    if input_name.startswith('serving_default_'):
+      input_name = input_name[len('serving_default_'):]
+    # Remove argument that starts with ':'.
+    input_name = input_name.split(':')[0]
+    return input_name
+
   def _batch_reducible_process(
       self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
     """Invokes the tflite model on the provided inputs and stores the result."""
@@ -80,7 +99,7 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
 
       input_features = {}
       for i in input_details:
-        input_name = i['name']
+        input_name = self._get_input_name_from_input_detail(i)
         if input_name not in batched_features:
           raise ValueError(
               'feature "{}" not found in input data'.format(input_name))
@@ -103,7 +122,8 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       interpreter.allocate_tensors()
 
       for i in input_details:
-        interpreter.set_tensor(i['index'], input_features[i['name']])
+        input_name = self._get_input_name_from_input_detail(i)
+        interpreter.set_tensor(i['index'], input_features[input_name])
       interpreter.invoke()
 
       outputs = {
