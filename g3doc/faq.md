@@ -295,13 +295,13 @@ details.
 
 Yes. Metrics settings can be customized (e.g. setting specific thresholds, etc)
 by adding `config` settings to the metric configuration. See
-[metrics](metrics.md) guide has more details.
+[metrics](metrics.md#customizing-metric-settings) guide has more details.
 
 ### Are custom metrics supported?
 
 Yes. Either by writing a custom `tf.keras.metrics.Metric` implementation or by
 writing a custom `beam.CombineFn` implementation. The
-[metrics](metrics.md#customizing-metric-settings) guide has more details.
+[metrics](metrics.md#customization) guide has more details.
 
 ### What types of metrics are not supported?
 
