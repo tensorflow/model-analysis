@@ -710,7 +710,8 @@ def default_evaluators(  # pylint: disable=invalid-name
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
             eval_config=eval_config,
             eval_shared_model=eval_shared_model,
-            schema=schema)
+            schema=schema,
+            random_seed_for_testing=random_seed_for_testing)
     ]
 
 

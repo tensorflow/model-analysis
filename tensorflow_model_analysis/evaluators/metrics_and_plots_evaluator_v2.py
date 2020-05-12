@@ -65,7 +65,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
-    schema: Optional[schema_pb2.Schema] = None) -> evaluator.Evaluator:
+    schema: Optional[schema_pb2.Schema] = None,
+    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -77,6 +78,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     plots_key: Name to use for plots key in Evaluation output.
     run_after: Extractor to run after (None means before any extractors).
     schema: A schema to use for customizing metrics and plots.
+    random_seed_for_testing: Seed to use for unit testing.
 
   Returns:
     Evaluator for evaluating metrics and plots. The output will be stored under
@@ -96,7 +98,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           eval_shared_models=eval_shared_models,
           metrics_key=metrics_key,
           plots_key=plots_key,
-          schema=schema))
+          schema=schema,
+          random_seed_for_testing=random_seed_for_testing))
 
 
 def _filter_and_separate_computations(
@@ -547,7 +550,8 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
-    schema: Optional[schema_pb2.Schema] = None) -> evaluator.Evaluation:
+    schema: Optional[schema_pb2.Schema] = None,
+    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
   """Computes metrics and plots.
 
   Args:
@@ -561,6 +565,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
     schema: A schema to use for customizing metrics and plots.
+    random_seed_for_testing: Seed to use for unit testing.
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
@@ -653,7 +658,8 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
           baseline_model_name=baseline_model_name,
           num_jackknife_samples=ci_params.num_jackknife_samples,
           num_bootstrap_samples=ci_params.num_bootstrap_samples,
-          skip_ci_metric_keys=ci_params.skip_ci_metric_keys))
+          skip_ci_metric_keys=ci_params.skip_ci_metric_keys,
+          random_seed_for_testing=random_seed_for_testing))
 
   if eval_config.options.min_slice_size.value > 1:
     sliced_metrics_and_plots = (
@@ -684,7 +690,8 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
     validations_key: Text = constants.VALIDATIONS_KEY,
-    schema: Optional[schema_pb2.Schema] = None) -> evaluator.Evaluation:
+    schema: Optional[schema_pb2.Schema] = None,
+    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
   """Evaluates metrics and plots.
 
   Args:
@@ -702,6 +709,7 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     plots_key: Name to use for plots key in Evaluation output.
     validations_key: Name to use for validation key in Evaluation output.
     schema: A schema to use for customizing metrics and plots.
+    random_seed_for_testing: Seed to use for unit testing.
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
@@ -747,7 +755,8 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
                                 if include_default_metrics else None),
             metrics_key=metrics_key,
             plots_key=plots_key,
-            schema=schema))
+            schema=schema,
+            random_seed_for_testing=random_seed_for_testing))
 
     for k, v in evaluation.items():
       if k not in evaluations:
