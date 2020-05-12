@@ -14,6 +14,7 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis writers."""
 
+from tensorflow_model_analysis.writers.eval_config_writer import EvalConfigWriter
 from tensorflow_model_analysis.writers.metrics_and_plots_serialization import SerializeMetricsAndPlots
 from tensorflow_model_analysis.writers.metrics_plots_and_validations_writer import MetricsPlotsAndValidationsWriter
 from tensorflow_model_analysis.writers.writer import Write

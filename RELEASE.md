@@ -30,6 +30,10 @@
     p.fairness_indicators.evaluation_output_path=<evaluation_path>`.
 *   Fixed invalid metrics calculations for serving models using the
     classification API with binary outputs.
+*   Moved config writing code to extend from tfma.writer.Writer and made it a
+    member of default_writers.
+*   Updated tfma.ExtractEvaluateAndWriteResults to accept Extracts as input in
+    addition to serialize bytes and Arrow RecordBatches.
 
 ## Breaking changes
 
