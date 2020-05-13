@@ -31,12 +31,6 @@ from tensorflow_model_analysis import util as tfma_util
 
 from typing import Any, Callable, Dict, Optional, Text
 
-# pylint: disable=g-import-not-at-top,g-statement-before-imports
-try:
-  # Remove this after dense_features becomes available in TF.
-  from tensorflow.python.feature_column import dense_features  # pylint: disable=g-direct-tensorflow-import
-except ImportError:
-  pass
 from tensorflow.python.feature_column import feature_column_v2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_estimator.python.estimator.canned import dnn
 
@@ -112,7 +106,7 @@ def _make_observing_model_call(old_call_fn: Callable[..., Any], key: Text,
 def _get_dense_features_module():
   """Returns the module that contains DenseFeatures class."""
   try:
-    return dense_features
+    return tf.compat.v1.keras.layers
   except:  # pylint: disable=bare-except
     return feature_column_v2
 
