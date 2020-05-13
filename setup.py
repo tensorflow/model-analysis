@@ -270,12 +270,12 @@ setup_args = {
         # TODO(b/149399451): remove once avro has a healthy release.
         ('avro-python3>=1.8.1,!=1.9.2.*,<2.0.0; '
          'python_version=="3.5" and platform_system=="Darwin"'),
-        'apache-beam[gcp]>=2.17,<3',
+        'apache-beam[gcp]>=2.20,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
         # Upgrade min version to 1.0 once we deprecate support for
-        # Python 2.7 and 3.5
+        # Python 3.5
         'pandas>=0.24,<2',
         'protobuf>=3.7,<4',
         'pyarrow>=0.16,<1',
@@ -284,12 +284,11 @@ setup_args = {
         'scipy == 1.4.1;python_version>="3"',
         'scipy == 1.2.2;python_version<"3"',
         'six>=1.12,<2',
-        'tensorflow>=1.15,<3',
-        'tensorflow-metadata>=0.21,<0.22',
-        # TODO(mdreves): Revisit this dependency before releasing.
-        'tfx-bsl>=0.21.3,<0.23'
+        'tensorflow>=1.15,!=2.0.*,<3',
+        'tensorflow-metadata>=0.22,<0.23',
+        'tfx-bsl>=0.22,<0.23'
     ],
-    'python_requires': '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
+    'python_requires': '>=3.5,<4',
     'packages': find_packages(),
     'zip_safe': False,
     'cmdclass': {
@@ -310,9 +309,6 @@ setup_args = {
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',

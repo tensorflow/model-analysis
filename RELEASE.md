@@ -1,4 +1,4 @@
-# Current Version (Still in Development)
+# Version 0.22.0
 
 ## Major Features and Improvements
 
@@ -23,7 +23,6 @@
     containing micro-aggregation computations.
 *   Remove batched keys. Instead use the same keys for batched and unbatched
     extract.
-*   Depends on `pyarrow>=0.16,<1`.
 *   Adding support to visualize Fairness Indicators in Fairness Indicators
     TensorBoard Plugin by providing remote evalution path in query parameter:
     `<tensorboard_url>#fairness_indicators&
@@ -34,6 +33,11 @@
     member of default_writers.
 *   Updated tfma.ExtractEvaluateAndWriteResults to accept Extracts as input in
     addition to serialize bytes and Arrow RecordBatches.
+*   Depends on `apache-beam[gcp]>=2.20,<3`.
+*   Depends on `pyarrow>=0.16,<1`.
+*   Depends on `tensorflow>=1.15,!=2.0.*,<3`.
+*   Depends on `tensorflow-metadata>=0.22,<0.23`.
+*   Depends on `tfx-bsl>=0.22,<0.23`.
 
 ## Breaking changes
 
@@ -43,6 +47,8 @@
     size tuning.
 
 ## Deprecations
+
+*   Deprecating Py2 support.
 
 # Release 0.21.6
 
