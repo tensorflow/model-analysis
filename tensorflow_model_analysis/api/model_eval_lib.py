@@ -754,13 +754,15 @@ def default_writers(
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Union[bytes, types.Extracts])
+# TODO(b/156538355): Find out why str is also required instead of just bytes
+#   after adding types.Extracts.
+@beam.typehints.with_input_types(Union[bytes, str, types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
 def InputsToExtracts(  # pylint: disable=invalid-name
     inputs: beam.pvalue.PCollection):
   """Converts serialized inputs (e.g. examples) to Extracts if not already."""
 
-  def to_extracts(x: Union[bytes, types.Extracts]) -> types.Extracts:
+  def to_extracts(x: Union[bytes, str, types.Extracts]) -> types.Extracts:
     result = {}
     if isinstance(x, dict):
       result.update(x)
