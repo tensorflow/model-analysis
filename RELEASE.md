@@ -1,3 +1,17 @@
+# <!-- mdlint off(HEADERS_TOO_MANY_H1) -->
+
+# Version 0.22.1
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+*   Depends on `pyarrow>=0.16,<0.17`.
+
+## Breaking changes
+
+## Deprecations
+
 # Version 0.22.0
 
 ## Major Features and Improvements
@@ -686,4 +700,4 @@
 
 # Release 0.6.0
 
-*   Initial release of TensorFlow Model Analysis.
+*   Initial release of TensorFlow Model Analysis. <!-- mdlint on -->
