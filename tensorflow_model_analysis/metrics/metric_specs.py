@@ -193,7 +193,8 @@ def example_count_specs(
   specs = []
   if include_example_count:
     metric_config = _serialize_tfma_metric(example_count.ExampleCount())
-    specs.append(config.MetricsSpec(metrics=[metric_config]))
+    specs.append(
+        config.MetricsSpec(metrics=[metric_config], model_names=model_names))
   if include_weighted_example_count:
     metric_config = _serialize_tfma_metric(
         weighted_example_count.WeightedExampleCount())
@@ -386,13 +387,8 @@ def _keys_and_metrics_from_specs(
           raise NotImplementedError('unknown metric type {}: metric={}'.format(
               cls, metric_config))
 
-      if (hasattr(instance, 'is_model_independent') and
-          instance.is_model_independent()):
-        key = metric_types.MetricKey(name=instance.name)
+      for key in _keys_for_metric(instance.name, spec, sub_keys):
         yield key, metric_config, instance
-      else:
-        for key in _keys_for_metric(instance.name, spec, sub_keys):
-          yield key, metric_config, instance
 
 
 def metric_keys_to_skip_for_confidence_intervals(
@@ -429,20 +425,14 @@ def metric_thresholds_from_metrics_specs(
           result[key] = threshold.change_threshold
 
   # Thresholds in MetricConfig override thresholds in MetricsSpec.
-  for key, metric_config, instance in _keys_and_metrics_from_specs(
-      metrics_specs):
+  for key, metric_config, _ in _keys_and_metrics_from_specs(metrics_specs):
     if not metric_config.HasField('threshold'):
       continue
-    if (hasattr(instance, 'is_model_independent') and
-        instance.is_model_independent()):
-      if metric_config.threshold.HasField('value_threshold'):
-        result[key] = metric_config.threshold.value_threshold
-    else:
-      if metric_config.threshold.HasField('value_threshold'):
-        result[key] = metric_config.threshold.value_threshold
-      if metric_config.threshold.HasField('change_threshold'):
-        key = key.make_diff_key()
-        result[key] = metric_config.threshold.change_threshold
+    if metric_config.threshold.HasField('value_threshold'):
+      result[key] = metric_config.threshold.value_threshold
+    if metric_config.threshold.HasField('change_threshold'):
+      key = key.make_diff_key()
+      result[key] = metric_config.threshold.change_threshold
 
   return result
 

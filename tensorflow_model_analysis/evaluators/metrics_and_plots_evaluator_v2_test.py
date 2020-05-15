@@ -264,6 +264,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                   """
                   metric_key {
                     name: "example_count"
+                    model_name: "candidate"
                   }
                   metric_threshold {
                     value_threshold {

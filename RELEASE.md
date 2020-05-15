@@ -6,6 +6,15 @@
 
 ## Bug fixes and other changes
 
+*   Previously metrics would only be computed for combinations of keys that
+    produced different metric values (e.g. `ExampleCount` will be the same for
+    all models, outputs, classes, etc, so only one metric key was used). Now a
+    metric key will be returned for each combination associated with the
+    `MetricSpec` definition even if the values will be the same. Support for
+    model independent metrics has also been removed. This means by default
+    multiple ExampleCount metrics will be created when multiple models are used
+    (one per model).
+
 ## Breaking changes
 
 ## Deprecations

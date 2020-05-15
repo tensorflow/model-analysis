@@ -52,7 +52,7 @@ class SubKey(
       values.
   """
 
-  # LINT.IfChange
+  # IfChange (should be preceeded by LINT, but cannot nest LINT)
   def __new__(cls,
               class_id: Optional[int] = None,
               k: Optional[int] = None,
@@ -66,7 +66,7 @@ class SubKey(
       raise ValueError(
           'attempt to create metric with top_k < 1: top_k={}'.format(top_k))
     return super(SubKey, cls).__new__(cls, class_id, k, top_k)
-  # LINT.ThenChange(../api/model_eval_lib.py)
+  # ThenChange(../api/model_eval_lib.py)
 
   def __eq__(self, other):
     return tuple(self) == other
@@ -390,10 +390,6 @@ class Metric(object):
   def get_config(self) -> Dict[Text, Any]:
     """Returns serializable config."""
     return self.kwargs
-
-  def is_model_independent(self) -> bool:
-    """Returns true if the metric does not depend on a model."""
-    return 'model_names' not in self._args
 
   @property
   def compute_confidence_interval(self) -> bool:

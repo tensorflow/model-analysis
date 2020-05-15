@@ -67,11 +67,15 @@ def _coefficient_of_discrimination(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
+    sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for coefficient of discrimination."""
   key = metric_types.MetricKey(
-      name=name, model_name=model_name, output_name=output_name)
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key)
 
   # Compute shared tjur discimination metrics.
   computations = _tjur_discrimination(

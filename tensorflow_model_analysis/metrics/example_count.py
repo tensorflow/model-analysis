@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Dict, Iterable, List, Text
+from typing import Optional, Dict, Iterable, List, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
@@ -29,7 +29,11 @@ EXAMPLE_COUNT_NAME = 'example_count'
 
 
 class ExampleCount(metric_types.Metric):
-  """Example count."""
+  """Example count.
+
+  Note that although the example_count is independent of the model, this metric
+  will be associated with a model for consistency with other metrics.
+  """
 
   def __init__(self, name: Text = EXAMPLE_COUNT_NAME):
     """Initializes example count.
@@ -58,14 +62,27 @@ metric_types.register_metric(ExampleCount)
 
 
 def _example_count(
-    name: Text = EXAMPLE_COUNT_NAME) -> metric_types.MetricComputations:
+    name: Text = EXAMPLE_COUNT_NAME,
+    model_names: Optional[List[Text]] = None,
+    output_names: Optional[List[Text]] = None,
+    sub_keys: Optional[List[metric_types.SubKey]] = None
+) -> metric_types.MetricComputations:
   """Returns metric computations for computing example counts."""
-  key = metric_types.MetricKey(name=name)
+  keys = []
+  for model_name in model_names or ['']:
+    for output_name in output_names or ['']:
+      for sub_key in sub_keys or [None]:
+        key = metric_types.MetricKey(
+            name=name,
+            model_name=model_name,
+            output_name=output_name,
+            sub_key=sub_key)
+        keys.append(key)
   return [
       metric_types.MetricComputation(
-          keys=[key],
+          keys=keys,
           preprocessor=_ExampleCountPreprocessor(),
-          combiner=_ExampleCountCombiner(key))
+          combiner=_ExampleCountCombiner(keys))
   ]
 
 
@@ -79,8 +96,8 @@ class _ExampleCountPreprocessor(beam.DoFn):
 class _ExampleCountCombiner(beam.CombineFn):
   """Computes example count."""
 
-  def __init__(self, metric_key: metric_types.MetricKey):
-    self._metric_key = metric_key
+  def __init__(self, metric_keys: List[metric_types.MetricKey]):
+    self._metric_keys = metric_keys
 
   def create_accumulator(self) -> int:
     return 0
@@ -96,4 +113,4 @@ class _ExampleCountCombiner(beam.CombineFn):
 
   def extract_output(self,
                      accumulator: int) -> Dict[metric_types.MetricKey, int]:
-    return {self._metric_key: accumulator}
+    return {k: accumulator for k in self._metric_keys}

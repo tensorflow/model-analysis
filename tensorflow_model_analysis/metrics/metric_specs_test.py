@@ -50,11 +50,13 @@ class MetricSpecsTest(tf.test.TestCase):
     self.assertLen(metrics_specs, 5)
     self.assertProtoEquals(
         metrics_specs[0],
-        config.MetricsSpec(metrics=[
-            config.MetricConfig(
-                class_name='ExampleCount',
-                config=json.dumps({'name': 'example_count'})),
-        ]))
+        config.MetricsSpec(
+            metrics=[
+                config.MetricConfig(
+                    class_name='ExampleCount',
+                    config=json.dumps({'name': 'example_count'})),
+            ],
+            model_names=['model_name1', 'model_name2']))
     self.assertProtoEquals(
         metrics_specs[1],
         config.MetricsSpec(
@@ -150,17 +152,41 @@ class MetricSpecsTest(tf.test.TestCase):
                     threshold=config.MetricThreshold(
                         change_threshold=config.GenericChangeThreshold()))
             ],
-            # Model names and output_names should be ignored because
-            # ExampleCount is model independent.
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1', 'output_name2']),
     ]
     metrics_specs += metric_specs.specs_from_metrics(
-        [tf.keras.metrics.MeanSquaredError('mse')])
+        [tf.keras.metrics.MeanSquaredError('mse')],
+        model_names=['model_name1', 'model_name2'])
     keys = metric_specs.metric_keys_to_skip_for_confidence_intervals(
         metrics_specs)
-    self.assertLen(keys, 1)
-    self.assertIn(metric_types.MetricKey(name='example_count'), keys)
+    self.assertLen(keys, 6)
+    self.assertIn(
+        metric_types.MetricKey(name='example_count', model_name='model_name1'),
+        keys)
+    self.assertIn(
+        metric_types.MetricKey(name='example_count', model_name='model_name2'),
+        keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name1',
+            output_name='output_name1'), keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name1',
+            output_name='output_name2'), keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name2',
+            output_name='output_name1'), keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name2',
+            output_name='output_name2'), keys)
 
   def testMetricThresholdsFromMetricsSpecs(self):
     metrics_specs = [
@@ -178,8 +204,6 @@ class MetricSpecsTest(tf.test.TestCase):
                     config.MetricThreshold(
                         change_threshold=config.GenericChangeThreshold())
             },
-            # Model names and output_names should be ignored because
-            # ExampleCount is model independent.
             model_names=['model_name'],
             output_names=['output_name']),
         config.MetricsSpec(
@@ -190,8 +214,6 @@ class MetricSpecsTest(tf.test.TestCase):
                     threshold=config.MetricThreshold(
                         value_threshold=config.GenericValueThreshold()))
             ],
-            # Model names and output_names should be ignored because
-            # ExampleCount is model independent.
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1', 'output_name2']),
         config.MetricsSpec(
@@ -224,7 +246,7 @@ class MetricSpecsTest(tf.test.TestCase):
     ]
     thresholds = metric_specs.metric_thresholds_from_metrics_specs(
         metrics_specs)
-    self.assertLen(thresholds, 14)
+    self.assertLen(thresholds, 17)
     self.assertIn(
         metric_types.MetricKey(
             name='auc', model_name='model_name', output_name='output_name'),
@@ -241,7 +263,26 @@ class MetricSpecsTest(tf.test.TestCase):
             model_name='model_name',
             output_name='output_name',
             is_diff=False), thresholds)
-    self.assertIn(metric_types.MetricKey(name='example_count'), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name1',
+            output_name='output_name1'), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name1',
+            output_name='output_name2'), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name2',
+            output_name='output_name1'), thresholds)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name2',
+            output_name='output_name2'), thresholds)
     self.assertIn(
         metric_types.MetricKey(
             name='weighted_example_count',
@@ -326,7 +367,9 @@ class MetricSpecsTest(tf.test.TestCase):
         if not k.name.startswith('_'):
           keys.append(k)
     self.assertLen(keys, 11)
-    self.assertIn(metric_types.MetricKey(name='example_count'), keys)
+    self.assertIn(
+        metric_types.MetricKey(name='example_count', model_name='model_name'),
+        keys)
     self.assertIn(
         metric_types.MetricKey(
             name='weighted_example_count',
