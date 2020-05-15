@@ -79,19 +79,24 @@ experimentation.
 from google.protobuf import text_format
 
 eval_config = text_format.Parse("""
+  ## Model information
   model_specs {
     # This assumes a serving model with a "serving_default" signature.
     label_key: "label"
     example_weight_key: "weight"
   }
-  metrics_spec {
-    # This adds AUC as a post training metric (i.e. this is only needed if the
-    # model did not already have AUC defined at training time). In this case the
-    # the assumption is that the model is a binary classification model.
+  ## Post export metric information
+  metrics_specs {
+    # This adds AUC and as a post training metric. If the model has built in
+    # training metrics which also contains AUC, this metric will replace it.
     metrics { class_name: "AUC" }
     # ... other post training metrics ...
+
+    # Plots are also configured here...
+    metrics { class_name: "ConfusionMatrixPlot" }
   }
-  slicing_specs {}
+  ## Slicing information
+  slicing_specs {}  # overall slice
   slicing_specs {
     feature_keys: ["age"]
   }
@@ -124,19 +129,24 @@ For example:
 from google.protobuf import text_format
 
 eval_config = text_format.Parse("""
+  ## Model information
   model_specs {
     # This assumes a serving model with a "serving_default" signature.
     label_key: "label"
     example_weight_key: "weight"
   }
+  ## Post export metric information
   metrics_specs {
-    # This adds AUC as a post training metric (i.e. this is only needed if the
-    # model did not already have AUC defined at training time). In this case the
-    # the assumption is that the model is a binary classification model.
+    # This adds AUC and as a post training metric. If the model has built in
+    # training metrics which also contains AUC, this metric will replace it.
     metrics { class_name: "AUC" }
     # ... other post training metrics ...
+
+    # Plots are also configured here...
+    metrics { class_name: "ConfusionMatrixPlot" }
   }
-  slicing_specs {}
+  ## Slicing information
+  slicing_specs {}  # overall slice
   slicing_specs {
     feature_keys: ["age"]
   }
@@ -178,23 +188,19 @@ For example:
 from google.protobuf import text_format
 
 eval_config = text_format.Parse("""
+  ## Model information
   model_specs {
     # This assumes a serving model with a "serving_default" signature.
     label_key: "label"
     example_weight_key: "weight"
   }
-  metrics_spec {
-    # This adds AUC as a post training metric (i.e. this is only needed if the
-    # model did not already have AUC defined at training time). In this case the
-    # the assumption is that the model is a binary classification model.
-    metrics { class_name: "AUC" }
-    # ... other post training metrics ...
-    thresholds {
-      # This is a threshold setting for a metric that was added at training
-      # time. For post training metrics the threshold may be specified as part
-      # of the MetricConfig.
-      key: "binary_accuracy"
-      value: {
+  ## Post export metric information
+  metrics_specs {
+    # This adds AUC and as a post training metric. If the model has built in
+    # training metrics which also contains AUC, this metric will replace it.
+    metrics {
+      class_name: "AUC"
+      threshold {
         value_threshold {
           lower_bound { value: 0.9 }
         }
@@ -204,9 +210,13 @@ eval_config = text_format.Parse("""
         }
       }
     }
-    # ... other thresholds ...
+    # ... other post training metrics ...
+
+    # Plots are also configured here...
+    metrics { class_name: "ConfusionMatrixPlot" }
   }
-  slicing_specs {}
+  ## Slicing information
+  slicing_specs {}  # overall slice
   slicing_specs {
     feature_keys: ["age"]
   }
