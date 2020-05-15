@@ -63,7 +63,6 @@ FLAGS = flags.FLAGS
 suppress_docs_for = [
     # Although these are not imported directly in __init__, they appear as
     # module paths.
-    tfma.internal,  # pytype: disable=module-attr
     tfma.view.util,  # pytype: disable=module-attr
     tfma.api,
     tfma.eval_metrics_graph,
@@ -74,6 +73,9 @@ suppress_docs_for = [
     tfma.test,
     tfma.util,
 ]
+
+if getattr(tfma, 'internal', None):
+  suppress_docs_for.append(tfma.internal)
 
 
 def suppress_docs(path, parent, children):
