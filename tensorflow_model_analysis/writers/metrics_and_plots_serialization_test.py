@@ -448,12 +448,10 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         }
         """, metrics_for_slice_pb2.MetricsForSlice())
 
-    got = metrics_and_plots_serialization._serialize_metrics(
+    got = metrics_and_plots_serialization.convert_slice_metrics_to_proto(
         (slice_key, slice_metrics),
         [post_export_metrics.confusion_matrix_at_thresholds(thresholds)])
-    self.assertProtoEquals(
-        expected_metrics_for_slice,
-        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+    self.assertProtoEquals(expected_metrics_for_slice, got)
 
   def testSerializeMetricsRanges(self):
     slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
@@ -557,13 +555,11 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         }""").substitute(auc=metric_keys.AUC, auprc=metric_keys.AUPRC),
         metrics_for_slice_pb2.MetricsForSlice())
 
-    got = metrics_and_plots_serialization._serialize_metrics(
+    got = metrics_and_plots_serialization.convert_slice_metrics_to_proto(
         (slice_key, slice_metrics),
         [post_export_metrics.auc(),
          post_export_metrics.auc(curve='PR')])
-    self.assertProtoEquals(
-        expected_metrics_for_slice,
-        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+    self.assertProtoEquals(expected_metrics_for_slice, got)
 
   def testSerializeMetrics(self):
     slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
@@ -598,11 +594,9 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           }
         }""", metrics_for_slice_pb2.MetricsForSlice())
 
-    got = metrics_and_plots_serialization._serialize_metrics(
+    got = metrics_and_plots_serialization.convert_slice_metrics_to_proto(
         (slice_key, slice_metrics), None)
-    self.assertProtoEquals(
-        expected_metrics_for_slice,
-        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+    self.assertProtoEquals(expected_metrics_for_slice, got)
 
   def testSerializeMetricsFromLegacyStrings(self):
     slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
@@ -675,30 +669,27 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         }""").substitute(auc=metric_keys.AUC, auprc=metric_keys.AUPRC),
         metrics_for_slice_pb2.MetricsForSlice())
 
-    got = metrics_and_plots_serialization._serialize_metrics(
+    got = metrics_and_plots_serialization.convert_slice_metrics_to_proto(
         (slice_key, slice_metrics),
         [post_export_metrics.auc(),
          post_export_metrics.auc(curve='PR')])
-    self.assertProtoEquals(
-        expected_metrics_for_slice,
-        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+    self.assertProtoEquals(expected_metrics_for_slice, got)
 
   def testSerializeMetrics_emptyMetrics(self):
     slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
     slice_metrics = {metric_keys.ERROR_METRIC: 'error_message'}
 
-    actual_metrics = metrics_and_plots_serialization._serialize_metrics(
-        (slice_key, slice_metrics),
-        [post_export_metrics.auc(),
-         post_export_metrics.auc(curve='PR')])
+    actual_metrics = (
+        metrics_and_plots_serialization.convert_slice_metrics_to_proto(
+            (slice_key, slice_metrics),
+            [post_export_metrics.auc(),
+             post_export_metrics.auc(curve='PR')]))
 
     expected_metrics = metrics_for_slice_pb2.MetricsForSlice()
     expected_metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
     expected_metrics.metrics[
         metric_keys.ERROR_METRIC].debug_message = 'error_message'
-    self.assertProtoEquals(
-        expected_metrics,
-        metrics_for_slice_pb2.MetricsForSlice.FromString(actual_metrics))
+    self.assertProtoEquals(expected_metrics, actual_metrics)
 
   def testStringMetrics(self):
     slice_key = _make_slice_key()
@@ -716,11 +707,9 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
     expected_metrics_for_slice.metrics[
         'invalid_unicode'].bytes_value = slice_metrics['invalid_unicode']
 
-    got = metrics_and_plots_serialization._serialize_metrics(
+    got = metrics_and_plots_serialization.convert_slice_metrics_to_proto(
         (slice_key, slice_metrics), [])
-    self.assertProtoEquals(
-        expected_metrics_for_slice,
-        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+    self.assertProtoEquals(expected_metrics_for_slice, got)
 
   def testUncertaintyValuedMetrics(self):
     slice_key = _make_slice_key()
@@ -813,11 +802,9 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           }
         }
         """, metrics_for_slice_pb2.MetricsForSlice())
-    got = metrics_and_plots_serialization._serialize_metrics(
+    got = metrics_and_plots_serialization.convert_slice_metrics_to_proto(
         (slice_key, slice_metrics), [])
-    self.assertProtoEquals(
-        expected_metrics_for_slice,
-        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+    self.assertProtoEquals(expected_metrics_for_slice, got)
 
   def testTensorValuedMetrics(self):
     slice_key = _make_slice_key()
@@ -863,11 +850,9 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           }
         }
         """, metrics_for_slice_pb2.MetricsForSlice())
-    got = metrics_and_plots_serialization._serialize_metrics(
+    got = metrics_and_plots_serialization.convert_slice_metrics_to_proto(
         (slice_key, slice_metrics), [])
-    self.assertProtoEquals(
-        expected_metrics_for_slice,
-        metrics_for_slice_pb2.MetricsForSlice.FromString(got))
+    self.assertProtoEquals(expected_metrics_for_slice, got)
 
 
 if __name__ == '__main__':

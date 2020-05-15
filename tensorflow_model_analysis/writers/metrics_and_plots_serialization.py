@@ -320,9 +320,10 @@ def convert_slice_metrics(
       metrics_for_slice.metrics[key].CopyFrom(metric_value)
 
 
-def _serialize_metrics(
+def convert_slice_metrics_to_proto(
     metrics: Tuple[slicer.SliceKeyType, Dict[Any, Any]],
-    add_metrics_callbacks: List[types.AddMetricsCallbackType]) -> bytes:
+    add_metrics_callbacks: List[types.AddMetricsCallbackType]
+) -> metrics_for_slice_pb2.MetricsForSlice:
   """Converts the given slice metrics into serialized proto MetricsForSlice.
 
   Args:
@@ -331,7 +332,7 @@ def _serialize_metrics(
       list as the one passed to tfma.Evaluate().
 
   Returns:
-    The serialized proto MetricsForSlice.
+    The MetricsForSlice proto.
 
   Raises:
     TypeError: If the type of the feature value in slice key cannot be
@@ -347,14 +348,14 @@ def _serialize_metrics(
     metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
     metrics.metrics[metric_keys.ERROR_METRIC].debug_message = slice_metrics[
         metric_keys.ERROR_METRIC]
-    return metrics.SerializeToString()
+    return metrics
 
   # Convert the slice key.
   result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   # Convert the slice metrics.
   convert_slice_metrics(slice_key, slice_metrics, add_metrics_callbacks, result)
-  return result.SerializeToString()
+  return result
 
 
 def _convert_slice_plots(
@@ -443,6 +444,8 @@ def _serialize_plots(
   return result.SerializeToString()
 
 
+@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, Dict[Any, Any]])
+@beam.typehints.with_output_types(bytes)
 class SerializeMetrics(beam.PTransform):  # pylint: disable=invalid-name
   """Converts metrics to serialized protos."""
 
@@ -458,11 +461,17 @@ class SerializeMetrics(beam.PTransform):  # pylint: disable=invalid-name
     Returns:
       PCollection of serialized proto MetricsForSlice.
     """
-    metrics = metrics | 'SerializeMetrics' >> beam.Map(
-        _serialize_metrics, add_metrics_callbacks=self._add_metrics_callbacks)
+    metrics = (
+        metrics
+        | 'ConvertSliceMetricsToProto' >> beam.Map(
+            convert_slice_metrics_to_proto,
+            add_metrics_callbacks=self._add_metrics_callbacks)
+        | 'SerializeMetrics' >> beam.Map(lambda m: m.SerializeToString()))
     return metrics
 
 
+@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, Dict[Any, Any]])
+@beam.typehints.with_output_types(bytes)
 class SerializePlots(beam.PTransform):  # pylint: disable=invalid-name
   """Converts plots serialized protos."""
 
@@ -485,6 +494,8 @@ class SerializePlots(beam.PTransform):  # pylint: disable=invalid-name
 
 # No typehint for input or output, since it's a multi-output DoFn result that
 # Beam doesn't support typehints for yet (BEAM-3280).
+# TODO(mdreves): Perform serialization using PCoders instead when writing
+# metrics and plots.
 class SerializeMetricsAndPlots(beam.PTransform):  # pylint: disable=invalid-name
   """Converts metrics and plots into serialized protos."""
 
@@ -502,8 +513,8 @@ class SerializeMetricsAndPlots(beam.PTransform):  # pylint: disable=invalid-name
       A Tuple of PCollection of Serialized proto MetricsForSlice.
     """
     metrics, plots = metrics_and_plots
-    metrics = metrics | 'SerializeMetrics' >> beam.Map(
-        _serialize_metrics, add_metrics_callbacks=self._add_metrics_callbacks)
-    plots = plots | 'SerializePlots' >> beam.Map(
-        _serialize_plots, add_metrics_callbacks=self._add_metrics_callbacks)
+    metrics = metrics | 'SerializeMetrics' >> SerializeMetrics(
+        self._add_metrics_callbacks)
+    plots = plots | 'SerializePlots' >> SerializePlots(
+        self._add_metrics_callbacks)
     return (metrics, plots)
