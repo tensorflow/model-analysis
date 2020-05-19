@@ -30,6 +30,48 @@ from google.protobuf import text_format
 
 class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest):
 
+  def testValidateMetricsInvalidThreshold(self):
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(),
+        ],
+        slicing_specs=[config.SlicingSpec()],
+        metrics_specs=[
+            config.MetricsSpec(
+                thresholds={
+                    'invalid_threshold':
+                        config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                lower_bound={'value': 0.2}))
+                })
+        ],
+    )
+    sliced_metrics = ((()), {
+        metric_types.MetricKey(name='weighted_example_count'): 1.5,
+    })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertFalse(result.validation_ok)
+    expected = text_format.Parse(
+        """
+        metric_validations_per_slice {
+          slice_key {
+          }
+          failures {
+            metric_key {
+              name: "invalid_threshold"
+            }
+            metric_threshold {
+              value_threshold {
+                lower_bound {
+                  value: 0.2
+                }
+              }
+            }
+            message: 'Metric not found.'
+          }
+        }""", validation_result_pb2.ValidationResult())
+    self.assertProtoEquals(expected, result)
+
   def testValidateMetricsMetricValueAndThreshold(self):
     eval_config = config.EvalConfig(
         model_specs=[

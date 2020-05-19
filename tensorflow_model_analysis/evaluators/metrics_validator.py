@@ -88,12 +88,15 @@ def validate_metrics(
   # Empty metrics per slice is considered validated.
   result = validation_result_pb2.ValidationResult(validation_ok=True)
   validation_for_slice = validation_result_pb2.MetricsValidationForSlice()
+  unchecked_thresholds = dict(thresholds)
   for metric_key, metric in metrics.items():
+    if metric_key not in thresholds:
+      continue
+    del unchecked_thresholds[metric_key]
     # Not meaningful to check threshold for baseline model, thus always return
     # True if such threshold is configured. We also do not compare Message type
     # metrics.
-    if (metric_key.model_name == baseline_model_name or
-        metric_key not in thresholds):
+    if metric_key.model_name == baseline_model_name:
       continue
     msg = ''
     # We try to convert to float values.
@@ -110,6 +113,14 @@ def validate_metrics(
       _copy_metric(metric, failure.metric_value)
       _copy_threshold(thresholds[metric_key], failure.metric_threshold)
       failure.message = msg
+  # All unchecked thresholds are considered failures.
+  for metric_key, threshold in unchecked_thresholds.items():
+    if metric_key.model_name == baseline_model_name:
+      continue
+    failure = validation_for_slice.failures.add()
+    failure.metric_key.CopyFrom(metric_key.to_proto())
+    _copy_threshold(threshold, failure.metric_threshold)
+    failure.message = 'Metric not found.'
   # Any failure leads to overall failure.
   if validation_for_slice.failures:
     validation_for_slice.slice_key.CopyFrom(

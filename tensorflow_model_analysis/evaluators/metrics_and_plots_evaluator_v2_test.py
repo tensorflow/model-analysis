@@ -197,12 +197,14 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                                 relative={'value': -.99},
                                 absolute={'value': 0})))
                 ],
-                thresholds={
-                    'binary_crossentropy':
-                        config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
-                                upper_bound={'value': 0}))
-                },
+                # TODO(b/149995449): Add thresholds for Keras metrics once the
+                # bug is fixed.
+                # thresholds={
+                #     'binary_crossentropy':
+                #         config.MetricThreshold(
+                #             value_threshold=config.GenericValueThreshold(
+                #                 upper_bound={'value': 0}))
+                # },
                 model_names=['candidate', 'baseline']),
         ],
     )
@@ -295,25 +297,6 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                         value: 0.0
                       }
                       direction: HIGHER_IS_BETTER
-                    }
-                  }
-                  metric_value {
-                    double_value {
-                      value: 0.0
-                    }
-                  }
-                  """, validation_result_pb2.ValidationFailure()),
-              text_format.Parse(
-                  """
-                  metric_key {
-                    name: "binary_crossentropy"
-                    model_name: "candidate"
-                  }
-                  metric_threshold {
-                    value_threshold {
-                      upper_bound {
-                        value: 0.0
-                      }
                     }
                   }
                   metric_value {
@@ -1801,6 +1784,117 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(
           metrics[constants.METRICS_KEY], check_metrics, label='metrics')
+
+  def testValidateWithEvalSavedModel(self):
+    temp_export_dir = self._getExportDir()
+    _, export_dir = linear_classifier.simple_linear_classifier(
+        None, temp_export_dir)
+    eval_config = config.EvalConfig(
+        model_specs=[config.ModelSpec(signature_name='eval')],
+        metrics_specs=[
+            config.MetricsSpec(
+                thresholds={
+                    'accuracy':
+                        config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                lower_bound={'value': 0.9})),
+                    'nonexistent_metrics':
+                        config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                lower_bound={'value': 0.1}))
+                })
+        ],
+        slicing_specs=[
+            config.SlicingSpec(),
+        ])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir,
+        add_metrics_callbacks=[_addExampleCountMetricCallback])
+    slice_spec = [
+        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
+    ]
+    extractors = [
+        predict_extractor.PredictExtractor(
+            eval_shared_model, eval_config=eval_config),
+        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
+    ]
+
+    examples = [
+        self._makeExample(
+            age=3.0, language='english', label=1.0, slice_key='first_slice'),
+        self._makeExample(
+            age=3.0, language='chinese', label=0.0, slice_key='first_slice'),
+        self._makeExample(
+            age=4.0, language='english', label=0.0, slice_key='second_slice'),
+        self._makeExample(
+            age=5.0, language='chinese', label=1.0, slice_key='second_slice'),
+        self._makeExample(
+            age=5.0, language='chinese', label=1.0, slice_key='second_slice')
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      evaluations = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_validations(got):
+        try:
+          self.assertLen(got, 1)
+          got = got[0]
+          expected_failures = [
+              text_format.Parse(
+                  """
+                 metric_key {
+                    name: "accuracy"
+                  }
+                  metric_threshold {
+                    value_threshold {
+                      lower_bound {
+                        value: 0.9
+                      }
+                    }
+                  }
+                  """, validation_result_pb2.ValidationFailure()),
+              text_format.Parse(
+                  """
+                 metric_key {
+                    name: "nonexistent_metrics"
+                  }
+                  metric_threshold {
+                    value_threshold {
+                      lower_bound {
+                        value: 0.1
+                      }
+                    }
+                  }
+                  message: "Metric not found."
+                  """, validation_result_pb2.ValidationFailure()),
+          ]
+          self.assertFalse(got.validation_ok)
+          self.assertLen(got.metric_validations_per_slice, 1)
+          # Ignore the metric_value to avoid fragility of float rounding issue.
+          # The correctness of the metric_value has been tested in other tests.
+          failures = got.metric_validations_per_slice[0].failures
+          self.assertLen(failures, len(expected_failures))
+          for failure, expected_failure in zip(failures, expected_failures):
+            failure.ClearField('metric_value')
+            self.assertProtoEquals(expected_failure, failure)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(evaluations[constants.VALIDATIONS_KEY],
+                       check_validations)
 
 
 if __name__ == '__main__':

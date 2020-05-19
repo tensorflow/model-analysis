@@ -594,7 +594,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     metrics_spec.metrics.append(
         config.MetricConfig(
             class_name='WeightedExampleCount',
-            # 2 > 10, NOT OK.
             threshold=config.MetricThreshold(
                 value_threshold=config.GenericValueThreshold(
                     lower_bound={'value': 0}))))
