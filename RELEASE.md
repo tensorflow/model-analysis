@@ -14,6 +14,8 @@
     model independent metrics has also been removed. This means by default
     multiple ExampleCount metrics will be created when multiple models are used
     (one per model).
+*   Fixed issue with label_key and prediction_key settings not working with TF
+    based metrics.
 
 ## Breaking changes
 

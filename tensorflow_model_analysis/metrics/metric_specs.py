@@ -568,6 +568,7 @@ def to_computations(
         computations.extend(
             tf_metric_wrapper.tf_metric_computations(
                 metrics_by_output,
+                eval_config=eval_config,
                 model_name=model_name,
                 sub_key=sub_key,
                 class_weights=class_weights))

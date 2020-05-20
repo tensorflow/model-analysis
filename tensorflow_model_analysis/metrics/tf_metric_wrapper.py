@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Text, Type, Tuple, Union
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
@@ -43,6 +44,7 @@ _TFMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]
 
 def tf_metric_computations(
     metrics: Union[List[_TFMetricOrLoss], Dict[Text, List[_TFMetricOrLoss]]],
+    eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -57,6 +59,7 @@ def tf_metric_computations(
     metrics: Dict from metric name to tf.keras.metrics.Metric or
       tf.keras.metrics.Loss. For multi-output models a dict of dicts may be
       passed where the first dict is indexed by the output_name.
+    eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
     sub_key: Optional sub key.
     class_weights: Optional class weights to apply to multi-class / multi-label
@@ -107,8 +110,8 @@ def tf_metric_computations(
   for output_name, metrics in confusion_matrix_metrics.items():
     for metric in metrics:
       computations.extend(
-          _wrap_confusion_matrix_metric(metric, model_name, output_name,
-                                        sub_key, class_weights))
+          _wrap_confusion_matrix_metric(metric, eval_config, model_name,
+                                        output_name, sub_key, class_weights))
 
   if non_confusion_matrix_metrics:
     custom_objects = _custom_objects(non_confusion_matrix_metrics)
@@ -122,6 +125,7 @@ def tf_metric_computations(
                 metric_configs,
                 loss_configs,
                 custom_objects,
+                eval_config,
                 model_name,
                 sub_key,
                 class_weights,
@@ -281,8 +285,8 @@ def _load_custom_objects(
 
 
 def _wrap_confusion_matrix_metric(
-    metric: tf.keras.metrics.Metric, model_name: Text, output_name: Text,
-    sub_key: Optional[metric_types.SubKey],
+    metric: tf.keras.metrics.Metric, eval_config: config.EvalConfig,
+    model_name: Text, output_name: Text, sub_key: Optional[metric_types.SubKey],
     class_weights: Optional[Dict[int,
                                  float]]) -> metric_types.MetricComputations:
   """Returns confusion matrix metric wrapped in a more efficient computation."""
@@ -342,6 +346,7 @@ def _wrap_confusion_matrix_metric(
       num_thresholds=num_thresholds,
       thresholds=thresholds,
       name=name,
+      eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
@@ -475,6 +480,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
                metric_configs: Dict[Text, List[Dict[Text, Any]]],
                loss_configs: Dict[Text, List[Dict[Text, Any]]],
                custom_objects: Dict[Text, Type[Any]],
+               eval_config: Optional[config.EvalConfig],
                model_name: Optional[Text],
                sub_key: Optional[metric_types.SubKey],
                class_weights: Dict[int, float],
@@ -482,6 +488,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     # Use parallel lists to store output_names and configs to guarantee
     # consistent ordering and for natural alignment with the accumulator where
     # lists are used instead of dicts for efficency.
+    self._eval_config = eval_config
     self._model_name = model_name
     self._output_names = sorted(metric_configs.keys())
     self._metric_configs = [metric_configs[n] for n in self._output_names]
@@ -536,11 +543,12 @@ class _CompilableMetricsCombiner(beam.CombineFn):
       for label, prediction, example_weight in (
           metric_util.to_label_prediction_example_weight(
               element,
+              eval_config=self._eval_config,
+              model_name=self._model_name,
               output_name=output_name,
               sub_key=self._sub_key,
               class_weights=self._class_weights,
-              flatten=self._class_weights is not None,
-              model_name=self._model_name)):
+              flatten=self._class_weights is not None)):
         accumulator.add_input(i, label, prediction, example_weight)
     if accumulator.len_inputs() >= self._batch_size:
       self._process_batch(accumulator)
