@@ -203,15 +203,15 @@ def load_validation_result(output_path: Text) -> Optional[ValidationResult]:
 
 
 _Plot = Dict[Text, Any]
-_Metrics = Dict[Text, Any]
-_MetricsBySubKey = Dict[Text, _Metrics]
-_MetricsByOutputName = Dict[Text, Dict[Text, Dict[Text, _MetricsBySubKey]]]
+Metrics = Dict[Text, Any]
+MetricsBySubKey = Dict[Text, Metrics]
+MetricsByOutputName = Dict[Text, Dict[Text, Dict[Text, MetricsBySubKey]]]
 
 
 class EvalResult(
     NamedTuple('EvalResult',
                [('slicing_metrics', List[Tuple[slicer.SliceKeyType,
-                                               _MetricsByOutputName]]),
+                                               MetricsByOutputName]]),
                 ('plots', List[Tuple[slicer.SliceKeyType, _Plot]]),
                 ('config', config.EvalConfig), ('data_location', Text),
                 ('file_format', Text), ('model_location', Text)])):
@@ -237,7 +237,7 @@ class EvalResult(
                   output_name: Text = '',
                   class_id: Optional[int] = None,
                   k: Optional[int] = None,
-                  top_k: Optional[int] = None) -> Union[_Metrics, None]:
+                  top_k: Optional[int] = None) -> Union[Metrics, None]:
     """Get metric names and values for a slice.
 
     Args:
@@ -276,7 +276,7 @@ class EvalResult(
       output_name: Text = '',
       class_id: Optional[int] = None,
       k: Optional[int] = None,
-      top_k: Optional[int] = None) -> Dict[Text, _Metrics]:
+      top_k: Optional[int] = None) -> Dict[Text, Metrics]:
     """Get metric names and values for every slice.
 
     Args:

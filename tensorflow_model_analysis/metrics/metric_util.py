@@ -682,7 +682,7 @@ def one_hot(tensor: np.ndarray, target: np.ndarray) -> np.ndarray:
 
 def merge_per_key_computations(
     create_computations_fn: Callable[..., metric_types.MetricComputations],
-) -> metric_types.MetricComputations:
+) -> Callable[..., metric_types.MetricComputations]:
   """Wraps create_computations_fn to be called separately for each key."""
 
   def merge_computations_fn(eval_config: Optional[config.EvalConfig] = None,

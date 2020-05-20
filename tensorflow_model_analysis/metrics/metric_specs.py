@@ -404,7 +404,7 @@ def metric_keys_to_skip_for_confidence_intervals(
 
 
 def metric_thresholds_from_metrics_specs(
-    metrics_specs: List[config.MetricsSpec]
+    metrics_specs: Iterable[config.MetricsSpec]
 ) -> Dict[metric_types.MetricKey, Union[config.GenericChangeThreshold,
                                         config.GenericValueThreshold]]:
   """Returns thresholds associated with given metrics specs."""

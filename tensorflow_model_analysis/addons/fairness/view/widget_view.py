@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.notebook import visualization
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-from typing import Optional, Text, Dict, Callable, Any, List
+from typing import Optional, Text, Dict, Callable, Any, List, Tuple
 
 
 def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> Text:
@@ -72,7 +72,8 @@ def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> Text:
 
 
 def convert_slicing_metrics_to_ui_input(
-    slicing_metrics: model_eval_lib.EvalResult.slicing_metrics,
+    slicing_metrics: List[Tuple[slicer.SliceKeyType,
+                                model_eval_lib.MetricsByOutputName]],
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     output_name: Text = '',
