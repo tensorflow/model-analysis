@@ -54,14 +54,12 @@ export class FairnessMetricSummary extends PolymerElement {
        * A dictionary of slice names and metrics values which itself is a
        * dictionary.
        * @type {!Array<!Object>}
-       *
        */
       data: {type: Array},
 
       /**
        * Data dictionary for the second eval. Optional.
        * @type {!Array<!Object>}
-       *
        */
       dataCompare: {type: Array},
 
@@ -269,6 +267,7 @@ export class FairnessMetricSummary extends PolymerElement {
         // none is selected, use ' '.
         // Needed in order to display multiple thresholds in the paper-listbox's
         // label when multiple thresholds are selected.
+        this.selectedThresholds_.sort();
         const label = this.selectedThresholds_.length > 0 ?
             this.selectedThresholds_.join(', ') :
             ' ';
@@ -294,6 +293,7 @@ export class FairnessMetricSummary extends PolymerElement {
     }
 
     if (this.metricIsThresholded_()) {
+      selectedThresholdsEvent.base.sort();
       const thresholdedMetrics = selectedThresholdsEvent.base.map(
           (threshold) => metric + '@' + threshold);
 

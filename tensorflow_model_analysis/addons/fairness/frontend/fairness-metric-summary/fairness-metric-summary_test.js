@@ -133,18 +133,31 @@ suite('fairness-metric-summary tests', () => {
       metricSummary.baseline = 'Overall';
     };
 
+    const clickThreshold = () => {
+      let thresholdsList = metricSummary.$['thresholdsList'];
+      thresholdsList.selectIndex(2);
+      thresholdsList.selectIndex(0);
+      setTimeout(checkValue, TEST_STEP_TIMEOUT_MS);
+    };
+
     const checkValue = () => {
       assert.deepEqual(
           metricSummary.$['metric-header'].innerText.trim(),
           'post_export_metrics/false_negative_rate');
       assert.deepEqual(metricSummary.$['table'].metrics, [
+        'post_export_metrics/false_negative_rate@0.30',
+        'post_export_metrics/false_negative_rate@0.30 against Overall',
         'post_export_metrics/false_negative_rate@0.50',
-        'post_export_metrics/false_negative_rate@0.50 against Overall'
+        'post_export_metrics/false_negative_rate@0.50 against Overall',
+        'post_export_metrics/false_negative_rate@0.70',
+        'post_export_metrics/false_negative_rate@0.70 against Overall'
       ]);
 
-      assert.deepEqual(
-          metricSummary.$['bar-chart'].metrics,
-          ['post_export_metrics/false_negative_rate@0.50']);
+      assert.deepEqual(metricSummary.$['bar-chart'].metrics, [
+        'post_export_metrics/false_negative_rate@0.30',
+        'post_export_metrics/false_negative_rate@0.50',
+        'post_export_metrics/false_negative_rate@0.70'
+      ]);
       assert.deepEqual(
           metricSummary.$['bar-chart'].slices,
           SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT + 1));
@@ -157,7 +170,7 @@ suite('fairness-metric-summary tests', () => {
           [524, 54, 95, 52]);
       done();
     };
-    setUpAndCheck(fillBoundedValue, checkValue);
+    setUpAndCheck(fillBoundedValue, clickThreshold);
   });
 
   test('PropertiesValueCheckForDoubleValue', done => {

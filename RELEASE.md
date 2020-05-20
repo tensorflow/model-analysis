@@ -16,6 +16,7 @@
     (one per model).
 *   Fixed issue with label_key and prediction_key settings not working with TF
     based metrics.
+*   Thresholds in Fairness Indicators UI are now sorted in ascending order.
 
 ## Breaking changes
 
