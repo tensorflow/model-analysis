@@ -341,16 +341,18 @@ def find_top_slices(
   return result
 
 
-# TODO(pachristopher): Modify API to get MetricKey proto instead of metric name
-# in order to handle multi-model evaluation.
-def display_top_slices(slices: List[SliceComparisonResult],
-                       additional_metric_names: Optional[List[Text]] = None):
-  """Display top slices as a dataframe.
+def get_slices_as_dataframe(
+    slices: List[SliceComparisonResult],
+    additional_metric_names: Optional[List[Text]] = None) -> pd.DataFrame:
+  """Returns top slices as a dataframe.
 
   Args:
     slices: List of ordered slices.
     additional_metric_names: An optional list of additional metric names to
       display
+
+  Returns:
+    Dataframe containing information about the slices.
   """
   rows = []
   for slice_info in slices:
@@ -378,10 +380,4 @@ def display_top_slices(slices: List[SliceComparisonResult],
     ordered_columns.extend(additional_metric_names)
   dataframe = pd.DataFrame(rows, columns=ordered_columns)
   dataframe.set_index('Slice', inplace=True)
-  pd.set_option('max_colwidth', -1)
-  try:
-    from IPython.display import display  # pylint: disable=g-import-not-at-top,import-outside-toplevel
-    from IPython.display import HTML  # pylint: disable=g-import-not-at-top,import-outside-toplevel
-  except ImportError:
-    raise ImportError('Could not import IPython.')
-  display(HTML(dataframe.to_html().replace('\\n', '<br>')))
+  return dataframe
