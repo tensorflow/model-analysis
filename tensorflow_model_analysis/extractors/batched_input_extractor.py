@@ -130,7 +130,6 @@ def _ExtractInputs(batched_extract: types.Extracts,
       _DropUnsupportedColumnsAndFetchRawDataColumn(
           batched_extract[constants.ARROW_RECORD_BATCH_KEY]))
   dataframe = record_batch.to_pandas()
-  original_keys = set(dataframe.columns)
 
   # In multi-output model, the keys (labels, predictions, weights) are
   # keyed by output name. In this case, we will have a nested dict in the
@@ -138,7 +137,7 @@ def _ExtractInputs(batched_extract: types.Extracts,
   def _get_proj_df_dict(original, keys_dict):  # pylint: disable=invalid-name
     df_proj = pd.DataFrame()
     for output_name, key in keys_dict.items():
-      if key in original_keys:
+      if key in dataframe:
         df_proj[output_name] = original[key]
     return df_proj.to_dict(orient='records')
 
@@ -150,44 +149,35 @@ def _ExtractInputs(batched_extract: types.Extracts,
     else:
       result[key] = proj_df.to_dict(orient='records')
 
-  keys_to_remove = set()
   labels_df = pd.DataFrame()
   example_weights_df = pd.DataFrame()
   predictions_df = pd.DataFrame()
   for spec in eval_config.model_specs:
     if spec.label_key:
       labels_df[spec.name] = dataframe[spec.label_key]
-      keys_to_remove.add(spec.label_key)
     elif spec.label_keys:
       labels_df[spec.name] = _get_proj_df_dict(dataframe, spec.label_keys)
-      keys_to_remove.update(set(spec.label_keys.values()))
 
     if spec.example_weight_key:
       example_weights_df[spec.name] = dataframe[spec.example_weight_key]
-      keys_to_remove.add(spec.example_weight_key)
     elif spec.example_weight_keys:
       example_weights_df[spec.name] = _get_proj_df_dict(
           dataframe, spec.example_weight_keys)
-      keys_to_remove.update(set(spec.example_weight_keys.values()))
 
-    if spec.prediction_key and spec.prediction_key in original_keys:
+    if spec.prediction_key and spec.prediction_key in dataframe:
       predictions_df[spec.name] = dataframe[spec.prediction_key]
-      keys_to_remove.add(spec.prediction_key)
     elif spec.prediction_keys:
       proj_df_dict = _get_proj_df_dict(dataframe, spec.prediction_keys)
       if proj_df_dict:
         predictions_df[spec.name] = _get_proj_df_dict(dataframe,
                                                       spec.prediction_keys)
-        keys_to_remove.update(set(spec.prediction_keys.values()))
 
   _add_proj_df(labels_df, result, constants.LABELS_KEY)
   _add_proj_df(example_weights_df, result, constants.EXAMPLE_WEIGHTS_KEY)
   _add_proj_df(predictions_df, result, constants.PREDICTIONS_KEY)
 
   # Add a separate column with the features dict.
-  feature_keys = original_keys.difference(keys_to_remove)
-  result[constants.FEATURES_KEY] = dataframe[feature_keys].to_dict(
-      orient='records')
+  result[constants.FEATURES_KEY] = dataframe.to_dict(orient='records')
 
   # TODO(pachristopher): Consider avoiding setting this key if we don't need
   # this any further in the pipeline. This can avoid a potentially costly copy.

@@ -71,28 +71,37 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 3)
-          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY], {
-              'fixed_int': np.array([1]),
-              'fixed_float': np.array([1.0]),
-          })
+          self.assertDictElementsAlmostEqual(
+              got[0][constants.FEATURES_KEY], {
+                  'fixed_int': np.array([1]),
+                  'fixed_float': np.array([1.0]),
+                  'label': np.array([1.0]),
+                  'example_weight': np.array([0.5]),
+              })
           self.assertEqual(got[0][constants.FEATURES_KEY]['fixed_string'],
                            np.array([b'fixed_string1']))
           self.assertAlmostEqual(got[0][constants.LABELS_KEY], np.array([1.0]))
           self.assertAlmostEqual(got[0][constants.EXAMPLE_WEIGHTS_KEY],
                                  np.array([0.5]))
-          self.assertDictElementsAlmostEqual(got[1][constants.FEATURES_KEY], {
-              'fixed_int': np.array([1]),
-              'fixed_float': np.array([1.0]),
-          })
+          self.assertDictElementsAlmostEqual(
+              got[1][constants.FEATURES_KEY], {
+                  'fixed_int': np.array([1]),
+                  'fixed_float': np.array([1.0]),
+                  'label': np.array([0.0]),
+                  'example_weight': np.array([0.0]),
+              })
           self.assertEqual(got[1][constants.FEATURES_KEY]['fixed_string'],
                            np.array([b'fixed_string2']))
           self.assertAlmostEqual(got[1][constants.LABELS_KEY], np.array([0.0]))
           self.assertAlmostEqual(got[1][constants.EXAMPLE_WEIGHTS_KEY],
                                  np.array([0.0]))
-          self.assertDictElementsAlmostEqual(got[2][constants.FEATURES_KEY], {
-              'fixed_int': np.array([2]),
-              'fixed_float': np.array([0.0]),
-          })
+          self.assertDictElementsAlmostEqual(
+              got[2][constants.FEATURES_KEY], {
+                  'fixed_int': np.array([2]),
+                  'fixed_float': np.array([0.0]),
+                  'label': np.array([0.0]),
+                  'example_weight': np.array([1.0]),
+              })
           self.assertEqual(got[2][constants.FEATURES_KEY]['fixed_string'],
                            np.array([b'fixed_string3']))
           self.assertAlmostEqual(got[2][constants.LABELS_KEY], np.array([0.0]))
@@ -150,10 +159,15 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 2)
-          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY], {
-              'fixed_int': np.array([1]),
-              'fixed_float': np.array([1.0]),
-          })
+          self.assertDictElementsAlmostEqual(
+              got[0][constants.FEATURES_KEY], {
+                  'fixed_int': np.array([1]),
+                  'fixed_float': np.array([1.0]),
+                  'label1': np.array([1.0]),
+                  'label2': np.array([0.0]),
+                  'example_weight1': np.array([0.5]),
+                  'example_weight2': np.array([0.5]),
+              })
           self.assertEqual(got[0][constants.FEATURES_KEY]['fixed_string'],
                            np.array([b'fixed_string1']))
           self.assertDictElementsAlmostEqual(got[0][constants.LABELS_KEY], {
@@ -165,10 +179,15 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
                   'output1': np.array([0.5]),
                   'output2': np.array([0.5])
               })
-          self.assertDictElementsAlmostEqual(got[1][constants.FEATURES_KEY], {
-              'fixed_int': np.array([1]),
-              'fixed_float': np.array([1.0]),
-          })
+          self.assertDictElementsAlmostEqual(
+              got[1][constants.FEATURES_KEY], {
+                  'fixed_int': np.array([1]),
+                  'fixed_float': np.array([1.0]),
+                  'label1': np.array([1.0]),
+                  'label2': np.array([1.0]),
+                  'example_weight1': np.array([0.0]),
+                  'example_weight2': np.array([1.0]),
+              })
           self.assertEqual(got[1][constants.FEATURES_KEY]['fixed_string'],
                            np.array([b'fixed_string2']))
           self.assertDictElementsAlmostEqual(got[1][constants.LABELS_KEY], {
@@ -246,9 +265,16 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 2)
-          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY], {
-              'fixed_int': np.array([1]),
-          })
+          self.assertDictElementsAlmostEqual(
+              got[0][constants.FEATURES_KEY], {
+                  'fixed_int': np.array([1]),
+                  'label': np.array([1.0]),
+                  'label1': np.array([1.0]),
+                  'label2': np.array([0.0]),
+                  'example_weight': np.array([0.5]),
+                  'example_weight1': np.array([0.5]),
+                  'example_weight2': np.array([0.5]),
+              })
           self.assertEqual(got[0][constants.FEATURES_KEY]['fixed_string'],
                            np.array([b'fixed_string1']))
           for model_name in ('model1', 'model2'):
@@ -277,9 +303,16 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
                   'output2': np.array([1.0])
               })
 
-          self.assertDictElementsAlmostEqual(got[1][constants.FEATURES_KEY], {
-              'fixed_int': np.array([1]),
-          })
+          self.assertDictElementsAlmostEqual(
+              got[1][constants.FEATURES_KEY], {
+                  'fixed_int': np.array([1]),
+                  'label': np.array([1.0]),
+                  'label1': np.array([1.0]),
+                  'label2': np.array([1.0]),
+                  'example_weight': np.array([0.0]),
+                  'example_weight1': np.array([0.0]),
+                  'example_weight2': np.array([1.0]),
+              })
           self.assertEqual(got[1][constants.FEATURES_KEY]['fixed_string'],
                            np.array([b'fixed_string2']))
           for model_name in ('model1', 'model2'):

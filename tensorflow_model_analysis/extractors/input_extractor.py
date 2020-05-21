@@ -116,26 +116,19 @@ def _ParseExample(extracts: types.Extracts, eval_config: config.EvalConfig):
     else:
       extracts[key] = feature_values
 
-  keys_to_pop = []
   for spec in eval_config.model_specs:
     if spec.label_key or spec.label_keys:
-      keys, values = _keys_and_values(
+      _, values = _keys_and_values(
           spec.label_key or dict(spec.label_keys), features)
       add_to_extracts(constants.LABELS_KEY, spec.name, values)
-      keys_to_pop.extend(keys)
     if spec.example_weight_key or spec.example_weight_keys:
-      keys, values = _keys_and_values(
+      _, values = _keys_and_values(
           spec.example_weight_key or dict(spec.example_weight_keys), features)
       add_to_extracts(constants.EXAMPLE_WEIGHTS_KEY, spec.name, values)
-      keys_to_pop.extend(keys)
     if spec.prediction_key or spec.prediction_keys:
-      keys, values = _keys_and_values(
+      _, values = _keys_and_values(
           spec.prediction_key or dict(spec.prediction_keys), features)
       add_to_extracts(constants.PREDICTIONS_KEY, spec.name, values)
-      keys_to_pop.extend(keys)
-  for key in keys_to_pop:
-    if key in features:
-      features.pop(key)
   extracts[constants.FEATURES_KEY] = features
   return extracts
 
