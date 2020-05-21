@@ -68,11 +68,18 @@ template.innerHTML = `
       </template>
     </paper-listbox>
   </paper-dropdown-menu>
+  <paper-dropdown-menu label="Sort by" hidden$="[[!evalComparison_()]]">
+    <paper-listbox attr-for-selected="item-name" selected="{{sort_}}" class="dropdown-content" slot="dropdown-content">
+      <paper-item item-name="Slice">Slice</paper-item>
+      <paper-item item-name="Eval">Eval</paper-item>
+    </paper-listbox>
+  </paper-dropdown-menu>
 </div>
 <fairness-bounded-value-bar-chart id="bar-chart" metrics="[[metrics_]]"
                                   data="[[data]]" data-compare="[[dataCompare]]"
                                   slices="{{slicesToPlot_}}" baseline="[[baseline]]"
-                                  eval-name="[[evalName]]" eval-name-compare="[[evalNameCompare]]">
+                                  eval-name="[[evalName]]" eval-name-compare="[[evalNameCompare]]"
+                                  sort="[[sort_]]">
 </fairness-bounded-value-bar-chart>
 <fairness-metrics-table id="table" metrics="[[metricsForTable_]]" data="[[tableData_]]"
                         data-compare="[[tableDataCompare_]]"

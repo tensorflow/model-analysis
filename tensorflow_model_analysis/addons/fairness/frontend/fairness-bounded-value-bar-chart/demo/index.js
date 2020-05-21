@@ -147,6 +147,7 @@
   element.slices = SLICES_COMPARE.slice(1, 3);
   element.evalName = 'EvalA';
   element.evalNameCompare = 'EvalB';
+  element.sort = 'Slice';
 
   element = document.getElementById('double-compare');
   element.data = generateDoubleValueData(SLICES_COMPARE);
@@ -156,4 +157,5 @@
   element.slices = SLICES_COMPARE.slice(1, 3);
   element.evalName = 'EvalA';
   element.evalNameCompare = 'EvalB';
+  element.sort = 'Eval';
 })();

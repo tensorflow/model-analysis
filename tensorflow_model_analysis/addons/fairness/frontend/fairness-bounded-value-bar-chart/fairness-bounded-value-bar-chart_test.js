@@ -292,38 +292,56 @@ suite('fairness-bounded-value-bar-chart tests', () => {
     setTimeout(fillData, 0);
   });
 
-  test('Sort', done => {
+  const d3DataObject = (fullSliceName, evalName) => {
+    const obj = new Object();
+    obj.fullSliceName = fullSliceName;
+    obj.evalName = evalName;
+    return obj;
+  };
+
+  const D3_DATA = [
+    d3DataObject('Overall', 'eval1'), d3DataObject('slice:A', 'eval1'),
+    d3DataObject('slice:B', 'eval1'), d3DataObject('Overall', 'eval2'),
+    d3DataObject('slice:A', 'eval2'), d3DataObject('slice:B', 'eval2')
+  ];
+
+  const ALTERNATING_EVALS =
+      ['eval1', 'eval2', 'eval1', 'eval2', 'eval1', 'eval2'];
+  const ALTERNATING_SLICES =
+      ['Overall', 'slice:A', 'slice:B', 'Overall', 'slice:A', 'slice:B'];
+
+  const SLICE_SORT = 'Slice';
+  const EVAL_SORT = 'Eval';
+
+  test('SortBySlice_BaselineOverall', done => {
     barChart = fixture('main');
 
     // We define these so that barChart knows we are comparing evals
     barChart.data = BOUNDED_VALUE_DATA;
     barChart.dataCompare = BOUNDED_VALUE_DATA;
 
-    const d3DataObject = (fullSliceName, evalName) => {
-      const obj = new Object();
-      obj.fullSliceName = fullSliceName;
-      obj.evalName = evalName;
-      return obj;
-    };
-    const d3Data = [
-      d3DataObject('Overall', 'eval1'), d3DataObject('slice:A', 'eval1'),
-      d3DataObject('slice:B', 'eval1'), d3DataObject('Overall', 'eval2'),
-      d3DataObject('slice:A', 'eval2'), d3DataObject('slice:B', 'eval2')
-    ];
+    const sortedD3data = D3_DATA.sort(barChart.sortD3_('Overall', SLICE_SORT));
+    const actualSlices = sortedD3data.map(d => d.fullSliceName);
+    const actualEvals = sortedD3data.map(d => d.evalName);
 
-    // Baseline = Overall
-    d3Data.sort(barChart.sortD3_('Overall'));
     const expectedSlicesOverall =
         ['Overall', 'Overall', 'slice:A', 'slice:A', 'slice:B', 'slice:B'];
-    const expectedEvals =
-        ['eval1', 'eval2', 'eval1', 'eval2', 'eval1', 'eval2'];
-    for (var i = 0; i < d3Data.length; i++) {
-      assert.equal(d3Data[i].fullSliceName, expectedSlicesOverall[i]);
-      assert.equal(d3Data[i].evalName, expectedEvals[i]);
-    }
 
-    // Baseline = A
-    d3Data.sort(barChart.sortD3_('slice:A'));
+    assert.sameOrderedMembers(actualSlices, expectedSlicesOverall);
+    assert.sameOrderedMembers(actualEvals, ALTERNATING_EVALS);
+  });
+
+  test('SortBySlice_BaselineA', done => {
+    barChart = fixture('main');
+
+    // We define these so that barChart knows we are comparing evals
+    barChart.data = BOUNDED_VALUE_DATA;
+    barChart.dataCompare = BOUNDED_VALUE_DATA;
+
+    const sortedD3data = D3_DATA.sort(barChart.sortD3_('slice:A', SLICE_SORT));
+    const actualSlices = sortedD3data.map(d => d.fullSliceName);
+    const actualEvals = sortedD3data.map(d => d.evalName);
+
     const expectedSlicesA = [
       'slice:A',
       'slice:A',
@@ -332,13 +350,22 @@ suite('fairness-bounded-value-bar-chart tests', () => {
       'slice:B',
       'slice:B',
     ];
-    for (var i = 0; i < d3Data.length; i++) {
-      assert.equal(d3Data[i].fullSliceName, expectedSlicesA[i]);
-      assert.equal(d3Data[i].evalName, expectedEvals[i]);
-    }
 
-    // Baseline = B
-    d3Data.sort(barChart.sortD3_('slice:B'));
+    assert.sameOrderedMembers(actualSlices, expectedSlicesA);
+    assert.sameOrderedMembers(actualEvals, ALTERNATING_EVALS);
+  });
+
+  test('SortBySlice_BaselineB', done => {
+    barChart = fixture('main');
+
+    // We define these so that barChart knows we are comparing evals
+    barChart.data = BOUNDED_VALUE_DATA;
+    barChart.dataCompare = BOUNDED_VALUE_DATA;
+
+    const sortedD3data = D3_DATA.sort(barChart.sortD3_('slice:B', SLICE_SORT));
+    const actualSlices = sortedD3data.map(d => d.fullSliceName);
+    const actualEvals = sortedD3data.map(d => d.evalName);
+
     const expectedSlicesB = [
       'slice:B',
       'slice:B',
@@ -347,9 +374,26 @@ suite('fairness-bounded-value-bar-chart tests', () => {
       'slice:A',
       'slice:A',
     ];
-    for (var i = 0; i < d3Data.length; i++) {
-      assert.equal(d3Data[i].fullSliceName, expectedSlicesB[i]);
-      assert.equal(d3Data[i].evalName, expectedEvals[i]);
-    }
+
+    assert.sameOrderedMembers(actualSlices, expectedSlicesB);
+    assert.sameOrderedMembers(actualEvals, ALTERNATING_EVALS);
+  });
+
+  test('SortByEval', done => {
+    barChart = fixture('main');
+
+    // We define these so that barChart knows we are comparing evals
+    barChart.data = BOUNDED_VALUE_DATA;
+    barChart.dataCompare = BOUNDED_VALUE_DATA;
+
+    const sortedD3data = D3_DATA.sort(barChart.sortD3_('Overall', EVAL_SORT));
+    const actualSlices = sortedD3data.map(d => d.fullSliceName);
+    const actualEvals = sortedD3data.map(d => d.evalName);
+
+    const expectedEvals =
+        ['eval1', 'eval1', 'eval1', 'eval2', 'eval2', 'eval2'];
+
+    assert.sameOrderedMembers(actualSlices, ALTERNATING_SLICES);
+    assert.sameOrderedMembers(actualEvals, expectedEvals);
   });
 });

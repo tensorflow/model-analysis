@@ -159,13 +159,19 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
        * @private {!d3.tip.x}
        */
       tip_: {value: buildTooltips},
+
+      /**
+       * The selected parameter to sort on - can be 'Slice' or 'Eval'.
+       * @private {string}
+       */
+      sort: {type: String},
     };
   }
 
   static get observers() {
     return [
-      'initializePlotGraph_(data, dataCompare, metrics, slices, baseline, ' +
-          'evalName, evalNameCompare, isAttached_, tip_)',
+      'renderClusteredBarChart_(data, dataCompare, metrics, slices, baseline, ' +
+          'evalName, evalNameCompare, sort, isAttached_, tip_)',
     ];
   }
 
@@ -184,14 +190,15 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    * @param {string} baseline slice of the metrics.
    * @param {string} evalName to distinguish evals.
    * @param {string} evalNameCompare to distinguish evals.
+   * @param {string} sort how to sort the clusters
    * @param {boolean} isAttached Whether this element is attached to
    *     the DOM.
    * @param {!d3.tip.x} tip for bar chart.
    * @private
    */
-  initializePlotGraph_(
+  renderClusteredBarChart_(
       data, dataCompare, metrics, slices, baseline, evalName, evalNameCompare,
-      isAttached, tip) {
+      sort, isAttached, tip) {
     if (!data || !metrics || !slices || !baseline || !isAttached ||
         (this.evalComparison_() && (!evalName || !evalNameCompare))) {
       return;
@@ -224,10 +231,9 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       });
     }
 
-
     const d3Data = this.createD3Data_(
-        data, dataCompare, metrics, slices, baseline, evalName,
-        evalNameCompare);
+        data, dataCompare, metrics, slices, baseline, evalName, evalNameCompare,
+        sort);
     const graphConfig = this.buildGraphConfig_(d3Data);
     this.drawGraph_(d3Data, baseline, graphConfig, tip);
   }
@@ -241,11 +247,13 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    * @param {string} baseline slice of the metrics.
    * @param {string} evalName to distinguish evals.
    * @param {string} evalNameCompare to distinguish evals.
+   * @param {string} sort how to sort the clusters
    * @return {!Array<!Object>}
    * @private
    */
   createD3Data_(
-      data, dataCompare, metrics, slices, baseline, evalName, evalNameCompare) {
+      data, dataCompare, metrics, slices, baseline, evalName, evalNameCompare,
+      sort) {
     // d3DataObjects = metrics data for each slice
     const d3DataObject = (metricsData) => {
       return {
@@ -305,7 +313,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       }
     });
 
-    d3Data.sort(this.sortD3_(baseline));
+    d3Data.sort(this.sortD3_(baseline, sort));
     return d3Data;
   }
 
@@ -317,13 +325,10 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    */
   buildGraphConfig_(d3Data) {
     // Build slice scale - these are groups of bars.
-    const slicesX =
-        d3.scaleBand()
-            .domain(d3Data.map(
-                d => this.evalComparison_() ? d.sliceValue + '-' + d.evalName :
-                                              d.sliceValue))
-            .rangeRound([GRAPH_BOUND.left, GRAPH_BOUND.right])
-            .padding(SLICES_PADDING);
+    const slicesX = d3.scaleBand()
+                        .domain(d3Data.map(d => this.labelName_(d)))
+                        .rangeRound([GRAPH_BOUND.left, GRAPH_BOUND.right])
+                        .padding(SLICES_PADDING);
 
     // Build metrics scale - these are individual bars.
     const metricNames = d3Data.reduce((set, slice) => {
@@ -390,19 +395,17 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     svg.html('');
 
     // Create a group of bars for every cluster
-    const bars = svg.append('g')
-                     .attr('id', 'bars')
-                     .selectAll('g')
-                     .data(d3Data)
-                     .enter()
-                     .append('g')
-                     .attr(
-                         'transform',
-                         d => `translate(${
-                             graphConfig['slicesX'](
-                                 this.evalComparison_() ?
-                                     d.sliceValue + '-' + d.evalName :
-                                     d.sliceValue)},0)`);
+    const bars =
+        svg.append('g')
+            .attr('id', 'bars')
+            .selectAll('g')
+            .data(d3Data)
+            .enter()
+            .append('g')
+            .attr(
+                'transform',
+                d => `translate(${
+                    graphConfig['slicesX'](this.labelName_(d))},0)`);
 
     // For every cluster, add a bar for every eval-threshold pair
     bars.selectAll('rect')
@@ -492,35 +495,42 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
   }
 
   /**
-   * Sorting function for d3 data.
+   * Returns sorting function for d3 data.
    * @param {string} baseline
+   * @param {string} sort
    * @return {function(!Object, !Object): number}
    * @private
    */
-  sortD3_(baseline) {
+  sortD3_(baseline, sort) {
+    function sliceCompare(a, b) {
+      // Ensure that the baseline slice always appears first.
+      if (a.fullSliceName === baseline && b.fullSliceName === baseline) {
+        return 0;
+      } else if (a.fullSliceName === baseline) {
+        return -1;
+      } else if (b.fullSliceName === baseline) {
+        return 1;
+      } else {
+        return a.fullSliceName.localeCompare(b.fullSliceName);
+      }
+    }
+
     if (this.evalComparison_()) {
-      // Sort by slice name, splitting ties on eval name
-      return (a, b) => {
-        // Ensure that the baseline slice always appears first.
-        if (a.fullSliceName === baseline && b.fullSliceName === baseline) {
-          return a.evalName.localeCompare(b.evalName);
-        } else if (a.fullSliceName === baseline) {
-          return -1;
-        } else if (b.fullSliceName === baseline) {
-          return 1;
-        } else {
-          return a.fullSliceName === b.fullSliceName ?
-              a.evalName.localeCompare(b.evalName) :
-              a.fullSliceName.localeCompare(b.fullSliceName);
-        }
-      };
+      if (sort === 'Slice') {
+        return (a, b) => {
+          return sliceCompare(a, b) || a.evalName.localeCompare(b.evalName);
+        };
+      } else {  // Sort by eval name
+        return (a, b) => {
+          return a.evalName.localeCompare(b.evalName) || sliceCompare(a, b);
+        };
+      }
     } else {
       return (a, b) => {
         // Ensure that the baseline slice always appears on the left side.
         if (a.fullSliceName == baseline) {
           return -1;
-        }
-        if (b.fullSliceName == baseline) {
+        } else if (b.fullSliceName == baseline) {
           return 1;
         }
         // Sort by the first threshold value if multiple thresholds are present.
@@ -537,6 +547,24 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
           return 1;
         }
       };
+    }
+  }
+
+  /**
+   * Label name for a bar cluster.
+   * @param {!Object} d a d3DataObject, used to create a bar cluster.
+   * @return {string}
+   * @private
+   */
+  labelName_(d) {
+    if (!this.evalComparison_()) {
+      return d.sliceValue;
+    }
+    else if (this.sort === 'Slice') {
+      return d.evalName + '-' + d.sliceValue;
+    }
+    else {  // this.sort === 'Eval'
+      return d.sliceValue + '-' + d.evalName;
     }
   }
 }

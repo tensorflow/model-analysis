@@ -16,7 +16,9 @@
     (one per model).
 *   Fixed issue with label_key and prediction_key settings not working with TF
     based metrics.
-*   Thresholds in Fairness Indicators UI are now sorted in ascending order.
+*   Fairness Indicators UI
+    *   Thresholds are now sorted in ascending order.
+    *   Barchart can now be sorted by either slice or eval.
 *   Added support for slicing on any value extracted from the inputs (e.g. raw
     labels).
 

@@ -260,13 +260,12 @@ suite('fairness-metric-summary tests', () => {
     };
 
     const chooseSlices = () => {
-      // There are two parameters - slices and thresholds.
-      // So the number of selectable items should be the sum of the two.
       let paperItems = queryElement('paper-item');
-      assert.equal(paperItems.length, SLICES.length);
+      let numOrderingOptions = 2;  // Slice and Eval
+      assert.equal(paperItems.length, numOrderingOptions + SLICES.length);
 
       let slices = [];
-      for (let i = 0; i < paperItems.length; i++) {
+      for (let i = 2; i < paperItems.length; i++) {
         slices.push(paperItems[i]);
       }
       // The Overall slice should be disabled by default

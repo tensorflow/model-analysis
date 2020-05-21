@@ -200,7 +200,15 @@ export class FairnessMetricSummary extends PolymerElement {
         type: Array,
         computed: 'computeExampleCounts_(baseline, data, ' +
             'slicesToPlot_)'
-      }
+      },
+
+      /**
+       * The selected parameter to sort on - can be 'Slice' or 'Eval'.
+       * @private {string}
+       */
+      sort_: {
+        type: String, value: 'Slice'
+      },
     };
   }
 
@@ -210,7 +218,7 @@ export class FairnessMetricSummary extends PolymerElement {
           'diffRatios_)',
       'refreshSelectableSlices_(baseline, slices, ' +
           'configSelectedSlices_.length)',
-      'initializeSelectedThresholds_(thresholds.*)'
+      'initializeSelectedThresholds_(thresholds.*)',
     ];
   }
 
