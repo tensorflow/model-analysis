@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,7 +60,7 @@ def render_fairness_indicator(slicing_metrics=None,
                 event_handler_code=event_handler_code,
                 slicingMetrics=json.dumps(slicing_metrics))))
   else:
-    eval_name, eval_name_compare = multi_slicing_metrics.keys()
+    eval_name, eval_name_compare = tuple(multi_slicing_metrics.keys())
     slicing_metrics = multi_slicing_metrics[eval_name]
     slicing_metrics_compare = multi_slicing_metrics[eval_name_compare]
     display.display(
