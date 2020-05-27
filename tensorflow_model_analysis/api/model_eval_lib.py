@@ -189,7 +189,7 @@ def load_plots(output_path: Text) -> List[PlotsForSlice]:
 ValidationResult = validation_result_pb2.ValidationResult
 
 
-def load_validation_result(output_path: Text) -> Optional[ValidationResult]:
+def load_validation_result(output_path: Text) -> ValidationResult:
   """Read and deserialize the ValidationResult."""
   validation_records = []
   filepath = os.path.join(output_path, constants.VALIDATIONS_KEY)
@@ -197,9 +197,8 @@ def load_validation_result(output_path: Text) -> Optional[ValidationResult]:
     filepath = output_path  # Allow full file to be passed.
   for record in tf.compat.v1.python_io.tf_record_iterator(filepath):
     validation_records.append(ValidationResult.FromString(record))
-  if validation_records:
-    assert len(validation_records) == 1
-    return validation_records[0]
+  assert len(validation_records) == 1
+  return validation_records[0]
 
 
 _Plot = Dict[Text, Any]

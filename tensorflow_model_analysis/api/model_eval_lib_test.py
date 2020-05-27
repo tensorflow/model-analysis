@@ -21,6 +21,7 @@ import json
 import os
 import tempfile
 
+from absl.testing import absltest
 from absl.testing import parameterized
 
 import tensorflow as tf
@@ -1298,6 +1299,31 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
 
     # Test get_slices()
     self.assertListEqual(eval_result.get_slices(), [overall_slice, male_slice])
+
+  def testLoadValidationResult(self):
+    result = validation_result_pb2.ValidationResult(validation_ok=True)
+    path = os.path.join(absltest.get_default_test_tmpdir(), 'results.tfrecord')
+    with tf.io.TFRecordWriter(path) as writer:
+      writer.write(result.SerializeToString())
+    loaded_result = model_eval_lib.load_validation_result(path)
+    self.assertTrue(loaded_result.validation_ok)
+
+  def testLoadValidationResultDir(self):
+    result = validation_result_pb2.ValidationResult(validation_ok=True)
+    path = os.path.join(absltest.get_default_test_tmpdir(),
+                        constants.VALIDATIONS_KEY)
+    with tf.io.TFRecordWriter(path) as writer:
+      writer.write(result.SerializeToString())
+    loaded_result = model_eval_lib.load_validation_result(os.path.dirname(path))
+    self.assertTrue(loaded_result.validation_ok)
+
+  def testLoadValidationResultEmptyFile(self):
+    path = os.path.join(absltest.get_default_test_tmpdir(),
+                        constants.VALIDATIONS_KEY)
+    with tf.io.TFRecordWriter(path):
+      pass
+    with self.assertRaises(AssertionError):
+      model_eval_lib.load_validation_result(path)
 
 
 if __name__ == '__main__':
