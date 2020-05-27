@@ -21,6 +21,7 @@
     *   Barchart can now be sorted by either slice or eval.
 *   Added support for slicing on any value extracted from the inputs (e.g. raw
     labels).
+*   Added support for filtering extracts based on sub-keys.
 
 ## Breaking changes
 

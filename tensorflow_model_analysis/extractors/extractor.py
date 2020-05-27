@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import List, NamedTuple, Optional, Text
+from typing import Any, Dict, Iterable, NamedTuple, Optional, Text, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
@@ -43,15 +43,28 @@ Extractor = NamedTuple(  # pylint: disable=invalid-name
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-def Filter(extracts: beam.pvalue.PCollection,
-           include: Optional[List[Text]] = None,
-           exclude: Optional[List[Text]] = None):
+def Filter(  # pylint: disable=invalid-name
+    extracts: beam.pvalue.PCollection,
+    include: Optional[Union[Iterable[Text], Dict[Text, Any]]] = None,
+    exclude: Optional[Union[Iterable[Text],
+                            Dict[Text,
+                                 Any]]] = None) -> beam.pvalue.PCollection:
   """Filters extracts to include/exclude specified keys.
 
   Args:
     extracts: PCollection of extracts.
-    include: Keys to include in output.
-    exclude: Keys to exclude from output.
+    include: List or map of keys to include in output. If a map of keys is
+      passed then the keys and sub-keys that exist in the map will be included
+      in the output. An empty dict behaves as a wildcard matching all keys or
+      the value itself. Since matching on feature values is not currently
+      supported, an empty dict must be used to represent the leaf nodes.
+      For example: {'key1': {'key1-subkey': {}}, 'key2': {}}.
+    exclude: List or map of keys to exclude from output. If a map of keys is
+      passed then the keys and sub-keys that exist in the map will be excluded
+      from the output. An empty dict behaves as a wildcard matching all keys or
+      the value itself. Since matching on feature values is not currently
+      supported, an empty dict must be used to represent the leaf nodes.
+      For example: {'key1': {'key1-subkey': {}}, 'key2': {}}.
 
   Returns:
     Filtered PCollection of Extracts.
@@ -62,18 +75,65 @@ def Filter(extracts: beam.pvalue.PCollection,
   if include and exclude:
     raise ValueError('only one of include or exclude should be used.')
 
-  # Make into sets for lookup efficiency.
-  include = frozenset(include or [])
-  exclude = frozenset(exclude or [])
+  if not isinstance(include, dict):
+    include = {k: {} for k in include or []}
+  if not isinstance(exclude, dict):
+    exclude = {k: {} for k in exclude or []}
 
   def filter_extracts(extracts: types.Extracts) -> types.Extracts:  # pylint: disable=invalid-name
     """Filters extracts."""
     if not include and not exclude:
       return extracts
     elif include:
-      return {k: v for k, v in extracts.items() if k in include}
+      return _include_filter(include, extracts)
     else:
-      assert exclude
-      return {k: v for k, v in extracts.items() if k not in exclude}
+      return _exclude_filter(exclude, extracts)
 
   return extracts | beam.Map(filter_extracts)
+
+
+def _include_filter(include, target):
+  """Filters target to only include keys in include.
+
+  Args:
+    include: Dict of keys from target to include. An empty dict matches all
+      values.
+    target: Target dict to apply filter to.
+
+  Returns:
+    A new dict with values from target filtered out.
+  """
+  if not include:
+    return target
+
+  result = {}
+  for key, subkeys in include.items():
+    if key in target:
+      if subkeys:
+        result[key] = _include_filter(subkeys, target[key])
+      else:
+        result[key] = target[key]
+  return result
+
+
+def _exclude_filter(exclude, target):
+  """Filters output to only include keys not in exclude.
+
+  Args:
+    exclude: Dict of keys from target to exclude. An empty dict matches all
+      values.
+    target: Target dict to apply filter to.
+
+  Returns:
+    A new dict with values from target filtered out.
+  """
+  result = {}
+  for key, value in target.items():
+    if key in exclude:
+      if exclude[key]:
+        value = _exclude_filter(exclude[key], target[key])
+        if value:
+          result[key] = value
+    else:
+      result[key] = value
+  return result
