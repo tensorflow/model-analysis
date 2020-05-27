@@ -305,6 +305,7 @@ def _move_jackknife_sample_id_to_value(
                                              len(index_and_sample_id)))
   subkey_index, sample_id = index_and_sample_id[0]
   original_slice_key = slice_key[:subkey_index] + slice_key[subkey_index + 1:]
+  sample = sample.copy()
   sample[metric_types.MetricKey(_JACKKNIFE_SAMPLE_ID_KEY)] = sample_id
   return original_slice_key, sample
 
@@ -353,8 +354,9 @@ class _JackknifeSampleCombiner(beam.CombineFn):
   def add_input(self, accumulator: _MergeJacknifeAccumulator,
                 sample: metric_types.MetricsDict) -> _MergeJacknifeAccumulator:
     if sample[self._sample_id_key] == _JACKKNIFE_FULL_SAMPLE_ID:
-      sample.pop(self._sample_id_key)
-      accumulator.unsampled_values = sample
+      full_sample = sample.copy()
+      full_sample.pop(self._sample_id_key)
+      accumulator.unsampled_values = full_sample
     else:
       accumulator.num_samples += 1
       for metric_key, value in sample.items():
