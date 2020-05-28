@@ -18,7 +18,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-# Standard Imports
+from typing import Any, List, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
@@ -30,12 +30,11 @@ from tensorflow_model_analysis.extractors import feature_extractor
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-from typing import List, Optional
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(bytes)
-@beam.typehints.with_output_types(evaluator.Evaluation)
+@beam.typehints.with_output_types(Any)
 def BuildAnalysisTable(  # pylint: disable=invalid-name
     examples: beam.pvalue.PCollection,
     eval_shared_model: types.EvalSharedModel,

@@ -127,12 +127,13 @@ class _CombineValidations(beam.CombineFn):
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(evaluator.Evaluation)
+# TODO(b/157600974): Add typehint.
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteMetricsPlotsAndValidations(
     evaluation: evaluator.Evaluation, output_paths: Dict[Text, Text],
     add_metrics_callbacks: List[types.AddMetricsCallbackType],
-    metrics_key: Text, plots_key: Text, validations_key: Text):
+    metrics_key: Text, plots_key: Text,
+    validations_key: Text) -> beam.pvalue.PDone:
   """PTransform to write metrics and plots."""
   # Skip write if no metrics, plots, or validations are used.
   if (metrics_key not in evaluation and plots_key not in evaluation and

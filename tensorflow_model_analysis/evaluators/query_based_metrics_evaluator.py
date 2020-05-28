@@ -217,7 +217,7 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(evaluator.Evaluation)
+@beam.typehints.with_output_types(Any)
 def EvaluateQueryBasedMetrics(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     prediction_key: Text,

@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import List, Optional, Text
+from typing import Any, List, Optional, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -62,7 +62,7 @@ def AnalysisTableEvaluator(  # pylint: disable=invalid-name
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(evaluator.Evaluation)
+@beam.typehints.with_output_types(Any)
 def EvaluateExtracts(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     key: Text = constants.ANALYSIS_KEY,

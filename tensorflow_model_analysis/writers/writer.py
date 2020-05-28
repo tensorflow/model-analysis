@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import NamedTuple, Text, Union
+from typing import Any, NamedTuple, Text, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis.evaluators import evaluator
@@ -37,11 +37,11 @@ Writer = NamedTuple(
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(evaluator.Evaluation)
+@beam.typehints.with_input_types(Any)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def Write(evaluation_or_validation: Union[evaluator.Evaluation,
                                           validator.Validation], key: Text,
-          ptransform: beam.PTransform):
+          ptransform: beam.PTransform) -> beam.pvalue.PDone:
   """Writes given Evaluation or Validation data using given writer PTransform.
 
   Args:

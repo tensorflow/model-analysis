@@ -22,7 +22,7 @@ from __future__ import print_function
 import os
 import pickle
 
-from typing import Dict, Optional, Text, Tuple
+from typing import Any, Dict, Optional, Text, Tuple
 
 import apache_beam as beam
 import six
@@ -136,12 +136,12 @@ def EvalConfigWriter(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(evaluator.Evaluation)
+@beam.typehints.with_input_types(Any)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteEvalConfig(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation, eval_config: config.EvalConfig,
     output_path: Text, data_location: Text, file_format: Text,
-    model_locations: Dict[Text, Text], filename: Text):
+    model_locations: Dict[Text, Text], filename: Text) -> beam.pvalue.PDone:
   """Writes EvalConfig to file.
 
   Args:

@@ -758,7 +758,7 @@ def default_writers(
 @beam.typehints.with_input_types(Union[bytes, str, types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
 def InputsToExtracts(  # pylint: disable=invalid-name
-    inputs: beam.pvalue.PCollection):
+    inputs: beam.pvalue.PCollection) -> beam.pvalue.PCollection:
   """Converts serialized inputs (e.g. examples) to Extracts if not already."""
 
   def to_extracts(x: Union[bytes, str, types.Extracts]) -> types.Extracts:
@@ -776,7 +776,7 @@ def InputsToExtracts(  # pylint: disable=invalid-name
 @beam.typehints.with_input_types(Union[bytes, pa.RecordBatch])
 @beam.typehints.with_output_types(types.Extracts)
 def BatchedInputsToExtracts(  # pylint: disable=invalid-name
-    batched_inputs: beam.pvalue.PCollection):
+    batched_inputs: beam.pvalue.PCollection) -> beam.pvalue.PCollection:
   """Converts Arrow RecordBatch inputs to Extracts."""
 
   def to_extracts(x: Union[bytes, pa.RecordBatch]) -> types.Extracts:
@@ -792,10 +792,10 @@ def BatchedInputsToExtracts(  # pylint: disable=invalid-name
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(evaluator.Evaluation)
+@beam.typehints.with_output_types(Any)
 def ExtractAndEvaluate(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection, extractors: List[extractor.Extractor],
-    evaluators: List[evaluator.Evaluator]):
+    evaluators: List[evaluator.Evaluator]) -> evaluator.Evaluation:
   """Performs Extractions and Evaluations in provided order."""
   # evaluation[k] = list of values for k
   evaluation = {}
@@ -878,12 +878,11 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Union[evaluator.Evaluation,
-                                       validator.Validation])
+# TODO(b/157600974): Add input typehint.
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def WriteResults(  # pylint: disable=invalid-name
     evaluation_or_validation: Union[evaluator.Evaluation, validator.Validation],
-    writers: List[writer.Writer]):
+    writers: List[writer.Writer]) -> beam.pvalue.PDone:
   """Writes Evaluation or Validation results using given writers.
 
   Args:

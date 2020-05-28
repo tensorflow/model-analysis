@@ -170,7 +170,6 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(evaluator.Evaluation)
 def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_shared_model: types.EvalSharedModel,

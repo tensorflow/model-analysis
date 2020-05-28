@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type, Union
 
 import apache_beam as beam
 import numpy as np
@@ -31,10 +31,13 @@ from google.protobuf import message
 
 DEFAULT_NUM_BOOTSTRAP_SAMPLES = 20
 
+# TFMA v1 uses Text for its keys while TFMA v2 uses MetricKey
+_MetricsDict = Dict[Any, Any]
+
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
-@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, Dict[Text, Any]])
+@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, _MetricsDict])
 def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
     sliced_extracts: beam.pvalue.PCollection,
     compute_per_slice_metrics_cls: Type[beam.PTransform],
@@ -100,14 +103,10 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
 class _MergeBootstrap(beam.DoFn):
   """Merge the bootstrap values and fit a T-distribution to get confidence."""
 
-  # TODO(b/142683826): Beam type check error in
-  # //third_party/py/tensorflow_model_analysis/evaluators:metrics_and_plots_evaluator_v2_test.python3
-  # There is some disagreement regarding key types (Text or MetricKey).
-  # Remove quotes around Text below when resolved.
   def process(
-      self, element: Tuple[slicer.SliceKeyType, Iterable[Dict['Text', Any]]],
-      unsampled_results: Dict[slicer.SliceKeyType, Dict[Text, Any]]
-  ) -> Generator[Tuple[slicer.SliceKeyType, Dict['Text', Any]], None, None]:
+      self, element: Tuple[slicer.SliceKeyType, Iterable[_MetricsDict]],
+      unsampled_results: Dict[slicer.SliceKeyType, _MetricsDict]
+  ) -> Iterator[Tuple[slicer.SliceKeyType, _MetricsDict]]:
     """Merge the bootstrap values.
 
     Args:

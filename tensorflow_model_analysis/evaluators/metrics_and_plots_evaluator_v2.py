@@ -488,7 +488,7 @@ def _filter_by_key_type(
     sliced_metrics_and_plots: Tuple[slicer.SliceKeyType,
                                     Dict[metric_types.MetricKey, Any]],
     key_type: Type[Union[metric_types.MetricKey, metric_types.PlotKey]]
-) -> Tuple[slicer.SliceKeyType, Dict[Text, Any]]:
+) -> Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]:
   """Filters metrics and plots by key type."""
   slice_value, metrics_and_plots = sliced_metrics_and_plots
   output = {}
@@ -542,7 +542,7 @@ def _get_confidence_interval_params(
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(Union[types.Extracts, List[types.Extracts]])
-@beam.typehints.with_output_types(evaluator.Evaluation)
+@beam.typehints.with_output_types(Any)
 def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_config: config.EvalConfig,
@@ -682,7 +682,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(evaluator.Evaluation)
+@beam.typehints.with_output_types(Any)
 def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_config: config.EvalConfig,
