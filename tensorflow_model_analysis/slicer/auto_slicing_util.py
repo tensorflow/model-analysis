@@ -357,11 +357,8 @@ def get_slices_as_dataframe(
   rows = []
   for slice_info in slices:
     slice_metrics = _get_metrics_as_dict(slice_info.raw_slice_metrics)
-    slice_key = ''
-    for column, value in slice_info.slice_key:
-      slice_key += column + ' : ' + str(value) + '\n'
     row = {
-        'Slice': slice_key,
+        'Slice': slicer_lib.stringify_slice_key(slice_info.slice_key),
         'Size': slice_info.num_examples,
         'Slice metric': slice_info.slice_metric,
         'Base metric': slice_info.base_metric,
