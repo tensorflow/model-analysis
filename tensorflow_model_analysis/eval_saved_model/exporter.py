@@ -19,15 +19,16 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import collections
 import contextlib
 import os
 import types
+from typing import Callable, Dict, List, Optional, Text, Union
 
 import tensorflow as tf
 
 from tensorflow_model_analysis import util as tfma_util
 from tensorflow_model_analysis.eval_saved_model import export
-from typing import Callable, Dict, List, Optional, Text
 from tensorflow.python.estimator import gc
 from tensorflow.python.framework import errors_impl
 from tensorflow.python.platform import gfile
@@ -246,7 +247,8 @@ class LatestExporter(tf.estimator.Exporter):
 
 @contextlib.contextmanager
 def _remove_metrics(estimator: tf.estimator.Estimator,
-                    metrics_to_remove: List[Text]):
+                    metrics_to_remove: Union[List[Text], Callable[[Text],
+                                                                  bool]]):
   """Modifies the Estimator to make its model_fn return less metrics in EVAL.
 
   Note that this only removes the metrics from the
@@ -277,8 +279,12 @@ def _remove_metrics(estimator: tf.estimator.Estimator,
     if mode == tf.estimator.ModeKeys.EVAL:
       filtered_eval_metric_ops = {}
       for k, v in result.eval_metric_ops.items():
-        if k in metrics_to_remove:
-          continue
+        if isinstance(metrics_to_remove, collections.Iterable):
+          if k in metrics_to_remove:
+            continue
+        elif callable(metrics_to_remove):
+          if metrics_to_remove(k):
+            continue
         filtered_eval_metric_ops[k] = v
       result = result._replace(eval_metric_ops=filtered_eval_metric_ops)
     return result
@@ -291,9 +297,11 @@ def _remove_metrics(estimator: tf.estimator.Estimator,
   estimator._call_model_fn = old_call_model_fn  # pylint: disable=protected-access
 
 
-def adapt_to_remove_metrics(exporter: tf.estimator.Exporter,
-                            metrics_to_remove: List[Text]
-                           ) -> tf.estimator.Exporter:
+def adapt_to_remove_metrics(
+    exporter: tf.estimator.Exporter, metrics_to_remove: Union[List[Text],
+                                                              Callable[[Text],
+                                                                       bool]]
+) -> tf.estimator.Exporter:
   """Modifies the given exporter to remove metrics before export.
 
   This is useful for when you use py_func, streaming metrics, or other metrics
@@ -303,7 +311,8 @@ def adapt_to_remove_metrics(exporter: tf.estimator.Exporter,
 
   Args:
     exporter: Exporter to modify. Will be mutated in place.
-    metrics_to_remove: List of names of metrics to remove.
+    metrics_to_remove: Which metrics to remove. Either a list of names, or a
+      callable that returns true for names that should be removed.
 
   Returns:
     The mutated exporter, which will be modified in place. We also return it
