@@ -330,7 +330,7 @@ class UtilTest(tf.test.TestCase):
         labels, preds)
 
     self.assertAllClose(got_labels, np.array([[0], [1]]))
-    self.assertAllClose(got_preds, np.array([[0.2], [0.7]]))
+    self.assertAllClose(got_preds, np.array([[0.9, 0.2], [0.3, 0.7]]))
 
   def testPrepareLabelsAndPredictionsUsingBinaryScoresSparse(self):
     labels = np.array([1, 0])
@@ -342,7 +342,7 @@ class UtilTest(tf.test.TestCase):
         labels, preds)
 
     self.assertAllClose(got_labels, np.array([1, 0]))
-    self.assertAllClose(got_preds, np.array([[0.2], [0.7]]))
+    self.assertAllClose(got_preds, np.array([[0.9, 0.2], [0.3, 0.7]]))
 
   def testPrepareLabelsAndPredictionsUsingBinaryScoresUnbatched(self):
     labels = np.array([1])
@@ -351,7 +351,7 @@ class UtilTest(tf.test.TestCase):
         labels, preds)
 
     self.assertAllClose(got_labels, np.array([1]))
-    self.assertAllClose(got_preds, np.array([0.7]))
+    self.assertAllClose(got_preds, np.array([0.3, 0.7]))
 
   def testSelectClassIDSparse(self):
     labels = np.array([2])

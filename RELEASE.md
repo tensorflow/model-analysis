@@ -26,6 +26,9 @@
 
 ## Breaking changes
 
+*   Changed to treat CLASSIFY_OUTPUT_SCORES involving 2 values as a multi-class
+    classification prediction instead of converting to binary classification.
+
 ## Deprecations
 
 # Version 0.22.1

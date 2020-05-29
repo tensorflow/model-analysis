@@ -435,13 +435,6 @@ def prepare_labels_and_predictions(
   if label_vocabulary is not None and labels.dtype.kind in ('U', 'S', 'O'):
     labels = _string_labels_to_class_ids(label_vocabulary, labels)
 
-  # Classify scores contain two values intead of one for binary classification
-  # problems, choose prediction associated with positive label (we assume the
-  # positive label is at index 1).
-  if (prediction_key == tf.saved_model.CLASSIFY_OUTPUT_SCORES and
-      predictions.shape[-1] == 2):
-    predictions = np.delete(predictions, 0, -1)
-
   return (labels, predictions)
 
 
