@@ -41,6 +41,22 @@ class CounterUtilTest(tf.test.TestCase):
 
     self.assertEqual(actual_metrics_count, 1)
 
+  def testSliceSpecBeamCounter(self):
+    with beam.Pipeline() as pipeline:
+      _ = (
+          pipeline
+          | beam.Create([[[('slice_key', b'first_slice')]]])
+          | counter_util.IncrementSliceSpecCounters())
+
+    result = pipeline.run()
+
+    slice_spec_filter = beam.metrics.metric.MetricsFilter().with_namespace(
+        constants.METRICS_NAMESPACE).with_name(
+            'slice_computed_slice_key_first_slice')
+    slice_count = result.metrics().query(
+        filter=slice_spec_filter)['counters'][0].committed
+    self.assertEqual(slice_count, 1)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -119,12 +119,6 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   """
   # pylint: disable=no-value-for-parameter
 
-  _ = (
-      extracts.pipeline
-      | 'IncrementMetricsComputationCounters' >>
-      counter_util.IncrementMetricsComputationCounters(
-          eval_shared_model.add_metrics_callbacks))
-
   slices = (
       extracts
       # Downstream computation only cares about FPLs, so we prune before fanout.
@@ -146,6 +140,13 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       slices
       | 'ExtractSliceKeys' >> beam.Keys()
       | 'CountPerSliceKey' >> beam.combiners.Count.PerElement())
+
+  _ = (extracts.pipeline
+       | 'IncrementMetricsComputationCounters' >>
+       counter_util.IncrementMetricsComputationCounters(
+           eval_shared_model.add_metrics_callbacks), slices_count
+       | 'IncreamentSliceSpecCounters' >>
+       counter_util.IncrementSliceSpecCounters())
 
   aggregated_metrics = (
       slices

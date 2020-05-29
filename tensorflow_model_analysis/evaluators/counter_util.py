@@ -48,3 +48,23 @@ def IncrementMetricsComputationCounters(
   return (pipeline
           | 'CreateSole' >> beam.Create([None])
           | 'Count' >> beam.Map(_MakeAndIncrementCounters))
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.Pipeline)
+@beam.typehints.with_output_types(beam.pvalue.PDone)
+def IncrementSliceSpecCounters(pipeline: beam.Pipeline):
+  """To track count of all slicing spec computed using TFMA."""
+
+  def _MakeAndIncrementCounters(slice_list):
+    for slice_key, slice_value in slice_list:
+      # LINT.IfChange
+      slice_name = 'slice_computed_%s_%s' % (slice_key, slice_value)
+      # LINT.ThenChange(../../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
+      slice_counter = beam.metrics.Metrics.counter(constants.METRICS_NAMESPACE,
+                                                   slice_name)
+      slice_counter.inc(1)
+
+  return (pipeline
+          | 'GetSliceCountKeys' >> beam.Keys()
+          | 'Count' >> beam.Map(_MakeAndIncrementCounters))

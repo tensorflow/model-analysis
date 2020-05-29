@@ -22,6 +22,7 @@
 *   Added support for slicing on any value extracted from the inputs (e.g. raw
     labels).
 *   Added support for filtering extracts based on sub-keys.
+*   Added beam counters to track the feature slices being used for evaluation.
 
 ## Breaking changes
 
