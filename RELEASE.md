@@ -28,6 +28,9 @@
 
 *   Changed to treat CLASSIFY_OUTPUT_SCORES involving 2 values as a multi-class
     classification prediction instead of converting to binary classification.
+*   Refactored confidence interval methodology field. The old path under
+    `Options.confidence_interval_methodology` is now at
+    `Options.confidence_intervals.methodology`.
 
 ## Deprecations
 

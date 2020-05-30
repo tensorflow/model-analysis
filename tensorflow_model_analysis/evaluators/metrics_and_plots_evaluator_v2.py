@@ -530,11 +530,11 @@ def _get_confidence_interval_params(
       metric_specs.metric_keys_to_skip_for_confidence_intervals(metrics_specs))
   num_jackknife_samples = 0
   num_bootstrap_samples = 1
-  ci_method = eval_config.options.confidence_interval_method
+  ci_method = eval_config.options.confidence_intervals.method
   if eval_config.options.compute_confidence_intervals.value:
-    if ci_method == config.Options.JACKKNIFE:
+    if ci_method == config.ConfidenceIntervalOptions.JACKKNIFE:
       num_jackknife_samples = _DEFAULT_NUM_JACKKNIFE_BUCKETS
-    elif ci_method == config.Options.POISSON_BOOTSTRAP:
+    elif ci_method == config.ConfidenceIntervalOptions.POISSON_BOOTSTRAP:
       num_bootstrap_samples = _DEFAULT_NUM_BOOTSTRAP_SAMPLES
   return _ConfidenceIntervalParams(num_jackknife_samples, num_bootstrap_samples,
                                    skip_ci_metric_keys)  # pytype: disable=wrong-arg-types

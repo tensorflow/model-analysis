@@ -584,7 +584,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
     options = config.Options()
     options.compute_confidence_intervals.value = True
-    options.confidence_interval_method = config.Options.POISSON_BOOTSTRAP
+    options.confidence_intervals.method = (
+        config.ConfidenceIntervalOptions.POISSON_BOOTSTRAP)
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
@@ -706,7 +707,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     options = config.Options()
     options.include_default_metrics.value = False
     options.compute_confidence_intervals.value = True
-    options.confidence_interval_method = config.Options.JACKKNIFE
+    options.confidence_intervals.method = (
+        config.ConfidenceIntervalOptions.JACKKNIFE)
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
@@ -832,7 +834,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
 
     options = config.Options()
     options.compute_confidence_intervals.value = True
-    options.confidence_interval_method = config.Options.JACKKNIFE
+    options.confidence_intervals.method = (
+        config.ConfidenceIntervalOptions.JACKKNIFE)
 
     eval_config = config.EvalConfig(
         model_specs=[
