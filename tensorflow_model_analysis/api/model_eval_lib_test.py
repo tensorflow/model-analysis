@@ -24,6 +24,7 @@ import tempfile
 from absl.testing import absltest
 from absl.testing import parameterized
 
+import pandas as pd
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
@@ -1324,6 +1325,75 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       pass
     with self.assertRaises(AssertionError):
       model_eval_lib.load_validation_result(path)
+
+  def testAnalyzeRawData(self):
+
+    # Data
+    # age language  label  prediction
+    # 17  english   0      0
+    # 30  spanish   1      1
+    dict_data = [{
+        'age': 17,
+        'language': 'english',
+        'prediction': 0,
+        'label': 0
+    }, {
+        'age': 30,
+        'language': 'spanish',
+        'prediction': 1,
+        'label': 1
+    }]
+    df_data = pd.DataFrame(dict_data)
+
+    # Expected Output
+    expected_slicing_metrics = {
+        (('language', 'english'),): {
+            '': {
+                '': {
+                    'accuracy': {
+                        'doubleValue': 1.0
+                    }
+                }
+            }
+        },
+        (('language', 'spanish'),): {
+            '': {
+                '': {
+                    'accuracy': {
+                        'doubleValue': 1.0
+                    }
+                }
+            }
+        },
+        (): {
+            '': {
+                '': {
+                    'accuracy': {
+                        'doubleValue': 1.0
+                    }
+                }
+            }
+        }
+    }
+
+    # Actual Output
+    metrics_specs = [
+        config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
+    ]
+    slicing_specs = [
+        config.SlicingSpec(feature_keys=['language']),
+        config.SlicingSpec()
+    ]
+    eval_result = model_eval_lib.analyze_raw_data(
+        df_data, metrics_specs, slicing_specs, output_path=self._getTempDir())
+
+    # Compare Actual and Expected
+    self.assertEqual(
+        len(eval_result.slicing_metrics), len(expected_slicing_metrics))
+    for slicing_metric in eval_result.slicing_metrics:
+      slice_key, slice_val = slicing_metric
+      self.assertIn(slice_key, expected_slicing_metrics)
+      self.assertDictEqual(slice_val, expected_slicing_metrics[slice_key])
 
 
 if __name__ == '__main__':

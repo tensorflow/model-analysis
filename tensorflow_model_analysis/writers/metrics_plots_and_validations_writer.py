@@ -32,7 +32,7 @@ from tensorflow_model_analysis.writers import writer
 
 def MetricsPlotsAndValidationsWriter(
     output_paths: Dict[Text, Text],
-    add_metrics_callbacks: List[types.AddMetricsCallbackType],
+    add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
     validations_key: Text = constants.VALIDATIONS_KEY) -> writer.Writer:
@@ -49,7 +49,7 @@ def MetricsPlotsAndValidationsWriter(
       stage_name='WriteMetricsAndPlots',
       ptransform=_WriteMetricsPlotsAndValidations(  # pylint: disable=no-value-for-parameter
           output_paths=output_paths,
-          add_metrics_callbacks=add_metrics_callbacks,
+          add_metrics_callbacks=add_metrics_callbacks or [],
           metrics_key=metrics_key,
           plots_key=plots_key,
           validations_key=validations_key))

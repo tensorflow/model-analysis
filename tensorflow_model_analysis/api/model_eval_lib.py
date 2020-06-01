@@ -28,6 +28,7 @@ from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Set, Text, T
 
 from absl import logging
 import apache_beam as beam
+import pandas as pd
 import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import config
@@ -57,10 +58,12 @@ from tensorflow_model_analysis.writers import eval_config_writer
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 from tensorflow_model_analysis.writers import writer
+from tfx_bsl.arrow import table_util
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import tf_example_record
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+_EVAL_CONFIG_FILE = 'eval_config.json'
 # TODO(pachristopher): After TFMA is released, enable batched extractors by
 # default.
 _ENABLE_BATCHED_EXTRACTORS = False
@@ -205,12 +208,12 @@ _Plot = Dict[Text, Any]
 Metrics = Dict[Text, Any]
 MetricsBySubKey = Dict[Text, Metrics]
 MetricsByOutputName = Dict[Text, Dict[Text, Dict[Text, MetricsBySubKey]]]
+SlicedMetric = Tuple[slicer.SliceKeyType, MetricsByOutputName]
 
 
 class EvalResult(
     NamedTuple('EvalResult',
-               [('slicing_metrics', List[Tuple[slicer.SliceKeyType,
-                                               MetricsByOutputName]]),
+               [('slicing_metrics', List[SlicedMetric]),
                 ('plots', List[Tuple[slicer.SliceKeyType, _Plot]]),
                 ('config', config.EvalConfig), ('data_location', Text),
                 ('file_format', Text), ('model_location', Text)])):
@@ -690,7 +693,8 @@ def default_writers(
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: Optional[config.EvalConfig] = None,
     display_only_data_location: Optional[Text] = None,
-    display_only_file_format: Optional[Text] = None
+    display_only_file_format: Optional[Text] = None,
+    add_metric_callbacks: List[types.AddMetricsCallbackType] = None
 ) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
 
@@ -705,10 +709,12 @@ def default_writers(
       be read from this path.
     display_only_file_format: Optional format of the examples. This is used only
       for display purposes.
+    add_metric_callbacks: Optional list of metric callbacks (if used).
   """
   writers = []
 
-  add_metric_callbacks = []
+  if not add_metric_callbacks:
+    add_metric_callbacks = []
   # The add_metric_callbacks are used in the metrics and plots serialization
   # code to post process the metric data by calling populate_stats_and_pop.
   # While both the legacy (V1) and new (V2) evaluation implementations support
@@ -955,7 +961,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     min_slice_size: int = 1,
     random_seed_for_testing: Optional[int] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
-    schema: Optional[schema_pb2.Schema] = None) -> beam.pvalue.PDone:
+    schema: Optional[schema_pb2.Schema] = None,
+    _enable_batched_inputs: Optional[bool] = False) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -1017,6 +1024,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       tensors from the Arrow RecordBatch. If None, we feed the raw examples to
       the model.
     schema: A schema to use for customizing evaluators.
+    _enable_batched_inputs: Temporary flag to generate batched inputs from
+      examples - for internal use only.
 
   Raises:
     ValueError: If EvalConfig invalid or matching Extractor not found for an
@@ -1044,7 +1053,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         materialize=False,
-        enable_batched_extractors=_ENABLE_BATCHED_EXTRACTORS,
+        enable_batched_extractors=_ENABLE_BATCHED_EXTRACTORS or
+        _enable_batched_inputs,
         tensor_adapter_config=tensor_adapter_config)
 
   if not evaluators:
@@ -1066,11 +1076,14 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         display_only_file_format=display_only_file_format)
 
   # pylint: disable=no-value-for-parameter
-  if (_ENABLE_BATCHED_EXTRACTORS and
-      is_batched_input(eval_shared_model, eval_config)):
-    extracts = examples | 'BatchedInputsToExtracts' >> BatchedInputsToExtracts()
+  extract_batched_inputs = (_ENABLE_BATCHED_EXTRACTORS and is_batched_input(
+      eval_shared_model, eval_config)) or _enable_batched_inputs
+  if extract_batched_inputs:
+    extracts = (
+        examples
+        | 'BatchedInputsToExtracts' >> BatchedInputsToExtracts())
   else:
-    extracts = examples | 'InputsToExtracts' >> InputsToExtracts()
+    extracts = (examples | 'InputsToExtracts' >> InputsToExtracts())
 
   _ = (
       extracts
@@ -1285,3 +1298,76 @@ def multiple_data_analysis(model_location: Text, data_locations: List[Text],
   for d in data_locations:
     results.append(single_model_analysis(model_location, d, **kwargs))
   return EvalResults(results, constants.DATA_CENTRIC_MODE)
+
+
+def analyze_raw_data(
+    data: pd.DataFrame,
+    metrics_specs: List[config.MetricsSpec],
+    slicing_specs: List[config.SlicingSpec] = None,
+    prediction_key: Text = 'prediction',
+    label_key: Text = 'label',
+    example_weight_key: Text = None,
+    output_path: Optional[Text] = None,
+    add_metric_callbacks: List[types.AddMetricsCallbackType] = None
+) -> EvalResult:
+  """Get EvalResult from a pandas.DataFrame.
+
+  EvalResult can be used to get TFMA metrics and visualizations.
+
+  Args:
+    data: A pandas.DataFrame, where rows correspond to examples and columns
+      correspond to features. One column must indicate a row's predicted label,
+      and one column must indicate a row's actual label.
+    metrics_specs: Specification of metrics to compute.
+    slicing_specs: Specification of slices to compute metrics for. Defaults to
+      overall slice.
+    prediction_key: The name of the column in data indicating the predicted
+      label. Defaults to 'prediction'.
+    label_key: The name of the column in data indicating the actual label.
+      Defaults to 'label'.
+    example_weight_key: Optional - The name of the column indicating the example
+      weights. If None, all examples are given equal weight.
+    output_path: Path to write EvalResult to.
+    add_metric_callbacks: Optional list of metric callbacks (if used).
+
+  Returns:
+    A tfma.EvalResult to extract metrics or generate visualizations from.
+  """
+  # TODO(b/153570803): Validity check / assertions for dataframe structure
+  if slicing_specs is None:
+    slicing_specs = [config.SlicingSpec(feature_keys=[''])]
+  if output_path is None:
+    output_path = tempfile.mkdtemp()
+
+  model_specs = [
+      config.ModelSpec(
+          prediction_key=prediction_key,
+          label_key=label_key,
+          example_weight_key=example_weight_key)
+  ]
+
+  arrow_data = table_util.CanonicalizeRecordBatch(
+      table_util.DataFrameToRecordBatch(data))
+  beam_data = beam.Create([arrow_data])
+
+  eval_config = config.EvalConfig(
+      model_specs=model_specs,
+      slicing_specs=slicing_specs,
+      metrics_specs=metrics_specs)
+
+  writers = default_writers(
+      output_path,
+      eval_config=eval_config,
+      add_metric_callbacks=add_metric_callbacks)
+
+  with beam.Pipeline() as p:
+    _ = (
+        p
+        | beam_data
+        | 'ExtractEvaluateAndWriteResults' >> ExtractEvaluateAndWriteResults(  # pylint: disable=no-value-for-parameter
+            writers=writers,
+            eval_config=eval_config,
+            output_path=output_path,
+            _enable_batched_inputs=True))
+
+  return load_eval_result(output_path)

@@ -94,6 +94,9 @@ def _DropUnsupportedColumnsAndFetchRawDataColumn(
 ) -> Tuple[pa.RecordBatch, Optional[np.ndarray]]:
   """Drops unsupported columns and fetches the raw data column.
 
+  Currently, types that are not binary_like or ListArray[primitive types] are
+  dropped.
+
   Args:
     record_batch: An Arrow RecordBatch.
 

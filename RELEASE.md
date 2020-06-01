@@ -4,6 +4,9 @@
 
 ## Major Features and Improvements
 
+*   Added analyze_raw_data(), an API for evaluating TFMA metrics on Pandas
+    DataFrames.
+
 ## Bug fixes and other changes
 
 *   Previously metrics would only be computed for combinations of keys that
