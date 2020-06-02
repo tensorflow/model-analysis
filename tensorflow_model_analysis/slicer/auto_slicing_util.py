@@ -23,7 +23,7 @@ import collections
 import itertools
 import math
 import operator
-from typing import Dict, List, NamedTuple, Optional, Text
+from typing import Dict, List, NamedTuple, Optional, Text, Tuple, Union
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -158,6 +158,30 @@ def _format_boundary(start: float, end: float) -> bytes:
   return ('[' + str(start) + ', ' + str(end) + ')').encode()
 
 
+def get_raw_feature(
+    column: Text, value: slicer_lib.FeatureValueType,
+    boundaries: Dict[Text, List[float]]
+) -> Tuple[Text, Union[slicer_lib.FeatureValueType, bytes]]:
+  """Get raw feature name and value.
+
+  Args:
+    column: Raw or transformed column name.
+    value: Raw or transformed column value.
+    boundaries: Dictionary containing quantile boundaries of features keyed by
+      column name.
+
+  Returns:
+    Tuple of raw column name and raw column value.
+  """
+  if column.startswith(auto_slice_key_extractor.TRANSFORMED_FEATURE_PREFIX):
+    raw_feature = column[len(auto_slice_key_extractor.TRANSFORMED_FEATURE_PREFIX
+                            ):]
+    (start, end) = auto_slice_key_extractor.get_bucket_boundary(
+        value, boundaries[raw_feature])
+    return (raw_feature, _format_boundary(start, end))
+  return (column, value)
+
+
 def revert_slice_keys_for_transformed_features(
     metrics: List[metrics_for_slice_pb2.MetricsForSlice],
     statistics: statistics_pb2.DatasetFeatureStatisticsList):
@@ -172,20 +196,17 @@ def revert_slice_keys_for_transformed_features(
     raw features in the slice keys.
   """
   result = []
-  boundaries = auto_slice_key_extractor._get_quantile_boundaries(statistics)  # pylint: disable=protected-access
+  boundaries = auto_slice_key_extractor.get_quantile_boundaries(statistics)
   for slice_metrics in metrics:
     transformed_metrics = metrics_for_slice_pb2.MetricsForSlice()
     transformed_metrics.CopyFrom(slice_metrics)
     for single_slice_key in transformed_metrics.slice_key.single_slice_keys:
-      if single_slice_key.column.startswith(
-          auto_slice_key_extractor.TRANSFORMED_FEATURE_PREFIX):
-        raw_feature = single_slice_key.column[len(auto_slice_key_extractor
-                                                  .TRANSFORMED_FEATURE_PREFIX):]
-        single_slice_key.column = raw_feature
-        (start, end) = auto_slice_key_extractor._get_bucket_boundary(  # pylint: disable=protected-access
-            getattr(single_slice_key, single_slice_key.WhichOneof('kind')),
-            boundaries[raw_feature])
-        single_slice_key.bytes_value = _format_boundary(start, end)
+      raw_feature_name, raw_feature_value = get_raw_feature(
+          single_slice_key.column,
+          getattr(single_slice_key, single_slice_key.WhichOneof('kind')),
+          boundaries)
+      single_slice_key.column = raw_feature_name
+      single_slice_key.bytes_value = raw_feature_value
     result.append(transformed_metrics)
   return result
 
@@ -278,7 +299,6 @@ def find_significant_slices(
     if comparison_fn(slice_metrics_dict[metric_key].unsampled_value,
                      overall_metrics_dict[metric_key].unsampled_value):
       continue
-
     # Only consider statistically significant slices.
     is_significant, p_value = _is_significant_slice(
         slice_metrics_dict[metric_key].unsampled_value,

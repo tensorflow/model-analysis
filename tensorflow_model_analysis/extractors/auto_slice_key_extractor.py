@@ -66,7 +66,7 @@ def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
       ptransform=_AutoExtractSliceKeys(slice_spec, statistics, materialize))
 
 
-def _get_quantile_boundaries(
+def get_quantile_boundaries(
     statistics: statistics_pb2.DatasetFeatureStatisticsList
 ) -> Dict[Text, List[float]]:
   """Get quantile bucket boundaries from statistics proto."""
@@ -88,8 +88,8 @@ def _bin_value(value: float, boundaries: List[float]) -> int:
   return bisect.bisect_left(boundaries, value)
 
 
-def _get_bucket_boundary(bucket: int,
-                         boundaries: List[float]) -> Tuple[float, float]:
+def get_bucket_boundary(bucket: int,
+                        boundaries: List[float]) -> Tuple[float, float]:
   """Given bucket index, return the bucket boundary."""
   if bucket == len(boundaries):
     end = float('inf')
@@ -109,11 +109,11 @@ class _BucketizeNumericFeaturesFn(beam.DoFn):
 
   def __init__(self, statistics: statistics_pb2.DatasetFeatureStatisticsList):
     # Get bucket boundaries for numeric features
-    self._bucket_boundaries = _get_quantile_boundaries(statistics)
+    self._bucket_boundaries = get_quantile_boundaries(statistics)
 
   def process(self, element: types.Extracts) -> List[types.Extracts]:
-    # Make a a shallow copy, so we don't mutate the original.
-    element_copy = copy.copy(element)
+    # Make a deep copy, so we don't mutate the original.
+    element_copy = copy.deepcopy(element)
     features = util.get_features_from_extracts(element_copy)
     for feature_name, boundaries in self._bucket_boundaries.items():
       if feature_name in features:
