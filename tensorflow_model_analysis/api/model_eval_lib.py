@@ -969,19 +969,22 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   lightweight run_model_analysis functions should use this PTransform.
 
   Example usage:
-    eval_config = tfma.EvalConfig(slicing_specs=[...], metrics_specs=[...])
-    eval_shared_model = tfma.default_eval_shared_model(
-        eval_saved_model_path=model_location, eval_config=eval_config)
-    with beam.Pipeline(runner=...) as p:
-      _ = (p
-           | 'ReadData' >> beam.io.ReadFromTFRecord(data_location)
-           | 'ExtractEvaluateAndWriteResults' >>
-           tfma.ExtractEvaluateAndWriteResults(
-               eval_shared_model=eval_shared_model,
-               eval_config=eval_config,
-               ...))
-    result = tfma.load_eval_result(output_path=output_path)
-    tfma.view.render_slicing_metrics(result)
+
+  ```python
+  eval_config = tfma.EvalConfig(slicing_specs=[...], metrics_specs=[...])
+  eval_shared_model = tfma.default_eval_shared_model(
+      eval_saved_model_path=model_location, eval_config=eval_config)
+  with beam.Pipeline(runner=...) as p:
+    _ = (p
+         | 'ReadData' >> beam.io.ReadFromTFRecord(data_location)
+         | 'ExtractEvaluateAndWriteResults' >>
+         tfma.ExtractEvaluateAndWriteResults(
+             eval_shared_model=eval_shared_model,
+             eval_config=eval_config,
+             ...))
+  result = tfma.load_eval_result(output_path=output_path)
+  tfma.view.render_slicing_metrics(result)
+  ```
 
   Note that the exact serialization format is an internal implementation detail
   and subject to change. Users should only use the TFMA functions to write and
