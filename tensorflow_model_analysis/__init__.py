@@ -22,6 +22,7 @@
 # the current tools, so we have a temporary stub.
 from tensorflow_model_analysis.api import tfma_unit as test
 
+from tensorflow_model_analysis.api.model_eval_lib import analyze_raw_data
 from tensorflow_model_analysis.api.model_eval_lib import BatchedInputsToExtracts
 from tensorflow_model_analysis.api.model_eval_lib import default_eval_shared_model
 from tensorflow_model_analysis.api.model_eval_lib import default_evaluators
