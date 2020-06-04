@@ -1395,6 +1395,30 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       self.assertIn(slice_key, expected_slicing_metrics)
       self.assertDictEqual(slice_val, expected_slicing_metrics[slice_key])
 
+  def testAnalyzeRawDataWithoutPrediction(self):
+    metrics_specs = [
+        config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
+    ]
+    df_data = pd.DataFrame([{
+        'prediction': 0,
+        'label': 0,
+    }])
+    with self.assertRaises(KeyError):
+      model_eval_lib.analyze_raw_data(
+          df_data, metrics_specs, prediction_key='nonexistent_prediction_key')
+
+  def testAnalyzeRawDataWithoutLabel(self):
+    metrics_specs = [
+        config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
+    ]
+    df_data = pd.DataFrame([{
+        'prediction': 0,
+        'label': 0,
+    }])
+    with self.assertRaises(KeyError):
+      model_eval_lib.analyze_raw_data(
+          df_data, metrics_specs, label_key='nonexistent_label_key')
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

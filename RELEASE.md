@@ -26,6 +26,8 @@
     labels).
 *   Added support for filtering extracts based on sub-keys.
 *   Added beam counters to track the feature slices being used for evaluation.
+*   Adding KeyError when analyze_raw_data is run without a valid label_key or
+    prediction_key within the provided Pandas DataFrame.
 
 ## Breaking changes
 

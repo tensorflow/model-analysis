@@ -1335,7 +1335,21 @@ def analyze_raw_data(
 
   Returns:
     A tfma.EvalResult to extract metrics or generate visualizations from.
+
+  Raises:
+    KeyError: If the prediction or label columns are not found within the
+      DataFrame.
   """
+  if prediction_key not in data.columns:
+    raise KeyError(
+        'The prediction_key column was not found. Looked for %s but found: %s' %
+        (prediction_key, list(data.columns)))
+
+  if label_key not in data.columns:
+    raise KeyError(
+        'The label_key column was not found. Looked for %s but found: %s' %
+        (label_key, list(data.columns)))
+
   # TODO(b/153570803): Validity check / assertions for dataframe structure
   if slicing_specs is None:
     slicing_specs = [config.SlicingSpec(feature_keys=[''])]
