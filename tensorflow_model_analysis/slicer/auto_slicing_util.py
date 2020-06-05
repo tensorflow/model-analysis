@@ -23,10 +23,11 @@ import collections
 import itertools
 import math
 import operator
-from typing import Dict, List, NamedTuple, Optional, Text, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Text, Tuple
 import numpy as np
 import pandas as pd
 from scipy import stats
+import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import auto_slice_key_extractor
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -153,15 +154,15 @@ def _get_metrics_as_dict(metrics):
   return result
 
 
-def _format_boundary(start: float, end: float) -> bytes:
+def _format_boundary(start: float, end: float) -> Text:
   """Formats bucket boundary as a string."""
-  return ('[' + str(start) + ', ' + str(end) + ')').encode()
+  return '[' + str(start) + ', ' + str(end) + ')'
 
 
 def get_raw_feature(
     column: Text, value: slicer_lib.FeatureValueType,
     boundaries: Dict[Text, List[float]]
-) -> Tuple[Text, Union[slicer_lib.FeatureValueType, bytes]]:
+) -> Tuple[Text, slicer_lib.FeatureValueType]:
   """Get raw feature name and value.
 
   Args:
@@ -206,7 +207,8 @@ def revert_slice_keys_for_transformed_features(
           getattr(single_slice_key, single_slice_key.WhichOneof('kind')),
           boundaries)
       single_slice_key.column = raw_feature_name
-      single_slice_key.bytes_value = raw_feature_value
+      # TODO(pachristopher): Consider adding these utils to BSL.
+      single_slice_key.bytes_value = tf.compat.as_bytes(raw_feature_value)
     result.append(transformed_metrics)
   return result
 
@@ -276,8 +278,8 @@ def find_significant_slices(
   assert min_num_examples > 0
 
   metrics_dict = {
-      tuple(sorted(slicer_lib.deserialize_slice_key(slice_metrics.slice_key))):
-      slice_metrics for slice_metrics in metrics
+      slicer_lib.deserialize_slice_key(slice_metrics.slice_key): slice_metrics
+      for slice_metrics in metrics
   }
   overall_slice_metrics = metrics_dict[()]
   del metrics_dict[()]

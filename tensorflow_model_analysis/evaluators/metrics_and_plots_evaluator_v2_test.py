@@ -661,8 +661,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           for slice_key, value in got:
             slices[slice_key] = value
           overall_slice = ()
-          fixed_string1_slice = (('fixed_string', b'fixed_string1'),)
-          fixed_string2_slice = (('fixed_string', b'fixed_string2'),)
+          fixed_string1_slice = (('fixed_string', 'fixed_string1'),)
+          fixed_string2_slice = (('fixed_string', 'fixed_string2'),)
           self.assertCountEqual(
               list(slices.keys()),
               [overall_slice, fixed_string1_slice, fixed_string2_slice])
@@ -785,8 +785,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           for slice_key, value in got:
             slices[slice_key] = value
           overall_slice = ()
-          fixed_string1_slice = (('fixed_string', b'fixed_string1'),)
-          fixed_string2_slice = (('fixed_string', b'fixed_string2'),)
+          fixed_string1_slice = (('fixed_string', 'fixed_string1'),)
+          fixed_string2_slice = (('fixed_string', 'fixed_string2'),)
           self.assertCountEqual(
               list(slices.keys()),
               [overall_slice, fixed_string1_slice, fixed_string2_slice])
@@ -1628,9 +1628,9 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           for slice_key, value in got:
             slices[slice_key] = value
           overall_slice = ()
-          query1_slice = (('fixed_string', b'query1'),)
-          query2_slice = (('fixed_string', b'query2'),)
-          query3_slice = (('fixed_string', b'query3'),)
+          query1_slice = (('fixed_string', 'query1'),)
+          query2_slice = (('fixed_string', 'query2'),)
+          query3_slice = (('fixed_string', 'query3'),)
           self.assertCountEqual(
               list(slices.keys()),
               [overall_slice, query1_slice, query2_slice, query3_slice])
@@ -1748,8 +1748,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           for slice_key, value in got:
             slices[slice_key] = value
           overall_slice = ()
-          first_slice = (('slice_key', b'first_slice'),)
-          second_slice = (('slice_key', b'second_slice'),)
+          first_slice = (('slice_key', 'first_slice'),)
+          second_slice = (('slice_key', 'second_slice'),)
           self.assertCountEqual(
               list(slices.keys()), [overall_slice, first_slice, second_slice])
           self.assertDictElementsAlmostEqual(

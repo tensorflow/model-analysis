@@ -162,11 +162,11 @@ class TFMAUnitTest(tfma_unit.TestCase):
     }
     # We don't check AUC for the positive / negative only slices because
     # it's not clear what the value should be.
-    expected_slice_metrics[(('fixed_string', b'negative_slice'),)] = {
+    expected_slice_metrics[(('fixed_string', 'negative_slice'),)] = {
         'average_loss': (0.00 + 0.04 + 0.16) / 3.0,
         'mae': 0.2,
     }
-    expected_slice_metrics[(('fixed_string', b'positive_slice'),)] = {
+    expected_slice_metrics[(('fixed_string', 'positive_slice'),)] = {
         'average_loss': (0.04 + 0.01 + 0.00) / 3.0,
         'mae': 0.1,
     }

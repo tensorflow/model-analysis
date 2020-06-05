@@ -369,7 +369,7 @@ class AutoSlicingUtilTest(tf.test.TestCase):
                     effect_size=0.9999999999999996,
                     raw_slice_metrics=metrics[4]),
                 auto_slicing_util.SliceComparisonResult(
-                    slice_key=(('age', '[12.0, 18.0)'), ('country', 'USA')),
+                    slice_key=(('country', 'USA'), ('age', '[12.0, 18.0)')),
                     num_examples=500.0,
                     slice_metric=0.9,
                     base_metric=0.8,

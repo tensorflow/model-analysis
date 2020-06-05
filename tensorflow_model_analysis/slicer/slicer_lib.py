@@ -247,7 +247,13 @@ class SingleSliceSpec(object):
       if not accessor.has_key(column):
         return
 
-      column_matches.append([(column, value) for value in accessor.get(column)])
+      column_match = []
+      for value in accessor.get(column):
+        if isinstance(value, bytes):
+          column_match.append((column, tf.compat.as_text(value)))
+        else:
+          column_match.append((column, value))
+      column_matches.append(column_match)
 
     # We can now take the Cartesian product of the column_matches, and append
     # the value matches to each element of that, to generate the final list of

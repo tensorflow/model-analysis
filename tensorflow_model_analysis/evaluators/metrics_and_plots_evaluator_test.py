@@ -187,8 +187,8 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             for slice_key, value in got:
               slices[slice_key] = value
             overall_slice = ()
-            first_slice = (('slice_key', b'first_slice'),)
-            second_slice = (('slice_key', b'second_slice'),)
+            first_slice = (('slice_key', 'first_slice'),)
+            second_slice = (('slice_key', 'second_slice'),)
             self.assertCountEqual(
                 list(slices.keys()), [overall_slice, first_slice, second_slice])
             self.assertDictElementsAlmostEqual(
@@ -278,8 +278,8 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             for slice_key, value in got:
               slices[slice_key] = value
             overall_slice = ()
-            first_slice = (('slice_key', b'first_slice'),)
-            second_slice = (('slice_key', b'second_slice'),)
+            first_slice = (('slice_key', 'first_slice'),)
+            second_slice = (('slice_key', 'second_slice'),)
             self.assertCountEqual(
                 list(slices.keys()), [overall_slice, first_slice, second_slice])
             self.assertDictElementsWithTDistributionAlmostEqual(

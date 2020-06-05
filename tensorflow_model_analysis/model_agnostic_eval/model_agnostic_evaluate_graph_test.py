@@ -226,8 +226,8 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
         for slice_key, metrics in got:
           slices[slice_key] = metrics
         overall_slice = ()
-        english_slice = (('language', b'english'),)
-        chinese_slice = (('language', b'chinese'),)
+        english_slice = (('language', 'english'),)
+        chinese_slice = (('language', 'chinese'),)
 
         self.assertItemsEqual(
             list(slices.keys()), [overall_slice, english_slice, chinese_slice])
