@@ -87,17 +87,23 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         writer.write(example + '\n')
     return data_location
 
-  def assertMetricsAlmostEqual(self, got_value, expected_value):
-    if got_value:
-      for (s, m) in got_value:
-        self.assertIn(s, expected_value)
-        for k in expected_value[s]:
-          metrics = m['']['']
-          self.assertIn(k, metrics)
-          self.assertDictElementsAlmostEqual(metrics[k], expected_value[s][k])
+  def assertMetricsAlmostEqual(self,
+                               got_slicing_metrics,
+                               expected_slicing_metrics,
+                               output_name='',
+                               subkey=''):
+    if got_slicing_metrics:
+      for (s, m) in got_slicing_metrics:
+        metrics = m[output_name][subkey]
+        self.assertIn(s, expected_slicing_metrics)
+        for metric_name in expected_slicing_metrics[s]:
+          self.assertIn(metric_name, metrics)
+          self.assertDictElementsAlmostEqual(
+              metrics[metric_name], expected_slicing_metrics[s][metric_name])
     else:
-      # Only pass if expected_value also evaluates to False.
-      self.assertFalse(expected_value, msg='Actual value was empty.')
+      # Only pass if expected_slicing_metrics also evaluates to False.
+      self.assertFalse(
+          expected_slicing_metrics, msg='Actual slicing_metrics was empty.')
 
   def assertSliceMetricsEqual(self, expected_metrics, got_metrics):
     self.assertCountEqual(
