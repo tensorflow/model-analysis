@@ -24,11 +24,11 @@ import os
 from typing import Any, Dict, List, Optional, Text, Tuple, Union
 
 from tensorflow_model_analysis import config
-from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import weighted_example_count
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.view import view_types
 
 
 def get_slicing_metrics(
@@ -105,7 +105,7 @@ def find_all_slices(
 
 
 def get_time_series(
-    results: model_eval_lib.EvalResults, slicing_spec: slicer.SingleSliceSpec,
+    results: view_types.EvalResults, slicing_spec: slicer.SingleSliceSpec,
     display_full_path: bool
 ) -> List[Dict[Text, Union[Dict[Union[float, Text], Any], Text]]]:
   """Util function that extracts time series data for the specified slice.

@@ -21,14 +21,14 @@ from __future__ import print_function
 from typing import Callable, Dict, Optional, Text, Union
 
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.api import model_eval_lib
 import tensorflow_model_analysis.notebook.visualization as visualization
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.view import util
+from tensorflow_model_analysis.view import view_types
 
 
 def render_slicing_metrics(
-    result: model_eval_lib.EvalResult,
+    result: view_types.EvalResult,
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     weighted_example_column: Text = None,
@@ -59,7 +59,7 @@ def render_slicing_metrics(
 
 
 def render_time_series(
-    results: model_eval_lib.EvalResults,
+    results: view_types.EvalResults,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     display_full_path: bool = False
 ) -> Optional[visualization.TimeSeriesViewer]:  # pytype: disable=invalid-annotation
@@ -85,7 +85,7 @@ def render_time_series(
 
 
 def render_plot(
-    result: model_eval_lib.EvalResult,
+    result: view_types.EvalResult,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     output_name: Optional[Text] = None,
     class_id: Optional[int] = None,

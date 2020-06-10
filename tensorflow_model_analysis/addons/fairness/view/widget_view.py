@@ -17,11 +17,11 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Optional, Text, Dict, Callable, Any, List, Tuple
 import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.notebook import visualization
-from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-from typing import Optional, Text, Dict, Callable, Any, List, Tuple
+from tensorflow_model_analysis.view import view_types
 
 
 def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> Text:
@@ -73,7 +73,7 @@ def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> Text:
 
 def convert_slicing_metrics_to_ui_input(
     slicing_metrics: List[Tuple[slicer.SliceKeyType,
-                                model_eval_lib.MetricsByOutputName]],
+                                view_types.MetricsByOutputName]],
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     output_name: Text = '',
@@ -130,8 +130,8 @@ def convert_slicing_metrics_to_ui_input(
 
 
 def render_fairness_indicator(
-    eval_result: Optional[model_eval_lib.EvalResult] = None,
-    multi_eval_results: Optional[Dict[Text, model_eval_lib.EvalResult]] = None,
+    eval_result: Optional[view_types.EvalResult] = None,
+    multi_eval_results: Optional[Dict[Text, view_types.EvalResult]] = None,
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     output_name: Text = '',

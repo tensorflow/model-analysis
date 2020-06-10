@@ -28,7 +28,6 @@ from tensorflow_model_analysis.api.model_eval_lib import default_eval_shared_mod
 from tensorflow_model_analysis.api.model_eval_lib import default_evaluators
 from tensorflow_model_analysis.api.model_eval_lib import default_extractors
 from tensorflow_model_analysis.api.model_eval_lib import default_writers
-from tensorflow_model_analysis.api.model_eval_lib import EvalResult
 from tensorflow_model_analysis.api.model_eval_lib import ExtractAndEvaluate
 from tensorflow_model_analysis.api.model_eval_lib import ExtractEvaluateAndWriteResults
 from tensorflow_model_analysis.api.model_eval_lib import InputsToExtracts
@@ -135,6 +134,8 @@ from tensorflow_model_analysis import metrics
 from tensorflow_model_analysis import writers
 from tensorflow_model_analysis import view
 from tensorflow_model_analysis import model_agnostic_eval
+
+from tensorflow_model_analysis.view.view_types import EvalResult
 
 def _jupyter_nbextension_paths():
   return [{

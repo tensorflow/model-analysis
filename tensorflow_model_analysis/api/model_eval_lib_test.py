@@ -51,6 +51,7 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.view import view_types
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -1281,8 +1282,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             str(sub_key): metrics_male
         }
     })]
-    eval_result = model_eval_lib.EvalResult(slicing_metrics, None, None, None,
-                                            None, None)
+    eval_result = view_types.EvalResult(slicing_metrics, None, None, None, None,
+                                        None)
 
     # Test get_metrics_for_all_slices()
     actual_metrics = eval_result.get_metrics_for_all_slices(
@@ -1390,8 +1391,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         config.SlicingSpec(feature_keys=['language']),
         config.SlicingSpec()
     ]
-    eval_result = model_eval_lib.analyze_raw_data(
-        df_data, metrics_specs, slicing_specs, output_path=self._getTempDir())
+    eval_result = model_eval_lib.analyze_raw_data(df_data, metrics_specs,
+                                                  slicing_specs)
 
     # Compare Actual and Expected
     self.assertEqual(

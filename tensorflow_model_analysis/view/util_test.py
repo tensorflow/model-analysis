@@ -23,11 +23,11 @@ import os
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.slicer.slicer_lib import OVERALL_SLICE_NAME
 from tensorflow_model_analysis.slicer.slicer_lib import SingleSliceSpec
 from tensorflow_model_analysis.view import util
+from tensorflow_model_analysis.view import view_types
 
 
 def _add_to_nested_dict(metrics):
@@ -192,22 +192,22 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
     ]
 
   def _makeEvalResults(self):
-    result_a = model_eval_lib.EvalResult(
+    result_a = view_types.EvalResult(
         slicing_metrics=self._makeTestData(),
         plots=None,
         config=config.EvalConfig(),
         data_location=self.data_location_1,
         file_format='tfrecords',
         model_location=self.model_location_1)
-    result_b = model_eval_lib.EvalResult(
+    result_b = view_types.EvalResult(
         slicing_metrics=[self.result_c2],
         plots=None,
         config=config.EvalConfig(),
         data_location=self.full_data_location_2,
         file_format='tfrecords',
         model_location=self.full_model_location_2)
-    return model_eval_lib.EvalResults([result_a, result_b],
-                                      constants.MODEL_CENTRIC_MODE)
+    return view_types.EvalResults([result_a, result_b],
+                                  constants.MODEL_CENTRIC_MODE)
 
   def _makeEvalConfig(self):
     eval_config = config.EvalConfig(

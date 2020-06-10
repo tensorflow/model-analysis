@@ -28,6 +28,8 @@
 *   Added beam counters to track the feature slices being used for evaluation.
 *   Adding KeyError when analyze_raw_data is run without a valid label_key or
     prediction_key within the provided Pandas DataFrame.
+*   Added documentation for `tfma.analyze_raw_data`, `tfma.view.SlicedMetrics`,
+    and `tfma.view.SlicedPlots`.
 
 ## Breaking changes
 

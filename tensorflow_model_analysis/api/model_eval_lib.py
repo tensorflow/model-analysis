@@ -24,7 +24,7 @@ from __future__ import print_function
 import os
 import tempfile
 
-from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Set, Text, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Text, Union
 
 from absl import logging
 import apache_beam as beam
@@ -48,12 +48,12 @@ from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
-from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.validators import validator
+from tensorflow_model_analysis.view import view_types
 from tensorflow_model_analysis.writers import eval_config_writer
 from tensorflow_model_analysis.writers import metrics_and_plots_serialization
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
@@ -204,142 +204,8 @@ def load_validation_result(output_path: Text) -> ValidationResult:
   return validation_records[0]
 
 
-_Plot = Dict[Text, Any]
-Metrics = Dict[Text, Any]
-MetricsBySubKey = Dict[Text, Metrics]
-MetricsByOutputName = Dict[Text, Dict[Text, Dict[Text, MetricsBySubKey]]]
-SlicedMetric = Tuple[slicer.SliceKeyType, MetricsByOutputName]
-
-
-class EvalResult(
-    NamedTuple('EvalResult',
-               [('slicing_metrics', List[SlicedMetric]),
-                ('plots', List[Tuple[slicer.SliceKeyType, _Plot]]),
-                ('config', config.EvalConfig), ('data_location', Text),
-                ('file_format', Text), ('model_location', Text)])):
-  """Class for the result of single model analysis run.
-
-  Attributes:
-    slicing_metrics: Nested dictionary representing metrics for different
-      configurations as defined by MetricKey in metrics_for_slice.proto. The
-      levels corresponds to output name, sub key, metric name and metric value
-      in this order. The sub key is an encoding of class_id, top_k, and k
-      values. Note that MetricValue uses oneof, so metric values will always
-      contain only a single key representing the type in the oneof and the
-      actual metric value is in the value.
-    plots: List of slice-plot pairs.
-    config: The config containing slicing and metrics specification.
-    data_location: Optional location for data used with config.
-    file_format: Optional format for data used with config.
-    model_location: Optional location(s) for model(s) used with config.
-  """
-
-  def get_metrics(self,
-                  slice_name: slicer.SliceKeyType = (),
-                  output_name: Text = '',
-                  class_id: Optional[int] = None,
-                  k: Optional[int] = None,
-                  top_k: Optional[int] = None) -> Union[Metrics, None]:
-    """Get metric names and values for a slice.
-
-    Args:
-      slice_name: A tuple of the form (column, value), indicating which slice to
-        get metrics from. Optional; if excluded, return overall metrics.
-      output_name: The name of the output. Optional, only used for multi-output
-        models.
-      class_id: Used with multi-class metrics to identify a specific class ID.
-      k: Used with multi-class metrics to identify the kth predicted value.
-      top_k: Used with multi-class and ranking metrics to identify top-k
-        predicted values.
-
-    Returns:
-      Dictionary containing metric names and values for the specified slice.
-    """
-
-    sub_key = metric_types.SubKey(class_id, k, top_k)
-
-    def equals_slice_name(slice_key):
-      if not slice_key:
-        return not slice_name
-      else:
-        return slice_key == slice_name
-
-    for slicing_metric in self.slicing_metrics:
-      slice_key = slicing_metric[0]
-      slice_val = slicing_metric[1]
-      if equals_slice_name(slice_key):
-        return slice_val[output_name][str(sub_key)]
-
-    # if slice could not be found, return None
-    return None
-
-  def get_metrics_for_all_slices(
-      self,
-      output_name: Text = '',
-      class_id: Optional[int] = None,
-      k: Optional[int] = None,
-      top_k: Optional[int] = None) -> Dict[Text, Metrics]:
-    """Get metric names and values for every slice.
-
-    Args:
-      output_name: The name of the output (optional, only used for multi-output
-        models).
-      class_id: Used with multi-class metrics to identify a specific class ID.
-      k: Used with multi-class metrics to identify the kth predicted value.
-      top_k: Used with multi-class and ranking metrics to identify top-k
-        predicted values.
-
-    Returns:
-      Dictionary mapping slices to metric names and values.
-    """
-
-    sub_key = metric_types.SubKey(class_id, k, top_k)
-
-    sliced_metrics = {}
-    for slicing_metric in self.slicing_metrics:
-      slice_name = slicing_metric[0]
-      metrics = slicing_metric[1][output_name][str(sub_key)]
-      sliced_metrics[slice_name] = {
-          metric_name: metric_value
-          for metric_name, metric_value in metrics.items()
-      }
-    return sliced_metrics  # pytype: disable=bad-return-type
-
-  def get_slices(self) -> Sequence[Text]:
-    """Get names of slices.
-
-    Returns:
-      List of slice names.
-    """
-
-    return [slicing_metric[0] for slicing_metric in self.slicing_metrics]  # pytype: disable=bad-return-type
-
-
-class EvalResults(object):
-  """Class for results from multiple model analysis run."""
-
-  def __init__(self,
-               results: List[EvalResult],
-               mode: Text = constants.UNKNOWN_EVAL_MODE):
-    supported_modes = [
-        constants.DATA_CENTRIC_MODE,
-        constants.MODEL_CENTRIC_MODE,
-    ]
-    if mode not in supported_modes:
-      raise ValueError('Mode ' + mode + ' must be one of ' +
-                       Text(supported_modes))
-
-    self._results = results
-    self._mode = mode
-
-  def get_results(self) -> List[EvalResult]:
-    return self._results
-
-  def get_mode(self) -> Text:
-    return self._mode
-
-
-def make_eval_results(results: List[EvalResult], mode: Text) -> EvalResults:
+def make_eval_results(results: List[view_types.EvalResult],
+                      mode: Text) -> view_types.EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:
@@ -348,15 +214,16 @@ def make_eval_results(results: List[EvalResult], mode: Text) -> EvalResults:
       tfma.MODEL_CENTRIC_MODE are supported.
 
   Returns:
-    An EvalResults containing all evaluation results. This can be used to
-    construct a time series view.
+    An `tfma.view.EvalResults` object containing all evaluation results. This
+    can be used to construct a time series view.
   """
-  return EvalResults(results, mode)
+  return view_types.EvalResults(results, mode)
 
 
-def load_eval_results(output_paths: List[Text],
-                      mode: Text,
-                      model_name: Optional[Text] = None) -> EvalResults:
+def load_eval_results(
+    output_paths: List[Text],
+    mode: Text,
+    model_name: Optional[Text] = None) -> view_types.EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:
@@ -376,8 +243,9 @@ def load_eval_results(output_paths: List[Text],
   return make_eval_results(results, mode)
 
 
-def load_eval_result(output_path: Text,
-                     model_name: Optional[Text] = None) -> EvalResult:
+def load_eval_result(
+    output_path: Text,
+    model_name: Optional[Text] = None) -> view_types.EvalResult:
   """Creates an EvalResult object for use with the visualization functions."""
   eval_config, data_location, file_format, model_locations = (
       eval_config_writer.load_eval_run(output_path))
@@ -393,7 +261,7 @@ def load_eval_result(output_path: Text,
     model_location = list(model_locations.values())[0]
   else:
     model_location = model_locations[model_name]
-  return EvalResult(
+  return view_types.EvalResult(
       slicing_metrics=metrics_proto_list,
       plots=plots_proto_list,
       config=eval_config,
@@ -1113,7 +981,7 @@ def run_model_analysis(
     min_slice_size: int = 1,
     random_seed_for_testing: Optional[int] = None,
     schema: Optional[schema_pb2.Schema] = None,
-) -> Union[EvalResult, EvalResults]:
+) -> Union[view_types.EvalResult, view_types.EvalResults]:
   """Runs TensorFlow model analysis.
 
   It runs a Beam pipeline to compute the slicing metrics exported in TensorFlow
@@ -1222,14 +1090,15 @@ def run_model_analysis(
     results = []
     for spec in eval_config.model_specs:
       results.append(load_eval_result(output_path, model_name=spec.name))
-    return EvalResults(results, constants.MODEL_CENTRIC_MODE)
+    return view_types.EvalResults(results, constants.MODEL_CENTRIC_MODE)
 
 
 def single_model_analysis(
     model_location: Text,
     data_location: Text,
     output_path: Text = None,
-    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None) -> EvalResult:
+    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None
+) -> view_types.EvalResult:
   """Run model analysis for a single model on a single data set.
 
   This is a convenience wrapper around run_model_analysis for a single model
@@ -1264,7 +1133,7 @@ def single_model_analysis(
 
 
 def multiple_model_analysis(model_locations: List[Text], data_location: Text,
-                            **kwargs) -> EvalResults:
+                            **kwargs) -> view_types.EvalResults:
   """Run model analysis for multiple models on the same data set.
 
   Args:
@@ -1280,11 +1149,11 @@ def multiple_model_analysis(model_locations: List[Text], data_location: Text,
   results = []
   for m in model_locations:
     results.append(single_model_analysis(m, data_location, **kwargs))
-  return EvalResults(results, constants.MODEL_CENTRIC_MODE)
+  return view_types.EvalResults(results, constants.MODEL_CENTRIC_MODE)
 
 
 def multiple_data_analysis(model_location: Text, data_locations: List[Text],
-                           **kwargs) -> EvalResults:
+                           **kwargs) -> view_types.EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:
@@ -1300,7 +1169,7 @@ def multiple_data_analysis(model_location: Text, data_locations: List[Text],
   results = []
   for d in data_locations:
     results.append(single_model_analysis(model_location, d, **kwargs))
-  return EvalResults(results, constants.DATA_CENTRIC_MODE)
+  return view_types.EvalResults(results, constants.DATA_CENTRIC_MODE)
 
 
 def analyze_raw_data(
@@ -1312,10 +1181,45 @@ def analyze_raw_data(
     example_weight_key: Text = None,
     output_path: Optional[Text] = None,
     add_metric_callbacks: List[types.AddMetricsCallbackType] = None
-) -> EvalResult:
-  """Get EvalResult from a pandas.DataFrame.
+) -> view_types.EvalResult:
+  """Runs TensorFlow model analysis on a pandas.DataFrame.
 
-  EvalResult can be used to get TFMA metrics and visualizations.
+  This function allows you to use TFMA with Pandas DataFrames. The dataframe
+  must include a 'predicted' column for the predicted label and a 'label' column
+  for the actual label.
+
+  This function returns a `tfma.EvalResult`, which contains TFMA's computed
+  metrics and can be used to generate plots with
+  `tfma.view.render_slicing_metrics`.
+
+  Example usage:
+
+  ```python
+  metrics_specs = [
+      config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
+  ]
+  slicing_specs = [
+      config.SlicingSpec(),
+      config.SlicingSpec(feature_keys=['language'])
+  ]
+  result = model_eval_lib.analyze_raw_data(df, metrics_specs, slicing_specs)
+  tfma.view.render_slicing_metrics(result)
+
+  # Example with Fairness Indicators
+  from tensorflow_model_analysis.addons.fairness.post_export_metrics import
+  fairness_indicators
+  from tensorflow_model_analysis.addons.fairness.view import widget_view
+  add_metrics_callbacks = [
+      tfma.post_export_metrics.fairness_indicators(thresholds=[0.25, 0.5, 0.75])
+  ]
+  result = model_eval_lib.analyze_raw_data(
+      data=df,
+      metrics_specs=metrics_specs,
+      slicing_specs=slicing_specs,
+      add_metric_callbacks=add_metrics_callbacks
+  )
+  widget_view.render_fairness_indicator(result)
+  ```
 
   Args:
     data: A pandas.DataFrame, where rows correspond to examples and columns
