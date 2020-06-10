@@ -257,7 +257,7 @@ def find_significant_slices(
     metric_key: Text,
     comparison_type: Text = 'HIGHER',
     alpha: float = 0.01,
-    min_num_examples: int = 10) -> List[SliceComparisonResult]:
+    min_num_examples: int = 1) -> List[SliceComparisonResult]:
   """Finds statistically significant slices.
 
   Args:
@@ -269,13 +269,15 @@ def find_significant_slices(
       whose metric is higher (`HIGHER`) or lower (`LOWER`) than the metric of
       the base slice (overall dataset).
     alpha: Significance-level for statistical significance testing.
-    min_num_examples: Minimum number of examples that a slice should have.
+    min_num_examples: Minimum number of examples that a slice should have. If it
+      is set to zero, we don't do any filtering.
 
   Returns:
     List of statistically significant slices.
   """
   assert comparison_type in ['HIGHER', 'LOWER']
-  assert min_num_examples > 0
+  if min_num_examples == 0:
+    min_num_examples = 1
 
   metrics_dict = {
       slicer_lib.deserialize_slice_key(slice_metrics.slice_key): slice_metrics
