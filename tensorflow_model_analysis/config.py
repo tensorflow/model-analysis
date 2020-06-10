@@ -29,6 +29,7 @@ from tensorflow_model_analysis.proto import config_pb2
 ModelSpec = config_pb2.ModelSpec
 SlicingSpec = config_pb2.SlicingSpec
 BinarizationOptions = config_pb2.BinarizationOptions
+ConfidenceIntervalOptions = config_pb2.ConfidenceIntervalOptions
 AggregationOptions = config_pb2.AggregationOptions
 MetricConfig = config_pb2.MetricConfig
 MetricsSpec = config_pb2.MetricsSpec
@@ -37,7 +38,8 @@ GenericChangeThreshold = config_pb2.GenericChangeThreshold
 GenericValueThreshold = config_pb2.GenericValueThreshold
 MetricThreshold = config_pb2.MetricThreshold
 Options = config_pb2.Options
-ConfidenceIntervalOptions = config_pb2.ConfidenceIntervalOptions
+PerSliceMetricThreshold = config_pb2.PerSliceMetricThreshold
+PerSliceMetricThresholds = config_pb2.PerSliceMetricThresholds
 EvalConfig = config_pb2.EvalConfig
 
 

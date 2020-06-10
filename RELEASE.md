@@ -30,6 +30,8 @@
     prediction_key within the provided Pandas DataFrame.
 *   Added documentation for `tfma.analyze_raw_data`, `tfma.view.SlicedMetrics`,
     and `tfma.view.SlicedPlots`.
+*   Unchecked Metric thresholds now block the model validation.
+*   Added support for per slice threshold settings.
 
 ## Breaking changes
 
@@ -88,7 +90,6 @@
     member of default_writers.
 *   Updated tfma.ExtractEvaluateAndWriteResults to accept Extracts as input in
     addition to serialize bytes and Arrow RecordBatches.
-*   Unchecked Metric thresholds now block the model validation.
 *   Depends on `apache-beam[gcp]>=2.20,<3`.
 *   Depends on `pyarrow>=0.16,<1`.
 *   Depends on `tensorflow>=1.15,!=2.0.*,<3`.

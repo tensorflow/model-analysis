@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 import numpy as np
 
 from tensorflow_model_analysis import config
@@ -28,6 +28,9 @@ from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+
+_ThresholdType = Union[config.GenericValueThreshold,
+                       config.GenericChangeThreshold]
 
 
 # TODO(b/142683826): Beam type check error in
@@ -47,9 +50,14 @@ def validate_metrics(
   thresholds = metric_specs.metric_thresholds_from_metrics_specs(
       eval_config.metrics_specs)  # pytype: disable=wrong-arg-types
 
-  def _check_threshold(key: metric_types.MetricKey, metric: Any) -> bool:
+  def _check_threshold(key: metric_types.MetricKey,
+                       slicing_spec: Optional[config.SlicingSpec],
+                       threshold: _ThresholdType, metric: Any) -> bool:
     """Verify a metric given its metric key and metric value."""
-    threshold = thresholds[key]
+    if (slicing_spec is not None and not slicer.SingleSliceSpec(
+        spec=slicing_spec).is_slice_applicable(sliced_key)):
+      return True
+
     if isinstance(threshold, config.GenericValueThreshold):
       lower_bound, upper_bound = -np.inf, np.inf
       if threshold.HasField('lower_bound'):
@@ -85,6 +93,14 @@ def validate_metrics(
     if isinstance(threshold, config.GenericChangeThreshold):
       to.change_threshold.CopyFrom(threshold)
 
+  def _add_to_set(s, v):
+    """Adds value to set. Returns true if didn't exist."""
+    if v in s:
+      return False
+    else:
+      s.add(v)
+      return True
+
   # Empty metrics per slice is considered validated.
   result = validation_result_pb2.ValidationResult(validation_ok=True)
   validation_for_slice = validation_result_pb2.MetricsValidationForSlice()
@@ -107,20 +123,38 @@ def validate_metrics(
         Invalid threshold config: This metric is not comparable to the
         threshold. The type of the threshold is: {}, and the metric value is:
         \n{}""".format(type(metric), metric)
-    if not _check_threshold(metric_key, metric):
-      failure = validation_for_slice.failures.add()
-      failure.metric_key.CopyFrom(metric_key.to_proto())
-      _copy_metric(metric, failure.metric_value)
-      _copy_threshold(thresholds[metric_key], failure.metric_threshold)
-      failure.message = msg
+    existing_failures = set()
+    for slice_spec, threshold in thresholds[metric_key]:
+      if not _check_threshold(metric_key, slice_spec, threshold, metric):
+        # The same threshold values could be set for multiple matching slice
+        # specs. Only store the first match.
+        #
+        # Note that hashing by SerializeToString() is only safe if used within
+        # the same process.
+        if not _add_to_set(existing_failures, threshold.SerializeToString()):
+          continue
+        failure = validation_for_slice.failures.add()
+        failure.metric_key.CopyFrom(metric_key.to_proto())
+        _copy_metric(metric, failure.metric_value)
+        _copy_threshold(threshold, failure.metric_threshold)
+        failure.message = msg
   # All unchecked thresholds are considered failures.
-  for metric_key, threshold in unchecked_thresholds.items():
+  for metric_key, thresholds in unchecked_thresholds.items():
     if metric_key.model_name == baseline_model_name:
       continue
-    failure = validation_for_slice.failures.add()
-    failure.metric_key.CopyFrom(metric_key.to_proto())
-    _copy_threshold(threshold, failure.metric_threshold)
-    failure.message = 'Metric not found.'
+    existing_failures = set()
+    for _, threshold in thresholds:
+      # The same threshold values could be set for multiple matching slice
+      # specs. Only store the first match.
+      #
+      # Note that hashing by SerializeToString() is only safe if used within
+      # the same process.
+      if not _add_to_set(existing_failures, threshold.SerializeToString()):
+        continue
+      failure = validation_for_slice.failures.add()
+      failure.metric_key.CopyFrom(metric_key.to_proto())
+      _copy_threshold(threshold, failure.metric_threshold)
+      failure.message = 'Metric not found.'
   # Any failure leads to overall failure.
   if validation_for_slice.failures:
     validation_for_slice.slice_key.CopyFrom(

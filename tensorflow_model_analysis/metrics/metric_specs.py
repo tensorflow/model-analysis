@@ -403,12 +403,45 @@ def metric_keys_to_skip_for_confidence_intervals(
   return frozenset(skipped_keys)
 
 
+# Optional slice and associated threshold setting. If slice is not set it
+# matches all slices.
+_SliceAndThreshold = Tuple[Optional[config.SlicingSpec],
+                           Union[config.GenericChangeThreshold,
+                                 config.GenericValueThreshold]]
+
+
 def metric_thresholds_from_metrics_specs(
     metrics_specs: Iterable[config.MetricsSpec]
-) -> Dict[metric_types.MetricKey, Union[config.GenericChangeThreshold,
-                                        config.GenericValueThreshold]]:
+) -> Dict[metric_types.MetricKey, Iterable[_SliceAndThreshold]]:
   """Returns thresholds associated with given metrics specs."""
-  result = {}
+  result = collections.defaultdict(list)
+  existing = collections.defaultdict(dict)
+
+  def add_if_not_exists(key: metric_types.MetricKey,
+                        slice_spec: Optional[config.SlicingSpec],
+                        threshold: Union[config.GenericChangeThreshold,
+                                         config.GenericValueThreshold]):
+    """Adds value to results if it doesn't already exist."""
+    # Note that hashing by SerializeToString() is only safe if used within the
+    # same process.
+    slice_hash = slice_spec.SerializeToString() if slice_spec else None
+    threshold_hash = threshold.SerializeToString()
+    if (not (key in existing and slice_hash in existing[key] and
+             threshold_hash in existing[key][slice_hash])):
+      if slice_hash not in existing[key]:
+        existing[key][slice_hash] = {}
+      existing[key][slice_hash][threshold_hash] = True
+      result[key].append((slice_spec, threshold))
+
+  def add_threshold(key: metric_types.MetricKey,
+                    slice_spec: Optional[config.SlicingSpec],
+                    threshold: config.MetricThreshold):
+    """Adds thresholds to results."""
+    if threshold.HasField('value_threshold'):
+      add_if_not_exists(key, slice_spec, threshold.value_threshold)
+    if threshold.HasField('change_threshold'):
+      key = key.make_diff_key()
+      add_if_not_exists(key, slice_spec, threshold.change_threshold)
 
   for spec in metrics_specs:
     sub_keys = _create_sub_keys(spec) or [None]
@@ -418,21 +451,20 @@ def metric_thresholds_from_metrics_specs(
     # Add thresholds for metrics computed in-graph.
     for metric_name, threshold in spec.thresholds.items():
       for key in _keys_for_metric(metric_name, spec, sub_keys):
-        if threshold.HasField('value_threshold'):
-          result[key] = threshold.value_threshold
-        if threshold.HasField('change_threshold'):
-          key = key.make_diff_key()
-          result[key] = threshold.change_threshold
+        add_threshold(key, None, threshold)
+    for metric_name, per_slice_thresholds in spec.per_slice_thresholds.items():
+      for key in _keys_for_metric(metric_name, spec, sub_keys):
+        for per_slice_threshold in per_slice_thresholds.thresholds:
+          for slice_spec in per_slice_threshold.slicing_specs:
+            add_threshold(key, slice_spec, per_slice_threshold.threshold)
 
-  # Thresholds in MetricConfig override thresholds in MetricsSpec.
+  # Add thresholds for post export metrics defined in MetricConfigs.
   for key, metric_config, _ in _keys_and_metrics_from_specs(metrics_specs):
-    if not metric_config.HasField('threshold'):
-      continue
-    if metric_config.threshold.HasField('value_threshold'):
-      result[key] = metric_config.threshold.value_threshold
-    if metric_config.threshold.HasField('change_threshold'):
-      key = key.make_diff_key()
-      result[key] = metric_config.threshold.change_threshold
+    if metric_config.HasField('threshold'):
+      add_threshold(key, None, metric_config.threshold)
+    for per_slice_threshold in metric_config.per_slice_thresholds:
+      for slice_spec in per_slice_threshold.slicing_specs:
+        add_threshold(key, slice_spec, per_slice_threshold.threshold)
 
   return result
 

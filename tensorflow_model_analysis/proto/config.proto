@@ -195,6 +195,22 @@ message MetricThreshold {
   }
 }
 
+message PerSliceMetricThreshold {
+  // A list of slicing specs to apply threshold to. An empty SlicingSpec
+  // represents the overall slice.
+  //
+  // NOTE: These are only references to slice definitions not new definitions.
+  // Slices must have been defined using EvalConfig.slicing_specs.
+  //
+  // See EvalConfig.slicing_specs for examples.
+  repeated SlicingSpec slicing_specs = 1;
+  MetricThreshold threshold = 2;
+}
+
+message PerSliceMetricThresholds {
+  repeated PerSliceMetricThreshold thresholds = 1;
+}
+
 // Metric configuration.
 message MetricConfig {
   // Name of a class derived for either tf.keras.metrics.Metric or
@@ -211,9 +227,10 @@ message MetricConfig {
   //
   // Example: '"name": "my_metric", "thresholds": [0.5]'
   string config = 3;
-  // Optional threshold for model validation. Thresholds defined here override
-  // any overlapping definitions from the MetricsSpec.
+  // Optional threshold for model validation on all slices.
   MetricThreshold threshold = 4;
+  // Optional thresholds for model validation using specific slices.
+  repeated PerSliceMetricThreshold per_slice_thresholds = 5;
 }
 
 // Metrics specification.
@@ -237,12 +254,18 @@ message MetricsSpec {
   AggregationOptions aggregate = 6;
   // Optional query key for query/ranking based metrics.
   string query_key = 5;
-  // Optional thresholds for model validation keyed by the associated metric
-  // name (e.g. 'auc', etc). Thresholds defined here are intended to be used for
-  // metrics that were saved with the model and computed by default without
-  // requiring a metric config. All other thresholds should be defined in the
-  // MetricConfig associated with the metric.
+
+  // Thresholds defined here are intended to be used for metrics that were
+  // saved with the model and computed by default without requiring a metric
+  // config. All other thresholds should be defined in the MetricConfig
+  // associated with the metric.
+  //
+  // Optional thresholds for model validation on all slices (keyed by the
+  // associated metric name - e.g. 'auc', etc).
   map<string, MetricThreshold> thresholds = 7;
+  // Optional thresholds for model validation using specific slices (keyed by
+  // the associated metric name - e.g. 'auc', etc).
+  map<string, PerSliceMetricThresholds> per_slice_thresholds = 8;
 }
 
 // Additional configuration options.

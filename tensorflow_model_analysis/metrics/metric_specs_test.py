@@ -189,6 +189,10 @@ class MetricSpecsTest(tf.test.TestCase):
             output_name='output_name2'), keys)
 
   def testMetricThresholdsFromMetricsSpecs(self):
+    slice_specs = [
+        config.SlicingSpec(feature_keys=['feature1']),
+        config.SlicingSpec(feature_values={'feature2': 'value1'})
+    ]
     metrics_specs = [
         config.MetricsSpec(
             thresholds={
@@ -199,10 +203,27 @@ class MetricSpecsTest(tf.test.TestCase):
                     config.MetricThreshold(
                         value_threshold=config.GenericValueThreshold(),
                         change_threshold=config.GenericChangeThreshold()),
-                # The mse metric will be overridden by MetricConfig below.
                 'mse':
                     config.MetricThreshold(
                         change_threshold=config.GenericChangeThreshold())
+            },
+            per_slice_thresholds={
+                'auc':
+                    config.PerSliceMetricThresholds(thresholds=[
+                        config.PerSliceMetricThreshold(
+                            slicing_specs=slice_specs,
+                            threshold=config.MetricThreshold(
+                                value_threshold=config.GenericValueThreshold()))
+                    ]),
+                'mean/label':
+                    config.PerSliceMetricThresholds(thresholds=[
+                        config.PerSliceMetricThreshold(
+                            slicing_specs=slice_specs,
+                            threshold=config.MetricThreshold(
+                                value_threshold=config.GenericValueThreshold(),
+                                change_threshold=config.GenericChangeThreshold(
+                                )))
+                    ])
             },
             model_names=['model_name'],
             output_names=['output_name']),
@@ -237,112 +258,125 @@ class MetricSpecsTest(tf.test.TestCase):
                     class_name='MeanLabel',
                     config=json.dumps({'name': 'mean_label'}),
                     threshold=config.MetricThreshold(
-                        change_threshold=config.GenericChangeThreshold()))
+                        change_threshold=config.GenericChangeThreshold()),
+                    per_slice_thresholds=[
+                        config.PerSliceMetricThreshold(
+                            slicing_specs=slice_specs,
+                            threshold=config.MetricThreshold(
+                                change_threshold=config.GenericChangeThreshold(
+                                )))
+                    ]),
             ],
             model_names=['model_name'],
             output_names=['output_name'],
             binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
             aggregate=config.AggregationOptions(macro_average=True))
     ]
+
     thresholds = metric_specs.metric_thresholds_from_metrics_specs(
         metrics_specs)
-    self.assertLen(thresholds, 17)
-    self.assertIn(
+
+    expected_keys_and_threshold_counts = {
         metric_types.MetricKey(
-            name='auc', model_name='model_name', output_name='output_name'),
-        thresholds)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='mean/label',
-            model_name='model_name',
-            output_name='output_name',
-            is_diff=True), thresholds)
-    self.assertIn(
+            name='auc', model_name='model_name', output_name='output_name'):
+            3,
         metric_types.MetricKey(
             name='mean/label',
             model_name='model_name',
             output_name='output_name',
-            is_diff=False), thresholds)
-    self.assertIn(
+            is_diff=True):
+            3,
+        metric_types.MetricKey(
+            name='mean/label',
+            model_name='model_name',
+            output_name='output_name',
+            is_diff=False):
+            3,
         metric_types.MetricKey(
             name='example_count',
             model_name='model_name1',
-            output_name='output_name1'), thresholds)
-    self.assertIn(
+            output_name='output_name1'):
+            1,
         metric_types.MetricKey(
             name='example_count',
             model_name='model_name1',
-            output_name='output_name2'), thresholds)
-    self.assertIn(
+            output_name='output_name2'):
+            1,
         metric_types.MetricKey(
             name='example_count',
             model_name='model_name2',
-            output_name='output_name1'), thresholds)
-    self.assertIn(
+            output_name='output_name1'):
+            1,
         metric_types.MetricKey(
             name='example_count',
             model_name='model_name2',
-            output_name='output_name2'), thresholds)
-    self.assertIn(
+            output_name='output_name2'):
+            1,
         metric_types.MetricKey(
             name='weighted_example_count',
             model_name='model_name1',
-            output_name='output_name1'), thresholds)
-    self.assertIn(
+            output_name='output_name1'):
+            1,
         metric_types.MetricKey(
             name='weighted_example_count',
             model_name='model_name1',
-            output_name='output_name2'), thresholds)
-    self.assertIn(
+            output_name='output_name2'):
+            1,
         metric_types.MetricKey(
             name='weighted_example_count',
             model_name='model_name2',
-            output_name='output_name1'), thresholds)
-    self.assertIn(
+            output_name='output_name1'):
+            1,
         metric_types.MetricKey(
             name='weighted_example_count',
             model_name='model_name2',
-            output_name='output_name2'), thresholds)
-    self.assertIn(
+            output_name='output_name2'):
+            1,
         metric_types.MetricKey(
             name='mse',
             model_name='model_name',
             output_name='output_name',
             sub_key=metric_types.SubKey(class_id=0),
-            is_diff=True), thresholds)
-    self.assertIn(
+            is_diff=True):
+            1,
         metric_types.MetricKey(
             name='mse',
             model_name='model_name',
             output_name='output_name',
             sub_key=metric_types.SubKey(class_id=1),
-            is_diff=True), thresholds)
-    self.assertIn(
+            is_diff=True):
+            1,
         metric_types.MetricKey(
             name='mse',
             model_name='model_name',
             output_name='output_name',
-            is_diff=True), thresholds)
-    self.assertIn(
+            is_diff=True):
+            1,
         metric_types.MetricKey(
             name='mean_label',
             model_name='model_name',
             output_name='output_name',
             sub_key=metric_types.SubKey(class_id=0),
-            is_diff=True), thresholds)
-    self.assertIn(
+            is_diff=True):
+            3,
         metric_types.MetricKey(
             name='mean_label',
             model_name='model_name',
             output_name='output_name',
             sub_key=metric_types.SubKey(class_id=1),
-            is_diff=True), thresholds)
-    self.assertIn(
+            is_diff=True):
+            3,
         metric_types.MetricKey(
             name='mean_label',
             model_name='model_name',
             output_name='output_name',
-            is_diff=True), thresholds)
+            is_diff=True):
+            3
+    }
+    self.assertLen(thresholds, len(expected_keys_and_threshold_counts))
+    for key, count in expected_keys_and_threshold_counts.items():
+      self.assertIn(key, thresholds)
+      self.assertLen(thresholds[key], count, 'failed for key {}'.format(key))
 
   def testToComputations(self):
     computations = metric_specs.to_computations(
