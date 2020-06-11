@@ -1194,11 +1194,7 @@ def multiple_data_analysis(model_location: Text, data_locations: List[Text],
 
 def analyze_raw_data(
     data: pd.DataFrame,
-    metrics_specs: List[config.MetricsSpec],
-    slicing_specs: List[config.SlicingSpec] = None,
-    prediction_key: Text = 'prediction',
-    label_key: Text = 'label',
-    example_weight_key: Text = None,
+    eval_config: config.EvalConfig = None,
     output_path: Optional[Text] = None,
     add_metric_callbacks: List[types.AddMetricsCallbackType] = None
 ) -> view_types.EvalResult:
@@ -1208,6 +1204,17 @@ def analyze_raw_data(
   must include a 'predicted' column for the predicted label and a 'label' column
   for the actual label.
 
+  In addition to a DataFrame, this function requires an eval_config, a
+  `tfma.EvalConfig` object containing various configuration parameters (see
+  [config.proto](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/config.proto)
+  for a comprehensive list)...
+
+  * the metrics to compute
+  * the slices to compute metrics on
+  * the DataFrame's column names for example labels and predictions ('label'
+    and 'prediction' by default)
+  * confidence interval options
+
   This function returns a `tfma.EvalResult`, which contains TFMA's computed
   metrics and can be used to generate plots with
   `tfma.view.render_slicing_metrics`.
@@ -1215,14 +1222,27 @@ def analyze_raw_data(
   Example usage:
 
   ```python
+  model_specs = [
+    config.ModelSpec(
+        prediction_key='prediction',
+        label_key='label')
+  ]
+  config.options.compute_confidence_intervals.value
   metrics_specs = [
-      config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
+      config.MetricsSpec(metrics=[
+        config.MetricConfig(class_name='Accuracy'),
+        config.MetricConfig(class_name='ExampleCount')
+      ])
   ]
   slicing_specs = [
-      config.SlicingSpec(),
+      config.SlicingSpec(),  # the empty slice represents the overall dataset
       config.SlicingSpec(feature_keys=['language'])
   ]
-  result = model_eval_lib.analyze_raw_data(df, metrics_specs, slicing_specs)
+  eval_config = config.EvalConfig(
+      model_specs=model_specs,
+      metrics_specs=metrics_specs,
+      slicing_specs=slicing_specs)
+  result = model_eval_lib.analyze_raw_data(df, eval_config)
   tfma.view.render_slicing_metrics(result)
 
   # Example with Fairness Indicators
@@ -1245,15 +1265,8 @@ def analyze_raw_data(
     data: A pandas.DataFrame, where rows correspond to examples and columns
       correspond to features. One column must indicate a row's predicted label,
       and one column must indicate a row's actual label.
-    metrics_specs: Specification of metrics to compute.
-    slicing_specs: Specification of slices to compute metrics for. Defaults to
-      overall slice.
-    prediction_key: The name of the column in data indicating the predicted
-      label. Defaults to 'prediction'.
-    label_key: The name of the column in data indicating the actual label.
-      Defaults to 'label'.
-    example_weight_key: Optional - The name of the column indicating the example
-      weights. If None, all examples are given equal weight.
+    eval_config: A `tfma.EvalConfig`, which contains various configuration
+      parameters including metrics, slices, and label/prediction column names.
     output_path: Path to write EvalResult to.
     add_metric_callbacks: Optional list of metric callbacks (if used).
 
@@ -1264,37 +1277,27 @@ def analyze_raw_data(
     KeyError: If the prediction or label columns are not found within the
       DataFrame.
   """
-  if prediction_key not in data.columns:
-    raise KeyError(
-        'The prediction_key column was not found. Looked for %s but found: %s' %
-        (prediction_key, list(data.columns)))
-
-  if label_key not in data.columns:
-    raise KeyError(
-        'The label_key column was not found. Looked for %s but found: %s' %
-        (label_key, list(data.columns)))
+  for model_spec in eval_config.model_specs:
+    model_spec.prediction_key = model_spec.prediction_key or 'prediction'
+    model_spec.label_key = model_spec.label_key or 'label'
+    if model_spec.prediction_key not in data.columns:
+      raise KeyError(
+          'The prediction_key column was not found. Looked for %s but found: %s'
+          % (model_spec.prediction_key, list(data.columns)))
+    if model_spec.label_key not in data.columns:
+      raise KeyError(
+          'The label_key column was not found. Looked for %s but found: %s' %
+          (model_spec.label_key, list(data.columns)))
 
   # TODO(b/153570803): Validity check / assertions for dataframe structure
-  if slicing_specs is None:
-    slicing_specs = [config.SlicingSpec(feature_keys=[''])]
+  if eval_config.slicing_specs is None:
+    eval_config.slicing_specs = [config.SlicingSpec(feature_keys=[''])]
   if output_path is None:
     output_path = tempfile.mkdtemp()
-
-  model_specs = [
-      config.ModelSpec(
-          prediction_key=prediction_key,
-          label_key=label_key,
-          example_weight_key=example_weight_key)
-  ]
 
   arrow_data = table_util.CanonicalizeRecordBatch(
       table_util.DataFrameToRecordBatch(data))
   beam_data = beam.Create([arrow_data])
-
-  eval_config = config.EvalConfig(
-      model_specs=model_specs,
-      slicing_specs=slicing_specs,
-      metrics_specs=metrics_specs)
 
   writers = default_writers(
       output_path,

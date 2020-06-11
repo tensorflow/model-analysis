@@ -1359,6 +1359,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                 '': {
                     'accuracy': {
                         'doubleValue': 1.0
+                    },
+                    'example_count': {
+                        'doubleValue': 1.0
                     }
                 }
             }
@@ -1367,6 +1370,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             '': {
                 '': {
                     'accuracy': {
+                        'doubleValue': 1.0
+                    },
+                    'example_count': {
                         'doubleValue': 1.0
                     }
                 }
@@ -1377,6 +1383,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                 '': {
                     'accuracy': {
                         'doubleValue': 1.0
+                    },
+                    'example_count': {
+                        'doubleValue': 2.0
                     }
                 }
             }
@@ -1384,15 +1393,24 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     }
 
     # Actual Output
+    model_specs = [
+        config.ModelSpec(prediction_key='prediction', label_key='label')
+    ]
     metrics_specs = [
-        config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
+        config.MetricsSpec(metrics=[
+            config.MetricConfig(class_name='Accuracy'),
+            config.MetricConfig(class_name='ExampleCount')
+        ])
     ]
     slicing_specs = [
         config.SlicingSpec(feature_keys=['language']),
         config.SlicingSpec()
     ]
-    eval_result = model_eval_lib.analyze_raw_data(df_data, metrics_specs,
-                                                  slicing_specs)
+    eval_config = config.EvalConfig(
+        model_specs=model_specs,
+        slicing_specs=slicing_specs,
+        metrics_specs=metrics_specs)
+    eval_result = model_eval_lib.analyze_raw_data(df_data, eval_config)
 
     # Compare Actual and Expected
     self.assertEqual(
@@ -1403,28 +1421,34 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       self.assertDictEqual(slice_val, expected_slicing_metrics[slice_key])
 
   def testAnalyzeRawDataWithoutPrediction(self):
+    model_specs = [
+        config.ModelSpec(prediction_key='nonexistent_prediction_key')
+    ]
     metrics_specs = [
         config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
     ]
+    eval_config = config.EvalConfig(
+        model_specs=model_specs, metrics_specs=metrics_specs)
     df_data = pd.DataFrame([{
         'prediction': 0,
         'label': 0,
     }])
     with self.assertRaises(KeyError):
-      model_eval_lib.analyze_raw_data(
-          df_data, metrics_specs, prediction_key='nonexistent_prediction_key')
+      model_eval_lib.analyze_raw_data(df_data, eval_config)
 
   def testAnalyzeRawDataWithoutLabel(self):
+    model_specs = [config.ModelSpec(prediction_key='nonexistent_label_key')]
     metrics_specs = [
         config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
     ]
+    eval_config = config.EvalConfig(
+        model_specs=model_specs, metrics_specs=metrics_specs)
     df_data = pd.DataFrame([{
         'prediction': 0,
         'label': 0,
     }])
     with self.assertRaises(KeyError):
-      model_eval_lib.analyze_raw_data(
-          df_data, metrics_specs, label_key='nonexistent_label_key')
+      model_eval_lib.analyze_raw_data(df_data, eval_config)
 
 
 if __name__ == '__main__':
