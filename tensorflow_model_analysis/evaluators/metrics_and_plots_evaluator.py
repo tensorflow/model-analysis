@@ -32,7 +32,7 @@ from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-from tensorflow_model_analysis.writers import metrics_and_plots_serialization
+from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 
 
 # TODO(mdreves): Perhaps keep this as the only public method and privatize
@@ -230,11 +230,18 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
             slices_count, min_slice_size, metric_keys.ERROR_METRIC))
 
   if serialize:
-    metrics, plots = (
-        (metrics, plots)
-        | 'SerializeMetricsAndPlots' >>
-        metrics_and_plots_serialization.SerializeMetricsAndPlots(
-            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks))
+    metrics = (
+        metrics
+        | 'ConvertSliceMetricsToProto' >> beam.Map(
+            metrics_plots_and_validations_writer.convert_slice_metrics_to_proto,
+            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks)
+        | 'SerializeMetrics' >> beam.Map(lambda m: m.SerializeToString()))
+    plots = (
+        plots
+        | 'ConvertSlicePlotsToProto' >> beam.Map(
+            metrics_plots_and_validations_writer.convert_slice_plots_to_proto,
+            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks)
+        | 'SerializePlots' >> beam.Map(lambda p: p.SerializeToString()))
 
   return {metrics_key: metrics, plots_key: plots}
 

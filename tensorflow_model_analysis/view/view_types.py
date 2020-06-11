@@ -22,12 +22,14 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
-_Plot = Dict[Text, Any]
+Plots = Any
+PlotsBySubKey = Dict[Text, Plots]
+PlotsByOutputName = Dict[Text, PlotsBySubKey]
 
 
 class SlicedPlots(
     NamedTuple('SlicedPlots', [('slice', slicer.SliceKeyType),
-                               ('plot', _Plot)])):
+                               ('plot', PlotsByOutputName)])):
   """A tuple containing the plots belonging to a slice.
 
   Attributes:
@@ -35,11 +37,9 @@ class SlicedPlots(
       of a feature (ex: 'color'), and the second element is the value (ex:
         'green'). An empty tuple represents an 'overall' slice (i.e. one that
         encompasses the entire dataset.
-    plot: A dict mapping `output_name` and `sub_key_id` to a
-      [`PlotData`](https://github.com/tensorflow/model-analysis/blob/72cf5600e615e97b9424e9a5cd51fab60278a3bf/tensorflow_model_analysis/proto/metrics_for_slice.proto#L332)
-        proto object. This proto contains histograms and confusion matrices,
-        which can be rendered in the `tfma.view.render_plot` and
-        `tfma.view.render_slicing_metrics` functions.
+    plot: A dict mapping `output_name` and `sub_key_id` to plot data. The data
+        contains histograms and confusion matrices, which can be rendered with
+        the `tfma.view.render_plot` function.
   """
 
 

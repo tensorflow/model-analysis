@@ -19,12 +19,16 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import string
 import tempfile
 
+from absl.testing import parameterized
 import apache_beam as beam
+import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
@@ -35,6 +39,8 @@ from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
+from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
@@ -42,12 +48,24 @@ from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
+
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
-                                          ):
+def _make_slice_key(*args):
+  if len(args) % 2 != 0:
+    raise ValueError('number of arguments should be even')
+
+  result = []
+  for i in range(0, len(args), 2):
+    result.append((args[i], args[i + 1]))
+  result = tuple(result)
+  return result
+
+
+class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
+                                           parameterized.TestCase):
 
   def setUp(self):
     super(MetricsPlotsAndValidationsWriterTest, self).setUp()
@@ -78,7 +96,808 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
     return self.createTestEvalSharedModel(
         eval_saved_model_path=model_dir, tags=[tf.saved_model.SERVING])
 
-  def testWriteValidationResults(self):
+  def testConvertSlicePlotsToProto(self):
+    slice_key = _make_slice_key('fruit', 'apple')
+    plot_key = metric_types.PlotKey(
+        name='calibration_plot', output_name='output_name')
+    calibration_plot = text_format.Parse(
+        """
+        buckets {
+          lower_threshold_inclusive: -inf
+          upper_threshold_exclusive: 0.0
+          num_weighted_examples { value: 0.0 }
+          total_weighted_label { value: 0.0 }
+          total_weighted_refined_prediction { value: 0.0 }
+        }
+        buckets {
+          lower_threshold_inclusive: 0.0
+          upper_threshold_exclusive: 0.5
+          num_weighted_examples { value: 1.0 }
+          total_weighted_label { value: 1.0 }
+          total_weighted_refined_prediction { value: 0.3 }
+        }
+        buckets {
+          lower_threshold_inclusive: 0.5
+          upper_threshold_exclusive: 1.0
+          num_weighted_examples { value: 1.0 }
+          total_weighted_label { value: 0.0 }
+          total_weighted_refined_prediction { value: 0.7 }
+        }
+        buckets {
+          lower_threshold_inclusive: 1.0
+          upper_threshold_exclusive: inf
+          num_weighted_examples { value: 0.0 }
+          total_weighted_label { value: 0.0 }
+          total_weighted_refined_prediction { value: 0.0 }
+        }
+     """, metrics_for_slice_pb2.CalibrationHistogramBuckets())
+
+    expected_plots_for_slice = text_format.Parse(
+        """
+      slice_key {
+        single_slice_keys {
+          column: 'fruit'
+          bytes_value: 'apple'
+        }
+      }
+      plot_keys_and_values {
+        key {
+          output_name: "output_name"
+        }
+        value {
+          calibration_histogram_buckets {
+            buckets {
+              lower_threshold_inclusive: -inf
+              upper_threshold_exclusive: 0.0
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.0
+              upper_threshold_exclusive: 0.5
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 1.0 }
+              total_weighted_refined_prediction { value: 0.3 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.5
+              upper_threshold_exclusive: 1.0
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.7 }
+            }
+            buckets {
+              lower_threshold_inclusive: 1.0
+              upper_threshold_exclusive: inf
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
+          }
+        }
+      }
+    """, metrics_for_slice_pb2.PlotsForSlice())
+
+    got = metrics_plots_and_validations_writer.convert_slice_plots_to_proto(
+        (slice_key, {
+            plot_key: calibration_plot
+        }), None)
+    self.assertProtoEquals(expected_plots_for_slice, got)
+
+  def testConvertSlicePlotsToProtoLegacyStringKeys(self):
+    slice_key = _make_slice_key('fruit', 'apple')
+    tfma_plots = {
+        metric_keys.CALIBRATION_PLOT_MATRICES:
+            np.array([
+                [0.0, 0.0, 0.0],
+                [0.3, 1.0, 1.0],
+                [0.7, 0.0, 1.0],
+                [0.0, 0.0, 0.0],
+            ]),
+        metric_keys.CALIBRATION_PLOT_BOUNDARIES:
+            np.array([0.0, 0.5, 1.0]),
+    }
+    expected_plot_data = """
+      slice_key {
+        single_slice_keys {
+          column: 'fruit'
+          bytes_value: 'apple'
+        }
+      }
+      plots {
+        key: "post_export_metrics"
+        value {
+          calibration_histogram_buckets {
+            buckets {
+              lower_threshold_inclusive: -inf
+              upper_threshold_exclusive: 0.0
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.0
+              upper_threshold_exclusive: 0.5
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 1.0 }
+              total_weighted_refined_prediction { value: 0.3 }
+            }
+            buckets {
+              lower_threshold_inclusive: 0.5
+              upper_threshold_exclusive: 1.0
+              num_weighted_examples { value: 1.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.7 }
+            }
+            buckets {
+              lower_threshold_inclusive: 1.0
+              upper_threshold_exclusive: inf
+              num_weighted_examples { value: 0.0 }
+              total_weighted_label { value: 0.0 }
+              total_weighted_refined_prediction { value: 0.0 }
+            }
+          }
+        }
+      }
+    """
+    calibration_plot = (
+        post_export_metrics.calibration_plot_and_prediction_histogram())
+    got = metrics_plots_and_validations_writer.convert_slice_plots_to_proto(
+        (slice_key, tfma_plots), [calibration_plot])
+    self.assertProtoEquals(expected_plot_data, got)
+
+  def testConvertSlicePlotsToProtoEmptyPlot(self):
+    slice_key = _make_slice_key('fruit', 'apple')
+    tfma_plots = {metric_keys.ERROR_METRIC: 'error_message'}
+
+    actual_plot = metrics_plots_and_validations_writer.convert_slice_plots_to_proto(
+        (slice_key, tfma_plots), [])
+    expected_plot = metrics_for_slice_pb2.PlotsForSlice()
+    expected_plot.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+    expected_plot.plots[
+        metric_keys.ERROR_METRIC].debug_message = 'error_message'
+    self.assertProtoEquals(expected_plot, actual_plot)
+
+  def testConvertSliceMetricsToProto(self):
+    slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
+    slice_metrics = {
+        metric_types.MetricKey(name='accuracy', output_name='output_name'): 0.8
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {
+          single_slice_keys {
+            column: 'age'
+            int64_value: 5
+          }
+          single_slice_keys {
+            column: 'language'
+            bytes_value: 'english'
+          }
+          single_slice_keys {
+            column: 'price'
+            float_value: 0.3
+          }
+        }
+        metric_keys_and_values {
+          key {
+            name: "accuracy"
+            output_name: "output_name"
+          }
+          value {
+            double_value {
+              value: 0.8
+            }
+          }
+        }""", metrics_for_slice_pb2.MetricsForSlice())
+
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics), None)
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
+  def testConvertSliceMetricsToProtoConfusionMatrices(self):
+    slice_key = _make_slice_key()
+
+    thresholds = [0.25, 0.75, 1.00]
+    matrices = [[0.0, 1.0, 0.0, 2.0, 1.0, 1.0], [1.0, 1.0, 0.0, 1.0, 1.0, 0.5],
+                [2.0, 1.0, 0.0, 0.0, float('nan'), 0.0]]
+
+    slice_metrics = {
+        metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES: matrices,
+        metric_keys.CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS: thresholds,
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {}
+        metrics {
+          key: "post_export_metrics/confusion_matrix_at_thresholds"
+          value {
+            confusion_matrix_at_thresholds {
+              matrices {
+                threshold: 0.25
+                false_negatives: 0.0
+                true_negatives: 1.0
+                false_positives: 0.0
+                true_positives: 2.0
+                precision: 1.0
+                recall: 1.0
+                bounded_false_negatives {
+                  value {
+                    value: 0.0
+                  }
+                }
+                bounded_true_negatives {
+                  value {
+                    value: 1.0
+                  }
+                }
+                bounded_true_positives {
+                  value {
+                    value: 2.0
+                  }
+                }
+                bounded_false_positives {
+                  value {
+                    value: 0.0
+                  }
+                }
+                bounded_precision {
+                  value {
+                    value: 1.0
+                  }
+                }
+                bounded_recall {
+                  value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_false_negatives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_true_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_true_positives {
+                  unsampled_value {
+                    value: 2.0
+                  }
+                }
+                t_distribution_false_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_precision {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_recall {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+              }
+              matrices {
+                threshold: 0.75
+                false_negatives: 1.0
+                true_negatives: 1.0
+                false_positives: 0.0
+                true_positives: 1.0
+                precision: 1.0
+                recall: 0.5
+                bounded_false_negatives {
+                  value {
+                    value: 1.0
+                  }
+                }
+                bounded_true_negatives {
+                  value {
+                    value: 1.0
+                  }
+                }
+                bounded_true_positives {
+                  value {
+                    value: 1.0
+                  }
+                }
+                bounded_false_positives {
+                  value {
+                    value: 0.0
+                  }
+                }
+                bounded_precision {
+                  value {
+                    value: 1.0
+                  }
+                }
+                bounded_recall {
+                  value {
+                    value: 0.5
+                  }
+                }
+                t_distribution_false_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_true_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_true_positives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_false_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_precision {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_recall {
+                  unsampled_value {
+                    value: 0.5
+                  }
+                }
+              }
+              matrices {
+                threshold: 1.00
+                false_negatives: 2.0
+                true_negatives: 1.0
+                false_positives: 0.0
+                true_positives: 0.0
+                precision: nan
+                recall: 0.0
+                bounded_false_negatives {
+                  value {
+                    value: 2.0
+                  }
+                }
+                bounded_true_negatives {
+                  value {
+                    value: 1.0
+                  }
+                }
+                bounded_true_positives {
+                  value {
+                    value: 0.0
+                  }
+                }
+                bounded_false_positives {
+                  value {
+                    value: 0.0
+                  }
+                }
+                bounded_precision {
+                  value {
+                    value: nan
+                  }
+                }
+                bounded_recall {
+                  value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_false_negatives {
+                  unsampled_value {
+                    value: 2.0
+                  }
+                }
+                t_distribution_true_negatives {
+                  unsampled_value {
+                    value: 1.0
+                  }
+                }
+                t_distribution_true_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_false_positives {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+                t_distribution_precision {
+                  unsampled_value {
+                    value: nan
+                  }
+                }
+                t_distribution_recall {
+                  unsampled_value {
+                    value: 0.0
+                  }
+                }
+              }
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics),
+        [post_export_metrics.confusion_matrix_at_thresholds(thresholds)])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
+  def testConvertSliceMetricsToProtoMetricsRanges(self):
+    slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
+    slice_metrics = {
+        'accuracy': types.ValueWithTDistribution(0.8, 0.1, 9, 0.8),
+        metric_keys.AUPRC: 0.1,
+        metric_keys.lower_bound_key(metric_keys.AUPRC): 0.05,
+        metric_keys.upper_bound_key(metric_keys.AUPRC): 0.17,
+        metric_keys.AUC: 0.2,
+        metric_keys.lower_bound_key(metric_keys.AUC): 0.1,
+        metric_keys.upper_bound_key(metric_keys.AUC): 0.3
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        string.Template("""
+        slice_key {
+          single_slice_keys {
+            column: 'age'
+            int64_value: 5
+          }
+          single_slice_keys {
+            column: 'language'
+            bytes_value: 'english'
+          }
+          single_slice_keys {
+            column: 'price'
+            float_value: 0.3
+          }
+        }
+        metrics {
+          key: "accuracy"
+          value {
+            bounded_value {
+              value {
+                value: 0.8
+              }
+              lower_bound {
+                value: 0.5737843
+              }
+              upper_bound {
+                value: 1.0262157
+              }
+              methodology: POISSON_BOOTSTRAP
+            }
+            confidence_interval {
+              lower_bound {
+                value: 0.5737843
+              }
+              upper_bound {
+                value: 1.0262157
+              }
+              t_distribution_value {
+                sample_mean {
+                  value: 0.8
+                }
+                sample_standard_deviation {
+                  value: 0.1
+                }
+                sample_degrees_of_freedom {
+                  value: 9
+                }
+                unsampled_value {
+                  value: 0.8
+                }
+              }
+            }
+          }
+        }
+        metrics {
+          key: "$auc"
+          value {
+            bounded_value {
+              lower_bound {
+                value: 0.1
+              }
+              upper_bound {
+                value: 0.3
+              }
+              value {
+                value: 0.2
+              }
+              methodology: RIEMANN_SUM
+            }
+          }
+        }
+        metrics {
+          key: "$auprc"
+          value {
+            bounded_value {
+              lower_bound {
+                value: 0.05
+              }
+              upper_bound {
+                value: 0.17
+              }
+              value {
+                value: 0.1
+              }
+              methodology: RIEMANN_SUM
+            }
+          }
+        }""").substitute(auc=metric_keys.AUC, auprc=metric_keys.AUPRC),
+        metrics_for_slice_pb2.MetricsForSlice())
+
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics),
+        [post_export_metrics.auc(),
+         post_export_metrics.auc(curve='PR')])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
+  def testConvertSliceMetricsToProtoFromLegacyStrings(self):
+    slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
+    slice_metrics = {
+        'accuracy': 0.8,
+        metric_keys.AUPRC: 0.1,
+        metric_keys.lower_bound_key(metric_keys.AUPRC): 0.05,
+        metric_keys.upper_bound_key(metric_keys.AUPRC): 0.17,
+        metric_keys.AUC: 0.2,
+        metric_keys.lower_bound_key(metric_keys.AUC): 0.1,
+        metric_keys.upper_bound_key(metric_keys.AUC): 0.3
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        string.Template("""
+        slice_key {
+          single_slice_keys {
+            column: 'age'
+            int64_value: 5
+          }
+          single_slice_keys {
+            column: 'language'
+            bytes_value: 'english'
+          }
+          single_slice_keys {
+            column: 'price'
+            float_value: 0.3
+          }
+        }
+        metrics {
+          key: "accuracy"
+          value {
+            double_value {
+              value: 0.8
+            }
+          }
+        }
+        metrics {
+          key: "$auc"
+          value {
+            bounded_value {
+              lower_bound {
+                value: 0.1
+              }
+              upper_bound {
+                value: 0.3
+              }
+              value {
+                value: 0.2
+              }
+              methodology: RIEMANN_SUM
+            }
+          }
+        }
+        metrics {
+          key: "$auprc"
+          value {
+            bounded_value {
+              lower_bound {
+                value: 0.05
+              }
+              upper_bound {
+                value: 0.17
+              }
+              value {
+                value: 0.1
+              }
+              methodology: RIEMANN_SUM
+            }
+          }
+        }""").substitute(auc=metric_keys.AUC, auprc=metric_keys.AUPRC),
+        metrics_for_slice_pb2.MetricsForSlice())
+
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics),
+        [post_export_metrics.auc(),
+         post_export_metrics.auc(curve='PR')])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
+  def testConvertSliceMetricsToProtoEmptyMetrics(self):
+    slice_key = _make_slice_key('age', 5, 'language', 'english', 'price', 0.3)
+    slice_metrics = {metric_keys.ERROR_METRIC: 'error_message'}
+
+    actual_metrics = (
+        metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+            (slice_key, slice_metrics),
+            [post_export_metrics.auc(),
+             post_export_metrics.auc(curve='PR')]))
+
+    expected_metrics = metrics_for_slice_pb2.MetricsForSlice()
+    expected_metrics.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+    expected_metrics.metrics[
+        metric_keys.ERROR_METRIC].debug_message = 'error_message'
+    self.assertProtoEquals(expected_metrics, actual_metrics)
+
+  def testConvertSliceMetricsToProtoStringMetrics(self):
+    slice_key = _make_slice_key()
+    slice_metrics = {
+        'valid_ascii': b'test string',
+        'valid_unicode': b'\xF0\x9F\x90\x84',  # U+1F404, Cow
+        'invalid_unicode': b'\xE2\x28\xA1',
+    }
+    expected_metrics_for_slice = metrics_for_slice_pb2.MetricsForSlice()
+    expected_metrics_for_slice.slice_key.SetInParent()
+    expected_metrics_for_slice.metrics[
+        'valid_ascii'].bytes_value = slice_metrics['valid_ascii']
+    expected_metrics_for_slice.metrics[
+        'valid_unicode'].bytes_value = slice_metrics['valid_unicode']
+    expected_metrics_for_slice.metrics[
+        'invalid_unicode'].bytes_value = slice_metrics['invalid_unicode']
+
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics), [])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
+  def testUncertaintyValuedMetrics(self):
+    slice_key = _make_slice_key()
+    slice_metrics = {
+        'one_dim':
+            types.ValueWithTDistribution(2.0, 1.0, 3, 2.0),
+        'nans':
+            types.ValueWithTDistribution(
+                float('nan'), float('nan'), -1, float('nan')),
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {}
+        metrics {
+          key: "one_dim"
+          value {
+            bounded_value {
+              value {
+                value: 2.0
+              }
+              lower_bound {
+                value: -1.1824463
+              }
+              upper_bound {
+                value: 5.1824463
+              }
+              methodology: POISSON_BOOTSTRAP
+            }
+            confidence_interval {
+              lower_bound {
+                value: -1.1824463
+              }
+              upper_bound {
+                value: 5.1824463
+              }
+              t_distribution_value {
+                sample_mean {
+                  value: 2.0
+                }
+                sample_standard_deviation {
+                  value: 1.0
+                }
+                sample_degrees_of_freedom {
+                  value: 3
+                }
+                unsampled_value {
+                  value: 2.0
+                }
+              }
+            }
+          }
+        }
+        metrics {
+          key: "nans"
+          value {
+            bounded_value {
+              value {
+                value: nan
+              }
+              lower_bound {
+                value: nan
+              }
+              upper_bound {
+                value: nan
+              }
+              methodology: POISSON_BOOTSTRAP
+            }
+            confidence_interval {
+              lower_bound {
+                value: nan
+              }
+              upper_bound {
+                value: nan
+              }
+              t_distribution_value {
+                sample_mean {
+                  value: nan
+                }
+                sample_standard_deviation {
+                  value: nan
+                }
+                sample_degrees_of_freedom {
+                  value: -1
+                }
+                unsampled_value {
+                  value: nan
+                }
+              }
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics), [])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
+  def testConvertSliceMetricsToProtoTensorValuedMetrics(self):
+    slice_key = _make_slice_key()
+    slice_metrics = {
+        'one_dim':
+            np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32),
+        'two_dims':
+            np.array([['two', 'dims', 'test'], ['TWO', 'DIMS', 'TEST']]),
+        'three_dims':
+            np.array([[[100, 200, 300]], [[500, 600, 700]]], dtype=np.int64),
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {}
+        metrics {
+          key: "one_dim"
+          value {
+            array_value {
+              data_type: FLOAT32
+              shape: 4
+              float32_values: [1.0, 2.0, 3.0, 4.0]
+            }
+          }
+        }
+        metrics {
+          key: "two_dims"
+          value {
+            array_value {
+              data_type: BYTES
+              shape: [2, 3]
+              bytes_values: ["two", "dims", "test", "TWO", "DIMS", "TEST"]
+            }
+          }
+        }
+        metrics {
+          key: "three_dims"
+          value {
+            array_value {
+              data_type: INT64
+              shape: [2, 1, 3]
+              int64_values: [100, 200, 300, 500, 600, 700]
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics), [])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
+  @parameterized.named_parameters(('without_output_file_format', ''),
+                                  ('with_output_file_format', 'tfrecord'))
+  def testWriteValidationResults(self, output_file_format):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
     eval_shared_model = self._build_keras_model(model_dir, mul=0)
     baseline_eval_shared_model = self._build_keras_model(baseline_dir, mul=1)
@@ -218,7 +1037,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
     }
     writers = [
         metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
-            output_paths, add_metrics_callbacks=[])
+            output_paths,
+            add_metrics_callbacks=[],
+            output_file_format=output_file_format)
     ]
 
     with beam.Pipeline() as pipeline:
@@ -233,8 +1054,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
           | 'WriteResults' >> model_eval_lib.WriteResults(writers=writers))
       # pylint: enable=no-value-for-parameter
 
-    validation_result = model_eval_lib.load_validation_result(
-        os.path.dirname(validations_file))
+    validation_result = (
+        metrics_plots_and_validations_writer
+        .load_and_deserialize_validation_result(
+            os.path.dirname(validations_file)))
 
     expected_validations = [
         text_format.Parse(
@@ -306,7 +1129,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
         expected_validations,
         validation_result.metric_validations_per_slice[0].failures)
 
-  def testWriteMetricsAndPlots(self):
+  @parameterized.named_parameters(('without_output_file_format', ''),
+                                  ('with_output_file_format', 'tfrecord'))
+  def testWriteMetricsAndPlots(self, output_file_format):
     metrics_file = os.path.join(self._getTempDir(), 'metrics')
     plots_file = os.path.join(self._getTempDir(), 'plots')
     temp_eval_export_dir = os.path.join(self._getTempDir(), 'eval_export_dir')
@@ -338,7 +1163,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
     }
     writers = [
         metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
-            output_paths, eval_shared_model.add_metrics_callbacks)
+            output_paths,
+            eval_shared_model.add_metrics_callbacks,
+            output_file_format=output_file_format)
     ]
 
     with beam.Pipeline() as pipeline:
@@ -382,11 +1209,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
         }
         """, metrics_for_slice_pb2.MetricsForSlice())
 
-    metric_records = []
-    for record in tf.compat.v1.python_io.tf_record_iterator(metrics_file):
-      metric_records.append(
-          metrics_for_slice_pb2.MetricsForSlice.FromString(record))
-    self.assertEqual(1, len(metric_records), 'metrics: %s' % metric_records)
+    metric_records = list(
+        metrics_plots_and_validations_writer.load_and_deserialize_metrics(
+            metrics_file))
+    self.assertLen(metric_records, 1, 'metrics: %s' % metric_records)
     self.assertProtoEquals(expected_metrics_for_slice, metric_records[0])
 
     expected_plots_for_slice = text_format.Parse(
@@ -438,11 +1264,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest
       }
     """, metrics_for_slice_pb2.PlotsForSlice())
 
-    plot_records = []
-    for record in tf.compat.v1.python_io.tf_record_iterator(plots_file):
-      plot_records.append(
-          metrics_for_slice_pb2.PlotsForSlice.FromString(record))
-    self.assertEqual(1, len(plot_records), 'plots: %s' % plot_records)
+    plot_records = list(
+        metrics_plots_and_validations_writer.load_and_deserialize_plots(
+            plots_file))
+    self.assertLen(plot_records, 1, 'plots: %s' % plot_records)
     self.assertProtoEquals(expected_plots_for_slice, plot_records[0])
 
 

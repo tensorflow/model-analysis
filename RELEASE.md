@@ -32,6 +32,10 @@
     and `tfma.view.SlicedPlots`.
 *   Unchecked Metric thresholds now block the model validation.
 *   Added support for per slice threshold settings.
+*   Added support for sharding metrics and plots outputs.
+*   Updated load_eval_result to support filtering plots by model name. Added
+    support for loading multiple models at same output path using
+    load_eval_results.
 
 ## Breaking changes
 

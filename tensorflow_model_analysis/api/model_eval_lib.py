@@ -24,7 +24,7 @@ from __future__ import print_function
 import os
 import tempfile
 
-from typing import Any, Dict, List, Optional, Set, Text, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, Text, Union
 
 from absl import logging
 import apache_beam as beam
@@ -53,9 +53,9 @@ from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.validators import validator
+from tensorflow_model_analysis.view import util
 from tensorflow_model_analysis.view import view_types
 from tensorflow_model_analysis.writers import eval_config_writer
-from tensorflow_model_analysis.writers import metrics_and_plots_serialization
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 from tensorflow_model_analysis.writers import writer
 from tfx_bsl.arrow import table_util
@@ -63,7 +63,6 @@ from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import tf_example_record
 from tensorflow_metadata.proto.v0 import schema_pb2
 
-_EVAL_CONFIG_FILE = 'eval_config.json'
 # TODO(pachristopher): After TFMA is released, enable batched extractors by
 # default.
 _ENABLE_BATCHED_EXTRACTORS = False
@@ -163,45 +162,34 @@ def _update_eval_config_with_defaults(
 MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice
 
 
-def load_metrics(output_path: Text) -> List[MetricsForSlice]:
+def load_metrics(output_path: Text,
+                 output_file_format: Text = '') -> Iterator[MetricsForSlice]:
   """Read and deserialize the MetricsForSlice records."""
-  records = []
-  filepath = os.path.join(output_path, constants.METRICS_KEY)
-  if not tf.io.gfile.exists(filepath):
-    filepath = output_path  # Allow full file to be passed.
-  for record in tf.compat.v1.python_io.tf_record_iterator(filepath):
-    records.append(MetricsForSlice.FromString(record))
-  return records
+  for m in metrics_plots_and_validations_writer.load_and_deserialize_metrics(
+      output_path, output_file_format):
+    yield m
 
 
 PlotsForSlice = metrics_for_slice_pb2.PlotsForSlice
 
 
-def load_plots(output_path: Text) -> List[PlotsForSlice]:
+def load_plots(output_path: Text,
+               output_file_format: Text = '') -> Iterator[PlotsForSlice]:
   """Read and deserialize the PlotsForSlice records."""
-  records = []
-  filepath = os.path.join(output_path, constants.PLOTS_KEY)
-  if not tf.io.gfile.exists(filepath):
-    filepath = output_path  # Allow full file to be passed.
-  for record in tf.compat.v1.python_io.tf_record_iterator(filepath):
-    records.append(PlotsForSlice.FromString(record))
-  return records
+  for p in metrics_plots_and_validations_writer.load_and_deserialize_plots(
+      output_path, output_file_format):
+    yield p
 
 
 # Define types here to avoid type errors between OSS and internal code.
 ValidationResult = validation_result_pb2.ValidationResult
 
 
-def load_validation_result(output_path: Text) -> ValidationResult:
+def load_validation_result(output_path: Text,
+                           output_file_format: Text = '') -> ValidationResult:
   """Read and deserialize the ValidationResult."""
-  validation_records = []
-  filepath = os.path.join(output_path, constants.VALIDATIONS_KEY)
-  if not tf.io.gfile.exists(filepath):
-    filepath = output_path  # Allow full file to be passed.
-  for record in tf.compat.v1.python_io.tf_record_iterator(filepath):
-    validation_records.append(ValidationResult.FromString(record))
-  assert len(validation_records) == 1
-  return validation_records[0]
+  return metrics_plots_and_validations_writer.load_and_deserialize_validation_result(
+      output_path, output_file_format)
 
 
 def make_eval_results(results: List[view_types.EvalResult],
@@ -221,49 +209,73 @@ def make_eval_results(results: List[view_types.EvalResult],
 
 
 def load_eval_results(
-    output_paths: List[Text],
-    mode: Text,
+    output_paths: Union[Text, List[Text]],
+    mode: Text = constants.MODEL_CENTRIC_MODE,
     model_name: Optional[Text] = None) -> view_types.EvalResults:
-  """Run model analysis for a single model on multiple data sets.
+  """Loads results for multiple models or multiple data sets.
 
   Args:
-    output_paths: A list of output paths of completed tfma runs.
+    output_paths: A single path or list of output paths of completed tfma runs.
     mode: The mode of the evaluation. Currently, tfma.DATA_CENTRIC_MODE and
       tfma.MODEL_CENTRIC_MODE are supported.
-    model_name: The name of the model if multiple models are evaluated together.
+    model_name: Filters to only return results for given model. If unset all
+      models are returned.
 
   Returns:
     An EvalResults containing the evaluation results serialized at output_paths.
     This can be used to construct a time series view.
   """
-  results = [
-      load_eval_result(output_path, model_name=model_name)
-      for output_path in output_paths
-  ]
+  results = []
+  if not isinstance(output_paths, list):
+    output_paths = [output_paths]
+  for output_path in output_paths:
+    if model_name is None:
+      _, _, _, model_locations = eval_config_writer.load_eval_run(output_path)
+      model_names = list(model_locations.keys())
+    else:
+      model_names = [model_name]
+    for model_name in model_names:
+      results.append(load_eval_result(output_path, model_name=model_name))
   return make_eval_results(results, mode)
 
 
 def load_eval_result(
     output_path: Text,
     model_name: Optional[Text] = None) -> view_types.EvalResult:
-  """Creates an EvalResult object for use with the visualization functions."""
+  """Loads EvalResult object for use with the visualization functions.
+
+  Args:
+    output_path: Output directory containing config, metrics, plots, etc.
+    model_name: Optional model name. Required if multi-model evaluation was run.
+
+  Returns:
+    EvalResult object for use with the visualization functions.
+  """
+  # Config, metrics, and plots files should all exist under the given output
+  # directory, but fairness plugin has a use-case where only the metrics are
+  # provided so we support all files as being optional (the EvalResult will have
+  # corresponding None values for files that are not present).
   eval_config, data_location, file_format, model_locations = (
       eval_config_writer.load_eval_run(output_path))
-  metrics_proto_list = (
-      metrics_and_plots_serialization.load_and_deserialize_metrics(
-          path=os.path.join(output_path, constants.METRICS_KEY),
-          model_name=model_name))
-  plots_proto_list = (
-      metrics_and_plots_serialization.load_and_deserialize_plots(
-          path=os.path.join(output_path, constants.PLOTS_KEY)))
-
-  if model_name is None:
+  metrics_list = []
+  for p in metrics_plots_and_validations_writer.load_and_deserialize_metrics(
+      output_path):
+    metrics_list.append(
+        util.convert_metrics_proto_to_dict(p, model_name=model_name))
+  plots_list = []
+  for p in metrics_plots_and_validations_writer.load_and_deserialize_plots(
+      output_path):
+    plots_list.append(
+        util.convert_plots_proto_to_dict(p, model_name=model_name))
+  if not model_locations:
+    model_location = ''
+  elif model_name is None:
     model_location = list(model_locations.values())[0]
   else:
     model_location = model_locations[model_name]
   return view_types.EvalResult(
-      slicing_metrics=metrics_proto_list,
-      plots=plots_proto_list,
+      slicing_metrics=metrics_list,
+      plots=plots_list,
       config=eval_config,
       data_location=data_location,
       file_format=file_format,
@@ -561,10 +573,15 @@ def default_writers(
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: Optional[config.EvalConfig] = None,
     display_only_data_location: Optional[Text] = None,
-    display_only_file_format: Optional[Text] = None,
+    display_only_data_file_format: Optional[Text] = None,
+    output_file_format: Text = '',
     add_metric_callbacks: List[types.AddMetricsCallbackType] = None
 ) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
+
+  Note, sharding will be enabled by default if an output_file_format is
+  provided. Filenames will be <output_path>-SSSSS-of-NNNNN.<output_file_format>
+  where SSSSS is the shard number and NNNNN is the number of shards.
 
   Args:
     output_path: Output path.
@@ -575,8 +592,10 @@ def default_writers(
     display_only_data_location: Optional path indicating where the examples were
       read from. This is used only for display purposes - data will not actually
       be read from this path.
-    display_only_file_format: Optional format of the examples. This is used only
-      for display purposes.
+    display_only_data_file_format: Optional format of the input examples. This
+      is used only for display purposes.
+    output_file_format: File format to use when saving files. Currently only
+      'tfrecord' is supported.
     add_metric_callbacks: Optional list of metric callbacks (if used).
   """
   writers = []
@@ -608,7 +627,7 @@ def default_writers(
             output_path,
             eval_config=eval_config,
             data_location=display_only_data_location,
-            file_format=display_only_file_format,
+            data_file_format=display_only_data_file_format,
             model_locations=model_locations))
 
   output_paths = {
@@ -622,7 +641,8 @@ def default_writers(
   writers.append(
       metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
           output_paths=output_paths,
-          add_metrics_callbacks=add_metric_callbacks))
+          add_metrics_callbacks=add_metric_callbacks,
+          output_file_format=output_file_format))
   return writers
 
 
@@ -944,7 +964,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         eval_shared_model=eval_shared_model,
         eval_config=eval_config,
         display_only_data_location=display_only_data_location,
-        display_only_file_format=display_only_file_format)
+        display_only_data_file_format=display_only_file_format)
 
   # pylint: disable=no-value-for-parameter
   extract_batched_inputs = (_ENABLE_BATCHED_EXTRACTORS and is_batched_input(

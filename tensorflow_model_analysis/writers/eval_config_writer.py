@@ -35,7 +35,8 @@ from tensorflow_model_analysis.writers import writer
 
 from google.protobuf import json_format
 
-EVAL_CONFIG_FILE = 'eval_config.json'
+EVAL_CONFIG_FILE = 'eval_config'
+EVAL_CONFIG_FILE_FORMAT = 'json'
 
 
 def _check_version(version: Text, path: Text):
@@ -61,11 +62,23 @@ def _serialize_eval_run(eval_config: config.EvalConfig, data_location: Text,
 
 def load_eval_run(
     output_path: Text,
+    output_file_format: Text = EVAL_CONFIG_FILE_FORMAT,
     filename: Optional[Text] = None
-) -> Tuple[config.EvalConfig, Text, Text, Dict[Text, Text]]:
-  """Returns eval config, data location, file format, and model locations."""
+) -> Tuple[Optional[config.EvalConfig], Text, Text, Dict[Text, Text]]:
+  """Returns eval config, data location, file format, and model locations.
+
+  Args:
+    output_path: Directory containing config file.
+    output_file_format: Format of output file. Currently only 'json' is
+      supported.
+    filename: Name of output file (including extension if any).
+
+  Returns:
+    Tuple of (EvalConfig, data location, file format, model locations). If an
+    EvalConfig is not found at the given path, None will be returned.
+  """
   if filename is None:
-    filename = EVAL_CONFIG_FILE
+    filename = EVAL_CONFIG_FILE + '.' + output_file_format
   path = os.path.join(output_path, filename)
   if tf.io.gfile.exists(path):
     with tf.io.gfile.GFile(path, 'r') as f:
@@ -73,10 +86,11 @@ def load_eval_run(
       _check_version(pb.version, output_path)
       return (pb.eval_config, pb.data_location, pb.file_format,
               pb.model_locations)
-  else:
-    # Legacy suppport (to be removed in future).
-    # The previous version did not include file extension.
-    path = os.path.splitext(path)[0]
+
+  # Legacy suppport (to be removed in future).
+  # The previous version did not include file extension.
+  path = os.path.splitext(path)[0]
+  if tf.io.gfile.exists(path):
     serialized_record = six.next(
         tf.compat.v1.python_io.tf_record_iterator(path))
     final_dict = pickle.loads(serialized_record)
@@ -94,12 +108,16 @@ def load_eval_run(
                                   '': old_config.model_location
                               })
 
+  # No config found
+  return (None, '', '', {})
+
 
 def EvalConfigWriter(  # pylint: disable=invalid-name
     output_path: Text,
     eval_config: config.EvalConfig,
+    output_file_format: Text = EVAL_CONFIG_FILE_FORMAT,
     data_location: Optional[Text] = None,
-    file_format: Optional[Text] = None,
+    data_file_format: Optional[Text] = None,
     model_locations: Optional[Dict[Text, Text]] = None,
     filename: Optional[Text] = None) -> writer.Writer:
   """Returns eval config writer.
@@ -107,30 +125,32 @@ def EvalConfigWriter(  # pylint: disable=invalid-name
   Args:
     output_path: Output path to write config to.
     eval_config: EvalConfig.
+    output_file_format: Output file format. Currently on 'json' is supported.
     data_location: Optional path indicating where data is read from. This is
       only used for display purposes.
-    file_format: Optional format of the examples. This is only used for display
-      purposes.
+    data_file_format: Optional format of the input examples. This is only used
+      for display purposes.
     model_locations: Dict of model locations keyed by model name. This is only
       used for display purposes.
     filename: Name of file to store the config as.
   """
   if data_location is None:
     data_location = '<user provided PCollection>'
-  if file_format is None:
-    file_format = '<unknown>'
+  if data_file_format is None:
+    data_file_format = '<unknown>'
   if model_locations is None:
     model_locations = {'': '<unknown>'}
   if filename is None:
-    filename = EVAL_CONFIG_FILE
+    filename = EVAL_CONFIG_FILE + '.' + output_file_format
 
   return writer.Writer(
       stage_name='WriteEvalConfig',
       ptransform=_WriteEvalConfig(  # pylint: disable=no-value-for-parameter
           eval_config=eval_config,
           output_path=output_path,
+          output_file_format=output_file_format,
           data_location=data_location,
-          file_format=file_format,
+          data_file_format=data_file_format,
           model_locations=model_locations,
           filename=filename))
 
@@ -140,16 +160,18 @@ def EvalConfigWriter(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteEvalConfig(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation, eval_config: config.EvalConfig,
-    output_path: Text, data_location: Text, file_format: Text,
-    model_locations: Dict[Text, Text], filename: Text) -> beam.pvalue.PDone:
+    output_path: Text, output_file_format: Text, data_location: Text,
+    data_file_format: Text, model_locations: Dict[Text, Text],
+    filename: Text) -> beam.pvalue.PDone:
   """Writes EvalConfig to file.
 
   Args:
     evaluation: Evaluation data. This transform only makes use of the pipeline.
     eval_config: EvalConfig.
     output_path: Output path.
+    output_file_format: Output file format.
     data_location: Path indicating where input data is read from.
-    file_format: Format of the input data.
+    data_file_format: Format of the input data.
     model_locations: Dict of model locations keyed by model name.
     filename: Name of file to store the config as.
 
@@ -162,9 +184,14 @@ def _WriteEvalConfig(  # pylint: disable=invalid-name
   if EVAL_CONFIG_FILE in eval_config.options.disabled_outputs.values:
     return beam.pvalue.PDone(pipeline)
 
+  if output_file_format and output_file_format != EVAL_CONFIG_FILE_FORMAT:
+    raise ValueError(
+        'only "{}" format is currently supported: output_file_format={}'.format(
+            EVAL_CONFIG_FILE_FORMAT, output_file_format))
+
   return (pipeline
           | 'CreateEvalConfig' >> beam.Create([
-              _serialize_eval_run(eval_config, data_location, file_format,
+              _serialize_eval_run(eval_config, data_location, data_file_format,
                                   model_locations)
           ])
           | 'WriteEvalConfig' >> beam.io.WriteToText(

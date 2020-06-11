@@ -25,10 +25,14 @@ from typing import Any, Dict, List, Optional, Text, Tuple, Union
 
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import example_count
+from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import weighted_example_count
 from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.view import view_types
+
+from google.protobuf import json_format
 
 
 def get_slicing_metrics(
@@ -395,3 +399,190 @@ def get_slicing_config(
           weighted_example_column_to_use
           if weighted_example_column_to_use else default_column
   }
+
+
+# The input proto_map is a google.protobuf.internal.containers.MessageMap where
+# the keys are strings and the values are some protocol buffer field. Note that
+# MessageMap is not a protobuf message, none of the exising utility methods work
+# on it. We must iterate over its values and call the utility function
+# individually.
+def _convert_proto_map_to_dict(proto_map: Any) -> Dict[Text, Dict[Text, Any]]:
+  """Converts a metric map (metrics in MetricsForSlice protobuf) into a dict.
+
+  Args:
+    proto_map: A protocol buffer MessageMap that has behaviors like dict. The
+      keys are strings while the values are protocol buffers. However, it is not
+      a protobuf message and cannot be passed into json_format.MessageToDict
+      directly. Instead, we must iterate over its values.
+
+  Returns:
+    A dict representing the proto_map. For example:
+    Assume myProto contains
+    {
+      metrics: {
+        key: 'double'
+        value: {
+          double_value: {
+            value: 1.0
+          }
+        }
+      }
+      metrics: {
+        key: 'bounded'
+        value: {
+          bounded_value: {
+            lower_bound: {
+              double_value: {
+                value: 0.8
+              }
+            }
+            upper_bound: {
+              double_value: {
+                value: 0.9
+              }
+            }
+            value: {
+              double_value: {
+                value: 0.86
+              }
+            }
+          }
+        }
+      }
+    }
+
+    The output of _convert_proto_map_to_dict(myProto.metrics) would be
+
+    {
+      'double': {
+        'doubleValue': 1.0,
+      },
+      'bounded': {
+        'boundedValue': {
+          'lowerBound': 0.8,
+          'upperBound': 0.9,
+          'value': 0.86,
+        },
+      },
+    }
+
+    Note that field names are converted to lowerCamelCase and the field value in
+    google.protobuf.DoubleValue is collapsed automatically.
+  """
+  return {k: json_format.MessageToDict(proto_map[k]) for k in proto_map}
+
+
+def convert_metrics_proto_to_dict(
+    metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice,
+    model_name: Optional[Text] = None
+) -> Tuple[slicer.SliceKeyType, Optional[view_types.MetricsByOutputName]]:
+  """Converts metrics proto to dict."""
+  model_metrics_map = {}
+  if metrics_for_slice.metrics:
+    model_metrics_map[''] = {
+        '': {
+            '': _convert_proto_map_to_dict(metrics_for_slice.metrics)
+        }
+    }
+
+  default_model_name = None
+  if metrics_for_slice.metric_keys_and_values:
+    for kv in metrics_for_slice.metric_keys_and_values:
+      current_model_name = kv.key.model_name
+      if current_model_name not in model_metrics_map:
+        model_metrics_map[current_model_name] = {}
+      output_name = kv.key.output_name
+      if output_name not in model_metrics_map[current_model_name]:
+        model_metrics_map[current_model_name][output_name] = {}
+
+      sub_key_metrics_map = model_metrics_map[current_model_name][output_name]
+      sub_key_id = str(metric_types.SubKey.from_proto(
+          kv.key.sub_key)) if kv.key.HasField('sub_key') else ''
+      if sub_key_id not in sub_key_metrics_map:
+        sub_key_metrics_map[sub_key_id] = {}
+      if kv.key.is_diff:
+        if default_model_name is None:
+          default_model_name = current_model_name
+        elif default_model_name != current_model_name:
+          # Setting '' to trigger no match found ValueError below.
+          default_model_name = ''
+        metric_name = '{}_diff'.format(kv.key.name)
+      else:
+        metric_name = kv.key.name
+      sub_key_metrics_map[sub_key_id][metric_name] = json_format.MessageToDict(
+          kv.value)
+
+  metrics_map = None
+  keys = list(model_metrics_map.keys())
+  tmp_model_name = model_name or default_model_name
+  if tmp_model_name in model_metrics_map:
+    # Use the provided model name if there is a match.
+    metrics_map = model_metrics_map[tmp_model_name]
+    # Add model-independent (e.g. example_count) metrics to all models.
+    if tmp_model_name and '' in model_metrics_map:
+      for output_name, output_dict in model_metrics_map[''].items():
+        for sub_key_id, sub_key_dict in output_dict.items():
+          for name, value in sub_key_dict.items():
+            metrics_map.setdefault(output_name, {}).setdefault(sub_key_id,
+                                                               {})[name] = value
+  elif not tmp_model_name and len(keys) == 1:
+    # Show result of the only model if no model name is specified.
+    metrics_map = model_metrics_map[keys[0]]
+  elif keys:
+    # No match found.
+    raise ValueError('Fail to find metrics for model name: %s . '
+                     'Available model names are [%s]' %
+                     (model_name, ', '.join(keys)))
+
+  return (slicer.deserialize_slice_key(metrics_for_slice.slice_key),
+          metrics_map)
+
+
+def convert_plots_proto_to_dict(
+    plots_for_slice: metrics_for_slice_pb2.PlotsForSlice,
+    model_name: Optional[Text] = None
+) -> Tuple[slicer.SliceKeyType, Optional[view_types.PlotsByOutputName]]:
+  """Converts plots proto to dict."""
+  model_plots_map = {}
+  if plots_for_slice.plots:
+    plot_dict = _convert_proto_map_to_dict(plots_for_slice.plots)
+    keys = list(plot_dict.keys())
+    # If there is only one label, choose it automatically.
+    plot_data = plot_dict[keys[0]] if len(keys) == 1 else plot_dict
+    model_plots_map[''] = {'': {'': plot_data}}
+  elif plots_for_slice.HasField('plot_data'):
+    model_plots_map[''] = {
+        '': {
+            '': {json_format.MessageToDict(plots_for_slice.plot_data)}
+        }
+    }
+
+  if plots_for_slice.plot_keys_and_values:
+    for kv in plots_for_slice.plot_keys_and_values:
+      current_model_name = kv.key.model_name
+      if current_model_name not in model_plots_map:
+        model_plots_map[current_model_name] = {}
+      output_name = kv.key.output_name
+      if output_name not in model_plots_map[current_model_name]:
+        model_plots_map[current_model_name][output_name] = {}
+
+      sub_key_plots_map = model_plots_map[current_model_name][output_name]
+      sub_key_id = str(metric_types.SubKey.from_proto(
+          kv.key.sub_key)) if kv.key.HasField('sub_key') else ''
+      sub_key_plots_map[sub_key_id] = json_format.MessageToDict(kv.value)
+
+  plots_map = None
+  keys = list(model_plots_map.keys())
+  if model_name in model_plots_map:
+    # Use the provided model name if there is a match.
+    plots_map = model_plots_map[model_name]
+  elif not model_name and len(keys) == 1:
+    # Show result of the only model if no model name is specified.
+    plots_map = model_plots_map[keys[0]]
+  elif keys:
+    # No match found.
+    raise ValueError('Fail to find plots for model name: %s . '
+                     'Available model names are [%s]' %
+                     (model_name, ', '.join(keys)))
+
+  return (slicer.deserialize_slice_key(plots_for_slice.slice_key), plots_map)
