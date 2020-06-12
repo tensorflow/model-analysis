@@ -1393,23 +1393,21 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     }
 
     # Actual Output
-    model_specs = [
-        config.ModelSpec(prediction_key='prediction', label_key='label')
-    ]
-    metrics_specs = [
-        config.MetricsSpec(metrics=[
-            config.MetricConfig(class_name='Accuracy'),
-            config.MetricConfig(class_name='ExampleCount')
-        ])
-    ]
-    slicing_specs = [
-        config.SlicingSpec(feature_keys=['language']),
-        config.SlicingSpec()
-    ]
-    eval_config = config.EvalConfig(
-        model_specs=model_specs,
-        slicing_specs=slicing_specs,
-        metrics_specs=metrics_specs)
+    eval_config = text_format.Parse(
+        """
+      model_specs {
+        label_key: 'label'
+        prediction_key: 'prediction'
+      }
+      metrics_specs {
+        metrics { class_name: "Accuracy" }
+        metrics { class_name: "ExampleCount" }
+      }
+      slicing_specs {}
+      slicing_specs {
+        feature_keys: 'language'
+      }
+    """, config.EvalConfig())
     eval_result = model_eval_lib.analyze_raw_data(df_data, eval_config)
 
     # Compare Actual and Expected

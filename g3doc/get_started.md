@@ -4,7 +4,7 @@
 
 *   **For**: Machine Learning Engineers or Data Scientists
 *   **who**: want to analyze and understand their TensorFlow models
-*   **it is**: a standalone library or component of a TFx pipeline
+*   **it is**: a standalone library or component of a TFX pipeline
 *   **that**: evaluates models on large amounts of data in a distributed manner
     on the same metrics defined in training. These metrics are compared over
     slices of data, and visualized in Jupyter or Colab notebooks.
@@ -28,18 +28,20 @@ required.
 
 Note that because TFMA now runs based on the serving model, TFMA will no longer
 automatically evaluate metrics added at training time. The exception to this
-case is if a keras model is used since keras saves the metrics used along side
-of the saved model. However, if this is a hard requirement, the latest TFMA is
-backwards compatible such at an `EvalSavedModel` can still be run in a TFMA
+case is if a keras model is used since keras saves the metrics used alongside
+the saved model. However, if this is a hard requirement, the latest TFMA is
+backwards compatible such that an `EvalSavedModel` can still be run in a TFMA
 pipeline.
 
 The following table summarizes the models supported by default:
 
-Model Type                 | Training Time Metrics | Post Training Metrics
--------------------------- | --------------------- | ---------------------
-TF2 (keras)                | Y*                    | Y
-TF2 (generic)              | N/A                   | Y
-EvalSavedModel (estimator) | Y                     | Y
+| Model Type                 | Training Time Metrics | Post Training Metrics |
+| -------------------------- | --------------------- | --------------------- |
+| TF2 (keras)                | Y*                    | Y                     |
+| TF2 (generic)              | N/A                   | Y                     |
+| EvalSavedModel (estimator) | Y                     | Y                     |
+| None (tf.Example,          | N/A                   | Y                     |
+: pd.DataFrame, etc.)        :                       :                       :
 
 *   Training Time metrics refers to metrics defined at training time and saved
     with the model (either TFMA EvalSavedModel or keras saved model). Post

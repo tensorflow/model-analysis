@@ -227,7 +227,7 @@ config = text_format.Parse("""
 """, tfma.EvalConfig())
 ```
 
-### How do I setup TFMA to work with pre-calculated (i.e. model-agnostic) predictions?
+### How do I setup TFMA to work with pre-calculated (i.e. model-agnostic) predictions? (`TFRecord` and `tf.Example`)
 
 In order to configure TFMA to work with pre-calculated predictions, the default
 `tfma.PredictExtractor` must be disabled and the `tfma.InputExtractor` must be
@@ -269,11 +269,47 @@ eval_result = tfma.run_model_analysis(
     output_path="/path/for/metrics_for_slice_proto")
 ```
 
+### How do I setup TFMA to work with pre-calculated (i.e. model-agnostic) predictions? (`pd.DataFrame`)
+
+For small datasets that can fit in memory, an alternative to a `TFRecord` is a
+[`pandas.DataFrame`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)s.
+TFMA can operate on `pandas.DataFrame`s using the `tfma.analyze_raw_data` API.
+For an explanation of `tfma.MetricsSpec` and `tfma.SlicingSpec`, see the
+[setup](setup.md) guide. See [metrics](metrics.md) for more information about
+metrics that can be configured.
+
+The following is an example setup:
+
+```python
+# Run in a Jupyter Notebook.
+
+df_data = ...  # your pd.DataFrame
+
+eval_config = text_format.Parse("""
+  model_specs {
+    label_key: 'label'
+    prediction_key: 'prediction'
+  }
+  metrics_specs {
+    metrics { class_name: "AUC" }
+    metrics { class_name: "ConfusionMatrixPlot" }
+  }
+  slicing_specs {}
+  slicing_specs {
+    feature_keys: 'language'
+  }
+""", config.EvalConfig())
+
+eval_result = tfma.analyze_raw_data(df_data, eval_config)
+
+tfma.view.render_slicing_metrics(eval_result)
+```
+
 ## Metrics
 
 ### What types of metrics are supported?
 
-TFMA supports a wide variety of matrics including:
+TFMA supports a wide variety of metrics including:
 
 *   [regression metrics](metrics.md#regression-metrics)
 *   [binary classification metrics](metrics.md#binary-classification-metrics)
