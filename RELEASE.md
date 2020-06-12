@@ -36,6 +36,7 @@
 *   Updated load_eval_result to support filtering plots by model name. Added
     support for loading multiple models at same output path using
     load_eval_results.
+*   Fix typo in jupyter widgets breaking TimeSeriesView and PlotViewer.
 
 ## Breaking changes
 
