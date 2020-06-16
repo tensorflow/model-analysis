@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Initializes TFMA's view rendering api."""
+from tensorflow_model_analysis.view.view_types import SlicedMetrics
+from tensorflow_model_analysis.view.view_types import SlicedPlots
+
 from tensorflow_model_analysis.view.widget_view import render_plot
 from tensorflow_model_analysis.view.widget_view import render_slicing_metrics
 from tensorflow_model_analysis.view.widget_view import render_time_series
