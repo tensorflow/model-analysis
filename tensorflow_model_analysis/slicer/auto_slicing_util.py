@@ -27,7 +27,6 @@ from typing import Dict, List, NamedTuple, Optional, Text, Tuple
 import numpy as np
 import pandas as pd
 from scipy import stats
-import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import auto_slice_key_extractor
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -95,14 +94,11 @@ class SliceComparisonResult(
 # When comparison_type is LOWER,
 #   Null hypothesis: slice_metric >= overall_metric
 #   Alternate hypothesis: slice_metric < overall_metric
-def _is_significant_slice(slice_metric: float,
-                          slice_std_dev: float,
-                          slice_weight: float,
-                          base_metric: float,
-                          base_std_dev: float,
-                          base_weight: float,
+def _is_significant_slice(slice_metric: float, slice_std_dev: float,
+                          slice_weight: float, base_metric: float,
+                          base_std_dev: float, base_weight: float,
                           comparison_type: Text,
-                          alpha: float = 0.01):
+                          alpha: float) -> Tuple[bool, float]:
   """Perform statistical significance testing."""
   _, p_value_two_sided = stats.ttest_ind_from_stats(
       slice_metric,
@@ -122,7 +118,7 @@ def _is_significant_slice(slice_metric: float,
 # We define effect size to be the difference in means of the slice metric
 # and the base metric divided by the standard error.
 def _compute_effect_size(slice_metric: float, slice_std_dev: float,
-                         base_metric: float, base_std_dev: float):
+                         base_metric: float, base_std_dev: float) -> float:
   """Computes effect size."""
   metric_diff = abs(slice_metric - base_metric)
   slice_var = slice_std_dev * slice_std_dev
@@ -130,7 +126,9 @@ def _compute_effect_size(slice_metric: float, slice_std_dev: float,
   return math.sqrt(2) * metric_diff / math.sqrt(slice_var + base_var)
 
 
-def _get_metrics_as_dict(metrics):
+def _get_metrics_as_dict(
+    metrics: metrics_for_slice_pb2.MetricsForSlice
+) -> Dict[Text, types.ValueWithTDistribution]:
   """Convert slice metrics to a Dict of types.ValueWithTDistribution."""
   result = {}
   for metric in metrics.metric_keys_and_values:
@@ -184,12 +182,13 @@ def get_raw_feature(
 
 
 def revert_slice_keys_for_transformed_features(
-    metrics: List[metrics_for_slice_pb2.MetricsForSlice],
-    statistics: statistics_pb2.DatasetFeatureStatisticsList):
+    slices: List[SliceComparisonResult],
+    statistics: statistics_pb2.DatasetFeatureStatisticsList
+) -> List[SliceComparisonResult]:
   """Revert the slice keys for the transformed features.
 
   Args:
-    metrics: List of slice metrics protos.
+    slices: List of slices.
     statistics: Data statistics used to configure AutoSliceKeyExtractor.
 
   Returns:
@@ -198,18 +197,13 @@ def revert_slice_keys_for_transformed_features(
   """
   result = []
   boundaries = auto_slice_key_extractor.get_quantile_boundaries(statistics)
-  for slice_metrics in metrics:
-    transformed_metrics = metrics_for_slice_pb2.MetricsForSlice()
-    transformed_metrics.CopyFrom(slice_metrics)
-    for single_slice_key in transformed_metrics.slice_key.single_slice_keys:
+  for s in slices:
+    transformed_slice_key = []
+    for column, value in s.slice_key:
       raw_feature_name, raw_feature_value = get_raw_feature(
-          single_slice_key.column,
-          getattr(single_slice_key, single_slice_key.WhichOneof('kind')),
-          boundaries)
-      single_slice_key.column = raw_feature_name
-      # TODO(pachristopher): Consider adding these utils to BSL.
-      single_slice_key.bytes_value = tf.compat.as_bytes(raw_feature_value)
-    result.append(transformed_metrics)
+          column, value, boundaries)
+      transformed_slice_key.append((raw_feature_name, raw_feature_value))
+    result.append(s._replace(slice_key=tuple(transformed_slice_key)))
   return result
 
 
@@ -252,13 +246,14 @@ def remove_subset_slices(
   return list(selected_slices.values())
 
 
-def find_significant_slices(
+def partition_slices(
     metrics: List[metrics_for_slice_pb2.MetricsForSlice],
     metric_key: Text,
     comparison_type: Text = 'HIGHER',
     alpha: float = 0.01,
-    min_num_examples: int = 1) -> List[SliceComparisonResult]:
-  """Finds statistically significant slices.
+    min_num_examples: int = 1
+) -> Tuple[List[SliceComparisonResult], List[SliceComparisonResult]]:
+  """Partition slices into significant and non-significant slices.
 
   Args:
     metrics: List of slice metrics protos. We assume that the metrics have
@@ -273,7 +268,8 @@ def find_significant_slices(
       is set to zero, we don't do any filtering.
 
   Returns:
-    List of statistically significant slices.
+    Tuple containing list of statistically significant and non-significant
+    slices.
   """
   assert comparison_type in ['HIGHER', 'LOWER']
   if min_num_examples == 0:
@@ -287,21 +283,14 @@ def find_significant_slices(
   del metrics_dict[()]
 
   overall_metrics_dict = _get_metrics_as_dict(overall_slice_metrics)
-  result = []
+  significant_slices, non_significant_slices = [], []
   for slice_key, slice_metrics in metrics_dict.items():
     slice_metrics_dict = _get_metrics_as_dict(slice_metrics)
-    num_examples = slice_metrics_dict['example_count'].unsampled_value
+    num_examples = int(slice_metrics_dict['example_count'].unsampled_value)
     if num_examples < min_num_examples:
       continue
     # Prune non-interesting slices.
     if np.isnan(slice_metrics_dict[metric_key].unsampled_value):
-      continue
-    if comparison_type == 'HIGHER':
-      comparison_fn = operator.le
-    else:
-      comparison_fn = operator.ge
-    if comparison_fn(slice_metrics_dict[metric_key].unsampled_value,
-                     overall_metrics_dict[metric_key].unsampled_value):
       continue
     # Only consider statistically significant slices.
     is_significant, p_value = _is_significant_slice(
@@ -312,20 +301,21 @@ def find_significant_slices(
         overall_metrics_dict[metric_key].sample_standard_deviation,
         overall_metrics_dict['example_count'].unsampled_value, comparison_type,
         alpha)
-    if not is_significant:
-      continue
     # Compute effect size for the slice.
     effect_size = _compute_effect_size(
         slice_metrics_dict[metric_key].unsampled_value,
         slice_metrics_dict[metric_key].sample_standard_deviation,
         overall_metrics_dict[metric_key].unsampled_value,
         overall_metrics_dict[metric_key].sample_standard_deviation)
-    result.append(
-        SliceComparisonResult(slice_key, num_examples,
-                              slice_metrics_dict[metric_key].unsampled_value,
-                              overall_metrics_dict[metric_key].unsampled_value,
-                              p_value, effect_size, slice_metrics))  # pytype: disable=wrong-arg-types
-  return result
+    slice_info = SliceComparisonResult(
+        slice_key, num_examples, slice_metrics_dict[metric_key].unsampled_value,
+        overall_metrics_dict[metric_key].unsampled_value, p_value, effect_size,
+        slice_metrics)
+    if not is_significant:
+      non_significant_slices.append(slice_info)
+      continue
+    significant_slices.append(slice_info)
+  return significant_slices, non_significant_slices
 
 
 def find_top_slices(

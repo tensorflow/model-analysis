@@ -41,6 +41,7 @@ TRANSFORMED_FEATURE_PREFIX = 'transformed_'
 
 def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
     statistics: statistics_pb2.DatasetFeatureStatisticsList,
+    max_cross_size: int = 2,
     materialize: Optional[bool] = True) -> extractor.Extractor:
   """Creates an extractor for automatically extracting slice keys.
 
@@ -55,12 +56,13 @@ def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
 
   Args:
     statistics: Data statistics.
+    max_cross_size: Maximum size feature crosses to consider.
     materialize: True to add MaterializedColumn entries for the slice keys.
 
   Returns:
     Extractor for slice keys.
   """
-  slice_spec = slice_spec_from_stats(statistics)
+  slice_spec = slice_spec_from_stats(statistics, max_cross_size=max_cross_size)
   return extractor.Extractor(
       stage_name=SLICE_KEY_EXTRACTOR_STAGE_NAME,
       ptransform=_AutoExtractSliceKeys(slice_spec, statistics, materialize))
