@@ -19,7 +19,9 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
+import sys
+
+from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple
 
 import apache_beam as beam
 import numpy as np
@@ -98,15 +100,14 @@ class _AggState(object):
   _AggregateCombineFn for why we need this.
   """
 
-  __slots__ = ['metric_variables', 'inputs']
+  __slots__ = ['metric_variables', 'inputs', 'total_input_byte_size']
 
   def __init__(self):
     self.metric_variables = None  # type: Optional[types.MetricVariablesType]
-    self.inputs = [
-    ]  # type: List[Union[bytes, types.FeaturesPredictionsLabels]]
+    self.inputs = []  # type: List[bytes]
+    self.total_input_byte_size = 0
 
-  def copy_from(  # pylint: disable=invalid-name
-      self, other: '_AggState') -> None:
+  def copy_from(self, other: '_AggState'):
     if other.metric_variables:
       self.metric_variables = other.metric_variables
     self.inputs = other.inputs
@@ -117,11 +118,15 @@ class _AggState(object):
     self.inputs.extend(other.inputs)
     return self
 
-  def add_input(self, new_input) -> None:
+  def add_input(self, new_input: bytes):
     self.inputs.append(new_input)
+    self.total_input_byte_size += sys.getsizeof(new_input)
 
-  def add_metrics_variables(  # pylint: disable=invalid-name
-      self, metric_variables: types.MetricVariablesType) -> None:
+  def clear_inputs(self):
+    del self.inputs[:]
+    self.total_input_byte_size = 0
+
+  def add_metrics_variables(self, metric_variables: types.MetricVariablesType):
     self.metric_variables = _add_metric_variables(self.metric_variables,
                                                   metric_variables)
 
@@ -156,9 +161,11 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
   (https://issues.apache.org/jira/browse/BEAM-3737).
   """
 
-  # This needs to be large enough to allow for efficient TF invocations during
-  # batch flushing, but shouldn't be too large as it also acts as cap on the
-  # maximum memory usage of the computation.
+  # We really want the batch size to be adaptive like it is in
+  # beam.BatchElements(), but there isn't an easy way to make it so. For now
+  # we will limit stored inputs to a max overall byte size.
+  # TODO(b/73789023): Figure out how to make this batch size dynamic.
+  _TOTAL_INPUT_BYTE_SIZE_THRESHOLD = 16 << 20  # 16MiB
   _DEFAULT_DESIRED_BATCH_SIZE = 1000
 
   def __init__(self,
@@ -170,9 +177,6 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
           self).__init__({'': eval_shared_model.model_loader})
     self._seed_for_testing = seed_for_testing
     self._eval_metrics_graph = None  # type: eval_metrics_graph.EvalMetricsGraph
-    # We really want the batch size to be adaptive like it is in
-    # beam.BatchElements(), but there isn't an easy way to make it so.
-    # TODO(b/73789023): Figure out how to make this batch size dynamic.
     if desired_batch_size and desired_batch_size > 0:
       self._desired_batch_size = desired_batch_size
     else:
@@ -186,6 +190,8 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
         constants.METRICS_NAMESPACE, 'combine_batch_size')
     self._num_compacts = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_compacts')
+    self._combine_total_input_byte_size = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE, 'combine_total_input_byte_size')
 
   def _poissonify(self, accumulator: _AggState) -> List[bytes]:
     # pylint: disable=line-too-long
@@ -233,9 +239,13 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
       self._setup_if_needed()
       self._eval_metrics_graph = self._loaded_models['']
     batch_size = len(accumulator.inputs)
-    if force or batch_size >= self._desired_batch_size:
+    if (force or batch_size >= self._desired_batch_size or
+        accumulator.total_input_byte_size >=
+        self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD):
       if accumulator.inputs:
         self._combine_batch_size.update(batch_size)
+        self._combine_total_input_byte_size.update(
+            accumulator.total_input_byte_size)
         inputs_for_metrics = accumulator.inputs
         if self._compute_with_sampling:
           # If we are computing with multiple bootstrap replicates, use fpls
@@ -250,7 +260,7 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
           # metrics update, but does not handle empty updates. Explicitly
           # calling just reset here, to make the flow clear.
           self._eval_metrics_graph.reset_metric_variables()
-        del accumulator.inputs[:]
+        accumulator.clear_inputs()
 
   def create_accumulator(self) -> _AggState:
     return _AggState()
