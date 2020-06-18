@@ -37,6 +37,7 @@
     support for loading multiple models at same output path using
     load_eval_results.
 *   Fix typo in jupyter widgets breaking TimeSeriesView and PlotViewer.
+*   Add `tfma.slicer.stringify_slice_key()`.
 
 ## Breaking changes
 
