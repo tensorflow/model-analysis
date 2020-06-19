@@ -25,6 +25,7 @@ from typing import List, Optional
 
 import apache_beam as beam
 
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
@@ -36,6 +37,7 @@ SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSliceKeys'
 
 def SliceKeyExtractor(
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
+    eval_config: Optional[config.EvalConfig] = None,
     materialize: Optional[bool] = True) -> extractor.Extractor:
   """Creates an extractor for extracting slice keys.
 
@@ -49,13 +51,21 @@ def SliceKeyExtractor(
   of the slice keys will be added under the key tfma.MATERIALZED_SLICE_KEYS_KEY.
 
   Args:
-    slice_spec: Optional list of SingleSliceSpec specifying the slices to slice
-      the data into. If None, defaults to the overall slice.
+    slice_spec: Deprecated (use EvalConfig).
+    eval_config: Optional EvalConfig containing slicing_specs specifying the
+      slices to slice the data into. If slicing_specs are empty, defaults to
+      overall slice.
     materialize: True to add MaterializedColumn entries for the slice keys.
 
   Returns:
     Extractor for slice keys.
   """
+  if slice_spec and eval_config:
+    raise ValueError('slice_spec is deprecated, only use eval_config')
+  if eval_config:
+    slice_spec = [
+        slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
+    ]
   if not slice_spec:
     slice_spec = [slicer.SingleSliceSpec()]
   return extractor.Extractor(

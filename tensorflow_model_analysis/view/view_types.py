@@ -102,7 +102,7 @@ class EvalResult(
   """The result of a single model analysis run.
 
   Attributes:
-    slicing_metrics: a list of `tfma.SlicedMetricss`, containing metric values
+    slicing_metrics: a list of `tfma.SlicedMetrics`, containing metric values
       for each slice.
     plots: List of slice-plot pairs.
     config: The config containing slicing and metrics specification.

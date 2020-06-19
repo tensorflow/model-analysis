@@ -405,20 +405,22 @@ def default_extractors(  # pylint: disable=invalid-name
   Raises:
     NotImplementedError: If eval_config contains mixed serving and eval models.
   """
+  if slice_spec and eval_config:
+    raise ValueError('slice_spec is deprecated, only use eval_config')
   if eval_config is not None:
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
-    ]
 
   if _is_legacy_eval(eval_shared_model, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
+    if not eval_config and slice_spec:
+      eval_config = config.EvalConfig(
+          slicing_specs=[s.to_proto() for s in slice_spec])
     return [
         predict_extractor.PredictExtractor(
             eval_shared_model, materialize=materialize),
         slice_key_extractor.SliceKeyExtractor(
-            slice_spec, materialize=materialize)
+            eval_config=eval_config, materialize=materialize)
     ]
   elif eval_shared_model:
     model_types = _model_types(eval_shared_model)
@@ -435,7 +437,7 @@ def default_extractors(  # pylint: disable=invalid-name
           tflite_predict_extractor.TFLitePredictExtractor(
               eval_config=eval_config, eval_shared_model=eval_shared_model),
           slice_key_extractor.SliceKeyExtractor(
-              slice_spec, materialize=materialize)
+              eval_config=eval_config, materialize=materialize)
       ]
     elif constants.TF_LITE in model_types:
       raise NotImplementedError(
@@ -451,7 +453,7 @@ def default_extractors(  # pylint: disable=invalid-name
               materialize=materialize,
               eval_config=eval_config),
           slice_key_extractor.SliceKeyExtractor(
-              slice_spec, materialize=materialize)
+              eval_config=eval_config, materialize=materialize)
       ]
     elif (eval_config and constants.TF_ESTIMATOR in model_types and
           any(eval_constants.EVAL_TAG in m.model_loader.tags
@@ -470,7 +472,7 @@ def default_extractors(  # pylint: disable=invalid-name
                 tensor_adapter_config=tensor_adapter_config),
             unbatch_extractor.UnbatchExtractor(),
             slice_key_extractor.SliceKeyExtractor(
-                slice_spec, materialize=materialize)
+                eval_config=eval_config, materialize=materialize)
         ]
       else:
         return [
@@ -478,7 +480,7 @@ def default_extractors(  # pylint: disable=invalid-name
             predict_extractor_v2.PredictExtractor(
                 eval_config=eval_config, eval_shared_model=eval_shared_model),
             slice_key_extractor.SliceKeyExtractor(
-                slice_spec, materialize=materialize)
+                eval_config=eval_config, materialize=materialize)
         ]
   else:
     if enable_batched_extractors:
@@ -487,13 +489,13 @@ def default_extractors(  # pylint: disable=invalid-name
               eval_config=eval_config),
           unbatch_extractor.UnbatchExtractor(),
           slice_key_extractor.SliceKeyExtractor(
-              slice_spec, materialize=materialize)
+              eval_config=eval_config, materialize=materialize)
       ]
     else:
       return [
           input_extractor.InputExtractor(eval_config=eval_config),
           slice_key_extractor.SliceKeyExtractor(
-              slice_spec, materialize=materialize)
+              eval_config=eval_config, materialize=materialize)
       ]
 
 
@@ -1117,6 +1119,7 @@ def single_model_analysis(
     model_location: Text,
     data_location: Text,
     output_path: Text = None,
+    eval_config: Optional[config.EvalConfig] = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None
 ) -> view_types.EvalResult:
   """Run model analysis for a single model on a single data set.
@@ -1130,7 +1133,8 @@ def single_model_analysis(
     data_location: The location of the data files.
     output_path: The directory to output metrics and results to. If None, we use
       a temporary directory.
-    slice_spec: A list of tfma.slicer.SingleSliceSpec.
+    eval_config: Eval config.
+    slice_spec: Deprecated (use EvalConfig).
 
   Returns:
     An EvalResult that can be used with the TFMA visualization functions.
@@ -1141,8 +1145,11 @@ def single_model_analysis(
   if not tf.io.gfile.exists(output_path):
     tf.io.gfile.makedirs(output_path)
 
-  eval_config = config.EvalConfig(
-      slicing_specs=[s.to_proto() for s in slice_spec])
+  if slice_spec and eval_config:
+    raise ValueError('slice_spec is deprecated, only use eval_config')
+  if slice_spec:
+    eval_config = config.EvalConfig(
+        slicing_specs=[s.to_proto() for s in slice_spec])
 
   return run_model_analysis(
       eval_config=eval_config,

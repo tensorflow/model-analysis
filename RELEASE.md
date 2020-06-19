@@ -38,6 +38,8 @@
     load_eval_results.
 *   Fix typo in jupyter widgets breaking TimeSeriesView and PlotViewer.
 *   Add `tfma.slicer.stringify_slice_key()`.
+*   Deprecated external use of tfma.slicer.SingleSliceSpec (tfma.SlicingSpec
+    should be used instead).
 
 ## Breaking changes
 

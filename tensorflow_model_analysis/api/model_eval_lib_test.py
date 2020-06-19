@@ -50,7 +50,6 @@ from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import validation_result_pb2
-from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.view import view_types
 
 from google.protobuf import text_format
@@ -230,14 +229,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     eval_config = config.EvalConfig(slicing_specs=slicing_specs)
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, example_weight_key='age')
-    slice_spec = [slicer.SingleSliceSpec(spec=slicing_specs[0])]
     extractors_with_feature_extraction = [
         predict_extractor.PredictExtractor(
             eval_shared_model, desired_batch_size=3, materialize=False),
         feature_extractor.FeatureExtractor(
             extract_source=constants.INPUT_KEY,
             extract_dest=constants.FEATURES_PREDICTIONS_LABELS_KEY),
-        slice_key_extractor.SliceKeyExtractor(slice_spec, materialize=False)
+        slice_key_extractor.SliceKeyExtractor(
+            eval_config=eval_config, materialize=False)
     ]
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
@@ -1171,10 +1170,13 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='chinese', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
+    eval_config = config.EvalConfig(slicing_specs=[
+        config.SlicingSpec(feature_values={'language': 'english'})
+    ])
     eval_results = model_eval_lib.multiple_model_analysis(
         [model_location_1, model_location_2],
         data_location,
-        slice_spec=[slicer.SingleSliceSpec(features=[('language', 'english')])])
+        eval_config=eval_config)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     self.assertLen(eval_results._results, 2)
@@ -1213,9 +1215,12 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ])
     data_location_2 = self._writeTFExamplesToTFRecords(
         [self._makeExample(age=4.0, language='english', label=1.0)])
+    eval_config = config.EvalConfig(slicing_specs=[
+        config.SlicingSpec(feature_values={'language': 'english'})
+    ])
     eval_results = model_eval_lib.multiple_data_analysis(
         model_location, [data_location_1, data_location_2],
-        slice_spec=[slicer.SingleSliceSpec(features=[('language', 'english')])])
+        eval_config=eval_config)
     self.assertLen(eval_results._results, 2)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.

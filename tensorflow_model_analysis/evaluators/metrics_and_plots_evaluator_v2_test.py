@@ -44,7 +44,6 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metrics as metric_fns
 from tensorflow_model_analysis.proto import validation_result_pb2
-from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 from google.protobuf import text_format
@@ -208,9 +207,6 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                 model_names=['candidate', 'baseline']),
         ],
     )
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
         batched_input_extractor.BatchedInputExtractor(eval_config),
@@ -219,7 +215,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             eval_config=eval_config,
             tensor_adapter_config=tensor_adapter_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -405,9 +401,6 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             ],
             model_names=['candidate', 'baseline']))
 
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
         batched_input_extractor.BatchedInputExtractor(eval_config),
@@ -416,7 +409,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             eval_config=eval_config,
             tensor_adapter_config=tensor_adapter_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -482,13 +475,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         ]))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir)
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         predict_extractor.PredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -602,16 +592,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         options=options)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         batched_input_extractor.BatchedInputExtractor(eval_config),
         batched_predict_extractor_v2.BatchedPredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -725,16 +711,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         options=options)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         batched_input_extractor.BatchedInputExtractor(eval_config),
         batched_predict_extractor_v2.BatchedPredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -858,9 +840,6 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             model_names=['candidate', 'baseline']),
         options=options)
 
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     eval_shared_models = {
         'candidate': eval_shared_model,
         'baseline': baseline_eval_shared_model
@@ -925,7 +904,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             eval_config=eval_config,
             tensor_adapter_config=tensor_adapter_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -988,16 +967,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         ]))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         batched_input_extractor.BatchedInputExtractor(eval_config),
         batched_predict_extractor_v2.BatchedPredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -1083,16 +1058,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         ]))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         batched_input_extractor.BatchedInputExtractor(eval_config),
         batched_predict_extractor_v2.BatchedPredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -1176,16 +1147,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                 class_ids={'values': range(n_classes)})))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         batched_input_extractor.BatchedInputExtractor(eval_config),
         batched_predict_extractor_v2.BatchedPredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -1272,16 +1239,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         }))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         batched_input_extractor.BatchedInputExtractor(eval_config),
         batched_predict_extractor_v2.BatchedPredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -1409,10 +1372,6 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir)
 
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
-
     examples = [
         self._makeExample(
             input1=0.0,
@@ -1486,7 +1445,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             eval_config=eval_config,
             tensor_adapter_config=tensor_adapter_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -1550,15 +1509,12 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             query_key='fixed_string'))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         batched_input_extractor.BatchedInputExtractor(eval_config),
         batched_predict_extractor_v2.BatchedPredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -1704,13 +1660,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir,
         add_metrics_callbacks=[_addExampleCountMetricCallback])
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         predict_extractor.PredictExtractor(
             eval_shared_model, eval_config=eval_config),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
@@ -1813,13 +1766,10 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir,
         add_metrics_callbacks=[_addExampleCountMetricCallback])
-    slice_spec = [
-        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
-    ]
     extractors = [
         predict_extractor.PredictExtractor(
             eval_shared_model, eval_config=eval_config),
-        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
         metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(

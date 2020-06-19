@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from typing import Callable, Dict, Optional, Text, Union
 
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 import tensorflow_model_analysis.notebook.visualization as visualization
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
@@ -30,7 +31,8 @@ from tensorflow_model_analysis.view import view_types
 def render_slicing_metrics(
     result: view_types.EvalResult,
     slicing_column: Optional[Text] = None,
-    slicing_spec: Optional[slicer.SingleSliceSpec] = None,
+    slicing_spec: Optional[Union[slicer.SingleSliceSpec,
+                                 config.SlicingSpec]] = None,
     weighted_example_column: Text = None,
     event_handlers: Optional[Callable[[Dict[Text, Union[Text, float]]],
                                       None]] = None,
@@ -40,8 +42,8 @@ def render_slicing_metrics(
   Args:
     result: An tfma.EvalResult.
     slicing_column: The column to slice on.
-    slicing_spec: The slicing spec to filter results. If neither column nor spec
-      is set, show overall.
+    slicing_spec: The tfma.SlicingSpec to filter results. If neither column nor
+      spec is set, show overall.
     weighted_example_column: Override for the weighted example column. This can
       be used when different weights are applied in different aprts of the model
       (eg: multi-head).
@@ -50,43 +52,47 @@ def render_slicing_metrics(
   Returns:
     A SlicingMetricsViewer object if in Jupyter notebook; None if in Colab.
   """
+  if slicing_spec and isinstance(slicing_spec, config.SlicingSpec):
+    slicing_spec = slicer.SingleSliceSpec(spec=slicing_spec)
   data = util.get_slicing_metrics(result.slicing_metrics, slicing_column,
                                   slicing_spec)
-  config = util.get_slicing_config(result.config, weighted_example_column)
+  cfg = util.get_slicing_config(result.config, weighted_example_column)
 
   return visualization.render_slicing_metrics(
-      data, config, event_handlers=event_handlers)
+      data, cfg, event_handlers=event_handlers)
 
 
 def render_time_series(
     results: view_types.EvalResults,
-    slicing_spec: Optional[slicer.SingleSliceSpec] = None,
+    slicing_spec: Optional[Union[slicer.SingleSliceSpec,
+                                 config.SlicingSpec]] = None,
     display_full_path: bool = False
 ) -> Optional[visualization.TimeSeriesViewer]:  # pytype: disable=invalid-annotation
   """Renders the time series view as widget.
 
   Args:
     results: An tfma.EvalResults.
-    slicing_spec: A slicing spec determining the slice to show time series on.
-      Show overall if not set.
+    slicing_spec: A tfma.SlicingSpec determining the slice to show time series
+      on. Show overall if not set.
     display_full_path: Whether to display the full path to model / data in the
       visualization or just show file name.
 
   Returns:
     A TimeSeriesViewer object if in Jupyter notebook; None if in Colab.
   """
+  if slicing_spec and isinstance(slicing_spec, config.SlicingSpec):
+    slicing_spec = slicer.SingleSliceSpec(spec=slicing_spec)
   slice_spec_to_use = slicing_spec if slicing_spec else slicer.SingleSliceSpec()
   data = util.get_time_series(results, slice_spec_to_use, display_full_path)
-  config = {
-      'isModelCentric': results.get_mode() == constants.MODEL_CENTRIC_MODE
-  }
+  cfg = {'isModelCentric': results.get_mode() == constants.MODEL_CENTRIC_MODE}
 
-  return visualization.render_time_series(data, config)
+  return visualization.render_time_series(data, cfg)
 
 
 def render_plot(
     result: view_types.EvalResult,
-    slicing_spec: Optional[slicer.SingleSliceSpec] = None,
+    slicing_spec: Optional[Union[slicer.SingleSliceSpec,
+                                 config.SlicingSpec]] = None,
     output_name: Optional[Text] = None,
     class_id: Optional[int] = None,
     top_k: Optional[int] = None,
@@ -97,7 +103,8 @@ def render_plot(
 
   Args:
     result: An tfma.EvalResult.
-    slicing_spec: The slicing spec to identify the slice. Show overall if unset.
+    slicing_spec: The tfma.SlicingSpec to identify the slice. Show overall if
+      unset.
     output_name: A string representing the output name.
     class_id: A number representing the class id if multi class.
     top_k: The k used to compute prediction in the top k position.
@@ -107,8 +114,10 @@ def render_plot(
   Returns:
     A PlotViewer object if in Jupyter notebook; None if in Colab.
   """
+  if slicing_spec and isinstance(slicing_spec, config.SlicingSpec):
+    slicing_spec = slicer.SingleSliceSpec(spec=slicing_spec)
   slice_spec_to_use = slicing_spec if slicing_spec else slicer.SingleSliceSpec()
-  data, config = util.get_plot_data_and_config(result.plots, slice_spec_to_use,
-                                               output_name, class_id, top_k, k,
-                                               label)
-  return visualization.render_plot(data, config)
+  data, cfg = util.get_plot_data_and_config(result.plots, slice_spec_to_use,
+                                            output_name, class_id, top_k, k,
+                                            label)
+  return visualization.render_plot(data, cfg)
