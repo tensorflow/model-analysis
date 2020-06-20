@@ -31,7 +31,7 @@ def metrics_specs_from_keras(
     model_loader: types.ModelLoader,
 ) -> List[config.MetricsSpec]:
   """Returns metrics specs for metrics and losses associated with the model."""
-  model = model_loader.construct_fn(lambda x: None)()
+  model = model_loader.construct_fn()
   if model is None:
     return []
 

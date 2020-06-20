@@ -17,7 +17,6 @@
 # Standard __future__ imports
 
 import collections
-import datetime
 import os
 
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text
@@ -309,51 +308,42 @@ def model_construct_fn(  # pylint: disable=invalid-name
     additional_fetches: Optional[List[Text]] = None,
     blacklist_feature_fetches: Optional[List[Text]] = None,
     tags: Optional[List[Text]] = None,
-    model_type: Optional[Text] = constants.TF_ESTIMATOR):
+    model_type: Optional[Text] = constants.TF_ESTIMATOR) -> Callable[[], Any]:
   """Returns function for constructing shared models."""
   if tags is None:
     tags = [eval_constants.EVAL_TAG]
 
-  def construct_fn(model_load_seconds_callback: Callable[[int], None]):
-    """Thin wrapper for the actual construct to allow for load time metrics."""
-
-    def construct():  # pylint: disable=invalid-name
-      """Function for constructing shared models."""
-      start_time = datetime.datetime.now()
-      # If we are evaluating on TPU, initialize the TPU.
-      # TODO(b/143484017): Add model warmup for TPU.
-      if tf.saved_model.TPU in tags:
-        tf.tpu.experimental.initialize_tpu_system()
-      if (model_type == constants.TF_ESTIMATOR and
-          eval_constants.EVAL_TAG in tags):
-        model = load.EvalSavedModel(
-            eval_saved_model_path,
-            include_default_metrics,
-            additional_fetches=additional_fetches,
-            blacklist_feature_fetches=blacklist_feature_fetches,
-            tags=tags)
-        if add_metrics_callbacks:
-          model.register_add_metric_callbacks(add_metrics_callbacks)
-        model.graph_finalize()
-      elif model_type == constants.TF_KERAS:
-        # TODO(b/141524386, b/141566408): TPU Inference is not supported
-        # for Keras saved_model yet.
-        model = tf.keras.models.load_model(eval_saved_model_path)
-      elif model_type == constants.TF_LITE:
-        # The tf.lite.Interpreter is not thread-safe so we only load the model
-        # file's contents and leave construction of the Interpreter up to the
-        # PTransform using it.
-        model_filename = os.path.join(eval_saved_model_path, _TFLITE_FILE_NAME)
-        with tf.io.gfile.GFile(model_filename, 'rb') as model_file:
-          model = ModelContents(model_file.read())
-      else:
-        model = tf.compat.v1.saved_model.load_v2(
-            eval_saved_model_path, tags=tags)
-      end_time = datetime.datetime.now()
-      model_load_seconds_callback(int((end_time - start_time).total_seconds()))
-      return model
-
-    return construct
+  def construct_fn():  # pylint: disable=invalid-name
+    """Function for constructing shared models."""
+    # If we are evaluating on TPU, initialize the TPU.
+    # TODO(b/143484017): Add model warmup for TPU.
+    if tf.saved_model.TPU in tags:
+      tf.tpu.experimental.initialize_tpu_system()
+    if (model_type == constants.TF_ESTIMATOR and
+        eval_constants.EVAL_TAG in tags):
+      model = load.EvalSavedModel(
+          eval_saved_model_path,
+          include_default_metrics,
+          additional_fetches=additional_fetches,
+          blacklist_feature_fetches=blacklist_feature_fetches,
+          tags=tags)
+      if add_metrics_callbacks:
+        model.register_add_metric_callbacks(add_metrics_callbacks)
+      model.graph_finalize()
+    elif model_type == constants.TF_KERAS:
+      # TODO(b/141524386, b/141566408): TPU Inference is not supported
+      # for Keras saved_model yet.
+      model = tf.keras.models.load_model(eval_saved_model_path)
+    elif model_type == constants.TF_LITE:
+      # The tf.lite.Interpreter is not thread-safe so we only load the model
+      # file's contents and leave construction of the Interpreter up to the
+      # PTransform using it.
+      model_filename = os.path.join(eval_saved_model_path, _TFLITE_FILE_NAME)
+      with tf.io.gfile.GFile(model_filename, 'rb') as model_file:
+        model = ModelContents(model_file.read())
+    else:
+      model = tf.compat.v1.saved_model.load_v2(eval_saved_model_path, tags=tags)
+    return model
 
   return construct_fn
 
@@ -375,8 +365,8 @@ class DoFnWithModels(beam.DoFn):
   def setup(self):
     self._loaded_models = {}
     for model_name, model_loader in self._model_loaders.items():
-      self._loaded_models[model_name] = model_loader.shared_handle.acquire(
-          model_loader.construct_fn(self._set_model_load_seconds))
+      self._loaded_models[model_name] = model_loader.load(
+          model_load_time_callback=self._set_model_load_seconds)
 
   def process(self, elem):
     raise NotImplementedError('Subclasses are expected to override this.')
@@ -514,8 +504,8 @@ class CombineFnWithModels(beam.CombineFn):
     if self._loaded_models is None:
       self._loaded_models = {}
       for model_name, model_loader in self._model_loaders.items():
-        self._loaded_models[model_name] = model_loader.shared_handle.acquire(
-            model_loader.construct_fn(self._set_model_load_seconds))
+        self._loaded_models[model_name] = model_loader.load(
+            model_load_time_callback=self._set_model_load_seconds)
       if self._model_load_seconds is not None:
         self._model_load_seconds_distribution.update(self._model_load_seconds)
         self._model_load_seconds = None

@@ -307,9 +307,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           # TODO(b/149995449): Keras does not support re-loading metrics with
           # its new API so the loss added at compile time will be missing.
           # Re-enable after this is fixed.
-          if hasattr(
-              eval_shared_model.model_loader.construct_fn(lambda x: None)(),
-              'compiled_metrics'):
+          if hasattr(eval_shared_model.model_loader.construct_fn(),
+                     'compiled_metrics'):
             expected_metric_validations_per_slice = (
                 expected_metric_validations_per_slice[:3])
           self.assertLen(got.metric_validations_per_slice[0].failures,

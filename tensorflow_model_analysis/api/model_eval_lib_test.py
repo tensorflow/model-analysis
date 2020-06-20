@@ -367,6 +367,89 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
+  def testRunModelAnalysisWithCustomizations(self):
+    model_location = self._exportEvalSavedModel(
+        linear_classifier.simple_linear_classifier)
+    examples = [
+        self._makeExample(age=3.0, language='english', label=1.0),
+        self._makeExample(age=3.0, language='chinese', label=0.0),
+        self._makeExample(age=4.0, language='english', label=1.0),
+        self._makeExample(age=5.0, language='chinese', label=1.0),
+        self._makeExample(age=5.0, language='hindi', label=1.0)
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
+    options = config.Options()
+    options.min_slice_size.value = 2
+    eval_config = config.EvalConfig(
+        model_specs=[config.ModelSpec(model_type='my_model_type')],
+        slicing_specs=slicing_specs,
+        options=options)
+    # Use default model_loader for testing passing custom_model_loader
+    model_loader = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location,
+        example_weight_key='age').model_loader
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=model_location, custom_model_loader=model_loader)
+    # Use PredictExtractor for testing passing custom_predict_extractor
+    extractors = model_eval_lib.default_extractors(
+        eval_shared_model=eval_shared_model,
+        eval_config=eval_config,
+        custom_predict_extractor=predict_extractor.PredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config))
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
+        data_location=data_location,
+        output_path=self._getTempDir(),
+        extractors=extractors)
+    # We only check some of the metrics to ensure that the end-to-end
+    # pipeline works.
+    expected = {
+        (('language', 'hindi'),): {
+            u'__ERROR__': {
+                'debugMessage':
+                    u'Example count for this slice key is lower than the '
+                    u'minimum required value: 2. No data is aggregated for '
+                    u'this slice.'
+            },
+        },
+        (('language', 'chinese'),): {
+            'accuracy': {
+                'doubleValue': 0.5
+            },
+            'my_mean_label': {
+                'doubleValue': 0.5
+            },
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 8.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
+        },
+        (('language', 'english'),): {
+            'accuracy': {
+                'doubleValue': 1.0
+            },
+            'my_mean_label': {
+                'doubleValue': 1.0
+            },
+            metric_keys.EXAMPLE_WEIGHT: {
+                'doubleValue': 7.0
+            },
+            metric_keys.EXAMPLE_COUNT: {
+                'doubleValue': 2.0
+            },
+        }
+    }
+    self.assertEqual(eval_result.model_location, model_location.decode())
+    self.assertEqual(eval_result.data_location, data_location)
+    self.assertEqual(eval_result.config.slicing_specs[0],
+                     config.SlicingSpec(feature_keys=['language']))
+    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
+    self.assertFalse(eval_result.plots)
+
   def testRunModelAnalysisMultipleModels(self):
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0),

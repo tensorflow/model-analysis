@@ -40,6 +40,8 @@
 *   Add `tfma.slicer.stringify_slice_key()`.
 *   Deprecated external use of tfma.slicer.SingleSliceSpec (tfma.SlicingSpec
     should be used instead).
+*   Updated tfma.default_eval_shared_model and tfma.default_extractors to better
+    support custom model types.
 
 ## Breaking changes
 
@@ -48,6 +50,8 @@
 *   Refactored confidence interval methodology field. The old path under
     `Options.confidence_interval_methodology` is now at
     `Options.confidence_intervals.methodology`.
+*   Removed model_load_time_callback from ModelLoader construct_fn (timing is
+    now handled by load). Removed access to shared_handle from ModelLoader.
 
 ## Deprecations
 

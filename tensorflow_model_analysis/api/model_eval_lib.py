@@ -291,7 +291,9 @@ def default_eval_shared_model(
     blacklist_feature_fetches: Optional[List[Text]] = None,
     tags: Optional[List[Text]] = None,
     model_name: Text = '',
-    eval_config: Optional[config.EvalConfig] = None) -> types.EvalSharedModel:
+    eval_config: Optional[config.EvalConfig] = None,
+    custom_model_loader: Optional[types.ModelLoader] = None
+) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
 
   Args:
@@ -318,6 +320,7 @@ def default_eval_shared_model(
       ModelSpecs.name). The name should only be provided if multiple models are
       being evaluated.
     eval_config: Eval config. Only used for setting default tags.
+    custom_model_loader: Optional custom model loader for non-TF models.
   """
   if not eval_config:
     model_type = constants.TF_ESTIMATOR
@@ -360,6 +363,19 @@ def default_eval_shared_model(
         add_metrics_callbacks.append(example_weight_callback)
     # pytype: enable=module-attr
 
+  model_loader = custom_model_loader
+  if not model_loader and model_type in constants.VALID_TF_MODEL_TYPES:
+    model_loader = types.ModelLoader(
+        construct_fn=model_util.model_construct_fn(
+            eval_saved_model_path=eval_saved_model_path,
+            add_metrics_callbacks=add_metrics_callbacks,
+            include_default_metrics=include_default_metrics,
+            additional_fetches=additional_fetches,
+            blacklist_feature_fetches=blacklist_feature_fetches,
+            model_type=model_type,
+            tags=tags),
+        tags=tags)
+
   return types.EvalSharedModel(
       model_name=model_name,
       model_type=model_type,
@@ -368,16 +384,7 @@ def default_eval_shared_model(
       include_default_metrics=include_default_metrics,
       example_weight_key=example_weight_key,
       additional_fetches=additional_fetches,
-      model_loader=types.ModelLoader(
-          tags=tags,
-          construct_fn=model_util.model_construct_fn(
-              eval_saved_model_path=eval_saved_model_path,
-              add_metrics_callbacks=add_metrics_callbacks,
-              include_default_metrics=include_default_metrics,
-              additional_fetches=additional_fetches,
-              blacklist_feature_fetches=blacklist_feature_fetches,
-              model_type=model_type,
-              tags=tags)))
+      model_loader=model_loader)
 
 
 def default_extractors(  # pylint: disable=invalid-name
@@ -387,6 +394,7 @@ def default_extractors(  # pylint: disable=invalid-name
     materialize: Optional[bool] = True,
     enable_batched_extractors: Optional[bool] = False,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
+    custom_predict_extractor: Optional[extractor.Extractor] = None
 ) -> List[extractor.Extractor]:
   """Returns the default extractors for use in ExtractAndEvaluate.
 
@@ -401,6 +409,8 @@ def default_extractors(  # pylint: disable=invalid-name
     tensor_adapter_config: Tensor adapter config which specifies how to obtain
       tensors from the Arrow RecordBatch. If None, we feed the raw examples to
       the model.
+    custom_predict_extractor: Optional custom predict extractor for non-TF
+      models.
 
   Raises:
     NotImplementedError: If eval_config contains mixed serving and eval models.
@@ -417,7 +427,7 @@ def default_extractors(  # pylint: disable=invalid-name
       eval_config = config.EvalConfig(
           slicing_specs=[s.to_proto() for s in slice_spec])
     return [
-        predict_extractor.PredictExtractor(
+        custom_predict_extractor or predict_extractor.PredictExtractor(
             eval_shared_model, materialize=materialize),
         slice_key_extractor.SliceKeyExtractor(
             eval_config=eval_config, materialize=materialize)
@@ -427,15 +437,18 @@ def default_extractors(  # pylint: disable=invalid-name
     eval_shared_models = model_util.verify_and_update_eval_shared_models(
         eval_shared_model)
 
-    if not model_types.issubset(constants.VALID_MODEL_TYPES):
+    if (not model_types.issubset(constants.VALID_TF_MODEL_TYPES) and
+        not custom_predict_extractor):
       raise NotImplementedError(
-          'model type must be one of: {}. evalconfig={}'.format(
-              str(constants.VALID_MODEL_TYPES), eval_config))
+          'either a custom_predict_extractor must be used or model type must '
+          'be one of: {}. evalconfig={}'.format(
+              str(constants.VALID_TF_MODEL_TYPES), eval_config))
     if model_types == set([constants.TF_LITE]):
       return [
           input_extractor.InputExtractor(eval_config=eval_config),
-          tflite_predict_extractor.TFLitePredictExtractor(
-              eval_config=eval_config, eval_shared_model=eval_shared_model),
+          (custom_predict_extractor or
+           tflite_predict_extractor.TFLitePredictExtractor(
+               eval_config=eval_config, eval_shared_model=eval_shared_model)),
           slice_key_extractor.SliceKeyExtractor(
               eval_config=eval_config, materialize=materialize)
       ]
@@ -448,7 +461,7 @@ def default_extractors(  # pylint: disable=invalid-name
           all(eval_constants.EVAL_TAG in m.model_loader.tags
               for m in eval_shared_models)):
       return [
-          predict_extractor.PredictExtractor(
+          custom_predict_extractor or predict_extractor.PredictExtractor(
               eval_shared_model,
               materialize=materialize,
               eval_config=eval_config),
@@ -466,10 +479,11 @@ def default_extractors(  # pylint: disable=invalid-name
         return [
             batched_input_extractor.BatchedInputExtractor(
                 eval_config=eval_config),
-            batched_predict_extractor_v2.BatchedPredictExtractor(
-                eval_config=eval_config,
-                eval_shared_model=eval_shared_model,
-                tensor_adapter_config=tensor_adapter_config),
+            (custom_predict_extractor or
+             batched_predict_extractor_v2.BatchedPredictExtractor(
+                 eval_config=eval_config,
+                 eval_shared_model=eval_shared_model,
+                 tensor_adapter_config=tensor_adapter_config)),
             unbatch_extractor.UnbatchExtractor(),
             slice_key_extractor.SliceKeyExtractor(
                 eval_config=eval_config, materialize=materialize)
@@ -477,7 +491,7 @@ def default_extractors(  # pylint: disable=invalid-name
       else:
         return [
             input_extractor.InputExtractor(eval_config=eval_config),
-            predict_extractor_v2.PredictExtractor(
+            custom_predict_extractor or predict_extractor_v2.PredictExtractor(
                 eval_config=eval_config, eval_shared_model=eval_shared_model),
             slice_key_extractor.SliceKeyExtractor(
                 eval_config=eval_config, materialize=materialize)

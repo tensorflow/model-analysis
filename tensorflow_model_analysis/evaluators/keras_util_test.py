@@ -69,7 +69,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
 
     # TODO(b/149995449): Keras does not support re-loading metrics with the new
     #   API. Re-enable after this is fixed.
-    model = eval_shared_model.model_loader.construct_fn(lambda x: None)()
+    model = eval_shared_model.model_loader.construct_fn()
     if not hasattr(model, 'loss_functions'):
       return
 
@@ -122,7 +122,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
 
     # TODO(b/149995449): Keras does not support re-loading metrics with the new
     #   API. Re-enable after this is fixed.
-    model = eval_shared_model.model_loader.construct_fn(lambda x: None)()
+    model = eval_shared_model.model_loader.construct_fn()
     if not hasattr(model, 'loss_functions'):
       return
 
@@ -184,7 +184,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
 
     # TODO(b/149995449): Keras does not support re-loading metrics with the new
     #   API. Re-enable after this is fixed.
-    model = eval_shared_model.model_loader.construct_fn(lambda x: None)()
+    model = eval_shared_model.model_loader.construct_fn()
     if not hasattr(model, 'loss_functions'):
       return
 

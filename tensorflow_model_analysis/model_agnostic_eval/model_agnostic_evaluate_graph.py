@@ -25,7 +25,8 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-import datetime
+from typing import List, Optional  # pytype: disable=not-supported-yet
+
 # Standard Imports
 import tensorflow as tf
 
@@ -33,27 +34,15 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict
 
-from typing import Callable, List, Optional  # pytype: disable=not-supported-yet
-
 
 def make_construct_fn(  # pylint: disable=invalid-name
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]],
     config: model_agnostic_predict.ModelAgnosticConfig):
   """Returns a construct fn for constructing the model agnostic eval graph."""
 
-  def construct_fn(model_load_seconds_callback: Callable[[int], None]):
-    """Thin wrapper for the actual construct to allow for metrics."""
-
-    def construct():  # pylint: disable=invalid-name
-      """Function for constructing a model agnostic eval graph."""
-      start_time = datetime.datetime.now()
-      model_agnostic_eval = ModelAgnosticEvaluateGraph(add_metrics_callbacks,
-                                                       config)
-      end_time = datetime.datetime.now()
-      model_load_seconds_callback(int((end_time - start_time).total_seconds()))
-      return model_agnostic_eval
-
-    return construct
+  def construct_fn():  # pylint: disable=invalid-name
+    """Function for constructing a model agnostic eval graph."""
+    return ModelAgnosticEvaluateGraph(add_metrics_callbacks, config)
 
   return construct_fn
 

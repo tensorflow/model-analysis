@@ -19,6 +19,8 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import datetime
+
 from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union, NamedTuple
 
 import numpy as np
@@ -118,33 +120,53 @@ def is_tensor(obj):
   return isinstance(obj, tf.Tensor) or isinstance(obj, tf.SparseTensor)
 
 
-class ModelLoader(
-    NamedTuple('ModelLoader', [('tags', List[Text]),
-                               ('shared_handle', shared.Shared),
-                               ('construct_fn', Callable)])):
+class ModelLoader(object):
   """Model loader is responsible for loading shared model types.
 
   Attributes:
-    tags: Model tags (e.g. 'serve' for serving or 'eval' for EvalSavedModel).
-    shared_handle: Optional handle to a shared.Shared object for sharing the
-      in-memory model within / between stages. Used in combination with the
-      construct_fn to load the shared model.
-    construct_fn: A callable which creates a construct function to load the
-      model instance. Callable takes a beam.metrics distribution to track model
-      load times.
+    construct_fn: A callable which creates the model instance. The callable
+      should take no args as input (typically a closure is used to capture
+      necessary parameters).
+    tags: Optional model tags (e.g. 'serve' for serving or 'eval' for
+      EvalSavedModel).
   """
 
-  def __new__(cls,
-              tags: Optional[List[Text]] = None,
-              shared_handle: Optional[shared.Shared] = None,
-              construct_fn: Optional[Callable[..., Any]] = None):
-    # TODO(b/140845455): It's likely very brittle to have the shared_handle
-    # optional since it needs to be tied to the unique shared state it's
-    # responsible for.
-    if not shared_handle:
-      shared_handle = shared.Shared()
-    return super(ModelLoader, cls).__new__(cls, tags, shared_handle,
-                                           construct_fn)
+  __slots__ = ['construct_fn', 'tags', '_shared_handle']
+
+  def __init__(self,
+               construct_fn: Callable[[], Any],
+               tags: Optional[List[Text]] = None):
+    self.construct_fn = construct_fn
+    self.tags = tags
+    self._shared_handle = shared.Shared()
+
+  def load(
+      self,
+      model_load_time_callback: Optional[Callable[[int], None]] = None) -> Any:
+    """Returns loaded model.
+
+    Args:
+      model_load_time_callback: Optional callback to track load time.
+    """
+    if model_load_time_callback:
+      construct_fn = self._construct_fn_with_load_time(model_load_time_callback)
+    else:
+      construct_fn = self.construct_fn
+    return self._shared_handle.acquire(construct_fn)
+
+  def _construct_fn_with_load_time(
+      self, model_load_time_callback: Callable[[int],
+                                               None]) -> Callable[[], Any]:
+    """Wraps actual construct fn to allow for load time metrics."""
+
+    def with_load_times():
+      start_time = datetime.datetime.now()
+      model = self.construct_fn()
+      end_time = datetime.datetime.now()
+      model_load_time_callback(int((end_time - start_time).total_seconds()))
+      return model
+
+    return with_load_times
 
 
 class EvalSharedModel(
@@ -216,7 +238,7 @@ class EvalSharedModel(
       model_loader: Optional[ModelLoader] = None,
       model_name: Text = '',
       model_type: Text = '',
-      construct_fn: Optional[Callable[..., Any]] = None):
+      construct_fn: Optional[Callable[[], Any]] = None):
     if not add_metrics_callbacks:
       add_metrics_callbacks = []
     if model_loader and construct_fn:
