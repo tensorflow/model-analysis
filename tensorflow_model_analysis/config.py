@@ -28,6 +28,7 @@ from tensorflow_model_analysis.proto import config_pb2
 # Define types here to avoid type errors between OSS and internal code.
 ModelSpec = config_pb2.ModelSpec
 SlicingSpec = config_pb2.SlicingSpec
+CrossSlicingSpec = config_pb2.CrossSlicingSpec
 BinarizationOptions = config_pb2.BinarizationOptions
 ConfidenceIntervalOptions = config_pb2.ConfidenceIntervalOptions
 AggregationOptions = config_pb2.AggregationOptions
@@ -40,6 +41,8 @@ MetricThreshold = config_pb2.MetricThreshold
 Options = config_pb2.Options
 PerSliceMetricThreshold = config_pb2.PerSliceMetricThreshold
 PerSliceMetricThresholds = config_pb2.PerSliceMetricThresholds
+CrossSliceMetricThreshold = config_pb2.CrossSliceMetricThreshold
+CrossSliceMetricThresholds = config_pb2.CrossSliceMetricThresholds
 EvalConfig = config_pb2.EvalConfig
 
 

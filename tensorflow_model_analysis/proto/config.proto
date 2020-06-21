@@ -89,6 +89,12 @@ message SlicingSpec {
   map<string, string> feature_values = 2;
 }
 
+// Cross slicing specification.
+message CrossSlicingSpec {
+  SlicingSpec baseline_spec = 1;
+  repeated SlicingSpec slicing_specs = 2;
+}
+
 // Options for aggregating multi-class / multi-label outputs.
 //
 // When used the associated MetricSpec metrics must be binary classification
@@ -211,6 +217,17 @@ message PerSliceMetricThresholds {
   repeated PerSliceMetricThreshold thresholds = 1;
 }
 
+// Cross slice metric threshold.
+message CrossSliceMetricThreshold {
+  // A list of cross slicing specs to apply threshold to.
+  repeated CrossSlicingSpec cross_slicing_specs = 1;
+  MetricThreshold threshold = 2;
+}
+
+message CrossSliceMetricThresholds {
+  repeated CrossSliceMetricThreshold thresholds = 1;
+}
+
 // Metric configuration.
 message MetricConfig {
   // Name of a class derived for either tf.keras.metrics.Metric or
@@ -231,6 +248,8 @@ message MetricConfig {
   MetricThreshold threshold = 4;
   // Optional thresholds for model validation using specific slices.
   repeated PerSliceMetricThreshold per_slice_thresholds = 5;
+  // Optional thresholds for model validation across slices.
+  repeated CrossSliceMetricThreshold cross_slice_thresholds = 6;
 }
 
 // Metrics specification.
@@ -266,6 +285,9 @@ message MetricsSpec {
   // Optional thresholds for model validation using specific slices (keyed by
   // the associated metric name - e.g. 'auc', etc).
   map<string, PerSliceMetricThresholds> per_slice_thresholds = 8;
+  // Optional thresholds for model validation across slices (keyed by the
+  // associated metric name - e.g. 'auc', etc).
+  map<string, CrossSliceMetricThresholds> cross_slice_thresholds = 9;
 }
 
 // Additional configuration options.
@@ -319,6 +341,11 @@ message EvalConfig {
   //      Slices for all values in feature "country" crossed with value
   //      "age:20".
   repeated SlicingSpec slicing_specs = 4;
+  // A list of cross slicing specs where each spec represents a pair of slices
+  // whose associated outputs should be compared. By default slices will be
+  // created for both slicing_spec and baseline_spec if they do not already
+  // exist in slicing_specs.
+  repeated CrossSlicingSpec cross_slicing_specs = 8;
   // Metrics specifications.
   repeated MetricsSpec metrics_specs = 5;
   // Additional configuration options.
