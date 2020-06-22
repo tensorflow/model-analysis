@@ -210,12 +210,14 @@ def make_eval_results(results: List[view_types.EvalResult],
 
 def load_eval_results(
     output_paths: Union[Text, List[Text]],
+    output_file_format: Optional[Text] = '',
     mode: Text = constants.MODEL_CENTRIC_MODE,
     model_name: Optional[Text] = None) -> view_types.EvalResults:
   """Loads results for multiple models or multiple data sets.
 
   Args:
     output_paths: A single path or list of output paths of completed tfma runs.
+    output_file_format: Optional file extension to filter files by.
     mode: The mode of the evaluation. Currently, tfma.DATA_CENTRIC_MODE and
       tfma.MODEL_CENTRIC_MODE are supported.
     model_name: Filters to only return results for given model. If unset all
@@ -235,17 +237,21 @@ def load_eval_results(
     else:
       model_names = [model_name]
     for model_name in model_names:
-      results.append(load_eval_result(output_path, model_name=model_name))
+      results.append(
+          load_eval_result(
+              output_path, output_file_format, model_name=model_name))
   return make_eval_results(results, mode)
 
 
 def load_eval_result(
     output_path: Text,
+    output_file_format: Optional[Text] = '',
     model_name: Optional[Text] = None) -> view_types.EvalResult:
   """Loads EvalResult object for use with the visualization functions.
 
   Args:
     output_path: Output directory containing config, metrics, plots, etc.
+    output_file_format: Optional file extension to filter files by.
     model_name: Optional model name. Required if multi-model evaluation was run.
 
   Returns:
@@ -259,12 +265,12 @@ def load_eval_result(
       eval_config_writer.load_eval_run(output_path))
   metrics_list = []
   for p in metrics_plots_and_validations_writer.load_and_deserialize_metrics(
-      output_path):
+      output_path, output_file_format):
     metrics_list.append(
         util.convert_metrics_proto_to_dict(p, model_name=model_name))
   plots_list = []
   for p in metrics_plots_and_validations_writer.load_and_deserialize_plots(
-      output_path):
+      output_path, output_file_format):
     plots_list.append(
         util.convert_plots_proto_to_dict(p, model_name=model_name))
   if not model_locations:
