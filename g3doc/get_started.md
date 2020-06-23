@@ -40,8 +40,7 @@ The following table summarizes the models supported by default:
 | TF2 (keras)                | Y*                    | Y                     |
 | TF2 (generic)              | N/A                   | Y                     |
 | EvalSavedModel (estimator) | Y                     | Y                     |
-| None (tf.Example,          | N/A                   | Y                     |
-: pd.DataFrame, etc.)        :                       :                       :
+| None (pd.DataFrame, etc)   | N/A                   | Y                     |
 
 *   Training Time metrics refers to metrics defined at training time and saved
     with the model (either TFMA EvalSavedModel or keras saved model). Post
