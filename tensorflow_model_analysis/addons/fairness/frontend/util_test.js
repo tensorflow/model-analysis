@@ -54,6 +54,20 @@ testSuite({
         Util.removeMetricNamePrefix('post_export_metrics_foo/bar'));
   },
 
+  testGetMetricsValues() {
+    assertNotUndefined(Util.getMetricsValues);
+    assertObjectEquals(Util.getMetricsValues({}, 'example_count'), {});
+    assertEquals(
+        Util.getMetricsValues(
+            {'metrics': {'example_count': 1}}, 'example_count'),
+        1);
+    assertEquals(
+        Util.getMetricsValues(
+            {'metrics': {'post_export_metrics/example_count': 1}},
+            'example_count'),
+        1);
+  },
+
   testExtractFairnessMetric() {
     assertNotUndefined(Util.extractFairnessMetric);
     const fairness_metric1 =

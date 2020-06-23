@@ -68,8 +68,14 @@
       'post_export_metrics/negative_rate@0.80': {
         'doubleValue': Math.random(),
       },
-      'post_export_metrics/example_count':
-          {'doubleValue': Math.floor(Math.random() * 100)},
+      'post_export_metrics/example_count': {
+        'boundedValue': {
+          'lowerBound': Math.random() * 10 + 90,
+          'upperBound': Math.random() * 10 + 110,
+          'value': Math.random() * 10 + 100,
+          'methodology': 'POISSON_BOOTSTRAP'
+        }
+      },
       'totalWeightedExamples': {'doubleValue': 2000 * (Math.random() + 0.8)},
 
       // These two metrics only exist inside this eval result

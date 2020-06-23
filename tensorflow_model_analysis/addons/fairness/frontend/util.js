@@ -75,3 +75,35 @@ exports.extractFairnessMetric = function(metricName) {
   }
   return null;
 };
+
+/**
+ * Extracts metrics values based on metrics name.
+ * This functin work with both TFMA v1 and v2 metrics. The v1 metrics name has
+ * post_export_metrics prefix.
+ * @param {!Object} sliceMetrics
+ * @param {string} metricName
+ * @return {!Object|number} The metrics value.
+ */
+exports.getMetricsValues = function(sliceMetrics, metricName) {
+  if (!sliceMetrics || !sliceMetrics['metrics']) {
+    return {};
+  }
+  if (sliceMetrics['metrics'].hasOwnProperty(metricName)) {
+    return sliceMetrics['metrics'][metricName];
+  }
+  // Try with 'post_export_metrics/' prefix.
+  if (metricName.startsWith(MULTIHEAD_METRIC_PREFIX_)) {
+    metricName.replace(MULTIHEAD_METRIC_PREFIX_, '');
+    if (sliceMetrics['metrics'].hasOwnProperty(metricName)) {
+      return sliceMetrics['metrics'][metricName];
+    }
+  }
+  // Try without 'post_export_metrics/' prefix.
+  else {
+    metricName = MULTIHEAD_METRIC_PREFIX_ + metricName;
+    if (sliceMetrics['metrics'].hasOwnProperty(metricName)) {
+      return sliceMetrics['metrics'][metricName];
+    }
+  }
+  return {};
+};

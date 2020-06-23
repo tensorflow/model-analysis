@@ -346,17 +346,19 @@ export class FairnessMetricsTable extends PolymerElement {
 
   /**
    * @param {(string)} rowNum
-   * @param {(string)} exampleCounts
-   * @return {number} Get example count for the corresponding row.
+   * @param {!Array} exampleCounts
+   * @return {string} Get example count for the corresponding row.
    * @private
    */
   getExampleCount_(rowNum, exampleCounts) {
-    if (exampleCounts == undefined) {
-      return 0;
-    }
     // We skip the first row, since it is a header row which does not correspond
     // to a slice.
-    return exampleCounts[parseFloat(rowNum) - 1];
+    let value = exampleCounts[parseFloat(rowNum) - 1];
+    if (typeof value === 'number') {
+      return this.toFixedNumber_(value, FLOATING_POINT_PRECISION);
+    } else {
+      return '';
+    }
   }
 
   /**

@@ -278,8 +278,8 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
             sliceMetrics['metrics'][metricName]),
         upperBound: bounds.min,
         lowerBound: bounds.max,
-        exampleCount:
-            sliceMetrics['metrics']['post_export_metrics/example_count']
+        exampleCount: tfma.CellRenderer.maybeExtractBoundedValue(
+            Util.getMetricsValues(sliceMetrics, 'example_count'))
       };
     };
 

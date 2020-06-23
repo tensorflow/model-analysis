@@ -469,7 +469,8 @@ export class FairnessMetricSummary extends PolymerElement {
       const sliceMetrics = data.find(d => d['slice'] == slice);
       return !sliceMetrics ?
           {} :
-          sliceMetrics['metrics']['post_export_metrics/example_count'];
+          tfma.CellRenderer.maybeExtractBoundedValue(
+              Util.getMetricsValues(sliceMetrics, 'example_count'));
     });
     return exampleCounts;
   }
