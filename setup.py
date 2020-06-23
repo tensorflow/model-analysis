@@ -285,7 +285,7 @@ setup_args = {
         'scipy == 1.2.2;python_version<"3"',
         'six>=1.12,<2',
         'tensorflow>=1.15,!=2.0.*,<3',
-        'tensorflow-metadata>=0.22,<0.23',
+        'tensorflow-metadata>=0.22.2,<0.23',
         'tfx-bsl>=0.22,<0.23'
     ],
     'python_requires': '>=3.5,<4',

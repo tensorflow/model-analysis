@@ -1,6 +1,16 @@
-# <!-- mdlint off(HEADERS_TOO_MANY_H1) -->
+<!-- mdlint off(HEADERS_TOO_MANY_H1) -->
 
 # Current Version(Still in Development)
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+## Breaking changes
+
+## Deprecations
+
+# Version 0.22.0
 
 ## Major Features and Improvements
 
@@ -42,6 +52,7 @@
     should be used instead).
 *   Updated tfma.default_eval_shared_model and tfma.default_extractors to better
     support custom model types.
+*   Depends on 'tensorflow-metadata>=0.22.2,<0.23'
 
 ## Breaking changes
 
@@ -756,4 +767,4 @@
 
 # Release 0.6.0
 
-*   Initial release of TensorFlow Model Analysis. <!-- mdlint on -->
+*   Initial release of TensorFlow Model Analysis.
