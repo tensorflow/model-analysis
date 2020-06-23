@@ -1,4 +1,4 @@
-# Version 0.22.0
+# Version 0.22.2
 
 ## Major Features and Improvements
 
