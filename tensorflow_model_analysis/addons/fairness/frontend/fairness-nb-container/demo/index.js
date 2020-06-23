@@ -73,8 +73,8 @@
       'totalWeightedExamples': {'doubleValue': 2000 * (Math.random() + 0.8)},
 
       // These two metrics only exist inside this eval result
-      'addtionalMetrics1': {'doubleValue': 2000 * (Math.random() + 0.8)},
-      'addtionalMetrics2': {
+      'a_metric_only_in_eval1': {'doubleValue': 2000 * (Math.random() + 0.8)},
+      'another_metric_only_in_eval1': {
         'boundedValue': {
           'lowerBound': Math.random() * 0.3,
           'upperBound': Math.random() * 0.3 + 0.6,
@@ -155,9 +155,12 @@
   };
 
   const SLICES1 = [
-    'Overall', 'Slice:unique', 'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4',
-    'Slice:5', 'Slice:6', 'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10',
-    'Slice:11', 'Slice:12', 'Slice:13', 'Slice:14', 'Slice:15', 'Slice:16'
+    'Overall', 'Slice:unique', 'Sex:Male', 'Sex:Female',
+    'sexual_orientation:bisexual', 'sexual_orientation:heterosexual',
+    'sexual_orientation:homosexual', 'Sex:Transgender', 'race:asian',
+    'race:latino', 'race:black', 'race:white', 'religion:atheist',
+    'religion:buddhist', 'religion:christian', 'religion:hindu',
+    'religion:jewish', 'religion:muslim'
   ];
   const input1 = SLICES1.map((slice) => {
     return {
@@ -168,9 +171,22 @@
   });
 
   const SLICES2 = [
-    'Overall', 'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4', 'Slice:5', 'Slice:6',
-    'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10', 'Slice:11', 'Slice:12',
-    'Slice:13', 'Slice:14', 'Slice:15', 'Slice:16'
+    'Overall',
+    'Sex:Male',
+    'Sex:Female',
+    'sexual_orientation:bisexual',
+    'sexual_orientation:heterosexual',
+    'sexual_orientation:homosexual',
+    'Sex:Transgender',
+    'race:asian',
+    'race:latino',
+    'race:black',
+    'race:white',
+    'religion:atheist',
+    'religion:buddhist',
+    'religion:christian',
+    'religion:hindu',
+    'religion:jewish',
   ];
   const input2 = SLICES2.map((slice) => {
     return {
@@ -188,7 +204,8 @@
     };
   });
 
-  const element_compare = document.getElementsByTagName('fairness-nb-container')[0];
+  const element_compare =
+      document.getElementsByTagName('fairness-nb-container')[0];
   element_compare.slicingMetrics = input1;
   element_compare.slicingMetricsCompare = input2;
   element_compare.evalName = 'Eval1';
