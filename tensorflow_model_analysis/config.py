@@ -114,13 +114,12 @@ def update_eval_config_with_defaults(
   """
   updated_config = EvalConfig()
   updated_config.CopyFrom(eval_config)
-  # if user requests CIs but doesn't set method, use POISSON_BOOTSTRAP
-  # TODO(b/151465289): switch to Jackknife once it is better verified.
+  # if user requests CIs but doesn't set method, use JACKKNIFE
   if (eval_config.options.compute_confidence_intervals.value and
       eval_config.options.confidence_intervals.method ==
       ConfidenceIntervalOptions.UNKNOWN_CONFIDENCE_INTERVAL_METHOD):
     updated_config.options.confidence_intervals.method = (
-        config_pb2.ConfidenceIntervalOptions.POISSON_BOOTSTRAP)
+        config_pb2.ConfidenceIntervalOptions.JACKKNIFE)
   if maybe_add_baseline and maybe_remove_baseline:
     raise ValueError('only one of maybe_add_baseline and maybe_remove_baseline '
                      'should be used')
