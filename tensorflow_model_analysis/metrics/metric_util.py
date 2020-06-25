@@ -367,7 +367,7 @@ def prepare_labels_and_predictions(
   numpy arrays representing the labels and predictions.
 
   Args:
-    labels: List or np.ndarray of label values (1D, 2D, or 3D).
+    labels: List, np.ndarray, or SparseTensorValue of values (1D, 2D, or 3D).
     predictions: List or np.ndarray of prediction values (1D, 2D, or 3D) or a
       dict of prediction values keyed by prediction_key or common estimator keys
       (logistic, probabilties, etc).
@@ -423,19 +423,45 @@ def prepare_labels_and_predictions(
                      'labels={}, predictions={}, prediction_key={}'.format(
                          labels, predictions, prediction_key))
 
-  if labels is not None:
-    labels = to_numpy(labels)
   if predictions is not None:
     predictions = to_numpy(predictions)
 
-  if (labels is None or predictions is None or labels.size == 0 or
-      predictions.size == 0):
-    return (labels, predictions)
-
-  if label_vocabulary is not None and labels.dtype.kind in ('U', 'S', 'O'):
-    labels = _string_labels_to_class_ids(label_vocabulary, labels)
+  if labels is not None:
+    if isinstance(labels, tf.compat.v1.SparseTensorValue):
+      if predictions is None or predictions.size == 0:
+        raise ValueError('predictions must also be used if labels are of type '
+                         'SparseTensorValue: labels={}'.format(labels))
+      values = labels.values if labels.values is not None else np.array([])
+      indices = labels.indices if labels.indices is not None else np.array([])
+      if label_vocabulary is not None and values.dtype.kind in ('U', 'S', 'O'):
+        values = _string_labels_to_class_ids(label_vocabulary, values)
+        # If vocab is used then the values will be the indices into the vocab
+        # and we should use multi-hot encoding to store the output. We can
+        # accomplish this by passing 1's for the values and using the values
+        # converted from the vocab as the indices to insert the 1's at the
+        # proper offsets in the resulting multi-hot vector.
+        labels = _to_dense_tensor(
+            np.ones(values.shape), values, predictions.shape)
+      else:
+        labels = _to_dense_tensor(values, indices, predictions.shape)
+    else:
+      labels = to_numpy(labels)
+      if label_vocabulary is not None and labels.dtype.kind in ('U', 'S', 'O'):
+        labels = _string_labels_to_class_ids(label_vocabulary, labels)
 
   return (labels, predictions)
+
+
+def _to_dense_tensor(values: np.ndarray, indices: np.ndarray,
+                     dense_shape: Tuple[int, ...]) -> np.ndarray:
+  """Converts sparse tensor to dense given values, indices, and dense shape."""
+  # Squeeze is used on the values, indices, and result to ensure that single
+  # value inputs that still have the batch dimension such as [1, n_classes] can
+  # still be indexed properly from SparseTensorValues that don't use batching.
+  result = _squeeze(np.zeros(dense_shape))
+  for value, index in zip(_squeeze(values), _squeeze(indices)):
+    result[index] = value
+  return result.reshape(dense_shape)
 
 
 def _string_labels_to_class_ids(label_vocabulary: Union[np.ndarray, List[Text]],

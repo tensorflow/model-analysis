@@ -3,11 +3,14 @@
 # Current Version(Still in Development)
 
 ## Major Features and Improvements
+
 *   Changed default confidence interval method from POISSON_BOOTSTRAP to
     JACKKNIFE. This should significantly improve confidence interval evaluation
     performance by as much as 10x in runtime and CPU resource usage.
 
 ## Bug fixes and other changes
+
+*   Added support for labels passed as SparseTensorValues.
 
 ## Breaking changes
 

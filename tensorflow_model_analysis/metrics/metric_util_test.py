@@ -102,6 +102,20 @@ class UtilTest(tf.test.TestCase):
       self.assertAllClose(got_pred, np.array([expected_prediction]))
       self.assertAllClose(got_example_weight, np.array([0.0]))
 
+  def testStandardMetricInputsWithSparseTensorValue(self):
+    example = metric_types.StandardMetricInputs(
+        tf.compat.v1.SparseTensorValue(
+            values=np.array([1]), indices=np.array([2]), dense_shape=(0, 1)),
+        np.array([0, 0.5, 0.3, 0.9]), np.array([0.0]))
+    iterable = metric_util.to_label_prediction_example_weight(example)
+
+    for expected_label, expected_prediction in zip((0.0, 0.0, 1.0, 0.0),
+                                                   (0.0, 0.5, 0.3, 0.9)):
+      got_label, got_pred, got_example_weight = next(iterable)
+      self.assertAllClose(got_label, np.array([expected_label]))
+      self.assertAllClose(got_pred, np.array([expected_prediction]))
+      self.assertAllClose(got_example_weight, np.array([0.0]))
+
   def testStandardMetricInputsWithZeroWeightsToNumpyWithoutFlatten(self):
     example = metric_types.StandardMetricInputs(
         np.array([2]), np.array([0, 0.5, 0.3, 0.9]), np.array([0.0]))
@@ -284,6 +298,39 @@ class UtilTest(tf.test.TestCase):
     self.assertAllClose(got_labels, np.array([1, 2, 0]))
     self.assertAllClose(got_preds, np.array([0.2, 0.7, 0.1]))
 
+  def testPrepareLabelsAndPredictionsSparseTensorValue(self):
+    labels = tf.compat.v1.SparseTensorValue(
+        indices=np.array([1, 2]), values=np.array([1, 1]), dense_shape=(1, 2))
+    preds = {'probabilities': [0.2, 0.7, 0.1], 'all_classes': ['a', 'b', 'c']}
+    got_labels, got_preds = metric_util.prepare_labels_and_predictions(
+        labels, preds)
+
+    self.assertAllClose(got_labels, np.array([0, 1, 1]))
+    self.assertAllClose(got_preds, np.array([0.2, 0.7, 0.1]))
+
+  def testPrepareLabelsAndPredictionsEmptySparseTensorValue(self):
+    labels = tf.compat.v1.SparseTensorValue(
+        values=np.array([]), indices=np.array([]), dense_shape=(0, 2))
+    preds = {'probabilities': [0.2, 0.7, 0.1], 'all_classes': ['a', 'b', 'c']}
+    got_labels, got_preds = metric_util.prepare_labels_and_predictions(
+        labels, preds)
+
+    self.assertAllClose(got_labels, np.array([0, 0, 0]))
+    self.assertAllClose(got_preds, np.array([0.2, 0.7, 0.1]))
+
+  def testPrepareLabelsAndPredictionsSparseTensorValueWithBatching(self):
+    labels = tf.compat.v1.SparseTensorValue(
+        indices=np.array([1, 2]), values=np.array([1, 1]), dense_shape=(1, 2))
+    preds = {
+        'probabilities': [[0.2, 0.7, 0.1]],
+        'all_classes': [['a', 'b', 'c']]
+    }
+    got_labels, got_preds = metric_util.prepare_labels_and_predictions(
+        labels, preds)
+
+    self.assertAllClose(got_labels, np.array([[0, 1, 1]]))
+    self.assertAllClose(got_preds, np.array([[0.2, 0.7, 0.1]]))
+
   def testPrepareMultipleLabelsAndPredictionsMultiDimension(self):
     labels = [[0], [1]]
     preds = {'probabilities': [[0.2, 0.8], [0.3, 0.7]]}
@@ -319,6 +366,18 @@ class UtilTest(tf.test.TestCase):
 
     self.assertAllClose(got_labels, np.array([0, 1]))
     self.assertAllClose(got_preds, np.array([0.2, 0.8]))
+
+  def testPrepareLabelsAndPredictionsSparseTensorValueAndVocab(self):
+    labels = tf.compat.v1.SparseTensorValue(
+        indices=np.array([0, 2]),
+        values=np.array(['c', 'a']),
+        dense_shape=(1, 2))
+    preds = {'probabilities': [0.2, 0.7, 0.1], 'all_classes': ['a', 'b', 'c']}
+    got_labels, got_preds = metric_util.prepare_labels_and_predictions(
+        labels, preds)
+
+    self.assertAllClose(got_labels, np.array([1, 0, 1]))
+    self.assertAllClose(got_preds, np.array([0.2, 0.7, 0.1]))
 
   def testPrepareLabelsAndPredictionsUsingBinaryScores(self):
     labels = np.array([[0], [1]])
