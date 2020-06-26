@@ -89,6 +89,14 @@ class AutoSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
               max: 1
             }
           }
+          features: {
+            path { step: 'label_feature' }
+            type: INT
+            num_stats: {
+              min: 0
+              max: 1
+            }
+          }
         }
         """, statistics_pb2.DatasetFeatureStatisticsList())
     transformed_feature5 = (
@@ -109,7 +117,8 @@ class AutoSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
             columns=[transformed_feature5, transformed_feature6]),
         slicer.SingleSliceSpec()
     ]
-    actual_slice_spec = auto_slice_key_extractor.slice_spec_from_stats(stats)
+    actual_slice_spec = auto_slice_key_extractor.slice_spec_from_stats(
+        stats, features_to_ignore=['label_feature'])
     self.assertEqual(actual_slice_spec, expected_slice_spec)
 
   def test_auto_extract_slice_keys(self):

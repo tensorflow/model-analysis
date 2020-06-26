@@ -23,7 +23,7 @@ import bisect
 import copy
 import itertools
 
-from typing import Dict, List, Optional, Text, Tuple
+from typing import Dict, Iterator, List, Optional, Set, Text, Tuple
 
 import apache_beam as beam
 import numpy as np
@@ -42,7 +42,8 @@ TRANSFORMED_FEATURE_PREFIX = 'transformed_'
 def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
     statistics: statistics_pb2.DatasetFeatureStatisticsList,
     max_cross_size: int = 2,
-    materialize: Optional[bool] = True) -> extractor.Extractor:
+    features_to_ignore: Optional[Set[Text]] = None,
+    materialize: bool = True) -> extractor.Extractor:
   """Creates an extractor for automatically extracting slice keys.
 
   The incoming Extracts must contain a FeaturesPredictionsLabels extract keyed
@@ -57,12 +58,16 @@ def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
   Args:
     statistics: Data statistics.
     max_cross_size: Maximum size feature crosses to consider.
+    features_to_ignore: Set of features to ignore for slicing.
     materialize: True to add MaterializedColumn entries for the slice keys.
 
   Returns:
     Extractor for slice keys.
   """
-  slice_spec = slice_spec_from_stats(statistics, max_cross_size=max_cross_size)
+  slice_spec = slice_spec_from_stats(
+      statistics,
+      max_cross_size=max_cross_size,
+      features_to_ignore=features_to_ignore)
   return extractor.Extractor(
       stage_name=SLICE_KEY_EXTRACTOR_STAGE_NAME,
       ptransform=_AutoExtractSliceKeys(slice_spec, statistics, materialize))
@@ -73,7 +78,8 @@ def get_quantile_boundaries(
 ) -> Dict[Text, List[float]]:
   """Get quantile bucket boundaries from statistics proto."""
   result = {}
-  for feature in _get_slicable_numeric_features(statistics):
+  for feature in _get_slicable_numeric_features(
+      list(statistics.datasets[0].features)):
     boundaries = None
     for histogram in feature.num_stats.histograms:
       if histogram.type == statistics_pb2.Histogram.QUANTILES:
@@ -143,47 +149,39 @@ def _AutoExtractSliceKeys(  # pylint: disable=invalid-name
 
 
 def _get_slicable_numeric_features(
-    statistics: statistics_pb2.DatasetFeatureStatisticsList
-) -> List[statistics_pb2.FeatureNameStatistics]:
+    features: List[statistics_pb2.FeatureNameStatistics]
+) -> Iterator[statistics_pb2.FeatureNameStatistics]:
   """Get numeric features to slice on."""
-  result = []
-  for feature in statistics.datasets[0].features:
-    if len(feature.path.step) != 1:
-      continue
+  for feature in features:
     stats_type = feature.WhichOneof('stats')
     if stats_type == 'num_stats':
       # Ignore features which have the same value in all examples.
       if feature.num_stats.min == feature.num_stats.max:
         continue
-      result.append(feature)
-  return result
+      yield feature
 
 
 def _get_slicable_categorical_features(
-    statistics: statistics_pb2.DatasetFeatureStatisticsList,
+    features: List[statistics_pb2.FeatureNameStatistics],
     categorical_uniques_threshold: int = 100,
-) -> List[statistics_pb2.FeatureNameStatistics]:
+) -> Iterator[statistics_pb2.FeatureNameStatistics]:
   """Get categorical features to slice on."""
-  result = []
-  for feature in statistics.datasets[0].features:
-    # TODO(pachristopher): Consider structured features once TFMA supports
-    # slicing on structured features.
-    if len(feature.path.step) != 1:
-      continue
+  for feature in features:
     stats_type = feature.WhichOneof('stats')
     if stats_type == 'string_stats':
       # TODO(pachristopher): Consider slicing on top-K values for features
       # with high cardinality.
       if 1 < feature.string_stats.unique <= categorical_uniques_threshold:
-        result.append(feature)
-  return result
+        yield feature
 
 
 # TODO(pachristopher): Slice numeric features based on quantile buckets.
 def slice_spec_from_stats(  # pylint: disable=invalid-name
     statistics: statistics_pb2.DatasetFeatureStatisticsList,
     categorical_uniques_threshold: int = 100,
-    max_cross_size: int = 2) -> List[slicer.SingleSliceSpec]:
+    max_cross_size: int = 2,
+    features_to_ignore: Optional[Set[Text]] = None) -> List[
+        slicer.SingleSliceSpec]:
   """Generates slicing spec from statistics.
 
   Args:
@@ -191,15 +189,25 @@ def slice_spec_from_stats(  # pylint: disable=invalid-name
     categorical_uniques_threshold: Maximum number of unique values beyond which
       we don't slice on that categorical feature.
     max_cross_size: Maximum size feature crosses to consider.
+    features_to_ignore: Set of features to ignore for slicing.
 
   Returns:
     List of slice specs.
   """
+  features_to_consider = []
+  for feature in statistics.datasets[0].features:
+    # TODO(pachristopher): Consider structured features once TFMA supports
+    # slicing on structured features.
+    if (len(feature.path.step) != 1 or
+        (features_to_ignore and feature.path.step[0] in features_to_ignore)):
+      continue
+    features_to_consider.append(feature)
+
   slicable_column_names = []
   for feature in _get_slicable_categorical_features(
-      statistics, categorical_uniques_threshold):
+      features_to_consider, categorical_uniques_threshold):
     slicable_column_names.append(feature.path.step[0])
-  for feature in _get_slicable_numeric_features(statistics):
+  for feature in _get_slicable_numeric_features(features_to_consider):
     # We would bucketize the feature based on the quantiles boundaries.
     slicable_column_names.append(TRANSFORMED_FEATURE_PREFIX +
                                  feature.path.step[0])
