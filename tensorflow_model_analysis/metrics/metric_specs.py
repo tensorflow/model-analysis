@@ -323,8 +323,9 @@ def default_multi_class_classification_specs(
           tf.keras.metrics.Precision(name='precision', top_k=top_k),
           tf.keras.metrics.Recall(name='recall', top_k=top_k)
       ])
-    binarize = config.BinarizationOptions().CopyFrom(binarize)
-    binarize.ClearField('top_k_list')  # pytype: disable=attribute-error
+    _binarize = config.BinarizationOptions()
+    _binarize.CopyFrom(binarize)
+    _binarize.ClearField('top_k_list')  # pytype: disable=attribute-error
   multi_class_metrics = specs_from_metrics(
       metrics, model_names=model_names, output_names=output_names)
   if aggregate is None:
@@ -333,7 +334,7 @@ def default_multi_class_classification_specs(
       default_binary_classification_specs(
           model_names=model_names,
           output_names=output_names,
-          binarize=binarize,
+          binarize=_binarize,
           aggregate=aggregate))
   return multi_class_metrics  # pytype: disable=bad-return-type
 
