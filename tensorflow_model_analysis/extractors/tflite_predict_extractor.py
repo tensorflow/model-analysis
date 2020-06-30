@@ -95,7 +95,7 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
         else:
           raise ValueError(
               'incompatible shape and data for feature: {}, got: {}, expected {}'.format(
-                  input_name, input_shape, feature_shape
+                  input_name, feature_shape, input_shape
               )
           )
         input_features[input_name] = tf.concat(
