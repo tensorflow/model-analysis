@@ -323,7 +323,8 @@ def default_multi_class_classification_specs(
           tf.keras.metrics.Precision(name='precision', top_k=top_k),
           tf.keras.metrics.Recall(name='recall', top_k=top_k)
       ])
-    binarize = config.BinarizationOptions().CopyFrom(binarize)
+    binarize = config.BinarizationOptions()
+    binarize.CopyFrom(binarize)
     binarize.ClearField('top_k_list')  # pytype: disable=attribute-error
   multi_class_metrics = specs_from_metrics(
       metrics, model_names=model_names, output_names=output_names)
