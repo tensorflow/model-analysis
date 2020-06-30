@@ -418,8 +418,9 @@ class _CompilableMetricsAccumulator(object):
       single-output models this will only have one item). The second dimension
       is used to store the accumulated weights for each metric associated with
       the output dimension.
+    total_input_byte_size: Byte size of accumulated inputs.
   """
-  __slots__ = ['inputs', 'weights']
+  __slots__ = ['inputs', 'weights', 'total_input_byte_size']
 
   def __init__(self, metric_counts: List[int]):
     """Initializes accumulator using a list of metric counts per output."""
@@ -431,6 +432,7 @@ class _CompilableMetricsAccumulator(object):
     for output_metric_count in metric_counts:
       self.inputs.append(([], [], []))
       self.weights.append([None] * output_metric_count)
+    self.total_input_byte_size = 0
 
   def len_inputs(self):
     return len(self.inputs[0][0])
@@ -439,6 +441,7 @@ class _CompilableMetricsAccumulator(object):
                 prediction: np.ndarray, example_weight: np.ndarray):
     for i, v in enumerate((label, prediction, example_weight)):
       self.inputs[output_index][i].append(v)
+      self.total_input_byte_size += v.nbytes
 
   def get_inputs(
       self, output_index: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -450,6 +453,7 @@ class _CompilableMetricsAccumulator(object):
     for output_index in range(len(self.inputs)):
       for i in (0, 1, 2):
         del self.inputs[output_index][i][:]
+    self.total_input_byte_size = 0
 
   def add_weights(self, output_index: int, metric_index: int,
                   weights: np.ndarray):
@@ -467,13 +471,11 @@ class _CompilableMetricsAccumulator(object):
 class _CompilableMetricsCombiner(beam.CombineFn):
   """Combines compilable metric weights and computes result."""
 
-  # This needs to be large enough to allow for efficient TF invocations during
-  # batch flushing, but shouldn't be too large as it also acts as cap on the
-  # maximum memory usage of the computation.
-  #
   # We really want the batch size to be adaptive like it is in
-  # beam.BatchElements(), but there isn't an easy way to make it so.
+  # beam.BatchElements(), but there isn't an easy way to make it so. For now
+  # we will limit stored inputs to a max overall byte size.
   # TODO(b/73789023): Figure out how to make this batch size dynamic.
+  _TOTAL_INPUT_BYTE_SIZE_THRESHOLD = 16 << 20  # 16MiB
   _BATCH_SIZE = 1000
 
   def __init__(self,
@@ -499,9 +501,12 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._metrics = None  # type: Dict[Text, List[tf.keras.metrics.Metric]]
     self._batch_size = (
         batch_size if batch_size is not None else self._BATCH_SIZE)
-    self._keras_compilable_metrics_batch_size = (
+    self._batch_size_beam_metric = (
         beam.metrics.Metrics.distribution(
             constants.METRICS_NAMESPACE, 'keras_compilable_metrics_batch_size'))
+    self._total_input_byte_size_beam_metric = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE,
+        'keras_compilable_metrics_total_input_byte_size')
 
   def _setup_if_needed(self):
     if self._metrics is None:
@@ -518,7 +523,9 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._setup_if_needed()
     if accumulator.len_inputs() == 0:
       return
-    self._keras_compilable_metrics_batch_size.update(accumulator.len_inputs())
+    self._batch_size_beam_metric.update(accumulator.len_inputs())
+    self._total_input_byte_size_beam_metric.update(
+        accumulator.total_input_byte_size)
     for output_index, output_name in enumerate(self._output_names):
       inputs = accumulator.get_inputs(output_index)
       for metric_index, metric in enumerate(self._metrics[output_name]):
@@ -550,7 +557,9 @@ class _CompilableMetricsCombiner(beam.CombineFn):
               class_weights=self._class_weights,
               flatten=self._class_weights is not None)):
         accumulator.add_input(i, label, prediction, example_weight)
-    if accumulator.len_inputs() >= self._batch_size:
+    if (accumulator.len_inputs() >= self._batch_size or
+        accumulator.total_input_byte_size >=
+        self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD):
       self._process_batch(accumulator)
     return accumulator
 

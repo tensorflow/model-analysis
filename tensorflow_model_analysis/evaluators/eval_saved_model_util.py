@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, Iterable, List, Optional, Text, Union
+from typing import Any, Dict, Iterable, List, Optional, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -55,10 +55,10 @@ def metric_computations_using_eval_saved_model(
       # and move model loading to _EvalSavedModelCombiner.setup after it is
       # available in Beam.
       metric_types.MetricComputation(
-          keys=[None],
+          keys=[],
           preprocessor=_EvalSavedModelPreprocessor(model_name, model_loader),
           combiner=_EvalSavedModelCombiner(model_name, model_loader,
-                                           batch_size))  # pytype: disable=wrong-arg-types
+                                           batch_size))
   ]
 
 
@@ -120,15 +120,14 @@ class _AggState(object):
   _AggregateCombineFn for why we need this.
   """
 
-  __slots__ = ['metric_variables', 'inputs']
+  __slots__ = ['metric_variables', 'inputs', 'total_input_byte_size']
 
   def __init__(self):
     self.metric_variables = None  # type: Optional[types.MetricVariablesType]
-    self.inputs = [
-    ]  # type: List[Union[bytes, types.FeaturesPredictionsLabels]]
+    self.inputs = []  # type: List[bytes]
+    self.total_input_byte_size = 0
 
-  def copy_from(  # pylint: disable=invalid-name
-      self, other: '_AggState') -> None:
+  def copy_from(self, other: '_AggState'):
     if other.metric_variables:
       self.metric_variables = other.metric_variables
     self.inputs = other.inputs
@@ -139,11 +138,15 @@ class _AggState(object):
     self.inputs.extend(other.inputs)
     return self
 
-  def add_input(self, new_input) -> None:
+  def add_input(self, new_input: bytes):
     self.inputs.append(new_input)
+    self.total_input_byte_size += len(new_input)
 
-  def add_metrics_variables(  # pylint: disable=invalid-name
-      self, metric_variables: types.MetricVariablesType) -> None:
+  def clear_inputs(self):
+    del self.inputs[:]
+    self.total_input_byte_size = 0
+
+  def add_metrics_variables(self, metric_variables: types.MetricVariablesType):
     self.metric_variables = _add_metric_variables(self.metric_variables,
                                                   metric_variables)
 
@@ -178,13 +181,11 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
   (https://issues.apache.org/jira/browse/BEAM-3737).
   """
 
-  # This needs to be large enough to allow for efficient TF invocations during
-  # batch flushing, but shouldn't be too large as it also acts as cap on the
-  # maximum memory usage of the computation.
-  #
   # We really want the batch size to be adaptive like it is in
-  # beam.BatchElements(), but there isn't an easy way to make it so.
+  # beam.BatchElements(), but there isn't an easy way to make it so. For now
+  # we will limit stored inputs to a max overall byte size.
   # TODO(b/73789023): Figure out how to make this batch size dynamic.
+  _TOTAL_INPUT_BYTE_SIZE_THRESHOLD = 16 << 20  # 16MiB
   _BATCH_SIZE = 1000
 
   def __init__(self,
@@ -196,8 +197,11 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
     self._batch_size = (
         batch_size if batch_size is not None else self._BATCH_SIZE)
     self._eval_metrics_graph = None  # type: eval_metrics_graph.EvalMetricsGraph
-    self._eval_saved_model_batch_size = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'eval_saved_model_batch_size')
+    self._batch_size_beam_metric = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE, 'eval_saved_model_combiner_batch_size')
+    self._total_input_byte_size_beam_metric = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE,
+        'eval_saved_model_combiner_total_input_byte_size')
 
   def _maybe_do_batch(self,
                       accumulator: _AggState,
@@ -210,16 +214,20 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
     Args:
       accumulator: Accumulator. Will be updated in place.
       force: Force intro metrics even if accumulator has less FPLs than the
-        batch size.
+        batch size or max byte size.
     """
 
     if self._eval_metrics_graph is None:
       self._setup_if_needed()
       self._eval_metrics_graph = self._loaded_models[self._model_name]
     batch_size = len(accumulator.inputs)
-    if force or batch_size >= self._batch_size:
+    if (force or batch_size >= self._batch_size or
+        accumulator.total_input_byte_size >=
+        self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD):
       if accumulator.inputs:
-        self._eval_saved_model_batch_size.update(batch_size)
+        self._batch_size_beam_metric.update(batch_size)
+        self._total_input_byte_size_beam_metric.update(
+            accumulator.total_input_byte_size)
         inputs_for_metrics = accumulator.inputs
         if inputs_for_metrics:
           accumulator.add_metrics_variables(
@@ -230,7 +238,7 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
           # metrics update, but does not handle empty updates. Explicitly
           # calling just reset here, to make the flow clear.
           self._eval_metrics_graph.reset_metric_variables()
-        del accumulator.inputs[:]
+        accumulator.clear_inputs()
 
   def create_accumulator(self) -> _AggState:
     return _AggState()
