@@ -268,8 +268,8 @@ def _custom_objects(
   custom_objects = {}
   for metric_list in metrics.values():
     for metric in metric_list:
-      if (not metric.__class__.__module__.endswith('keras.metrics') and
-          not metric.__class__.__module__.endswith('keras.losses')):
+      if (metric.__class__.__module__ != tf.keras.metrics.__name__ and
+          metric.__class__.__module__ != tf.keras.losses.__name__):
         custom_objects[metric.__class__.__module__] = metric.__class__.__name__
   return custom_objects
 
