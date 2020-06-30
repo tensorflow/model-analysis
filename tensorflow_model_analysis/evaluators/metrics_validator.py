@@ -34,7 +34,7 @@ _ThresholdType = Union[config.GenericValueThreshold,
 
 
 # TODO(b/142683826): Beam type check error in
-# //third_party/tfx/components/evaluator:executor_test.python3
+# //third_party/py/tfx/components/evaluator:executor_test.python3
 # _EvaluateMetricsAndPlots is passing str instead of MetricKey, remove quotes
 # around metric_types.MetricKey below when fixed.
 def validate_metrics(
