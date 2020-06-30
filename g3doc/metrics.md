@@ -494,6 +494,23 @@ the following aspects of a metric:
 are defined using a proto that encapulates the different value types supported
 by the different metrics (e.g. `double`, `ConfusionMatrixAtThresholds`, etc).
 
+Below are the supported metric value types:
+
+*   [`double_value`](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/double-value) -
+    A wrapper for a double type.
+*   [`bytes_value`](https://developers.google.com/protocol-buffers/docs/proto3) -
+    A bytes value.
+*   `bounded_value` - Represents a real value which could be a pointwise
+    estimate, optionally with approximate bounds of some sort. Has properties
+    `value`, `lower_bound`, and `upper_bound`.
+*   `value_at_cutoffs` - Value at cutoffs (e.g. precision@K, recall@K). Has
+    property `values`, each of which has properties `cutoff` and `value`.
+*   `confusion_matrix_at_thresholds` - Confusion matrix at thresholds. Has
+    property `matrices`, each of which has properties for `threshold`,
+    `precision`, `recall`, and confusion matrix values such as
+    `false_negatives`.
+*   `array_value` - For metrics which return an array of values.
+
 ### Plot Keys
 
 [PlotKeys](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/metrics_for_slice.proto)
