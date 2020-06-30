@@ -66,6 +66,11 @@ class MetricTypesTest(tf.test.TestCase):
     self.assertEqual(str(metric_types.SubKey(class_id=1)), 'classId:1')
     self.assertEqual(str(metric_types.SubKey(top_k=2)), 'topK:2')
     self.assertEqual(str(metric_types.SubKey(k=3)), 'k:3')
+    with self.assertRaises(
+        NotImplementedError,
+        msg=('A non-existent SubKey should be represented as None, not as ',
+             'SubKey(None, None, None).')):
+      str(metric_types.SubKey())
 
 
 if __name__ == '__main__':

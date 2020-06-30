@@ -45,12 +45,10 @@ from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import metric_specs
-from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import validation_result_pb2
-from tensorflow_model_analysis.view import view_types
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -1325,76 +1323,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                                   expected_result_1)
     self.assertMetricsAlmostEqual(eval_results._results[1].slicing_metrics,
                                   expected_result_2)
-
-  @parameterized.named_parameters(('class_id', 1, None, None),
-                                  ('top_k', None, None, 1),
-                                  ('k', None, 1, None))
-  def testGetMetrics(self, class_id, k, top_k):
-
-    # Slices
-    num_slices = 2
-    overall_slice = ()
-    male_slice = (('gender', 'male'))
-
-    # Output name
-    output_name = ''
-
-    # Metrics for overall slice
-    metrics_overall = {
-        'accuracy': {
-            'doubleValue': 0.5,
-        },
-        'auc': {
-            'doubleValue': 0.8,
-        },
-    }
-
-    # Metrics for male slice
-    metrics_male = {
-        'accuracy': {
-            'doubleValue': 0.8,
-        },
-        'auc': {
-            'doubleValue': 0.5,
-        }
-    }
-
-    # EvalResult
-    sub_key = metric_types.SubKey(class_id, k, top_k)
-    slicing_metrics = [(overall_slice, {
-        output_name: {
-            str(sub_key): metrics_overall
-        }
-    }), (male_slice, {
-        output_name: {
-            str(sub_key): metrics_male
-        }
-    })]
-    eval_result = view_types.EvalResult(slicing_metrics, None, None, None, None,
-                                        None)
-
-    # Test get_metrics_for_all_slices()
-    actual_metrics = eval_result.get_metrics_for_all_slices(
-        class_id=class_id, k=k, top_k=top_k)
-
-    # Assert there is one metrics entry per slice
-    self.assertLen(actual_metrics, num_slices)
-
-    # Assert the metrics match the expected values
-    self.assertDictEqual(actual_metrics[overall_slice], metrics_overall)
-    self.assertDictEqual(actual_metrics[male_slice], metrics_male)
-
-    # Test get_metrics()
-    self.assertDictEqual(
-        eval_result.get_metrics(class_id=class_id, k=k, top_k=top_k),
-        metrics_overall)
-    self.assertDictEqual(
-        eval_result.get_metrics(
-            slice_name=male_slice, class_id=class_id, k=k, top_k=top_k),
-        metrics_male)
-
-    # Test get_slices()
-    self.assertListEqual(eval_result.get_slices(), [overall_slice, male_slice])
 
   def testLoadValidationResult(self):
     result = validation_result_pb2.ValidationResult(validation_ok=True)

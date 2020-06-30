@@ -133,7 +133,10 @@ class EvalResult(
       Dictionary containing metric names and values for the specified slice.
     """
 
-    sub_key = metric_types.SubKey(class_id, k, top_k)
+    if class_id or k or top_k:
+      sub_key = str(metric_types.SubKey(class_id, k, top_k))
+    else:
+      sub_key = ''
 
     def equals_slice_name(slice_key):
       if not slice_key:
@@ -145,7 +148,7 @@ class EvalResult(
       slice_key = slicing_metric[0]
       slice_val = slicing_metric[1]
       if equals_slice_name(slice_key):
-        return slice_val[output_name][str(sub_key)]
+        return slice_val[output_name][sub_key]
 
     # if slice could not be found, return None
     return None
@@ -170,12 +173,15 @@ class EvalResult(
       Dictionary mapping slices to metric names and values.
     """
 
-    sub_key = metric_types.SubKey(class_id, k, top_k)
+    if class_id or k or top_k:
+      sub_key = str(metric_types.SubKey(class_id, k, top_k))
+    else:
+      sub_key = ''
 
     sliced_metrics = {}
     for slicing_metric in self.slicing_metrics:
       slice_name = slicing_metric[0]
-      metrics = slicing_metric[1][output_name][str(sub_key)]
+      metrics = slicing_metric[1][output_name][sub_key]
       sliced_metrics[slice_name] = {
           metric_name: metric_value
           for metric_name, metric_value in metrics.items()
