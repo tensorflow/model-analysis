@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Sequence, Text, NamedTuple, Optional, Union
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 Plots = Any
@@ -43,7 +44,7 @@ class SlicedPlots(
   """
 
 
-MetricsByTextKey = Dict[Text, Any]
+MetricsByTextKey = Dict[Text, metrics_for_slice_pb2.MetricValue]
 MetricsBySubKey = Dict[Text, MetricsByTextKey]
 MetricsByOutputName = Dict[Text, Dict[Text, Dict[Text, MetricsBySubKey]]]
 
