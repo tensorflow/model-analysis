@@ -19,8 +19,6 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-import sys
-
 from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple
 
 import apache_beam as beam
@@ -120,7 +118,7 @@ class _AggState(object):
 
   def add_input(self, new_input: bytes):
     self.inputs.append(new_input)
-    self.total_input_byte_size += sys.getsizeof(new_input)
+    self.total_input_byte_size += len(new_input)
 
   def clear_inputs(self):
     del self.inputs[:]
