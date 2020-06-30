@@ -11,6 +11,7 @@
 ## Bug fixes and other changes
 
 *   Added support for labels passed as SparseTensorValues.
+*   Depends on `avro-python3>=1.8.1,<1.9.2` for Python3.5 + MacOS.
 
 ## Breaking changes
 
