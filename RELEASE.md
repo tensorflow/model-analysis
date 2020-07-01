@@ -20,6 +20,8 @@
     tfma.metrics.default_multi_class_classification_specs.
 *   Fix issue with custom metrics contained in modules ending in
     tf.keras.metric.
+*   Changed the BoundedValue.value to be the unsampled metric value rather than
+    the sample average.
 
 ## Breaking changes
 

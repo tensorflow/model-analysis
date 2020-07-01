@@ -195,9 +195,9 @@ def convert_slice_metrics_to_proto(
       # Currently we populate both bounded_value and confidence_interval.
       # Avoid populating bounded_value once the UI handles confidence_interval.
       # Convert to a bounded value. 95% confidence level is computed here.
-      sample_mean, lower_bound, upper_bound = (
+      _, lower_bound, upper_bound = (
           math_util.calculate_confidence_interval(value))
-      metric_value.bounded_value.value.value = sample_mean
+      metric_value.bounded_value.value.value = value.unsampled_value
       metric_value.bounded_value.lower_bound.value = lower_bound
       metric_value.bounded_value.upper_bound.value = upper_bound
       metric_value.bounded_value.methodology = (
