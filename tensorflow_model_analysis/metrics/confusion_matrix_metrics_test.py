@@ -36,48 +36,105 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
                                  parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('specificity', confusion_matrix_metrics.Specificity(), 1.0 /
-       (1.0 + 3.0)),
-      ('fall_out', confusion_matrix_metrics.FallOut(), 3.0 / (3.0 + 1.0)),
-      ('miss_rate', confusion_matrix_metrics.MissRate(), 1.0 / (1.0 + 1.0)))
-  def testRateMetrics(self, metric, expected_value):
+      ('specificity', confusion_matrix_metrics.Specificity(), 2.0 /
+       (2.0 + 3.0)),
+      ('fall_out', confusion_matrix_metrics.FallOut(), 3.0 / (3.0 + 2.0)),
+      ('miss_rate', confusion_matrix_metrics.MissRate(), 4.0 / (4.0 + 1.0)),
+      ('negative_predictive_value',
+       confusion_matrix_metrics.NegativePredictiveValue(), 2.0 / (2.0 + 4.0)),
+      ('false_discovery_rate', confusion_matrix_metrics.FalseDiscoveryRate(),
+       3.0 / (3.0 + 1.0)),
+      ('false_omission_rate', confusion_matrix_metrics.FalseOmissionRate(),
+       4.0 / (4.0 + 2.0)),
+      ('prevalence', confusion_matrix_metrics.Prevalence(),
+       (1.0 + 4.0) / (1.0 + 2.0 + 3.0 + 4.0)),
+      ('prevalence_threshold', confusion_matrix_metrics.PrevalenceThreshold(),
+       (math.sqrt((1.0 / (1.0 + 4.0)) * (1.0 - 1.0 * (2.0 / (2.0 + 3.0)))) +
+        (2.0 / (2.0 + 3.0) - 1.0)) / ((1.0 / (1.0 + 4.0) +
+                                       (2.0 / (2.0 + 3.0)) - 1.0))),
+      ('threat_score', confusion_matrix_metrics.ThreatScore(), 1.0 /
+       (1.0 + 4.0 + 3.0)),
+      ('balanced_accuracy', confusion_matrix_metrics.BalancedAccuracy(),
+       ((1.0 / (1.0 + 4.0)) + (2.0 / (2.0 + 3.0))) / 2),
+      ('f1_score', confusion_matrix_metrics.F1Score(), 2 * 1.0 /
+       (2 * 1.0 + 3.0 + 4.0)),
+      ('matthews_correlation_coefficient',
+       confusion_matrix_metrics.MatthewsCorrelationCoefficent(),
+       (1.0 * 2.0 - 3.0 * 4.0) / math.sqrt(
+           (1.0 + 3.0) * (1.0 + 4.0) * (2.0 + 3.0) * (2.0 + 4.0))),
+      ('fowlkes_mallows_index', confusion_matrix_metrics.FowlkesMallowsIndex(),
+       math.sqrt(1.0 / (1.0 + 3.0) * 1.0 / (1.0 + 4.0))),
+      ('informedness', confusion_matrix_metrics.Informedness(),
+       (1.0 / (1.0 + 4.0)) + (2.0 / (2.0 + 3.0)) - 1.0),
+      ('markedness', confusion_matrix_metrics.Markedness(),
+       (1.0 / (1.0 + 3.0)) + (2.0 / (2.0 + 4.0)) - 1.0),
+      ('positive_likelihood_ratio',
+       confusion_matrix_metrics.PositiveLikelihoodRatio(),
+       (1.0 / (1.0 + 4.0)) / (3.0 / (3.0 + 2.0))),
+      ('negative_likelihood_ratio',
+       confusion_matrix_metrics.NegativeLikelihoodRatio(),
+       (4.0 / (4.0 + 1.0)) / (2.0 / (2.0 + 3.0))),
+      ('diagnostic_odds_ratio', confusion_matrix_metrics.DiagnosticOddsRatio(),
+       ((1.0 / 3.0)) / (4.0 / 2.0)),
+  )
+  def testConfusionMatrixMetrics(self, metric, expected_value):
     computations = metric.computations()
     histogram = computations[0]
     matrices = computations[1]
     metrics = computations[2]
 
     # tp = 1
-    # tn = 1
+    # tn = 2
     # fp = 3
-    # fn = 1
+    # fn = 4
     example1 = {
-        'labels': np.array([0.0]),
-        'predictions': np.array([0.0]),
+        'labels': np.array([1.0]),
+        'predictions': np.array([0.6]),
         'example_weights': np.array([1.0]),
     }
     example2 = {
         'labels': np.array([0.0]),
-        'predictions': np.array([0.6]),
-        'example_weights': np.array([1.0]),
-    }
-    example3 = {
-        'labels': np.array([1.0]),
         'predictions': np.array([0.3]),
         'example_weights': np.array([1.0]),
     }
+    example3 = {
+        'labels': np.array([0.0]),
+        'predictions': np.array([0.2]),
+        'example_weights': np.array([1.0]),
+    }
     example4 = {
-        'labels': np.array([1.0]),
-        'predictions': np.array([0.9]),
+        'labels': np.array([0.0]),
+        'predictions': np.array([0.6]),
         'example_weights': np.array([1.0]),
     }
     example5 = {
         'labels': np.array([0.0]),
-        'predictions': np.array([1.0]),
+        'predictions': np.array([0.7]),
         'example_weights': np.array([1.0]),
     }
     example6 = {
         'labels': np.array([0.0]),
-        'predictions': np.array([0.6]),
+        'predictions': np.array([0.8]),
+        'example_weights': np.array([1.0]),
+    }
+    example7 = {
+        'labels': np.array([1.0]),
+        'predictions': np.array([0.1]),
+        'example_weights': np.array([1.0]),
+    }
+    example8 = {
+        'labels': np.array([1.0]),
+        'predictions': np.array([0.2]),
+        'example_weights': np.array([1.0]),
+    }
+    example9 = {
+        'labels': np.array([1.0]),
+        'predictions': np.array([0.3]),
+        'example_weights': np.array([1.0]),
+    }
+    example10 = {
+        'labels': np.array([1.0]),
+        'predictions': np.array([0.4]),
         'example_weights': np.array([1.0]),
     }
 
@@ -85,8 +142,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create(
-              [example1, example2, example3, example4, example5, example6])
+          | 'Create' >> beam.Create([
+              example1, example2, example3, example4, example5, example6,
+              example7, example8, example9, example10
+          ])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
@@ -111,7 +170,7 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
-  def testRateMetricsWithNan(self):
+  def testConfusionMatrixMetricsWithNan(self):
     computations = confusion_matrix_metrics.Specificity().computations()
     histogram = computations[0]
     matrices = computations[1]

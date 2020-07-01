@@ -7,6 +7,10 @@
 *   Changed default confidence interval method from POISSON_BOOTSTRAP to
     JACKKNIFE. This should significantly improve confidence interval evaluation
     performance by as much as 10x in runtime and CPU resource usage.
+*   Added support for additional confusion matrix metrics (FDR, FOR, PT, TS, BA,
+    F1 score, MCC, FM, Informedness, Markedness, etc). See
+    https://en.wikipedia.org/wiki/Confusion_matrix for full list of metrics now
+    supported.
 
 ## Bug fixes and other changes
 
