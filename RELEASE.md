@@ -22,6 +22,7 @@
     tf.keras.metric.
 *   Changed the BoundedValue.value to be the unsampled metric value rather than
     the sample average.
+*   Add `EvalResult.get_metric_names()`.
 
 ## Breaking changes
 

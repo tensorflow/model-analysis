@@ -39,8 +39,8 @@ class SlicedPlots(
         'green'). An empty tuple represents an 'overall' slice (i.e. one that
         encompasses the entire dataset.
     plot: A dict mapping `output_name` and `sub_key_id` to plot data. The data
-        contains histograms and confusion matrices, which can be rendered with
-        the `tfma.view.render_plot` function.
+      contains histograms and confusion matrices, which can be rendered with the
+      `tfma.view.render_plot` function.
   """
 
 
@@ -112,12 +112,13 @@ class EvalResult(
     model_location: Optional location(s) for model(s) used with config.
   """
 
-  def get_metrics(self,
-                  slice_name: slicer.SliceKeyType = (),
-                  output_name: Text = '',
-                  class_id: Optional[int] = None,
-                  k: Optional[int] = None,
-                  top_k: Optional[int] = None) -> Union[MetricsByTextKey, None]:
+  def get_metrics_for_slice(
+      self,
+      slice_name: slicer.SliceKeyType = (),
+      output_name: Text = '',
+      class_id: Optional[int] = None,
+      k: Optional[int] = None,
+      top_k: Optional[int] = None) -> Union[MetricsByTextKey, None]:
     """Get metric names and values for a slice.
 
     Args:
@@ -188,6 +189,20 @@ class EvalResult(
           for metric_name, metric_value in metrics.items()
       }
     return sliced_metrics  # pytype: disable=bad-return-type
+
+  def get_metric_names(self) -> Sequence[Text]:
+    """Get names of metrics.
+
+    Returns:
+      List of metric names.
+    """
+
+    metric_names = set()
+    for slicing_metric in self.slicing_metrics:
+      for output_name in slicing_metric[1]:
+        for metrics in slicing_metric[1][output_name].values():
+          metric_names.update(metrics)
+    return list(metric_names)
 
   def get_slices(self) -> Sequence[Text]:
     """Get names of slices.

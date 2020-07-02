@@ -84,14 +84,17 @@ class ViewTypesTest(parameterized.TestCase):
     self.assertDictEqual(actual_metrics[overall_slice], metrics_overall)
     self.assertDictEqual(actual_metrics[male_slice], metrics_male)
 
-    # Test get_metrics()
+    # Test get_metrics_for_slice()
     self.assertDictEqual(
-        eval_result.get_metrics(class_id=class_id, k=k, top_k=top_k),
+        eval_result.get_metrics_for_slice(class_id=class_id, k=k, top_k=top_k),
         metrics_overall)
     self.assertDictEqual(
-        eval_result.get_metrics(
+        eval_result.get_metrics_for_slice(
             slice_name=male_slice, class_id=class_id, k=k, top_k=top_k),
         metrics_male)
+
+    # Test get_metric_names()
+    self.assertSameElements(eval_result.get_metric_names(), ['accuracy', 'auc'])
 
     # Test get_slices()
     self.assertListEqual(eval_result.get_slices(), [overall_slice, male_slice])
