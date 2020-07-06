@@ -27,6 +27,17 @@ message ValidationFailure {
   string message = 4;
 }
 
+// Information about slices matched.
+message SlicingDetails {
+  SlicingSpec slicing_spec = 1;
+  int32 num_matching_slices = 2;
+}
+
+// Extra details about validation.
+message ValidationDetails {
+  repeated SlicingDetails slicing_details = 1;
+}
+
 message MetricsValidationForSlice {
   // SliceKey of a given slice.
   SliceKey slice_key = 2;
@@ -36,10 +47,16 @@ message MetricsValidationForSlice {
 }
 
 message ValidationResult {
-  // True if there are no metric validation failures or data anomalies, else
+  // True if there are no metric validation failures or missing slices, else
   // false.
   bool validation_ok = 1;
 
-  // Details about which threshold is blocking which metric.
+  // Information about which threshold is blocking which metric.
   repeated MetricsValidationForSlice metric_validations_per_slice = 2;
+
+  // Information about missing slices.
+  repeated SlicingSpec missing_slices = 3;
+
+  // Extra details about validation performed.
+  ValidationDetails validation_details = 4;
 }

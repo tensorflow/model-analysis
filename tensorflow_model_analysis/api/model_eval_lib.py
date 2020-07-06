@@ -610,7 +610,8 @@ def default_writers(
     eval_shared_model: Optional shared model (single-model evaluation) or list
       of shared models (multi-model evaluation). Only required if legacy
       add_metrics_callbacks are used.
-    eval_config: Optional eval config for writing out config along with results.
+    eval_config: Eval config for writing out config along with results. Also
+      used for to check for missing slices.
     display_only_data_location: Optional path indicating where the examples were
       read from. This is used only for display purposes - data will not actually
       be read from this path.
@@ -663,6 +664,8 @@ def default_writers(
   writers.append(
       metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
           output_paths=output_paths,
+          # Empty EvalConfig supported for backwards compatibility.
+          eval_config=eval_config or config.EvalConfig(),
           add_metrics_callbacks=add_metric_callbacks,
           output_file_format=output_file_format))
   return writers

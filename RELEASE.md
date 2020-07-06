@@ -23,6 +23,7 @@
 *   Changed the BoundedValue.value to be the unsampled metric value rather than
     the sample average.
 *   Add `EvalResult.get_metric_names()`.
+*   Added errors for missing slices during metrics validation.
 
 ## Breaking changes
 

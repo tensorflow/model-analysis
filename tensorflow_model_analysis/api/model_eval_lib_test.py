@@ -680,12 +680,20 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
           config.MetricConfig(
               class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
     tf.keras.backend.clear_session()
+    slicing_specs = [
+        config.SlicingSpec(),
+        config.SlicingSpec(feature_keys=['non_existent_slice'])
+    ]
     metrics_spec.metrics.append(
         config.MetricConfig(
             class_name='WeightedExampleCount',
-            threshold=config.MetricThreshold(
-                value_threshold=config.GenericValueThreshold(
-                    lower_bound={'value': 0}))))
+            per_slice_thresholds=[
+                config.PerSliceMetricThreshold(
+                    slicing_specs=slicing_specs,
+                    threshold=config.MetricThreshold(
+                        value_threshold=config.GenericValueThreshold(
+                            lower_bound={'value': 0})))
+            ]))
     for class_id in (0, 5, 9):
       metrics_spec.binarize.class_ids.values.append(class_id)
     eval_config = config.EvalConfig(
@@ -717,7 +725,20 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       validation_records.append(
           validation_result_pb2.ValidationResult.FromString(record))
     self.assertLen(validation_records, 1)
-    self.assertTrue(validation_records[0].validation_ok)
+    expected_result = text_format.Parse(
+        """
+        validation_ok: false
+        missing_slices: {
+          feature_keys: "non_existent_slice"
+        }
+        validation_details {
+          slicing_details {
+            slicing_spec {
+            }
+            num_matching_slices: 1
+          }
+        }""", validation_result_pb2.ValidationResult())
+    self.assertProtoEquals(expected_result, validation_records[0])
 
     def check_eval_result(eval_result, model_location):
       self.assertEqual(eval_result.model_location, model_location)
@@ -815,25 +836,46 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config.SlicingSpec()]
+    metrics_specs = metric_specs.specs_from_metrics(
+        [ndcg.NDCG(gain_key='age', name='ndcg')],
+        binarize=config.BinarizationOptions(top_k_list={'values': [1]}),
+        query_key='language',
+        include_weighted_example_count=True)
+    metrics_specs.append(
+        config.MetricsSpec(metrics=[
+            config.MetricConfig(
+                class_name='WeightedExampleCount',
+                threshold=config.MetricThreshold(
+                    value_threshold=config.GenericValueThreshold(
+                        lower_bound={'value': 0})))
+        ]))
     eval_config = config.EvalConfig(
         model_specs=[config.ModelSpec(label_key='label')],
         slicing_specs=slicing_specs,
-        metrics_specs=metric_specs.specs_from_metrics(
-            [ndcg.NDCG(gain_key='age', name='ndcg')],
-            binarize=config.BinarizationOptions(top_k_list={'values': [1]}),
-            query_key='language'))
+        metrics_specs=metrics_specs)
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, eval_config=eval_config)
+    output_path = self._getTempDir()
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         data_location=data_location,
-        output_path=self._getTempDir(),
+        output_path=output_path,
         evaluators=[
             metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
                 eval_config=eval_config, eval_shared_model=eval_shared_model)
         ],
         schema=schema)
+
+    # Directly check validaton file since it is not in EvalResult.
+    validations_file = os.path.join(output_path, constants.VALIDATIONS_KEY)
+    self.assertTrue(os.path.exists(validations_file))
+    validation_records = []
+    for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
+      validation_records.append(
+          validation_result_pb2.ValidationResult.FromString(record))
+    self.assertLen(validation_records, 1)
+    self.assertTrue(validation_records[0].validation_ok)
 
     self.assertEqual(eval_result.model_location, model_location)
     self.assertEqual(eval_result.data_location, data_location)

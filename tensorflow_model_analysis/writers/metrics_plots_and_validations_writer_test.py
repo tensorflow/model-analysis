@@ -954,6 +954,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             extra_feature='non_model_feature'),
     ]
 
+    slicing_specs = [
+        config.SlicingSpec(),
+        config.SlicingSpec(feature_keys=['slice_does_not_exist'])
+    ]
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
@@ -966,16 +970,21 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 example_weight_key='example_weight',
                 is_baseline=True)
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=slicing_specs,
         metrics_specs=[
             config.MetricsSpec(
                 metrics=[
                     config.MetricConfig(
                         class_name='WeightedExampleCount',
-                        # 1.5 < 1, NOT OK.
-                        threshold=config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
-                                upper_bound={'value': 1}))),
+                        per_slice_thresholds=[
+                            config.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs,
+                                # 1.5 < 1, NOT OK.
+                                threshold=config.MetricThreshold(
+                                    value_threshold=config
+                                    .GenericValueThreshold(
+                                        upper_bound={'value': 1})))
+                        ]),
                     config.MetricConfig(
                         class_name='ExampleCount',
                         # 2 > 10, NOT OK.
@@ -1038,6 +1047,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     writers = [
         metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
             output_paths,
+            eval_config=eval_config,
             add_metrics_callbacks=[],
             output_file_format=output_file_format)
     ]
@@ -1129,6 +1139,25 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         expected_validations,
         validation_result.metric_validations_per_slice[0].failures)
 
+    expected_missing_slices = [
+        config.SlicingSpec(feature_keys=['slice_does_not_exist'])
+    ]
+    self.assertLen(validation_result.missing_slices, 1)
+    self.assertCountEqual(expected_missing_slices,
+                          validation_result.missing_slices)
+
+    expected_slicing_details = [
+        text_format.Parse(
+            """
+            slicing_spec {
+            }
+            num_matching_slices: 1
+            """, validation_result_pb2.SlicingDetails()),
+    ]
+    self.assertLen(validation_result.validation_details.slicing_details, 1)
+    self.assertCountEqual(expected_slicing_details,
+                          validation_result.validation_details.slicing_details)
+
   @parameterized.named_parameters(('without_output_file_format', ''),
                                   ('with_output_file_format', 'tfrecord'))
   def testWriteMetricsAndPlots(self, output_file_format):
@@ -1164,7 +1193,8 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     writers = [
         metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
             output_paths,
-            eval_shared_model.add_metrics_callbacks,
+            eval_config=eval_config,
+            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks,
             output_file_format=output_file_format)
     ]
 

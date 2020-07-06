@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Tuple, Union
 import numpy as np
 
 from tensorflow_model_analysis import config
@@ -50,14 +50,9 @@ def validate_metrics(
   thresholds = metric_specs.metric_thresholds_from_metrics_specs(
       eval_config.metrics_specs)  # pytype: disable=wrong-arg-types
 
-  def _check_threshold(key: metric_types.MetricKey,
-                       slicing_spec: Optional[config.SlicingSpec],
-                       threshold: _ThresholdType, metric: Any) -> bool:
+  def _check_threshold(key: metric_types.MetricKey, threshold: _ThresholdType,
+                       metric: Any) -> bool:
     """Verify a metric given its metric key and metric value."""
-    if (slicing_spec is not None and not slicer.SingleSliceSpec(
-        spec=slicing_spec).is_slice_applicable(sliced_key)):
-      return True
-
     if isinstance(threshold, config.GenericValueThreshold):
       lower_bound, upper_bound = -np.inf, np.inf
       if threshold.HasField('lower_bound'):
@@ -125,7 +120,10 @@ def validate_metrics(
         \n{}""".format(type(metric), metric)
     existing_failures = set()
     for slice_spec, threshold in thresholds[metric_key]:
-      if not _check_threshold(metric_key, slice_spec, threshold, metric):
+      if (slice_spec is not None and not slicer.SingleSliceSpec(
+          spec=slice_spec).is_slice_applicable(sliced_key)):
+        continue
+      if not _check_threshold(metric_key, threshold, metric):
         # The same threshold values could be set for multiple matching slice
         # specs. Only store the first match.
         #
@@ -138,6 +136,13 @@ def validate_metrics(
         _copy_metric(metric, failure.metric_value)
         _copy_threshold(threshold, failure.metric_threshold)
         failure.message = msg
+      # Track we have completed a validation check for slice spec and metric
+      slicing_details = result.validation_details.slicing_details.add()
+      if slice_spec is not None:
+        slicing_details.slicing_spec.CopyFrom(slice_spec)
+      else:
+        slicing_details.slicing_spec.CopyFrom(config.SlicingSpec())
+      slicing_details.num_matching_slices = 1
   # All unchecked thresholds are considered failures.
   for metric_key, thresholds in unchecked_thresholds.items():
     if metric_key.model_name == baseline_model_name:
@@ -162,3 +167,67 @@ def validate_metrics(
     result.validation_ok = False
     result.metric_validations_per_slice.append(validation_for_slice)
   return result
+
+
+def _hashed_slicing_details(
+    slicing_details: Iterable[validation_result_pb2.SlicingDetails]
+) -> Dict[bytes, validation_result_pb2.SlicingDetails]:
+  """Returns hash table of slicing details keyed by serialized slice spec."""
+  # Note that hashing by SerializeToString() is only safe if used within the
+  # same process.
+  hashed_details = {}
+  for details in slicing_details:
+    slice_hash = details.slicing_spec.SerializeToString()
+    if slice_hash not in hashed_details:
+      hashed_details[slice_hash] = details
+  return hashed_details
+
+
+def merge_details(a: validation_result_pb2.ValidationResult,
+                  b: validation_result_pb2.ValidationResult):
+  """Merges validation details in ValidationtResult b into ValidationResult a."""
+  hashed_details = _hashed_slicing_details(b.validation_details.slicing_details)
+  # Combine a with matching values from b
+  for details in a.validation_details.slicing_details:
+    slice_hash = details.slicing_spec.SerializeToString()
+    if slice_hash in hashed_details:
+      details.num_matching_slices = (
+          details.num_matching_slices +
+          hashed_details[slice_hash].num_matching_slices)
+      del hashed_details[slice_hash]
+  # Add any values from b not matched in a
+  for details in hashed_details.values():
+    a.validation_details.slicing_details.append(details)
+
+
+def get_missing_slices(
+    slicing_details: Iterable[validation_result_pb2.SlicingDetails],
+    eval_config: config.EvalConfig) -> List[config.SlicingSpec]:
+  """Returns specs that are defined in the EvalConfig but not found in details.
+
+  Args:
+    slicing_details: Slicing details.
+    eval_config: Eval config.
+
+  Returns:
+    List of missing slices or empty list if none are missing.
+  """
+  hashed_details = _hashed_slicing_details(slicing_details)
+  thresholds = metric_specs.metric_thresholds_from_metrics_specs(
+      eval_config.metrics_specs)
+  baseline_spec = model_util.get_baseline_model_spec(eval_config)
+  baseline_model_name = baseline_spec.name if baseline_spec else None
+  missing_slices = []
+  for metric_key, sliced_thresholds in thresholds.items():
+    # Skip baseline.
+    if metric_key.model_name == baseline_model_name:
+      continue
+    for slice_spec, _ in sliced_thresholds:
+      if not slice_spec:
+        slice_spec = config.SlicingSpec()
+      slice_hash = slice_spec.SerializeToString()
+      if slice_hash not in hashed_details:
+        missing_slices.append(slice_spec)
+        # Same slice may be used by other metrics/thresholds, only add once
+        hashed_details[slice_hash] = validation_result_pb2.SlicingDetails()
+  return missing_slices

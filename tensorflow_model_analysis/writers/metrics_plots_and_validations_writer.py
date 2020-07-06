@@ -28,10 +28,12 @@ import apache_beam as beam
 import numpy as np
 import six
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import evaluator
+from tensorflow_model_analysis.evaluators import metrics_validator
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -323,6 +325,7 @@ def convert_slice_plots_to_proto(
 
 def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     output_paths: Dict[Text, Text],
+    eval_config: config.EvalConfig,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
@@ -337,6 +340,7 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
   Args:
     output_paths: Output paths keyed by output key (e.g. 'metrics', 'plots',
       'validation').
+    eval_config: Eval config.
     add_metrics_callbacks: Optional list of metric callbacks (if used).
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
@@ -348,6 +352,7 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
       stage_name='WriteMetricsAndPlots',
       ptransform=_WriteMetricsPlotsAndValidations(  # pylint: disable=no-value-for-parameter
           output_paths=output_paths,
+          eval_config=eval_config,
           add_metrics_callbacks=add_metrics_callbacks or [],
           metrics_key=metrics_key,
           plots_key=plots_key,
@@ -363,6 +368,9 @@ class _CombineValidations(beam.CombineFn):
   Combines PCollection of ValidationResults for different metrics and slices.
   """
 
+  def __init__(self, eval_config: config.EvalConfig):
+    self._eval_config = eval_config
+
   def create_accumulator(self) -> None:
     return
 
@@ -377,6 +385,7 @@ class _CombineValidations(beam.CombineFn):
     result.validation_ok &= new_input.validation_ok
     result.metric_validations_per_slice.extend(
         new_input.metric_validations_per_slice)
+    metrics_validator.merge_details(result, new_input)
     return result
 
   def merge_accumulators(
@@ -390,6 +399,7 @@ class _CombineValidations(beam.CombineFn):
     for new_input in accumulators:
       result.metric_validations_per_slice.extend(
           new_input.metric_validations_per_slice)
+      metrics_validator.merge_details(result, new_input)
       result.validation_ok &= new_input.validation_ok
     return result
 
@@ -398,8 +408,12 @@ class _CombineValidations(beam.CombineFn):
   ) -> 'Optional[validation_result_pb2.ValidationResult]':
     # Verification fails if there is empty input.
     if not accumulator:
-      result = validation_result_pb2.ValidationResult(validation_ok=False)
-      return result
+      accumulator = validation_result_pb2.ValidationResult(validation_ok=False)
+    missing = metrics_validator.get_missing_slices(
+        accumulator.validation_details.slicing_details, self._eval_config)
+    if missing:
+      accumulator.validation_ok = False
+      accumulator.missing_slices.extend(missing)
     return accumulator
 
 
@@ -408,6 +422,7 @@ class _CombineValidations(beam.CombineFn):
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation, output_paths: Dict[Text, Text],
+    eval_config: config.EvalConfig,
     add_metrics_callbacks: List[types.AddMetricsCallbackType],
     metrics_key: Text, plots_key: Text, validations_key: Text,
     output_file_format: Text) -> beam.pvalue.PDone:
@@ -449,8 +464,8 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
   if validations_key in evaluation:
     validations = (
         evaluation[validations_key]
-        |
-        'MergeValidationResults' >> beam.CombineGlobally(_CombineValidations()))
+        | 'MergeValidationResults' >> beam.CombineGlobally(
+            _CombineValidations(eval_config)))
 
     if constants.VALIDATIONS_KEY in output_paths:
       # We only use a single shard here because validations are usually single

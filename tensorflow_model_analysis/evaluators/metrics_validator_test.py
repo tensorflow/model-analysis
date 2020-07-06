@@ -150,6 +150,15 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
         0].metric_threshold.CopyFrom(threshold)
     expected.metric_validations_per_slice[0].slice_key.CopyFrom(
         slicer.serialize_slice_key(slice_key))
+    for spec in slicing_specs or [None]:
+      if (spec is None or
+          slicer.SingleSliceSpec(spec=spec).is_slice_applicable(slice_key)):
+        slicing_details = expected.validation_details.slicing_details.add()
+        if spec is not None:
+          slicing_details.slicing_spec.CopyFrom(spec)
+        else:
+          slicing_details.slicing_spec.CopyFrom(config.SlicingSpec())
+        slicing_details.num_matching_slices = 1
     self.assertEqual(result, expected)
 
   @parameterized.named_parameters(_UNMATCHED_SINGLE_SLICE_TEST,
@@ -571,6 +580,119 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertFalse(result.validation_ok)
+
+  def testMergeDetails(self):
+    a = text_format.Parse(
+        """
+        validation_details {
+          slicing_details {
+            slicing_spec {}
+            num_matching_slices: 1
+          }
+          slicing_details {
+            slicing_spec {
+              feature_keys: ["x", "y"]
+            }
+            num_matching_slices: 1
+          }
+        }""", validation_result_pb2.ValidationResult())
+
+    b = text_format.Parse(
+        """
+        validation_details {
+          slicing_details {
+            slicing_spec {
+              feature_keys: ["x"]
+            }
+            num_matching_slices: 1
+          }
+          slicing_details {
+            slicing_spec {
+              feature_keys: ["x", "y"]
+            }
+            num_matching_slices: 2
+          }
+        }""", validation_result_pb2.ValidationResult())
+
+    expected = text_format.Parse(
+        """
+        validation_details {
+          slicing_details {
+            slicing_spec {}
+            num_matching_slices: 1
+          }
+          slicing_details {
+            slicing_spec {
+              feature_keys: ["x", "y"]
+            }
+            num_matching_slices: 3
+          }
+          slicing_details {
+            slicing_spec {
+              feature_keys: ["x"]
+            }
+            num_matching_slices: 1
+          }
+        }""", validation_result_pb2.ValidationResult())
+
+    metrics_validator.merge_details(a, b)
+    self.assertProtoEquals(expected, a)
+
+  def testGetMissingSlices(self):
+    slicing_specs = [
+        config.SlicingSpec(),
+        config.SlicingSpec(feature_values={'feature1': 'value1'}),
+        config.SlicingSpec(feature_values={'feature2': 'value2'})
+    ]
+    threshold = config.MetricThreshold(
+        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(),
+        ],
+        slicing_specs=slicing_specs,
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='WeightedExampleCount',
+                        # 1.5 < 1, NOT OK.
+                        per_slice_thresholds=[
+                            config.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs,
+                                threshold=threshold)
+                        ]),
+                ],
+                model_names=['']),
+        ],
+    )
+    sliced_metrics = ((('feature1', 'value1'),), {
+        metric_types.MetricKey(name='weighted_example_count'): 0,
+    })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+
+    expected_checks = text_format.Parse(
+        """
+        validation_ok: true
+        validation_details {
+          slicing_details {
+            slicing_spec {
+              feature_values {
+                key: "feature1"
+                value: "value1"
+              }
+            }
+            num_matching_slices: 1
+          }
+        }""", validation_result_pb2.ValidationResult())
+
+    self.assertProtoEquals(expected_checks, result)
+
+    missing = metrics_validator.get_missing_slices(
+        result.validation_details.slicing_details, eval_config)
+    self.assertLen(missing, 2)
+    self.assertProtoEquals(missing[0], slicing_specs[0])
+    self.assertProtoEquals(missing[1], slicing_specs[2])
 
 
 if __name__ == '__main__':
