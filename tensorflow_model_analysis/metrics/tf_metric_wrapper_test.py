@@ -40,6 +40,21 @@ class _CustomMetric(tf.keras.metrics.Mean):
         y_pred, sample_weight=sample_weight)
 
 
+class _CustomConfusionMatrixMetric(tf.keras.metrics.Precision):
+
+  def __init__(self, name='custom', dtype=None):
+    super(_CustomConfusionMatrixMetric, self).__init__(name=name, dtype=dtype)
+
+  def update_state(self, y_true, y_pred, sample_weight):
+    super(_CustomConfusionMatrixMetric, self).update_state(
+        y_true, y_pred, sample_weight=sample_weight)
+
+  def get_config(self):
+    # Remove config items we don't accept or they will be passed to __init__.
+    base_config = super(tf.keras.metrics.Precision, self).get_config()
+    return {'name': base_config['name'], 'dtype': base_config['dtype']}
+
+
 class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
                                  parameterized.TestCase):
 
@@ -445,6 +460,41 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
           self.assertDictElementsAlmostEqual(
               got_metrics,
               {custom_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0)})
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  def testCustomConfusionMatrixTFMetric(self):
+    metric = tf_metric_wrapper.tf_metric_computations(
+        [_CustomConfusionMatrixMetric()])[0]
+
+    # tp = 1
+    # fp = 1
+    example1 = {'labels': [0.0], 'predictions': [0.7], 'example_weights': [1.0]}
+    example2 = {'labels': [1.0], 'predictions': [0.8], 'example_weights': [1.0]}
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([example1, example2])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'Combine' >> beam.CombinePerKey(metric.combiner))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+
+          custom_key = metric_types.MetricKey(name='custom')
+          self.assertDictElementsAlmostEqual(got_metrics,
+                                             {custom_key: 1.0 / (1.0 + 1.0)})
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

@@ -179,18 +179,14 @@ def _separate_confusion_matrix_metrics(
   non_confusion_matrix_metrics = {}
   for output_name, metrics in metrics.items():
     for metric in metrics:
-      if (isinstance(metric, tf.keras.metrics.AUC) or
-          isinstance(metric, tf.keras.metrics.SpecificityAtSensitivity) or
-          isinstance(metric, tf.keras.metrics.SensitivityAtSpecificity) or
-          isinstance(metric, tf.keras.metrics.TruePositives) or
-          isinstance(metric, tf.keras.metrics.FalsePositives) or
-          isinstance(metric, tf.keras.metrics.TrueNegatives) or
-          isinstance(metric, tf.keras.metrics.FalseNegatives)):
-        if output_name not in confusion_matrix_metrics:
-          confusion_matrix_metrics[output_name] = []
-        confusion_matrix_metrics[output_name].append(metric)
-      elif (isinstance(metric, tf.keras.metrics.Precision) or
-            isinstance(metric, tf.keras.metrics.Recall)):
+      # We are using type instead of isinstance here because we only want to
+      # match specific types and not their subclasses.
+      if (type(metric) in (  # pylint: disable=unidiomatic-typecheck
+          tf.keras.metrics.AUC, tf.keras.metrics.SpecificityAtSensitivity,
+          tf.keras.metrics.SensitivityAtSpecificity,
+          tf.keras.metrics.TruePositives, tf.keras.metrics.FalsePositives,
+          tf.keras.metrics.TrueNegatives, tf.keras.metrics.FalseNegatives,
+          tf.keras.metrics.Precision, tf.keras.metrics.Recall)):
         if output_name not in confusion_matrix_metrics:
           confusion_matrix_metrics[output_name] = []
         confusion_matrix_metrics[output_name].append(metric)
@@ -264,21 +260,24 @@ def _deserialize_losses(
 
 
 def _custom_objects(
-    metrics: Dict[Text, List[tf.keras.metrics.Metric]]) -> Dict[Text, Any]:
-  custom_objects = {}
+    metrics: Dict[Text,
+                  List[tf.keras.metrics.Metric]]) -> List[Tuple[Text, Text]]:
+  """Returns list of (module, class_name) tuples for custom objects."""
+  custom_objects = []
   for metric_list in metrics.values():
     for metric in metric_list:
       if (metric.__class__.__module__ != tf.keras.metrics.__name__ and
           metric.__class__.__module__ != tf.keras.losses.__name__):
-        custom_objects[metric.__class__.__module__] = metric.__class__.__name__
+        custom_objects.append(
+            (metric.__class__.__module__, metric.__class__.__name__))
   return custom_objects
 
 
 def _load_custom_objects(
-    custom_objects: Dict[Text, Text]) -> Dict[Text, Type[Any]]:
+    custom_objects: List[Tuple[Text, Text]]) -> Dict[Text, Type[Any]]:
   """Loads custom metric options."""
   loaded_custom_objects = {}
-  for module_name, class_name in custom_objects.items():
+  for module_name, class_name in custom_objects:
     module = importlib.import_module(module_name)
     loaded_custom_objects[class_name] = getattr(module, class_name)
   return loaded_custom_objects
@@ -481,7 +480,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
   def __init__(self,
                metric_configs: Dict[Text, List[Dict[Text, Any]]],
                loss_configs: Dict[Text, List[Dict[Text, Any]]],
-               custom_objects: Dict[Text, Type[Any]],
+               custom_objects: List[Tuple[Text, Text]],
                eval_config: Optional[config.EvalConfig],
                model_name: Optional[Text],
                sub_key: Optional[metric_types.SubKey],

@@ -24,6 +24,7 @@
     the sample average.
 *   Add `EvalResult.get_metric_names()`.
 *   Added errors for missing slices during metrics validation.
+*   Added support for customizing confusion matrix based metrics in keras.
 
 ## Breaking changes
 
