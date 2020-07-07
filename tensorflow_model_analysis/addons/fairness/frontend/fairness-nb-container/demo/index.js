@@ -210,14 +210,14 @@
     };
   });
 
+  const element = document.getElementsByTagName('fairness-nb-container')[0];
+  element.slicingMetrics = input3;
+
   const element_compare =
-      document.getElementsByTagName('fairness-nb-container')[0];
+      document.getElementsByTagName('fairness-nb-container')[1];
   element_compare.slicingMetrics = input1;
   element_compare.slicingMetricsCompare = input2;
   element_compare.evalName = 'Eval1';
   element_compare.evalNameCompare = 'Eval2';
   element_compare.availbleEvaluationRuns = ['1', '2', '3'];
-
-  const element = document.getElementsByTagName('fairness-nb-container')[1];
-  element.slicingMetrics = input3;
 })();
