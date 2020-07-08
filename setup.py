@@ -270,7 +270,7 @@ setup_args = {
         # TODO(b/149399451): remove once avro has a healthy release.
         ('avro-python3>=1.8.1,<1.9.2; '
          'python_version=="3.5" and platform_system=="Darwin"'),
-        'apache-beam[gcp]>=2.20,<3',
+        'apache-beam[gcp]>=2.22,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
