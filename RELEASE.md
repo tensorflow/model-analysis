@@ -15,7 +15,7 @@
 ## Bug fixes and other changes
 
 *   Added support for labels passed as SparseTensorValues.
-*   Depends on `avro-python3>=1.8.1,<1.9.2` for Python3.5 + MacOS.
+*   Stopped requiring `avro-python3`.
 *   Fix NoneType error when passing BinarizeOptions to
     tfma.metrics.default_multi_class_classification_specs.
 *   Fix issue with custom metrics contained in modules ending in
