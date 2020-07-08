@@ -38,8 +38,8 @@ _ThresholdType = Union[config.GenericValueThreshold,
 # _EvaluateMetricsAndPlots is passing str instead of MetricKey, remove quotes
 # around metric_types.MetricKey below when fixed.
 def validate_metrics(
-    sliced_metrics: Tuple[slicer.SliceKeyType, Dict['metric_types.MetricKey',
-                                                    Any]],
+    sliced_metrics: Tuple[Union[slicer.SliceKeyType, slicer.CrossSliceKeyType],
+                          Dict['metric_types.MetricKey', Any]],
     eval_config: config.EvalConfig) -> validation_result_pb2.ValidationResult:
   """Check the metrics and check whether they should be validated."""
   # Find out which model is baseline.
@@ -49,6 +49,7 @@ def validate_metrics(
   sliced_key, metrics = sliced_metrics
   thresholds = metric_specs.metric_thresholds_from_metrics_specs(
       eval_config.metrics_specs)  # pytype: disable=wrong-arg-types
+  is_cross_slice = slicer.is_cross_slice_key(sliced_key)
 
   def _check_threshold(key: metric_types.MetricKey, threshold: _ThresholdType,
                        metric: Any) -> bool:
@@ -120,8 +121,15 @@ def validate_metrics(
         \n{}""".format(type(metric), metric)
     existing_failures = set()
     for slice_spec, threshold in thresholds[metric_key]:
-      if (slice_spec is not None and not slicer.SingleSliceSpec(
-          spec=slice_spec).is_slice_applicable(sliced_key)):
+      if (slice_spec is not None and
+          isinstance(slice_spec, config.SlicingSpec) and
+          (is_cross_slice or not slicer.SingleSliceSpec(
+              spec=slice_spec).is_slice_applicable(sliced_key))):
+        continue
+      if (slice_spec is not None and
+          isinstance(slice_spec, config.CrossSlicingSpec) and
+          (not is_cross_slice or not slicer.is_cross_slice_applicable(
+              cross_slice_key=sliced_key, cross_slicing_spec=slice_spec))):
         continue
       if not _check_threshold(metric_key, threshold, metric):
         # The same threshold values could be set for multiple matching slice
@@ -139,7 +147,10 @@ def validate_metrics(
       # Track we have completed a validation check for slice spec and metric
       slicing_details = result.validation_details.slicing_details.add()
       if slice_spec is not None:
-        slicing_details.slicing_spec.CopyFrom(slice_spec)
+        if isinstance(slice_spec, config.SlicingSpec):
+          slicing_details.slicing_spec.CopyFrom(slice_spec)
+        else:
+          slicing_details.cross_slicing_spec.CopyFrom(slice_spec)
       else:
         slicing_details.slicing_spec.CopyFrom(config.SlicingSpec())
       slicing_details.num_matching_slices = 1
@@ -162,8 +173,12 @@ def validate_metrics(
       failure.message = 'Metric not found.'
   # Any failure leads to overall failure.
   if validation_for_slice.failures:
-    validation_for_slice.slice_key.CopyFrom(
-        slicer.serialize_slice_key(sliced_key))
+    if not is_cross_slice:
+      validation_for_slice.slice_key.CopyFrom(
+          slicer.serialize_slice_key(sliced_key))
+    else:
+      validation_for_slice.cross_slice_key.CopyFrom(
+          slicer.serialize_cross_slice_key(sliced_key))
     result.validation_ok = False
     result.metric_validations_per_slice.append(validation_for_slice)
   return result
@@ -202,7 +217,8 @@ def merge_details(a: validation_result_pb2.ValidationResult,
 
 def get_missing_slices(
     slicing_details: Iterable[validation_result_pb2.SlicingDetails],
-    eval_config: config.EvalConfig) -> List[config.SlicingSpec]:
+    eval_config: config.EvalConfig
+) -> List[Union[config.SlicingSpec, config.CrossSlicingSpec]]:
   """Returns specs that are defined in the EvalConfig but not found in details.
 
   Args:

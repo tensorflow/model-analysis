@@ -43,7 +43,6 @@ _MULTIPLE_SLICES_TEST = ('multiple_slices', [
     config.SlicingSpec(feature_values={'feature1': 'value1'}),
     config.SlicingSpec(feature_values={'feature2': 'value2'})
 ], (('feature1', 'value1'),))
-
 _UNMATCHED_SINGLE_SLICE_TEST = ('single_slice',
                                 [config.SlicingSpec(feature_keys='feature1')
                                 ], (('unmatched_feature', 'unmatched_value'),))
@@ -51,6 +50,54 @@ _UNMATCHED_MULTIPLE_SLICES_TEST = ('multiple_slices', [
     config.SlicingSpec(feature_values={'feature1': 'value1'}),
     config.SlicingSpec(feature_values={'feature2': 'value2'})
 ], (('unmatched_feature', 'unmatched_value'),))
+
+# Cross slice tests: (<test_name>, <cross_slice_config>, <cross_slice_key>)
+_CROSS_SLICE_GLOBAL_TEST = ('global_slice', [
+    config.CrossSlicingSpec(
+        baseline_spec=config.SlicingSpec(),
+        slicing_specs=[
+            config.SlicingSpec(feature_values={'feature2': 'value2'})
+        ])
+], ((()), (('feature2', 'value2'),)))
+_SINGLE_CROSS_SLICE_TEST = ('single_slice', [
+    config.CrossSlicingSpec(
+        baseline_spec=config.SlicingSpec(feature_keys=['feature1']),
+        slicing_specs=[
+            config.SlicingSpec(feature_values={'feature2': 'value2'})
+        ])
+], ((('feature1', 'value1'),), (('feature2', 'value2'),)))
+_MULTIPLE_CROSS_SLICE_TEST = ('multiple_slice', [
+    config.CrossSlicingSpec(
+        baseline_spec=config.SlicingSpec(feature_keys=['feature1']),
+        slicing_specs=[
+            config.SlicingSpec(feature_values={'feature2': 'value2'})
+        ]),
+    config.CrossSlicingSpec(
+        baseline_spec=config.SlicingSpec(feature_keys=['feature2']),
+        slicing_specs=[
+            config.SlicingSpec(feature_values={'feature3': 'value3'})
+        ])
+], ((('feature2', 'value2'),), (('feature3', 'value3'),)))
+_CROSS_SLICE_MULTIPLE_SLICING_SPEC_TEST = ('multiple_slicing_spec', [
+    config.CrossSlicingSpec(
+        baseline_spec=config.SlicingSpec(feature_keys=['feature1']),
+        slicing_specs=[
+            config.SlicingSpec(feature_values={'feature2': 'value2'}),
+            config.SlicingSpec(feature_keys=['feature3'])
+        ])
+], ((('feature1', 'value1'),), (('feature3', 'value3'),)))
+_UNMATCHED_CROSS_SLICE_TEST = ('unmatched_cross_slice', [
+    config.CrossSlicingSpec(
+        baseline_spec=config.SlicingSpec(feature_keys=['feature1']),
+        slicing_specs=[
+            config.SlicingSpec(feature_values={'feature2': 'value2'})
+        ]),
+    config.CrossSlicingSpec(
+        baseline_spec=config.SlicingSpec(feature_keys=['feature2']),
+        slicing_specs=[
+            config.SlicingSpec(feature_values={'feature3': 'value3'})
+        ])
+], ((('feature1', 'value1'),), (('feature3', 'value3'),)))
 
 
 class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
@@ -693,6 +740,111 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
     self.assertLen(missing, 2)
     self.assertProtoEquals(missing[0], slicing_specs[0])
     self.assertProtoEquals(missing[1], slicing_specs[2])
+
+  @parameterized.named_parameters(_NO_SLICE_TEST, _SINGLE_CROSS_SLICE_TEST,
+                                  _CROSS_SLICE_GLOBAL_TEST,
+                                  _MULTIPLE_CROSS_SLICE_TEST,
+                                  _CROSS_SLICE_MULTIPLE_SLICING_SPEC_TEST)
+  def testValidateMetricsCrossSliceThresholdPass(self, cross_slicing_specs,
+                                                 slice_key):
+    threshold = config.MetricThreshold(
+        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(),
+        ],
+        cross_slicing_specs=cross_slicing_specs,
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='WeightedExampleCount',
+                        # 1.5 < 1, NOT OK.
+                        threshold=(threshold
+                                   if cross_slicing_specs is None else None),
+                        cross_slice_thresholds=[
+                            config.CrossSliceMetricThreshold(
+                                cross_slicing_specs=cross_slicing_specs,
+                                threshold=threshold)
+                        ]),
+                ],
+                model_names=['']),
+        ],
+    )
+    sliced_metrics = (slice_key, {
+        metric_types.MetricKey(name='weighted_example_count'): 0,
+    })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertTrue(result.validation_ok)
+
+  @parameterized.named_parameters(_NO_SLICE_TEST, _SINGLE_CROSS_SLICE_TEST,
+                                  _CROSS_SLICE_GLOBAL_TEST,
+                                  _MULTIPLE_CROSS_SLICE_TEST,
+                                  _CROSS_SLICE_MULTIPLE_SLICING_SPEC_TEST)
+  def testValidateMetricsCrossSliceThresholdFail(self, cross_slicing_specs,
+                                                 slice_key):
+    threshold = config.MetricThreshold(
+        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(),
+        ],
+        cross_slicing_specs=cross_slicing_specs,
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='WeightedExampleCount',
+                        # 1.5 < 1, NOT OK.
+                        threshold=(threshold
+                                   if cross_slicing_specs is None else None),
+                        cross_slice_thresholds=[
+                            config.CrossSliceMetricThreshold(
+                                cross_slicing_specs=cross_slicing_specs,
+                                threshold=threshold)
+                        ]),
+                ],
+                model_names=['']),
+        ],
+    )
+    sliced_metrics = (slice_key, {
+        metric_types.MetricKey(name='weighted_example_count'): 1.5,
+    })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertFalse(result.validation_ok)
+
+  @parameterized.named_parameters(_UNMATCHED_CROSS_SLICE_TEST)
+  def testValidateMetricsCrossSliceThresholdUnmacthed(self, cross_slicing_specs,
+                                                      slice_key):
+    threshold = config.MetricThreshold(
+        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(),
+        ],
+        cross_slicing_specs=cross_slicing_specs,
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='WeightedExampleCount',
+                        # 1.5 < 1, NOT OK.
+                        threshold=(threshold
+                                   if cross_slicing_specs is None else None),
+                        cross_slice_thresholds=[
+                            config.CrossSliceMetricThreshold(
+                                cross_slicing_specs=cross_slicing_specs,
+                                threshold=threshold)
+                        ]),
+                ],
+                model_names=['']),
+        ],
+    )
+    sliced_metrics = (slice_key, {
+        metric_types.MetricKey(name='weighted_example_count'): 0,
+    })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertTrue(result.validation_ok)
 
 
 if __name__ == '__main__':

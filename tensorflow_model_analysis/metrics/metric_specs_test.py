@@ -193,6 +193,10 @@ class MetricSpecsTest(tf.test.TestCase):
         config.SlicingSpec(feature_keys=['feature1']),
         config.SlicingSpec(feature_values={'feature2': 'value1'})
     ]
+
+    # For cross slice tests.
+    baseline_slice_spec = config.SlicingSpec(feature_keys=['feature3'])
+
     metrics_specs = [
         config.MetricsSpec(
             thresholds={
@@ -223,6 +227,42 @@ class MetricSpecsTest(tf.test.TestCase):
                                 value_threshold=config.GenericValueThreshold(),
                                 change_threshold=config.GenericChangeThreshold(
                                 )))
+                    ])
+            },
+            cross_slice_thresholds={
+                'auc':
+                    config.CrossSliceMetricThresholds(thresholds=[
+                        config.CrossSliceMetricThreshold(
+                            cross_slicing_specs=[
+                                config.CrossSlicingSpec(
+                                    baseline_spec=baseline_slice_spec,
+                                    slicing_specs=slice_specs)
+                            ],
+                            threshold=config.MetricThreshold(
+                                value_threshold=config.GenericValueThreshold(),
+                                change_threshold=config.GenericChangeThreshold(
+                                )))
+                    ]),
+                'mse':
+                    config.CrossSliceMetricThresholds(thresholds=[
+                        config.CrossSliceMetricThreshold(
+                            cross_slicing_specs=[
+                                config.CrossSlicingSpec(
+                                    baseline_spec=baseline_slice_spec,
+                                    slicing_specs=slice_specs)
+                            ],
+                            threshold=config.MetricThreshold(
+                                change_threshold=config.GenericChangeThreshold(
+                                ))),
+                        # Test for duplicate cross_slicing_spec.
+                        config.CrossSliceMetricThreshold(
+                            cross_slicing_specs=[
+                                config.CrossSlicingSpec(
+                                    baseline_spec=baseline_slice_spec,
+                                    slicing_specs=slice_specs)
+                            ],
+                            threshold=config.MetricThreshold(
+                                value_threshold=config.GenericValueThreshold()))
                     ])
             },
             model_names=['model_name'],
@@ -264,6 +304,17 @@ class MetricSpecsTest(tf.test.TestCase):
                             slicing_specs=slice_specs,
                             threshold=config.MetricThreshold(
                                 change_threshold=config.GenericChangeThreshold(
+                                ))),
+                    ],
+                    cross_slice_thresholds=[
+                        config.CrossSliceMetricThreshold(
+                            cross_slicing_specs=[
+                                config.CrossSlicingSpec(
+                                    baseline_spec=baseline_slice_spec,
+                                    slicing_specs=slice_specs)
+                            ],
+                            threshold=config.MetricThreshold(
+                                change_threshold=config.GenericChangeThreshold(
                                 )))
                     ]),
             ],
@@ -278,8 +329,17 @@ class MetricSpecsTest(tf.test.TestCase):
 
     expected_keys_and_threshold_counts = {
         metric_types.MetricKey(
-            name='auc', model_name='model_name', output_name='output_name'):
-            3,
+            name='auc',
+            model_name='model_name',
+            output_name='output_name',
+            is_diff=False):
+            4,
+        metric_types.MetricKey(
+            name='auc',
+            model_name='model_name',
+            output_name='output_name',
+            is_diff=True):
+            1,
         metric_types.MetricKey(
             name='mean/label',
             model_name='model_name',
@@ -351,6 +411,12 @@ class MetricSpecsTest(tf.test.TestCase):
             model_name='model_name',
             output_name='output_name',
             is_diff=True):
+            2,
+        metric_types.MetricKey(
+            name='mse',
+            model_name='model_name',
+            output_name='output_name',
+            is_diff=False):
             1,
         metric_types.MetricKey(
             name='mean_label',
@@ -358,20 +424,20 @@ class MetricSpecsTest(tf.test.TestCase):
             output_name='output_name',
             sub_key=metric_types.SubKey(class_id=0),
             is_diff=True):
-            3,
+            4,
         metric_types.MetricKey(
             name='mean_label',
             model_name='model_name',
             output_name='output_name',
             sub_key=metric_types.SubKey(class_id=1),
             is_diff=True):
-            3,
+            4,
         metric_types.MetricKey(
             name='mean_label',
             model_name='model_name',
             output_name='output_name',
             is_diff=True):
-            3
+            4
     }
     self.assertLen(thresholds, len(expected_keys_and_threshold_counts))
     for key, count in expected_keys_and_threshold_counts.items():

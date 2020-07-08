@@ -23,6 +23,7 @@ from apache_beam.testing import util
 import numpy as np
 import six
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -299,6 +300,96 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
     for (name, slice_key, stringified_key) in test_cases:
       self.assertEqual(
           stringified_key, slicer.stringify_slice_key(slice_key), msg=name)
+
+  def testIsCrossSliceApplicable(self):
+    test_cases = [
+        (True, 'overall pass', ((), (('b', 2),)), config.CrossSlicingSpec(
+            baseline_spec=config.SlicingSpec(),
+            slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+        (True, 'value pass', ((('a', 1),), (('b', 2),)),
+         config.CrossSlicingSpec(
+             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+        (True, 'baseline key pass', ((('a', 1),), (('b', 2),)),
+         config.CrossSlicingSpec(
+             baseline_spec=config.SlicingSpec(feature_keys=['a']),
+             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+        (True, 'comparison key pass', ((('a', 1),), (('b', 2),)),
+         config.CrossSlicingSpec(
+             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config.SlicingSpec(feature_keys=['b'])])),
+        (True, 'comparison multiple key pass', ((('a', 1),), (('c', 3),)),
+         config.CrossSlicingSpec(
+             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config.SlicingSpec(feature_keys=['b']),
+                            config.SlicingSpec(feature_keys=['c'])])),
+        (False, 'overall fail', ((('a', 1),), (('b', 2),)),
+         config.CrossSlicingSpec(
+             baseline_spec=config.SlicingSpec(),
+             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+        (False, 'value fail', ((('a', 1),), (('b', 3),)),
+         config.CrossSlicingSpec(
+             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+        (False, 'baseline key fail', ((('c', 1),), (('b', 2),)),
+         config.CrossSlicingSpec(
+             baseline_spec=config.SlicingSpec(feature_keys=['a']),
+             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+        (False, 'comparison key fail', ((('a', 1),), (('c', 3),)),
+         config.CrossSlicingSpec(
+             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config.SlicingSpec(feature_keys=['b'])])),
+        (False, 'comparison multiple key fail', ((('a', 1),), (('d', 3),)),
+         config.CrossSlicingSpec(
+             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config.SlicingSpec(feature_keys=['b']),
+                            config.SlicingSpec(feature_keys=['c'])])),
+    ]  # pyformat: disable
+    for (expected_result, name, sliced_key, slicing_spec) in test_cases:
+      self.assertEqual(
+          expected_result,
+          slicer.is_cross_slice_applicable(
+              cross_slice_key=sliced_key, cross_slicing_spec=slicing_spec),
+          msg=name)
+
+  def testGetSliceKeyType(self):
+    test_cases = [
+        (slicer.SliceKeyType, 'overall', ()),
+        (slicer.SliceKeyType, 'one bytes feature', (('a', '5'),)),
+        (slicer.SliceKeyType, 'one int64 feature', (('a', 1),)),
+        (slicer.SliceKeyType, 'mixed', (('a', 1), ('b', 'f'))),
+        (slicer.SliceKeyType, 'more', (('a', 1), ('b', 'f'), ('c', 'cars'))),
+        (slicer.SliceKeyType, 'unicode',
+         (('a', b'\xe4\xb8\xad\xe6\x96\x87'),)),
+        (slicer.CrossSliceKeyType, 'CrossSlice overall', ((), ())),
+        (slicer.CrossSliceKeyType, 'CrossSlice one slice key baseline',
+         ((('a', '5'),), ())),
+        (slicer.CrossSliceKeyType, 'CrossSlice one slice key comparison',
+         ((), (('a', 1),))),
+        (slicer.CrossSliceKeyType, 'CrossSlice two simple slice key',
+         ((('a', 1),), (('b', 'f'),))),
+        (slicer.CrossSliceKeyType, 'CrossSlice two multiple slice key',
+         ((('a', 1), ('b', 'f'), ('c', '11')),
+          (('a2', 1), ('b', 'm'), ('c', '11')))),
+    ]  # pyformat: disable
+    for (expected_result, name, slice_key) in test_cases:
+      self.assertEqual(
+          expected_result, slicer.get_slice_key_type(slice_key), msg=name)
+
+    unrecognized_test_cases = [
+        ('Unrecognized 1: ', ('a')),
+        ('Unrecognized 2: ', ('a',)),
+        ('Unrecognized 3: ', ('a', 1)),
+        ('Unrecognized 4: ', (('a'))),
+        ('Unrecognized 5: ', (('a',))),
+        ('Unrecognized 6: ', ((), (), ())),
+        ('Unrecognized 7: ', ((('a', 1),), (('b', 1),), (('c', 1),))),
+        ('Unrecognized 8: ', ((('a', 1),), ('b', 1))),
+        ('Unrecognized 9: ', (('a', 1), (('b', 1),))),
+    ]  # pyformat: disable
+    for (name, slice_key) in unrecognized_test_cases:
+      with self.assertRaises(TypeError, msg=name + str(slice_key)):
+        slicer.get_slice_key_type(slice_key)
 
   def testIsSliceApplicable(self):
     test_cases = [

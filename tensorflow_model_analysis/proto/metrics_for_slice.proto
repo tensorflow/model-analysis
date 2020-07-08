@@ -246,6 +246,12 @@ message SliceKey {
   repeated SingleSliceKey single_slice_keys = 1;
 }
 
+// CrossSliceKey contains two slices which are compared with each other.
+message CrossSliceKey {
+  SliceKey baseline_slice_key = 1;
+  SliceKey comparison_slice_key = 2;
+}
+
 message MetricsForSlice {
   message MetricKeyAndValue {
     MetricKey key = 1;

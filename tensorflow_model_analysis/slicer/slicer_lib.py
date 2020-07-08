@@ -48,6 +48,9 @@ SingletonSliceKeyType = Tuple[Text, FeatureValueType]  # pylint: disable=invalid
 # SingletonSliceKeyType. This completely describes a single slice.
 SliceKeyType = Union[Tuple[()], Tuple[SingletonSliceKeyType, ...]]  # pylint: disable=invalid-name
 
+# CrossSliceKeyType is a tuple, where first and second element is SliceKeyType.
+CrossSliceKeyType = Tuple[SliceKeyType, SliceKeyType]  # pylint: disable=invalid-name
+
 OVERALL_SLICE_NAME = 'Overall'
 
 
@@ -273,7 +276,7 @@ def serialize_slice_key(
     The slice key in the format of SliceKey proto.
 
   Raises:
-    TypeError: If the evaluate type is unreconized.
+    TypeError: If the evaluate type is unrecognized.
   """
   result = metrics_for_slice_pb2.SliceKey()
 
@@ -290,6 +293,17 @@ def serialize_slice_key(
       raise TypeError('unrecognized type of type %s, value %s' %
                       (type(val), val))
 
+  return result
+
+
+def serialize_cross_slice_key(
+    cross_slice_key: CrossSliceKeyType) -> metrics_for_slice_pb2.CrossSliceKey:
+  """Converts CrossSliceKeyType to CrossSliceKey proto."""
+  result = metrics_for_slice_pb2.CrossSliceKey()
+  baseline_slice_key, comparison_slice_key = cross_slice_key
+  result.baseline_slice_key.CopyFrom(serialize_slice_key(baseline_slice_key))
+  result.comparison_slice_key.CopyFrom(
+      serialize_slice_key(comparison_slice_key))
   return result
 
 
@@ -388,6 +402,82 @@ def stringify_slice_key(slice_key: SliceKeyType) -> Text:
   # ascii codec.
   return (separator.join([u'{}'.format(key) for key in keys]) + ':' +
           separator.join([u'{}'.format(value) for value in values]))
+
+
+def is_cross_slice_applicable(
+    cross_slice_key: CrossSliceKeyType,
+    cross_slicing_spec: config.CrossSlicingSpec) -> bool:
+  """Checks if CrossSlicingSpec is applicable to the CrossSliceKeyType."""
+  baseline_slice_key, comparison_slice_key = cross_slice_key
+
+  if not SingleSliceSpec(spec=cross_slicing_spec.baseline_spec
+                        ).is_slice_applicable(baseline_slice_key):
+    return False
+  for comparison_slicing_spec in cross_slicing_spec.slicing_specs:
+    if SingleSliceSpec(
+        spec=comparison_slicing_spec).is_slice_applicable(comparison_slice_key):
+      return True
+  return False
+
+
+def get_slice_key_type(
+    slice_key: Union[SliceKeyType, CrossSliceKeyType]) -> Any:
+  """Determines if the slice_key in SliceKeyType or CrossSliceKeyType format.
+
+  Args:
+    slice_key: The slice key which can be in SliceKeyType format or
+      CrossSliceType format.
+
+  Returns:
+    SliceKeyType object or CrossSliceKeyType object.
+
+  Raises:
+    TypeError: If slice key is not recognized.
+  """
+
+  def is_singleton_slice_key_type(
+      singleton_slice_key: SingletonSliceKeyType) -> bool:
+    try:
+      col, val = singleton_slice_key
+    except ValueError:
+      return False
+    if (isinstance(col, (six.binary_type, six.text_type)) and
+        (isinstance(val, (six.binary_type, six.text_type)) or
+         isinstance(val, six.integer_types) or isinstance(val, float))):
+      return True
+    else:
+      return False
+
+  def is_slice_key_type(slice_key: SliceKeyType) -> bool:
+    if not slice_key:
+      return True
+
+    for single_slice_key in slice_key:
+      if not is_singleton_slice_key_type(single_slice_key):
+        return False
+    return True
+
+  if is_slice_key_type(slice_key):
+    return SliceKeyType
+
+  try:
+    baseline_slice, comparison_slice = slice_key
+  except ValueError:
+    raise TypeError('Unrecognized slice type. Neither SliceKeyType nor'
+                    ' CrossSliceKeyType.')
+
+  if (is_slice_key_type(baseline_slice) and
+      is_slice_key_type(comparison_slice)):
+    return CrossSliceKeyType
+  else:
+    raise TypeError('Unrecognized slice type. Neither SliceKeyType nor'
+                    ' CrossSliceKeyType.')
+
+
+def is_cross_slice_key(
+    slice_key: Union[SliceKeyType, CrossSliceKeyType]) -> bool:
+  """Returns whether slice_key is cross_slice or not."""
+  return get_slice_key_type(slice_key) == CrossSliceKeyType
 
 
 @beam.typehints.with_input_types(types.Extracts)

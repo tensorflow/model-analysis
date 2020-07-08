@@ -407,7 +407,8 @@ def metric_keys_to_skip_for_confidence_intervals(
 
 # Optional slice and associated threshold setting. If slice is not set it
 # matches all slices.
-_SliceAndThreshold = Tuple[Optional[config.SlicingSpec],
+_SliceAndThreshold = Tuple[Optional[Union[config.SlicingSpec,
+                                          config.CrossSlicingSpec]],
                            Union[config.GenericChangeThreshold,
                                  config.GenericValueThreshold]]
 
@@ -420,7 +421,8 @@ def metric_thresholds_from_metrics_specs(
   existing = collections.defaultdict(dict)
 
   def add_if_not_exists(key: metric_types.MetricKey,
-                        slice_spec: Optional[config.SlicingSpec],
+                        slice_spec: Optional[Union[config.SlicingSpec,
+                                                   config.CrossSlicingSpec]],
                         threshold: Union[config.GenericChangeThreshold,
                                          config.GenericValueThreshold]):
     """Adds value to results if it doesn't already exist."""
@@ -436,7 +438,8 @@ def metric_thresholds_from_metrics_specs(
       result[key].append((slice_spec, threshold))
 
   def add_threshold(key: metric_types.MetricKey,
-                    slice_spec: Optional[config.SlicingSpec],
+                    slice_spec: Union[Optional[config.SlicingSpec],
+                                      Optional[config.CrossSlicingSpec]],
                     threshold: config.MetricThreshold):
     """Adds thresholds to results."""
     if threshold.HasField('value_threshold'):
@@ -459,6 +462,13 @@ def metric_thresholds_from_metrics_specs(
         for per_slice_threshold in per_slice_thresholds.thresholds:
           for slice_spec in per_slice_threshold.slicing_specs:
             add_threshold(key, slice_spec, per_slice_threshold.threshold)
+    for metric_name, cross_slice_thresholds in (
+        spec.cross_slice_thresholds.items()):
+      for key in _keys_for_metric(metric_name, spec, sub_keys):
+        for cross_slice_threshold in cross_slice_thresholds.thresholds:
+          for cross_slice_spec in cross_slice_threshold.cross_slicing_specs:
+            add_threshold(key, cross_slice_spec,
+                          cross_slice_threshold.threshold)
 
   # Add thresholds for post export metrics defined in MetricConfigs.
   for key, metric_config, _ in _keys_and_metrics_from_specs(metrics_specs):
@@ -467,6 +477,9 @@ def metric_thresholds_from_metrics_specs(
     for per_slice_threshold in metric_config.per_slice_thresholds:
       for slice_spec in per_slice_threshold.slicing_specs:
         add_threshold(key, slice_spec, per_slice_threshold.threshold)
+    for cross_slice_threshold in metric_config.cross_slice_thresholds:
+      for cross_slice_spec in cross_slice_threshold.cross_slicing_specs:
+        add_threshold(key, cross_slice_spec, cross_slice_threshold.threshold)
 
   return result
 

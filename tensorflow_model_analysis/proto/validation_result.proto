@@ -29,7 +29,10 @@ message ValidationFailure {
 
 // Information about slices matched.
 message SlicingDetails {
-  SlicingSpec slicing_spec = 1;
+  oneof slicing_spec_oneof {
+    SlicingSpec slicing_spec = 1;
+    CrossSlicingSpec cross_slicing_spec = 3;
+  }
   int32 num_matching_slices = 2;
 }
 
@@ -39,9 +42,13 @@ message ValidationDetails {
 }
 
 message MetricsValidationForSlice {
-  // SliceKey of a given slice.
-  SliceKey slice_key = 2;
+  oneof slice_key_oneof {
+    // SliceKey of a given slice.
+    SliceKey slice_key = 2;
 
+    // CrossSliceKey for cross slice validations.
+    CrossSliceKey cross_slice_key = 4;
+  }
   // All failures under a slice.
   repeated ValidationFailure failures = 3;
 }
