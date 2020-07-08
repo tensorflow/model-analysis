@@ -64,7 +64,7 @@ suite('tests', () => {
     };
 
     const rowInTableSelected = () => {
-      const table = element.$.table.shadowRoot.querySelector('google-chart');
+      const table = element.$['table'].shadowRoot.querySelector('google-chart');
       assert.deepEqual(table.selection, [{'row': 2}]);
       done();
     };
@@ -74,8 +74,12 @@ suite('tests', () => {
 
   test('selectRowInTableSelectsPointInChart', done => {
     const selectRowInTable = () => {
-      const table = element.$.table.shadowRoot.querySelector('google-chart');
+      const table = element.$['table'].shadowRoot.querySelector('google-chart');
       table.selection = [{'row': 2}];
+      table.dispatchEvent(new CustomEvent('google-chart-select', {
+        'bubbles': true,
+        'composed': true,
+      }));
       setTimeout(dataPointIonChartSelected, 0);
     };
 

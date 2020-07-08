@@ -26,7 +26,7 @@ suite('tests', () => {
 
   /**
    * Test component element.
-   * @private {Element}
+   * @private {!Element}
    */
   let element;
 
@@ -49,7 +49,7 @@ suite('tests', () => {
     element = fixture('test-table');
     element.metrics = testData.getMetrics();
     element.data = testData;
-    table = element.$.table;
+    table = element.$['table'];
     table.addEventListener('google-chart-ready', () => {
       setTimeout(cb, INITIALIZATION_TIMEOUT_MS);
     }, {once: true});
@@ -127,7 +127,7 @@ suite('tests', () => {
     const resizeTable = () => {
       // Ensure that code injecting CSS to the google-chart component works by
       // checking some of the expected outcome.
-      const chart = element.$.table.$['chartdiv'];
+      const chart = table.shadowRoot;
 
       const tr = chart.querySelector('tr.google-visualization-table-tr-head');
       const trStyles = getComputedStyle(tr);

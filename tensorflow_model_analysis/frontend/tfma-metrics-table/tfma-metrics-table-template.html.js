@@ -165,9 +165,9 @@ template.innerHTML = `
   }
 </style>
 
-<google-chart type="table" options="[[options_]]" data="[[plotData_]]" selection="{{selection}}"
-              id="table" events="[[chartEvents_]]" on-google-chart-page="onPage_"
-              on-google-chart-sort="onSort_">
+<google-chart type="table" options="[[options_]]" data="[[plotData_]]"
+              selection="{{selection::google-chart-select}}" id="table" events="[[chartEvents_]]"
+              on-google-chart-page="onPage_" on-google-chart-sort="onSort_">
 </google-chart>
 `;
 export {template};
