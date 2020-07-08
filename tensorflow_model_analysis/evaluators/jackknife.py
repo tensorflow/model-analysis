@@ -427,7 +427,8 @@ class _JackknifeSampleCombiner(beam.CombineFn):
         mean = accumulator.sums[metric_key] / accumulator.num_samples
         sum_of_squares = accumulator.sums_of_squares[metric_key]
         # one-pass variance formula with num_samples degrees of freedom
-        sample_variance = sum_of_squares / float(num_samples) - mean * mean
+        sample_variance = max(0,
+                              sum_of_squares / float(num_samples) - mean * mean)
         standard_error = (jackknife_scaling_factor * sample_variance)**0.5
         result[metric_key] = types.ValueWithTDistribution(
             sample_mean=mean,
