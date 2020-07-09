@@ -16,8 +16,7 @@
 import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './tfma-google-chart-wrapper-template.html.js';
 
-/** @suppress {extraRequire} */
-goog.require('googleWebComponents.googleChart.googleChart');
+const {GoogleChart} = goog.require('googleWebComponents.googleChart.googleChart');
 
 /**
  * tfma-google-chart-wrapper is a simple wrapper for google-chart component. It
@@ -67,7 +66,8 @@ export class GoogleChartWrapper extends PolymerElement {
         value: () => ('ResizeObserver' in window) ?
             new ResizeObserver(entries => {
               entries.forEach(entry => {
-                entry.target['redraw']();
+                const chart = /** @type {!GoogleChart} */ (entry.target);
+                chart.redraw();
               });
             }) :
             null
