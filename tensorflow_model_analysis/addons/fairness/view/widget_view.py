@@ -142,8 +142,9 @@ def render_fairness_indicator(
 
   Args:
     eval_result: An tfma.EvalResult.
-    multi_eval_results: A map of {string: tfma.EvalResult}. The key is the eval
-      or model name.
+    multi_eval_results: A map {string: tfma.EvalResult} of length 2, mapping an
+      eval or model name to an EvalResult. This can be used for model
+      comparison.
     slicing_column: The slicing column to to filter results. If both
       slicing_column and slicing_spec are None, show all eval results.
     slicing_spec: The slicing spec to filter results. If both slicing_column and
@@ -165,7 +166,7 @@ def render_fairness_indicator(
 
   if (multi_eval_results and len(multi_eval_results) != 2):
     raise ValueError(
-        '"multi_eval_results" parameter only accept 2 eval results.')
+        '"multi_eval_results" parameter only accepts 2 eval results.')
 
   data = None
   multi_data = None
