@@ -26,6 +26,7 @@
 *   Added errors for missing slices during metrics validation.
 *   Added support for customizing confusion matrix based metrics in keras.
 *   Depends on `apache-beam[gcp]>=2.22,<3`.
+*   Made BatchedInputExtractor externally visible.
 
 ## Breaking changes
 
