@@ -9,3 +9,5 @@ toc:
   path: /tfx/guide/tfma
 - title: "Using Fairness Indicators"
   path: /tfx/guide/fairness_indicators
+- title: "Using Fairness Indicators with Pandas DataFrames"
+  path: /tfx/fairness_indicators/examples/Fairness_Indicators_Pandas_Case_Study
