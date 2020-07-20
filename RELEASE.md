@@ -30,6 +30,8 @@
 
 ## Breaking changes
 
+*   Rename EvalResult.get_slices() to EvalResult.get_slice_names().
+
 ## Deprecations
 
 # Version 0.22.2

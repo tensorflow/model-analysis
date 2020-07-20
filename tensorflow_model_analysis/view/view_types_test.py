@@ -96,8 +96,9 @@ class ViewTypesTest(parameterized.TestCase):
     # Test get_metric_names()
     self.assertSameElements(eval_result.get_metric_names(), ['accuracy', 'auc'])
 
-    # Test get_slices()
-    self.assertListEqual(eval_result.get_slices(), [overall_slice, male_slice])
+    # Test get_slice_names()
+    self.assertListEqual(eval_result.get_slice_names(),
+                         [overall_slice, male_slice])
 
 
 if __name__ == '__main__':

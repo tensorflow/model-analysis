@@ -204,7 +204,7 @@ class EvalResult(
           metric_names.update(metrics)
     return list(metric_names)
 
-  def get_slices(self) -> Sequence[Text]:
+  def get_slice_names(self) -> Sequence[Text]:
     """Get names of slices.
 
     Returns:
