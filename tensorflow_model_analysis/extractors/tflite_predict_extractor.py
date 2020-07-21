@@ -103,13 +103,13 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
         if input_name not in batched_features:
           raise ValueError(
               'feature "{}" not found in input data'.format(input_name))
-        input_shape = i['shape']
+        input_shape = [d if d is not None else -1 for d in i['shape']]
         feature_shape = np.shape(batched_features[input_name][0])
         if len(feature_shape) == len(input_shape):
           input_features[input_name] = batched_features[input_name]
-        elif len(feature_shape) == len(input_shape) - 1:
+        elif len(feature_shape) < len(input_shape):
           input_features[input_name] = [
-              np.expand_dims(b, axis=0) for b in batched_features[input_name]
+              np.reshape(b, input_shape) for b in batched_features[input_name]
           ]
         else:
           raise ValueError(
