@@ -33,9 +33,6 @@ from tensorflow_model_analysis import util
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.extractors import extractor
 
-# For now, we store only the first N sparse keys in our diagnostics table.
-_MAX_SPARSE_FEATURES_PER_COLUMN = 30
-
 FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
 
 
@@ -88,12 +85,10 @@ def _AugmentExtracts(data: Dict[Text, Any], prefix: Text, excludes: List[bytes],
 
     if isinstance(val, tf.compat.v1.SparseTensorValue):
       extracts[col_name] = types.MaterializedColumn(
-          name=col_name, value=val.values[0:_MAX_SPARSE_FEATURES_PER_COLUMN])
+          name=col_name, value=val.values)
 
     elif isinstance(val, np.ndarray):
       val = val[0]  # only support first dim for now.
-      if not np.isscalar(val):
-        val = val[0:_MAX_SPARSE_FEATURES_PER_COLUMN]
       extracts[col_name] = types.MaterializedColumn(name=col_name, value=val)
 
     else:
