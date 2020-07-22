@@ -11,6 +11,7 @@
     F1 score, MCC, FM, Informedness, Markedness, etc). See
     https://en.wikipedia.org/wiki/Confusion_matrix for full list of metrics now
     supported.
+*   Drop PY2 support.
 
 ## Bug fixes and other changes
 
