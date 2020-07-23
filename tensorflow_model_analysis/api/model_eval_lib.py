@@ -266,13 +266,15 @@ def load_eval_result(
   metrics_list = []
   for p in metrics_plots_and_validations_writer.load_and_deserialize_metrics(
       output_path, output_file_format):
-    metrics_list.append(
-        util.convert_metrics_proto_to_dict(p, model_name=model_name))
+    metrics = util.convert_metrics_proto_to_dict(p, model_name=model_name)
+    if metrics is not None:
+      metrics_list.append(metrics)
   plots_list = []
   for p in metrics_plots_and_validations_writer.load_and_deserialize_plots(
       output_path, output_file_format):
-    plots_list.append(
-        util.convert_plots_proto_to_dict(p, model_name=model_name))
+    plots = util.convert_plots_proto_to_dict(p, model_name=model_name)
+    if plots is not None:
+      plots_list.append(plots)
   if not model_locations:
     model_location = ''
   elif model_name is None:

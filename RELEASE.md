@@ -28,6 +28,8 @@
 *   Added support for customizing confusion matrix based metrics in keras.
 *   Depends on `apache-beam[gcp]>=2.22,<3`.
 *   Made BatchedInputExtractor externally visible.
+*   Updated tfma.load_eval_results API to return empty results instead of
+    throwing an error when evaluation results are missing for a model_name.
 
 ## Breaking changes
 

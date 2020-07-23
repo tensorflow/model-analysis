@@ -22,6 +22,7 @@ import json
 import os
 
 from typing import Any, Dict, List, Optional, Text, Tuple, Union
+from absl import logging
 
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import example_count
@@ -475,7 +476,8 @@ def _convert_proto_map_to_dict(proto_map: Any) -> Dict[Text, Dict[Text, Any]]:
 def convert_metrics_proto_to_dict(
     metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice,
     model_name: Optional[Text] = None
-) -> Tuple[slicer.SliceKeyType, Optional[view_types.MetricsByOutputName]]:
+) -> Optional[Tuple[slicer.SliceKeyType,
+                    Optional[view_types.MetricsByOutputName]]]:
   """Converts metrics proto to dict."""
   model_metrics_map = {}
   if metrics_for_slice.metrics:
@@ -530,9 +532,10 @@ def convert_metrics_proto_to_dict(
     metrics_map = model_metrics_map[keys[0]]
   elif keys:
     # No match found.
-    raise ValueError('Fail to find metrics for model name: %s . '
-                     'Available model names are [%s]' %
-                     (model_name, ', '.join(keys)))
+    logging.warning(
+        'Fail to find metrics for model name: %s . '
+        'Available model names are [%s]', model_name, ', '.join(keys))
+    return None
 
   return (slicer.deserialize_slice_key(metrics_for_slice.slice_key),
           metrics_map)
@@ -541,7 +544,8 @@ def convert_metrics_proto_to_dict(
 def convert_plots_proto_to_dict(
     plots_for_slice: metrics_for_slice_pb2.PlotsForSlice,
     model_name: Optional[Text] = None
-) -> Tuple[slicer.SliceKeyType, Optional[view_types.PlotsByOutputName]]:
+) -> Optional[Tuple[slicer.SliceKeyType,
+                    Optional[view_types.PlotsByOutputName]]]:
   """Converts plots proto to dict."""
   model_plots_map = {}
   if plots_for_slice.plots:
@@ -581,8 +585,9 @@ def convert_plots_proto_to_dict(
     plots_map = model_plots_map[keys[0]]
   elif keys:
     # No match found.
-    raise ValueError('Fail to find plots for model name: %s . '
-                     'Available model names are [%s]' %
-                     (model_name, ', '.join(keys)))
+    logging.warning(
+        'Fail to find plots for model name: %s . '
+        'Available model names are [%s]', model_name, ', '.join(keys))
+    return None
 
   return (slicer.deserialize_slice_key(plots_for_slice.slice_key), plots_map)
