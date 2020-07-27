@@ -24,6 +24,7 @@ template.innerHTML = `
   }
   #settings-icon {
     padding: 0 12px;
+    color: #ea4335;
   }
   .check {
     width:20px;
@@ -92,7 +93,7 @@ template.innerHTML = `
   </div>
   <div style="display:flex;">
     <div>
-      <iron-label>Slices to Compare</iron-label>
+      <iron-label>Select your slices to compare, then click 'UPDATE' below.</iron-label>
       <div style="max-height: 360px; overflow-y:scroll;">
         <paper-listbox multi selected-values="{{configSelectedSlices_}}" attr-for-selected="slice">
           <template is="dom-repeat" items="[[configSelectableSlices_]]">

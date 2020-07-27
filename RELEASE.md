@@ -30,6 +30,8 @@
 *   Made BatchedInputExtractor externally visible.
 *   Updated tfma.load_eval_results API to return empty results instead of
     throwing an error when evaluation results are missing for a model_name.
+*   Change settings dialog open and update to be more visible in Fairness
+    Indicators UI
 
 ## Breaking changes
 
