@@ -32,6 +32,7 @@
     throwing an error when evaluation results are missing for a model_name.
 *   Fixed an issue in Fairness Indicators UI where omitted slices error message
     was being displayed even if no slice was omitted.
+*   Depends on `pyarrow>=0.17,<0.18`.
 
 ## Breaking changes
 
