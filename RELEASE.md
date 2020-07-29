@@ -30,8 +30,8 @@
 *   Made BatchedInputExtractor externally visible.
 *   Updated tfma.load_eval_results API to return empty results instead of
     throwing an error when evaluation results are missing for a model_name.
-*   Change settings dialog open and update to be more visible in Fairness
-    Indicators UI
+*   Fixed an issue in Fairness Indicators UI where omitted slices error message
+    was being displayed even if no slice was omitted.
 
 ## Breaking changes
 
@@ -219,8 +219,6 @@
 *   Depends on 'tfx-bsl>=0.21.3,<0.23',
 *   Depends on 'tensorflow>=1.15,!=2.0.*,<3',
 *   Depends on 'apache-beam[gcp]>=2.17,<2.18',
-
-## Breaking changes
 
 ## Deprecations
 

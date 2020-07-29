@@ -604,12 +604,15 @@ def FilterOutSlices(  # pylint: disable=invalid-name
         if (not slice_key or value['slices_count'][0] >= min_slice_size):
           yield (slice_key, value['values'][0])
         else:
-          yield (slice_key, {
-              self.error_metric_key:
-                  'Example count for this slice key is lower than '
-                  'the minimum required value: %d. No data is aggregated for '
-                  'this slice.' % min_slice_size
-          })
+          yield (
+              slice_key,
+              {
+                  self.error_metric_key:  # LINT.IfChange
+                      'Example count for this slice key is lower than the '
+                      'minimum required value: %d. No data is aggregated for '
+                      'this slice.' % min_slice_size
+                  # LINT.ThenChange(../addons/fairness/frontend/fairness-metrics-board/fairness-metrics-board.js)
+              })
 
   return ({
       'values': values,

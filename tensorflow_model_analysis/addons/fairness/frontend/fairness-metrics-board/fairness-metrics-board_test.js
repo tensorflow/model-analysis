@@ -93,6 +93,7 @@ suite('fairness-metrics-board tests', () => {
           'value': 0.3,
           'methodology': 'POISSON_BOOTSTRAP'
         },
+        '__ERROR__': 'random error message'
       }
     };
   });
@@ -101,7 +102,10 @@ suite('fairness-metrics-board tests', () => {
   BOUNDED_VALUE_DATA_WITH_OMITTED_SLICE.push({
     'slice': 'year:13',
     'sliceValue': '13',
-    'metrics': {'__ERROR__': 'error message'}
+    'metrics': {
+      '__ERROR__': 'Example count for this slice key is lower than the ' +
+          'minimum required value: 10. No data is aggregated',
+    }
   });
 
   test('checkMetrics', done => {
@@ -128,6 +132,14 @@ suite('fairness-metrics-board tests', () => {
           metricSummary.slices, BOUNDED_VALUE_DATA_SORTED.map(v => v['slice']));
       assert.deepEqual(metricSummary.baseline, 'Overall');
 
+      setTimeout(checkPrivacyContainer, 1);
+    };
+
+    const checkPrivacyContainer = () => {
+      const privacyContainer =
+          fairness.shadowRoot.querySelector('fairness-privacy-container');
+
+      assert.deepEqual(privacyContainer.hidden, true);
       done();
     };
 
@@ -173,6 +185,27 @@ suite('fairness-metrics-board tests', () => {
     setTimeout(fillData, 0);
   });
 
-  // Todo: Add unit test of the privacy container after the privacy component is
-  // added.
+  test('checkOmittedSliceErrorMessage', done => {
+    fairness = fixture('test-fixture');
+
+    const fillData = () => {
+      fairness.data = BOUNDED_VALUE_DATA_WITH_OMITTED_SLICE;
+      fairness.weightColumn = 'totalWeightedExamples';
+      fairness.metrics = ['post_export_metrics/false_negative_rate'];
+      fairness.thresholdedMetrics =
+          new Set(['post_export_metrics/false_negative_rate']);
+      fairness.showFullTable_ = true;
+      setTimeout(checkPrivacyContainer, 1);
+    };
+
+    const checkPrivacyContainer = () => {
+      const privacyContainer =
+          fairness.shadowRoot.querySelector('fairness-privacy-container');
+
+      assert.deepEqual(privacyContainer.hidden, false);
+      done();
+    };
+
+    setTimeout(fillData, 0);
+  });
 });

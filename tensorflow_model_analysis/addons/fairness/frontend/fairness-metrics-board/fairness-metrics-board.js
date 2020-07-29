@@ -31,6 +31,8 @@ import '../fairness-privacy-container/fairness-privacy-container.js';
  * @const
  */
 const OMITTED_SLICE_ERROR_KEY = '__ERROR__';
+const OMITTED_SLICE_ERROR_MESSAGE =
+    'Example count for this slice key is lower than the minimum required value';
 
 /**
  * Name of master slice containing all data.
@@ -148,7 +150,11 @@ export class FairnessMetricsBoard extends PolymerElement {
     if (!data) {
       return [];
     }
-    return data.filter(d => d['metrics'][OMITTED_SLICE_ERROR_KEY])
+    return data
+        .filter(
+            d => d['metrics'][OMITTED_SLICE_ERROR_KEY] &&
+                d['metrics'][OMITTED_SLICE_ERROR_KEY].includes(
+                    OMITTED_SLICE_ERROR_MESSAGE))
         .map(d => d['slice']);
   }
 }
