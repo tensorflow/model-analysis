@@ -93,7 +93,7 @@ suite('fairness-metrics-board tests', () => {
           'value': 0.3,
           'methodology': 'POISSON_BOOTSTRAP'
         },
-        '__ERROR__': 'random error message'
+        '__ERROR__': 'random error message',
       }
     };
   });
@@ -103,8 +103,10 @@ suite('fairness-metrics-board tests', () => {
     'slice': 'year:13',
     'sliceValue': '13',
     'metrics': {
-      '__ERROR__': 'Example count for this slice key is lower than the ' +
-          'minimum required value: 10. No data is aggregated',
+      // Example count for this slice key is lower than the minimum required
+      // value: 10. No data is aggregated
+      '__ERROR__':
+          'RXhhbXBsZSBjb3VudCBmb3IgdGhpcyBzbGljZSBrZXkgaXMgbG93ZXIgdGhhbiB0aGUgbWluaW11\nbSByZXF1aXJlZCB2YWx1ZTogMTAuIE5vIGRhdGEgaXMgYWdncmVnYXRlZA==',
     }
   });
 
@@ -150,7 +152,6 @@ suite('fairness-metrics-board tests', () => {
     fairness = fixture('test-fixture');
 
     const fillData = () => {
-      debugger;
       fairness.data = BOUNDED_VALUE_DATA;
       fairness.evalName = 'EvalA';
       fairness.dataCompare = BOUNDED_VALUE_DATA2;
@@ -164,7 +165,6 @@ suite('fairness-metrics-board tests', () => {
     };
 
     const checkMetricsValue = () => {
-      debugger;
 
       let metricSummary =
           fairness.shadowRoot.querySelector('fairness-metric-summary');

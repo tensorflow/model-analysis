@@ -14,7 +14,17 @@
  * limitations under the License.
  */
 (() => {
-  const createSliceMetrics1 = () => {
+  const createSliceMetrics1 = (slice_name) => {
+    if (slice_name.includes('omitted')) {
+      // Example count for this slice key is lower than the minimum required
+      // value: 10. No data is aggregated
+      return {
+        '__ERROR__': {
+          'bytesValue':
+              'RXhhbXBsZSBjb3VudCBmb3IgdGhpcyBzbGljZSBrZXkgaXMgbG93ZXIgdGhhbiB0aGUgbWluaW11\nbSByZXF1aXJlZCB2YWx1ZTogMTAuIE5vIGRhdGEgaXMgYWdncmVnYXRlZA=='
+        }
+      };
+    }
     return {
       'accuracy': {
         'boundedValue': {
@@ -87,6 +97,11 @@
           'value': Math.random() * 0.3 + 0.3,
           'methodology': 'POISSON_BOOTSTRAP'
         }
+      },
+      // CI not computed because only 86 samples were non-empty. Expected 100.
+      '__ERROR__': {
+        'bytesValue':
+            'Q0kgbm90IGNvbXB1dGVkIGJlY2F1c2Ugb25seSA4NiBzYW1wbGVzIHdlcmUgbm9uLWVtcHR5LiBFeHBlY3RlZCAxMDAu'
       }
     };
   };
@@ -161,18 +176,31 @@
   };
 
   const SLICES1 = [
-    'Overall', 'Slice:unique', 'Sex:Male', 'Sex:Female',
-    'sexual_orientation:bisexual', 'sexual_orientation:heterosexual',
-    'sexual_orientation:homosexual', 'Sex:Transgender', 'race:asian',
-    'race:latino', 'race:black', 'race:white', 'religion:atheist',
-    'religion:buddhist', 'religion:christian', 'religion:hindu',
-    'religion:jewish', 'religion:muslim'
+    'Overall',
+    'Slice:unique',
+    'Sex:Male',
+    'Sex:Female',
+    'sexual_orientation:bisexual',
+    'sexual_orientation:heterosexual',
+    'sexual_orientation:homosexual',
+    'Sex:Transgender',
+    'race:asian',
+    'race:latino',
+    'race:black',
+    'race:white',
+    'religion:atheist',
+    'religion:buddhist',
+    'religion:christian',
+    'religion:hindu',
+    'religion:jewish',
+    'religion:muslim',
+    'religion:omitted',
   ];
   const input1 = SLICES1.map((slice) => {
     return {
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
-      'metrics': createSliceMetrics1(),
+      'metrics': createSliceMetrics1(slice),
     };
   });
 
@@ -193,6 +221,7 @@
     'religion:christian',
     'religion:hindu',
     'religion:jewish',
+    'religion:omitted',
   ];
   const input2 = SLICES2.map((slice) => {
     return {
@@ -206,7 +235,7 @@
     return {
       'slice': slice,
       'sliceValue': slice.split(':')[1] || 'Overall',
-      'metrics': createSliceMetrics1(),
+      'metrics': createSliceMetrics1(slice),
     };
   });
 

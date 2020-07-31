@@ -74,7 +74,8 @@ template.innerHTML = `
     </paper-card>
   </div>
   <paper-card id="metrics">
-    <fairness-metrics-board data="[[slicingMetrics]]" data-compare="[[slicingMetricsCompare]]"
+    <fairness-metrics-board data="[[flattenSlicingMetrics_]]"
+                            data-compare="[[flattenSlicingMetricsCompare_]]"
                             eval-name="[[evalName]]" eval-name-compare="[[evalNameCompare]]"
                             weight-column="[[weightColumn]]" metrics="[[selectedMetrics_]]">
     </fairness-metrics-board>

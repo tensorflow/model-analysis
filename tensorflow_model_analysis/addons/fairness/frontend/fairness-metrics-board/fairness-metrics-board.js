@@ -128,7 +128,7 @@ export class FairnessMetricsBoard extends PolymerElement {
     if (!data) {
       return;
     }
-    return data.filter(d => !d['metrics'][OMITTED_SLICE_ERROR_KEY])
+    return data.filter(d => !this.containsOmittedSliceError_(d))
         .map(d => d['slice'])
         .sort(function(x, y) {
           if (x.localeCompare(OVERALL_SLICE_KEY) == 0) {
@@ -150,12 +150,28 @@ export class FairnessMetricsBoard extends PolymerElement {
     if (!data) {
       return [];
     }
-    return data
-        .filter(
-            d => d['metrics'][OMITTED_SLICE_ERROR_KEY] &&
-                d['metrics'][OMITTED_SLICE_ERROR_KEY].includes(
-                    OMITTED_SLICE_ERROR_MESSAGE))
+    return data.filter(d => this.containsOmittedSliceError_(d))
         .map(d => d['slice']);
+  }
+
+  /**
+   * Check if a slice contains ommitted slice error message.
+   * @param {!Object} slicingMetric
+   * @return {boolean}
+   * @private
+   */
+  containsOmittedSliceError_(slicingMetric) {
+    if (!slicingMetric) {
+      return false;
+    }
+    if (slicingMetric['metrics'] &&
+        slicingMetric['metrics'][OMITTED_SLICE_ERROR_KEY] &&
+        typeof slicingMetric['metrics'][OMITTED_SLICE_ERROR_KEY] === 'string' &&
+        atob(slicingMetric['metrics'][OMITTED_SLICE_ERROR_KEY])
+            .includes(OMITTED_SLICE_ERROR_MESSAGE)) {
+      return true;
+    }
+    return false;
   }
 }
 

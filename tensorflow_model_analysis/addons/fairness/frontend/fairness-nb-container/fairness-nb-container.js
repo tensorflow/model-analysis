@@ -76,6 +76,13 @@ export class FairnessNbContainer extends SelectEventMixin
        */
       slicingMetrics: {type: Array, observer: 'slicingMetricsChanged_'},
 
+
+      /**
+       * The flattened slicing metrics evaluation result.
+       * @type {!Array<!Object>}
+       */
+      flattenSlicingMetrics_: {type: Array},
+
       /**
        * The name of the evaluation result.
        * @type {string}
@@ -88,6 +95,14 @@ export class FairnessNbContainer extends SelectEventMixin
        */
       slicingMetricsCompare:
           {type: Array, observer: 'slicingMetricsCompareChanged_'},
+
+      /**
+       * The flattened slicing metrics of the second evaluation result.
+       * @type {!Array<!Object>}
+       */
+      flattenSlicingMetricsCompare_: {
+        type: Array,
+      },
 
       /**
        * The name of the second evaluation result. Optional
@@ -145,6 +160,7 @@ export class FairnessNbContainer extends SelectEventMixin
   slicingMetricsChanged_(slicingMetrics) {
     if (slicingMetrics) {
       tfma.Data.flattenMetrics(slicingMetrics, 'metrics');
+      this.flattenSlicingMetrics_ = slicingMetrics;
     }
     this.availableMetricsNames_ =
         this.computeAvailableMetricsNames_(slicingMetrics);
@@ -158,6 +174,7 @@ export class FairnessNbContainer extends SelectEventMixin
   slicingMetricsCompareChanged_(slicingMetricsCompare) {
     if (slicingMetricsCompare) {
       tfma.Data.flattenMetrics(slicingMetricsCompare, 'metrics');
+      this.flattenSlicingMetricsCompare_ = slicingMetricsCompare;
     }
   }
 
