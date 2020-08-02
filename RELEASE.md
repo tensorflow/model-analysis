@@ -33,6 +33,8 @@
 *   Fixed an issue in Fairness Indicators UI where omitted slices error message
     was being displayed even if no slice was omitted.
 *   Depends on `pyarrow>=0.17,<0.18`.
+*   Fix issue with slice_spec.is_slice_applicable not working for float, int,
+    etc types that are encoded as strings.
 
 ## Breaking changes
 

@@ -124,20 +124,7 @@ class SingleSliceSpec(object):
     if features is None:
       features = []
 
-    def to_type(v: FeatureValueType) -> FeatureValueType:
-      """Converts string versions of ints and floats to respective values."""
-      if isinstance(v, float) or isinstance(v, int):
-        return v
-      try:
-        v = str(v)
-        if '.' in v:
-          return float(v)
-        else:
-          return int(v)
-      except ValueError:
-        return v
-
-    features = [(k, to_type(v)) for (k, v) in features]
+    features = [(k, _to_type(v)) for (k, v) in features]
 
     self._columns = frozenset(columns)
     self._features = frozenset(features)
@@ -184,6 +171,10 @@ class SingleSliceSpec(object):
     columns = list(self._columns)
     features = list(self._features)
     for singleton_slice_key in slice_key:
+      # Convert to internal representation of slice (i.e. str -> float, etc).
+      if len(singleton_slice_key) == 2:
+        singleton_slice_key = (singleton_slice_key[0],
+                               _to_type(singleton_slice_key[1]))
       if singleton_slice_key in features:
         features.remove(singleton_slice_key)
       elif singleton_slice_key[0] in columns:
@@ -294,6 +285,20 @@ def serialize_slice_key(
                       (type(val), val))
 
   return result
+
+
+def _to_type(v: FeatureValueType) -> FeatureValueType:
+  """Converts string versions of ints and floats to respective values."""
+  if isinstance(v, float) or isinstance(v, int):
+    return v
+  try:
+    v = str(v)
+    if '.' in v:
+      return float(v)
+    else:
+      return int(v)
+  except ValueError:
+    return v
 
 
 def serialize_cross_slice_key(
