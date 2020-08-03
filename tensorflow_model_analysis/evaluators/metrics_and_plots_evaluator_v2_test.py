@@ -1848,6 +1848,326 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(evaluations[constants.VALIDATIONS_KEY],
                        check_validations)
 
+  def testEvaluateWithCrossSlicing(self):
+    temp_export_dir1 = self._getExportDir()
+    _, export_dir1 = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir1))
+    temp_export_dir2 = self._getExportDir()
+    _, export_dir2 = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir2))
+    example_count_metric = config.MetricConfig(
+        class_name='ExampleCount',
+        # 5 > 2, OK for overall slice
+        # 3 > 2, OK for ('fixed_string', 'fixed_string1')
+        # 2 > 2, NOT OK for ('fixed_string', 'fixed_string2')
+        # Keep this for verifying cross slice thresholds and single slice
+        # thresholds are working together.
+        threshold=config.MetricThreshold(
+            value_threshold=config.GenericValueThreshold(
+                lower_bound={'value': 2})),
+        cross_slice_thresholds=[
+            config.CrossSliceMetricThreshold(
+                # 5-2 > 2, OK for ((), (('fixed_string', 'fixed_string1'),))
+                # 5-3 > 2, NOT OK for ((), (('fixed_string', 'fixed_string2'),))
+                threshold=config.MetricThreshold(
+                    value_threshold=config.GenericValueThreshold(
+                        lower_bound={'value': 2})),
+                cross_slicing_specs=[
+                    config.CrossSlicingSpec(
+                        baseline_spec=config.SlicingSpec(),
+                        slicing_specs=[
+                            config.SlicingSpec(feature_keys=['fixed_string'])
+                        ])
+                ])
+        ])
+    mean_prediction_metric = config.MetricConfig(
+        class_name='MeanPrediction',
+        cross_slice_thresholds=[
+            config.CrossSliceMetricThreshold(
+                # MeanPrediction values for slices:
+                # (0.2*2+0.9*2)/(2+2)=0.55
+                #     for (('fixed_string', 'fixed_string1'),)
+                # (0.5*2+0.5*2+0.5*2)/(2+2+2)=0.5
+                #     for (('fixed_string', 'fixed_string2'),)
+                threshold=config.MetricThreshold(
+                    value_threshold=config.GenericValueThreshold(
+                        # This config should give value threshold error because
+                        # (0.55-0.5)=0.05 not inside the bound [0.1, 0.5].
+                        upper_bound={'value': .5},
+                        lower_bound={'value': .1}),
+                    change_threshold=config.GenericChangeThreshold(
+                        # This config should give change threshold error because
+                        # baseline model and candidate model have same
+                        # difference as 0.05 between cross slices. Cross slice
+                        # difference value is not changed.
+                        direction=config.MetricDirection.LOWER_IS_BETTER,
+                        relative={'value': -.99},
+                        absolute={'value': 0})),
+                cross_slicing_specs=[
+                    config.CrossSlicingSpec(
+                        baseline_spec=config.SlicingSpec(
+                            feature_values={'fixed_string': 'fixed_string1'}),
+                        slicing_specs=[
+                            config.SlicingSpec(feature_values={
+                                'fixed_string': 'fixed_string2'
+                            })
+                        ])
+                ])
+        ])
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(
+                name='candidate',
+                label_key='label',
+                example_weight_key='fixed_float'),
+            config.ModelSpec(
+                name='baseline',
+                label_key='label',
+                example_weight_key='fixed_float',
+                is_baseline=True)
+        ],
+        slicing_specs=[
+            config.SlicingSpec(),
+            config.SlicingSpec(feature_keys=['fixed_string']),
+        ],
+        cross_slicing_specs=[
+            config.CrossSlicingSpec(
+                baseline_spec=config.SlicingSpec(),
+                slicing_specs=[
+                    config.SlicingSpec(feature_keys=['fixed_string'])
+                ]),
+            config.CrossSlicingSpec(
+                baseline_spec=config.SlicingSpec(
+                    feature_values={'fixed_string': 'fixed_string1'}),
+                slicing_specs=[
+                    config.SlicingSpec(
+                        feature_values={'fixed_string': 'fixed_string2'})
+                ])
+        ],
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[example_count_metric, mean_prediction_metric],
+                model_names=['candidate', 'baseline']),
+        ])
+    eval_shared_model = [
+        self.createTestEvalSharedModel(
+            model_name='candidate', eval_saved_model_path=export_dir1),
+        self.createTestEvalSharedModel(
+            model_name='baseline', eval_saved_model_path=export_dir2),
+    ]
+    extractors = [
+        predict_extractor.PredictExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
+    ]
+
+    # fixed_float used as example_weight key
+    examples = [
+        self._makeExample(
+            prediction=0.2,
+            label=1.0,
+            fixed_int=1,
+            fixed_float=1.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.9,
+            label=0.0,
+            fixed_int=1,
+            fixed_float=1.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.5,
+            label=0.0,
+            fixed_int=2,
+            fixed_float=2.0,
+            fixed_string='fixed_string2'),
+        self._makeExample(
+            prediction=0.5,
+            label=0.0,
+            fixed_int=2,
+            fixed_float=2.0,
+            fixed_string='fixed_string2'),
+        self._makeExample(
+            prediction=0.5,
+            label=0.0,
+            fixed_int=2,
+            fixed_float=2.0,
+            fixed_string='fixed_string2'),
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      evaluations = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_validations(got):
+        try:
+          self.assertLen(got, 6)
+
+          def get_slice_keys_hash(metric_validation):
+            slice_key, cross_slice_key = None, None
+            if metric_validation.slice_key:
+              slice_key = metric_validation.slice_key.SerializeToString()
+            if metric_validation.cross_slice_key:
+              cross_slice_key = (
+                  metric_validation.cross_slice_key.SerializeToString())
+            return (slice_key, cross_slice_key)
+
+          successful_validations = []
+          failed_validations = {}
+          for validation_result in got:
+            if validation_result.validation_ok:
+              successful_validations.append(validation_result)
+            else:
+              self.assertLen(validation_result.metric_validations_per_slice, 1)
+              validation_result = (
+                  validation_result.metric_validations_per_slice[0])
+              slice_keys_hash = get_slice_keys_hash(validation_result)
+              failed_validations[slice_keys_hash] = {}
+              for failure in validation_result.failures:
+                failure.ClearField('metric_value')
+                failed_validations[slice_keys_hash][
+                    failure.metric_key.SerializeToString()] = failure
+          self.assertLen(successful_validations, 3)
+          self.assertLen(failed_validations.keys(), 3)
+
+          expected_validations = [
+              text_format.Parse(
+                  """
+                  slice_key {
+                    single_slice_keys {
+                      column: "fixed_string"
+                      bytes_value: "fixed_string1"
+                    }
+                  }
+                  failures {
+                    metric_key {
+                      name: "example_count"
+                      model_name: "candidate"
+                    }
+                    metric_threshold {
+                      value_threshold {
+                        lower_bound {
+                          value: 2.0
+                        }
+                      }
+                    }
+                  }
+                  """, validation_result_pb2.MetricsValidationForSlice()),
+              text_format.Parse(
+                  """
+                  failures {
+                    metric_key {
+                      name: "example_count"
+                      model_name: "candidate"
+                    }
+                    metric_threshold {
+                      value_threshold {
+                        lower_bound {
+                          value: 2.0
+                        }
+                      }
+                    }
+                  }
+                  cross_slice_key {
+                    baseline_slice_key {
+                    }
+                    comparison_slice_key {
+                      single_slice_keys {
+                        column: "fixed_string"
+                        bytes_value: "fixed_string2"
+                      }
+                    }
+                  }
+                  """, validation_result_pb2.MetricsValidationForSlice()),
+              text_format.Parse(
+                  """
+                  failures {
+                    metric_key {
+                      name: "mean_prediction"
+                      model_name: "candidate"
+                    }
+                    metric_threshold {
+                      value_threshold {
+                        lower_bound {
+                          value: 0.1
+                        }
+                        upper_bound {
+                          value: 0.5
+                        }
+                      }
+                    }
+                  }
+                  failures {
+                    metric_key {
+                      name: "mean_prediction"
+                      model_name: "candidate"
+                      is_diff: true
+                    }
+                    metric_threshold {
+                      change_threshold {
+                        absolute {
+                        }
+                        relative {
+                          value: -0.99
+                        }
+                        direction: LOWER_IS_BETTER
+                      }
+                    }
+                  }
+                  cross_slice_key {
+                    baseline_slice_key {
+                      single_slice_keys {
+                        column: "fixed_string"
+                        bytes_value: "fixed_string1"
+                      }
+                    }
+                    comparison_slice_key {
+                      single_slice_keys {
+                        column: "fixed_string"
+                        bytes_value: "fixed_string2"
+                      }
+                    }
+                  }
+                  """, validation_result_pb2.MetricsValidationForSlice())
+          ]
+
+          expected_validations_dict = {}
+          for expected_validation in expected_validations:
+            slice_keys_hash = get_slice_keys_hash(expected_validation)
+            expected_validations_dict[slice_keys_hash] = {}
+            for failure in expected_validation.failures:
+              expected_validations_dict[slice_keys_hash][
+                  failure.metric_key.SerializeToString()] = failure
+
+          self.assertEqual(
+              set(failed_validations.keys()),
+              set(expected_validations_dict.keys()))
+          for slice_key, validation in failed_validations.items():
+            self.assertEqual(
+                set(validation.keys()),
+                set(expected_validations_dict[slice_key].keys()))
+            for metric_key, failure in validation.items():
+              self.assertProtoEquals(
+                  failure, expected_validations_dict[slice_key][metric_key])
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(evaluations[constants.VALIDATIONS_KEY],
+                       check_validations)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

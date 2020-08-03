@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import copy
 import datetime
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Set, Text, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set, Text, Tuple, Type, Union
 import apache_beam as beam
 import numpy as np
 
@@ -378,6 +378,71 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
 
 
 @beam.ptransform_fn
+def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
+    sliced_combiner_outputs: beam.pvalue.PCollection,
+    cross_slice_specs: Optional[Iterable[config.CrossSlicingSpec]]
+) -> Tuple[slicer.SliceKeyOrCrossSliceKeyType, metric_types.MetricsDict]:
+  """Generates CrossSlice metrics from SingleSlices."""
+
+  def is_slice_applicable(
+      sliced_combiner_output: Tuple[slicer.SliceKeyType,
+                                    metric_types.MetricsDict],
+      slicing_specs: Union[config.SlicingSpec, Iterable[config.SlicingSpec]]
+  ) -> bool:
+    slice_key, _ = sliced_combiner_output
+    for slicing_spec in slicing_specs:
+      if slicer.SingleSliceSpec(
+          spec=slicing_spec).is_slice_applicable(slice_key):
+        return True
+    return False
+
+  def compute_cross_slices(
+      baseline_slice: Tuple[slicer.SliceKeyType, metric_types.MetricsDict],
+      comparison_slices: Iterable[Tuple[slicer.SliceKeyType,
+                                        Dict[metric_types.MetricKey, Any]]]
+  ) -> Iterator[Tuple[slicer.CrossSliceKeyType, Dict[metric_types.MetricKey,
+                                                     Any]]]:
+    baseline_slice_key, baseline_metrics = baseline_slice
+    for (comparison_slice_key, comparison_metrics) in comparison_slices:
+      result = {}
+      for (comparison_metric_key,
+           comparison_metric_value) in comparison_metrics.items():
+        if comparison_metric_key not in baseline_metrics:
+          continue
+        result[comparison_metric_key] = (
+            baseline_metrics[comparison_metric_key] - comparison_metric_value)
+      yield ((baseline_slice_key, comparison_slice_key), result)
+
+  cross_slice_outputs = []
+  for cross_slice_ind, cross_slice_spec in enumerate(cross_slice_specs):
+    baseline_slices = (
+        sliced_combiner_outputs
+        | 'FilterBaselineSlices(%d)' % cross_slice_ind >> beam.Filter(
+            is_slice_applicable, [cross_slice_spec.baseline_spec]))
+
+    slicing_specs = list(cross_slice_spec.slicing_specs)
+    comparison_slices = (
+        sliced_combiner_outputs
+        | 'FilterComparisonSlices(%d)' % cross_slice_ind >> beam.Filter(
+            is_slice_applicable, slicing_specs))
+
+    cross_slice_outputs.append(
+        baseline_slices
+        | 'GenerateCrossSlices(%d)' % cross_slice_ind >> beam.FlatMap(
+            compute_cross_slices,
+            comparison_slices=beam.pvalue.AsIter(comparison_slices)))
+
+  if cross_slice_outputs:
+    cross_slice_outputs = (
+        cross_slice_outputs
+        | 'FlattenCrossSliceResults' >> beam.Flatten())
+    return ([sliced_combiner_outputs, cross_slice_outputs]
+            | 'CombineSingleSlicesWithCrossSlice' >> beam.Flatten())
+  else:
+    return sliced_combiner_outputs
+
+
+@beam.ptransform_fn
 @beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
 @beam.typehints.with_output_types(Tuple[slicer.SliceKeyType,
                                         Dict[metric_types.MetricKey, Any]])
@@ -385,6 +450,7 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     sliced_extracts: beam.pvalue.PCollection,
     computations: List[metric_types.MetricComputation],
     derived_computations: List[metric_types.DerivedMetricComputation],
+    cross_slice_specs: Optional[Iterable[config.CrossSlicingSpec]] = None,
     compute_with_sampling: Optional[bool] = False,
     num_jackknife_samples: int = 0,
     skip_ci_metric_keys: Set[metric_types.MetricKey] = frozenset(),
@@ -396,6 +462,7 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     sliced_extracts: Incoming PCollection consisting of slice key and extracts.
     computations: List of MetricComputations.
     derived_computations: List of DerivedMetricComputations.
+    cross_slice_specs: List of CrossSlicingSpec.
     compute_with_sampling: True to compute with bootstrap sampling. This allows
       _ComputePerSlice to be used to generate unsampled values from the whole
       data set, as well as bootstrap resamples, in which each element is
@@ -432,8 +499,9 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     return sliced_results[0], result
 
   def add_diff_metrics(
-      sliced_metrics: Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey,
-                                                      Any]],
+      sliced_metrics: Tuple[Union[slicer.SliceKeyType,
+                                  slicer.CrossSliceKeyType],
+                            Dict[metric_types.MetricKey, Any]],
       baseline_model_name: Optional[Text],
   ) -> Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]:
     """Add diff metrics if there is a baseline model."""
@@ -474,6 +542,7 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
       sliced_combiner_outputs
       | 'ConvertAndAddDerivedValues' >> beam.Map(convert_and_add_derived_values,
                                                  derived_computations)
+      | 'AddCrossSliceMetrics' >> _AddCrossSliceMetrics(cross_slice_specs)  # pylint: disable=no-value-for-parameter
       | 'AddDiffMetrics' >> beam.Map(add_diff_metrics, baseline_model_name))
 
   if num_jackknife_samples:
@@ -640,6 +709,10 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 
   ci_params = _get_confidence_interval_params(eval_config, metrics_specs)
 
+  cross_slice_specs = []
+  if eval_config.cross_slicing_specs:
+    cross_slice_specs = eval_config.cross_slicing_specs
+
   # TODO(b/151482616): Make bootstrap and jackknife confidence interval
   # implementations more parallel.
 
@@ -656,6 +729,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
           computations=computations,
           derived_computations=derived_computations,
           baseline_model_name=baseline_model_name,
+          cross_slice_specs=cross_slice_specs,
           num_jackknife_samples=ci_params.num_jackknife_samples,
           num_bootstrap_samples=ci_params.num_bootstrap_samples,
           skip_ci_metric_keys=ci_params.skip_ci_metric_keys,

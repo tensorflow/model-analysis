@@ -51,6 +51,8 @@ SliceKeyType = Union[Tuple[()], Tuple[SingletonSliceKeyType, ...]]  # pylint: di
 # CrossSliceKeyType is a tuple, where first and second element is SliceKeyType.
 CrossSliceKeyType = Tuple[SliceKeyType, SliceKeyType]  # pylint: disable=invalid-name
 
+SliceKeyOrCrossSliceKeyType = Union[SliceKeyType, CrossSliceKeyType]  # pylint: disable=invalid-name
+
 OVERALL_SLICE_NAME = 'Overall'
 
 

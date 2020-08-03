@@ -121,15 +121,16 @@ def validate_metrics(
         \n{}""".format(type(metric), metric)
     existing_failures = set()
     for slice_spec, threshold in thresholds[metric_key]:
-      if (slice_spec is not None and
-          isinstance(slice_spec, config.SlicingSpec) and
-          (is_cross_slice or not slicer.SingleSliceSpec(
-              spec=slice_spec).is_slice_applicable(sliced_key))):
-        continue
-      if (slice_spec is not None and
-          isinstance(slice_spec, config.CrossSlicingSpec) and
-          (not is_cross_slice or not slicer.is_cross_slice_applicable(
-              cross_slice_key=sliced_key, cross_slicing_spec=slice_spec))):
+      if slice_spec is not None:
+        if (isinstance(slice_spec, config.SlicingSpec) and
+            (is_cross_slice or not slicer.SingleSliceSpec(
+                spec=slice_spec).is_slice_applicable(sliced_key))):
+          continue
+        if (isinstance(slice_spec, config.CrossSlicingSpec) and
+            (not is_cross_slice or not slicer.is_cross_slice_applicable(
+                cross_slice_key=sliced_key, cross_slicing_spec=slice_spec))):
+          continue
+      elif is_cross_slice:
         continue
       if not _check_threshold(metric_key, threshold, metric):
         # The same threshold values could be set for multiple matching slice
@@ -159,7 +160,15 @@ def validate_metrics(
     if metric_key.model_name == baseline_model_name:
       continue
     existing_failures = set()
-    for _, threshold in thresholds:
+    for slice_spec, threshold in thresholds:
+      if slice_spec is not None:
+        if is_cross_slice != isinstance(slice_spec, config.CrossSlicingSpec):
+          continue
+        if (is_cross_slice and not slicer.is_cross_slice_applicable(
+            cross_slice_key=sliced_key, cross_slicing_spec=slice_spec)):
+          continue
+      elif is_cross_slice:
+        continue
       # The same threshold values could be set for multiple matching slice
       # specs. Only store the first match.
       #
