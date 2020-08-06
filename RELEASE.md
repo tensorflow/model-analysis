@@ -12,6 +12,10 @@
     https://en.wikipedia.org/wiki/Confusion_matrix for full list of metrics now
     supported.
 *   Drop PY2 support.
+*   Change the number of partitions used by the JACKKNIFE confidence interval
+    methodology from 100 to 20. This will reduce the quality of the confidence
+    intervals but support computing confidence intervals on slices with fewer
+    examples.
 
 ## Bug fixes and other changes
 

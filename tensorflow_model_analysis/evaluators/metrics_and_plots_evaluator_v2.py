@@ -47,7 +47,7 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 
 _COMBINER_INPUTS_KEY = '_combiner_inputs'
 _DEFAULT_COMBINER_INPUT_KEY = '_default_combiner_input'
-_DEFAULT_NUM_JACKKNIFE_BUCKETS = 100
+_DEFAULT_NUM_JACKKNIFE_BUCKETS = 20
 _DEFAULT_NUM_BOOTSTRAP_SAMPLES = 20
 
 # A fanout of 8 is used here to reduce stragglers that occur during the merger
