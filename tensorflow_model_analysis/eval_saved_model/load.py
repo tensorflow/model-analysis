@@ -259,6 +259,10 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
                      self._additional_fetches_map),
             feed_list=list(self._input_map.values()))
 
+  def get_inputs_dict(self) -> types.TensorValueMaybeDict:
+    """Returns tensors used for model inputs."""
+    return self._input_map
+
   def get_features_predictions_labels_dicts(
       self) -> Tuple[types.TensorTypeMaybeDict, types.TensorTypeMaybeDict, types
                      .TensorTypeMaybeDict]:
