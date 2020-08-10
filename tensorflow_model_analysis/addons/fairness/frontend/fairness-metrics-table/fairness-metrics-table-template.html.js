@@ -68,12 +68,12 @@ template.innerHTML = `
     text-align: left;
     padding-top: 8px;
     padding-bottom: 8px;
-    min-height: min-content;
+    min-height: max-content;
     width: 100%;
     padding-left: 6px;
     padding-right: 6px;
     overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: break-word;
   }
   .table-feature-column {
     text-align: left;

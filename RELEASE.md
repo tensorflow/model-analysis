@@ -39,6 +39,7 @@
 *   Depends on `pyarrow>=0.17,<0.18`.
 *   Fix issue with slice_spec.is_slice_applicable not working for float, int,
     etc types that are encoded as strings.
+*   Wrap long strings in table cells in Fairness Indicators UI
 
 ## Breaking changes
 

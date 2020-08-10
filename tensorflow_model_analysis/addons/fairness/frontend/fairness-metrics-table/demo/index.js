@@ -70,7 +70,9 @@ const NUM_SLICES = 10;
   }
 
   for (var i = 0; i < NUM_SLICES; i++) {
-    const slice = 'col:' + i;
+    const slice = (i < NUM_SLICES-1) ?
+        'col:' + i :
+        'this_is_a_veeeeeeeeeeeeeeeeeeeeery_long_feature_name_aka_col:' + i;
     data.push(generateDoubleEntry(slice));
     dataCompare.push(generateBoundedEntry(slice));
     exampleCounts.push(Math.floor(Math.random() * 100));
