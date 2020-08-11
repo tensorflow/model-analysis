@@ -204,6 +204,8 @@ message MetricValue {
     TDistributionValue t_distribution_value = 9 [deprecated = true];
     ValueAtCutoffs value_at_cutoffs = 4;
     ConfusionMatrixAtThresholds confusion_matrix_at_thresholds = 5;
+    MultiClassConfusionMatrixAtThresholds
+        multi_class_confusion_matrix_at_thresholds = 15;
     UnknownType unknown_type = 3;
     bytes bytes_value = 6;
     ArrayValue array_value = 7;
@@ -228,7 +230,7 @@ message MetricValue {
   ConfidenceInterval confidence_interval = 14;
 
   reserved 8;
-  // Next tag = 15;
+  // Next tag = 16;
 }
 
 // A single slice key.

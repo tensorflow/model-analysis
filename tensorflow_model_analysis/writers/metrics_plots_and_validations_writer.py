@@ -193,6 +193,9 @@ def convert_slice_metrics_to_proto(
     metric_value = metrics_for_slice_pb2.MetricValue()
     if isinstance(value, metrics_for_slice_pb2.ConfusionMatrixAtThresholds):
       metric_value.confusion_matrix_at_thresholds.CopyFrom(value)
+    elif isinstance(
+        value, metrics_for_slice_pb2.MultiClassConfusionMatrixAtThresholds):
+      metric_value.multi_class_confusion_matrix_at_thresholds.CopyFrom(value)
     elif isinstance(value, types.ValueWithTDistribution):
       # Currently we populate both bounded_value and confidence_interval.
       # Avoid populating bounded_value once the UI handles confidence_interval.

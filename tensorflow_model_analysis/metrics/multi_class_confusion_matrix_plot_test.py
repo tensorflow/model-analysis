@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for multi-class confusion matrix at thresholds."""
+"""Tests for multi-class confusion matrix plot at thresholds."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -34,9 +34,11 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
                                         parameterized.TestCase):
 
   def testMultiClassConfusionMatrixPlot(self):
-    computation = (
+    computations = (
         multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot()
-        .computations()[0])
+        .computations())
+    matrices = computations[0]
+    plot = computations[1]
 
     example1 = {
         'labels': np.array([2.0]),
@@ -77,7 +79,8 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
               [example1, example2, example3, example4, example5, example6])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputePlot' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeMatrices' >> beam.CombinePerKey(matrices.combiner)
+          | 'ComputePlot' >> beam.Map(lambda x: (x[0], plot.result(x[1]))))
 
       # pylint: enable=no-value-for-parameter
 
@@ -127,9 +130,11 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
       'thresholds': [0.0, 0.5, 1.0]
   }))
   def testMultiClassConfusionMatrixPlotWithThresholds(self, kwargs):
-    computation = (
+    computations = (
         multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot(
-            **kwargs).computations()[0])
+            **kwargs).computations())
+    matrices = computations[0]
+    plot = computations[1]
 
     example1 = {
         'labels': np.array([2.0]),
@@ -170,7 +175,8 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
               [example1, example2, example3, example4, example5, example6])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputePlot' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeMatrices' >> beam.CombinePerKey(matrices.combiner)
+          | 'ComputePlot' >> beam.Map(lambda x: (x[0], plot.result(x[1]))))
 
       # pylint: enable=no-value-for-parameter
 
@@ -255,9 +261,11 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   def testMultiClassConfusionMatrixPlotWithStringLabels(self):
-    computation = (
+    computations = (
         multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot()
-        .computations()[0])
+        .computations())
+    matrices = computations[0]
+    plot = computations[1]
 
     # Examples from b/149558504.
     example1 = {
@@ -288,7 +296,8 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([example1, example2])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputePlot' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeMatrices' >> beam.CombinePerKey(matrices.combiner)
+          | 'ComputePlot' >> beam.Map(lambda x: (x[0], plot.result(x[1]))))
 
       # pylint: enable=no-value-for-parameter
 

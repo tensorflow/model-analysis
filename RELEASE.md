@@ -16,6 +16,9 @@
     methodology from 100 to 20. This will reduce the quality of the confidence
     intervals but support computing confidence intervals on slices with fewer
     examples.
+*   Added `tfma.metrics.MultiClassConfusionMatrixAtThresholds`.
+*   Refactoring code to compute `tfma.metrics.MultiClassConfusionMatrixPlot`
+    using derived computations.
 
 ## Bug fixes and other changes
 
