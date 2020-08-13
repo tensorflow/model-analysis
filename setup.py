@@ -266,7 +266,7 @@ setup_args = {
     'install_requires': [
         # Sort alphabetically
         'absl-py>=0.7,<0.9',
-        'apache-beam[gcp]>=2.22,<3',
+        'apache-beam[gcp]>=2.23,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
@@ -275,14 +275,11 @@ setup_args = {
         'pandas>=0.24,<2',
         'protobuf>=3.7,<4',
         'pyarrow>=0.17,<0.18',
-        # TODO(b/149775493): Avoid pinning scipy version once TF resolves
-        # the scipy issue.
-        'scipy == 1.4.1;python_version>="3"',
-        'scipy == 1.2.2;python_version<"3"',
+        'scipy>=1.4.1,<2',
         'six>=1.12,<2',
-        'tensorflow>=1.15,!=2.0.*,<3',
-        'tensorflow-metadata>=0.22.2,<0.23',
-        'tfx-bsl>=0.22,<0.23'
+        'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
+        'tensorflow-metadata>=0.23,<0.24',
+        'tfx-bsl>=0.23,<0.24'
     ],
     'python_requires': '>=3.5,<4',
     'packages': find_packages(),
