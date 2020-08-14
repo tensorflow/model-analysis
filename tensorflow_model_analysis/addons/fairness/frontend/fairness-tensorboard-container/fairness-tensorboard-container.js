@@ -19,7 +19,7 @@ import {PolymerElement} from '@polymer/polymer/polymer-element.js';
 import {template} from './fairness-tensorboard-container-template.html.js';
 import {SelectEventMixin} from '../../../../frontend/tfma-nb-event-mixin/tfma-nb-event-mixin.js';
 import '../fairness-nb-container/fairness-nb-container.js';
-import * as tensorboard_util from '../../../../../../tensorboard/components/experimental/plugin_lib/google/index.js';
+import * as tensorboard_util from '../../../../../../tensorboard/google/polymer_v1/components/experimental/plugin_lib/google/index.js';
 
 // Server end point to get eval results based on run selected by the user.
 const GET_EVAL_RESULTS_ENDPOINT = './get_evaluation_result';
