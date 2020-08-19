@@ -46,6 +46,7 @@ from tensorflow_model_analysis.extractors import input_extractor
 from tensorflow_model_analysis.extractors import predict_extractor
 from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.extractors import tfjs_predict_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
@@ -465,6 +466,20 @@ def default_extractors(  # pylint: disable=invalid-name
           'support for mixing tf_lite and non-tf_lite models is not '
           'implemented: eval_config={}'.format(eval_config))
 
+    if model_types == set([constants.TF_JS]):
+      return [
+          input_extractor.InputExtractor(eval_config=eval_config),
+          (custom_predict_extractor or
+           tfjs_predict_extractor.TFJSPredictExtractor(
+               eval_config=eval_config, eval_shared_model=eval_shared_model)),
+          slice_key_extractor.SliceKeyExtractor(
+              eval_config=eval_config, materialize=materialize)
+      ]
+    elif constants.TF_JS in model_types:
+      raise NotImplementedError(
+          'support for mixing tf_js and non-tf_js models is not '
+          'implemented: eval_config={}'.format(eval_config))
+
     elif (eval_config and model_types == set([constants.TF_ESTIMATOR]) and
           all(eval_constants.EVAL_TAG in m.model_loader.tags
               for m in eval_shared_models)):
@@ -547,8 +562,9 @@ def default_evaluators(  # pylint: disable=invalid-name
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
     disabled_outputs = eval_config.options.disabled_outputs.values
-    if _model_types(eval_shared_model) == set([constants.TF_LITE]):
-      # no in-graph metrics present when tflite is used.
+    if (_model_types(eval_shared_model) == set([constants.TF_LITE]) or
+        _model_types(eval_shared_model) == set([constants.TF_JS])):
+      # no in-graph metrics present when tflite or tfjs is used.
       if eval_shared_model:
         if isinstance(eval_shared_model, dict):
           eval_shared_model = {
@@ -848,7 +864,8 @@ def is_batched_input(eval_shared_model: Optional[
     model_types = _model_types(eval_shared_model)
     eval_shared_models = model_util.verify_and_update_eval_shared_models(
         eval_shared_model)
-    if model_types == set([constants.TF_LITE]):
+    if (model_types == set([constants.TF_LITE]) or
+        model_types == set([constants.TF_JS])):
       return False
     elif (eval_config and model_types == set([constants.TF_ESTIMATOR]) and
           all(eval_constants.EVAL_TAG in m.model_loader.tags

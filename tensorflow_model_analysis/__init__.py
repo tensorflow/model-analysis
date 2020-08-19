@@ -87,6 +87,7 @@ from tensorflow_model_analysis.constants import PREDICTIONS_KEY
 from tensorflow_model_analysis.constants import SLICE_KEY_TYPES_KEY
 from tensorflow_model_analysis.constants import TF_GENERIC
 from tensorflow_model_analysis.constants import TF_ESTIMATOR
+from tensorflow_model_analysis.constants import TF_JS
 from tensorflow_model_analysis.constants import TF_LITE
 from tensorflow_model_analysis.constants import TF_KERAS
 from tensorflow_model_analysis.constants import VALIDATIONS_KEY

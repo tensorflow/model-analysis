@@ -28,6 +28,7 @@
 *   Added `tfma.metrics.MultiClassConfusionMatrixAtThresholds`.
 *   Refactoring code to compute `tfma.metrics.MultiClassConfusionMatrixPlot`
     using derived computations.
+*   Provide support for evaluating TFJS models.
 
 ## Bug fixes and other changes
 

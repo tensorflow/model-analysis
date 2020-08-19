@@ -49,6 +49,7 @@ from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import validation_result_pb2
+from tensorflowjs.converters import converter as tfjs_converter
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -186,12 +187,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
           data_location=data_location,
           output_path=self._getTempDir())
 
-  def testMixedTFLiteAndNotTFLiteFormats(self):
+  @parameterized.named_parameters(('tflite', constants.TF_LITE),
+                                  ('tfjs', constants.TF_JS))
+  def testMixedModelTypes(self, model_type):
     examples = [self._makeExample(age=3.0, language='english', label=1.0)]
     data_location = self._writeTFExamplesToTFRecords(examples)
     eval_config = config.EvalConfig(model_specs=[
         config.ModelSpec(name='model1'),
-        config.ModelSpec(name='model2', model_type=constants.TF_LITE)
+        config.ModelSpec(name='model2', model_type=model_type)
     ])
     eval_shared_models = [
         model_eval_lib.default_eval_shared_model(
@@ -204,8 +207,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             eval_config=eval_config)
     ]
     with self.assertRaisesRegex(
-        NotImplementedError,
-        'support for mixing tf_lite and non-tf_lite models is not implemented'):
+        NotImplementedError, 'support for mixing .* models is not implemented'):
       model_eval_lib.run_model_analysis(
           eval_config=eval_config,
           eval_shared_model=eval_shared_models,
@@ -606,9 +608,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                      config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
-  @parameterized.named_parameters(('without_tflite_conversion', False),
-                                  ('with_tflite_conversion', True))
-  def testRunModelAnalysisWithKerasModel(self, convert_to_tflite):
+  @parameterized.named_parameters(('tf_keras', constants.TF_KERAS),
+                                  ('tf_lite', constants.TF_LITE),
+                                  ('tf_js', constants.TF_JS))
+  def testRunModelAnalysisWithKerasModel(self, model_type):
 
     def _build_keras_model(eval_config, name='export_dir'):
       input_layer = tf.keras.layers.Input(shape=(28 * 28,), name='data')
@@ -627,13 +630,24 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       dataset = dataset.shuffle(buffer_size=1).repeat().batch(1)
       model.fit(dataset, steps_per_epoch=1)
       model_location = os.path.join(self._getTempDir(), name)
-      if convert_to_tflite:
+      if model_type == constants.TF_LITE:
         converter = tf.compat.v2.lite.TFLiteConverter.from_keras_model(model)
         tflite_model = converter.convert()
         tf.io.gfile.makedirs(model_location)
         with tf.io.gfile.GFile(os.path.join(model_location, 'tflite'),
                                'wb') as f:
           f.write(tflite_model)
+      elif model_type == constants.TF_JS:
+        src_model_path = tempfile.mkdtemp()
+        model.save(src_model_path, save_format='tf')
+
+        tfjs_converter.convert([
+            '--input_format=tf_saved_model',
+            '--saved_model_tags=serve',
+            '--signature_name=serving_default',
+            src_model_path,
+            model_location,
+        ])
       else:
         model.save(model_location, save_format='tf')
       return model_eval_lib.default_eval_shared_model(
@@ -699,9 +713,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     eval_config = config.EvalConfig(
         model_specs=[config.ModelSpec(label_key='label')],
         metrics_specs=[metrics_spec])
-    if convert_to_tflite:
+    if model_type != constants.TF_KERAS:
       for s in eval_config.model_specs:
-        s.model_type = constants.TF_LITE
+        s.model_type = model_type
 
     model, model_location = _build_keras_model(eval_config)
     baseline, baseline_model_location = _build_keras_model(

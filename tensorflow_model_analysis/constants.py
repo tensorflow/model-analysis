@@ -32,7 +32,8 @@ TF_ESTIMATOR = 'tf_estimator'
 TF_KERAS = 'tf_keras'
 TF_GENERIC = 'tf_generic'
 TF_LITE = 'tf_lite'
-VALID_TF_MODEL_TYPES = (TF_GENERIC, TF_ESTIMATOR, TF_KERAS, TF_LITE)
+TF_JS = 'tf_js'
+VALID_TF_MODEL_TYPES = (TF_GENERIC, TF_ESTIMATOR, TF_KERAS, TF_LITE, TF_JS)
 
 # LINT.IfChange
 METRICS_NAMESPACE = 'tfx.ModelAnalysis'

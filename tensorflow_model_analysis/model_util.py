@@ -347,6 +347,9 @@ def model_construct_fn(  # pylint: disable=invalid-name
       model_filename = os.path.join(eval_saved_model_path, _TFLITE_FILE_NAME)
       with tf.io.gfile.GFile(model_filename, 'rb') as model_file:
         model = ModelContents(model_file.read())
+    elif model_type == constants.TF_JS:
+      # We invoke TFJS models via a subprocess call. So this call is no-op.
+      return None
     else:
       model = tf.compat.v1.saved_model.load_v2(eval_saved_model_path, tags=tags)
     return model

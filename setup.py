@@ -279,7 +279,11 @@ setup_args = {
         'six>=1.12,<2',
         'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
         'tensorflow-metadata>=0.23,<0.24',
-        'tfx-bsl>=0.23,<0.24'
+        'tfx-bsl>=0.23,<0.24',
+        'tensorflowjs>=2.0.1.post1,<3',
+        # TODO(b/158034704): Remove prompt-toolkit pin resulted from
+        # tfjs -> PyInquirer dependency chain.
+        'prompt-toolkit>=2.0.10,<3',
     ],
     'python_requires': '>=3.5,<4',
     'packages': find_packages(),

@@ -31,7 +31,7 @@ message ModelSpec {
   // regardless of whether a name was provided here or not.
   string name = 2;
   // The type of the model that is being evaluated. Supported types include
-  // "tf_keras", "tf_estimator", "tf_lite", and "tf_generic". If unset,
+  // "tf_keras", "tf_estimator", "tf_lite", "tf_js", and "tf_generic". If unset,
   // automatically detects whether the model_type is "tf_keras", "tf_estimator",
   // or "tf_generic" based on whether the model loads as a keras model followed
   // by whether or not the signature_name is set to "eval".
