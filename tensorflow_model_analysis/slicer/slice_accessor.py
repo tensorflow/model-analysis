@@ -37,7 +37,7 @@ class SliceAccessor(object):
     self._features_dict = features_dict
 
   def has_key(self, key: Text):
-    return key in self._features_dict
+    return key in self._features_dict and self._features_dict[key] is not None
 
   def get(self, key: Text) -> List[Union[int, bytes, float]]:
     """Get the values of the feature with the given key.

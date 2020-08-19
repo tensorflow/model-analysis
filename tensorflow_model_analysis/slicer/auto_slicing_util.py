@@ -24,6 +24,7 @@ import itertools
 import math
 import operator
 from typing import Dict, List, NamedTuple, Optional, Text, Tuple
+from absl import logging
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -100,14 +101,32 @@ def _is_significant_slice(slice_metric: float, slice_std_dev: float,
                           comparison_type: Text,
                           alpha: float) -> Tuple[bool, float]:
   """Perform statistical significance testing."""
-  _, p_value_two_sided = stats.ttest_ind_from_stats(
-      slice_metric,
-      slice_std_dev,
-      slice_weight,
-      base_metric,
-      base_std_dev,
-      base_weight,
-      equal_var=False)
+  assert base_std_dev > 0, ('base_std_dev must be positive, but got '
+                            '{}.'.format(base_std_dev))
+  assert slice_std_dev > 0, ('slice_std_dev must be positive, but got '
+                             '{}.'.format(slice_std_dev))
+  assert base_weight > 1, ('base_weight must be greater than 1, but got '
+                           '{}.'.format(base_weight))
+  assert slice_weight > 1, ('slice_weight must be greater than 1, but got '
+                            '{}.'.format(slice_weight))
+
+  try:
+    _, p_value_two_sided = stats.ttest_ind_from_stats(
+        slice_metric,
+        slice_std_dev,
+        slice_weight,
+        base_metric,
+        base_std_dev,
+        base_weight,
+        equal_var=False)
+  except ZeroDivisionError:
+    raise ZeroDivisionError(
+        'invalid ttest for params: slice_metric={}, '
+        'slice_std_dev={}, slice_weight={}, '
+        'base_metric={}, base_std_dev={}, base_weight={}, '.format(
+            slice_metric, slice_std_dev, slice_weight, base_metric,
+            base_std_dev, base_weight))
+
   metric_diff = slice_metric - base_metric
   one_sided_p_value = _two_sided_to_one_sided_pvalue(
       p_value_two_sided, metric_diff, comparison_type=comparison_type)
@@ -291,6 +310,16 @@ def partition_slices(
       continue
     # Prune non-interesting slices.
     if np.isnan(slice_metrics_dict[metric_key].unsampled_value):
+      continue
+    if slice_metrics_dict[metric_key].sample_standard_deviation == 0:
+      logging.warning('Ignoring slice: %s with standard deviation: %s ',
+                      slice_key,
+                      slice_metrics_dict[metric_key].sample_standard_deviation)
+      continue
+    # TODO(pachristopher): Should we use weighted example count?
+    if slice_metrics_dict['example_count'].unsampled_value <= 1:
+      logging.warning('Ignoring slice: %s with example count: %s ', slice_key,
+                      slice_metrics_dict['example_count'].unsampled_value)
       continue
     # Only consider statistically significant slices.
     is_significant, p_value = _is_significant_slice(

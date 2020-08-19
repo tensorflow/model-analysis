@@ -124,7 +124,8 @@ class _BucketizeNumericFeaturesFn(beam.DoFn):
     element_copy = copy.deepcopy(element)
     features = util.get_features_from_extracts(element_copy)
     for feature_name, boundaries in self._bucket_boundaries.items():
-      if feature_name in features:
+      if (feature_name in features and features[feature_name] is not None and
+          features[feature_name].size > 0):
         transformed_values = []
         for value in features[feature_name]:
           transformed_values.append(_bin_value(value, boundaries))
