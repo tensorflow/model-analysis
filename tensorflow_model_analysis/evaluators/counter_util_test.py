@@ -45,7 +45,7 @@ class CounterUtilTest(tf.test.TestCase):
     with beam.Pipeline() as pipeline:
       _ = (
           pipeline
-          | beam.Create([[[('slice_key', b'first_slice')]]])
+          | beam.Create([[[('slice_key', 'first_slice')]]])
           | counter_util.IncrementSliceSpecCounters())
 
     result = pipeline.run()
