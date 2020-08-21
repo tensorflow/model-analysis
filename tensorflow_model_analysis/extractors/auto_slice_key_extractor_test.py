@@ -118,7 +118,44 @@ class AutoSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
         slicer.SingleSliceSpec()
     ]
     actual_slice_spec = auto_slice_key_extractor.slice_spec_from_stats(
-        stats, features_to_ignore=['label_feature'])
+        stats, denylist_features=['label_feature'])
+    self.assertEqual(actual_slice_spec, expected_slice_spec)
+
+  def test_slice_spec_from_stats_and_schema_allowlist(self):
+    stats = text_format.Parse(
+        """
+        datasets {
+          features: {
+            path { step: 'feature1' }
+            type: STRING
+            string_stats: {
+              unique: 10
+            }
+          }
+          features: {
+            path { step: 'feature2' }
+            type: INT
+            string_stats: {
+              unique: 10
+            }
+          }
+          features: {
+            path { step: 'feature3' }
+            type: STRING
+            string_stats: {
+              unique: 10
+            }
+          }
+        }
+        """, statistics_pb2.DatasetFeatureStatisticsList())
+    expected_slice_spec = [
+        slicer.SingleSliceSpec(columns=['feature1']),
+        slicer.SingleSliceSpec(columns=['feature3']),
+        slicer.SingleSliceSpec(columns=['feature1', 'feature3']),
+        slicer.SingleSliceSpec()
+    ]
+    actual_slice_spec = auto_slice_key_extractor.slice_spec_from_stats(
+        stats, allowlist_features=['feature1', 'feature3'])
     self.assertEqual(actual_slice_spec, expected_slice_spec)
 
   def test_auto_extract_slice_keys(self):

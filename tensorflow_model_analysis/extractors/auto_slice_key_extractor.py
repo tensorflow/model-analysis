@@ -42,7 +42,8 @@ TRANSFORMED_FEATURE_PREFIX = 'transformed_'
 def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
     statistics: statistics_pb2.DatasetFeatureStatisticsList,
     max_cross_size: int = 2,
-    features_to_ignore: Optional[Set[Text]] = None,
+    allowlist_features: Optional[Set[Text]] = None,
+    denylist_features: Optional[Set[Text]] = None,
     materialize: bool = True) -> extractor.Extractor:
   """Creates an extractor for automatically extracting slice keys.
 
@@ -58,16 +59,19 @@ def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
   Args:
     statistics: Data statistics.
     max_cross_size: Maximum size feature crosses to consider.
-    features_to_ignore: Set of features to ignore for slicing.
+    allowlist_features: Set of features to be used for slicing.
+    denylist_features: Set of features to ignore for slicing.
     materialize: True to add MaterializedColumn entries for the slice keys.
 
   Returns:
     Extractor for slice keys.
   """
+  assert not allowlist_features or not denylist_features
   slice_spec = slice_spec_from_stats(
       statistics,
       max_cross_size=max_cross_size,
-      features_to_ignore=features_to_ignore)
+      allowlist_features=allowlist_features,
+      denylist_features=denylist_features)
   return extractor.Extractor(
       stage_name=SLICE_KEY_EXTRACTOR_STAGE_NAME,
       ptransform=_AutoExtractSliceKeys(slice_spec, statistics, materialize))
@@ -181,7 +185,8 @@ def slice_spec_from_stats(  # pylint: disable=invalid-name
     statistics: statistics_pb2.DatasetFeatureStatisticsList,
     categorical_uniques_threshold: int = 100,
     max_cross_size: int = 2,
-    features_to_ignore: Optional[Set[Text]] = None) -> List[
+    allowlist_features: Optional[Set[Text]] = None,
+    denylist_features: Optional[Set[Text]] = None) -> List[
         slicer.SingleSliceSpec]:
   """Generates slicing spec from statistics.
 
@@ -190,7 +195,8 @@ def slice_spec_from_stats(  # pylint: disable=invalid-name
     categorical_uniques_threshold: Maximum number of unique values beyond which
       we don't slice on that categorical feature.
     max_cross_size: Maximum size feature crosses to consider.
-    features_to_ignore: Set of features to ignore for slicing.
+    allowlist_features: Set of features to be used for slicing.
+    denylist_features: Set of features to ignore for slicing.
 
   Returns:
     List of slice specs.
@@ -200,7 +206,8 @@ def slice_spec_from_stats(  # pylint: disable=invalid-name
     # TODO(pachristopher): Consider structured features once TFMA supports
     # slicing on structured features.
     if (len(feature.path.step) != 1 or
-        (features_to_ignore and feature.path.step[0] in features_to_ignore)):
+        (allowlist_features and feature.path.step[0] not in allowlist_features)
+        or (denylist_features and feature.path.step[0] in denylist_features)):
       continue
     features_to_consider.append(feature)
 
