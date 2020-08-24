@@ -265,15 +265,13 @@ setup_args = {
     # protobuf) with TF.
     'install_requires': [
         # Sort alphabetically
-        'absl-py>=0.7,<0.9',
+        'absl-py>=0.9,<0.11',
         'apache-beam[gcp]>=2.23,<3',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
-        # Upgrade min version to 1.0 once we deprecate support for
-        # Python 3.5
-        'pandas>=0.24,<2',
-        'protobuf>=3.7,<4',
+        'pandas>=1.0,<2',
+        'protobuf>=3.9.2,<4',
         'pyarrow>=0.17,<0.18',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
@@ -307,9 +305,9 @@ setup_args = {
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Mathematics',
