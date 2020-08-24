@@ -51,4 +51,4 @@
 
 ## Deprecations
 
-*   N/A
+*   Note: We plan to remove Python 3.5 support after this release.
