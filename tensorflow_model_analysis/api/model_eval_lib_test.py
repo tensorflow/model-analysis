@@ -850,9 +850,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config.SlicingSpec()]
+    # Test with both a TFMA metric (NDCG) and a keras metric (Recall).
     metrics_specs = metric_specs.specs_from_metrics(
-        [ndcg.NDCG(gain_key='age', name='ndcg')],
-        binarize=config.BinarizationOptions(top_k_list={'values': [1]}),
+        [ndcg.NDCG(gain_key='age', name='ndcg'),
+         tf.keras.metrics.Recall()],
+        binarize=config.BinarizationOptions(top_k_list={'values': [1, 2]}),
         query_key='language',
         include_weighted_example_count=True)
     metrics_specs.append(
@@ -905,6 +907,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         },
         'topK:1': {
             'ndcg': True,
+            'recall': True,
+        },
+        'topK:2': {
+            'ndcg': True,
+            'recall': True,
         },
     }
     for group in expected_metrics:

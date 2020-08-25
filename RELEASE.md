@@ -12,6 +12,19 @@
 
 ## Breaking changes
 
+*   Query based metrics evaluations that make use of `MetricsSpecs.query_key`
+    are now passed `tfma.Extracts` with leaf values that are of type
+    `np.ndarray` containing an additional dimension representing the values
+    matched by the query (e.g. if the labels and predictions were previously 1D
+    arrays, they will now be 2D arrays where the first dimension's size is equal
+    to the number of examples matching the query key). Previously a list of
+    `tfma.Extracts` was passed instead. This allows user's to now add custom
+    metrics based on `tf.keras.metrics.Metric` as well as `tf.metrics.Metric`
+    (any previous customizations based on `tf.metrics.Metric` will need to be
+    updated). As part of this change the `tfma.metrics.NDCG`,
+    `tfma.metrics.MinValuePosition`, and `tfma.metrics.QueryStatistics` have
+    been updated.
+
 ## Deprecations
 
 *   Deprecating Py3.5 support.

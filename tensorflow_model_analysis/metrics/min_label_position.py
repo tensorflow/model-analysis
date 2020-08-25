@@ -106,35 +106,25 @@ class _MinLabelPositionCombiner(beam.CombineFn):
 
   def add_input(
       self, accumulator: _MinLabelPositionAccumulator,
-      elements: List[metric_types.StandardMetricInputs]
+      element: metric_types.StandardMetricInputs
   ) -> _MinLabelPositionAccumulator:
-    min_label_pos = None
-    example_weight = None
-    for i, element in enumerate(elements):
-      label, _, weight = next(
-          metric_util.to_label_prediction_example_weight(
-              element,
-              eval_config=self._eval_config,
-              model_name=self._key.model_name,
-              output_name=self._key.output_name,
-              flatten=False,
-              allow_none=True))  # pytype: disable=wrong-arg-types
-      weight = float(weight)
-      if example_weight is None:
-        example_weight = weight
-      elif example_weight != weight:
-        raise ValueError(
-            'all example weights for the same query value must use the '
-            'same value {} != {}: StandardMetricInputs={}'.format(
-                weight, example_weight, element))
-      if label is not None and np.sum(label) > 0:
-        min_label_pos = i + 1  # Use 1-indexed positions
-        break
-    if example_weight is None:
-      example_weight = 1.0
-    if min_label_pos:
-      accumulator.total_min_position += min_label_pos
-      accumulator.total_weighted_examples += example_weight
+    labels, _, example_weight = next(
+        metric_util.to_label_prediction_example_weight(
+            element,
+            eval_config=self._eval_config,
+            model_name=self._key.model_name,
+            output_name=self._key.output_name,
+            flatten=False,
+            allow_none=True))  # pytype: disable=wrong-arg-types
+    if labels is not None:
+      min_label_pos = None
+      for i, l in enumerate(labels):
+        if np.sum(l) > 0:
+          min_label_pos = i + 1  # Use 1-indexed positions
+          break
+      if min_label_pos:
+        accumulator.total_min_position += min_label_pos
+        accumulator.total_weighted_examples += float(example_weight)
     return accumulator
 
   def merge_accumulators(

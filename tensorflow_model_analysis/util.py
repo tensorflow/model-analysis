@@ -25,7 +25,9 @@ import traceback
 
 from typing import Any, Dict, List, Optional, Text, Union
 
+import numpy as np
 import six
+import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 
@@ -264,3 +266,49 @@ def get_features_from_extracts(
   else:
     raise RuntimeError('Features missing, Please ensure Predict() was called.')
   return features
+
+
+def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
+  """Merges list of extracts into single extract with multi-dimentional data."""
+
+  def merge_with_lists(target, key, value):
+    if isinstance(value, dict):
+      if key not in target:
+        target[key] = {}
+      target = target[key]
+      for k, v in value.items():
+        merge_with_lists(target, k, v)
+    else:
+      if key not in target:
+        target[key] = []
+      if isinstance(value, np.ndarray):
+        value = value.tolist()
+      target[key].append(value)
+
+  def to_numpy(target):
+    if isinstance(target, dict):
+      return {k: to_numpy(v) for k, v in target.items()}
+    elif target and isinstance(target[0], tf.compat.v1.SparseTensorValue):
+      t = tf.sparse.concat(0, target)
+      return tf.compat.v1.SparseTensorValue(
+          indices=t.indices.numpy(),
+          values=t.values.numpy(),
+          dense_shape=t.dense_shape.numpy())
+    else:
+      arr = np.array(target)
+      # Flatten values that were originally single item lists into a single list
+      # e.g. [[1], [2], [3]] -> [1, 2, 3]
+      if len(arr.shape) == 2 and arr.shape[1] == 1:
+        return arr.squeeze(axis=1)
+      # Special case for empty slice arrays
+      # e.g. [[()], [()], [()]] -> [(), (), ()]
+      elif len(arr.shape) == 3 and arr.shape[1] == 1 and arr.shape[2] == 0:
+        return arr.squeeze(axis=1)
+      else:
+        return arr
+
+  result = {}
+  for x in extracts:
+    for k, v in x.items():
+      merge_with_lists(result, k, v)
+  return to_numpy(result)

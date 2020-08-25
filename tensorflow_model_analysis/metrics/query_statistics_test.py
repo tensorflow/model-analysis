@@ -23,6 +23,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis import util as tfma_util
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -89,22 +90,19 @@ class QueryStatisticsTest(testutil.TensorflowModelAnalysisTest):
             'gain': np.array([1.0])
         }
     }
-    examples = [[query1_example1, query1_example2],
-                [query2_example1, query2_example2, query2_example3],
-                [query3_example1]]
-
-    def to_standard_metric_inputs_list(list_of_extracts):
-      return [
-          metric_util.to_standard_metric_inputs(e, True)
-          for e in list_of_extracts
-      ]
+    examples = [
+        tfma_util.merge_extracts([query1_example1, query1_example2]),
+        tfma_util.merge_extracts(
+            [query2_example1, query2_example2, query2_example3]),
+        tfma_util.merge_extracts([query3_example1])
+    ]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
           | 'Create' >> beam.Create(examples)
-          | 'Process' >> beam.Map(to_standard_metric_inputs_list)
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs, True)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'Combine' >> beam.CombinePerKey(metrics.combiner))
 

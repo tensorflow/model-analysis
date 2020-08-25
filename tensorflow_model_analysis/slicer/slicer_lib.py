@@ -28,6 +28,7 @@ import itertools
 from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
 
 import apache_beam as beam
+import numpy as np
 import six
 import tensorflow as tf
 from tensorflow_model_analysis import config
@@ -487,6 +488,16 @@ def is_cross_slice_key(
   return get_slice_key_type(slice_key) == CrossSliceKeyType
 
 
+def _is_multi_dim_keys(slice_keys: SliceKeyType) -> bool:
+  """Returns true if slice_keys are multi dimensional."""
+  if isinstance(slice_keys, np.ndarray):
+    return True
+  if (isinstance(slice_keys, list) and slice_keys and
+      isinstance(slice_keys[0], list)):
+    return True
+  return False
+
+
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
 class _FanoutSlicesDoFn(beam.DoFn):
@@ -504,8 +515,20 @@ class _FanoutSlicesDoFn(beam.DoFn):
       element: types.Extracts) -> List[Tuple[SliceKeyType, types.Extracts]]:
     key_filter_fn = self._key_filter_fn  # Local cache.
     filtered = {k: v for k, v in element.items() if key_filter_fn(k)}
-    result = [(slice_key, filtered)
-              for slice_key in element.get(constants.SLICE_KEY_TYPES_KEY)]
+    slice_keys = element.get(constants.SLICE_KEY_TYPES_KEY)
+    # The query based evaluator will group slices into a multi-dimentional array
+    # with an extra dimension representing the examples matching the query key.
+    # We need to flatten and dedup the slice keys.
+    if _is_multi_dim_keys(slice_keys):
+      arr = np.array(slice_keys)
+      unique_keys = set()
+      for k in arr.flatten():
+        unique_keys.add(k)
+      if not unique_keys and arr.shape:
+        # If only the empty overall slice is in array, it is removed by flatten
+        unique_keys.add(())
+      slice_keys = unique_keys
+    result = [(slice_key, filtered) for slice_key in slice_keys]
     self._num_slices_generated_per_instance.update(len(result))
     self._post_slice_num_instances.inc(len(result))
     return result

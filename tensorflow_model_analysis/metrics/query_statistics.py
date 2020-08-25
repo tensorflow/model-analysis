@@ -121,12 +121,13 @@ class _QueryStatisticsCombiner(beam.CombineFn):
 
   def add_input(
       self, accumulator: _QueryStatisticsAccumulator,
-      elements: List[metric_types.StandardMetricInputs]
+      element: metric_types.StandardMetricInputs
   ) -> _QueryStatisticsAccumulator:
     accumulator.total_queries += 1
-    accumulator.total_documents += len(elements)
-    accumulator.min_documents = min(accumulator.min_documents, len(elements))
-    accumulator.max_documents = max(accumulator.max_documents, len(elements))
+    num_documents = len(element.prediction)
+    accumulator.total_documents += num_documents
+    accumulator.min_documents = min(accumulator.min_documents, num_documents)
+    accumulator.max_documents = max(accumulator.max_documents, num_documents)
     return accumulator
 
   def merge_accumulators(

@@ -265,13 +265,19 @@ def to_label_prediction_example_weight(
 
   example_weight = to_numpy(example_weight)
 
-  if example_weight.size != 1:
-    raise ValueError(
-        'expected example weight to be size = 1, but instead it has '
-        'size = {}: example_weight={}, model_name={}, output_name={}, '
-        'sub_key={}, StandardMetricInputs={}\n\nThis is most likely a '
-        'configuration error.'.format(example_weight.size, example_weight,
-                                      model_name, output_name, sub_key, inputs))
+  # Query based metrics group by a query_id which will result in the
+  # example_weight being replicated once for each matching example in the group.
+  # When this happens convert the example_weight back to a single value.
+  if example_weight.size > 1:
+    example_weight = example_weight.flatten()
+    if not np.all(example_weight == example_weight[0]):
+      raise ValueError(
+          'if example_weight size > 0, the values must all be the same: '
+          'example_weight={} model_name={}, output_name={}, '
+          'sub_key={}, StandardMetricInputs={}\n\nThis is most likely a '
+          'configuration error.'.format(example_weight, model_name, output_name,
+                                        sub_key, inputs))
+    example_weight = np.array(example_weight[0])
 
   if sub_key is not None:
     if sub_key.class_id is not None:

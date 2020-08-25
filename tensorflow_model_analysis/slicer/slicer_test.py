@@ -475,6 +475,85 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(metrics, check_result)
 
+  def testMultidimSlices(self):
+    data = [{
+        'features': {
+            'gender': [['f'], ['f']],
+            'age': [[13], [13]],
+            'interest': [['cars'], ['cars']]
+        },
+        'predictions': [[1], [1]],
+        'labels': [[0], [0]],
+        constants.SLICE_KEY_TYPES_KEY:
+            np.array([[(), (('gender', 'f'),)], [(), (('gender', 'f'),)]])
+    }, {
+        'features': {
+            'gender': [['f'], ['m']],
+            'age': [[13], [10]],
+            'interest': [['cars'], ['cars']]
+        },
+        'predictions': [[1], [1]],
+        'labels': [[0], [0]],
+        constants.SLICE_KEY_TYPES_KEY: [[(), (('gender', 'f'),)],
+                                        [(), (('gender', 'm'),)]]
+    }]
+
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline
+          | 'CreateTestInput' >> beam.Create(data, reshuffle=False)
+          | 'FanoutSlices' >> slicer.FanoutSlices())
+
+      def check_result(got):
+        try:
+          self.assertEqual(5, len(got), 'got: %s' % got)
+          del data[0][constants.SLICE_KEY_TYPES_KEY]
+          del data[1][constants.SLICE_KEY_TYPES_KEY]
+          expected_result = [
+              ((), data[0]),
+              ((), data[1]),
+              ((('gender', 'f'),), data[0]),
+              ((('gender', 'f'),), data[1]),
+              ((('gender', 'm'),), data[1]),
+          ]
+          self.assertCountEqual(
+              sorted(got, key=lambda x: x[0]),
+              sorted(expected_result, key=lambda x: x[0]))
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result)
+
+  def testMultidimOverallSlices(self):
+    data = [{
+        constants.SLICE_KEY_TYPES_KEY: np.array([[()], [()]])
+    }, {
+        constants.SLICE_KEY_TYPES_KEY: np.array([[()], [()]])
+    }]
+
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline
+          | 'CreateTestInput' >> beam.Create(data, reshuffle=False)
+          | 'FanoutSlices' >> slicer.FanoutSlices())
+
+      def check_result(got):
+        try:
+          self.assertEqual(2, len(got), 'got: %s' % got)
+          del data[0][constants.SLICE_KEY_TYPES_KEY]
+          del data[1][constants.SLICE_KEY_TYPES_KEY]
+          expected_result = [
+              ((), data[0]),
+              ((), data[1]),
+          ]
+          self.assertCountEqual(
+              sorted(got, key=lambda x: x[0]),
+              sorted(expected_result, key=lambda x: x[0]))
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result)
+
   def testFilterOutSlices(self):
     slice_key_1 = (('slice_key', 'slice1'),)
     slice_key_2 = (('slice_key', 'slice2'),)

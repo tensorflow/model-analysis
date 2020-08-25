@@ -151,7 +151,7 @@ def _filter_and_separate_computations(
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(List[types.Extracts])
+@beam.typehints.with_output_types(types.Extracts)
 def _GroupByQueryKey(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     query_key: Text,
@@ -186,7 +186,8 @@ def _GroupByQueryKey(  # pylint: disable=invalid-name
   return (extracts
           | 'KeyByQueryId' >> beam.Map(key_by_query_key, query_key)
           | 'GroupByKey' >> beam.CombinePerKey(beam.combiners.ToListCombineFn())
-          | 'DropQueryId' >> beam.Map(lambda kv: kv[1]))
+          | 'DropQueryId' >> beam.Map(lambda kv: kv[1])
+          | 'MergeExtracts' >> beam.Map(util.merge_extracts))
 
 
 class _PreprocessorDoFn(beam.DoFn):
@@ -240,16 +241,9 @@ class _PreprocessorDoFn(beam.DoFn):
       if computation.preprocessor is not None:
         computation.preprocessor.teardown()
 
-  def process(
-      self, extracts: Union[types.Extracts,
-                            List[types.Extracts]]) -> Iterable[Any]:
+  def process(self, extracts: types.Extracts) -> Iterable[Any]:
     start_time = datetime.datetime.now()
     self._evaluate_num_instances.inc(1)
-
-    # Assume multiple extracts (i.e. query key used) and reset after if only one
-    list_of_extracts = extracts
-    if not isinstance(extracts, list):
-      list_of_extracts = [extracts]
 
     use_default_combiner_input = None
     features = None
@@ -261,35 +255,25 @@ class _PreprocessorDoFn(beam.DoFn):
       elif isinstance(computation.preprocessor,
                       metric_types.FeaturePreprocessor):
         if features is None:
-          features = [{} for i in range(len(list_of_extracts))]
-        for i, e in enumerate(list_of_extracts):
-          for v in computation.preprocessor.process(e):
-            features[i].update(v)
+          features = {}
+        for v in computation.preprocessor.process(extracts):
+          features.update(v)
         combiner_inputs.append(None)
         use_default_combiner_input = True
       else:
         combiner_inputs.append(next(computation.preprocessor.process(extracts)))
 
-    output = {}
-    # Merge the keys for all extracts together.
-    slice_key_types = {}
-    for e in list_of_extracts:
-      for s in e[constants.SLICE_KEY_TYPES_KEY]:
-        slice_key_types[s] = True
-    output[constants.SLICE_KEY_TYPES_KEY] = list(slice_key_types.keys())
-    output[_COMBINER_INPUTS_KEY] = combiner_inputs
+    output = {
+        constants.SLICE_KEY_TYPES_KEY: extracts[constants.SLICE_KEY_TYPES_KEY],
+        _COMBINER_INPUTS_KEY: combiner_inputs
+    }
     if use_default_combiner_input:
       default_combiner_input = []
-      for i, e in enumerate(list_of_extracts):
-        if features is not None:
-          e = copy.copy(e)
-          e.update({constants.FEATURES_KEY: features[i]})  # pytype: disable=attribute-error
-        default_combiner_input.append(
-            metric_util.to_standard_metric_inputs(
-                e, include_features=features is not None))
-      if not isinstance(extracts, list):
-        # Not a list, reset to single StandardMetricInput value
-        default_combiner_input = default_combiner_input[0]
+      if features is not None:
+        extracts = copy.copy(extracts)
+        extracts.update({constants.FEATURES_KEY: features})
+      default_combiner_input = metric_util.to_standard_metric_inputs(
+          extracts, include_features=features is not None)
       output[_DEFAULT_COMBINER_INPUT_KEY] = default_combiner_input
     yield output
 
@@ -465,8 +449,8 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     cross_slice_specs: List of CrossSlicingSpec.
     compute_with_sampling: True to compute with bootstrap sampling. This allows
       _ComputePerSlice to be used to generate unsampled values from the whole
-      data set, as well as bootstrap resamples, in which each element is
-      treated as if it showed up p ~ poission(1) times.
+      data set, as well as bootstrap resamples, in which each element is treated
+      as if it showed up p ~ poission(1) times.
     num_jackknife_samples: number of delete-d jackknife estimates to use in
       computing standard errors on metrics.
     skip_ci_metric_keys: List of metric keys for which to skip confidence
@@ -610,7 +594,7 @@ def _get_confidence_interval_params(
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Union[types.Extracts, List[types.Extracts]])
+@beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Any)
 def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,

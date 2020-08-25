@@ -148,6 +148,93 @@ class UtilTest(tf.test.TestCase):
     with self.assertRaisesRegexp(RuntimeError, 'Features missing'):
       util.get_features_from_extracts({})
 
+  def testMergeExtracts(self):
+    extracts = [
+        {
+            'features': {
+                'feature_1':
+                    np.array([1.0, 2.0]),
+                'feature_2':
+                    np.array([1.0, 2.0]),
+                'feature_3':
+                    tf.compat.v1.SparseTensorValue(
+                        indices=np.array([[0, 1]]),
+                        values=np.array([1]),
+                        dense_shape=(1, 3))
+            },
+            'labels': np.array([1.0]),
+            'example_weights': np.array(0.0),
+            'predictions': {
+                'model1': np.array([0.1, 0.2]),
+                'model2': np.array([0.1, 0.2])
+            },
+            '_slice_key_types': [()]
+        },
+        {
+            'features': {
+                'feature_1':
+                    np.array([3.0, 4.0]),
+                'feature_2':
+                    np.array([3.0, 4.0]),
+                'feature_3':
+                    tf.compat.v1.SparseTensorValue(
+                        indices=np.array([[0, 2]]),
+                        values=np.array([2]),
+                        dense_shape=(1, 3))
+            },
+            'labels': np.array([0.0]),
+            'example_weights': np.array(0.5),
+            'predictions': {
+                'model1': np.array([0.3, 0.4]),
+                'model2': np.array([0.3, 0.4])
+            },
+            '_slice_key_types': [()]
+        },
+        {
+            'features': {
+                'feature_1':
+                    np.array([5.0, 6.0]),
+                'feature_2':
+                    np.array([5.0, 6.0]),
+                'feature_3':
+                    tf.compat.v1.SparseTensorValue(
+                        indices=np.array([[0, 0]]),
+                        values=np.array([3]),
+                        dense_shape=(1, 3))
+            },
+            'labels': np.array([1.0]),
+            'example_weights': np.array(1.0),
+            'predictions': {
+                'model1': np.array([0.5, 0.6]),
+                'model2': np.array([0.5, 0.6])
+            },
+            '_slice_key_types': [()]
+        },
+    ]
+
+    expected = {
+        'features': {
+            'feature_1':
+                np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
+            'feature_2':
+                np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
+            'feature_3':
+                tf.compat.v1.SparseTensorValue(
+                    indices=np.array([[0, 1], [1, 2], [2, 0]]),
+                    values=np.array([1, 2, 3]),
+                    dense_shape=np.array([3, 3]))
+        },
+        'labels': np.array([1.0, 0.0, 1.0]),
+        'example_weights': np.array([0.0, 0.5, 1.0]),
+        'predictions': {
+            'model1': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]),
+            'model2': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
+        },
+        '_slice_key_types': np.array([(), (), ()])
+    }
+    self.assertAllClose(expected, util.merge_extracts(extracts))
+
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()
