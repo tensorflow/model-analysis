@@ -80,6 +80,13 @@ testSuite({
     assertEquals('0', fairness_metric2.threshold);
 
     const fairness_metric3 = Util.extractFairnessMetric('neutral_rate');
-    assertNull('negative_rate', fairness_metric3);
+    assertNull('neutral_rate', fairness_metric3);
+
+    const fairness_metric4 = Util.extractFairnessMetric('accuracy');
+    assertNull('accuracy', fairness_metric4);
+
+    const fairness_metric5 = Util.extractFairnessMetric('accuracy@0.5');
+    assertEquals('accuracy', fairness_metric5.name);
+    assertEquals('0.5', fairness_metric5.threshold);
   }
 });

@@ -42,6 +42,11 @@ const FAIRNESS_METRICS_ = [
   'true_negative_rate',
   'positive_rate',
   'negative_rate',
+  'false_discovery_rate',
+  'false_omission_rate',
+  'accuracy',
+  'precision',
+  'recall',
 ];
 
 /**
