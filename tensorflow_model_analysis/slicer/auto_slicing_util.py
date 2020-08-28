@@ -148,26 +148,36 @@ def _compute_effect_size(slice_metric: float, slice_std_dev: float,
 def _get_metrics_as_dict(
     metrics: metrics_for_slice_pb2.MetricsForSlice
 ) -> Dict[Text, types.ValueWithTDistribution]:
-  """Convert slice metrics to a Dict of types.ValueWithTDistribution."""
+  """Convert slice metrics to a Dict of types.ValueWithTDistribution.
+
+  For metrics missing the confidence interval message, an empty
+  ValueWithTDistribution will be created and the double_value or
+  bounded_value.value will be set as the unsampled value. Any metrics which are
+  not represented as double_values or bounded_values will be ommitted from the
+  result.
+
+  Args:
+    metrics: The MetricsForSlice proto to be converted.
+
+  Returns:
+    A dict from metric keys names to ValueWithTDistributions.
+  """
   result = {}
   for metric in metrics.metric_keys_and_values:
     value_type = metric.value.WhichOneof('type')
+    unsampled_value = float('nan')
     if value_type == 'bounded_value':
-      t_distribution_value = (
-          metric.value.confidence_interval.t_distribution_value)
-      result[metric.key.name] = types.ValueWithTDistribution(
-          sample_mean=t_distribution_value.sample_mean.value,
-          sample_standard_deviation=t_distribution_value
-          .sample_standard_deviation.value,
-          sample_degrees_of_freedom=t_distribution_value
-          .sample_degrees_of_freedom.value,
-          unsampled_value=t_distribution_value.unsampled_value.value)
+      unsampled_value = metric.value.bounded_value.value.value
     elif value_type == 'double_value':
-      result[metric.key.name] = types.ValueWithTDistribution(
-          sample_mean=-1,
-          sample_standard_deviation=-1,
-          sample_degrees_of_freedom=-1,
-          unsampled_value=metric.value.double_value.value)
+      unsampled_value = metric.value.double_value.value
+    t_distribution_value = metric.value.confidence_interval.t_distribution_value
+    result[metric.key.name] = types.ValueWithTDistribution(
+        sample_mean=t_distribution_value.sample_mean.value,
+        sample_standard_deviation=t_distribution_value.sample_standard_deviation
+        .value,
+        sample_degrees_of_freedom=t_distribution_value.sample_degrees_of_freedom
+        .value,
+        unsampled_value=unsampled_value)
   return result
 
 
