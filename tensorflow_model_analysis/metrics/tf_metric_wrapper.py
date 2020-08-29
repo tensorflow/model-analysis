@@ -19,6 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import collections
 import importlib
 
 from typing import Any, Dict, List, Optional, Text, Type, Tuple, Union
@@ -117,20 +118,21 @@ def tf_metric_computations(
     custom_objects = _custom_objects(non_confusion_matrix_metrics)
     metric_keys, metric_configs, loss_configs = _metric_keys_and_configs(
         non_confusion_matrix_metrics, model_name, sub_key)
-    computations.append(
-        metric_types.MetricComputation(
-            keys=metric_keys,
-            preprocessor=None,
-            combiner=_CompilableMetricsCombiner(
-                metric_configs,
-                loss_configs,
-                custom_objects,
-                eval_config,
-                model_name,
-                sub_key,
-                class_weights,
-                batch_size,
-            )))
+    for sub_key, keys in metric_keys.items():
+      computations.append(
+          metric_types.MetricComputation(
+              keys=keys,
+              preprocessor=None,
+              combiner=_CompilableMetricsCombiner(
+                  metric_configs[sub_key],
+                  loss_configs[sub_key],
+                  custom_objects,
+                  eval_config,
+                  model_name,
+                  sub_key,
+                  class_weights,
+                  batch_size,
+              )))
 
   return computations
 
@@ -180,13 +182,17 @@ def _separate_confusion_matrix_metrics(
   for output_name, metrics in metrics.items():
     for metric in metrics:
       # We are using type instead of isinstance here because we only want to
-      # match specific types and not their subclasses.
+      # match specific types and not their subclasses. While metric's using
+      # top_k can also be computed using the confusion matrix, they are computed
+      # using only a single threshold in keras which is more efficient so we
+      # exclude them.
       if (type(metric) in (  # pylint: disable=unidiomatic-typecheck
           tf.keras.metrics.AUC, tf.keras.metrics.SpecificityAtSensitivity,
           tf.keras.metrics.SensitivityAtSpecificity,
           tf.keras.metrics.TruePositives, tf.keras.metrics.FalsePositives,
           tf.keras.metrics.TrueNegatives, tf.keras.metrics.FalseNegatives,
-          tf.keras.metrics.Precision, tf.keras.metrics.Recall)):
+          tf.keras.metrics.Precision, tf.keras.metrics.Recall) and
+          not (hasattr(metric, _TOP_K_KEY) and metric.top_k is not None)):
         if output_name not in confusion_matrix_metrics:
           confusion_matrix_metrics[output_name] = []
         confusion_matrix_metrics[output_name].append(metric)
@@ -219,33 +225,40 @@ def _verify_and_update_sub_key(model_name: Text, output_name: Text,
     return sub_key
 
 
+_KeysBySubKey = Dict[Optional[metric_types.SubKey],
+                     List[metric_types.MetricKey]]
+_ConfigsBySubKey = Dict[Optional[metric_types.SubKey],
+                        Dict[Text, List[Dict[Text, Any]]]]
+
+
 def _metric_keys_and_configs(
     metrics: Dict[Text, List[_TFMetricOrLoss]], model_name: Text,
     sub_key: Optional[metric_types.SubKey]
-) -> Tuple[List[metric_types.MetricKey], Dict[Text, List[Dict[Text, Any]]],
-           Dict[Text, List[Dict[Text, Any]]]]:
-  """Returns the metric keys, metric configs, and loss configs for metrics."""
-  metric_keys = []
-  metric_configs = {}
-  loss_configs = {}
+) -> Tuple[_KeysBySubKey, _ConfigsBySubKey, _ConfigsBySubKey]:
+  """Returns metric keys, metric configs, and loss configs by sub key."""
+  metric_keys = collections.defaultdict(list)
+  metric_configs = collections.defaultdict(dict)
+  loss_configs = collections.defaultdict(dict)
   for output_name, metrics_list in metrics.items():
-    metric_config_list = []
-    loss_config_list = []
     for metric in metrics_list:
-      metric_keys.append(
+      updated_sub_key = _verify_and_update_sub_key(model_name, output_name,
+                                                   sub_key, metric)
+      if output_name not in metric_configs[updated_sub_key]:
+        metric_configs[updated_sub_key][output_name] = []
+      if output_name not in loss_configs[updated_sub_key]:
+        loss_configs[updated_sub_key][output_name] = []
+      metric_keys[updated_sub_key].append(
           metric_types.MetricKey(
               name=metric.name,
               model_name=model_name,
               output_name=output_name,
-              sub_key=_verify_and_update_sub_key(model_name, output_name,
-                                                 sub_key, metric)))
+              sub_key=updated_sub_key))
       if isinstance(metric, tf.keras.metrics.Metric):
-        metric_config_list.append(metric_util.serialize_metric(metric))
+        metric_configs[updated_sub_key][output_name].append(
+            metric_util.serialize_metric(metric))
       elif isinstance(metric, tf.keras.losses.Loss):
-        loss_config_list.append(metric_util.serialize_loss(metric))
-
-    metric_configs[output_name] = metric_config_list
-    loss_configs[output_name] = loss_config_list
+        loss_configs[updated_sub_key][output_name].append(
+            metric_util.serialize_loss(metric))
   return metric_keys, metric_configs, loss_configs
 
 
@@ -507,6 +520,9 @@ class _CompilableMetricsCombiner(beam.CombineFn):
         constants.METRICS_NAMESPACE,
         'keras_compilable_metrics_total_input_byte_size')
 
+  def _is_top_k(self):
+    return self._sub_key and self._sub_key.top_k is not None
+
   def _setup_if_needed(self):
     if self._metrics is None:
       self._metrics = {}
@@ -552,9 +568,13 @@ class _CompilableMetricsCombiner(beam.CombineFn):
               eval_config=self._eval_config,
               model_name=self._model_name,
               output_name=output_name,
-              sub_key=self._sub_key,
+              # Skip top_k processing and let keras perform top_k calculations
+              sub_key=self._sub_key if not self._is_top_k() else None,
               class_weights=self._class_weights,
               flatten=self._class_weights is not None)):
+        # Keras requires non-sparse keys for top_k calcuations.
+        if self._is_top_k() and label.shape != prediction.shape:
+          label = metric_util.one_hot(label, prediction)
         accumulator.add_input(i, label, prediction, example_weight)
     if (accumulator.len_inputs() >= self._batch_size or
         accumulator.total_input_byte_size >=

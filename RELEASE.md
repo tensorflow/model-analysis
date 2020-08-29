@@ -6,6 +6,8 @@
 
 ## Bug fixes and other changes
 
+*   Fix issue with precision@k and recall@k giving incorrect values when
+    negative thresholds are used (i.e. keras defaults).
 *   Depends on `absl-py>=0.9,<0.11`.
 *   Depends on `pandas>=1.0,<2`.
 *   Depends on `protobuf>=3.9.2,<4`.

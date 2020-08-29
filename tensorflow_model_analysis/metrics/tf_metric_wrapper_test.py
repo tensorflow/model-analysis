@@ -240,18 +240,24 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   @parameterized.named_parameters(
-      ('precision@2', 'precision@2', 0.33333),
-      ('recall@2', 'recall@2', 0.5),
-      ('precision@3', 'precision@3', 0.22222),
-      ('recall@3', 'recall@3', 0.5),
+      ('precision@2', 'precision@2', 1.6 / (1.6 + 3.2)),
+      ('recall@2', 'recall@2', 1.6 / (1.6 + 0.8)),
+      ('precision@3', 'precision@3', 1.9 / (1.9 + 5.3)),
+      ('recall@3', 'recall@3', 1.9 / (1.9 + 0.5)),
   )
   def testMultiClassMetrics(self, metric_name, expected_value):
-    computations = tf_metric_wrapper.tf_metric_computations(
-        [self._tf_metric_by_name(metric_name)])
-    histogram = computations[0]
-    matrix = computations[1]
-    metric = computations[2]
+    metric = tf_metric_wrapper.tf_metric_computations(
+        [self._tf_metric_by_name(metric_name)])[0]
 
+    # top_k = 2
+    #   TP = 0.5*0 + 0.7*1 + 0.9*1 + 0.3*0 = 1.6
+    #   FP = 0.5*2 + 0.7*1 + 0.9*1 + 0.3*2 = 3.2
+    #   FN = 0.5*1 + 0.7*0 + 0.9*0 + 0.3*1 = 0.8
+    #
+    # top_k = 3
+    #   TP = 0.5*0 + 0.7*1 + 0.9*1 + 0.3*1 = 1.9
+    #   FP = 0.5*3 + 0.7*2 + 0.9*2 + 0.3*2 = 5.3
+    #   FN = 0.5*1 + 0.7*0 + 0.9*0 + 0.3*0 = 0.5
     example1 = {
         'labels': np.array([2]),
         'predictions': np.array([0.1, 0.2, 0.1, 0.25, 0.35]),
@@ -268,7 +274,7 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
         'example_weights': np.array([0.9]),
     }
     example4 = {
-        'labels': np.array([4]),
+        'labels': np.array([1]),
         'predictions': np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
         'example_weights': np.array([0.3]),
     }
@@ -280,11 +286,7 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([example1, example2, example3, example4])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(
-              lambda x: (x[0], metric.result(x[1]))))  # pyformat: disable
+          | 'Combine' >> beam.CombinePerKey(metric.combiner))
 
       # pylint: enable=no-value-for-parameter
 
