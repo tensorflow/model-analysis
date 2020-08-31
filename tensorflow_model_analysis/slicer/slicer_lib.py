@@ -579,9 +579,13 @@ def FanoutSlices(  # pylint: disable=invalid-name
   return result
 
 
+# TFMA v1 uses Text for its keys while TFMA v2 uses MetricKey
+_MetricsDict = Dict[Any, Any]
+
+
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Tuple[SliceKeyType, types.Extracts])
-@beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
+@beam.typehints.with_input_types(Tuple[SliceKeyType, _MetricsDict])
+@beam.typehints.with_output_types(Tuple[SliceKeyType, _MetricsDict])
 def FilterOutSlices(  # pylint: disable=invalid-name
     values: beam.pvalue.PCollection,
     slices_count: beam.pvalue.PCollection,
@@ -615,8 +619,8 @@ def FilterOutSlices(  # pylint: disable=invalid-name
       self.error_metric_key = error_metric_key
 
     def process(
-        self, element: Tuple[SliceKeyType, Dict[Text, Any]]
-    ) -> Generator[Tuple[SliceKeyType, Dict[Text, Any]], None, None]:
+        self, element: Tuple[SliceKeyType, _MetricsDict]
+    ) -> Generator[Tuple[SliceKeyType, _MetricsDict], None, None]:
       """Filter out small slices.
 
       For slices (excluding overall slice) with examples count lower than

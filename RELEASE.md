@@ -6,6 +6,7 @@
 
 ## Bug fixes and other changes
 
+*   Updated the type hint of FilterOutSlices.
 *   Fix issue with precision@k and recall@k giving incorrect values when
     negative thresholds are used (i.e. keras defaults).
 *   Depends on `absl-py>=0.9,<0.11`.
@@ -71,7 +72,7 @@
     was being displayed even if no slice was omitted.
 *   Fix issue with slice_spec.is_slice_applicable not working for float, int,
     etc types that are encoded as strings.
-*   Wrap long strings in table cells in Fairness Indicators UI
+*   Wrap long strings in table cells in Fairness Indicators UI.
 *   Depends on `apache-beam[gcp]>=2.23,<3`.
 *   Depends on `pyarrow>=0.17,<0.18`.
 *   Depends on `scipy>=1.4.1,<2`
