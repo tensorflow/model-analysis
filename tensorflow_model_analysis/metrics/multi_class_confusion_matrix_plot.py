@@ -92,7 +92,6 @@ def _multi_class_confusion_matrix_plot(
       multi_class_confusion_matrix_metrics.multi_class_confusion_matrices(
           thresholds=thresholds,
           num_thresholds=num_thresholds,
-          name=name,
           eval_config=eval_config,
           model_name=model_name,
           output_name=output_name))

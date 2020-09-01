@@ -82,7 +82,6 @@ def _multi_class_confusion_matrix_at_thresholds(
   # Make sure matrices are calculated.
   matrices_computations = multi_class_confusion_matrices(
       thresholds=thresholds,
-      name=name,
       eval_config=eval_config,
       model_name=model_name,
       output_name=output_name)
