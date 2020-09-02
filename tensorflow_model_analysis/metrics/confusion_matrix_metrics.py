@@ -70,7 +70,7 @@ class ConfusionMatrixMetric(
         name=name)  # pytype: disable=wrong-arg-types
 
   @abc.abstractmethod
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     """Function for computing metric value from TP, TN, FP, FN values."""
     raise NotImplementedError('Must be implemented in subclasses.')
 
@@ -111,8 +111,8 @@ class ConfusionMatrixMetric(
       values = []
       for i in range(len(thresholds)):
         values.append(
-            self.compute(matrices.tp[i], matrices.tn[i], matrices.fp[i],
-                         matrices.fn[i]))
+            self.result(matrices.tp[i], matrices.tn[i], matrices.fp[i],
+                        matrices.fn[i]))
       return {key: values[0] if len(thresholds) == 1 else np.array(values)}
 
     derived_computation = metric_types.DerivedMetricComputation(
@@ -143,7 +143,7 @@ class Specificity(ConfusionMatrixMetric):
     """
     super(Specificity, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fn
     denominator = tn + fp
     if denominator > 0.0:
@@ -169,7 +169,7 @@ class FallOut(ConfusionMatrixMetric):
     """
     super(FallOut, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fn
     denominator = fp + tn
     if denominator > 0.0:
@@ -195,7 +195,7 @@ class MissRate(ConfusionMatrixMetric):
     """
     super(MissRate, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn, fp
     denominator = fn + tp
     if denominator > 0.0:
@@ -222,7 +222,7 @@ class NegativePredictiveValue(ConfusionMatrixMetric):
     super(NegativePredictiveValue, self).__init__(
         name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fp
     denominator = tn + fn
     if denominator > 0.0:
@@ -248,7 +248,7 @@ class FalseDiscoveryRate(ConfusionMatrixMetric):
     """
     super(FalseDiscoveryRate, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn, fn
     denominator = fp + tp
     if denominator > 0.0:
@@ -274,7 +274,7 @@ class FalseOmissionRate(ConfusionMatrixMetric):
     """
     super(FalseOmissionRate, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fp
     denominator = fn + tn
     if denominator > 0.0:
@@ -300,7 +300,7 @@ class Prevalence(ConfusionMatrixMetric):
     """
     super(Prevalence, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     denominator = tp + tn + fp + fn
     if denominator > 0.0:
       return (tp + fn) / denominator
@@ -325,7 +325,7 @@ class PrevalenceThreshold(ConfusionMatrixMetric):
     """
     super(PrevalenceThreshold, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     tpr_denominator = tp + fn
     tnr_denominator = tn + fp
     if tpr_denominator > 0.0 and tnr_denominator > 0.0:
@@ -353,7 +353,7 @@ class ThreatScore(ConfusionMatrixMetric):
     """
     super(ThreatScore, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn
     denominator = tp + fn + fp
     if denominator > 0.0:
@@ -379,7 +379,7 @@ class BalancedAccuracy(ConfusionMatrixMetric):
     """
     super(BalancedAccuracy, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     tpr_denominator = tp + fn
     tnr_denominator = tn + fp
     if tpr_denominator > 0.0 and tnr_denominator > 0.0:
@@ -407,7 +407,7 @@ class F1Score(ConfusionMatrixMetric):
     """
     super(F1Score, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn
     denominator = 2 * tp + fp + fn
     if denominator > 0.0:
@@ -437,7 +437,7 @@ class MatthewsCorrelationCoefficent(ConfusionMatrixMetric):
     super(MatthewsCorrelationCoefficent, self).__init__(
         name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     denominator = _pos_sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
     if denominator > 0.0:
       return (tp * tn - fp * fn) / denominator
@@ -462,7 +462,7 @@ class FowlkesMallowsIndex(ConfusionMatrixMetric):
     """
     super(FowlkesMallowsIndex, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn
     ppv_denominator = tp + fp
     tpr_denominator = tp + fn
@@ -491,7 +491,7 @@ class Informedness(ConfusionMatrixMetric):
     """
     super(Informedness, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     positives = tp + fn
     negatives = tn + fp
     if positives > 0.0 and negatives > 0.0:
@@ -519,7 +519,7 @@ class Markedness(ConfusionMatrixMetric):
     """
     super(Markedness, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     ppv_denominator = tp + fp
     npv_denominator = tn + fn
     if ppv_denominator > 0.0 and npv_denominator > 0.0:
@@ -548,7 +548,7 @@ class PositiveLikelihoodRatio(ConfusionMatrixMetric):
     super(PositiveLikelihoodRatio, self).__init__(
         name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     tpr_denominator = tp + fn
     fpr_denominator = fp + tn
     if tpr_denominator > 0.0 and fpr_denominator > 0.0 and fp > 0.0:
@@ -577,7 +577,7 @@ class NegativeLikelihoodRatio(ConfusionMatrixMetric):
     super(NegativeLikelihoodRatio, self).__init__(
         name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     fnr_denominator = fn + tp
     tnr_denominator = tn + fp
     if fnr_denominator > 0.0 and tnr_denominator > 0.0 and tn > 0.0:
@@ -605,7 +605,7 @@ class DiagnosticOddsRatio(ConfusionMatrixMetric):
     """
     super(DiagnosticOddsRatio, self).__init__(name=name, thresholds=thresholds)
 
-  def compute(self, tp: float, tn: float, fp: float, fn: float) -> float:
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     if fn > 0.0 and fp > 0.0 and tn > 0.0:
       return (tp / fn) / (fp / tn)
     else:

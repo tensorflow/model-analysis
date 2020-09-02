@@ -31,6 +31,8 @@
     updated). As part of this change the `tfma.metrics.NDCG`,
     `tfma.metrics.MinValuePosition`, and `tfma.metrics.QueryStatistics` have
     been updated.
+*   Renamed `ConfusionMatrixMetric.compute` to `ConfusionMatrixMetric.result`
+    for consistency with other APIs.
 
 ## Deprecations
 
