@@ -101,8 +101,6 @@ def _is_significant_slice(slice_metric: float, slice_std_dev: float,
                           comparison_type: Text,
                           alpha: float) -> Tuple[bool, float]:
   """Perform statistical significance testing."""
-  assert base_std_dev > 0, ('base_std_dev must be positive, but got '
-                            '{}.'.format(base_std_dev))
   assert slice_std_dev > 0, ('slice_std_dev must be positive, but got '
                              '{}.'.format(slice_std_dev))
   assert base_weight > 1, ('base_weight must be greater than 1, but got '
@@ -331,6 +329,8 @@ def partition_slices(
       logging.warning('Ignoring slice: %s with example count: %s ', slice_key,
                       slice_metrics_dict['example_count'].unsampled_value)
       continue
+    if overall_metrics_dict[metric_key].sample_standard_deviation == 0:
+      logging.warning('Overall metric has zero standard deviation.')
     # Only consider statistically significant slices.
     is_significant, p_value = _is_significant_slice(
         slice_metrics_dict[metric_key].unsampled_value,

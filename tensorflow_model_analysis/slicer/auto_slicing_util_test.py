@@ -635,6 +635,19 @@ class AutoSlicingUtilTest(tf.test.TestCase):
         auto_slicing_util.remove_subset_slices(input_slices), expected_slices)
     self.assertCountEqual(auto_slicing_util.remove_subset_slices([]), [])
 
+  def test_is_significant_slice(self):
+    self.assertEqual(
+        auto_slicing_util._is_significant_slice(0.8, 0.001, 100, 0.9, 0.001,
+                                                1000, 'LOWER', 0.01)[0], True)
+    # Test zero std. deviation for overall dataset.
+    self.assertEqual(
+        auto_slicing_util._is_significant_slice(0.8, 0.001, 100, 0.9, 0, 1000,
+                                                'LOWER', 0.01)[0], True)
+    # Test zero std. deviation for slice.
+    with self.assertRaises(AssertionError):
+      auto_slicing_util._is_significant_slice(0.8, 0, 100, 0.9, 0, 1000,
+                                              'LOWER', 0.01)
+
 
 if __name__ == '__main__':
   tf.test.main()
