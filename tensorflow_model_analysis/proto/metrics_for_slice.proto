@@ -205,7 +205,7 @@ message MetricValue {
     ValueAtCutoffs value_at_cutoffs = 4;
     ConfusionMatrixAtThresholds confusion_matrix_at_thresholds = 5;
     MultiClassConfusionMatrixAtThresholds
-        multi_class_confusion_matrix_at_thresholds = 15;
+        multi_class_confusion_matrix_at_thresholds = 11;
     UnknownType unknown_type = 3;
     bytes bytes_value = 6;
     ArrayValue array_value = 7;
