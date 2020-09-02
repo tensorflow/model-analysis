@@ -4,6 +4,8 @@
 
 ## Major Features and Improvements
 
+*   Use TFXIO and batched extractors by default in TFMA.
+
 ## Bug fixes and other changes
 
 *   Updated the type hint of FilterOutSlices.
