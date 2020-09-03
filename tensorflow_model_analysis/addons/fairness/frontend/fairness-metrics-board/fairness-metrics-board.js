@@ -161,15 +161,20 @@ export class FairnessMetricsBoard extends PolymerElement {
    * @private
    */
   containsOmittedSliceError_(slicingMetric) {
-    if (!slicingMetric) {
+    const omittedSliceMessage = slicingMetric && slicingMetric['metrics'] &&
+        slicingMetric['metrics'][OMITTED_SLICE_ERROR_KEY];
+    if (!omittedSliceMessage || typeof omittedSliceMessage !== 'string') {
       return false;
     }
-    if (slicingMetric['metrics'] &&
-        slicingMetric['metrics'][OMITTED_SLICE_ERROR_KEY] &&
-        typeof slicingMetric['metrics'][OMITTED_SLICE_ERROR_KEY] === 'string' &&
-        atob(slicingMetric['metrics'][OMITTED_SLICE_ERROR_KEY])
-            .includes(OMITTED_SLICE_ERROR_MESSAGE)) {
+    // The message is either in clear text.
+    if (omittedSliceMessage.includes(OMITTED_SLICE_ERROR_MESSAGE)) {
       return true;
+    }
+    // Or base64 encoded.
+    try {
+      return atob(omittedSliceMessage).includes(OMITTED_SLICE_ERROR_MESSAGE);
+    } catch (err) {
+      console.log(err);
     }
     return false;
   }

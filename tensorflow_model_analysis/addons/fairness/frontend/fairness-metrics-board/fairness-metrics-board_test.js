@@ -109,6 +109,15 @@ suite('fairness-metrics-board tests', () => {
           'RXhhbXBsZSBjb3VudCBmb3IgdGhpcyBzbGljZSBrZXkgaXMgbG93ZXIgdGhhbiB0aGUgbWluaW11\nbSByZXF1aXJlZCB2YWx1ZTogMTAuIE5vIGRhdGEgaXMgYWdncmVnYXRlZA==',
     }
   });
+  BOUNDED_VALUE_DATA_WITH_OMITTED_SLICE.push({
+    'slice': 'year:14',
+    'sliceValue': '14',
+    'metrics': {
+      '__ERROR__':
+          'Example count for this slice key is lower than the minimum' +
+          ' required value: 30. No data is aggregated for this slice.',
+    }
+  });
 
   test('checkMetrics', done => {
     fairness = fixture('test-fixture');
@@ -203,6 +212,7 @@ suite('fairness-metrics-board tests', () => {
           fairness.shadowRoot.querySelector('fairness-privacy-container');
 
       assert.deepEqual(privacyContainer.hidden, false);
+      assert.deepEqual(privacyContainer.omittedSlices, ['year:13', 'year:14']);
       done();
     };
 
