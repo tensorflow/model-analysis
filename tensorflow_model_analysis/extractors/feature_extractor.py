@@ -87,8 +87,9 @@ def _AugmentExtracts(data: Dict[Text, Any], prefix: Text, excludes: List[bytes],
       extracts[col_name] = types.MaterializedColumn(
           name=col_name, value=val.values)
 
-    elif isinstance(val, np.ndarray):
-      val = val[0]  # only support first dim for now.
+    elif isinstance(val, np.ndarray) or isinstance(val, list):
+      # Only support first dim for now
+      val = val[0] if len(val) > 0 else []  # pylint: disable=g-explicit-length-test
       extracts[col_name] = types.MaterializedColumn(name=col_name, value=val)
 
     else:
