@@ -73,7 +73,7 @@ export class FairnessMetricSummary extends PolymerElement {
        * The list of available thresholds.
        * @type {!Array<string>}
        */
-      thresholds: {type: Array, computed: 'computeThresholds_(data, metric)'},
+      thresholds_: {type: Array, computed: 'computeThresholds_(data, metric)'},
 
       /**
        * The list of selected thresholds.
@@ -121,7 +121,7 @@ export class FairnessMetricSummary extends PolymerElement {
       metrics_: {
         type: Array,
         computed:
-            'computeMetrics_(metric, thresholds, selectedThresholds_.*, ' +
+            'computeMetrics_(metric, thresholds_, selectedThresholds_.*, ' +
             'baseline, data)'
       },
 
@@ -206,9 +206,7 @@ export class FairnessMetricSummary extends PolymerElement {
        * The selected parameter to sort on - can be 'Slice' or 'Eval'.
        * @private {string}
        */
-      sort_: {
-        type: String, value: 'Slice'
-      },
+      sort_: {type: String, value: 'Slice'},
     };
   }
 
@@ -218,7 +216,7 @@ export class FairnessMetricSummary extends PolymerElement {
           'diffRatios_)',
       'refreshSelectableSlices_(baseline, slices, ' +
           'configSelectedSlices_.length)',
-      'initializeSelectedThresholds_(thresholds.*)',
+      'initializeSelectedThresholds_(thresholds_.*)',
     ];
   }
 
@@ -244,7 +242,7 @@ export class FairnessMetricSummary extends PolymerElement {
         }
       });
     });
-    return Array.from(thresholds);
+    return Array.from(thresholds).sort();
   }
 
   /**
@@ -523,7 +521,7 @@ export class FairnessMetricSummary extends PolymerElement {
    * @private
    */
   metricIsThresholded_() {
-    return this.thresholds.length > 0;
+    return this.thresholds_ && this.thresholds_.length > 0;
   }
 
   /**

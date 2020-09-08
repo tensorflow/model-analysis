@@ -141,6 +141,8 @@ suite('fairness-metric-summary tests', () => {
     };
 
     const checkValue = () => {
+      // Thresholds should be sorted.
+      assert.deepEqual(metricSummary.thresholds_, ['0.30', '0.50', '0.70']);
       assert.deepEqual(
           metricSummary.$['metric-header'].innerText.trim(),
           'post_export_metrics/false_negative_rate');

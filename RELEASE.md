@@ -13,6 +13,7 @@
     negative thresholds are used (i.e. keras defaults).
 *   Fix issue with MultiClassConfusionMatrixPlot being overridden by
     MultiClassConfusionMatrix metrics.
+*   Made the Fairness Indicators UI thresholds drop down list sorted.
 *   Depends on `absl-py>=0.9,<0.11`.
 *   Depends on `pandas>=1.0,<2`.
 *   Depends on `protobuf>=3.9.2,<4`.

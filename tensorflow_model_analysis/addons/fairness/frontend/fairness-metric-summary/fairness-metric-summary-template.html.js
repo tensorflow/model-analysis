@@ -57,12 +57,12 @@ template.innerHTML = `
   <paper-icon-button id="settings-icon" icon="settings" on-tap="openSettings_">
   </paper-icon-button>
 </div>
-<div class="config" hidden$="[[!metricIsThresholded_(thresholds)]]">
+<div class="config" hidden$="[[!metricIsThresholded_()]]">
   &emsp;<paper-dropdown-menu opened="{{thresholdsMenuOpened_}}" label="Thresholds">
     <paper-listbox id="thresholdsList" multi selected-values="{{selectedThresholds_}}"
                    attr-for-selected="threshold"
                    class="dropdown-content" slot="dropdown-content">
-      <template is="dom-repeat" items="[[thresholds]]">
+      <template is="dom-repeat" items="[[thresholds_]]">
         <paper-item threshold="[[item]]">
           [[item]]
         </paper-item>
