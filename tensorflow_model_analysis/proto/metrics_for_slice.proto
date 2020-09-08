@@ -18,10 +18,10 @@ package tensorflow_model_analysis;
 
 import "google/protobuf/wrappers.proto";
 
-// This proto is copied into PerformanceStatistics because of b/110954446.
-// LINT.IfChange
 
+// Sync with PerformanceStatistics because of b/110954446.
 // LINT.IfChange
+//
 // A sub key identifies specialized sub-types of metrics and plots.
 message SubKey {
   oneof type {
@@ -34,9 +34,13 @@ message SubKey {
     google.protobuf.Int32Value top_k = 3;
   }
 }
-// LINT.ThenChange(../metrics/metric_types.py)
+// LINT.ThenChange(
+//   ../metrics/metric_types.py,
+//   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
 
+// Sync with PerformanceStatistics because of b/110954446.
 // LINT.IfChange
+//
 // A metric key uniquely identifies a metric.
 message MetricKey {
   // Name of the metric ('auc', etc).
@@ -51,7 +55,13 @@ message MetricKey {
   // baseline.
   bool is_diff = 5;
 }
-// LINT.ThenChange(../metrics/metric_types.py)
+// LINT.ThenChange(
+//   ../metrics/metric_types.py,
+//   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
+
+
+// Sync the MetricValue types with PerformanceStatistics because of b/110954446.
+// LINT.IfChange
 
 // The value will be converted into an error message if we do not know its type.
 message UnknownType {
@@ -233,6 +243,9 @@ message MetricValue {
   // Next tag = 16;
 }
 
+// LINT.ThenChange(
+//   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
+
 // A single slice key.
 message SingleSliceKey {
   string column = 1;
@@ -272,6 +285,9 @@ message MetricsForSlice {
   // all other metrics to DoubleValue type.
   map<string, MetricValue> metrics = 2 [deprecated = true];
 }
+
+// Sync the Plot types with PerformanceStatistics because of b/110954446.
+// LINT.IfChange
 
 message CalibrationHistogramBuckets {
   message Bucket {
@@ -325,18 +341,6 @@ message MultiLabelConfusionMatrixAtThresholds {
   repeated MultiLabelConfusionMatrix matrices = 1;
 }
 
-// LINT.IfChange
-// A plot key uniquely identifies a set of PlotData.
-message PlotKey {
-  // Optional model name associated with metric (if multi-model evaluation).
-  string model_name = 4;
-  // Optional output name associated with plot (for multi-output models).
-  string output_name = 2;
-  // Optional sub key associated with plot.
-  SubKey sub_key = 3;
-}
-// LINT.ThenChange(../metrics/metric_types.py)
-
 message PlotData {
   // For calibration plot and prediction distribution.
   CalibrationHistogramBuckets calibration_histogram_buckets = 1;
@@ -354,6 +358,25 @@ message PlotData {
   // small data slice due to privacy concerns.
   string debug_message = 3;
 }
+
+// LINT.ThenChange(
+//   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
+
+// Sync with PerformanceStatistics because of b/110954446.
+// LINT.IfChange
+//
+// A plot key uniquely identifies a set of PlotData.
+message PlotKey {
+  // Optional model name associated with metric (if multi-model evaluation).
+  string model_name = 4;
+  // Optional output name associated with plot (for multi-output models).
+  string output_name = 2;
+  // Optional sub key associated with plot.
+  SubKey sub_key = 3;
+}
+// LINT.ThenChange(
+//   ../metrics/metric_types.py,
+//   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
 
 message PlotsForSlice {
   message PlotKeyAndValue {
@@ -379,7 +402,3 @@ message PlotsForSlice {
   // multihead model.
   map<string, PlotData> plots = 3 [deprecated = true];
 }
-
-// LINT.ThenChange(
-//   ../../../../intelligence/lantern/proto/stats/\
-//      performance_statistics.proto)
