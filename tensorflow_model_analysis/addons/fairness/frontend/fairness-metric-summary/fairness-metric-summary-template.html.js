@@ -46,19 +46,20 @@ template.innerHTML = `
     width: 1000px;
   }
   .config {
-    margin: 0 16px;
+    margin: 0 30px;
   }
-  .config > span {
-    padding: 0 12px;
-  }
+  paper-dropdown-menu[hidden] {
+    display: none;
+}
 </style>
 <div id="metric-header" class="header">
   [[metric]]
   <paper-icon-button id="settings-icon" icon="settings" on-tap="openSettings_">
   </paper-icon-button>
 </div>
-<div class="config" hidden$="[[!metricIsThresholded_()]]">
-  &emsp;<paper-dropdown-menu opened="{{thresholdsMenuOpened_}}" label="Thresholds">
+<div class="config" >
+  <paper-dropdown-menu opened="{{thresholdsMenuOpened_}}" label="Thresholds"
+                       hidden$="[[!metricIsThresholded_()]]">
     <paper-listbox id="thresholdsList" multi selected-values="{{selectedThresholds_}}"
                    attr-for-selected="threshold"
                    class="dropdown-content" slot="dropdown-content">

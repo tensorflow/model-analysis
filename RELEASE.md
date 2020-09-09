@@ -14,6 +14,7 @@
 *   Fix issue with MultiClassConfusionMatrixPlot being overridden by
     MultiClassConfusionMatrix metrics.
 *   Made the Fairness Indicators UI thresholds drop down list sorted.
+*   Fix the bug that Sort menu is not hidden when there is no model comparison.
 *   Depends on `absl-py>=0.9,<0.11`.
 *   Depends on `pandas>=1.0,<2`.
 *   Depends on `protobuf>=3.9.2,<4`.
