@@ -142,8 +142,8 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       | 'CountPerSliceKey' >> beam.combiners.Count.PerElement())
 
   _ = (extracts.pipeline
-       | 'IncrementMetricsComputationCounters' >>
-       counter_util.IncrementMetricsComputationCounters(
+       | 'IncrementMetricsCallbacksCounters' >>
+       counter_util.IncrementMetricsCallbacksCounters(
            eval_shared_model.add_metrics_callbacks), slices_count
        | 'IncreamentSliceSpecCounters' >>
        counter_util.IncrementSliceSpecCounters())

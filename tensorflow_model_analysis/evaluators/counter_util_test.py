@@ -21,6 +21,7 @@ from __future__ import print_function
 import apache_beam as beam
 import tensorflow as tf
 
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
@@ -31,7 +32,7 @@ class CounterUtilTest(tf.test.TestCase):
   def testMetricComputedBeamCounter(self):
     with beam.Pipeline() as pipeline:
       auc = post_export_metrics.auc()
-      _ = pipeline | counter_util.IncrementMetricsComputationCounters([auc])
+      _ = pipeline | counter_util.IncrementMetricsCallbacksCounters([auc])
 
     result = pipeline.run()
     metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
@@ -56,6 +57,21 @@ class CounterUtilTest(tf.test.TestCase):
     slice_count = result.metrics().query(
         filter=slice_spec_filter)['counters'][0].committed
     self.assertEqual(slice_count, 1)
+
+  def testMetricsSpecBeamCounter(self):
+    with beam.Pipeline() as pipeline:
+      metrics_spec = config.MetricsSpec(
+          metrics=[config.MetricConfig(class_name='FairnessIndicators')])
+      _ = pipeline | counter_util.IncrementMetricsSpecsCounters([metrics_spec])
+
+    result = pipeline.run()
+    metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
+        constants.METRICS_NAMESPACE).with_name(
+            'metric_computed_FairnessIndicators')
+    actual_metrics_count = result.metrics().query(
+        filter=metric_filter)['counters'][0].committed
+
+    self.assertEqual(actual_metrics_count, 1)
 
 
 if __name__ == '__main__':

@@ -31,6 +31,7 @@ from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
+from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.evaluators import eval_saved_model_util
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import jackknife
@@ -690,6 +691,13 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       slices
       | 'ExtractSliceKeys' >> beam.Keys()
       | 'CountPerSliceKey' >> beam.combiners.Count.PerElement())
+
+  _ = (
+      extracts.pipeline
+      | 'IncrementMetricsSpecsCounters' >>
+      counter_util.IncrementMetricsSpecsCounters(metrics_specs), slices_count
+      |
+      'IncrementSliceSpecCounters' >> counter_util.IncrementSliceSpecCounters())
 
   ci_params = _get_confidence_interval_params(eval_config, metrics_specs)
 

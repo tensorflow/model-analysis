@@ -322,6 +322,13 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(evaluations[constants.VALIDATIONS_KEY],
                        check_validations)
 
+    metric_filter = beam.metrics.metric.MetricsFilter().with_name(
+        'metric_computed_ExampleCount')
+    print(pipeline.run().metrics().query())
+    actual_metrics_count = pipeline.run().metrics().query(
+        filter=metric_filter)['counters'][0].committed
+    self.assertEqual(actual_metrics_count, 1)
+
   def testEvaluateWithKerasAndDiffMetrics(self):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
     eval_shared_model = self._build_keras_model('candidate', model_dir, mul=0)

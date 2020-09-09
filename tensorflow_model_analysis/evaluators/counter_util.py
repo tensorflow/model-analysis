@@ -19,18 +19,28 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import List
+from typing import List, Text, Iterable
 
 import apache_beam as beam
 
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+
+
+def _IncrementMetricsCounters(metric_name: Text):
+  # LINT.IfChange
+  metric_name = 'metric_computed_%s' % metric_name
+  # LINT.ThenChange(../../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
+  metrics_counter = beam.metrics.Metrics.counter(constants.METRICS_NAMESPACE,
+                                                 metric_name)
+  metrics_counter.inc(1)
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
-def IncrementMetricsComputationCounters(
+def IncrementMetricsCallbacksCounters(
     pipeline: beam.Pipeline,
     metrics_callbacks: List[types.AddMetricsCallbackType]):
   """To track count of all the metrics being computed using TFMA."""
@@ -38,12 +48,7 @@ def IncrementMetricsComputationCounters(
   def _MakeAndIncrementCounters(_):
     for callback in metrics_callbacks:
       if hasattr(callback, 'name'):
-        # LINT.IfChange
-        metric_name = 'metric_computed_%s' % callback.name
-        # LINT.ThenChange(../../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
-        metrics_counter = beam.metrics.Metrics.counter(
-            constants.METRICS_NAMESPACE, metric_name)
-        metrics_counter.inc(1)
+        _IncrementMetricsCounters(callback.name)
 
   return (pipeline
           | 'CreateSole' >> beam.Create([None])
@@ -67,4 +72,21 @@ def IncrementSliceSpecCounters(pipeline: beam.Pipeline):
 
   return (pipeline
           | 'GetSliceCountKeys' >> beam.Keys()
+          | 'Count' >> beam.Map(_MakeAndIncrementCounters))
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.Pipeline)
+@beam.typehints.with_output_types(beam.pvalue.PDone)
+def IncrementMetricsSpecsCounters(pipeline: beam.Pipeline,
+                                  metrics_specs: Iterable[config.MetricsSpec]):
+  """To track count of all metrics specs in TFMA."""
+
+  def _MakeAndIncrementCounters(_):
+    for metrics_spec in metrics_specs:
+      for metric in metrics_spec.metrics:
+        _IncrementMetricsCounters(metric.class_name)
+
+  return (pipeline
+          | 'CreateSole' >> beam.Create([None])
           | 'Count' >> beam.Map(_MakeAndIncrementCounters))
