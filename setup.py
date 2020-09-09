@@ -267,6 +267,9 @@ setup_args = {
         # Sort alphabetically
         'absl-py>=0.9,<0.11',
         'apache-beam[gcp]>=2.23,<3',
+        # TODO(b/167111340): Remove this dependency after the prompt-toolkit
+        # dependency issue is resolved.
+        'ipython>=7,<8',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
