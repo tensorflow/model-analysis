@@ -640,9 +640,10 @@ class AutoSlicingUtilTest(tf.test.TestCase):
         auto_slicing_util._is_significant_slice(0.8, 0.001, 100, 0.9, 0.001,
                                                 1000, 'LOWER', 0.01)[0], True)
     # Test zero std. deviation for overall dataset.
-    self.assertEqual(
-        auto_slicing_util._is_significant_slice(0.8, 0.001, 100, 0.9, 0, 1000,
-                                                'LOWER', 0.01)[0], True)
+    with self.assertRaises(AssertionError):
+      self.assertEqual(
+          auto_slicing_util._is_significant_slice(0.8, 0.001, 100, 0.9, 0, 1000,
+                                                  'LOWER', 0.01)[0], True)
     # Test zero std. deviation for slice.
     with self.assertRaises(AssertionError):
       auto_slicing_util._is_significant_slice(0.8, 0, 100, 0.9, 0, 1000,
