@@ -17,13 +17,11 @@
 The widget is based on the template generated from jupyter-widget's
 widget-cookiecutter.
 """
-from __future__ import print_function
-from distutils import log
-from distutils import spawn
 import os
 import platform
 import subprocess
 import sys
+
 from setuptools import Command
 from setuptools import find_packages
 from setuptools import setup
@@ -31,6 +29,13 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 from setuptools.command.egg_info import egg_info
 from setuptools.command.sdist import sdist
+# pylint: disable=g-bad-import-order
+# It is recommended to import setuptools prior to importing distutils to avoid
+# using legacy behavior from distutils.
+# https://setuptools.readthedocs.io/en/latest/history.html#v48-0-0
+from distutils import log
+from distutils import spawn
+# pylint: enable=g-bad-import-order
 
 # Find the Protocol Compiler.
 if 'PROTOC' in os.environ and os.path.exists(os.environ['PROTOC']):
@@ -244,6 +249,19 @@ class NPM(Command):
     update_package_data(self.distribution)
 
 
+def select_constraint(default, nightly=None, git_master=None):
+  """Select dependency constraint based on TFX_DEPENDENCY_SELECTOR env var."""
+  selector = os.environ.get('TFX_DEPENDENCY_SELECTOR')
+  if selector == 'UNCONSTRAINED':
+    return ''
+  elif selector == 'NIGHTLY' and nightly is not None:
+    return nightly
+  elif selector == 'GIT_MASTER' and git_master is not None:
+    return git_master
+  else:
+    return default
+
+
 # Get the long description from the README file.
 with open('README.md') as fp:
   _LONG_DESCRIPTION = fp.read()
@@ -279,8 +297,14 @@ setup_args = {
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
         'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
-        'tensorflow-metadata>=0.24,<0.25',
-        'tfx-bsl>=0.24,<0.25',
+        'tensorflow-metadata' + select_constraint(
+            default='>=0.24,<0.25',
+            nightly='>=0.25.0.dev',
+            git_master='@git+https://github.com/tensorflow/metadata@master'),
+        'tfx-bsl' + select_constraint(
+            default='>=0.24,<0.25',
+            nightly='>=0.25.0.dev',
+            git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
         'tensorflowjs>=2.0.1.post1,<3',
         # TODO(b/158034704): Remove prompt-toolkit pin resulted from
         # tfjs -> PyInquirer dependency chain.
