@@ -95,7 +95,8 @@ export class FairnessTensorboardContainer extends SelectEventMixin
        */
       hideSelectEvalRunDropDown_: {
         type: Boolean,
-        computed: 'computeHideSelectEvalRunDropDown_(evaluationOutputPath_)'
+        computed: 'computeHideSelectEvalRunDropDown_(evaluationOutputPath_)',
+        value: false
       },
 
       /**
