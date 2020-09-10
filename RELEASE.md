@@ -4,6 +4,16 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other changes
+
+## Breaking changes
+
+## Deprecations
+
+# Version 0.24.0
+
+## Major Features and Improvements
+
 *   Use TFXIO and batched extractors by default in TFMA.
 
 ## Bug fixes and other changes
@@ -16,8 +26,11 @@
 *   Made the Fairness Indicators UI thresholds drop down list sorted.
 *   Fix the bug that Sort menu is not hidden when there is no model comparison.
 *   Depends on `absl-py>=0.9,<0.11`.
+*   Depends on `ipython>=7,<8`.
 *   Depends on `pandas>=1.0,<2`.
 *   Depends on `protobuf>=3.9.2,<4`.
+*   Depends on `tensorflow-metadata>=0.24.0,<0.25.0`.
+*   Depends on `tfx-bsl>=0.24.0,<0.25.0`.
 
 ## Breaking changes
 
