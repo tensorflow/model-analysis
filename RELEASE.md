@@ -13,6 +13,18 @@
 
 ## Deprecations
 
+# Version 0.24.1
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+*   Fix Jupyter lab issue with missing data-base-url.
+
+## Breaking changes
+
+## Deprecations
+
 # Version 0.24.0
 
 ## Major Features and Improvements
