@@ -19,13 +19,15 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import itertools
 import os
 
-from typing import Any, Dict, Iterator, List, Optional, Text, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Union
 
 from absl import logging
 import apache_beam as beam
 import numpy as np
+import pyarrow as pa
 import six
 import tensorflow as tf
 from tensorflow_model_analysis import config
@@ -42,14 +44,81 @@ from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.writers import writer
 
 
+_PARQUET_FORMAT = 'parquet'
+_TFRECORD_FORMAT = 'tfrecord'
+_SUPPORTED_FORMATS = (_PARQUET_FORMAT, _TFRECORD_FORMAT)
+_SLICE_KEY_PARQUET_COLUMN_NAME = 'slice_key'
+_SERIALIZED_VALUE_PARQUET_COLUMN_NAME = 'serialized_value'
+_SINGLE_SLICE_KEYS_PARQUET_FIELD_NAME = 'single_slice_specs'
+_SLICE_KEY_ARROW_TYPE = pa.struct([(pa.field(
+    _SINGLE_SLICE_KEYS_PARQUET_FIELD_NAME,
+    pa.list_(
+        pa.struct([
+            pa.field('column', pa.string()),
+            pa.field('bytes_value', pa.binary()),
+            pa.field('float_value', pa.float32()),
+            pa.field('int64_value', pa.int64())
+        ]))))])
+_SLICED_PARQUET_SCHEMA = pa.schema([
+    pa.field(_SLICE_KEY_PARQUET_COLUMN_NAME, _SLICE_KEY_ARROW_TYPE),
+    pa.field(_SERIALIZED_VALUE_PARQUET_COLUMN_NAME, pa.binary())
+])
+_UNSLICED_PARQUET_SCHEMA = pa.schema(
+    [pa.field(_SERIALIZED_VALUE_PARQUET_COLUMN_NAME, pa.binary())])
+
+_SliceKeyDictPythonType = Dict[Text, List[Dict[Text, Union[bytes, float, int]]]]
+
+
 def _match_all_files(file_path: Text) -> Text:
   """Return expression to match all files at given path."""
   return file_path + '*'
 
 
+def _parquet_column_iterator(paths: Iterable[str],
+                             column_name: str) -> Iterator[pa.Buffer]:
+  """Yields values from a bytes column in a set of parquet file partitions."""
+  dataset = pa.parquet.ParquetDataset(paths)
+  table = dataset.read(columns=[column_name])
+  for record_batch in table.to_batches():
+    # always read index 0 because we filter to one column
+    value_array = record_batch.column(0)
+    for value in value_array:
+      yield value.as_buffer()
+
+
+def _raw_value_iterator(
+    paths: Iterable[Text],
+    output_file_format: Text) -> Iterator[Union[pa.Buffer, bytes]]:
+  """Returns an iterator of raw per-record values from supported file formats.
+
+  When reading parquet format files, values from the column with name
+  _SERIALIZED_VALUE_PARQUET_COLUMN_NAME will be read.
+
+  Args:
+    paths: The paths from which to read records
+    output_file_format: The format of the files from which to read records.
+
+  Returns:
+    An iterator which yields serialized values.
+
+  Raises:
+    ValueError when the output_file_format is unknown.
+  """
+  if output_file_format == _PARQUET_FORMAT:
+    return _parquet_column_iterator(paths,
+                                    _SERIALIZED_VALUE_PARQUET_COLUMN_NAME)
+  elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
+    return itertools.chain(*(tf.compat.v1.python_io.tf_record_iterator(path)
+                             for path in paths))
+  raise ValueError('Formats "{}" are currently supported but got '
+                   'output_file_format={}'.format(_SUPPORTED_FORMATS,
+                                                  output_file_format))
+
+
 def load_and_deserialize_metrics(
     output_path: Text,
-    output_file_format: Text = ''
+    output_file_format: Text = '',
+    slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
 ) -> Iterator[metrics_for_slice_pb2.MetricsForSlice]:
   """Read and deserialize the MetricsForSlice records.
 
@@ -57,6 +126,9 @@ def load_and_deserialize_metrics(
     output_path: Path or pattern to search for metrics files under. If a
       directory is passed, files matching 'metrics*' will be searched for.
     output_file_format: Optional file extension to filter files by.
+    slice_specs: A set of SingleSliceSpecs to use for filtering returned
+      metrics. The metrics for a given slice key will be returned if that slice
+      key matches any of the slice_specs.
 
   Yields:
     MetricsForSlice protos found in matching files.
@@ -66,14 +138,19 @@ def load_and_deserialize_metrics(
   pattern = _match_all_files(output_path)
   if output_file_format:
     pattern = pattern + '.' + output_file_format
-  for path in tf.io.gfile.glob(pattern):
-    for record in tf.compat.v1.python_io.tf_record_iterator(path):
-      yield metrics_for_slice_pb2.MetricsForSlice.FromString(record)
+  paths = tf.io.gfile.glob(pattern)
+  for value in _raw_value_iterator(paths, output_file_format):
+    metrics = metrics_for_slice_pb2.MetricsForSlice.FromString(value)
+    if slice_specs and not slicer.slice_key_matches_slice_specs(
+        slicer.deserialize_slice_key(metrics.slice_key), slice_specs):
+      continue
+    yield metrics
 
 
 def load_and_deserialize_plots(
     output_path: Text,
-    output_file_format: Text = ''
+    output_file_format: Text = '',
+    slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
 ) -> Iterator[metrics_for_slice_pb2.PlotsForSlice]:
   """Read and deserialize the PlotsForSlice records.
 
@@ -81,6 +158,9 @@ def load_and_deserialize_plots(
     output_path: Path or pattern to search for plots files under. If a directory
       is passed, files matching 'plots*' will be searched for.
     output_file_format: Optional file extension to filter files by.
+    slice_specs: A set of SingleSliceSpecs to use for filtering returned plots.
+      The plots for a given slice key will be returned if that slice key matches
+      any of the slice_specs.
 
   Yields:
     PlotsForSlice protos found in matching files.
@@ -90,9 +170,13 @@ def load_and_deserialize_plots(
   pattern = _match_all_files(output_path)
   if output_file_format:
     pattern = pattern + '.' + output_file_format
-  for path in tf.io.gfile.glob(pattern):
-    for record in tf.compat.v1.python_io.tf_record_iterator(path):
-      yield metrics_for_slice_pb2.PlotsForSlice.FromString(record)
+  paths = tf.io.gfile.glob(pattern)
+  for value in _raw_value_iterator(paths, output_file_format):
+    plots = metrics_for_slice_pb2.PlotsForSlice.FromString(value)
+    if slice_specs and not slicer.slice_key_matches_slice_specs(
+        slicer.deserialize_slice_key(plots.slice_key), slice_specs):
+      continue
+    yield plots
 
 
 def load_and_deserialize_validation_result(
@@ -114,10 +198,10 @@ def load_and_deserialize_validation_result(
   if output_file_format:
     pattern = pattern + '.' + output_file_format
   validation_records = []
-  for path in tf.io.gfile.glob(pattern):
-    for record in tf.compat.v1.python_io.tf_record_iterator(path):
-      validation_records.append(
-          validation_result_pb2.ValidationResult.FromString(record))
+  paths = tf.io.gfile.glob(pattern)
+  for value in _raw_value_iterator(paths, output_file_format):
+    validation_records.append(
+        validation_result_pb2.ValidationResult.FromString(value))
   assert len(validation_records) == 1
   return validation_records[0]
 
@@ -348,8 +432,15 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
     validations_key: Name to use for validations key in Evaluation output.
-    output_file_format: File format to use when saving files. Currently only
-      'tfrecord' is supported.
+    output_file_format: File format to use when saving files. Currently
+      'tfrecord' and 'parquet' are supported. If using parquet, the output
+      metrics and plots files will contain two columns: 'slice_key' and
+      'serialized_value'. The 'slice_key' column will be a structured column
+      matching the metrics_for_slice_pb2.SliceKey proto. the 'serialized_value'
+      column will contain a serialized MetricsForSlice or PlotsForSlice
+      proto. The validation result file will contain a single column
+      'serialized_value' which will contain a single serialized ValidationResult
+      proto.
   """
   return writer.Writer(
       stage_name='WriteMetricsAndPlots',
@@ -431,53 +522,110 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     output_file_format: Text) -> beam.pvalue.PDone:
   """PTransform to write metrics and plots."""
 
-  if output_file_format and output_file_format != 'tfrecord':
-    raise ValueError(
-        'only "{}" format is currently supported: output_file_format={}'.format(
-            'tfrecord', output_file_format))
+  if output_file_format and output_file_format not in _SUPPORTED_FORMATS:
+    raise ValueError('only "{}" formats are currently supported but got '
+                     'output_file_format={}'.format(_SUPPORTED_FORMATS,
+                                                    output_file_format))
 
-  if metrics_key in evaluation:
+  def convert_slice_key_to_parquet_dict(
+      slice_key: metrics_for_slice_pb2.SliceKey) -> _SliceKeyDictPythonType:
+    single_slice_key_dicts = []
+    for single_slice_key in slice_key.single_slice_keys:
+      kind = single_slice_key.WhichOneof('kind')
+      if not kind:
+        continue
+      single_slice_key_dicts.append({kind: getattr(single_slice_key, kind)})
+    return {_SINGLE_SLICE_KEYS_PARQUET_FIELD_NAME: single_slice_key_dicts}
+
+  def convert_to_parquet_columns(
+      value: Union[metrics_for_slice_pb2.MetricsForSlice,
+                   metrics_for_slice_pb2.PlotsForSlice]
+  ) -> Dict[Text, Union[_SliceKeyDictPythonType, bytes]]:
+    return {
+        _SLICE_KEY_PARQUET_COLUMN_NAME:
+            convert_slice_key_to_parquet_dict(value.slice_key),
+        _SERIALIZED_VALUE_PARQUET_COLUMN_NAME:
+            value.SerializeToString()
+    }
+
+  if metrics_key in evaluation and constants.METRICS_KEY in output_paths:
     metrics = (
         evaluation[metrics_key] | 'ConvertSliceMetricsToProto' >> beam.Map(
             convert_slice_metrics_to_proto,
             add_metrics_callbacks=add_metrics_callbacks))
 
-    if constants.METRICS_KEY in output_paths:
+    file_path_prefix = output_paths[constants.METRICS_KEY]
+    if output_file_format == _PARQUET_FORMAT:
+      _ = (
+          metrics
+          | 'ConvertToParquetColumns' >> beam.Map(convert_to_parquet_columns)
+          | 'WriteMetricsToParquet' >> beam.io.WriteToParquet(
+              file_path_prefix=file_path_prefix,
+              schema=_SLICED_PARQUET_SCHEMA,
+              file_name_suffix='.' + output_file_format))
+    elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
       _ = metrics | 'WriteMetrics' >> beam.io.WriteToTFRecord(
-          file_path_prefix=output_paths[constants.METRICS_KEY],
+          file_path_prefix=file_path_prefix,
           shard_name_template=None if output_file_format else '',
           file_name_suffix=('.' +
                             output_file_format if output_file_format else ''),
           coder=beam.coders.ProtoCoder(metrics_for_slice_pb2.MetricsForSlice))
 
-  if plots_key in evaluation:
+  if plots_key in evaluation and constants.PLOTS_KEY in output_paths:
     plots = (
         evaluation[plots_key] | 'ConvertSlicePlotsToProto' >> beam.Map(
             convert_slice_plots_to_proto,
             add_metrics_callbacks=add_metrics_callbacks))
 
-    if constants.PLOTS_KEY in output_paths:
-      _ = plots | 'WritePlots' >> beam.io.WriteToTFRecord(
-          file_path_prefix=output_paths[constants.PLOTS_KEY],
+    file_path_prefix = output_paths[constants.PLOTS_KEY]
+    if output_file_format == _PARQUET_FORMAT:
+      _ = (
+          plots
+          |
+          'ConvertPlotsToParquetColumns' >> beam.Map(convert_to_parquet_columns)
+          | 'WritePlotsToParquet' >> beam.io.WriteToParquet(
+              file_path_prefix=file_path_prefix,
+              schema=_SLICED_PARQUET_SCHEMA,
+              file_name_suffix='.' + output_file_format))
+    elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
+      _ = plots | 'WritePlotsToTFRecord' >> beam.io.WriteToTFRecord(
+          file_path_prefix=file_path_prefix,
           shard_name_template=None if output_file_format else '',
           file_name_suffix=('.' +
                             output_file_format if output_file_format else ''),
           coder=beam.coders.ProtoCoder(metrics_for_slice_pb2.PlotsForSlice))
 
-  if validations_key in evaluation:
+  if (validations_key in evaluation and
+      constants.VALIDATIONS_KEY in output_paths):
     validations = (
         evaluation[validations_key]
         | 'MergeValidationResults' >> beam.CombineGlobally(
             _CombineValidations(eval_config)))
 
-    if constants.VALIDATIONS_KEY in output_paths:
-      # We only use a single shard here because validations are usually single
-      # values.
-      _ = validations | 'WriteValidations' >> beam.io.WriteToTFRecord(
-          file_path_prefix=output_paths[constants.VALIDATIONS_KEY],
-          shard_name_template='',
-          file_name_suffix=('.' +
-                            output_file_format if output_file_format else ''),
-          coder=beam.coders.ProtoCoder(validation_result_pb2.ValidationResult))
+    file_path_prefix = output_paths[constants.VALIDATIONS_KEY]
+    # We only use a single shard here because validations are usually single
+    # values. Setting the shard_name_template to the empty string forces this.
+    shard_name_template = ''
+    if output_file_format == _PARQUET_FORMAT:
+      _ = (
+          validations
+          | 'ConvertValidationsToParquetColumns' >> beam.Map(
+              lambda v:  # pylint: disable=g-long-lambda
+              {_SERIALIZED_VALUE_PARQUET_COLUMN_NAME: v.SerializeToString()})
+          | 'WriteValidationsToParquet' >> beam.io.WriteToParquet(
+              file_path_prefix=file_path_prefix,
+              shard_name_template=shard_name_template,
+              schema=_UNSLICED_PARQUET_SCHEMA,
+              file_name_suffix='.' + output_file_format))
+    elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
+      _ = (
+          validations
+          | 'WriteValidationsToTFRecord' >> beam.io.WriteToTFRecord(
+              file_path_prefix=file_path_prefix,
+              shard_name_template=shard_name_template,
+              file_name_suffix=('.' + output_file_format
+                                if output_file_format else ''),
+              coder=beam.coders.ProtoCoder(
+                  validation_result_pb2.ValidationResult)))
 
   return beam.pvalue.PDone(list(evaluation.values())[0].pipeline)

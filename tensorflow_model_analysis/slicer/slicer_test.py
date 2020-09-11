@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -75,7 +76,7 @@ def wrap_fpl(fpl):
   }
 
 
-class SlicerTest(testutil.TensorflowModelAnalysisTest):
+class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
   def setUp(self):
     super(SlicerTest, self).setUp()
@@ -431,7 +432,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(2, len(got), 'got: %s' % got)
+          self.assertLen(got, 2)
           expected_result = [
               ((), wrap_fpl(fpls[0])),
               ((), wrap_fpl(fpls[1])),
@@ -460,16 +461,14 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(4, len(got), 'got: %s' % got)
+          self.assertLen(got, 4)
           expected_result = [
               ((), wrap_fpl(fpls[0])),
               ((), wrap_fpl(fpls[1])),
               ((('gender', 'f'),), wrap_fpl(fpls[0])),
               ((('gender', 'm'),), wrap_fpl(fpls[1])),
           ]
-          self.assertCountEqual(
-              sorted(got, key=lambda x: x[0]),
-              sorted(expected_result, key=lambda x: x[0]))
+          self.assertCountEqual(got, expected_result)
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
@@ -506,7 +505,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(5, len(got), 'got: %s' % got)
+          self.assertLen(got, 5)
           del data[0][constants.SLICE_KEY_TYPES_KEY]
           del data[1][constants.SLICE_KEY_TYPES_KEY]
           expected_result = [
@@ -516,9 +515,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
               ((('gender', 'f'),), data[1]),
               ((('gender', 'm'),), data[1]),
           ]
-          self.assertCountEqual(
-              sorted(got, key=lambda x: x[0]),
-              sorted(expected_result, key=lambda x: x[0]))
+          self.assertCountEqual(got, expected_result)
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
@@ -539,16 +536,14 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(2, len(got), 'got: %s' % got)
+          self.assertLen(got, 2)
           del data[0][constants.SLICE_KEY_TYPES_KEY]
           del data[1][constants.SLICE_KEY_TYPES_KEY]
           expected_result = [
               ((), data[0]),
               ((), data[1]),
           ]
-          self.assertCountEqual(
-              sorted(got, key=lambda x: x[0]),
-              sorted(expected_result, key=lambda x: x[0]))
+          self.assertCountEqual(got, expected_result)
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
@@ -568,7 +563,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
 
     def check_output(got):
       try:
-        self.assertEqual(2, len(got), 'got: %s' % got)
+        self.assertLen(got, 2)
         slices = {}
         for (k, v) in got:
           slices[k] = v
@@ -589,6 +584,41 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest):
               min_slice_size=2,
               error_metric_key=metric_keys.ERROR_METRIC))
       util.assert_that(output_dict, check_output)
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'matching_single_spec',
+          'slice_key': (('f1', 1),),
+          'slice_specs': [slicer.SingleSliceSpec(features=[('f1', 1)])],
+          'expected_result': True
+      },
+      {
+          'testcase_name': 'non_matching_single_spec',
+          'slice_key': (('f1', 1),),
+          'slice_specs': [slicer.SingleSliceSpec(columns=['f2'])],
+          'expected_result': False
+      },
+      {
+          'testcase_name': 'matching_multiple_specs',
+          'slice_key': (('f1', 1),),
+          'slice_specs': [
+              slicer.SingleSliceSpec(columns=['f1']),
+              slicer.SingleSliceSpec(columns=['f2'])
+          ],
+          'expected_result': True
+      },
+      {
+          'testcase_name': 'empty_specs',
+          'slice_key': (('f1', 1),),
+          'slice_specs': [],
+          'expected_result': False
+      },
+  )
+  def testSliceKeyMatchesSliceSpecs(self, slice_key, slice_specs,
+                                    expected_result):
+    self.assertEqual(
+        expected_result,
+        slicer.slice_key_matches_slice_specs(slice_key, slice_specs))
 
 
 if __name__ == '__main__':

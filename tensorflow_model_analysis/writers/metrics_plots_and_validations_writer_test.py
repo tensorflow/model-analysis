@@ -895,8 +895,11 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         (slice_key, slice_metrics), [])
     self.assertProtoEquals(expected_metrics_for_slice, got)
 
-  @parameterized.named_parameters(('without_output_file_format', ''),
-                                  ('with_output_file_format', 'tfrecord'))
+  _OUTPUT_FORMAT_PARAMS = [('without_output_file_format', ''),
+                           ('tfrecord_file_format', 'tfrecord'),
+                           ('parquet_file_format', 'parquet')]
+
+  @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
   def testWriteValidationResults(self, output_file_format):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
     eval_shared_model = self._build_keras_model(model_dir, mul=0)
@@ -1067,7 +1070,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     validation_result = (
         metrics_plots_and_validations_writer
         .load_and_deserialize_validation_result(
-            os.path.dirname(validations_file)))
+            os.path.dirname(validations_file), output_file_format))
 
     expected_validations = [
         text_format.Parse(
@@ -1158,8 +1161,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     self.assertCountEqual(expected_slicing_details,
                           validation_result.validation_details.slicing_details)
 
-  @parameterized.named_parameters(('without_output_file_format', ''),
-                                  ('with_output_file_format', 'tfrecord'))
+  @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
   def testWriteMetricsAndPlots(self, output_file_format):
     metrics_file = os.path.join(self._getTempDir(), 'metrics')
     plots_file = os.path.join(self._getTempDir(), 'plots')
@@ -1241,7 +1243,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
 
     metric_records = list(
         metrics_plots_and_validations_writer.load_and_deserialize_metrics(
-            metrics_file))
+            metrics_file, output_file_format))
     self.assertLen(metric_records, 1, 'metrics: %s' % metric_records)
     self.assertProtoEquals(expected_metrics_for_slice, metric_records[0])
 
@@ -1296,7 +1298,166 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
 
     plot_records = list(
         metrics_plots_and_validations_writer.load_and_deserialize_plots(
-            plots_file))
+            plots_file, output_file_format))
+    self.assertLen(plot_records, 1, 'plots: %s' % plot_records)
+    self.assertProtoEquals(expected_plots_for_slice, plot_records[0])
+
+  @parameterized.named_parameters(('parquet_file_format', 'parquet'))
+  def testLoadAndDeserializeFilteredMetricsAndPlots(self, output_file_format):
+    metrics_file = os.path.join(self._getTempDir(), 'metrics')
+    plots_file = os.path.join(self._getTempDir(), 'plots')
+    temp_eval_export_dir = os.path.join(self._getTempDir(), 'eval_export_dir')
+
+    _, eval_export_dir = (
+        fixed_prediction_estimator.simple_fixed_prediction_estimator(
+            None, temp_eval_export_dir))
+    eval_config = config.EvalConfig(
+        model_specs=[config.ModelSpec()],
+        slicing_specs=[
+            config.SlicingSpec(),
+            config.SlicingSpec(feature_keys=['prediction'])
+        ],
+        options=config.Options(
+            disabled_outputs={'values': ['eval_config.json']}))
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=eval_export_dir,
+        add_metrics_callbacks=[
+            post_export_metrics.example_count(),
+            post_export_metrics.calibration_plot_and_prediction_histogram(
+                num_buckets=2)
+        ])
+    extractors = [
+        predict_extractor.PredictExtractor(eval_shared_model),
+        slice_key_extractor.SliceKeyExtractor(
+            eval_config=eval_config, materialize=False)
+    ]
+    evaluators = [
+        metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(eval_shared_model)
+    ]
+    output_paths = {
+        constants.METRICS_KEY: metrics_file,
+        constants.PLOTS_KEY: plots_file
+    }
+    writers = [
+        metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
+            output_paths,
+            eval_config=eval_config,
+            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks,
+            output_file_format=output_file_format)
+    ]
+
+    with beam.Pipeline() as pipeline:
+      example1 = self._makeExample(prediction=0.0, label=1.0, country='US')
+      example2 = self._makeExample(prediction=1.0, label=1.0, country='CA')
+
+      # pylint: disable=no-value-for-parameter
+      _ = (
+          pipeline
+          | 'Create' >> beam.Create([
+              example1.SerializeToString(),
+              example2.SerializeToString(),
+          ])
+          | 'ExtractEvaluateAndWriteResults' >>
+          model_eval_lib.ExtractEvaluateAndWriteResults(
+              eval_config=eval_config,
+              eval_shared_model=eval_shared_model,
+              extractors=extractors,
+              evaluators=evaluators,
+              writers=writers))
+      # pylint: enable=no-value-for-parameter
+
+    # only read the metrics with slice keys that match the following spec
+    slice_keys_filter = [slicer.SingleSliceSpec(features=[('prediction', 0)])]
+
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {
+          single_slice_keys {
+            column: "prediction"
+            float_value: 0
+          }
+        }
+        metrics {
+          key: "average_loss"
+          value {
+            double_value {
+              value: 1.0
+            }
+          }
+        }
+        metrics {
+          key: "post_export_metrics/example_count"
+          value {
+            double_value {
+              value: 1.0
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+
+    metric_records = list(
+        metrics_plots_and_validations_writer.load_and_deserialize_metrics(
+            metrics_file, output_file_format, slice_keys_filter))
+    self.assertLen(metric_records, 1, 'metrics: %s' % metric_records)
+    self.assertProtoEquals(expected_metrics_for_slice, metric_records[0])
+
+    expected_plots_for_slice = text_format.Parse(
+        """
+      slice_key {
+        single_slice_keys {
+          column: "prediction"
+          float_value: 0
+        }
+      }
+      plots {
+        key: "post_export_metrics"
+        value {
+          calibration_histogram_buckets {
+            buckets {
+              lower_threshold_inclusive: -inf
+              num_weighted_examples {}
+              total_weighted_label {}
+              total_weighted_refined_prediction {}
+            }
+            buckets {
+              upper_threshold_exclusive: 0.5
+              num_weighted_examples {
+                value: 1.0
+              }
+              total_weighted_label {
+                value: 1.0
+              }
+              total_weighted_refined_prediction {}
+            }
+            buckets {
+              lower_threshold_inclusive: 0.5
+              upper_threshold_exclusive: 1.0
+              num_weighted_examples {
+              }
+              total_weighted_label {}
+              total_weighted_refined_prediction {}
+            }
+            buckets {
+              lower_threshold_inclusive: 1.0
+              upper_threshold_exclusive: inf
+              num_weighted_examples {
+                value: 0.0
+              }
+              total_weighted_label {
+                value: 0.0
+              }
+              total_weighted_refined_prediction {
+                value: 0.0
+              }
+            }
+         }
+        }
+      }
+    """, metrics_for_slice_pb2.PlotsForSlice())
+
+    plot_records = list(
+        metrics_plots_and_validations_writer.load_and_deserialize_plots(
+            plots_file, output_file_format, slice_keys_filter))
     self.assertLen(plot_records, 1, 'plots: %s' % plot_records)
     self.assertProtoEquals(expected_plots_for_slice, plot_records[0])
 

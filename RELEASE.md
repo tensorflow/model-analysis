@@ -4,6 +4,9 @@
 
 ## Major Features and Improvements
 
+*   Added support for reading and writing metrics, plots and validation results
+    using Apache Parquet.
+
 ## Bug fixes and other changes
 
 ## Breaking changes
