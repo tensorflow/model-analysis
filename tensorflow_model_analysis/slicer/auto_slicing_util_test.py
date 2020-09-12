@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import auto_slicing_util
 
@@ -28,14 +29,14 @@ from tensorflow_metadata.proto.v0 import statistics_pb2
 
 class AutoSlicingUtilTest(tf.test.TestCase):
 
-  def test_find_significant_slices(self):
+  def test_partition_slices(self):
     metrics = [
         text_format.Parse(
             """
         slice_key {
         }
         metric_keys_and_values {
-          key { name: "accuracy" }
+          key { name: "accuracy" sub_key { class_id: { value: 0 } } }
           value {
             bounded_value {
               value { value: 0.8 }
@@ -86,7 +87,7 @@ class AutoSlicingUtilTest(tf.test.TestCase):
           }
         }
         metric_keys_and_values {
-          key { name: "accuracy" }
+          key { name: "accuracy" sub_key { class_id: { value: 0 } } }
           value {
             bounded_value {
               value { value: 0.4 }
@@ -137,7 +138,7 @@ class AutoSlicingUtilTest(tf.test.TestCase):
           }
         }
         metric_keys_and_values {
-          key { name: "accuracy" }
+          key { name: "accuracy" sub_key { class_id: { value: 0 } } }
           value {
             bounded_value {
               value { value: 0.79 }
@@ -188,7 +189,7 @@ class AutoSlicingUtilTest(tf.test.TestCase):
           }
         }
         metric_keys_and_values {
-          key { name: "accuracy" }
+          key { name: "accuracy" sub_key { class_id: { value: 0 } } }
           value {
             bounded_value {
               value { value: 0.9 }
@@ -239,7 +240,7 @@ class AutoSlicingUtilTest(tf.test.TestCase):
           }
         }
         metric_keys_and_values {
-          key { name: "accuracy" }
+          key { name: "accuracy" sub_key { class_id: { value: 0 } } }
           value {
             bounded_value {
               value { value: 0.9 }
@@ -294,7 +295,7 @@ class AutoSlicingUtilTest(tf.test.TestCase):
           }
         }
         metric_keys_and_values {
-          key { name: "accuracy" }
+          key { name: "accuracy" sub_key { class_id: { value: 0 } } }
           value {
             bounded_value {
               value { value: 0.9 }
@@ -338,7 +339,10 @@ class AutoSlicingUtilTest(tf.test.TestCase):
         """, metrics_for_slice_pb2.MetricsForSlice())
     ]
     result = auto_slicing_util.partition_slices(
-        metrics, metric_key='accuracy', comparison_type='LOWER')
+        metrics,
+        metric_key=metric_types.MetricKey(
+            name='accuracy', sub_key=metric_types.SubKey(class_id=0)),
+        comparison_type='LOWER')
     self.assertCountEqual([s.slice_key for s in result[0]],
                           [(('age', '[1.0, 6.0)'),)])
     self.assertCountEqual([s.slice_key for s in result[1]],
@@ -347,7 +351,10 @@ class AutoSlicingUtilTest(tf.test.TestCase):
                            (('country', 'USA'), ('age', '[12.0, 18.0)'))])
 
     result = auto_slicing_util.partition_slices(
-        metrics, metric_key='accuracy', comparison_type='HIGHER')
+        metrics,
+        metric_key=metric_types.MetricKey(
+            name='accuracy', sub_key=metric_types.SubKey(class_id=0)),
+        comparison_type='HIGHER')
     self.assertCountEqual([s.slice_key for s in result[0]],
                           [(('age', '[12.0, 18.0)'),), (('country', 'USA'),),
                            (('country', 'USA'), ('age', '[12.0, 18.0)'))])

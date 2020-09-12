@@ -30,6 +30,8 @@ import pandas as pd
 from scipy import stats
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import auto_slice_key_extractor
+from tensorflow_model_analysis.metrics import example_count
+from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
 
@@ -147,7 +149,7 @@ def _compute_effect_size(slice_metric: float, slice_std_dev: float,
 
 def _get_metrics_as_dict(
     metrics: metrics_for_slice_pb2.MetricsForSlice
-) -> Dict[Text, types.ValueWithTDistribution]:
+) -> Dict[metric_types.MetricKey, types.ValueWithTDistribution]:
   """Convert slice metrics to a Dict of types.ValueWithTDistribution.
 
   For metrics missing the confidence interval message, an empty
@@ -160,7 +162,7 @@ def _get_metrics_as_dict(
     metrics: The MetricsForSlice proto to be converted.
 
   Returns:
-    A dict from metric keys names to ValueWithTDistributions.
+    A dict from metric keys to ValueWithTDistributions.
   """
   result = {}
   for metric in metrics.metric_keys_and_values:
@@ -171,13 +173,14 @@ def _get_metrics_as_dict(
     elif value_type == 'double_value':
       unsampled_value = metric.value.double_value.value
     t_distribution_value = metric.value.confidence_interval.t_distribution_value
-    result[metric.key.name] = types.ValueWithTDistribution(
-        sample_mean=t_distribution_value.sample_mean.value,
-        sample_standard_deviation=t_distribution_value.sample_standard_deviation
-        .value,
-        sample_degrees_of_freedom=t_distribution_value.sample_degrees_of_freedom
-        .value,
-        unsampled_value=unsampled_value)
+    result[metric_types.MetricKey.from_proto(
+        metric.key)] = types.ValueWithTDistribution(
+            sample_mean=t_distribution_value.sample_mean.value,
+            sample_standard_deviation=t_distribution_value
+            .sample_standard_deviation.value,
+            sample_degrees_of_freedom=t_distribution_value
+            .sample_degrees_of_freedom.value,
+            unsampled_value=unsampled_value)
   return result
 
 
@@ -277,7 +280,7 @@ def remove_subset_slices(
 
 def partition_slices(
     metrics: List[metrics_for_slice_pb2.MetricsForSlice],
-    metric_key: Text,
+    metric_key: metric_types.MetricKey,
     comparison_type: Text = 'HIGHER',
     alpha: float = 0.01,
     min_num_examples: int = 1
@@ -311,11 +314,14 @@ def partition_slices(
   overall_slice_metrics = metrics_dict[()]
   del metrics_dict[()]
 
+  example_count_metric_key = metric_types.MetricKey(
+      name=example_count.EXAMPLE_COUNT_NAME)
   overall_metrics_dict = _get_metrics_as_dict(overall_slice_metrics)
   significant_slices, non_significant_slices = [], []
   for slice_key, slice_metrics in metrics_dict.items():
     slice_metrics_dict = _get_metrics_as_dict(slice_metrics)
-    num_examples = int(slice_metrics_dict['example_count'].unsampled_value)
+    num_examples = int(
+        slice_metrics_dict[example_count_metric_key].unsampled_value)
     if num_examples < min_num_examples:
       continue
     # Prune non-interesting slices.
@@ -327,19 +333,20 @@ def partition_slices(
                       slice_metrics_dict[metric_key].sample_standard_deviation)
       continue
     # TODO(pachristopher): Should we use weighted example count?
-    if slice_metrics_dict['example_count'].unsampled_value <= 1:
-      logging.warning('Ignoring slice: %s with example count: %s ', slice_key,
-                      slice_metrics_dict['example_count'].unsampled_value)
+    if slice_metrics_dict[example_count_metric_key].unsampled_value <= 1:
+      logging.warning(
+          'Ignoring slice: %s with example count: %s ', slice_key,
+          slice_metrics_dict[example_count_metric_key].unsampled_value)
       continue
     # Only consider statistically significant slices.
     is_significant, p_value = _is_significant_slice(
         slice_metrics_dict[metric_key].unsampled_value,
         slice_metrics_dict[metric_key].sample_standard_deviation,
-        slice_metrics_dict['example_count'].unsampled_value,
+        slice_metrics_dict[example_count_metric_key].unsampled_value,
         overall_metrics_dict[metric_key].unsampled_value,
         overall_metrics_dict[metric_key].sample_standard_deviation,
-        overall_metrics_dict['example_count'].unsampled_value, comparison_type,
-        alpha)
+        overall_metrics_dict[example_count_metric_key].unsampled_value,
+        comparison_type, alpha)
     # Compute effect size for the slice.
     effect_size = _compute_effect_size(
         slice_metrics_dict[metric_key].unsampled_value,
