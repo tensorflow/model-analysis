@@ -315,7 +315,11 @@ def partition_slices(
   del metrics_dict[()]
 
   example_count_metric_key = metric_types.MetricKey(
-      name=example_count.EXAMPLE_COUNT_NAME)
+      name=example_count.EXAMPLE_COUNT_NAME,
+      model_name=metric_key.model_name,
+      output_name=metric_key.output_name,
+      sub_key=metric_key.sub_key,
+      is_diff=metric_key.is_diff)
   overall_metrics_dict = _get_metrics_as_dict(overall_slice_metrics)
   significant_slices, non_significant_slices = [], []
   for slice_key, slice_metrics in metrics_dict.items():
