@@ -102,7 +102,19 @@ def _bin_value(value: float, boundaries: List[float]) -> int:
 
 def get_bucket_boundary(bucket: int,
                         boundaries: List[float]) -> Tuple[float, float]:
-  """Given bucket index, return the bucket boundary."""
+  """Given bucket index, return the bucket boundary.
+
+  Note that the bucket index was computed using bisect_left [1].
+
+  [1] https://docs.python.org/3/library/bisect.html#bisect.bisect_left
+
+  Args:
+    bucket: Bucket index.
+    boundaries: List of boundaries.
+
+  Returns:
+    A tuple (start, end] representing bucket boundary.
+  """
   if bucket == len(boundaries):
     end = float('inf')
   else:

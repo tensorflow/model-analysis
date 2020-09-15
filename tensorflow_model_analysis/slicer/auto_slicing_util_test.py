@@ -587,7 +587,7 @@ class AutoSlicingUtilTest(tf.test.TestCase):
             effect_size=0.9,
             raw_slice_metrics=None),
         auto_slicing_util.SliceComparisonResult(
-            slice_key=(('age', '[1.0, 6.0)'),),
+            slice_key=(('age', '(1.0, 6.0]'),),
             num_examples=500.0,
             slice_metric=0.9,
             base_metric=0.8,
@@ -595,7 +595,7 @@ class AutoSlicingUtilTest(tf.test.TestCase):
             effect_size=0.9,
             raw_slice_metrics=None),
         auto_slicing_util.SliceComparisonResult(
-            slice_key=(('age', '[6.0, 12.0)'),),
+            slice_key=(('age', '(6.0, 12.0]'),),
             num_examples=500.0,
             slice_metric=0.9,
             base_metric=0.8,

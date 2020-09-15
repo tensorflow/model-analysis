@@ -186,7 +186,7 @@ def _get_metrics_as_dict(
 
 def _format_boundary(start: float, end: float) -> Text:
   """Formats bucket boundary as a string."""
-  return '[' + str(start) + ', ' + str(end) + ')'
+  return '(' + str(start) + ', ' + str(end) + ']'
 
 
 def get_raw_feature(
