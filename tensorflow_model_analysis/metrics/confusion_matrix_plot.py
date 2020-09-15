@@ -49,7 +49,7 @@ class ConfusionMatrixPlot(metric_types.Metric):
     super(ConfusionMatrixPlot, self).__init__(
         metric_util.merge_per_key_computations(_confusion_matrix_plot),
         num_thresholds=num_thresholds,
-        name=name)  # pytype: disable=wrong-arg-types
+        name=name)
 
 
 metric_types.register_metric(ConfusionMatrixPlot)

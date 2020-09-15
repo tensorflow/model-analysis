@@ -240,11 +240,13 @@ class _NDCGCombiner(beam.CombineFn):
       result.total_weighted_examples += accumulator.total_weighted_examples
     return result
 
-  def extract_output(self, accumulator: _NDCGAccumulator) -> Dict[Text, float]:
+  def extract_output(
+      self,
+      accumulator: _NDCGAccumulator) -> Dict[metric_types.MetricKey, float]:
     output = {}
     for i, key in enumerate(self._metric_keys):
       if accumulator.total_weighted_examples > 0:
         output[key] = accumulator.ndcg[i] / accumulator.total_weighted_examples
       else:
         output[key] = float('nan')
-    return output  # pytype: disable=bad-return-type
+    return output

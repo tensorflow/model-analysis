@@ -66,7 +66,7 @@ class MultiClassConfusionMatrixPlot(metric_types.Metric):
             _multi_class_confusion_matrix_plot),
         thresholds=thresholds,
         num_thresholds=num_thresholds,
-        name=name)  # pytype: disable=wrong-arg-types
+        name=name)
 
 
 metric_types.register_metric(MultiClassConfusionMatrixPlot)

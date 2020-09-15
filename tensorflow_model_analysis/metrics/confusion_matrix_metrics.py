@@ -67,7 +67,7 @@ class ConfusionMatrixMetric(
     super(ConfusionMatrixMetric, self).__init__(
         metric_util.merge_per_key_computations(self._metric_computation),
         thresholds=thresholds,
-        name=name)  # pytype: disable=wrong-arg-types
+        name=name)
 
   @abc.abstractmethod
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -630,7 +630,7 @@ class ConfusionMatrixAtThresholds(metric_types.Metric):
     super(ConfusionMatrixAtThresholds, self).__init__(
         metric_util.merge_per_key_computations(_confusion_matrix_at_thresholds),
         thresholds=thresholds,
-        name=name)  # pytype: disable=wrong-arg-types
+        name=name)
 
 
 metric_types.register_metric(ConfusionMatrixAtThresholds)
@@ -663,10 +663,9 @@ def _confusion_matrix_at_thresholds(
   matrices_key = matrices_computations[-1].keys[-1]
 
   def result(
-      metrics: Dict[metric_types.MetricKey,
-                    metrics_for_slice_pb2.ConfusionMatrixAtThresholds]
+      metrics: Dict[metric_types.MetricKey, binary_confusion_matrices.Matrices]
   ) -> Dict[metric_types.MetricKey, Any]:
-    return {key: to_proto(thresholds, metrics[matrices_key])}  # pytype: disable=wrong-arg-types
+    return {key: to_proto(thresholds, metrics[matrices_key])}
 
   derived_computation = metric_types.DerivedMetricComputation(
       keys=[key], result=result)

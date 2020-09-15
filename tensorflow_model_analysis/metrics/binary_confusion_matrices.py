@@ -30,8 +30,8 @@ DEFAULT_NUM_THRESHOLDS = calibration_histogram.DEFAULT_NUM_BUCKETS
 BINARY_CONFUSION_MATRICES_NAME = '_binary_confusion_matrices'
 
 Matrices = NamedTuple('Matrices', [('thresholds', List[float]),
-                                   ('tp', List[int]), ('tn', List[int]),
-                                   ('fp', List[int]), ('fn', List[int])])
+                                   ('tp', List[float]), ('tn', List[float]),
+                                   ('fp', List[float]), ('fn', List[float])])
 
 _EPSILON = 1e-7
 
@@ -185,4 +185,4 @@ def _to_binary_confusion_matrices(
     else:
       tn[start] += start_neg
       fn[start] += start_pos
-  return Matrices(thresholds, tp, tn, fp, fn)  # pytype: disable=wrong-arg-types
+  return Matrices(thresholds, tp, tn, fp, fn)

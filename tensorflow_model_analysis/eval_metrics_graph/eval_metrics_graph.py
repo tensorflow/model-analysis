@@ -331,10 +331,10 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
       self, features_predictions_labels: types.FeaturesPredictionsLabels
   ) -> List[Any]:
     """Run the metrics reset, update, get operations on a single FPL."""
-    return self.metrics_reset_update_get_list([features_predictions_labels])  # pytype: disable=wrong-arg-types
+    return self.metrics_reset_update_get_list([features_predictions_labels])
 
   def metrics_reset_update_get_list(self,
-                                    examples_list: List[bytes]) -> List[Any]:
+                                    examples_list: List[Any]) -> List[Any]:
     """Run the metrics reset, update, get operations on a list of FPLs."""
     with self._lock:
       # Note that due to tf op reordering issues on some hardware, DO NOT merge

@@ -23,6 +23,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+from typing import cast, Any, Dict, List, Optional, Text, Tuple, Type, Callable
 # Standard Imports
 import numpy as np
 import six
@@ -34,10 +35,9 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-from typing import Any, Dict, List, Optional, Text, Tuple, Type, Callable
 
-from tensorflow.python.estimator.canned import prediction_keys
-from tensorflow.python.ops import metrics_impl
+from tensorflow.python.estimator.canned import prediction_keys  # pylint: disable=g-direct-tensorflow-import
+from tensorflow.python.ops import metrics_impl  # pylint: disable=g-direct-tensorflow-import
 
 
 # TODO(b/111754250): revisit it and determine whether to simplify the 4-level
@@ -113,8 +113,9 @@ DEFAULT_KEY_PREFERENCE = (
 )
 
 
-def _get_target_tensor(maybe_dict: types.TensorTypeMaybeDict,
-                       key_precedence: List[Text]) -> types.TensorType:
+def _get_target_tensor(
+    maybe_dict: types.TensorTypeMaybeDict,
+    key_precedence: List[Text]) -> Optional[types.TensorType]:
   """Returns Tensor for prediction or labels dicts.
 
   Args:
@@ -127,14 +128,14 @@ def _get_target_tensor(maybe_dict: types.TensorTypeMaybeDict,
     the predictions_dict.
   """
   if types.is_tensor(maybe_dict):
-    return maybe_dict  # pytype: disable=bad-return-type
+    return cast(types.TensorType, maybe_dict)
 
   for key in key_precedence:
     ref_tensor = maybe_dict.get(key)
     if ref_tensor is not None:
       return ref_tensor
 
-  return None  # pytype: disable=bad-return-type
+  return None
 
 
 def _check_feature_present(features_dict: types.TensorTypeMaybeDict,
@@ -1631,6 +1632,12 @@ class _PrecisionRecallAtK(_PostExportMetric):
                      1), lambda: tf.as_string(_class_ids(scores)))],
           default=lambda: classes)
 
+    if classes is None:
+      raise ValueError('Could not determine classes for use with '
+                       'PrecisionRecallAtK. The classes_key ({}) could'
+                       'not be found in predictions dict ({}) and the metric '
+                       'was not configured to use ALL_CLASSES.'.format(
+                           self._classes_keys, predictions_dict))
     labels = _cast_or_convert(labels, classes.dtype)
 
     if self._metric_name == metric_keys.PRECISION_AT_K:
@@ -1850,7 +1857,8 @@ class _TFMetricBaseClass(_PostExportMetric):
       self, features_dict: types.TensorTypeMaybeDict,
       predictions_dict: types.TensorTypeMaybeDict,
       labels_dict: types.TensorTypeMaybeDict
-  ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  ) -> Dict[Text, Tuple[types.TensorOrOperationType,
+                        types.TensorOrOperationType]]:
     predictions, labels = self._get_labels_and_predictions(
         predictions_dict, labels_dict)
     prediction_tensor = _flatten_to_one_dim(tf.cast(predictions, tf.float64))
@@ -1862,7 +1870,7 @@ class _TFMetricBaseClass(_PostExportMetric):
     metric_fn = self._metric_fn(label_tensor, prediction_tensor,
                                 squeezed_weights)
 
-    return {self._metric_key(self._metric_name): metric_fn}  # pytype: disable=bad-return-type
+    return {self._metric_key(self._metric_name): metric_fn}
 
   def populate_stats_and_pop(
       self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,

@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import inspect
 
-from typing import Any, Callable, Dict, Iterable, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -136,7 +136,7 @@ def to_label_prediction_example_weight(
     flatten: bool = True,
     squeeze: bool = True,
     allow_none: bool = False,
-) -> Iterable[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
   """Yields label, prediction, and example weights for use in calculations.
 
   Where applicable this function will perform model and output name lookups as
@@ -745,4 +745,4 @@ def merge_per_key_computations(
           computations.extend(create_computations_fn(**updated_kwargs))
     return computations
 
-  return merge_computations_fn  # pytype: disable=bad-return-type
+  return merge_computations_fn

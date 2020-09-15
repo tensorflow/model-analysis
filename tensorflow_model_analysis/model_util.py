@@ -92,7 +92,7 @@ def get_label_key(model_spec: config.ModelSpec,
       return None
 
 
-def get_model_type(model_spec: config.ModelSpec,
+def get_model_type(model_spec: Optional[config.ModelSpec],
                    model_path: Optional[Text] = '',
                    tags: Optional[List[Text]] = None) -> Text:
   """Returns model type for given model spec taking into account defaults.

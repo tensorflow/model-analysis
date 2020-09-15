@@ -53,7 +53,7 @@ class FairnessIndicators(metric_types.Metric):
         metric_util.merge_per_key_computations(
             _fairness_indicators_metrics_at_thresholds),
         thresholds=thresholds,
-        name=name)  # pytype: disable=wrong-arg-types
+        name=name)
 
 
 def calculate_digits(thresholds):

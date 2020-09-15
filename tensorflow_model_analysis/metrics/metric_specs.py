@@ -293,7 +293,7 @@ def default_multi_class_classification_specs(
     output_names: Optional[List[Text]] = None,
     binarize: Optional[config.BinarizationOptions] = None,
     aggregate: Optional[config.AggregationOptions] = None,
-    sparse: bool = True) -> config.MetricsSpec:
+    sparse: bool = True) -> List[config.MetricsSpec]:
   """Returns default metric specs for multi-class classification problems.
 
   Args:
@@ -337,7 +337,7 @@ def default_multi_class_classification_specs(
           output_names=output_names,
           binarize=binarize,
           aggregate=aggregate))
-  return multi_class_metrics  # pytype: disable=bad-return-type
+  return multi_class_metrics
 
 
 def _keys_for_metric(
@@ -692,7 +692,7 @@ def to_computations(
 
 
 def _create_sub_keys(
-    spec: config.MetricsSpec) -> Optional[List[metric_types.SubKey]]:
+    spec: config.MetricsSpec) -> Optional[List[Optional[metric_types.SubKey]]]:
   """Creates subkeys associated with spec."""
   sub_keys = None
   if spec.HasField('binarize'):
@@ -715,7 +715,7 @@ def _create_sub_keys(
       # should always be passed to all metric calculations to ensure they are
       # taken into account when flattening is required.
       sub_keys.append(None)
-  return sub_keys  # pytype: disable=bad-return-type
+  return sub_keys
 
 
 def _metric_config(cfg: Text) -> Dict[Text, Any]:

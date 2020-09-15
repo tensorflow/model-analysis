@@ -348,7 +348,7 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
     self._num_compacts.inc(1)
     return super(_ComputationsCombineFn, self).compact(accumulator)
 
-  def extract_output(self, accumulator: Any) -> metric_types.MetricsDict:
+  def extract_output(self, accumulator: Any) -> Tuple[metric_types.MetricsDict]:
     result = []
     for c, a in zip(self._combiners, accumulator):
       output = c.extract_output(a)
@@ -359,7 +359,7 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
         # counter is a sign that something has gone wrong.
         self._num_bootstrap_empties.inc(1)
       result.append(output)
-    return tuple(result)  # pytype: disable=bad-return-type
+    return tuple(result)
 
 
 @beam.ptransform_fn
@@ -554,13 +554,13 @@ def _filter_by_key_type(
     else:
       if not isinstance(k, metric_types.PlotKey):
         output[k] = v
-  return (slice_value, output)  # pytype: disable=bad-return-type
+  return (slice_value, output)
 
 
 _ConfidenceIntervalParams = NamedTuple(
-    '_ConfidenceIntervalParams', [('num_jackknife_samples', int),
-                                  ('num_bootstrap_samples', int),
-                                  ('skip_ci_metric_keys', Iterable[Text])])
+    '_ConfidenceIntervalParams',
+    [('num_jackknife_samples', int), ('num_bootstrap_samples', int),
+     ('skip_ci_metric_keys', Iterable[metric_types.MetricKey])])
 
 
 def _get_confidence_interval_params(
@@ -591,7 +591,7 @@ def _get_confidence_interval_params(
     elif ci_method == config.ConfidenceIntervalOptions.POISSON_BOOTSTRAP:
       num_bootstrap_samples = _DEFAULT_NUM_BOOTSTRAP_SAMPLES
   return _ConfidenceIntervalParams(num_jackknife_samples, num_bootstrap_samples,
-                                   skip_ci_metric_keys)  # pytype: disable=wrong-arg-types
+                                   skip_ci_metric_keys)
 
 
 @beam.ptransform_fn

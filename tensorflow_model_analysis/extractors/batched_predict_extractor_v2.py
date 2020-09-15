@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import copy
 
-from typing import Dict, Optional, Text
+from typing import Dict, List, Optional, Text
 
 import apache_beam as beam
 import tensorflow as tf
@@ -99,7 +99,7 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
           self._tensor_adapter_config)
 
   def _batch_reducible_process(
-      self, batched_extract: types.Extracts) -> types.Extracts:
+      self, batched_extract: types.Extracts) -> List[types.Extracts]:
     result = copy.copy(batched_extract)
     record_batch = batched_extract[constants.ARROW_RECORD_BATCH_KEY]
     serialized_examples = batched_extract[constants.INPUT_KEY]
@@ -185,7 +185,7 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
             predictions[i] = {}
           predictions[i][spec.name] = output  # pytype: disable=unsupported-operands
     result[constants.PREDICTIONS_KEY] = predictions
-    return [result]  # pytype: disable=bad-return-type
+    return [result]
 
 
 @beam.ptransform_fn

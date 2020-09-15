@@ -40,7 +40,7 @@ class SquaredPearsonCorrelation(metric_types.Metric):
     """
     super(SquaredPearsonCorrelation, self).__init__(
         metric_util.merge_per_key_computations(_squared_pearson_correlation),
-        name=name)  # pytype: disable=wrong-arg-types
+        name=name)
 
 
 metric_types.register_metric(SquaredPearsonCorrelation)

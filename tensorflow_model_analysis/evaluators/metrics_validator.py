@@ -48,7 +48,7 @@ def validate_metrics(
 
   sliced_key, metrics = sliced_metrics
   thresholds = metric_specs.metric_thresholds_from_metrics_specs(
-      eval_config.metrics_specs)  # pytype: disable=wrong-arg-types
+      eval_config.metrics_specs)
   is_cross_slice = slicer.is_cross_slice_key(sliced_key)
 
   def _check_threshold(key: metric_types.MetricKey, threshold: _ThresholdType,

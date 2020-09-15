@@ -56,7 +56,7 @@ class CoefficientOfDiscrimination(metric_types.Metric):
     """
     super(CoefficientOfDiscrimination, self).__init__(
         metric_util.merge_per_key_computations(_coefficient_of_discrimination),
-        name=name)  # pytype: disable=wrong-arg-types
+        name=name)
 
 
 metric_types.register_metric(CoefficientOfDiscrimination)
@@ -129,7 +129,7 @@ class RelativeCoefficientOfDiscrimination(metric_types.Metric):
     super(RelativeCoefficientOfDiscrimination, self).__init__(
         metric_util.merge_per_key_computations(
             _relative_coefficient_of_discrimination),
-        name=name)  # pytype: disable=wrong-arg-types
+        name=name)
 
 
 metric_types.register_metric(RelativeCoefficientOfDiscrimination)
