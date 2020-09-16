@@ -22,24 +22,14 @@ template.innerHTML = `
     padding: 20px 0 8px 30px;
     color: #666;
   }
-  #settings-icon {
-    padding: 0 12px;
-    color: #ea4335;
+  .slices-drop-down-candidates {
+    min-width: 200px;
   }
-  .check {
-    width:20px;
-    height:20px;
-    border:1px solid grey;
-    margin-right: 6px;
+  .slices-drop-down-candidates .slice-key-true{
+    text-transform: uppercase;
   }
-  .check iron-icon{
-    display: none;
-    width: 20px;
-    height: 20px;
-    margin-top: -6px;
-  }
-  .iron-selected .check iron-icon {
-    display: inline-flex;
+  .slices-drop-down-candidates .slice-key-false{
+    padding-left: 20px;
   }
   #table {
     margin-top: 10px;
@@ -50,16 +40,42 @@ template.innerHTML = `
   }
   paper-dropdown-menu[hidden] {
     display: none;
-}
+  }
 </style>
+
 <div id="metric-header" class="header">
   [[metric]]
-  <paper-icon-button id="settings-icon" icon="settings" on-tap="openSettings_">
-  </paper-icon-button>
 </div>
-<div class="config" >
+<div class="config">
+  <paper-button raised on-tap="openSlicesDropDownMenu_">
+    Select Slices
+    <iron-icon icon="icons:arrow-drop-down"></iron-icon>
+  </paper-button>
+  <iron-dropdown id="SlicesDropDownMenu">
+    <paper-listbox multi selected-values="{{selectedSlicesDropDownMenuCandidates_}}"
+                   attr-for-selected="slice"
+                   class="dropdown-content slices-drop-down-candidates"
+                   slot="dropdown-content"
+                   on-iron-select="slicesDropDownCandidatesSelected_"
+                   on-iron-deselect="slicesDropDownCandidatesUnselected_"
+                   >
+      <template is="dom-repeat" items="[[slicesDropDownMenuCandidates_]]">
+        <paper-item slice="[[item]]">
+          <div class$="slice-key-[[item.isSliceKey]]">
+             <template is="dom-if" if="[[item.isSelected]]">
+              <iron-icon icon="icons:check-box"></iron-icon>
+            </template>
+            <template is="dom-if" if="[[!item.isSelected]]">
+              <iron-icon icon="icons:check-box-outline-blank"></iron-icon>
+            </template>
+            [[item.text]]
+          </div>
+        </paper-item>
+      </template>
+    </paper-listbox>
+  </iron-dropdown>
   <paper-dropdown-menu opened="{{thresholdsMenuOpened_}}" label="Thresholds"
-                       hidden$="[[!metricIsThresholded_()]]">
+                       hidden$="[[!isMetricThresholded_(thresholds_)]]">
     <paper-listbox id="thresholdsList" multi selected-values="{{selectedThresholds_}}"
                    attr-for-selected="threshold"
                    class="dropdown-content" slot="dropdown-content">
@@ -70,7 +86,7 @@ template.innerHTML = `
       </template>
     </paper-listbox>
   </paper-dropdown-menu>
-  <paper-dropdown-menu label="Sort by" hidden$="[[!evalComparison_()]]">
+  <paper-dropdown-menu label="Sort by" hidden$="[[!hasEvalComparison_()]]">
     <paper-listbox attr-for-selected="item-name" selected="{{sort_}}" class="dropdown-content" slot="dropdown-content">
       <paper-item item-name="Slice">Slice</paper-item>
       <paper-item item-name="Eval">Eval</paper-item>
@@ -79,39 +95,16 @@ template.innerHTML = `
 </div>
 <fairness-bounded-value-bar-chart id="bar-chart" metrics="[[metrics_]]"
                                   data="[[data]]" data-compare="[[dataCompare]]"
-                                  slices="{{slicesToPlot_}}" baseline="[[baseline]]"
+                                  slices="[[slicesToPlot_]]" baseline="[[baseline]]"
                                   eval-name="[[evalName]]" eval-name-compare="[[evalNameCompare]]"
                                   sort="[[sort_]]">
 </fairness-bounded-value-bar-chart>
 <fairness-metrics-table id="table" metrics="[[metricsForTable_]]" data="[[tableData_]]"
                         data-compare="[[tableDataCompare_]]"
-                        example-counts="[[exampleCounts_]]" eval-name="[[evalName]]"
+                        example-counts="[[exampleCounts_]]"
+                        eval-name="[[evalName]]"
                         eval-name-compare="[[evalNameCompare]]">
 </fairness-metrics-table>
-<paper-dialog id="settings">
-  <div class="header">
-    Config for [[metric]]
-  </div>
-  <div style="display:flex;">
-    <div>
-      <iron-label>Select your slices to compare, then click 'UPDATE' below.</iron-label>
-      <div style="max-height: 360px; overflow-y:scroll;">
-        <paper-listbox multi selected-values="{{configSelectedSlices_}}" attr-for-selected="slice">
-          <template is="dom-repeat" items="[[configSelectableSlices_]]">
-            <paper-item slice="[[item.slice]]" disabled="[[item.disabled]]">
-              <div class="check">
-                <iron-icon icon="icons:check">
-                </iron-icon>
-              </div>
-              [[item.slice]]
-            </paper-item>
-          </template>
-        </paper-listbox>
-      </div>
-    </div>
-  </div>
-  <paper-button on-tap="updateConfig_">Update</paper-button>
-</paper-dialog>
 
 `;
 export {template};

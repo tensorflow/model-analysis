@@ -89,9 +89,9 @@
 
   let element_compare = document.getElementById('model-comparison');
   element_compare.slices = SLICES;
-  element_compare.evalName = "EvalA";
+  element_compare.evalName = 'EvalA';
   element_compare.data = generateDoubleValueData();
-  element_compare.evalNameCompare = "EvalB";
+  element_compare.evalNameCompare = 'EvalB';
   element_compare.dataCompare = generateDoubleValueData();
   element_compare.metric = 'accuracy';
   element_compare.thresholds = [];

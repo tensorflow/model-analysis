@@ -103,9 +103,6 @@ suite('fairness-metric-summary tests', () => {
   // baseline.
   const DEFAULT_NUM_OF_SLICES_TO_PLOT = 9;
   const DEFAULT_NUM_OF_SLICES_TO_PLOT_EVAL_COMPARE = 3;
-  const MAX_NUM_OF_SLICES_TO_PLOT = 15;
-
-  const THRESHOLDS = ['0.30', '0.50'];
 
   let metricSummary;
 
@@ -162,7 +159,7 @@ suite('fairness-metric-summary tests', () => {
       ]);
       assert.deepEqual(
           metricSummary.$['bar-chart'].slices,
-          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT + 1));
+          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT));
       assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
       assert.deepEqual(metricSummary.$['bar-chart'].data, BOUNDED_VALUE_DATA);
       assert.deepEqual(
@@ -195,7 +192,7 @@ suite('fairness-metric-summary tests', () => {
       assert.deepEqual(metricSummary.$['bar-chart'].metrics, ['accuracy']);
       assert.deepEqual(
           metricSummary.$['bar-chart'].slices,
-          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT + 1));
+          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT));
       assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
       assert.deepEqual(metricSummary.$['bar-chart'].data, DOUBLE_VALUE_DATA);
       assert.deepEqual(
@@ -229,10 +226,9 @@ suite('fairness-metric-summary tests', () => {
       assert.deepEqual(metricSummary.$['bar-chart'].metrics, ['accuracy']);
       assert.deepEqual(
           metricSummary.$['bar-chart'].slices,
-          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT_EVAL_COMPARE + 1));
+          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT_EVAL_COMPARE));
       assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
-      assert.deepEqual(
-          metricSummary.$['bar-chart'].data, BOUNDED_VALUE_DATA);
+      assert.deepEqual(metricSummary.$['bar-chart'].data, BOUNDED_VALUE_DATA);
       assert.deepEqual(
           metricSummary.$['bar-chart'].dataCompare, DOUBLE_VALUE_DATA);
       assert.deepEqual(
@@ -245,7 +241,7 @@ suite('fairness-metric-summary tests', () => {
     setUpAndCheck(fillBothValues, checkValue);
   });
 
-  test('ChooseSlicesAndTapUpdate', done => {
+  test('ChooseDifferentSlices', done => {
     metricSummary = fixture('main');
 
     const fillData = () => {
@@ -255,61 +251,63 @@ suite('fairness-metric-summary tests', () => {
       metricSummary.baseline = 'Overall';
     };
 
-    const clickSettingButton = () => {
-      let settingButton = metricSummary.$['settings-icon'];
-      settingButton.fire('tap');
-      setTimeout(chooseSlices, TEST_STEP_TIMEOUT_MS);
-    };
-
-    const chooseSlices = () => {
-      let paperItems = queryElement('paper-item');
-      let numOrderingOptions = 2;  // Slice and Eval
-      assert.equal(paperItems.length, numOrderingOptions + SLICES.length);
-
-      let slices = [];
-      for (let i = 2; i < paperItems.length; i++) {
-        slices.push(paperItems[i]);
-      }
-      // The Overall slice should be disabled by default
-      assert.isTrue(slices[0].disabled);
-      // None of the other slices should be disabled by default
-      for (let i = 1; i < slices.length; i++) {
-        assert.isFalse(slices[i].disabled);
-      }
-
-      // Select up to MAX_NUM_OF_SLICES_TO_PLOT slices.
-      for (let i = DEFAULT_NUM_OF_SLICES_TO_PLOT + 1;
-           i <= MAX_NUM_OF_SLICES_TO_PLOT; i++) {
-        slices[i].fire('tap');
-      }
-      setTimeout(closeSettingMenu, TEST_STEP_TIMEOUT_MS);
-    };
-
-    const closeSettingMenu = () => {
-      let paperItems = queryElement('paper-item');
-      let slices = [];
-      for (let i = THRESHOLDS.length; i < paperItems.length; i++) {
-        slices.push(paperItems[i]);
-      }
-
-      // After MAX_NUM_OF_SLICES_TO_PLOT have been tapped,
-      // no more slices should be tappable.
-      for (let i = MAX_NUM_OF_SLICES_TO_PLOT + 1; i < slices.length; i++) {
-        assert.isTrue(slices[i].disabled);
-      }
-
-      let updateButton = metricSummary.shadowRoot.querySelector('paper-button');
-      updateButton.fire('tap');
-      setTimeout(CheckProperties, TEST_STEP_TIMEOUT_MS);
-    };
-
-    const CheckProperties = () => {
+    const checkDefaultSelectedSlicesBeforeOpenDropDown = () => {
       assert.deepEqual(
-          metricSummary.$['bar-chart'].slices, SLICES.slice(1, 16));
+          metricSummary.$['bar-chart'].slices,
+          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT));
+      setTimeout(openSlicesDropDownMenu, TEST_STEP_TIMEOUT_MS);
+    };
+
+    const openSlicesDropDownMenu = () => {
+      const button = queryElement('paper-button')[0];
+      button.fire('tap');
+      setTimeout(selectSlices, TEST_STEP_TIMEOUT_MS);
+    };
+
+    const selectSlices = () => {
+      const sliceDropDown = queryElement('paper-listbox')[0];
+
+      // The number of paper items is
+      // "SLICES.length + 1", because there is a addtional slice key line.
+      assert.deepEqual(sliceDropDown.items.length, SLICES.length + 1);
+
+      // Check the default selected slices text.
+      assert.deepEqual(
+          sliceDropDown.selectedItems.map(item => item.slice.text),
+          ['Overall', '1', '2', '3', '4', '5', '6', '7', '8']);
+
+      // Click "Slice" row. This will cause all slices under this slice key
+      // selected.
+      sliceDropDown.items[1].fire('tap');
+      setTimeout(checkSlicesSelection, TEST_STEP_TIMEOUT_MS);
+    };
+
+    const checkSlicesSelection = () => {
+      let sliceDropDown = queryElement('paper-listbox')[0];
+      // Check selected slices text after updating.
+      assert.deepEqual(
+          sliceDropDown.selectedItems.map(item => item.slice['text']), [
+            'Overall', '1', '2', '3', '4', '5', '6', '7', '8', 'Slice', '9',
+            '10', '11', '12', '13', '14', '15', '16'
+          ]);
+
+      // Click "Slice" row again. This will cause all slices under this slice
+      // key unselected.
+      sliceDropDown.items[1].fire('tap');
+      setTimeout(checkSlicesUnselection, TEST_STEP_TIMEOUT_MS);
+    };
+
+    const checkSlicesUnselection = () => {
+      let sliceDropDown = queryElement('paper-listbox')[0];
+      // Check selected slices text after updating.
+      assert.deepEqual(
+          sliceDropDown.selectedItems.map(item => item.slice['text']), [
+            'Overall',
+          ]);
       done();
     };
 
-    setUpAndCheck(fillData, clickSettingButton);
+    setUpAndCheck(fillData, checkDefaultSelectedSlicesBeforeOpenDropDown);
   });
 
   test('MetricsForBarChart', done => {
@@ -346,7 +344,7 @@ suite('fairness-metric-summary tests', () => {
       // Only select up to 9 slices.
       assert.deepEqual(
           metricSummary.$['bar-chart'].slices,
-          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT + 1));
+          SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT));
       done();
     };
     setUpAndCheck(fillData, CheckProperties);

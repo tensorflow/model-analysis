@@ -15,10 +15,8 @@
  */
 
 import '@polymer/iron-icons/iron-icons.js';
-import '@polymer/iron-label/iron-label.js';
+import '@polymer/iron-dropdown/iron-dropdown.js';
 import '@polymer/paper-button/paper-button.js';
-import '@polymer/paper-dialog/paper-dialog.js';
-import '@polymer/paper-icon-button/paper-icon-button.js';
 import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
 import '../fairness-bounded-value-bar-chart/fairness-bounded-value-bar-chart.js';
@@ -29,8 +27,44 @@ import {template} from './fairness-metric-summary-template.html.js';
 
 const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
 
+/**
+ * Name of master slice containing all data.
+ * @private {string}
+ * @const
+ */
+const OVERALL_SLICE_KEY = 'Overall';
+
+/**
+ * Number of default slices to be rendered.
+ * @private {number}
+ * @const
+ */
 const DEFAULT_NUM_SLICES = 9;
 const DEFAULT_NUM_SLICES_EVAL_COMPARE = 3;
+
+
+/**
+ * It's a map that contains four fields:
+ *   'text': used to render on UI, e.g. "gender" or "male".
+ *   'id': An unique id that's convenient for search purpose.
+ *   'isSliceKey': used to indicate whether this is a slice key element or a
+ *      general slice key value pair element.
+ *   'representedSlices': a list of slices that this element presents. If it's a
+ *      slice key, all the slices key value pairs under this slice key will be
+ *      included. If it's a general slice element, this list will only include
+ *      itself.
+ *   'isSelected': indicates if this element is selected by users for plotting.
+ *      This will also be used to change the checkbox status in front of the
+ *      slices.
+ * @typedef {{
+ *   text: string,
+ *   id: number,
+ *   isSliceKey: boolean,
+ *   representedSlices: !Array<string>,
+ *   isSelected: boolean,
+ * }}
+ */
+let SlicesDropDownMenuCandidateType;
 
 export class FairnessMetricSummary extends PolymerElement {
   constructor() {
@@ -64,12 +98,6 @@ export class FairnessMetricSummary extends PolymerElement {
       dataCompare: {type: Array},
 
       /**
-       * The name of the metric.
-       * @type {string}
-       */
-      metric: {type: String},
-
-      /**
        * The list of available thresholds.
        * @type {!Array<string>}
        */
@@ -89,7 +117,7 @@ export class FairnessMetricSummary extends PolymerElement {
           {type: Boolean, observer: 'thresholdsMenuOpenedChanged_'},
 
       /**
-       * The slice that will be used as the baseline.
+       * The one slice that will be used as the baseline.
        * @type {string}
        */
       baseline: {type: String},
@@ -107,10 +135,46 @@ export class FairnessMetricSummary extends PolymerElement {
       evalNameCompare: {type: String},
 
       /**
-       * All available slices.
+       * All available slices, including baseline. The user will select
+       * necessary slices from this list to plot.
        * @type {!Array<string>}
        */
       slices: {type: Array},
+
+      /**
+       * The name of the metric, e.g. post_export_metrics/false_negative_rate
+       * @type {string}
+       */
+      metric: {type: String},
+
+      /**
+       * The slices candidates in drop down menu.
+       * @private {!Array<!SlicesDropDownMenuCandidateType>}
+       */
+      slicesDropDownMenuCandidates_: {
+        type: Array,
+        computed: 'computeSlicesDropDownCandidates_(slices)',
+
+      },
+
+      /**
+       * The selected slices candidates in drop down menu.
+       * @private {!Array<!SlicesDropDownMenuCandidateType>}
+       */
+      selectedSlicesDropDownMenuCandidates_: {
+        type: Array,
+      },
+
+      /**
+       * The slices to plot, the baseline is not included.
+       * @private {!Array<string>}
+       */
+      slicesToPlot_: {
+        type: Array,
+        computed:
+            'computeSlicesToPlot_(selectedSlicesDropDownMenuCandidates_.*, baseline)'
+      },
+
 
       /**
        * The list of full metric names. For regular metrics, it should be an
@@ -121,8 +185,7 @@ export class FairnessMetricSummary extends PolymerElement {
       metrics_: {
         type: Array,
         computed:
-            'computeMetrics_(metric, thresholds_, selectedThresholds_.*, ' +
-            'baseline, data)'
+            'computeMetrics_(data, baseline, metric, thresholds_, selectedThresholds_.*)'
       },
 
       /**
@@ -154,12 +217,6 @@ export class FairnessMetricSummary extends PolymerElement {
       },
 
       /**
-       * The slices to plot.
-       * @private {!Array<string>}
-       */
-      slicesToPlot_: {type: Array, value: []},
-
-      /**
        * The data backing the table view.
        * @private {!tfma.Data}
        */
@@ -178,19 +235,6 @@ export class FairnessMetricSummary extends PolymerElement {
         computed: 'computeTableData_(baseline, dataCompare, metrics_, ' +
             'slicesToPlot_, diffRatiosCompare_)'
       },
-
-      /**
-       * A list of names of available slices that can be selected in the config
-       * menu.
-       * @private {!Array<string>}
-       */
-      configSelectableSlices_: {type: Array},
-
-      /**
-       * A list of selected slice names in the config menu.
-       * @private {!Array<string>}
-       */
-      configSelectedSlices_: {type: Array},
 
       /**
        * A list containing the number of examples for each slice.
@@ -212,11 +256,8 @@ export class FairnessMetricSummary extends PolymerElement {
 
   static get observers() {
     return [
-      'initializeSlicesToPlot_(baseline, slices, metrics_, ' +
-          'diffRatios_)',
-      'refreshSelectableSlices_(baseline, slices, ' +
-          'configSelectedSlices_.length)',
       'initializeSelectedThresholds_(thresholds_.*)',
+      'selectDefaultSlicesFromDropDownMenuCandidates_(slicesDropDownMenuCandidates_, baseline)',
     ];
   }
 
@@ -283,22 +324,253 @@ export class FairnessMetricSummary extends PolymerElement {
   }
 
   /**
+   * Generate the candidate for slices drop down menu.
+   * @param {!Array<string>} slices
+   * @return {!Array<!SlicesDropDownMenuCandidateType>}
+   * @private
+   */
+  computeSlicesDropDownCandidates_(slices) {
+    // First, group the slices by their slice key.
+    // For example: gender:male, gender:female, will be grouped together under
+    // 'gender' key.
+    const slicesGroupedByKey = new Map();
+    for (const slice of slices) {
+      // Skip "Overall" slice.
+      if (slice == OVERALL_SLICE_KEY) {
+        continue;
+      }
+      const sliceKey = slice.split(':')[0];
+      if (slicesGroupedByKey.has(sliceKey)) {
+        slicesGroupedByKey.get(sliceKey).push(slice);
+      } else {
+        slicesGroupedByKey.set(sliceKey, [slice]);
+      }
+    }
+
+    const candidates = [];
+    let previousSliceKey = '';
+    let id = 0;
+    for (const slice of slices) {
+      // Special process for "Overall" slice.
+      if (slice == OVERALL_SLICE_KEY) {
+        previousSliceKey = OVERALL_SLICE_KEY;
+        candidates.push({
+          text: OVERALL_SLICE_KEY,
+          rawSlice: OVERALL_SLICE_KEY,
+          isSliceKey: true,
+          representedSlices: [OVERALL_SLICE_KEY],
+          isSelected: false,
+          id: id++,
+        });
+      } else {
+        // Add slice key element to the candidates list.
+        const currentSliceKey = slice.split(':')[0];
+        if (currentSliceKey != previousSliceKey) {
+          // Add slice key.
+          candidates.push({
+            text: currentSliceKey,
+            rawSlice: '',
+            isSliceKey: true,
+            representedSlices: slicesGroupedByKey.get(currentSliceKey),
+            isSelected: false,
+            id: id++,
+          });
+          previousSliceKey = currentSliceKey;
+        }
+        // Add slice value to the candidates list.
+        candidates.push({
+          text: slice.split(':')[1],
+          rawSlice: slice,
+          isSliceKey: false,
+          representedSlices: [slice],
+          isSelected: false,
+          id: id++,
+        });
+      }
+    }
+
+    return candidates;
+  }
+
+  /**
+   * Initially select up to default number of slices. If it's eval comparison, 3
+   * slices will be selected. Otherwise, 9 slices will be selected.
+   * @param {!Array<!Object>} slicesDropDownMenuCandidates
+   * @param {string} baseline
+   * @private
+   */
+  selectDefaultSlicesFromDropDownMenuCandidates_(
+      slicesDropDownMenuCandidates, baseline) {
+    if (!slicesDropDownMenuCandidates || !baseline ||
+        this.selectedSlicesDropDownMenuCandidates_ == undefined) {
+      return;
+    }
+
+    // This function maybe triggered if baseline changes. But we only select the
+    // default slices once at very beginning. Later if baseline changes, the
+    // selected slices won't change.
+    if (this.selectedSlicesDropDownMenuCandidates_.length == 0) {
+      // Show up to DEFAULT_NUM_SLICES slices (plus baseline) by default.
+      let numSlices = this.hasEvalComparison_() ?
+          DEFAULT_NUM_SLICES_EVAL_COMPARE :
+          DEFAULT_NUM_SLICES;
+      for (let dropDownCandidatesPointer = 0; numSlices > 0 &&
+           dropDownCandidatesPointer < slicesDropDownMenuCandidates.length;
+           dropDownCandidatesPointer++) {
+        if (!slicesDropDownMenuCandidates[dropDownCandidatesPointer]
+                 .isSliceKey ||
+            slicesDropDownMenuCandidates[dropDownCandidatesPointer].text ==
+                OVERALL_SLICE_KEY) {
+          // Process 'Overall' slice candidate or non slice key candidate.
+          numSlices--;
+          this.push(
+              'selectedSlicesDropDownMenuCandidates_',
+              slicesDropDownMenuCandidates[dropDownCandidatesPointer]);
+        } else if (
+            slicesDropDownMenuCandidates[dropDownCandidatesPointer]
+                .representedSlices.length < numSlices) {
+          // Process the slice key candidate.
+          // Only select this slice key if the number of slice value under this
+          // key is less than numSlices, because if a slice key is selected, all
+          // the slice value under this slice key will be selected
+          // automatically.
+          numSlices -= slicesDropDownMenuCandidates[dropDownCandidatesPointer]
+                           .representedSlices.length;
+          this.push(
+              'selectedSlicesDropDownMenuCandidates_',
+              slicesDropDownMenuCandidates[dropDownCandidatesPointer]);
+          dropDownCandidatesPointer +=
+              slicesDropDownMenuCandidates[dropDownCandidatesPointer]
+                  .representedSlices.length;
+        }
+      }
+    }
+
+    // Make sure the baseline is selected.
+    const isBaselineSlice = (sliceCandidate) => {
+      return sliceCandidate.rawSlice == baseline;
+    };
+    const index =
+        this.selectedSlicesDropDownMenuCandidates_.findIndex(isBaselineSlice);
+    if (index == -1) {
+      this.push(
+          'selectedSlicesDropDownMenuCandidates_',
+          slicesDropDownMenuCandidates.find(isBaselineSlice));
+    }
+  }
+
+  /**
+   * Check if a slice candidate in the drop down menu is selected or not.
+   * @param {!SlicesDropDownMenuCandidateType} candidate
+   * @return {boolean}
+   * @private
+   */
+  isSliceSelected_(candidate) {
+    return (
+        this.selectedSlicesDropDownMenuCandidates_.find(
+            selectedSlices => selectedSlices.id == candidate.id) != undefined);
+  }
+
+  /**
+   * Updates the isSelected status to true.
+   * @private
+   */
+  slicesDropDownCandidatesSelected_(event) {
+    const selectedItem = event.detail.item.slice;
+    const selectedItemIndex = event.target.indexOf(event.detail.item);
+    this.set(
+        'slicesDropDownMenuCandidates_.' + selectedItemIndex + '.isSelected',
+        true);
+    // If a slice key is selected, select all the slices under this slice key.
+    if (selectedItem.isSliceKey && selectedItem.text != OVERALL_SLICE_KEY) {
+      for (let i = selectedItemIndex + 1;
+           i <= selectedItemIndex + selectedItem.representedSlices.length;
+           i++) {
+        let underSliceCandidate = this.slicesDropDownMenuCandidates_[i];
+        if (!this.isSliceSelected_(underSliceCandidate)) {
+          this.push(
+              'selectedSlicesDropDownMenuCandidates_', underSliceCandidate);
+        }
+      }
+    }
+  }
+
+  /**
+   * Updates the isSelected status to false.
+   * @private
+   */
+  slicesDropDownCandidatesUnselected_(event) {
+    let selectedItem = event.detail.item.slice;
+    let selectedItemIndex = this.slicesDropDownMenuCandidates_.findIndex(
+        item => item.id == selectedItem.id);
+    this.set(
+        'slicesDropDownMenuCandidates_.' + selectedItemIndex + '.isSelected',
+        false);
+    // If a slice key is unselected, unselect all the slices under this slice
+    // key.
+    if (selectedItem.isSliceKey && selectedItem.text != OVERALL_SLICE_KEY) {
+      for (let i = selectedItemIndex + 1;
+           i <= selectedItemIndex + selectedItem.representedSlices.length;
+           i++) {
+        const underSliceCandidate = this.slicesDropDownMenuCandidates_[i];
+        const index = this.selectedSlicesDropDownMenuCandidates_.findIndex(
+            candidate => candidate.id == underSliceCandidate.id);
+        if (index != -1) {
+          // Remove from selectedSlicesDropDownMenuCandidates_.
+          this.splice('selectedSlicesDropDownMenuCandidates_', index, 1);
+        }
+      }
+    }
+  }
+
+
+
+  /**
+   * Update the slicesToPlot_ if selectedSlicesDropDownMenuCandidates_
+   * changed.
+   * @param {!Object} selectedSlicesDropDownMenuCandidatesEvent
+   * @param {string} baseline
+   * @return {!Array<string>} The array of slices. The baseline is not
+   *     included.
+   * @private
+   */
+  computeSlicesToPlot_(selectedSlicesDropDownMenuCandidatesEvent, baseline) {
+    if (!selectedSlicesDropDownMenuCandidatesEvent.base || !baseline) {
+      return [];
+    }
+    return selectedSlicesDropDownMenuCandidatesEvent
+        .base
+        // Remove basline.
+        .filter(
+            sliceCandidate =>
+                sliceCandidate && sliceCandidate.rawSlice != baseline)
+        // Remove slice key element unless it's OVERALL.
+        .filter(
+            sliceCandidate => !sliceCandidate.isSliceKey ||
+                (sliceCandidate.isSliceKey &&
+                 sliceCandidate.text == OVERALL_SLICE_KEY))
+        // Map from slice candidates to slice.
+        .map(sliceCandidate => sliceCandidate.rawSlice);
+  }
+
+  /**
+   * @param {!Array<!Object>} data
+   * @param {string} baseline
    * @param {string} metric
    * @param {!Array<string>} thresholds
    * @param {!Object} selectedThresholdsEvent
-   * @param {string} baseline
-   * @param {!Array<!Object>} data
    * @return {!Array<string>} The list of full metric names to be
    *     plotted.
    * @private
    */
-  computeMetrics_(metric, thresholds, selectedThresholdsEvent, baseline, data) {
+  computeMetrics_(data, baseline, metric, thresholds, selectedThresholdsEvent) {
     if (!data || !baseline || thresholds === undefined ||
-        (this.metricIsThresholded_() && !selectedThresholdsEvent.base)) {
+        (this.isMetricThresholded_(thresholds) &&
+         !selectedThresholdsEvent.base)) {
       return [];
     }
 
-    if (this.metricIsThresholded_()) {
+    if (this.isMetricThresholded_(thresholds)) {
       selectedThresholdsEvent.base.sort();
       const thresholdedMetrics = selectedThresholdsEvent.base.map(
           (threshold) => metric + '@' + threshold);
@@ -325,8 +597,8 @@ export class FairnessMetricSummary extends PolymerElement {
   }
 
   /**
-   * Computes the ratio of difference for all metrics between each slice and the
-   * baseline.
+   * Computes the ratio of difference for all metrics between each slice and
+   * the baseline.
    * @param {string} baseline
    * @param {!Object} data
    * @param {!Array<string>} slices
@@ -362,37 +634,6 @@ export class FairnessMetricSummary extends PolymerElement {
     }, {});
   }
 
-  /**
-   * Determines the slices to visualize. The slices are sorted by how noteworthy
-   * they are when compared to the baseline and by default, the top
-   * DEFAULT_NUM_SLICES wil be chosen.
-   * @param {string} baseline
-   * @param {!Array<string>} slices
-   * @param {!Array<string>} metricsToPlot
-   * @param {!Object} diffRatios
-   * @private
-   */
-  initializeSlicesToPlot_(baseline, slices, metricsToPlot, diffRatios) {
-
-    // Show up to DEFAULT_NUM_SLICES slices (plus baseline) by default.
-    const numSlices = this.evalComparison_() ? DEFAULT_NUM_SLICES_EVAL_COMPARE :
-                                               DEFAULT_NUM_SLICES;
-
-    if (metricsToPlot && metricsToPlot.length && baseline && slices &&
-        diffRatios) {
-      // Use the first metrics to determine "interesting" slices to plot.
-      const metric = metricsToPlot[0];
-      this.slicesToPlot_ =
-          slices.filter(slice => slice != baseline)
-              .sort((sliceA, sliceB) => {
-                return Math.abs(
-                    diffRatios[metric][sliceB] - diffRatios[metric][sliceA]);
-              })
-              .slice(0, numSlices);
-    } else {
-      this.slicesToPlot_ = [];
-    }
-  }
 
   /**
    * Computes the metrics that will be displayed in table view.
@@ -417,19 +658,19 @@ export class FairnessMetricSummary extends PolymerElement {
    * @param {string} baseline
    * @param {!Array<!Object>} data
    * @param {!Array<string>} metrics
-   * @param {!Array<string>} slices
+   * @param {!Array<string>} slicesToPlot
    * @param {!Object<!Object<number>>} diffRatios
    * @return {!Array|undefined}
    * @private
    */
-  computeTableData_(baseline, data, metrics, slices, diffRatios) {
-    if (!baseline || !data || !metrics || !slices || !diffRatios ||
+  computeTableData_(baseline, data, metrics, slicesToPlot, diffRatios) {
+    if (!baseline || !data || !metrics || !slicesToPlot || !diffRatios ||
         !Object.keys(diffRatios).length) {
       return undefined;
     }
 
     try {
-      const slicesInTable = [baseline, ...slices];
+      const slicesInTable = [baseline, ...slicesToPlot];
       const tableData = slicesInTable.map(slice => {
         const sliceMetrics = data.find(d => d['slice'] == slice);
         return !sliceMetrics ? {} : {
@@ -454,15 +695,15 @@ export class FairnessMetricSummary extends PolymerElement {
   /**
    * @param {string} baseline
    * @param {!Array<!Object>} data
-   * @param {!Array<string>} slices
+   * @param {!Array<string>} slicesToPlot
    * @return {!Array|undefined}
    * @private
    */
-  computeExampleCounts_(baseline, data, slices) {
-    if (!baseline || !data || !slices) {
+  computeExampleCounts_(baseline, data, slicesToPlot) {
+    if (!baseline || !data || !slicesToPlot) {
       return undefined;
     }
-    const slicesInTable = [baseline, ...slices];
+    const slicesInTable = [baseline, ...slicesToPlot];
     const exampleCounts = slicesInTable.map(slice => {
       const sliceMetrics = data.find(d => d['slice'] == slice);
       return !sliceMetrics ?
@@ -474,62 +715,28 @@ export class FairnessMetricSummary extends PolymerElement {
   }
 
   /**
-   * Opens the settings dialog box.
-   * @private
-   */
-  openSettings_() {
-    this.configSelectedSlices_ = this.slicesToPlot_.slice();
-    this.refreshSelectableSlices_(
-        this.baseline, this.slices, this.configSelectedSlices_.length);
-    this.$['settings'].open();
-  }
-
-  /**
-   * Updates the config and closes the settings dialog.
-   * @private
-   */
-  updateConfig_() {
-    this.slicesToPlot_ = this.configSelectedSlices_.slice();
-    this.$['settings'].close();
-  }
-
-  /**
-   * Refreshes the selctable slices in the setting dialog.
-   * @param {string} baseline The slice that will be used as the baseline.
-   * @param {!Array<string>} slices All available slices.
-   * @param {number} numOfSelectedSlices The number of selected slices.
-   * @private
-   */
-  refreshSelectableSlices_(baseline, slices, numOfSelectedSlices) {
-    if (!slices) {
-      return;
-    }
-    this.configSelectableSlices_ = slices.map(slice => {
-      return {
-        'slice': slice,
-        'disabled': (slice == baseline) ||
-            // Only allow up to 16 (baseline + 15 selected) slices. So, if 15
-            // is selected, disable all unselected slices.
-            (numOfSelectedSlices > 14 &&
-             this.configSelectedSlices_.indexOf(slice) == -1),
-      };
-    });
-  }
-
-  /**
+   * @param {!Array<string>} thresholds
    * @return {boolean} Returns true if metric is thresholded.
    * @private
    */
-  metricIsThresholded_() {
-    return this.thresholds_ && this.thresholds_.length > 0;
+  isMetricThresholded_(thresholds) {
+    return thresholds && thresholds.length > 0;
   }
 
   /**
    * @return {boolean} Returns true if evals are being compared.
    * @private
    */
-  evalComparison_() {
+  hasEvalComparison_() {
     return this.dataCompare && this.dataCompare.length > 0;
+  }
+
+  /**
+   * Open Slices drop down memu.
+   * @private
+   */
+  openSlicesDropDownMenu_() {
+    this.$['SlicesDropDownMenu'].open();
   }
 }
 

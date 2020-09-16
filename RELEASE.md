@@ -20,6 +20,9 @@
 ## Bug fixes and other changes
 
 *   Fix Jupyter lab issue with missing data-base-url.
+*   Updated the FI indicator slicing selection UI.
+*   Fixed the problem that slices are refreshed when user selected a new
+    baseline.
 
 ## Breaking changes
 
