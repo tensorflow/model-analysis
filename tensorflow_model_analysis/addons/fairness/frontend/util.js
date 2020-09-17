@@ -50,6 +50,22 @@ const FAIRNESS_METRICS_ = [
 ];
 
 /**
+ * @const {!Array<string>}
+ */
+exports.POSITIVE_METRICS = [
+  'accuracy', 'precision', 'recall', 'true_positive_rate', 'true_negative_rate',
+  'auc'
+];
+
+/**
+ * @const {!Array<string>}
+ */
+exports.NEGATIVE_METRICS = [
+  'false_positive_rate', 'false_negative_rate', 'false_discovery_rate',
+  'false_omission_rate'
+];
+
+/**
  * @param {string} metricName
  * @return {string}
  */

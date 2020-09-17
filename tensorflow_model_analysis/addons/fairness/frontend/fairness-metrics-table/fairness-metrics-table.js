@@ -53,6 +53,12 @@ export class FairnessMetricsTable extends PolymerElement {
   static get properties() {
     return {
       /**
+       * Metric name.
+       * @type {string}
+       */
+      metric: {type: String, value: ''},
+
+      /**
        * List of metrics to be shown in the table.
        * @type {!Array<string>}
        */
@@ -389,21 +395,56 @@ export class FairnessMetricsTable extends PolymerElement {
   }
 
   /**
-   * @param {(string|number)} s
-   * @return {boolean} Returns true if string represents a positive number.
+   * @param {(string|number)} metric_diff
+   * @return {boolean} Returns true if value is nonzero.
    * @private
    */
-  isPositive_(s) {
-    return parseFloat(s) > 0;
+  isNonzero_(metric_diff) {
+    return metric_diff != 0;
   }
 
   /**
-   * @param {(string|number)} s
-   * @return {boolean} Returns true if string represents a negative number.
+   * @param {(string|number)} metric_diff value in a diff cell.
+   * @return {string} Returns iron-icon string for metric_diff's value.
    * @private
    */
-  isNegative_(s) {
-    return parseFloat(s) < 0;
+  arrow_(metric_diff) {
+    if (parseFloat(metric_diff) > 0) {
+      return 'arrow-upward';
+    } else if (parseFloat(metric_diff) < 0) {
+      return 'arrow-downward';
+    } else {
+      return '';
+    }
+  }
+
+  /**
+   * @param {(string|number)} metric_diff value in a diff cell.
+   * @param {(string)} metric name of metric.
+   * @return {string} Returns icon's class based on metric_diff's value.
+   * @private
+   */
+  icon_class_(metric_diff, metric) {
+    const unprefixed_metric = Util.removeMetricNamePrefix(metric);
+    const parsed_metric_diff = parseFloat(metric_diff);
+    if ((Util.POSITIVE_METRICS.includes(unprefixed_metric) &&
+         parsed_metric_diff > 0) ||
+        (Util.NEGATIVE_METRICS.includes(unprefixed_metric) &&
+         parsed_metric_diff < 0)) {
+      return 'green-icon';
+    } else if (
+        (Util.POSITIVE_METRICS.includes(unprefixed_metric) &&
+         parsed_metric_diff < 0) ||
+        (Util.NEGATIVE_METRICS.includes(unprefixed_metric) &&
+         parsed_metric_diff > 0)) {
+      return 'red-icon';
+    } else if (
+        !Util.POSITIVE_METRICS.includes(unprefixed_metric) &&
+        !Util.NEGATIVE_METRICS.includes(unprefixed_metric)) {
+      return 'blue-icon';
+    } else {
+      return '';
+    }
   }
 }
 

@@ -271,8 +271,6 @@ suite('fairness-metrics-table tests', () => {
         const noPercIndices = [0, 1, 3];
         noPercIndices.forEach(noPercIndex => {
           const text = tableEntries[noPercIndex].textContent.trim();
-          console.log(text);
-          console.log('should not have percentage');
           assert.isTrue(text[text.length - 1] !== '%');
           assert.isFalse(text.startsWith('NaN'));
         });
@@ -280,9 +278,7 @@ suite('fairness-metrics-table tests', () => {
         // evalAgainstEval should be a percentage
         const percIndex = 2;
         const text = tableEntries[percIndex].textContent.trim();
-          console.log(text);
-          console.log('should have percentage');
-        assert.isTrue(text[text.length - 1] === '%');  // TODO(karanshukla): failing
+        assert.isTrue(text[text.length - 1] === '%');
         assert.isFalse(text.startsWith('NaN'));
       });
 
@@ -304,5 +300,27 @@ suite('fairness-metrics-table tests', () => {
     table = fixture('test-fixture');
     assert.equal(table.toPercentage_(0.25), '25%');
     assert.equal(table.toPercentage_('0.6'), '60%');
+  });
+
+  test('Arrow', done => {
+    table = fixture('test-fixture');
+    assert.equal(table.arrow_(0.25), 'arrow-upward');
+    assert.equal(table.arrow_('-1.6'), 'arrow-downward');
+    assert.equal(table.arrow_(0), '');
+    assert.equal(table.arrow_(''), '');
+  });
+
+  test('IconClass', done => {
+    table = fixture('test-fixture');
+
+    assert.equal(table.icon_class_(0.25, 'false_positive_rate'), 'red-icon');
+    assert.equal(
+        table.icon_class_('-0.25', 'false_positive_rate'), 'green-icon');
+
+    assert.equal(table.icon_class_('0.25', 'true_positive_rate'), 'green-icon');
+    assert.equal(table.icon_class_(-0.25, 'true_positive_rate'), 'red-icon');
+
+    assert.equal(table.icon_class_('0.25', 'true_neutral_rate'), 'blue-icon');
+    assert.equal(table.icon_class_(-0.25, 'true_neutral_rate'), 'blue-icon');
   });
 });

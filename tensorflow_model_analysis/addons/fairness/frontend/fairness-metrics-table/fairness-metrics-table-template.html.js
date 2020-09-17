@@ -40,13 +40,13 @@ template.innerHTML = `
     padding-left: 6px;
   }
   .baseline-row {
-    color: #3ca58b;
+    color: #5c6bc0;
     font-weight: bold;
   }
   .baseline-row,
   .table-head-row {
     background: white;
-    color: #3ca58b;
+    color: #5c6bc0;
     font-weight: bold;
     letter-spacing: 0.25;
     display: flex;
@@ -87,8 +87,11 @@ template.innerHTML = `
   .blue-icon {
     --iron-icon-fill-color: blue;
   }
-  .orange-icon {
-    --iron-icon-fill-color: orange;
+  .green-icon {
+    --iron-icon-fill-color: green;
+  }
+  .red-icon {
+    --iron-icon-fill-color: red;
   }
 </style>
 <div class="table-holder" id="table">
@@ -115,11 +118,8 @@ template.innerHTML = `
           <template is="dom-if" if="[[index]]">
             <div class="table-entry" title="[[item]]">
               <template is="dom-if" if="[[isPercentageColumn_(index, headerRow_)]]">
-                <template is="dom-if" if="[[isPositive_(item)]]">
-                  <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
-                </template>
-                <template is="dom-if" if="[[isNegative_(item)]]">
-                  <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
+                <template is="dom-if" if="[[isNonzero_(item)]]">
+                  <iron-icon class$="[[icon_class_(item, metric)]]" icon="[[arrow_(item)]]"></iron-icon>
                 </template>
                 [[toPercentage_(item)]]
               </template>
@@ -143,11 +143,8 @@ template.innerHTML = `
           <template is="dom-if" if="[[index]]">
             <div class="table-entry" title="[[item]]">
               <template is="dom-if" if="[[isPercentageColumn_(index, headerRow_)]]">
-                <template is="dom-if" if="[[isPositive_(item)]]">
-                  <iron-icon icon="arrow-upward" class="orange-icon"></iron-icon>
-                </template>
-                <template is="dom-if" if="[[isNegative_(item)]]">
-                  <iron-icon icon="arrow-downward" class="blue-icon"></iron-icon>
+                <template is="dom-if" if="[[isNonzero_(item)]]">
+                  <iron-icon class$="[[icon_class_(item, metric)]]" icon="[[arrow_(item)]]"></iron-icon>
                 </template>
                 [[toPercentage_(item)]]
               </template>
