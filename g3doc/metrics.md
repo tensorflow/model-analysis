@@ -300,11 +300,10 @@ from google.protobuf import text_format
 metrics_specs = text_format.Parse("""
   metrics_specs {
     query_key: "doc_id"
-    binarize { top_k_list: { values: [1, 2] } }
-    metrics { class_name: "NDCG" config: '"gain_key": "gain"' }
-  }
-  metrics_specs {
-    query_key: "doc_id"
+    metrics {
+      class_name: "NDCG"
+      config: '"gain_key": "gain", "top_k_list": [1, 2]'
+    }
     metrics { class_name: "MinLabelPosition" }
   }
 """, tfma.EvalConfig()).metrics_specs
@@ -314,17 +313,10 @@ This same setup can be created using the following python code:
 
 ```python
 metrics = [
-    tfma.metrics.NDCG(name='ndcg', gain_key='gain'),
-]
-metrics_specs = tfma.metrics.specs_from_metrics(
-    metrics, query_key='doc_id', binarize=tfma.BinarizationOptions(
-        top_k_list={'values': [1,2]}))
-
-metrics = [
+    tfma.metrics.NDCG(name='ndcg', gain_key='gain', top_k_list=[1, 2]),
     tfma.metrics.MinLabelPosition(name='min_label_position')
 ]
-metrics_specs.extend(
-    tfma.metrics.specs_from_metrics(metrics, query_key='doc_id'))
+metrics_specs = tfma.metrics.specs_from_metrics(metrics, query_key='doc_id')
 ```
 
 ### Multi-model Evaluation Metrics
