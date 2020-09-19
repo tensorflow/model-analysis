@@ -249,6 +249,19 @@ class NPM(Command):
     update_package_data(self.distribution)
 
 
+def _make_extra_packages_tfjs():
+  # Packages needed for tfjs.
+  return [
+      'tensorflowjs>=2.0.1.post1,<3',
+      # TODO(b/158034704): Remove prompt-toolkit pin resulted from
+      # tfjs -> PyInquirer dependency chain.
+      'prompt-toolkit>=2.0.10,<3',
+      # TODO(b/167111340): Remove this dependency after the prompt-toolkit
+      # dependency issue is resolved.
+      'ipython>=7,<8',
+  ]
+
+
 def select_constraint(default, nightly=None, git_master=None):
   """Select dependency constraint based on TFX_DEPENDENCY_SELECTOR env var."""
   selector = os.environ.get('TFX_DEPENDENCY_SELECTOR')
@@ -285,9 +298,6 @@ setup_args = {
         # Sort alphabetically
         'absl-py>=0.9,<0.11',
         'apache-beam[gcp]>=2.23,<3',
-        # TODO(b/167111340): Remove this dependency after the prompt-toolkit
-        # dependency issue is resolved.
-        'ipython>=7,<8',
         'ipywidgets>=7,<8',
         'jupyter>=1,<2',
         'numpy>=1.16,<2',
@@ -305,12 +315,11 @@ setup_args = {
             default='>=0.24,<0.25',
             nightly='>=0.25.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
-        'tensorflowjs>=2.0.1.post1,<3',
-        # TODO(b/158034704): Remove prompt-toolkit pin resulted from
-        # tfjs -> PyInquirer dependency chain.
-        'prompt-toolkit>=2.0.10,<3',
     ],
-    'python_requires': '>=3.5,<4',
+    'extras_require': {
+        'all': _make_extra_packages_tfjs(),
+    },
+    'python_requires': '>=3.6,<4',
     'packages': find_packages(),
     'zip_safe': False,
     'cmdclass': {

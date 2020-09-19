@@ -6,8 +6,27 @@
 
 *   Added support for reading and writing metrics, plots and validation results
     using Apache Parquet.
+*   Updated the FI indicator slicing selection UI.
+*   Fixed the problem that slices are refreshed when user selected a new
+    baseline.
 
 ## Bug fixes and other changes
+
+## Breaking changes
+
+## Deprecations
+
+# Version 0.24.2
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+*   Added an extra requirement group `all`. As a result, barebone TFMA does not
+    require `tensorflowjs` , `prompt-toolkit` and `ipython` any more.
+*   Added an extra requirement group `all` that specifies all the extra
+    dependencies TFMA needs. Use `pip install tensorflow-model-analysis[all]` to
+    pull in those dependencies.
 
 ## Breaking changes
 
@@ -20,9 +39,6 @@
 ## Bug fixes and other changes
 
 *   Fix Jupyter lab issue with missing data-base-url.
-*   Updated the FI indicator slicing selection UI.
-*   Fixed the problem that slices are refreshed when user selected a new
-    baseline.
 
 ## Breaking changes
 
