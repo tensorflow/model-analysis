@@ -27,9 +27,6 @@ template.innerHTML = `
   #metrics-and-slice-selector {
     height: 100%
   }
-  #run-selector > paper-dropdown-menu {
-    margin-left: 16px;
-  }
   .flex-row {
     display: flex;
     flex-direction: row;
@@ -50,6 +47,21 @@ template.innerHTML = `
     width: 90%;
     margin-right: 16px;
   }
+  #div-to-compare {
+    margin-left: 16px;
+    width: 90%;
+    margin-right: 16px;
+  }
+  #drop-down-to-compare {
+    width: 100%;
+  }
+  #model-comparison {
+    max-width: 290px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    margin-top: 5px;
+  }
 </style>
 
 <div class="flex-row">
@@ -66,6 +78,27 @@ template.innerHTML = `
             </template>
           </paper-listbox>
         </paper-dropdown-menu>
+        <paper-item>
+          <paper-checkbox id="model-comparison" checked="{{modelComparisonEnabled_}}">
+             <span class="model-comparison" title$="Enable Model Comparison">
+               Enable Model Comparison
+            </span>
+          </paper-checkbox>
+        </paper-item>
+        <div id="div-to-compare" hidden$="[[!modelComparisonEnabled_]]">
+          <paper-dropdown-menu id="drop-down-to-compare"
+                               label="Select evaluation run to compare:"
+                               title$="[[selectedEvaluationRunToCompare]]">
+            <paper-listbox selected="{{selectedEvaluationRunToCompare}}" attr-for-selected="run"
+                           class="dropdown-content" slot="dropdown-content" title$="">
+              <template is="dom-repeat" items="[[availableEvaluationRuns]]">
+                <paper-item run="[[item]]">
+                  <span class="evaluation-run" title$="[[item]]">[[item]]</span>
+                </paper-item>
+              </template>
+            </paper-listbox>
+          </paper-dropdown-menu>
+        </div>
     </paper-card>
     <paper-card id="metrics-and-slice-selector">
       <fairness-metric-and-slice-selector available-metrics="[[selectableMetrics_]]"

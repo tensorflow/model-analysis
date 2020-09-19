@@ -106,6 +106,13 @@ export class FairnessTensorboardContainer extends SelectEventMixin
       selectedEvaluationRun_: {type: String, observer: 'runChanged_'},
 
       /**
+       * Evaluation run selected by the user.
+       * @private {string}
+       */
+      selectedEvaluationRunCompare_:
+          {type: String, observer: 'compareRunChanged_'},
+
+      /**
        * The slicing metrics evaluation result. It's a list of dict with key
        * "slice" and "metrics". For example:
        * [
@@ -130,15 +137,39 @@ export class FairnessTensorboardContainer extends SelectEventMixin
        * @private {!Array<!Object>}
        */
       slicingMetrics_: {type: Array, notify: true, value: []},
+
+      /**
+       * @private {!Array<!Object>}
+       */
+      slicingMetricsCompare_: {type: Array, notify: true, value: []},
     };
   }
 
   runChanged_(run) {
+    this.slicingMetrics_ = [];
     fetch(`${GET_EVAL_RESULTS_ENDPOINT}?run=${run}`)
         .then(res => res.json())
         .then(slicingMetrics => {
           this.slicingMetrics_ = slicingMetrics;
         });
+  }
+
+  compareRunChanged_(run) {
+    this.slicingMetricsCompare_ = [];
+    fetch(`${GET_EVAL_RESULTS_ENDPOINT}?run=${run}`)
+        .then(res => res.json())
+        .then(slicingMetricsCompare => {
+          this.slicingMetricsCompare_ = slicingMetricsCompare;
+          let nbContainer = this.shadowRoot.querySelector('fairness-nb-container');
+          nbContainer.evalName = 'base';
+          if (this.slicingMetricsCompare_) {
+            nbContainer.evalNameCompare = 'compare';
+          } else {
+            nbContainer.evalNameCompare = '';
+          }
+        });
+
+
   }
 
   evaluationOutputPathChanged_(path) {

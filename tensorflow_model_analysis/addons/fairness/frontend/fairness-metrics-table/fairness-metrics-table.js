@@ -112,7 +112,9 @@ export class FairnessMetricsTable extends PolymerElement {
        */
       headerRow_: {
         type: Array,
-        computed: 'populateHeaderRow_(metrics, evalName, evalNameCompare)'
+        computed:
+            'populateHeaderRow_(data, dataCompare, metrics, evalName, evalNameCompare)',
+        notify: true,
       },
 
       /**
@@ -139,13 +141,15 @@ export class FairnessMetricsTable extends PolymerElement {
 
   /**
    * Populate header row
+   * @param {!Array} data
+   * @param {!Array} dataCompare
    * @param {!Array<string>} metrics
    * @param {string} evalName
    * @param {string} evalCompareName
    * @return {!Array<string>}
    * @private
    */
-  populateHeaderRow_(metrics, evalName, evalCompareName) {
+  populateHeaderRow_(data, dataCompare, metrics, evalName, evalCompareName) {
     if (!metrics) {
       return [];
     }
@@ -258,6 +262,8 @@ export class FairnessMetricsTable extends PolymerElement {
       return [[]];
     }
 
+    this.headerRow_ = this.populateHeaderRow_(
+        data, dataCompare, metrics, evalName, evalNameCompare);
     let tableRows = this.populateTableRows_(metrics, data, dataCompare);
     return [this.headerRow_].concat(tableRows);
   }
@@ -357,6 +363,10 @@ export class FairnessMetricsTable extends PolymerElement {
    * @private
    */
   getExampleCount_(rowNum, exampleCounts) {
+    if (!exampleCounts) {
+      return '';
+    }
+
     // We skip the first row, since it is a header row which does not correspond
     // to a slice.
     let value = exampleCounts[parseFloat(rowNum) - 1];

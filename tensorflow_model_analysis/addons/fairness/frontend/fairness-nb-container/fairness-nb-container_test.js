@@ -167,4 +167,22 @@ suite('fairness-nb-container tests', () => {
     };
     setTimeout(fillData, 0);
   });
+
+  test('testModelComparisonFlow', done => {
+    const checkCheckbox = () => {
+      let checkbox =
+          fairnessContainer.shadowRoot.querySelector('#model-comparison');
+      assert.equal(checkbox.checked, false);
+
+      let runSelector =
+          fairnessContainer.shadowRoot.querySelector('#div-to-compare');
+      assert.equal(runSelector.hidden, true);
+
+      checkbox.checked = true;
+      assert.equal(runSelector.hidden, false);
+      done();
+    };
+
+    setTimeout(checkCheckbox, 0);
+  });
 });

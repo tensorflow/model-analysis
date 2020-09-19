@@ -20,6 +20,8 @@ import {template} from './fairness-nb-container-template.html.js';
 
 import {SelectEventMixin} from '../../../../frontend/tfma-nb-event-mixin/tfma-nb-event-mixin.js';
 
+import '@polymer/paper-checkbox/paper-checkbox.js';
+import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-card/paper-card.js';
 import '@polymer/iron-flex-layout/iron-flex-layout.js';
 import '../fairness-metrics-board/fairness-metrics-board.js';
@@ -149,6 +151,13 @@ export class FairnessNbContainer extends SelectEventMixin
 
       /** @type {string} */
       selectedEvaluationRun: {type: String, notify: true},
+
+      /** @type {string} */
+      selectedEvaluationRunToCompare: {type: String, notify: true},
+
+      /** @type {boolean} */
+      modelComparisonEnabled_:
+          {type: Boolean, notify: true, observer: 'onModelComparisonEnabled_'}
     };
   }
 
@@ -161,6 +170,8 @@ export class FairnessNbContainer extends SelectEventMixin
     if (slicingMetrics) {
       tfma.Data.flattenMetrics(slicingMetrics, 'metrics');
       this.flattenSlicingMetrics_ = slicingMetrics;
+    } else {
+      this.flattenSlicingMetrics_ = [];
     }
     this.availableMetricsNames_ =
         this.computeAvailableMetricsNames_(slicingMetrics);
@@ -175,6 +186,8 @@ export class FairnessNbContainer extends SelectEventMixin
     if (slicingMetricsCompare) {
       tfma.Data.flattenMetrics(slicingMetricsCompare, 'metrics');
       this.flattenSlicingMetricsCompare_ = slicingMetricsCompare;
+    } else {
+      this.flattenSlicingMetricsCompare_ = [];
     }
   }
 
@@ -216,6 +229,10 @@ export class FairnessNbContainer extends SelectEventMixin
    * @private
    */
   updateSelectableMetrics_(availableMetricsNames_) {
+    if (!availableMetricsNames_) {
+      this.selectableMetrics_ = [];
+      this.selectedMetrics_ = [];
+    }
     const thresholdedMetrics = new Set();
     const otherMetrics = new Set();
     availableMetricsNames_.forEach(metricName => {
@@ -243,6 +260,20 @@ export class FairnessNbContainer extends SelectEventMixin
    */
   hideRunSelector_(hideSelectEvalRunDropDown, availableEvaluationRuns) {
     return hideSelectEvalRunDropDown || !availableEvaluationRuns.length;
+  }
+
+  /**
+   * Handler listening to any changes in model comparison check box.
+   * @param {boolean} modelComparisonEnabled
+   * @private
+   */
+  onModelComparisonEnabled_(modelComparisonEnabled) {
+    // If model comparison is turned off, set slicing metric to empty array.
+    if (!modelComparisonEnabled) {
+      this.slicingMetricsCompare = [];
+      this.flattenSlicingMetricsCompare_ = [];
+      this.selectedEvaluationRunToCompare = '';
+    }
   }
 };
 
