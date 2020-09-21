@@ -9,6 +9,7 @@
 *   Updated the FI indicator slicing selection UI.
 *   Fixed the problem that slices are refreshed when user selected a new
     baseline.
+*   Add support for slicing on ragged and multidimensional data.
 
 ## Bug fixes and other changes
 

@@ -25,6 +25,7 @@ from __future__ import print_function
 from typing import List, Text, Union
 
 import numpy as np
+import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import types
 
@@ -61,23 +62,14 @@ class SliceAccessor(object):
       # Backwards compatibility for features that were stored as FPL types
       # instead of native dicts.
       value = value['node']
-    if isinstance(value, tf.compat.v1.SparseTensorValue):
-      return value.values.tolist()  # pytype: disable=attribute-error
-    if not isinstance(value, np.ndarray):
+    if isinstance(value, (tf.compat.v1.SparseTensorValue,
+                          tf.compat.v1.ragged.RaggedTensorValue)):
+      value = value.values
+    if not isinstance(value, (np.ndarray, pa.Array, list)):
       raise ValueError(
           'feature had unsupported type: key: %s, value: %s, type: %s' %
           (key, value, type(value)))
-    # TODO(b/133113963): Consider changing to flatten so works with 2-D data.
-    squeezed_value = np.squeeze(value)
-    if squeezed_value.ndim > 1:
-      raise ValueError(
-          'all feature values must be convertible to 1D arrays, but %s was '
-          'not. value was %s' % (key, value))
-    if squeezed_value.ndim == 1:
-      # For the multivalent columns, the squeezed values are in 1D arrays.
-      # Convert the array to a list of unique values.
-      return np.unique(squeezed_value).tolist()
-    else:  # squeezed_value.ndim == 0
-      # For the univalent columns, we get a scalar after squeezing, which we
-      # wrap in an list.
-      return [np.asscalar(squeezed_value)]
+    # Only np.array and multi-dimentional pa.array support flatten.
+    if hasattr(value, 'flatten'):
+      value = value.flatten()
+    return np.unique(value).tolist()
