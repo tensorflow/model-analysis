@@ -247,7 +247,7 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
 
     def check_metric_counter(result):
       metric_filter = beam.metrics.metric.MetricsFilter().with_name(
-          'metric_computed_fairness_indicators')
+          'metric_computed_fairness_indicators_v1')
       actual_metrics_count = result.metrics().query(
           filter=metric_filter)['counters'][0].committed
       self.assertEqual(actual_metrics_count, 2)

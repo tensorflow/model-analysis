@@ -36,7 +36,7 @@ class CounterUtilTest(tf.test.TestCase):
 
     result = pipeline.run()
     metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
-        constants.METRICS_NAMESPACE).with_name('metric_computed_auc')
+        constants.METRICS_NAMESPACE).with_name('metric_computed_auc_v1')
     actual_metrics_count = result.metrics().query(
         filter=metric_filter)['counters'][0].committed
 
@@ -67,7 +67,7 @@ class CounterUtilTest(tf.test.TestCase):
     result = pipeline.run()
     metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
         constants.METRICS_NAMESPACE).with_name(
-            'metric_computed_FairnessIndicators')
+            'metric_computed_FairnessIndicators_v2')
     actual_metrics_count = result.metrics().query(
         filter=metric_filter)['counters'][0].committed
 

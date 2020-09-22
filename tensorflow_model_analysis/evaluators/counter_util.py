@@ -28,9 +28,9 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 
 
-def _IncrementMetricsCounters(metric_name: Text):
+def _IncrementMetricsCounters(metric_name: Text, version: Text):
   # LINT.IfChange
-  metric_name = 'metric_computed_%s' % metric_name
+  metric_name = 'metric_computed_%s_%s' % (metric_name, version)
   # LINT.ThenChange(../../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
   metrics_counter = beam.metrics.Metrics.counter(constants.METRICS_NAMESPACE,
                                                  metric_name)
@@ -48,7 +48,7 @@ def IncrementMetricsCallbacksCounters(
   def _MakeAndIncrementCounters(_):
     for callback in metrics_callbacks:
       if hasattr(callback, 'name'):
-        _IncrementMetricsCounters(callback.name)
+        _IncrementMetricsCounters(callback.name, 'v1')
 
   return (pipeline
           | 'CreateSole' >> beam.Create([None])
@@ -85,7 +85,7 @@ def IncrementMetricsSpecsCounters(pipeline: beam.Pipeline,
   def _MakeAndIncrementCounters(_):
     for metrics_spec in metrics_specs:
       for metric in metrics_spec.metrics:
-        _IncrementMetricsCounters(metric.class_name)
+        _IncrementMetricsCounters(metric.class_name, 'v2')
 
   return (pipeline
           | 'CreateSole' >> beam.Create([None])

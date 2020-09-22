@@ -323,7 +323,7 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                        check_validations)
 
     metric_filter = beam.metrics.metric.MetricsFilter().with_name(
-        'metric_computed_ExampleCount')
+        'metric_computed_ExampleCount_v2')
     print(pipeline.run().metrics().query())
     actual_metrics_count = pipeline.run().metrics().query(
         filter=metric_filter)['counters'][0].committed
