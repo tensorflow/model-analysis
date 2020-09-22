@@ -22,14 +22,17 @@ template.innerHTML = `
     padding: 20px 0 8px 30px;
     color: #666;
   }
-  .slices-drop-down-candidates {
+  .slices-drop-down-menu {
     min-width: 200px;
   }
-  .slices-drop-down-candidates .slice-key-true{
+  .slices-drop-down-menu .slice-key-true{
     text-transform: uppercase;
   }
-  .slices-drop-down-candidates .slice-key-false{
+  .slices-drop-down-menu .slice-key-false{
     padding-left: 20px;
+  }
+  .slices-drop-down-candidates {
+    --paper-item-min-height: 43px; /* It's 48px by default.*/
   }
   #table {
     margin-top: 10px;
@@ -54,13 +57,13 @@ template.innerHTML = `
   <iron-dropdown id="SlicesDropDownMenu">
     <paper-listbox multi selected-values="{{selectedSlicesDropDownMenuCandidates_}}"
                    attr-for-selected="slice"
-                   class="dropdown-content slices-drop-down-candidates"
+                   class="dropdown-content slices-drop-down-menu"
                    slot="dropdown-content"
                    on-iron-select="slicesDropDownCandidatesSelected_"
                    on-iron-deselect="slicesDropDownCandidatesUnselected_"
                    >
       <template is="dom-repeat" items="[[slicesDropDownMenuCandidates_]]">
-        <paper-item slice="[[item]]">
+        <paper-item slice="[[item]]" class="slices-drop-down-candidates">
           <div class$="slice-key-[[item.isSliceKey]]">
              <template is="dom-if" if="[[item.isSelected]]">
               <iron-icon icon="icons:check-box"></iron-icon>
