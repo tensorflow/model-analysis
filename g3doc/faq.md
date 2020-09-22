@@ -61,7 +61,7 @@ assumptions:
     (this can be changed using `model_specs[0].signature_name`).
 *   Built in metrics from `model.compile(...)` should be evaluated (this can be
     disabled via `options.include_default_metric` within the
-    [tfma.EvalConfig](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/config.proto)).
+    [tfma.EvalConfig](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/EvalConfig)).
 
 ```python
 from google.protobuf import text_format
@@ -355,18 +355,6 @@ restrictions on the types of metrics that can be computed based on
     examples, and add them up for a group of examples to get the right values
     for those examples. The final accuracy can be computed used "total correct /
     total examples".
-*   Formally:
-    *   Let $${e_1, e_2, \ldots, e_n}$$ be a set of $$n$$ examples.
-    *   Let $$M$$ be your metric function, such that $$M(e_1, e_2, \ldots,
-        e_n)$$ = metric value over the $$n$$ examples
-    *   Let $$\sigma$$ be your function for computing sufficient statistics for
-        your metric, such that $$\sigma(e_1, e_2, \ldots, e_n)$$ = sufficient
-        statistics over $$n$$ examples
-    *   Let $$\mu$$ be your function for computing your metric from the
-        sufficient statistics. Your metric must be such that $$M(e_1, e_2,
-        \ldots, e_n) = \mu(\sigma(e_1, e_2, \ldots, e_n))$$
-    *   Additionally, TFMA requires that: $$\sigma(e_1, e_2, \ldots, e_n) =
-        \sigma(e_1) + \sigma(e_2) + \ldots + \sigma(e_n)$$
 
 ## Add-ons
 

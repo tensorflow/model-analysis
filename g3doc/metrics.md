@@ -1,21 +1,24 @@
-# Tensorflow Model Analysis Metrics
+# Tensorflow Model Analysis Metrics and Plots
 
 ## Overview
 
-TFMA supports the following metrics:
+TFMA supports the following metrics and plots:
 
 *   Standard keras metrics
     ([`tf.keras.metrics.*`](https://www.tensorflow.org/api_docs/python/tf/keras/metrics))
     *   Note that you do not need a keras model to use keras metrics. Metrics
         are computed outside of the graph in beam using the metrics classes
         directly.
-*   Standard TFMA metrics
-    ([`tfma.metrics.*`](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/metrics/__init__.py))
+*   Standard TFMA metrics and plots
+    ([`tfma.metrics.*`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/api/metrics))
 *   Custom keras metrics (metrics derived from
     [`tf.keras.metrics.Metric`](https://www.tensorflow.org/api_docs/python/tf/keras/metrics/Metric))
 *   Custom TFMA metrics (metrics derived from
-    [`tfma.metrics.Metric`](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/metrics/metric_types.py)
+    [`tfma.metrics.Metric`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/api/metrics/Metric))
     using custom beam combiners or metrics derived from other metrics).
+
+NOTE: In TFMA, plots and metrics are both defined under the metrics library. By
+convention the classes related to plots end in `Plot`.
 
 TFMA also provides built-in support for converting binary classification metrics
 for use with multi-class/multi-label problems:
@@ -33,10 +36,11 @@ classification, ranking, etc.
 ## Configuration
 
 There are two ways to configure metrics in TFMA: (1) using the
-[MetricsSpec proto](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/config.proto)
+[`tfma.MetricsSpec`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/api/MetricsSpec)
 or (2) by creating instances of `tf.keras.metrics.*` and/or `tfma.metrics.*`
-classes in python and using `tfma.metrics.specs_from_metrics` to convert them to
-MetricsSpecs.
+classes in python and using
+[`tfma.metrics.specs_from_metrics`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/api/metrics/specs_from_metrics)
+to convert them to a list of `tfma.MetricsSpec`.
 
 The following sections describe example configurations for different types of
 machine learning problems.
@@ -517,7 +521,7 @@ All the supported plots are stored in a single proto called
 ### EvalResult
 
 The return from an evaluation run is an
-[EvalResult](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/api/model_eval_lib.py).
+[`tfma.EvalResult`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/EvalResult).
 This record contains `slicing_metrics` that encode the metric key as a
 multi-level dict where the levels correspond to output name, class ID, metric
 name, and metric value respectively. This is intended to be used for UI display
@@ -617,7 +621,7 @@ A `MetricComputation` is made up of a combination of a `preprocessor` and a
 and outputs the initial state that will be used by the combiner (see
 [architecture](architecture.md) for more info on what are extracts). If a
 `preprocessor` is not defined, then the combiner will be passed
-[StandardMetricInputs](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/metrics/metric_types.py)
+[StandardMetricInputs](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/metrics/StandardMetricInputs)
 (standard metric inputs contains labels, predictions, and example_weights). The
 `combiner` is a `beam.CombineFn` that takes a tuple of (slice key, preprocessor
 output) as its input and outputs a tuple of (slice_key, metric results dict) as
@@ -628,7 +632,7 @@ Note that slicing happens between the `preprocessor` and `combiner`.
 Note that if a metric computation wants to make use of both the standard metric
 inputs, but augment it with a few of the features from the `features` extracts,
 then the special
-[FeaturePreprocessor](https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/metrics/metric_types.py)
+[FeaturePreprocessor](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/metrics/FeaturePreprocessor)
 can be used which will merge the requested features from multiple combiners into
 a single shared StandardMetricsInputs value that is passed to all the combiners
 (the combiners are responsible for reading the features they are interested in
