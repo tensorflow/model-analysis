@@ -149,10 +149,9 @@ def _update_eval_config_with_defaults(
   """Returns updated eval config with default values."""
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model)
-  maybe_add_baseline = eval_shared_models and len(eval_shared_models) == 2
+  has_baseline = eval_shared_models and len(eval_shared_models) == 2
 
-  return config.update_eval_config_with_defaults(
-      eval_config, maybe_add_baseline=maybe_add_baseline)
+  return config.update_eval_config_with_defaults(eval_config, has_baseline)
 
 
 MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice

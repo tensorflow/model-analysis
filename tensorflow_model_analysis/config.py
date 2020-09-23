@@ -96,21 +96,36 @@ def verify_eval_config(eval_config: EvalConfig,
 def update_eval_config_with_defaults(
     eval_config: EvalConfig,
     maybe_add_baseline: Optional[bool] = None,
-    maybe_remove_baseline: Optional[bool] = None) -> EvalConfig:
+    maybe_remove_baseline: Optional[bool] = None,
+    has_baseline: Optional[bool] = None) -> EvalConfig:
   """Returns a new config with default settings applied.
+
+  a) Add or remove a model_spec according to "has_baseline".
+  b) Fix the model names (model_spec.name) to tfma.CANDIDATE_KEY and
+     tfma.BASELINE_KEY.
+  c) Update the metrics_specs with the fixed model name.
 
   Args:
     eval_config: Original eval config.
-    maybe_add_baseline: True to add a baseline ModelSpec to the config as a copy
-      of the candidate ModelSpec that should already be present. This is only
+    maybe_add_baseline: DEPRECATED. True to add a baseline ModelSpec to the
+      config as a copy of the candidate ModelSpec that should already be
+      present. This is only applied if a single ModelSpec already exists in the
+      config and that spec doesn't have a name associated with it. When applied
+      the model specs will use the names tfma.CANDIDATE_KEY and
+      tfma.BASELINE_KEY. Only one of maybe_add_baseline or
+      maybe_remove_baseline should be used.
+    maybe_remove_baseline: DEPRECATED. True to remove a baseline ModelSpec from
+      the config if it already exists. Removal of the baseline also removes any
+      change thresholds. Only one of maybe_add_baseline or maybe_remove_baseline
+      should be used.
+    has_baseline: True to add a baseline ModelSpec to the config as a copy of
+      the candidate ModelSpec that should already be present. This is only
       applied if a single ModelSpec already exists in the config and that spec
       doesn't have a name associated with it. When applied the model specs will
-      use the names tfma.CANDIDATE_KEY and tfma.BASELINE_KEY. Only one of
-      maybe_add_baseline or maybe_remove_baseline should be used.
-    maybe_remove_baseline: True to remove a baseline ModelSpec from the config
-      if it already exists. Removal of the baseline also removes any change
-      thresholds. Only one of maybe_add_baseline or maybe_remove_baseline should
-      be used.
+      use the names tfma.CANDIDATE_KEY and tfma.BASELINE_KEY. False to remove a
+      baseline ModelSpec from the config if it already exists. Removal of the
+      baseline also removes any change thresholds. Only one of has_baseline or
+      maybe_remove_baseline should be used.
   """
   updated_config = EvalConfig()
   updated_config.CopyFrom(eval_config)
@@ -123,6 +138,21 @@ def update_eval_config_with_defaults(
   if maybe_add_baseline and maybe_remove_baseline:
     raise ValueError('only one of maybe_add_baseline and maybe_remove_baseline '
                      'should be used')
+  if maybe_add_baseline or maybe_remove_baseline:
+    logging.warning(
+        """"maybe_add_baseline" and "maybe_remove_baseline" are deprecated,
+        please use "has_baseline" instead.""")
+    if has_baseline:
+      raise ValueError(
+          """"maybe_add_baseline" and "maybe_remove_baseline" are ignored if
+          "has_baseline" is set.""")
+  if has_baseline is not None:
+    if has_baseline:
+      maybe_add_baseline = True
+    else:
+      maybe_remove_baseline = True
+
+  # Has a baseline model.
   if (maybe_add_baseline and len(updated_config.model_specs) == 1 and
       not updated_config.model_specs[0].name):
     baseline = updated_config.model_specs.add()
@@ -136,6 +166,7 @@ def update_eval_config_with_defaults(
         'will be called "%s": updated_config=\n%s', constants.CANDIDATE_KEY,
         constants.BASELINE_KEY, updated_config)
 
+  # Does not have a baseline.
   if maybe_remove_baseline:
     tmp_model_specs = []
     for model_spec in updated_config.model_specs:
@@ -145,9 +176,11 @@ def update_eval_config_with_defaults(
     updated_config.model_specs.extend(tmp_model_specs)
     for metrics_spec in updated_config.metrics_specs:
       for metric in metrics_spec.metrics:
-        metric.threshold.ClearField('change_threshold')
+        if metric.threshold.ByteSize():
+          metric.threshold.ClearField('change_threshold')
       for threshold in metrics_spec.thresholds.values():
-        threshold.ClearField('change_threshold')
+        if threshold.ByteSize():
+          threshold.ClearField('change_threshold')
     logging.info(
         'Request was made to ignore the baseline ModelSpec and any change '
         'thresholds. This is likely because a baseline model was not provided: '
