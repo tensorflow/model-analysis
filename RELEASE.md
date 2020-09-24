@@ -17,9 +17,30 @@
 
 ## Deprecations
 
+# Version 0.24.3
+
+## Major Features and Improvements
+
+*   N/A
+
+## Bug fixes and other changes
+
+*   Depends on `apache-beam[gcp]>=2.24,<3`.
+*   Depends on `tfx-bsl>=0.24.0,<0.25.0`.
+
+## Breaking changes
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
 # Version 0.24.2
 
 ## Major Features and Improvements
+
+*   N/A
 
 ## Bug fixes and other changes
 
@@ -31,11 +52,17 @@
 
 ## Breaking changes
 
+*   N/A
+
 ## Deprecations
+
+*   N/A
 
 # Version 0.24.1
 
 ## Major Features and Improvements
+
+*   N/A
 
 ## Bug fixes and other changes
 
@@ -43,7 +70,11 @@
 
 ## Breaking changes
 
+*   N/A
+
 ## Deprecations
+
+*   N/A
 
 # Version 0.24.0
 
