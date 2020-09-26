@@ -59,9 +59,43 @@ message ModelSpec {
   // pre-calculated and stored along side the features. In this case the
   // prediction key refers to a key in the features dictionary. Use one of
   // prediction_key or prediction_keys.
+  //
+  // Note that prediction_key is NOT the same as the output_name used in the
+  // MetricsSpec. The output_name refers to the name of an output for a
+  // multi-output model (for tf.Estimator's this is called the "head" whereas
+  // for keras the term output is used). Some outputs (typically tf.Estimator)
+  // are themselves made up of a dict of multiple tensors (e.g. 'classes',
+  // 'probabilities', etc). The predition_key specifies which key in the output
+  // contains the prediction values (i.e. 'probabilities', etc). For example,
+  // a tf.Estimator model might output the following:
+  //
+  // {
+  //   'head1': {
+  //     'classes': classes_tensor,
+  //     'class_ids': class_ids_tensor,
+  //     'logits': logits_tensor',
+  //     'probabilities': probabilities_tensor
+  //   }
+  //   'head2': {
+  //     'classes': classes_tensor,
+  //     'class_ids': class_ids_tensor,
+  //     'logits': logits_tensor',
+  //     'probabilities': probabilities_tensor
+  //   }
+  // }
+  //
+  // Here 'head1' or 'head2' would be the output_name, whereas 'probabilities'
+  // would be the prediction_key.
+  //
+  // If a model is not being used (i.e. the predictions are stored in the
+  // inputs), then a prediction_key is required. However, if a model is being
+  // used to compute the predictions a prediction_key typically is not needed
+  // since all the default tf.Estimator values for the keys are handled by TFMA
+  // and keras does not return multiple tensors for a given output.
   string prediction_key = 7;
   // Optional prediction keys (multi-output model) keyed by output_name. Use one
-  // of prediction_key or prediction_keys.
+  // of prediction_key or prediction_keys. See comment under prediction_key on
+  // the difference between output_name and prediction_key.
   map<string, string> prediction_keys = 8;  // oneof not allowed with maps
   // Optional example weight key (single-output model). Use one of
   // example_weight_key or example_weight_keys.
@@ -262,7 +296,8 @@ message MetricsSpec {
   // the model_specs will be assumed.
   repeated string model_names = 2;
   // Optional names of outputs the metrics should be calculated for (for
-  // multi-output models).
+  // multi-output models). See comment under the ModelSpec.prediction_key on the
+  // difference between output_name and prediction_key.
   repeated string output_names = 3;
   // Optional binarization options for converting multi-class / multi-label
   // model outputs into outputs suitable for binary classification metrics.

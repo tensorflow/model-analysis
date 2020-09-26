@@ -137,11 +137,13 @@ def _ExtractInputs(batched_extract: types.Extracts,
   # In multi-output model, the keys (labels, predictions, weights) are
   # keyed by output name. In this case, we will have a nested dict in the
   # extracts keyed by the output names.
-  def _get_proj_df_dict(original, keys_dict):  # pylint: disable=invalid-name
+  def _get_proj_df_dict(original, keys_dict, allow_missing=False):  # pylint: disable=invalid-name
     df_proj = pd.DataFrame()
     for output_name, key in keys_dict.items():
       if key in dataframe:
         df_proj[output_name] = original[key]
+      elif allow_missing:
+        df_proj[output_name] = [None] * len(serialized_examples)
     return df_proj.to_dict(orient='records')
 
   def _add_proj_df(proj_df, result, key):  # pylint: disable=invalid-name
@@ -156,10 +158,18 @@ def _ExtractInputs(batched_extract: types.Extracts,
   example_weights_df = pd.DataFrame()
   predictions_df = pd.DataFrame()
   for spec in eval_config.model_specs:
+    # Note that we allow the label_key to be unset as some metrics don't use
+    # labels. We also allow the label_key to missing from the inputs since the
+    # label handling logic may be handled by downstream extractors.
     if spec.label_key:
-      labels_df[spec.name] = dataframe[spec.label_key]
+      if spec.label_key in dataframe:
+        labels_df[spec.name] = dataframe[spec.label_key]
+      else:
+        labels_df[spec.name] = [None] * len(serialized_examples)
     elif spec.label_keys:
-      labels_df[spec.name] = _get_proj_df_dict(dataframe, spec.label_keys)
+      labels_df[spec.name] = _get_proj_df_dict(dataframe, spec.label_keys, True)
+    else:
+      labels_df[spec.name] = [None] * len(serialized_examples)
 
     if spec.example_weight_key:
       example_weights_df[spec.name] = dataframe[spec.example_weight_key]
