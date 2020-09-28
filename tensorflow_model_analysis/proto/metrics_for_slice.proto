@@ -246,6 +246,9 @@ message MetricValue {
 // LINT.ThenChange(
 //   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
 
+// Sync the SliceKey types with PerformanceStatistics because of b/110954446.
+// LINT.IfChange
+
 // A single slice key.
 message SingleSliceKey {
   string column = 1;
@@ -260,6 +263,9 @@ message SingleSliceKey {
 message SliceKey {
   repeated SingleSliceKey single_slice_keys = 1;
 }
+
+// LINT.ThenChange(
+//   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
 
 // CrossSliceKey contains two slices which are compared with each other.
 message CrossSliceKey {
@@ -284,6 +290,8 @@ message MetricsForSlice {
   // provided by TFMA to its appropriate type for better visualization, and map
   // all other metrics to DoubleValue type.
   map<string, MetricValue> metrics = 2 [deprecated = true];
+
+  reserved 53;  // slice_key used in prefromance_statistics.proto
 }
 
 // Sync the Plot types with PerformanceStatistics because of b/110954446.
@@ -401,4 +409,6 @@ message PlotsForSlice {
   // example, the key can be of the form 'post_export_metrics/head_name' for a
   // multihead model.
   map<string, PlotData> plots = 3 [deprecated = true];
+
+  reserved 9;  // slice_key used in prefromance_statistics.proto
 }
