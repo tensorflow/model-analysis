@@ -10,6 +10,7 @@
 *   Fixed the problem that slices are refreshed when user selected a new
     baseline.
 *   Add support for slicing on ragged and multidimensional data.
+*   Load TFMA correctly in JupyterLabs even if Facets has loaded first.
 
 ## Bug fixes and other changes
 

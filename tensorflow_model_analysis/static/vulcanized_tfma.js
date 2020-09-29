@@ -13,6 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * Copyright 2018 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @fileoverview Wraps the whole library in a function to protect its scope.
+ * This is so that other libraries can't affect TFMA even if they load before
+ * TFMA.
+ * @nocompile scope_wrap_start won't compile on its own but it will compile when
+ * combined with scope_wrap_end
+ */
+
+(function() {
 (function(){/*
 
  Copyright The Closure Library Authors.
@@ -339,6 +364,66 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 var Zg=window.customElements,$g=window.HTMLImports,ah=!1,bh=null;Zg.polyfillWrapFlushCallback&&Zg.polyfillWrapFlushCallback(function(a){bh=a;ah&&a()});function ch(){window.HTMLTemplateElement.bootstrap&&window.HTMLTemplateElement.bootstrap(window.document);$g.whenReady(function(){bh&&bh();ah=!0;window.WebComponents.ready=!0;document.dispatchEvent(new CustomEvent("WebComponentsReady",{bubbles:!0}))})}
 "complete"!==document.readyState?(window.addEventListener("load",ch),window.addEventListener("DOMContentLoaded",function(){window.removeEventListener("load",ch);ch()})):ch();})();
 //# sourceMappingURL=webcomponents-lite.js.map
+/**
+ * Copyright 2018 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @fileoverview This overwrites customElements.define by a function that does
+ * the same thing, except it also catches exceptions, in case a component has
+ * already been defined.
+ * Without this function, the script will stop loading TFMA on the first
+ * conflict.
+ */
+
+const originalDefine = customElements.define.bind(customElements);
+/**
+ * Overrides customElements.define.
+ * @param {string} name
+ * @param {!Function} constructor
+ */
+customElements.define = function(name, constructor) {
+  try {
+    originalDefine(name, constructor);
+  } catch(e) {
+    console.log(e);
+  }
+};
+/**
+ * Copyright 2018 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @fileoverview Define window.d3 by reusing a previously defined d3, or
+ * creating an empty object so that it can be defined later. In practice, d3
+ * will be undefined, and we'll initialize window.d3 with {}.
+ */
+
+window.d3 = d3 || {};
 /*
 
 Copyright 2010-2017 Mike Bostock
@@ -856,7 +941,7 @@ arguments);return R===ha?f:R};f.clickDistance=function(R){return arguments.lengt
  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-var $jscomp=$jscomp||{};$jscomp.scope={};$jscomp.arrayIteratorImpl=function(b){var d=0;return function(){return d<b.length?{done:!1,value:b[d++]}:{done:!0}}};$jscomp.arrayIterator=function(b){return{next:$jscomp.arrayIteratorImpl(b)}};$jscomp.ASSUME_ES5=!1;$jscomp.ASSUME_NO_NATIVE_MAP=!1;$jscomp.ASSUME_NO_NATIVE_SET=!1;$jscomp.SIMPLE_FROUND_POLYFILL=!1;$jscomp.ISOLATE_POLYFILLS=!1;$jscomp.FORCE_POLYFILL_PROMISE=!1;$jscomp.ENABLE_UNHANDLED_REJECTION_POLYFILL=!0;
+var $jscomp=$jscomp||{};$jscomp.scope={};$jscomp.arrayIteratorImpl=function(b){var d=0;return function(){return d<b.length?{done:!1,value:b[d++]}:{done:!0}}};$jscomp.arrayIterator=function(b){return{next:$jscomp.arrayIteratorImpl(b)}};$jscomp.ASSUME_ES5=!1;$jscomp.ASSUME_NO_NATIVE_MAP=!1;$jscomp.ASSUME_NO_NATIVE_SET=!1;$jscomp.SIMPLE_FROUND_POLYFILL=!1;$jscomp.ISOLATE_POLYFILLS=!1;$jscomp.FORCE_POLYFILL_PROMISE=!1;
 $jscomp.defineProperty=$jscomp.ASSUME_ES5||"function"==typeof Object.defineProperties?Object.defineProperty:function(b,d,c){if(b==Array.prototype||b==Object.prototype)return b;b[d]=c.value;return b};$jscomp.getGlobal=function(b){b=["object"==typeof globalThis&&globalThis,b,"object"==typeof window&&window,"object"==typeof self&&self,"object"==typeof global&&global];for(var d=0;d<b.length;++d){var c=b[d];if(c&&c.Math==Math)return c}throw Error("Cannot find global object");};$jscomp.global=$jscomp.getGlobal(this);
 $jscomp.IS_SYMBOL_NATIVE="function"===typeof Symbol&&"symbol"===typeof Symbol("x");$jscomp.TRUST_ES6_POLYFILLS=!$jscomp.ISOLATE_POLYFILLS||$jscomp.IS_SYMBOL_NATIVE;$jscomp.polyfills={};$jscomp.propertyToPolyfillSymbol={};$jscomp.POLYFILL_PREFIX="$jscp$";var $jscomp$lookupPolyfilledValue=function(b,d){var c=$jscomp.propertyToPolyfillSymbol[d];if(null==c)return b[d];c=b[c];return void 0!==c?c:b[d]};
 $jscomp.polyfill=function(b,d,c,f){d&&($jscomp.ISOLATE_POLYFILLS?$jscomp.polyfillIsolated(b,d,c,f):$jscomp.polyfillUnisolated(b,d,c,f))};$jscomp.polyfillUnisolated=function(b,d,c,f){c=$jscomp.global;b=b.split(".");for(f=0;f<b.length-1;f++){var e=b[f];if(!(e in c))return;c=c[e]}b=b[b.length-1];f=c[b];d=d(f);d!=f&&null!=d&&$jscomp.defineProperty(c,b,{configurable:!0,writable:!0,value:d})};
@@ -2068,3 +2153,26 @@ oo.prototype.refresh_=function(a,b,c){var d=c?tfma.Util.createConfigsList(c):[];
 oo.prototype.computeAvailableConfigs_=function(a){var b={};a.forEach(function(c){var d=c.metrics;Object.keys(d).forEach(function(e){var f=b[e]||{};Object.keys(d[e]).forEach(function(g){f[g]=1});b[e]=f})});return Object.keys(b).reduce(function(c,d){c[d]=Object.keys(b[d]).sort();return c},{})};
 u.Object.defineProperties(oo,{is:{configurable:!0,enumerable:!0,get:function(){return"tfma-nb-time-series"}},template:{configurable:!0,enumerable:!0,get:function(){return io}},properties:{configurable:!0,enumerable:!0,get:function(){return{data:{type:Array},config:{type:Object},availableConfigs_:{type:Object,computed:"computeAvailableConfigs_(data)"},selectedConfigs_:{type:Object},seriesData_:{type:Object}}}},observers:{configurable:!0,enumerable:!0,get:function(){return["refresh_(data, config, selectedConfigs_)"]}}});
 customElements.define("tfma-nb-time-series",oo);
+/**
+ * Copyright 2018 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @fileoverview Closes the function and calls it.
+ * @nocompile scope_wrap_end won't compile on its own but it will compile when
+ * combined with scope_wrap_start
+ */
+
+})();
