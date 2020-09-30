@@ -296,6 +296,15 @@ class JackknifePTransformTest(absltest.TestCase):
       self.assertLen(counters, 1)
       self.assertEqual(1, counters[0].committed)
 
+      metric_filter = beam.metrics.metric.MetricsFilter().with_name(
+          'zero_variance_metric_slice_size_dist')
+      counters = result.metrics().query(filter=metric_filter)['distributions']
+      self.assertLen(counters, 1)
+      self.assertEqual(1, counters[0].committed.count)
+      self.assertEqual(16, counters[0].committed.sum)
+      self.assertEqual(16, counters[0].committed.min)
+      self.assertEqual(16, counters[0].committed.max)
+
       # verify total slice counter
       metric_filter = beam.metrics.metric.MetricsFilter().with_name(
           'num_slices')

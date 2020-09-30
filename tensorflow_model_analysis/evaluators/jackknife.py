@@ -346,6 +346,10 @@ class _JackknifeSampleCombiner(beam.CombineFn):
         constants.METRICS_NAMESPACE, 'num_slices_missing_jackknife_samples')
     self._small_samples_counter = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_slices_with_small_jackknife_samples')
+    self._negative_variance_dist = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE, 'negative_variance_metric_slice_size_dist')
+    self._zero_variance_dist = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE, 'zero_variance_metric_slice_size_dist')
     self._sample_id_key = metric_types.MetricKey(_JACKKNIFE_SAMPLE_ID_KEY)
 
   def create_accumulator(self) -> _MergeJacknifeAccumulator:
@@ -427,9 +431,13 @@ class _JackknifeSampleCombiner(beam.CombineFn):
         mean = accumulator.sums[metric_key] / accumulator.num_samples
         sum_of_squares = accumulator.sums_of_squares[metric_key]
         # one-pass variance formula with num_samples degrees of freedom
-        sample_variance = max(0,
-                              sum_of_squares / float(num_samples) - mean * mean)
+        sample_variance = sum_of_squares / float(num_samples) - mean * mean
+        if sample_variance < 0:
+          self._negative_variance_dist.update(n)
+        sample_variance = max(0, sample_variance)
         standard_error = (jackknife_scaling_factor * sample_variance)**0.5
+        if standard_error == 0:
+          self._zero_variance_dist.update(n)
         result[metric_key] = types.ValueWithTDistribution(
             sample_mean=mean,
             sample_standard_deviation=standard_error,
