@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import collections
 import importlib
+import itertools
 
 from typing import Any, Dict, List, Optional, Text, Type, Tuple, Union
 
@@ -182,10 +183,11 @@ def _separate_confusion_matrix_metrics(
   for output_name, metrics in metrics.items():
     for metric in metrics:
       # We are using type instead of isinstance here because we only want to
-      # match specific types and not their subclasses. While metric's using
-      # top_k can also be computed using the confusion matrix, they are computed
-      # using only a single threshold in keras which is more efficient so we
-      # exclude them.
+      # match specific types and not their subclasses. Note that if the top_k
+      # setting is specified as part of the keras metric direclty, then we
+      # compute the value directly in keras. Otherwise, if the top_k setting is
+      # only provided via BinarizeOptions then we compute the value using the
+      # the confusion matrix.
       if (type(metric) in (  # pylint: disable=unidiomatic-typecheck
           tf.keras.metrics.AUC, tf.keras.metrics.SpecificityAtSensitivity,
           tf.keras.metrics.SensitivityAtSpecificity,
@@ -296,6 +298,14 @@ def _load_custom_objects(
   return loaded_custom_objects
 
 
+def _get_config_value(key: Text, metric_config: Dict[Text,
+                                                     Any]) -> Optional[Any]:
+  """Returns value for key within config or None."""
+  if _CONFIG_KEY in metric_config and key in metric_config[_CONFIG_KEY]:
+    return metric_config[_CONFIG_KEY][key]
+  return None
+
+
 def _wrap_confusion_matrix_metric(
     metric: tf.keras.metrics.Metric, eval_config: config.EvalConfig,
     model_name: Text, output_name: Text, sub_key: Optional[metric_types.SubKey],
@@ -331,7 +341,14 @@ def _wrap_confusion_matrix_metric(
 
   thresholds = None
   num_thresholds = None
-  if hasattr(metric, _THRESHOLDS_KEY):
+  # The top_k metrics have special settings. If we are setting the top_k value
+  # outside of keras (i.e. using BinarizeOptions), then we need to set the
+  # special threshold ourselves otherwise the default threshold of 0.5 is used.
+  if (sub_key and sub_key.top_k is not None and
+      _get_config_value(_TOP_K_KEY, metric_config) is None and
+      _get_config_value(_THRESHOLDS_KEY, metric_config) is None):
+    thresholds = [float('-inf')]
+  elif hasattr(metric, _THRESHOLDS_KEY):
     if (len(
         metric.thresholds) == binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS):
       num_thresholds = binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS
@@ -368,7 +385,7 @@ def _wrap_confusion_matrix_metric(
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
   ) -> Dict[metric_types.MetricKey, Any]:
-    """Returns AUC derived from binary confustion matrices."""
+    """Returns result derived from binary confustion matrices."""
     matrices = metrics[matrices_key]
 
     metric = tf.keras.metrics.deserialize(metric_config)
@@ -510,6 +527,12 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._custom_objects = custom_objects
     self._sub_key = sub_key
     self._class_weights = class_weights
+    # True if the sub_key is part of the metric config already (i.e. top_k).
+    self._sub_key_in_config = sub_key and sub_key.top_k is not None
+    for cfg in itertools.chain.from_iterable(metric_configs.values()):
+      if _get_config_value(_TOP_K_KEY, cfg) is None:
+        self._sub_key_in_config = False
+        break
     self._metrics = None  # type: Dict[Text, List[tf.keras.metrics.Metric]]
     self._batch_size = (
         batch_size if batch_size is not None else self._BATCH_SIZE)
@@ -519,9 +542,6 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._total_input_byte_size_beam_metric = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE,
         'keras_compilable_metrics_total_input_byte_size')
-
-  def _is_top_k(self):
-    return self._sub_key and self._sub_key.top_k is not None
 
   def _setup_if_needed(self):
     if self._metrics is None:
@@ -568,12 +588,12 @@ class _CompilableMetricsCombiner(beam.CombineFn):
               eval_config=self._eval_config,
               model_name=self._model_name,
               output_name=output_name,
-              # Skip top_k processing and let keras perform top_k calculations
-              sub_key=self._sub_key if not self._is_top_k() else None,
+              # Skip sub_key processing if part of the keras config
+              sub_key=self._sub_key if not self._sub_key_in_config else None,
               class_weights=self._class_weights,
               flatten=self._class_weights is not None)):
-        # Keras requires non-sparse keys for top_k calcuations.
-        if self._is_top_k() and label.shape != prediction.shape:
+        # Keras requires non-sparse keys for its calcuations.
+        if self._sub_key_in_config and label.shape != prediction.shape:
           label = metric_util.one_hot(label, prediction)
         accumulator.add_input(i, label, prediction, example_weight)
     if (accumulator.len_inputs() >= self._batch_size or

@@ -52,10 +52,12 @@ def binary_confusion_matrices(
     num_thresholds: Number of thresholds to use. Thresholds will be calculated
       using linear interpolation between 0.0 and 1.0 with equidistant values and
       bondardaries at -epsilon and 1.0+epsilon. Values must be > 0. Only one of
-      num_thresholds or thresholds should be used.
+      num_thresholds or thresholds should be used. If used, num_thresholds must
+      be > 1.
     thresholds: A specific set of thresholds to use. The caller is responsible
-      for marking the bondaires with +/-epsilon if desired. Only one of
-      num_thresholds or thresholds should be used.
+      for marking the boundaries with +/-epsilon if desired. Only one of
+      num_thresholds or thresholds should be used. For metrics computed at top k
+      this may be a single negative threshold value (i.e. -inf).
     name: Metric name.
     eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
@@ -79,6 +81,8 @@ def binary_confusion_matrices(
   if num_thresholds is None and thresholds is None:
     num_thresholds = DEFAULT_NUM_THRESHOLDS
   if num_thresholds is not None:
+    if num_thresholds <= 1:
+      raise ValueError('num_thresholds must be > 1')
     # The interpolation strategy used here matches that used by keras for AUC.
     thresholds = [
         (i + 1) * 1.0 / (num_thresholds - 1) for i in range(num_thresholds - 2)
@@ -92,10 +96,15 @@ def binary_confusion_matrices(
   # required to get accurate counts at the threshold boundaries. If this becomes
   # an issue, then calibration histogram can be updated to support non-linear
   # boundaries.
-  num_buckets = 1 if len(thresholds) == 1 and thresholds[0] <= 0 else None
   histogram_computations = calibration_histogram.calibration_histogram(
       eval_config=eval_config,
-      num_buckets=num_buckets,
+      num_buckets=(
+          # For precision/recall_at_k were a single large negative threshold is
+          # used, we only need one bucket. Note that the histogram will actually
+          # have 2 buckets: one that we set (which handles predictions > -1.0)
+          # and a default catch-all bucket (i.e. bucket 0) that the histogram
+          # creates for large negative predictions (i.e. predictions <= -1.0).
+          1 if len(thresholds) == 1 and thresholds[0] <= 0 else None),
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
@@ -106,22 +115,17 @@ def binary_confusion_matrices(
       metrics: Dict[metric_types.MetricKey, Any]
   ) -> Dict[metric_types.MetricKey, Matrices]:
     """Returns binary confusion matrices."""
-    # Calibration histogram uses intervals of the form [start, end) where the
-    # prediction >= start. The confusion matrices want intervals of the form
-    # (start, end] where the prediction > start. Add a small epsilon so that >=
-    # checks don't match. This correction shouldn't be needed in practice but
-    # allows for correctness in small tests.
-    if len(thresholds) == 1:
-      # When there is only one threshold, we need to make adjustments so that
-      # we have proper boundaries around the threshold for <, >= comparions.
-      if thresholds[0] < 0:
-        # This case is used when all prediction values are considered matches
-        # (e.g. when calculating top_k for precision/recall).
-        rebin_thresholds = [thresholds[0], thresholds[0] + _EPSILON]
-      else:
-        # This case is used for a single threshold within [0, 1] (e.g. 0.5).
-        rebin_thresholds = [-_EPSILON, thresholds[0] + _EPSILON, 1.0 + _EPSILON]
+    if len(thresholds) == 1 and thresholds[0] < 0:
+      # This case is used when all positive prediction values are considered
+      # matches (e.g. when calculating top_k for precision/recall where the
+      # non-top_k values are expected to have been set to float('-inf')).
+      histogram = metrics[histogram_key]
     else:
+      # Calibration histogram uses intervals of the form [start, end) where the
+      # prediction >= start. The confusion matrices want intervals of the form
+      # (start, end] where the prediction > start. Add a small epsilon so that
+      # >= checks don't match. This correction shouldn't be needed in practice
+      # but allows for correctness in small tests.
       rebin_thresholds = [t + _EPSILON if t != 0 else t for t in thresholds]
       if thresholds[0] >= 0:
         # Add -epsilon bucket to account for differences in histogram vs
@@ -133,19 +137,9 @@ def binary_confusion_matrices(
         # If the last threshold < 1.0, then add a fence post at 1.0 + epsilon
         # othewise true negatives and true positives will be overcounted.
         rebin_thresholds = rebin_thresholds + [1.0 + _EPSILON]
-
-    histogram = calibration_histogram.rebin(rebin_thresholds,
-                                            metrics[histogram_key])
+      histogram = calibration_histogram.rebin(rebin_thresholds,
+                                              metrics[histogram_key])
     matrices = _to_binary_confusion_matrices(thresholds, histogram)
-    # Check if need to remove -epsilon bucket (or reset back to 1 bucket).
-    start_index = 1 if thresholds[0] >= 0 or len(thresholds) == 1 else 0
-    matrices = Matrices(
-        thresholds,
-        tp=matrices.tp[start_index:start_index + len(thresholds)],
-        fp=matrices.fp[start_index:start_index + len(thresholds)],
-        tn=matrices.tn[start_index:start_index + len(thresholds)],
-        fn=matrices.fn[start_index:start_index + len(thresholds)])
-
     return {key: matrices}
 
   derived_computation = metric_types.DerivedMetricComputation(
@@ -182,7 +176,21 @@ def _to_binary_confusion_matrices(
     if start + 1 < n:
       tn[start + 1] = tn[start] + start_neg
       fn[start + 1] = fn[start] + start_pos
-    else:
-      tn[start] += start_neg
-      fn[start] += start_pos
+  # Check if need to remove -epsilon bucket (or reset back to 1 bucket).
+  threshold_offset = 0
+  if (thresholds[0] >= 0 or len(thresholds) == 1) and len(histogram) > 1:
+    threshold_offset = 1
+  tp = tp[threshold_offset:threshold_offset + len(thresholds)]
+  fp = fp[threshold_offset:threshold_offset + len(thresholds)]
+  tn = tn[threshold_offset:threshold_offset + len(thresholds)]
+  fn = fn[threshold_offset:threshold_offset + len(thresholds)]
+  # We sum all values >= bucket i, but TP/FP values greater that 1.0 + EPSILON
+  # should be 0.0. The FN/TN above 1.0 + _EPSILON should also be adjusted to
+  # match the TP/FP values at the start.
+  for i, t in enumerate(thresholds):
+    if t >= 1.0 + _EPSILON:
+      tp[i] = 0.0
+      fp[i] = 0.0
+      fn[i] = tp[0]
+      tn[i] = fp[0]
   return Matrices(thresholds, tp, tn, fp, fn)

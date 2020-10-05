@@ -126,6 +126,106 @@ def to_standard_metric_inputs(
                                            example_weights, features)
 
 
+def top_k_indices(
+    top_k: int,
+    scores: Any,
+    sort: bool = False) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+  """Returns top_k indices into a list of scores.
+
+  Note that the indices are returned in a form that is useful for assigning
+  values to the array. If using to select values from an array you may need to
+  reshape the output. Examples:
+
+     # Assigning values to scores based on indices
+     indices = top_k_indices(1, scores)
+     scores[indices] = 0.0
+
+     # Selecting top_k
+     indices = top_k_indices(scores)
+     scores[indices].reshape(scores.shape[:-1] + (top_k,))
+
+  Args:
+    top_k: Number of top k values to return.
+    scores: Array or list of scores for computing the top_k indices.
+    sort: True if the indices should be sorted (in descending order).
+
+  Returns:
+    An array of indices into scores that can be used with either 1D or 2D
+    arrays. If sort was True the indices will be returned in descending order of
+    score (i.e. top score first).
+
+  Raises:
+    ValueError: If top_k doesn't match scores or input has more than 2 dims.
+  """
+  scores = to_numpy(scores)
+  if scores.shape[-1] < top_k:
+    raise ValueError(
+        'not enough values were provided to perform the requested '
+        'calcuations for top k. The requested value for k is {}, but the '
+        'values are {}\n\nThis may be caused by a metric configuration error '
+        'or an error in the pipeline.'.format(top_k, scores))
+
+  if len(scores.shape) == 1:
+    # 1D data
+    indices = np.argpartition(scores, -top_k)[-top_k:]
+    if sort:
+      indices = indices[np.argsort(-scores[indices])]
+    return indices
+  elif len(scores.shape) == 2:
+    # 2D data
+    indices = np.argpartition(scores, -top_k, axis=-1)[:, -top_k:]
+    # The above creates an n x top_k matrix where each row in indices matches
+    # the corresponding row in scores. For example:
+    #   [
+    #      [<row1_top_k_index_1>, <row_1_top_k_index_2>, ...],
+    #      [<row2_top_k_index_1>, <row_2_top_k_index_2>, ...],
+    #      ...
+    #   ]
+    # However numpy indexing wants the index to be be a 2-tuple of where the
+    # first tuple value contains the row indices (repeated top k times for each
+    # row) and the second tuple value contains the column values.
+    #   (row1, row1, ..., row2, ...), (row1_top_k_index1, row1_top_index_2,...)
+    if sort:
+      for i in range(indices.shape[0]):
+        indices[i] = indices[i][np.argsort(-scores[i][indices[i]])]
+    return np.arange(indices.shape[0]).repeat(top_k), indices.flatten()
+  else:
+    raise NotImplementedError(
+        'top_k not supported for shapes > 2: scores = {}'.format(scores))
+
+
+def select_indices(
+    arr: np.ndarray,
+    indices: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]) -> np.ndarray:
+  """Selects values from tensor at given indices.
+
+  Args:
+    arr: Array to select values from.
+    indices: Indices that are given either by an np.ndarray (1D) or a tuple of
+      np.ndarray's where the first value identifies the rows and the second the
+      columns (2D).
+
+  Returns:
+    Values with the same shape as tensor except the last dimension will match
+    the number of indices selected.
+  """
+  values = arr[indices]
+  if len(arr.shape) == 1:
+    return values
+  elif len(arr.shape) == 2:
+    # The indices[0] contains rows of the form [row1, row1, ..., row2, ...]
+    # the rows are repeated for each column. Since the first dimension of the
+    # array tells us the number of rows, dividing the length of indices[0] by
+    # the number of rows tells us the number of columns we are returning (i.e.
+    # the size of the last dim).
+    last_dim = int(len(indices[0]) / arr.shape[0])
+    values = values.reshape(arr.shape[:-1] + (last_dim,))
+    return values
+  else:
+    raise NotImplementedError('select_indices not supported for shapes > 2: '
+                              'arr={}, indices={}'.format(arr, indices))
+
+
 def to_label_prediction_example_weight(
     inputs: metric_types.StandardMetricInputs,
     eval_config: Optional[config.EvalConfig] = None,
@@ -152,8 +252,12 @@ def to_label_prediction_example_weight(
   respectively. Labels and predictions will be returned in the same shape
   provided (default behavior) unless (1) flatten is True in which case a series
   of values (one per class ID) will be returned with last dimension of size 1 or
-  (2) a sub_key is used in which case the last dimension will be re-shaped to
-  match the number of outputs selected (1 or top_k). Examples:
+  (2) a sub_key is used in which case the last dimension may be re-shaped to
+  match the new number of outputs (1 for class_id or k, or no change for top_k).
+
+  Note that for top_k, the non-top_k prediction values will be set to -inf.
+
+  Examples:
 
     # default behavior
     #
@@ -180,7 +284,7 @@ def to_label_prediction_example_weight(
              (np.array([0]), np.array([0.6]), np.array([1.0])),
              (np.array([1]), np.array([0.1]), np.array([1.0]))
 
-    # sub_key.class_id=[2]
+    # sub_key.class_id=2 (i.e. binarization of class ID 2 using one-vs-rest).
     #
     # Multi-class classification w/ sparse labels
     Input  : labels=[2] predictions=[0.3, 0.6, 0.1]
@@ -188,6 +292,24 @@ def to_label_prediction_example_weight(
     # Multi-class classification w/ dense labels
     Input  : labels=[0, 0, 1] predictions=[0.3, 0.6, 0.1]
     Output : (np.array([1]), np.array([0.1]), np.array([1.0]))
+
+    # sub_key.top_k=2 (i.e. binarization using top 2).
+    #
+    # Multi-class classification w/ sparse labels
+    Input  : labels=[2] predictions=[0.3, 0.6, 0.1]
+    Output : (np.array([0, 0, 1]), np.array([0.3, 0.6, -inf]), np.array([1.0]))
+    # Multi-class classification w/ dense labels
+    Input  : labels=[0, 0, 1] predictions=[0.3, 0.1, 0.6]
+    Output : (np.array([0, 0, 1]), np.array([0.3, -inf, 0.6]), np.array([1.0]))
+
+    # sub_key.k=2 (i.e. binarization by choosing 2nd largest predicted value).
+    #
+    # Multi-class classification w/ sparse labels
+    Input  : labels=[0] predictions=[0.3, 0.6, 0.1]
+    Output : (np.array([1]), np.array([0.3]), np.array([1.0]))
+    # Multi-class classification w/ dense labels
+    Input  : labels=[0] predictions=[0.3]
+    Output : (np.array([0]), np.array([0.3]), np.array([1.0]))
 
   Args:
     inputs: Standard metric inputs.
@@ -283,11 +405,22 @@ def to_label_prediction_example_weight(
     if sub_key.class_id is not None:
       label, prediction = select_class_id(sub_key.class_id, label, prediction)
     elif sub_key.k is not None:
-      label, prediction = select_top_k(sub_key.k, label, prediction)
-      label = np.array([label[sub_key.k - 1]])
-      prediction = np.array([prediction[sub_key.k - 1]])
+      indices = top_k_indices(sub_key.k, prediction)
+      if len(prediction.shape) == 1:
+        indices = indices[0]  # 1D
+      else:
+        # 2D, take kth values
+        indices = (indices[0][0::sub_key.k], indices[1][0::sub_key.k])
+      if label.shape != prediction.shape:
+        label = one_hot(label, prediction)
+      label = select_indices(label, indices)
+      prediction = select_indices(prediction, indices)
     elif sub_key.top_k is not None:
-      label, prediction = select_top_k(sub_key.top_k, label, prediction)
+      # Set all non-top-k predictions to -inf. Note that we do not sort.
+      indices = top_k_indices(sub_key.top_k, prediction)
+      top_k_predictions = np.full(prediction.shape, float('-inf'))
+      top_k_predictions[indices] = prediction[indices]
+      prediction = top_k_predictions
 
   # For consistency, make sure all outputs are arrays (i.e. convert scalars)
   if label is not None and not label.shape:
@@ -614,75 +747,6 @@ def _verify_sparse_labels(labels: np.ndarray,
           'are passed as input: labels={}, predictions={}'.format(
               labels, predictions))
     return False
-
-
-def select_top_k(top_k: int,
-                 labels: Any,
-                 predictions: Any,
-                 scores: Optional[Any] = None) -> Tuple[np.ndarray, np.ndarray]:
-  """Selects top_k values from multi-class labels and predictions.
-
-  Args:
-    top_k: Number of top k values to return.
-    labels: Array or list of processed labels (1D or 2D).
-    predictions: Array or list of processed predictions (1D or 2D).
-    scores: Optional array or list of scores for computing the top_k values. If
-      scores is not set then predictions will be used.
-
-  Returns:
-    A (labels, predictions) tuple. Both values will have the same shape as the
-    predictions but with the last dimension of size top_k. The prediction values
-    will be returned in descending order of score (i.e. top prediction first).
-
-  Raises:
-    ValueError: If the labels or predictions cannot be formatted properly.
-  """
-  labels = to_numpy(labels)
-  predictions = to_numpy(predictions)
-  if labels.size == 0 or predictions.size == 0:
-    return (labels, predictions)
-
-  if scores is not None:
-    scores = to_numpy(scores)
-    if scores.shape != predictions.shape:
-      raise ValueError(
-          'predictions and scores must have the same shape {} != {}: '
-          'predictions={}, scores={}'.format(predictions.shape, scores.shape,
-                                             predictions, scores))
-
-  if not labels.shape or labels.shape[-1] == 1:
-    labels = one_hot(labels, predictions)
-
-  if scores is None:
-    scores = predictions
-
-  if scores.shape[-1] < top_k:
-    raise ValueError(
-        'not enough predictions were provided to perform the requested '
-        'calcuations for top k. The requested value for k is {}, but the '
-        'values are {}\n\nThis may be caused by a metric configuration error '
-        'or an error in the pipeline.'.format(top_k, scores))
-
-  if len(predictions.shape) == 1:
-    # 1D data
-    indices = np.argpartition(scores, -top_k)[-top_k:]
-    indices = indices[np.argsort(-scores[indices])]
-    return (labels[indices], predictions[indices])
-  elif len(predictions.shape) == 2:
-    # Batched 2D data
-    out_shape = predictions.shape[:-1] + (top_k,)
-    out_labels = np.empty(out_shape)
-    out_predictions = np.empty(out_shape)
-    indices = np.argpartition(scores, -top_k, axis=-1)[:, -top_k:]
-    for i in range(predictions.shape[0]):
-      for j, idx in enumerate(indices[i][np.argsort(-scores[i][indices[i]])]):
-        out_labels[i][j] = labels[i][idx]
-        out_predictions[i][j] = predictions[i][idx]
-    return (out_labels, out_predictions)
-  else:
-    raise NotImplementedError(
-        'select_top_k not supported for shapes > 2: predictions = {}'.format(
-            predictions))
 
 
 def one_hot(tensor: np.ndarray, target: np.ndarray) -> np.ndarray:
