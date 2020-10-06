@@ -328,7 +328,7 @@ def export_eval_savedmodel(
     eval_input_receiver_fn: Eval input receiver function.
     serving_input_receiver_fn: (Optional) Serving input receiver function. We
       recommend that you provide this as well, so that the exported SavedModel
-      also contains the serving graph. If not privded, the serving graph will
+      also contains the serving graph. If not provided, the serving graph will
       not be included in the exported SavedModel.
     assets_extra: An optional dict specifying how to populate the assets.extra
       directory within the exported SavedModel.  Each key should give the
@@ -381,7 +381,7 @@ def make_export_strategy(
     eval_input_receiver_fn: Eval input receiver function.
     serving_input_receiver_fn: (Optional) Serving input receiver function. We
       recommend that you provide this as well, so that the exported SavedModel
-      also contains the serving graph. If not privded, the serving graph will
+      also contains the serving graph. If not provided, the serving graph will
       not be included in the exported SavedModel.
     exports_to_keep: Number of exports to keep.  Older exports will be
       garbage-collected.  Defaults to 5.  Set to None to disable garbage

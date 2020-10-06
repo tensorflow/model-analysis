@@ -499,7 +499,7 @@ def export_legacy_eval_savedmodel(
     eval_input_receiver_fn: Eval input receiver function.
     serving_input_receiver_fn: (Optional) Serving input receiver function. We
       recommend that you provide this as well, so that the exported SavedModel
-      also contains the serving graph. If not privded, the serving graph will
+      also contains the serving graph. If not provided, the serving graph will
       not be included in the exported SavedModel.
     checkpoint_path: Path to a specific checkpoint to export. If set to None,
       exports the latest checkpoint.
