@@ -180,14 +180,11 @@ message BinarizationOptions {
   // for each value of k provided.
   RepeatedInt32Value k_list = 5;
   // Creates binary classification metrics based on the top k predicted values
-  // for each value of top k provided. For a given top k setting, the input
-  // prediction arrays will be updated to set the non-top k predictions to
-  // -inf. Each individual metric implementation is then responsible for
-  // flattening the arrays of values into a single binarized value. This makes
-  // top k well suited to calculations such as precision@k or recall@k, but may
-  // not be well suited for other binary classification metrics. Note that
-  // precision@k and recall@k can also be configured directly as multi-class
-  // classification metrics by setting top_k on the metric itself.
+  // for each value of top_k provided. When used to create calibration plots
+  // the histogram will contain a mix of all labels and predictions in the top
+  // k predictions. Note that precision@k and recall@k can also be configured
+  // directly as multi-class classification metrics by setting top_k on the
+  // metric itself.
   RepeatedInt32Value top_k_list = 6;
 
   reserved 1, 2, 3;

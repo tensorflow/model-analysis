@@ -143,7 +143,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
 
   def testBinaryConfusionMatricesTopK(self):
     computations = binary_confusion_matrices.binary_confusion_matrices(
-        thresholds=[float('-inf')], sub_key=metric_types.SubKey(top_k=3))
+        thresholds=[-1e10], sub_key=metric_types.SubKey(top_k=3))
     histogram = computations[0]
     matrices = computations[1]
 
@@ -196,11 +196,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(
               got_matrices,
               binary_confusion_matrices.Matrices(
-                  thresholds=[float('-inf')],
-                  tp=[2.0],
-                  fp=[10.0],
-                  tn=[6.0],
-                  fn=[2.0]))
+                  thresholds=[-1e10], tp=[2.0], fp=[10.0], tn=[10.0], fn=[2.0]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

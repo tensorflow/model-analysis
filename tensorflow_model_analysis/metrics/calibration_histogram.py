@@ -114,13 +114,13 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
 
   def _bucket_index(self, prediction: float) -> int:
     """Returns bucket index given prediction value. Values are truncated."""
-    bucket_index = (
+    bucket_index = int(
         (prediction - self._left) / self._range * self._num_buckets) + 1
     if bucket_index < 0:
       return 0
     if bucket_index >= self._num_buckets + 1:
       return self._num_buckets + 1
-    return int(bucket_index)
+    return bucket_index
 
   def create_accumulator(self) -> Histogram:
     # The number of accumulator (histogram) buckets is variable and depends on
@@ -131,8 +131,6 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
 
   def add_input(self, accumulator: Histogram,
                 element: metric_types.StandardMetricInputs) -> Histogram:
-    # Note that in the case of top_k, the non-top_k predictions will be set to
-    # float('-inf'), but the labels will remain unchanged.
     for label, prediction, example_weight in (
         metric_util.to_label_prediction_example_weight(
             element,

@@ -304,13 +304,9 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
               got_histogram[0],
               calibration_histogram.Bucket(
                   bucket_id=0,
-                  weighted_labels=3.0 + 4.0,
-                  weighted_predictions=(2 * 1.0 * float('-inf') +
-                                        2 * 2.0 * float('-inf') +
-                                        2 * 3.0 * float('-inf') +
-                                        2 * 4.0 * float('-inf') + -0.1 * 4.0),
-                  weighted_examples=(1.0 * 2.0 + 2.0 * 2.0 + 3.0 * 2.0 +
-                                     4.0 * 3.0)))
+                  weighted_labels=1.0 * 4.0,
+                  weighted_predictions=-0.1 * 4.0,
+                  weighted_examples=4.0))
           self.assertEqual(
               got_histogram[1],
               calibration_histogram.Bucket(
