@@ -56,6 +56,7 @@ def _mean_label(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean label."""
@@ -72,6 +73,7 @@ def _mean_label(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
+      aggregation_type=aggregation_type,
       class_weights=class_weights)
   weighted_labels_predictions_key = computations[-1].keys[-1]
 
@@ -114,6 +116,7 @@ def _mean_prediction(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean prediction."""
@@ -129,6 +132,7 @@ def _mean_prediction(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
+      aggregation_type=aggregation_type,
       class_weights=class_weights)
   weighted_labels_predictions_key = computations[-1].keys[-1]
 
@@ -175,6 +179,7 @@ def _calibration(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for calibration."""
@@ -190,6 +195,7 @@ def _calibration(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
+      aggregation_type=aggregation_type,
       class_weights=class_weights)
   weighted_labels_predictions_key = computations[-1].keys[-1]
 
@@ -217,6 +223,7 @@ def _weighted_labels_predictions_examples(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for weighted labels, predictions, and examples.
@@ -227,6 +234,7 @@ def _weighted_labels_predictions_examples(
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
+    aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions prior to flattening (when micro averaging is used).
   """
@@ -240,7 +248,10 @@ def _weighted_labels_predictions_examples(
           keys=[key],
           preprocessor=None,  # Use default
           combiner=_WeightedLabelsPredictionsExamplesCombiner(
-              key, eval_config=eval_config, class_weights=class_weights))
+              key,
+              eval_config=eval_config,
+              aggregation_type=aggregation_type,
+              class_weights=class_weights))
   ]
 
 
@@ -263,9 +274,11 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
 
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config.EvalConfig],
+               aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]]):
     self._key = key
     self._eval_config = eval_config
+    self._aggregation_type = aggregation_type
     self._class_weights = class_weights
 
   def create_accumulator(self) -> _WeightedLabelsPredictionsExamples:
@@ -282,6 +295,7 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
             model_name=self._key.model_name,
             output_name=self._key.output_name,
             sub_key=self._key.sub_key,
+            aggregation_type=self._aggregation_type,
             class_weights=self._class_weights,
             allow_none=True)):
       example_weight = float(example_weight)

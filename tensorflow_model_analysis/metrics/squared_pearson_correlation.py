@@ -52,6 +52,7 @@ def _squared_pearson_correlation(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for squared pearson correlation (r^2)."""
@@ -65,6 +66,7 @@ def _squared_pearson_correlation(
           keys=[key],
           preprocessor=None,
           combiner=_SquaredPearsonCorrelationCombiner(key, eval_config,
+                                                      aggregation_type,
                                                       class_weights))
   ]
 
@@ -91,9 +93,11 @@ class _SquaredPearsonCorrelationCombiner(beam.CombineFn):
 
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config.EvalConfig],
+               aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]]):
     self._key = key
     self._eval_config = eval_config
+    self._aggregation_type = aggregation_type
     self._class_weights = class_weights
 
   def create_accumulator(self) -> _SquaredPearsonCorrelationAccumulator:
@@ -109,6 +113,7 @@ class _SquaredPearsonCorrelationCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
+            aggregation_type=self._aggregation_type,
             class_weights=self._class_weights)):
       example_weight = float(example_weight)
       label = float(label)

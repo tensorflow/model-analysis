@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, Iterable, List, Optional, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis import config
@@ -31,22 +31,26 @@ _CLASS_WEIGHTS_FROM_LABELS_NAME = '_class_weights_from_labels'
 
 def macro_average(
     metric_name: Text,
-    sub_keys: List[metric_types.SubKey],
+    sub_keys: Iterable[metric_types.SubKey],
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
+    sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for computing macro average of given metric.
 
   Args:
     metric_name: Name of underlying metric average is being computed for.
-    sub_keys: Sub keys used to compute the metric.
+    sub_keys: Sub keys used to compute the metric (e.g. class_ids, etc).
     eval_config: Eval config.
     model_name: Optional model name.
     output_name: Optional output name.
-    class_weights: Optional class weights to apply. If sub_key.class_id is not
-      set or not found in the dictionary then 1.0 is assumed.
+    sub_key: Optional sub key associated with aggregation metric (e.g. top_k).
+    class_weights: Optional class weights to apply. Required if sub_key is not
+      provided. If class_weights are provided, but a sub_key.class_id (if
+      sub_key is None) or sub_key.k (if sub_key is top_k) is not set or not
+      found in the dictionary then 0.0 is assumed.
 
   Returns:
     Computation for performing the macro average.
@@ -54,7 +58,10 @@ def macro_average(
   del eval_config
 
   key = metric_types.MetricKey(
-      name=metric_name, model_name=model_name, output_name=output_name)
+      name=metric_name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key)
 
   def result(
       metrics: Dict[metric_types.MetricKey, float]
@@ -68,11 +75,22 @@ def macro_average(
           model_name=model_name,
           output_name=output_name,
           sub_key=sub_key)
-      weight = 1.0
-      if (class_weights and child_key.sub_key is not None and
-          child_key.sub_key.class_id is not None and
-          child_key.sub_key.class_id in class_weights):
-        weight = class_weights[child_key.sub_key.class_id]
+      if child_key not in metrics:
+        # Use private name if not found under metric name
+        child_key = metric_types.MetricKey(
+            name='_' + metric_name,
+            model_name=model_name,
+            output_name=output_name,
+            sub_key=sub_key)
+      weight = 1.0 if not class_weights else 0.0
+      offset = None
+      if (child_key.sub_key is not None and
+          child_key.sub_key.class_id is not None):
+        offset = child_key.sub_key.class_id
+      elif child_key.sub_key is not None and child_key.sub_key.k is not None:
+        offset = child_key.sub_key.k
+      if offset is not None and offset in class_weights:
+        weight = class_weights[offset]
       total_value += _to_float(metrics[child_key]) * weight
       total_weight += weight
     average = total_value / total_weight if total_weight else float('nan')
@@ -83,10 +101,11 @@ def macro_average(
 
 def weighted_macro_average(
     metric_name: Text,
-    sub_keys: List[metric_types.SubKey],
+    sub_keys: Iterable[metric_types.SubKey],
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
+    sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for computing weighted macro average of metric.
@@ -96,20 +115,26 @@ def weighted_macro_average(
 
   Args:
     metric_name: Name of metric weighted average is being computed for.
-    sub_keys: Sub keys used to compute the metric.
+    sub_keys: Sub keys used to compute the metric (e.g. class_ids, etc).
     eval_config: Eval config.
     model_name: Optional model name.
     output_name: Optional output name.
-    class_weights: Optional class weights to apply. If sub_key.class_id is not
-      set or not found in the dictionary then 1.0 is assumed. Note that these
-      weights are applied in addition to the weights based on the positive
-      labels for each class.
+    sub_key: Optional sub key associated with aggregation metric (e.g. top_k).
+    class_weights: Optional class weights to apply. Required if sub_key is not
+      provided. If class_weights are provided, but a sub_key.class_id (if
+      sub_key is None) or sub_key.k (if sub_key is top_k) is not set or not
+      found in the dictionary then 0.0 is assumed. Note that these weights are
+      applied in addition to the weights based on the positive labels for each
+      class.
 
   Returns:
     Computation for performing the weighted macro average.
   """
   key = metric_types.MetricKey(
-      name=metric_name, model_name=model_name, output_name=output_name)
+      name=metric_name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key)
 
   class_ids = [k.class_id for k in sub_keys if k.class_id is not None]
 
@@ -135,14 +160,26 @@ def weighted_macro_average(
           model_name=model_name,
           output_name=output_name,
           sub_key=sub_key)
-      weight = 1.0
+      if child_key not in metrics:
+        # Use private name if not found under metric name
+        child_key = metric_types.MetricKey(
+            name='_' + metric_name,
+            model_name=model_name,
+            output_name=output_name,
+            sub_key=sub_key)
+      weight = 1.0 if not class_weights else 0.0
+      offset = None
       if (child_key.sub_key is not None and
           child_key.sub_key.class_id is not None):
+        offset = child_key.sub_key.class_id
+      elif child_key.sub_key is not None and child_key.sub_key.k is not None:
+        offset = child_key.sub_key.k
+      if offset is not None:
         if (class_weights_from_labels and
             child_key.sub_key.class_id in class_weights_from_labels):
-          weight = class_weights_from_labels[child_key.sub_key.class_id]
+          weight = class_weights_from_labels[offset]
         if class_weights and child_key.sub_key.class_id in class_weights:
-          weight *= class_weights[child_key.sub_key.class_id]
+          weight *= class_weights[offset]
       total_value += _to_float(metrics[child_key]) * weight
       total_weight += weight
     average = total_value / total_weight if total_weight else float('nan')

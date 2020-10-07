@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import collections
 import importlib
+import itertools
 
 from typing import Any, Dict, List, Optional, Text, Type, Tuple, Union
 
@@ -48,6 +49,7 @@ def tf_metric_computations(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
     batch_size: Optional[int] = None) -> metric_types.MetricComputations:
   """Returns metric computations for the given TF metrics.
@@ -63,9 +65,10 @@ def tf_metric_computations(
     eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
     sub_key: Optional sub key.
+    aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
-      labels and predictions. This should only be used when micro averaging is
-      being used.
+      labels and predictions. This should only be used when the aggregation_type
+      is set.
     batch_size: Batch size to use when calling TF metrics (testing only).
 
   Returns:
@@ -74,7 +77,7 @@ def tf_metric_computations(
   if not isinstance(metrics, dict):
     metrics = {'': metrics}
 
-  if class_weights is not None:
+  if aggregation_type is not None:
     sparse_metrics = _sparse_metrics(metrics)
     if sparse_metrics:
       raise ValueError(
@@ -112,7 +115,8 @@ def tf_metric_computations(
     for metric in metrics:
       computations.extend(
           _wrap_confusion_matrix_metric(metric, eval_config, model_name,
-                                        output_name, sub_key, class_weights))
+                                        output_name, sub_key, aggregation_type,
+                                        class_weights))
 
   if non_confusion_matrix_metrics:
     custom_objects = _custom_objects(non_confusion_matrix_metrics)
@@ -130,6 +134,7 @@ def tf_metric_computations(
                   eval_config,
                   model_name,
                   sub_key,
+                  aggregation_type,
                   class_weights,
                   batch_size,
               )))
@@ -182,10 +187,11 @@ def _separate_confusion_matrix_metrics(
   for output_name, metrics in metrics.items():
     for metric in metrics:
       # We are using type instead of isinstance here because we only want to
-      # match specific types and not their subclasses. While metric's using
-      # top_k can also be computed using the confusion matrix, they are computed
-      # using only a single threshold in keras which is more efficient so we
-      # exclude them.
+      # match specific types and not their subclasses. Note that if the top_k
+      # setting is specified as part of the keras metric directly, then we
+      # compute the value directly in keras. Otherwise, if the top_k setting is
+      # only provided via BinarizeOptions then we compute the value using the
+      # the confusion matrix.
       if (type(metric) in (  # pylint: disable=unidiomatic-typecheck
           tf.keras.metrics.AUC, tf.keras.metrics.SpecificityAtSensitivity,
           tf.keras.metrics.SensitivityAtSpecificity,
@@ -296,9 +302,18 @@ def _load_custom_objects(
   return loaded_custom_objects
 
 
+def _get_config_value(key: Text, metric_config: Dict[Text,
+                                                     Any]) -> Optional[Any]:
+  """Returns value for key within config or None."""
+  if _CONFIG_KEY in metric_config and key in metric_config[_CONFIG_KEY]:
+    return metric_config[_CONFIG_KEY][key]
+  return None
+
+
 def _wrap_confusion_matrix_metric(
     metric: tf.keras.metrics.Metric, eval_config: config.EvalConfig,
     model_name: Text, output_name: Text, sub_key: Optional[metric_types.SubKey],
+    aggregation_type: Optional[metric_types.AggregationType],
     class_weights: Optional[Dict[int,
                                  float]]) -> metric_types.MetricComputations:
   """Returns confusion matrix metric wrapped in a more efficient computation."""
@@ -331,7 +346,14 @@ def _wrap_confusion_matrix_metric(
 
   thresholds = None
   num_thresholds = None
-  if hasattr(metric, _THRESHOLDS_KEY):
+  # The top_k metrics have special settings. If we are setting the top_k value
+  # outside of keras (i.e. using BinarizeOptions), then we need to set the
+  # special threshold ourselves otherwise the default threshold of 0.5 is used.
+  if (sub_key and sub_key.top_k is not None and
+      _get_config_value(_TOP_K_KEY, metric_config) is None and
+      _get_config_value(_THRESHOLDS_KEY, metric_config) is None):
+    thresholds = [float('-inf')]
+  elif hasattr(metric, _THRESHOLDS_KEY):
     if (len(
         metric.thresholds) == binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS):
       num_thresholds = binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS
@@ -349,11 +371,11 @@ def _wrap_confusion_matrix_metric(
       num_thresholds == binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS):
     name = binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME
   else:
-    name = '_{}{}'.format(
+    name = '{}{}'.format(
         metric.name, binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME)
+    name = name if name.startswith('_') else '_' + name
 
-  # Make sure matrices are calculated. Note that the use of class_weights here
-  # implies that micro averaging is being performed.
+  # Make sure matrices are calculated.
   computations = binary_confusion_matrices.binary_confusion_matrices(
       num_thresholds=num_thresholds,
       thresholds=thresholds,
@@ -362,13 +384,14 @@ def _wrap_confusion_matrix_metric(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
+      aggregation_type=aggregation_type,
       class_weights=class_weights)
   matrices_key = computations[-1].keys[-1]
 
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
   ) -> Dict[metric_types.MetricKey, Any]:
-    """Returns AUC derived from binary confustion matrices."""
+    """Returns result derived from binary confustion matrices."""
     matrices = metrics[matrices_key]
 
     metric = tf.keras.metrics.deserialize(metric_config)
@@ -497,6 +520,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
                eval_config: Optional[config.EvalConfig],
                model_name: Optional[Text],
                sub_key: Optional[metric_types.SubKey],
+               aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Dict[int, float],
                batch_size: Optional[int] = None):
     # Use parallel lists to store output_names and configs to guarantee
@@ -509,7 +533,14 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._loss_configs = [loss_configs[n] for n in self._output_names]
     self._custom_objects = custom_objects
     self._sub_key = sub_key
+    self._aggregation_type = aggregation_type
     self._class_weights = class_weights
+    # True if the sub_key is part of the metric config already (i.e. top_k).
+    self._sub_key_in_config = sub_key and sub_key.top_k is not None
+    for cfg in itertools.chain.from_iterable(metric_configs.values()):
+      if _get_config_value(_TOP_K_KEY, cfg) is None:
+        self._sub_key_in_config = False
+        break
     self._metrics = None  # type: Dict[Text, List[tf.keras.metrics.Metric]]
     self._batch_size = (
         batch_size if batch_size is not None else self._BATCH_SIZE)
@@ -519,9 +550,6 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._total_input_byte_size_beam_metric = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE,
         'keras_compilable_metrics_total_input_byte_size')
-
-  def _is_top_k(self):
-    return self._sub_key and self._sub_key.top_k is not None
 
   def _setup_if_needed(self):
     if self._metrics is None:
@@ -559,21 +587,23 @@ class _CompilableMetricsCombiner(beam.CombineFn):
       element: metric_types.StandardMetricInputs
   ) -> _CompilableMetricsAccumulator:
     for i, output_name in enumerate(self._output_names):
-      # The use of class_weights means that micro averaging is being used. When
-      # micro averaging is being used, flatten should be set to True so that
-      # each class is treated as though it was an independent example.
+      # When micro averaging is being used, flatten should be set to True so
+      # that each class is treated as though it was an independent example.
+      micro_average = (
+          self._aggregation_type and self._aggregation_type.micro_average)
       for label, prediction, example_weight in (
           metric_util.to_label_prediction_example_weight(
               element,
               eval_config=self._eval_config,
               model_name=self._model_name,
               output_name=output_name,
-              # Skip top_k processing and let keras perform top_k calculations
-              sub_key=self._sub_key if not self._is_top_k() else None,
+              # Skip sub_key processing if part of the keras config
+              sub_key=self._sub_key if not self._sub_key_in_config else None,
+              aggregation_type=self._aggregation_type,
               class_weights=self._class_weights,
-              flatten=self._class_weights is not None)):
-        # Keras requires non-sparse keys for top_k calcuations.
-        if self._is_top_k() and label.shape != prediction.shape:
+              flatten=micro_average)):
+        # Keras requires non-sparse keys for its calcuations.
+        if self._sub_key_in_config and label.shape != prediction.shape:
           label = metric_util.one_hot(label, prediction)
         accumulator.add_input(i, label, prediction, example_weight)
     if (accumulator.len_inputs() >= self._batch_size or

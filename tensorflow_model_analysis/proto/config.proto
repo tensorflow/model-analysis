@@ -146,26 +146,41 @@ message AggregationOptions {
     // class is equally important and/or class labels distribution is balanced.
     // Macro is typically used with multi-label outputs.
     //
-    // If macro averaging is enabled, a corresponding binarization option must
-    // be configured in the same spec in order to identify which classes the
-    // average will be computed for.
+    // If macro averaging is enabled without using top_k_list, class_weights
+    // must be configured in order to identify which classes the average will be
+    // computed for.
     bool macro_average = 2;
     // Compute aggregate metrics using macro averaging but weight the classes
     // during aggregation by the ratio of positive labels for each class.
     //
-    // As with macro averaging, when enabled a corresponding binarization option
-    // must be configured in the same spec in order to identify which classes
-    // the average will be computed for.
+    // If weighted macro averaging is enabled without using top_k_list,
+    // class_weights must be configured in order to identify which classes the
+    // average will be computed for.
     bool weighted_macro_average = 3;
   }
-  // Weights to apply to classes during aggregation. For micro aggregation the
-  // weights will be applied to each prediction/label pair. For macro
-  // aggregation the weights will be applied to the overall metric computed for
-  // each class prior to aggregation. If a class ID is not provided then a
-  // weight of 1.0 is assumed. Note that when used with weighted_macro_average
-  // then weights will be applied in two forms (from ratio of positive labels
-  // and from the values provided here) which may or may not be desired.
+  // Weights to apply to classes during aggregation (only supported if
+  // top_k_list is not used). Each key corresponds to a class ID. For micro
+  // aggregation the weights will be applied to each prediction/label pair. For
+  // macro aggregation the weights will be applied to the overall metric
+  // computed for each class prior to aggregation.
+  //
+  // If class_weights are configured, but some keys are not provided then their
+  // weights will be assumed to be 0.0. This allows the class_weights to be used
+  // to filter the classes used for aggregation.
+  //
+  // Note that for macro_average and weighted_macro_average when the top_k_list
+  // is not used, the class_weights are required. Also note that when used with
+  // weighted_macro_average, weights will be applied in two forms (from the
+  // ratio of positive labels and from the values provided here) which may or
+  // may not be desired (i.e. setting all the weights to 1.0 is the most common
+  // configuration for weighted_macro_average).
   map<int32, float> class_weights = 4;
+  // Performs aggregation based on the classes with the top k predicted values
+  // for each value of top k provided. If not set then all classes are used.
+  // Note that unlike the top k used with binarization this truncates the list
+  // of classes to only the top k values (i.e. it does not set non-top k to
+  // -inf).
+  RepeatedInt32Value top_k_list = 5;
 }
 
 // Options for binarizing multi-class / multi-label outputs.
@@ -180,11 +195,15 @@ message BinarizationOptions {
   // for each value of k provided.
   RepeatedInt32Value k_list = 5;
   // Creates binary classification metrics based on the top k predicted values
-  // for each value of top_k provided. When used to create calibration plots
-  // the histogram will contain a mix of all labels and predictions in the top
-  // k predictions. Note that precision@k and recall@k can also be configured
-  // directly as multi-class classification metrics by setting top_k on the
-  // metric itself.
+  // for each value of top k provided. How this is computed is up to each metric
+  // implementation. However, the default implementation is such that for a
+  // given top k setting, the input prediction arrays will be updated to set the
+  // non-top k predictions to -inf before flattening the resulting array into a
+  // single binarized value. This makes top k well suited to calculations such
+  // as precision@k or recall@k, but may not be well suited for other binary
+  // classification metrics unless special handing is provided. Note that
+  // precision@k and recall@k can also be configured directly as multi-class
+  // classification metrics by setting top_k on the metric itself.
   RepeatedInt32Value top_k_list = 6;
 
   reserved 1, 2, 3;
@@ -303,8 +322,9 @@ message MetricsSpec {
   // model outputs into outputs suitable for binary classification metrics.
   BinarizationOptions binarize = 4;
   // Optional aggregation options for computing overall aggregate metrics for
-  // multi-class / multi-label model outputs. Aggregation options involving
-  // macro averaging must be used in conjunction with binarization options.
+  // multi-class / multi-label model outputs. Aggregation options are computed
+  // separately from binarization options so both can be set safely at the same
+  // time.
   AggregationOptions aggregate = 6;
   // Optional query key for query/ranking based metrics.
   string query_key = 5;

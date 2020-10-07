@@ -509,6 +509,8 @@ def convert_metrics_proto_to_dict(
           # Setting '' to trigger no match found ValueError below.
           default_model_name = ''
         metric_name = '{}_diff'.format(kv.key.name)
+      elif kv.key.HasField('aggregation_type'):
+        metric_name = '{}_{}'.format(kv.key.aggregation_type, kv.key.name)
       else:
         metric_name = kv.key.name
       sub_key_metrics_map[sub_key_id][metric_name] = json_format.MessageToDict(

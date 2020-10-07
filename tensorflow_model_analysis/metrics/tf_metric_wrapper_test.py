@@ -240,12 +240,87 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   @parameterized.named_parameters(
+      ('precision@2', 'precision', 2, 1.6 / (1.6 + 3.2)),
+      ('recall@2', 'recall', 2, 1.6 / (1.6 + 0.8)),
+      ('precision@3', 'precision', 3, 1.9 / (1.9 + 5.3)),
+      ('recall@3', 'recall', 3, 1.9 / (1.9 + 0.5)),
+  )
+  def testMultiClassMetricsUsingConfusionMatrix(self, metric_name, top_k,
+                                                expected_value):
+    computations = tf_metric_wrapper.tf_metric_computations(
+        [self._tf_metric_by_name(metric_name)],
+        sub_key=metric_types.SubKey(top_k=top_k))
+    histogram = computations[0]
+    matrix = computations[1]
+    metric = computations[2]
+
+    # top_k = 2
+    #   TP = 0.5*0 + 0.7*1 + 0.9*1 + 0.3*0 = 1.6
+    #   FP = 0.5*2 + 0.7*1 + 0.9*1 + 0.3*2 = 3.2
+    #   FN = 0.5*1 + 0.7*0 + 0.9*0 + 0.3*1 = 0.8
+    #
+    # top_k = 3
+    #   TP = 0.5*0 + 0.7*1 + 0.9*1 + 0.3*1 = 1.9
+    #   FP = 0.5*3 + 0.7*2 + 0.9*2 + 0.3*2 = 5.3
+    #   FN = 0.5*1 + 0.7*0 + 0.9*0 + 0.3*0 = 0.5
+    example1 = {
+        'labels': np.array([2]),
+        'predictions': np.array([0.1, 0.2, 0.1, 0.25, 0.35]),
+        'example_weights': np.array([0.5]),
+    }
+    example2 = {
+        'labels': np.array([1]),
+        'predictions': np.array([0.2, 0.3, 0.05, 0.15, 0.3]),
+        'example_weights': np.array([0.7]),
+    }
+    example3 = {
+        'labels': np.array([3]),
+        'predictions': np.array([0.01, 0.2, 0.09, 0.5, 0.2]),
+        'example_weights': np.array([0.9]),
+    }
+    example4 = {
+        'labels': np.array([1]),
+        'predictions': np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
+        'example_weights': np.array([0.3]),
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([example1, example2, example3, example4])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
+          | 'ComputeConfusionMatrix' >> beam.Map(
+              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
+          | 'ComputeMetric' >> beam.Map(
+              lambda x: (x[0], metric.result(x[1]))))  # pyformat: disable
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          key = metric_types.MetricKey(
+              name=metric_name, sub_key=metric_types.SubKey(top_k=top_k))
+          self.assertDictElementsAlmostEqual(
+              got_metrics, {key: expected_value}, places=5)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  @parameterized.named_parameters(
       ('precision@2', 'precision@2', 1.6 / (1.6 + 3.2)),
       ('recall@2', 'recall@2', 1.6 / (1.6 + 0.8)),
       ('precision@3', 'precision@3', 1.9 / (1.9 + 5.3)),
       ('recall@3', 'recall@3', 1.9 / (1.9 + 0.5)),
   )
-  def testMultiClassMetrics(self, metric_name, expected_value):
+  def testMultiClassMetricsUsingKerasConfig(self, metric_name, expected_value):
     metric = tf_metric_wrapper.tf_metric_computations(
         [self._tf_metric_by_name(metric_name)])[0]
 
@@ -383,15 +458,17 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
 
   def testRaisesErrorForInvalidNonSparseSettings(self):
     with self.assertRaises(ValueError):
-      tf_metric_wrapper.tf_metric_computations([
-          tf.keras.metrics.SparseCategoricalCrossentropy(
-              name='sparse_categorical_crossentropy')
-      ],
-                                               class_weights={})
+      tf_metric_wrapper.tf_metric_computations(
+          [
+              tf.keras.metrics.SparseCategoricalCrossentropy(
+                  name='sparse_categorical_crossentropy')
+          ],
+          aggregation_type=metric_types.AggregationType(micro_average=True))
 
   def testMetricWithClassWeights(self):
     computation = tf_metric_wrapper.tf_metric_computations(
         [tf.keras.metrics.MeanSquaredError(name='mse')],
+        aggregation_type=metric_types.AggregationType(micro_average=True),
         class_weights={
             0: 0.1,
             1: 0.2,

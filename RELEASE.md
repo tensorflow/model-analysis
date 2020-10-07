@@ -11,10 +11,20 @@
     baseline.
 *   Add support for slicing on ragged and multidimensional data.
 *   Load TFMA correctly in JupyterLabs even if Facets has loaded first.
+*   Added support for aggregating metrics using top k values.
 
 ## Bug fixes and other changes
 
 ## Breaking changes
+
+*   `AggregationOptions` are now independent of `BinarizeOptions`. In order to
+    compute `AggregationOptions.macro_average` or
+    `AggregationOptions.weighted_macro_average`,
+    `AggregationOptions.class_weights` must now be configured. If
+    `AggregationOptions.class_weights` are provided, any missing keys now
+    default to 0.0 instead of 1.0.
+*   In the UI, aggregation based metrics will now be prefixed with 'micro_',
+    'macro_', or 'weighted_macro_' depending on the aggregation type.
 
 ## Deprecations
 

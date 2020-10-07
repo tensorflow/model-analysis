@@ -38,7 +38,8 @@ class MetricTypesTest(tf.test.TestCase):
             name='metric_name',
             model_name='model_name',
             output_name='output_name',
-            sub_key=metric_types.SubKey(top_k=2))
+            sub_key=metric_types.SubKey(top_k=2),
+            aggregation_type=metric_types.AggregationType(micro_average=True))
     ]
     for key in metric_keys:
       got_key = metric_types.MetricKey.from_proto(key.to_proto())
@@ -71,6 +72,14 @@ class MetricTypesTest(tf.test.TestCase):
         msg=('A non-existent SubKey should be represented as None, not as ',
              'SubKey(None, None, None).')):
       str(metric_types.SubKey())
+
+  def testAggregationTypeLessThan(self):
+    self.assertLess(
+        metric_types.AggregationType(macro_average=True),
+        metric_types.AggregationType(micro_average=True))
+    self.assertLess(
+        metric_types.AggregationType(weighted_macro_average=True),
+        metric_types.AggregationType(macro_average=True))
 
 
 if __name__ == '__main__':

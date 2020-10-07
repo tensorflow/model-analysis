@@ -62,6 +62,7 @@ def _confusion_matrix_plot(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for confusion matrix plots."""
@@ -82,6 +83,7 @@ def _confusion_matrix_plot(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
+      aggregation_type=aggregation_type,
       class_weights=class_weights,
       thresholds=thresholds)
   matrices_key = matrices_computations[-1].keys[-1]

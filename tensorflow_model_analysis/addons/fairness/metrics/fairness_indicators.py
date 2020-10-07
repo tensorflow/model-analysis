@@ -67,6 +67,7 @@ def _fairness_indicators_metrics_at_thresholds(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
@@ -92,6 +93,7 @@ def _fairness_indicators_metrics_at_thresholds(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
+      aggregation_type=aggregation_type,
       class_weights=class_weights,
       thresholds=thresholds)
   confusion_matrices_key = computations[-1].keys[-1]

@@ -52,7 +52,7 @@ class SubKey(
       values.
   """
 
-  # IfChange (should be preceeded by LINT, but cannot nest LINT)
+  # IfChange (should be preceded by LINT, but cannot nest LINT)
   def __new__(cls,
               class_id: Optional[int] = None,
               k: Optional[int] = None,
@@ -124,9 +124,95 @@ class SubKey(
 # A separate version from proto is used here because protos are not hashable and
 # SerializeToString is not guaranteed to be stable between different binaries.
 @functools.total_ordering
+class AggregationType(
+    NamedTuple('AggregationType', [('micro_average', bool),
+                                   ('macro_average', bool),
+                                   ('weighted_macro_average', bool)])):
+  """AggregationType identifies aggregation types used with AggregationOptions.
+
+  Only one of micro_average, macro_average, or weighted_macro_average can be set
+  at a time.
+
+  Attributes:
+    micro_average: True of macro averaging used.
+    macro_average: True of macro averaging used.
+    weighted_macro_average: True of weighted macro averaging used.
+  """
+
+  # IfChange (should be preceded by LINT, but cannot nest LINT)
+  def __new__(cls,
+              micro_average: Optional[bool] = None,
+              macro_average: Optional[bool] = None,
+              weighted_macro_average: Optional[bool] = None):
+    if sum([
+        micro_average or False, macro_average or False,
+        weighted_macro_average or False
+    ]) > 1:
+      raise ValueError(
+          'only one of micro_average, macro_average, or '
+          'weighted_macro_average should be set: micro_average={}, '
+          'macro_average={}, weighted_macro_average={}'.format(
+              micro_average, macro_average, weighted_macro_average))
+    return super(AggregationType,
+                 cls).__new__(cls, micro_average, macro_average,
+                              weighted_macro_average)
+
+  # ThenChange(../api/model_eval_lib.py)
+
+  def __eq__(self, other):
+    return tuple(self) == other
+
+  def __lt__(self, other):
+    # Python3 does not allow comparison of NoneType, replace with -1.
+    return (tuple(x if x is not None else -1 for x in self) < tuple(
+        x if x is not None else -1 for x in other))
+
+  def __hash__(self):
+    return hash(tuple(self))
+
+  def __str__(self) -> Text:
+    if self.micro_average is not None:
+      return 'micro'
+    elif self.macro_average is not None:
+      return 'macro'
+    elif self.weighted_macro_average is not None:
+      return 'weighted_macro'
+    else:
+      raise NotImplementedError(
+          ('A non-existent AggregationType should be represented as None, not '
+           'as AggregationType(None, None, None).'))
+
+  def to_proto(self) -> metrics_for_slice_pb2.AggregationType:
+    """Converts key to proto."""
+    aggregration_type = metrics_for_slice_pb2.AggregationType()
+    if self.micro_average is not None:
+      aggregration_type.micro_average = True
+    if self.macro_average is not None:
+      aggregration_type.macro_average = True
+    if self.weighted_macro_average is not None:
+      aggregration_type.weighted_macro_average = True
+    return aggregration_type
+
+  @staticmethod
+  def from_proto(
+      pb: metrics_for_slice_pb2.AggregationType) -> Optional['AggregationType']:
+    """Creates class from proto."""
+    if pb.micro_average or pb.macro_average or pb.weighted_macro_average:
+      return AggregationType(
+          micro_average=pb.micro_average or None,
+          macro_average=pb.macro_average or None,
+          weighted_macro_average=pb.weighted_macro_average or None)
+    else:
+      return None
+
+
+# A separate version from proto is used here because protos are not hashable and
+# SerializeToString is not guaranteed to be stable between different binaries.
+@functools.total_ordering
 class MetricKey(
     NamedTuple('MetricKey', [('name', Text), ('model_name', Text),
                              ('output_name', Text), ('sub_key', SubKey),
+                             ('aggregation_type', AggregationType),
                              ('is_diff', bool)])):
   """A MetricKey uniquely identifies a metric.
 
@@ -137,6 +223,7 @@ class MetricKey(
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
+    aggregation_type: Aggregation type.
     is_diff: Optional flag to indicate whether this metrics is a diff metric.
   """
 
@@ -145,18 +232,25 @@ class MetricKey(
               model_name: Text = '',
               output_name: Text = '',
               sub_key: Optional[SubKey] = None,
+              aggregation_type: Optional[AggregationType] = None,
               is_diff: Optional[bool] = False):
     return super(MetricKey, cls).__new__(cls, name, model_name, output_name,
-                                         sub_key, is_diff)
+                                         sub_key, aggregation_type, is_diff)
 
   def __eq__(self, other):
     return tuple(self) == other
 
   def __lt__(self, other):
     # Python3 does not allow comparison of NoneType, remove if present.
-    return (tuple(self[:-2])
-            if self.sub_key is None else tuple(self) < tuple(other[:-2])
-            if other.sub_key is None else tuple(other))
+    sub_key = self.sub_key if self.sub_key else ()
+    other_sub_key = other.sub_key if other.sub_key else ()
+    agg_type = self.aggregation_type if self.aggregation_type else ()
+    other_agg_type = other.aggregation_type if other.aggregation_type else ()
+    is_diff = self.is_diff
+    other_is_diff = other.is_diff
+    return ((tuple(self[:-3])) < tuple(other[:-3]) and
+            sub_key < other_sub_key and agg_type < other_agg_type and
+            is_diff < other_is_diff)
 
   def __hash__(self):
     return hash(tuple(self))
@@ -172,6 +266,8 @@ class MetricKey(
       metric_key.output_name = self.output_name
     if self.sub_key:
       metric_key.sub_key.CopyFrom(self.sub_key.to_proto())
+    if self.aggregation_type:
+      metric_key.aggregation_type.CopyFrom(self.aggregation_type.to_proto())
     if self.is_diff:
       metric_key.is_diff = self.is_diff
     return metric_key
@@ -184,6 +280,7 @@ class MetricKey(
         model_name=pb.model_name,
         output_name=pb.output_name,
         sub_key=SubKey.from_proto(pb.sub_key),
+        aggregation_type=AggregationType.from_proto(pb.aggregation_type),
         # TODO(mdreves): Find out why some tests don't recognize is_diff.
         is_diff=pb.is_diff if hasattr(pb, 'is_diff') else False)
 
@@ -308,7 +405,8 @@ def update_create_computations_fn_kwargs(
     schema: Optional[schema_pb2.Schema] = None,
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
-    sub_keys: Optional[List[SubKey]] = None,
+    sub_keys: Optional[List[Optional[SubKey]]] = None,
+    aggregation_type: Optional[AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
     query_key: Optional[Text] = None,
     is_diff: Optional[bool] = False):
@@ -327,6 +425,7 @@ def update_create_computations_fn_kwargs(
     model_names: The value to use when `model_names` is in arg_names.
     output_names: The value to use when `output_names` is in arg_names.
     sub_keys: The value to use when `sub_keys` is in arg_names.
+    aggregation_type: The value to use when `aggregation_type` is in arg_names.
     class_weights: The value to use when `class_weights` is in arg_names.
     query_key: The value to use when `query_key` is in arg_names.
     is_diff: The value to use when `is_diff` is in arg_names.
@@ -344,6 +443,8 @@ def update_create_computations_fn_kwargs(
     kwargs['output_names'] = output_names
   if 'sub_keys' in arg_names:
     kwargs['sub_keys'] = sub_keys
+  if 'aggregation_type' in arg_names:
+    kwargs['aggregation_type'] = aggregation_type
   if 'class_weights' in arg_names:
     kwargs['class_weights'] = class_weights
   if 'query_key' in arg_names:
@@ -374,7 +475,7 @@ class Metric(object):
       create_computations_fn: Function to create the metrics computations (e.g.
         mean_label, etc). This function should take the args passed to __init__
         as as input along with any of eval_config, schema, model_names,
-        output_names, sub_keys, or query_key (where needed).
+        output_names, sub_keys, aggregation_type, or query_key (where needed).
       **kwargs: Any additional kwargs to pass to create_computations_fn. These
         should only contain primitive types or lists/dicts of primitive types.
         The kwargs passed to computations have precendence over these kwargs.
@@ -412,14 +513,16 @@ class Metric(object):
                    schema: Optional[schema_pb2.Schema] = None,
                    model_names: Optional[List[Text]] = None,
                    output_names: Optional[List[Text]] = None,
-                   sub_keys: Optional[List[SubKey]] = None,
+                   sub_keys: Optional[List[Optional[SubKey]]] = None,
+                   aggregation_type: Optional[AggregationType] = None,
                    class_weights: Optional[Dict[int, float]] = None,
                    query_key: Optional[Text] = None,
                    is_diff: Optional[bool] = False) -> MetricComputations:
     """Creates computations associated with metric."""
     updated_kwargs = update_create_computations_fn_kwargs(
         self._args, self.kwargs.copy(), eval_config, schema, model_names,
-        output_names, sub_keys, class_weights, query_key, is_diff)
+        output_names, sub_keys, aggregation_type, class_weights, query_key,
+        is_diff)
     return self.create_computations_fn(**updated_kwargs)
 
 

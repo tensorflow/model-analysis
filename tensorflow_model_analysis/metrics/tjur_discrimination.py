@@ -68,6 +68,7 @@ def _coefficient_of_discrimination(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for coefficient of discrimination."""
@@ -82,6 +83,7 @@ def _coefficient_of_discrimination(
       eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
+      aggregation_type=aggregation_type,
       class_weights=class_weights)
   # Shared metrics are based on a single computation and key.
   tjur_discrimination_key = computations[0].keys[0]
@@ -140,6 +142,7 @@ def _relative_coefficient_of_discrimination(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[float, int]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for coefficient of discrimination."""
@@ -151,6 +154,7 @@ def _relative_coefficient_of_discrimination(
       eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
+      aggregation_type=aggregation_type,
       class_weights=class_weights)
   # Shared metrics are based on a single computation and key.
   tjur_discrimination_key = computations[0].keys[0]
@@ -185,6 +189,7 @@ def _tjur_discrimination(
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for TJUR discrimination."""
@@ -194,7 +199,8 @@ def _tjur_discrimination(
       metric_types.MetricComputation(
           keys=[key],
           preprocessor=None,
-          combiner=_TJURDiscriminationCombiner(key, eval_config, class_weights))
+          combiner=_TJURDiscriminationCombiner(key, eval_config,
+                                               aggregation_type, class_weights))
   ]
 
 
@@ -217,9 +223,11 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
 
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config.EvalConfig],
+               aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]]):
     self._key = key
     self._eval_config = eval_config
+    self._aggregation_type = aggregation_type
     self._class_weights = class_weights
 
   def create_accumulator(self) -> _TJURDiscriminationAccumulator:
@@ -235,6 +243,7 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
+            aggregation_type=self._aggregation_type,
             class_weights=self._class_weights)):
       label = float(label)
       prediction = float(prediction)

@@ -39,7 +39,14 @@ class AggregationMetricsTest(testutil.TensorflowModelAnalysisTest):
     sub_keys = [metric_types.SubKey(class_id=i) for i in class_ids]
     sub_key_values = [0.1, 0.2, 0.3]
     computations = aggregation.macro_average(
-        metric_name, sub_keys, eval_config=config.EvalConfig())
+        metric_name,
+        sub_keys,
+        eval_config=config.EvalConfig(),
+        class_weights={
+            0: 1.0,
+            1: 1.0,
+            2: 1.0
+        })
     metric = computations[0]
 
     sub_metrics = {}

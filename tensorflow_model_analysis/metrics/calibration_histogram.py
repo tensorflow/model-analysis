@@ -51,6 +51,7 @@ def calibration_histogram(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for calibration histogram.
@@ -65,6 +66,7 @@ def calibration_histogram(
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
+    aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions prior to flattening (when micro averaging is used).
 
@@ -91,6 +93,7 @@ def calibration_histogram(
           combiner=_CalibrationHistogramCombiner(
               key=key,
               eval_config=eval_config,
+              aggregation_type=aggregation_type,
               class_weights=class_weights,
               num_buckets=num_buckets,
               left=left,
@@ -103,10 +106,12 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
 
   def __init__(self, key: metric_types.PlotKey,
                eval_config: Optional[config.EvalConfig],
+               aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]], num_buckets: int,
                left: float, right: float):
     self._key = key
     self._eval_config = eval_config
+    self._aggregation_type = aggregation_type
     self._class_weights = class_weights
     self._num_buckets = num_buckets
     self._left = left
@@ -114,13 +119,13 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
 
   def _bucket_index(self, prediction: float) -> int:
     """Returns bucket index given prediction value. Values are truncated."""
-    bucket_index = int(
+    bucket_index = (
         (prediction - self._left) / self._range * self._num_buckets) + 1
     if bucket_index < 0:
       return 0
     if bucket_index >= self._num_buckets + 1:
       return self._num_buckets + 1
-    return bucket_index
+    return int(bucket_index)
 
   def create_accumulator(self) -> Histogram:
     # The number of accumulator (histogram) buckets is variable and depends on
@@ -131,6 +136,10 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
 
   def add_input(self, accumulator: Histogram,
                 element: metric_types.StandardMetricInputs) -> Histogram:
+    # Note that in the case of top_k, if the aggregation type is not set then
+    # the non-top_k predictions will be set to float('-inf'), but the labels
+    # will remain unchanged. If aggregation type is set then both the
+    # predictions and labels will be truncated to only the top_k values.
     for label, prediction, example_weight in (
         metric_util.to_label_prediction_example_weight(
             element,
@@ -139,6 +148,7 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
             output_name=self._key.output_name,
             sub_key=self._key.sub_key,
             flatten=True,
+            aggregation_type=self._aggregation_type,
             class_weights=self._class_weights)):
       example_weight = float(example_weight)
       label = float(label)

@@ -38,6 +38,23 @@ message SubKey {
 //   ../metrics/metric_types.py,
 //   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
 
+// LINT.IfChange
+//
+// Aggregation types used with AggregationOptions.
+message AggregationType {
+  oneof type {
+    // See AggregationOptions.micro_average.
+    bool micro_average = 1;
+    // See AggregationOptions.macro_average.
+    bool macro_average = 2;
+    // See AggregationOptions.weighted_macro_average.
+    bool weighted_macro_average = 3;
+  }
+}
+// LINT.ThenChange(
+//   ../metrics/metric_types.py,
+//   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
+
 // Sync with PerformanceStatistics because of b/110954446.
 // LINT.IfChange
 //
@@ -51,6 +68,8 @@ message MetricKey {
   string output_name = 2;
   // Optional sub key associated with metric.
   SubKey sub_key = 3;
+  // Optional type of aggregation (if AggregationOptions used).
+  AggregationType aggregation_type = 6;
   // If True, this metric is a diff metric based on a comparison with the
   // baseline.
   bool is_diff = 5;

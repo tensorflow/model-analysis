@@ -225,12 +225,15 @@ metrics_specs = tfma.metrics.specs_from_metrics(
 ### Multi-class/Multi-label Aggregate Metrics
 
 Multi-class/multi-label metrics can be aggregated to produce a single aggregated
-value for a binary classification metric.
+value for a binary classification metric by using `tfma.AggregationOptions`.
+
+Note that aggregation settings are independent of binarization settings so you
+can use both `tfma.AggregationOptions` and `tfma.BinarizationOptions` at the
+same time.
 
 #### Micro Average
 
-Micro averaging can be performed either independently or as part of a
-binarization of metrics by using the `micro_average` option within
+Micro averaging can be performed by using the `micro_average` option within
 `tfma.AggregationOptions`. For example:
 
 ```python
@@ -258,20 +261,19 @@ metrics_specs = tfma.metrics.specs_from_metrics(
     metrics, aggregate=tfma.AggregationOptions(micro_average=True))
 ```
 
-#### Macro / Weighted Macro Average
-
-Macro averaging must be performed as part of a binarization of metrics in
-conjunction with the `maro_average` or `weighted_macro_average` options within
-`tfma.AggregationOptions`. For example:
+Micro averaging also supports setting `top_k` where only the top k values are
+used in the computation. For example:
 
 ```python
 from google.protobuf import text_format
 
 metrics_specs = text_format.Parse("""
   metrics_specs {
-    binarize: { class_ids: { values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] } }
-    aggregate: { macro_average: true }
-    // Metrics to both binarize and aggregate
+    aggregate: {
+      micro_average: true
+      top_k_list: { values: [1, 3] }
+    }
+    // Metrics to aggregate
     metrics { class_name: "AUC" }
     ...
   }
@@ -282,15 +284,94 @@ This same setup can be created using the following python code:
 
 ```python
 metrics = [
-    // Metrics to both binarize and aggregate
+    // Metrics to aggregate
     tf.keras.metrics.AUC(name='auc', num_thresholds=10000),
     ...
 ]
 metrics_specs = tfma.metrics.specs_from_metrics(
     metrics,
-    binarize=tfma.BinarizationOptions(
-        class_ids={'values': [0,1,2,3,4,5,6,7,8,9]}),
-    aggregate=tfma.AggregationOptions(macro_average=True))
+    aggregate=tfma.AggregationOptions(micro_average=True,
+                                      top_k_list={'values': [1, 3]}))
+```
+
+#### Macro / Weighted Macro Average
+
+Macro averaging can be performed by using the `macro_average` or
+`weighted_macro_average` options within `tfma.AggregationOptions`. Unless
+`top_k` settings are used, macro requires setting the `class_weights` in order
+to know which classes to compute the average for. If a `class_weight` is not
+provided then 0.0 is assumed. For example:
+
+```python
+from google.protobuf import text_format
+
+metrics_specs = text_format.Parse("""
+  metrics_specs {
+    aggregate: {
+      macro_average: true
+      class_weights: { key: 0 value: 1.0 }
+      class_weights: { key: 1 value: 1.0 }
+      class_weights: { key: 2 value: 1.0 }
+      class_weights: { key: 3 value: 1.0 }
+      class_weights: { key: 4 value: 1.0 }
+      class_weights: { key: 5 value: 1.0 }
+      class_weights: { key: 6 value: 1.0 }
+      class_weights: { key: 7 value: 1.0 }
+      class_weights: { key: 8 value: 1.0 }
+      class_weights: { key: 9 value: 1.0 }
+    }
+    // Metrics to aggregate
+    metrics { class_name: "AUC" }
+    ...
+  }
+""", tfma.EvalConfig()).metrics_specs
+```
+
+This same setup can be created using the following python code:
+
+```python
+metrics = [
+    // Metrics to aggregate
+    tf.keras.metrics.AUC(name='auc', num_thresholds=10000),
+    ...
+]
+metrics_specs = tfma.metrics.specs_from_metrics(
+    metrics,
+    aggregate=tfma.AggregationOptions(
+        macro_average=True, class_weights={i: 1.0 for i in range(10)}))
+```
+
+Like micro averaging, macro averaging also supports setting `top_k` where only
+the top k values are used in the computation. For example:
+
+```python
+from google.protobuf import text_format
+
+metrics_specs = text_format.Parse("""
+  metrics_specs {
+    aggregate: {
+      macro_average: true
+      top_k_list: { values: [1, 3] }
+    }
+    // Metrics to aggregate
+    metrics { class_name: "AUC" }
+    ...
+  }
+""", tfma.EvalConfig()).metrics_specs
+```
+
+This same setup can be created using the following python code:
+
+```python
+metrics = [
+    // Metrics to aggregate
+    tf.keras.metrics.AUC(name='auc', num_thresholds=10000),
+    ...
+]
+metrics_specs = tfma.metrics.specs_from_metrics(
+    metrics,
+    aggregate=tfma.AggregationOptions(macro_average=True,
+                                      top_k_list={'values': [1, 3]}))
 ```
 
 ### Query / Ranking Based Metrics
@@ -602,6 +683,8 @@ parameters as input:
     *   List of output names to compute metrics for (None if single-model)
 *   `sub_keys: List[tfma.SubKey]`.
     *   List of sub keys (class ID, top K, etc) to compute metrics for (or None)
+*   `aggregation_type: tfma.AggregationType`
+    *   Type of aggregation if computing an aggregation metric.
 *   `class_weights: Dict[int, float]`.
     *   Class weights to use if computing an aggregation metric.
 *   `query_key: Text`

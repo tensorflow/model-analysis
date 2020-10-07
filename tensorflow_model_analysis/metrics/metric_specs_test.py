@@ -321,7 +321,11 @@ class MetricSpecsTest(tf.test.TestCase):
             model_names=['model_name'],
             output_names=['output_name'],
             binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
-            aggregate=config.AggregationOptions(macro_average=True))
+            aggregate=config.AggregationOptions(
+                macro_average=True, class_weights={
+                    0: 1.0,
+                    1: 1.0
+                }))
     ]
 
     thresholds = metric_specs.metric_thresholds_from_metrics_specs(
@@ -419,6 +423,13 @@ class MetricSpecsTest(tf.test.TestCase):
             is_diff=False):
             1,
         metric_types.MetricKey(
+            name='mse',
+            model_name='model_name',
+            output_name='output_name',
+            aggregation_type=metric_types.AggregationType(macro_average=True),
+            is_diff=True):
+            1,
+        metric_types.MetricKey(
             name='mean_label',
             model_name='model_name',
             output_name='output_name',
@@ -436,6 +447,7 @@ class MetricSpecsTest(tf.test.TestCase):
             name='mean_label',
             model_name='model_name',
             output_name='output_name',
+            aggregation_type=metric_types.AggregationType(macro_average=True),
             is_diff=True):
             4
     }
@@ -458,7 +470,11 @@ class MetricSpecsTest(tf.test.TestCase):
             },
             model_names=['model_name'],
             binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
-            aggregate=config.AggregationOptions(macro_average=True)),
+            aggregate=config.AggregationOptions(
+                macro_average=True, class_weights={
+                    0: 1.0,
+                    1: 1.0
+                })),
         config.EvalConfig())
 
     keys = []
