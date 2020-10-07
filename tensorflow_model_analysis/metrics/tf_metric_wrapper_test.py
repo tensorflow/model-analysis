@@ -32,12 +32,18 @@ from tensorflow_model_analysis.metrics import tf_metric_wrapper
 
 class _CustomMetric(tf.keras.metrics.Mean):
 
-  def __init__(self, name='custom', dtype=None):
+  def __init__(self, name='custom', dtype=None, update_y_pred=True):
     super(_CustomMetric, self).__init__(name=name, dtype=dtype)
+    self.update_y_pred = update_y_pred
 
   def update_state(self, y_true, y_pred, sample_weight):
     return super(_CustomMetric, self).update_state(
-        y_pred, sample_weight=sample_weight)
+        y_pred if self.update_y_pred else y_true, sample_weight=sample_weight)
+
+  def get_config(self):
+    cfg = super(tf.keras.metrics.Mean, self).get_config()
+    cfg.update({'update_y_pred': self.update_y_pred})
+    return cfg
 
 
 class _CustomConfusionMatrixMetric(tf.keras.metrics.Precision):
@@ -574,6 +580,68 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
           custom_key = metric_types.MetricKey(name='custom')
           self.assertDictElementsAlmostEqual(got_metrics,
                                              {custom_key: 1.0 / (1.0 + 1.0)})
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  def testCustomTFMetricWithPadding(self):
+    computation = tf_metric_wrapper.tf_metric_computations([
+        _CustomMetric(name='custom_label', update_y_pred=False),
+        _CustomMetric(name='custom_pred', update_y_pred=True)
+    ])[0]
+
+    # label_sum = (1 - 1 - 1 - 1) * 1.0 +
+    #             (1 + 2 - 1.0 - 1) * 1.0 +
+    #             (1 + 2 + 3 - 1) * 2.0
+    #           = 9.0
+    #
+    # pred_sum = (0.1 + 0.2 + 0.3 + 0.0) * 1.0 +
+    #            (0.1 + 0.2 + 0.0 - 1.0) * 1.0 +
+    #            (0.1 + 0.2 + 0.3 - 1.0) * 2.0
+    #           = -0.9
+    #
+    # weights_total = (1.0 * 4 + 1.0 * 4 + 2.0 * 4) = 16.0
+    example1 = {
+        'labels': np.array([1], dtype=np.int64),
+        'predictions': np.array([0.1, 0.2, 0.3, 0.0]),
+        'example_weights': np.array([1.0])
+    }
+    example2 = {
+        'labels': np.array([1, 2], dtype=np.int64),
+        'predictions': np.array([0.1, 0.2, 0.0]),
+        'example_weights': np.array([1.0])
+    }
+    example3 = {
+        'labels': np.array([1, 2, 3], dtype=np.int64),
+        'predictions': np.array([0.1, 0.2, 0.3]),
+        'example_weights': np.array([2.0])
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([example1, example2, example3])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+
+          custom_label_key = metric_types.MetricKey(name='custom_label')
+          custom_pred_key = metric_types.MetricKey(name='custom_pred')
+          self.assertDictElementsAlmostEqual(got_metrics, {
+              custom_label_key: 9.0 / 16.0,
+              custom_pred_key: -0.9 / 16.0
+          })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

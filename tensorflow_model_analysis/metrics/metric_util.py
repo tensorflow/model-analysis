@@ -97,6 +97,18 @@ def to_scalar(
   return tensor.item()
 
 
+def pad(arr: np.ndarray, last_dim: int, value: float) -> np.ndarray:
+  """Pads the given array with value until last dim is of size last_dim."""
+  if arr.shape[-1] == last_dim:
+    return arr
+  pad_width = []
+  for _ in arr.shape[:-1]:
+    pad_width.append((0, 0))  # Don't pad inner dimensions
+  pad_width.append((0, last_dim - arr.shape[-1]))  # Pad up to last_dim
+  return np.pad(
+      arr, pad_width=pad_width, mode='constant', constant_values=value)
+
+
 def to_standard_metric_inputs(
     extracts: types.Extracts,
     include_features: bool = False) -> metric_types.StandardMetricInputs:
@@ -374,7 +386,7 @@ def to_label_prediction_example_weight(
   prediction = inputs.prediction
   example_weight = inputs.example_weight
   if example_weight is None:
-    example_weight = np.array(1.0)
+    example_weight = np.array(1.0, dtype=np.float32)  # tf-ranking needs float32
   if model_name:
     prediction = util.get_by_keys(prediction, [model_name])
     # Labels and weights can optionally be keyed by model name.

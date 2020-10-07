@@ -36,6 +36,24 @@ class UtilTest(tf.test.TestCase):
         indices=np.array([0]), values=np.array([1]), dense_shape=(1,))
     self.assertEqual(1, metric_util.to_scalar(sparse_tensor))
 
+  def testPadNoChange(self):
+    self.assertAllClose(
+        np.array([1.0, 2.0]), metric_util.pad(np.array([1.0, 2.0]), 2, -1.0))
+
+  def testPad1DSingleValue(self):
+    self.assertAllClose(
+        np.array([1.0, -1.0]), metric_util.pad(np.array([1.0]), 2, -1.0))
+
+  def testPad1DMultipleValues(self):
+    self.assertAllClose(
+        np.array([1.0, 2.0, -1.0, -1.0]),
+        metric_util.pad(np.array([1.0, 2.0]), 4, -1.0))
+
+  def testPad2D(self):
+    self.assertAllClose(
+        np.array([[1.0, 2.0, 0.0, 0.0, 0.0], [3.0, 4.0, 0.0, 0.0, 0.0]]),
+        metric_util.pad(np.array([[1.0, 2.0], [3.0, 4.0]]), 5, 0.0))
+
   def testStandardMetricInputsToNumpy(self):
     example = metric_types.StandardMetricInputs(
         label={'output_name': np.array([2])},

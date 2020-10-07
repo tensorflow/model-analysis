@@ -454,8 +454,11 @@ class _CompilableMetricsAccumulator(object):
       is used to store the accumulated weights for each metric associated with
       the output dimension.
     total_input_byte_size: Byte size of accumulated inputs.
+    pad: True if padding needed.
+    last_dim: Max size of the last dimension of labels or predictions (used with
+      padding).
   """
-  __slots__ = ['inputs', 'weights', 'total_input_byte_size']
+  __slots__ = ['inputs', 'weights', 'total_input_byte_size', 'pad', 'last_dim']
 
   def __init__(self, metric_counts: List[int]):
     """Initializes accumulator using a list of metric counts per output."""
@@ -468,6 +471,8 @@ class _CompilableMetricsAccumulator(object):
       self.inputs.append(([], [], []))
       self.weights.append([None] * output_metric_count)
     self.total_input_byte_size = 0
+    self.pad = False
+    self.last_dim = 0
 
   def len_inputs(self):
     return len(self.inputs[0][0])
@@ -477,18 +482,31 @@ class _CompilableMetricsAccumulator(object):
     for i, v in enumerate((label, prediction, example_weight)):
       self.inputs[output_index][i].append(v)
       self.total_input_byte_size += v.nbytes
+    last_dim = max(label.shape[-1], prediction.shape[-1])
+    if self.last_dim and self.last_dim != last_dim:
+      self.pad = True
+    self.last_dim = max(self.last_dim, last_dim)
 
   def get_inputs(
       self, output_index: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    return (np.array(self.inputs[output_index][0]),
-            np.array(self.inputs[output_index][1]),
-            np.array(self.inputs[output_index][2]))
+    """Returns labels, predictions, and weights for output at given offset."""
+    labels, preds, example_weights = self.inputs[output_index]
+    if self.pad:
+
+      def pad_value(a: np.array) -> Union[int, float]:
+        return -1 if a.dtype.kind == 'i' else -1.0
+
+      labels = [metric_util.pad(l, self.last_dim, pad_value(l)) for l in labels]
+      preds = [metric_util.pad(p, self.last_dim, pad_value(p)) for p in preds]
+    return (np.array(labels), np.array(preds), np.array(example_weights))
 
   def clear_inputs(self):
     for output_index in range(len(self.inputs)):
       for i in (0, 1, 2):
         del self.inputs[output_index][i][:]
     self.total_input_byte_size = 0
+    self.pad = False
+    self.last_dim = 0
 
   def add_weights(self, output_index: int, metric_index: int,
                   weights: np.ndarray):

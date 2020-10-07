@@ -12,6 +12,8 @@
 *   Add support for slicing on ragged and multidimensional data.
 *   Load TFMA correctly in JupyterLabs even if Facets has loaded first.
 *   Added support for aggregating metrics using top k values.
+*   Added support for padding labels and predictions with -1 to align a batch of
+    inputs for use in tf-ranking metrics computations.
 
 ## Bug fixes and other changes
 
