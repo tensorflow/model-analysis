@@ -364,6 +364,9 @@ class _JackknifeSampleCombiner(beam.CombineFn):
     else:
       accumulator.num_samples += 1
       for metric_key, value in sample.items():
+        # Numpy int64 and int32 types can overflow without warning. To prevent
+        # this we always cast to python floats prior to doing any operations.
+        value = float(value)
         if not isinstance(value, numbers.Number):
           # skip non-numeric values
           continue
@@ -428,13 +431,12 @@ class _JackknifeSampleCombiner(beam.CombineFn):
            metric_key in self._skip_ci_metric_keys)):
         result[metric_key] = unsampled_value
       else:
-        mean = accumulator.sums[metric_key] / accumulator.num_samples
+        mean = accumulator.sums[metric_key] / num_samples
         sum_of_squares = accumulator.sums_of_squares[metric_key]
         # one-pass variance formula with num_samples degrees of freedom
         sample_variance = sum_of_squares / float(num_samples) - mean * mean
         if sample_variance < 0:
           self._negative_variance_dist.update(n)
-        sample_variance = max(0, sample_variance)
         standard_error = (jackknife_scaling_factor * sample_variance)**0.5
         if standard_error == 0:
           self._zero_variance_dist.update(n)

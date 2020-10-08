@@ -23,6 +23,7 @@ import collections
 from absl.testing import absltest
 import apache_beam as beam
 from apache_beam.testing import util
+import numpy as np
 
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import jackknife
@@ -311,6 +312,44 @@ class JackknifePTransformTest(absltest.TestCase):
       counters = result.metrics().query(filter=metric_filter)['counters']
       self.assertLen(counters, 1)
       self.assertEqual(2, counters[0].committed)
+
+  def test_jackknife_merge_jackknife_samples_numpy_overflow(self):
+    sample_values = np.random.RandomState(seed=0).randint(0, 1e10, 20)
+    slice_key = (u'slice_feature', 1)
+    metric_key = metric_types.MetricKey(u'metric')
+    sliced_derived_metrics = [
+        ((slice_key, (jackknife._JACKKNIFE_SAMPLE_ID_KEY,
+                      jackknife._JACKKNIFE_FULL_SAMPLE_ID)), {
+                          metric_key: 1,
+                          jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY: 200,
+                      })
+    ]
+    for sample_id, value in enumerate(sample_values):
+      sliced_derived_metrics.append(
+          ((slice_key, (jackknife._JACKKNIFE_SAMPLE_ID_KEY, sample_id)), {
+              metric_key: value,
+          }))
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline
+          | 'Create' >> beam.Create(sliced_derived_metrics, reshuffle=False)
+          | 'JackknifeCombinePerKey' >>
+          jackknife.MergeJackknifeSamples(num_jackknife_samples=20))
+
+      def check_result(got_pcoll):
+        expected_pcoll = [
+            ((slice_key,), {
+                metric_key:
+                    types.ValueWithTDistribution(
+                        sample_mean=5293977041.15,
+                        sample_standard_deviation=12845957824.018991,
+                        sample_degrees_of_freedom=19,
+                        unsampled_value=1),
+            }),
+        ]
+        self.assertCountEqual(expected_pcoll, got_pcoll)
+
+      util.assert_that(result, check_result)
 
 
 if __name__ == '__main__':
