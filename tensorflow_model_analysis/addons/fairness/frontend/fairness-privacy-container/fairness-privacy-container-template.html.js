@@ -43,9 +43,9 @@ template.innerHTML = `
   <h2>Privacy: min-slice-size</h2>
   <div class="popup">
     <p>
-      If the number of examples for a specific slice is smaller than the min_slice_size
-      specified as part of your model evaluation, then aggregated data for that slice won't
-      be displayed. This will be useful to ensure privacy.
+      To preserve privacy, we have not aggregated data for slices with example count fewer than
+      min_slice_size. If you have any questions, or would like to change this threshold, please
+      reach out to us at ml-fairness-partnerships@google.com.
     </p>
     Here is the list of all such slices being omitted:<br>
     <paper-listbox id="omitted-slices-list">
