@@ -253,12 +253,6 @@ def _make_extra_packages_tfjs():
   # Packages needed for tfjs.
   return [
       'tensorflowjs>=2.0.1.post1,<3',
-      # TODO(b/158034704): Remove prompt-toolkit pin resulted from
-      # tfjs -> PyInquirer dependency chain.
-      'prompt-toolkit>=2.0.10,<3',
-      # TODO(b/167111340): Remove this dependency after the prompt-toolkit
-      # dependency issue is resolved.
-      'ipython>=7,<8',
   ]
 
 
@@ -298,8 +292,8 @@ setup_args = {
         # Sort alphabetically
         'absl-py>=0.9,<0.11',
         'apache-beam[gcp]>=2.24,<3',
+        'ipython>=7,<8',
         'ipywidgets>=7,<8',
-        'jupyter>=1,<2',
         'numpy>=1.16,<2',
         'pandas>=1.0,<2',
         'protobuf>=3.9.2,<4',
