@@ -15,7 +15,7 @@
  */
 
 suite('fairness-metric-summary tests', () => {
-  const TEST_STEP_TIMEOUT_MS = 100;
+  const TEST_STEP_TIMEOUT_MS = 50;
 
   const SLICES = [
     'Overall', 'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4', 'Slice:5', 'Slice:6',
@@ -254,18 +254,22 @@ suite('fairness-metric-summary tests', () => {
         ['Overall', '1', '2', '3', '4', '5', '6', '7', '8']);
 
     // Click "Slice" row. This will cause all slices under this slice key
-    // selected.
+    // selected, except the last one. Because the it reaches the max number of
+    // slices to be selected.
     sliceDropDown.items[1].fire('tap');
     await delay(TEST_STEP_TIMEOUT_MS);
     // Check selected slices text after updating.
-    assert.deepEqual(
-        sliceDropDown.selectedItems.map(item => item.slice['text']), [
-          'Overall', '1', '2', '3', '4', '5', '6', '7', '8', 'Slice', '9', '10',
-          '11', '12', '13', '14', '15', '16'
-        ]);
+    assert.deepEqual(sliceDropDown.selectedItems.map(item => item.slice.text), [
+      'Overall', '1', '2', '3', '4', '5', '6', '7', '8', 'Slice', '9', '10',
+      '11', '12', '13', '14', '15'
+    ]);
+    assert.deepEqual(sliceDropDown.items.map(item => item.slice.isDisabled), [
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, true
+    ]);
 
-    // Click "Slice" row again. This will cause all slices under this
-    // key unselected.
+    // Click 'Slice' row again.This will cause all slice under this key
+    // unselected.
     sliceDropDown.items[1].fire('tap');
     await delay(TEST_STEP_TIMEOUT_MS);
     // Check selected slices text after updating.
@@ -273,6 +277,11 @@ suite('fairness-metric-summary tests', () => {
         sliceDropDown.selectedItems.map(item => item.slice['text']), [
           'Overall',
         ]);
+    // All slices should be re-enabled now.
+    assert.deepEqual(sliceDropDown.items.map(item => item.slice.isDisabled), [
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false
+    ]);
     done();
   });
 

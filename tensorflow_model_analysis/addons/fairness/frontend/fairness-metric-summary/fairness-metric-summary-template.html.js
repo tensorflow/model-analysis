@@ -63,7 +63,7 @@ template.innerHTML = `
                    on-iron-deselect="slicesDropDownCandidatesUnselected_"
                    >
       <template is="dom-repeat" items="[[slicesDropDownMenuCandidates_]]">
-        <paper-item slice="[[item]]" class="slices-drop-down-candidates">
+        <paper-item slice="[[item]]" disabled="[[item.isDisabled]]" class="slices-drop-down-candidates">
           <div class$="slice-key-[[item.isSliceKey]]">
              <template is="dom-if" if="[[item.isSelected]]">
               <iron-icon icon="icons:check-box"></iron-icon>

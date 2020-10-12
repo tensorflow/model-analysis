@@ -35,20 +35,29 @@ const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Ut
 const OVERALL_SLICE_KEY = 'Overall';
 
 /**
- * Number of default slices to be rendered.
+ * Number of default slices to be selected.
  * @private {number}
  * @const
  */
 const DEFAULT_NUM_SLICES = 9;
 const DEFAULT_NUM_SLICES_EVAL_COMPARE = 3;
 
+/**
+ * Number of max slices to be selected.
+ * @private {number}
+ * @const
+ */
+const MAX_NUM_SLICES = 15;
+
 
 /**
- * It's a map that contains four fields:
+ * It's a map that contains following fields:
  *   'text': used to render on UI, e.g. "gender" or "male".
+ *   'rawSlice': store the original slices, e.g. "gender:male". If this is a
+ *     slice key, this field will be an empty string.
  *   'id': An unique id that's convenient for search purpose.
  *   'isSliceKey': used to indicate whether this is a slice key element or a
- *      general slice key value pair element.
+ *     general slice key value pair element.
  *   'representedSlices': a list of slices that this element presents. If it's a
  *      slice key, all the slices key value pairs under this slice key will be
  *      included. If it's a general slice element, this list will only include
@@ -56,15 +65,36 @@ const DEFAULT_NUM_SLICES_EVAL_COMPARE = 3;
  *   'isSelected': indicates if this element is selected by users for plotting.
  *      This will also be used to change the checkbox status in front of the
  *      slices.
- * @typedef {{
- *   text: string,
- *   id: number,
- *   isSliceKey: boolean,
- *   representedSlices: !Array<string>,
- *   isSelected: boolean,
- * }}
+ *   'isDisabled': will be true if max number of slices is selected.
  */
-let SlicesDropDownMenuCandidateType;
+/** @record */
+class SlicesDropDownMenuCandidateType {
+  constructor() {
+    /** @type {string} */
+    this.text;
+
+    /** @type {string} */
+    this.rawSlice;
+
+    /** @type {number} */
+    this.id;
+
+    /** @type {boolean} */
+    this.isSliceKey;
+
+    /** @type {!Array<string>} */
+    this.representedSlices;
+
+    /** @type {boolean} */
+    this.isSelected;
+
+    /**
+     * @export {boolean}
+     * Export because it's used in unit test but didn't get renamed.
+     * */
+    this.isDisabled;
+  }
+}
 
 export class FairnessMetricSummary extends PolymerElement {
   constructor() {
@@ -163,6 +193,16 @@ export class FairnessMetricSummary extends PolymerElement {
        */
       selectedSlicesDropDownMenuCandidates_: {
         type: Array,
+      },
+
+      /**
+       * This field will be true if the max number of slices have been selected.
+       * @private {boolean}
+       */
+      slicesDropDownMenuDisabled_: {
+        type: Boolean,
+        value: false,
+        observer: 'slicesDropDownMenuDisabledChanged_'
       },
 
       /**
@@ -360,6 +400,7 @@ export class FairnessMetricSummary extends PolymerElement {
           isSliceKey: true,
           representedSlices: [OVERALL_SLICE_KEY],
           isSelected: false,
+          isDisabled: false,
           id: id++,
         });
       } else {
@@ -373,6 +414,7 @@ export class FairnessMetricSummary extends PolymerElement {
             isSliceKey: true,
             representedSlices: slicesGroupedByKey.get(currentSliceKey),
             isSelected: false,
+            isDisabled: false,
             id: id++,
           });
           previousSliceKey = currentSliceKey;
@@ -384,6 +426,7 @@ export class FairnessMetricSummary extends PolymerElement {
           isSliceKey: false,
           representedSlices: [slice],
           isSelected: false,
+          isDisabled: false,
           id: id++,
         });
       }
@@ -460,18 +503,6 @@ export class FairnessMetricSummary extends PolymerElement {
   }
 
   /**
-   * Check if a slice candidate in the drop down menu is selected or not.
-   * @param {!SlicesDropDownMenuCandidateType} candidate
-   * @return {boolean}
-   * @private
-   */
-  isSliceSelected_(candidate) {
-    return (
-        this.selectedSlicesDropDownMenuCandidates_.find(
-            selectedSlices => selectedSlices.id == candidate.id) != undefined);
-  }
-
-  /**
    * Updates the isSelected status to true.
    * @private
    */
@@ -481,13 +512,18 @@ export class FairnessMetricSummary extends PolymerElement {
     this.set(
         'slicesDropDownMenuCandidates_.' + selectedItemIndex + '.isSelected',
         true);
+    this.disableOrUndisableSlicesDropDownMenu_();
     // If a slice key is selected, select all the slices under this slice key.
     if (selectedItem.isSliceKey && selectedItem.text != OVERALL_SLICE_KEY) {
       for (let i = selectedItemIndex + 1;
            i <= selectedItemIndex + selectedItem.representedSlices.length;
            i++) {
         let underSliceCandidate = this.slicesDropDownMenuCandidates_[i];
-        if (!this.isSliceSelected_(underSliceCandidate)) {
+        // Stop early if no more slices can be selected.
+        if (this.slicesDropDownMenuDisabled_) {
+          break;
+        }
+        if (!underSliceCandidate.isSelected) {
           this.push(
               'selectedSlicesDropDownMenuCandidates_', underSliceCandidate);
         }
@@ -506,6 +542,7 @@ export class FairnessMetricSummary extends PolymerElement {
     this.set(
         'slicesDropDownMenuCandidates_.' + selectedItemIndex + '.isSelected',
         false);
+    this.disableOrUndisableSlicesDropDownMenu_();
     // If a slice key is unselected, unselect all the slices under this slice
     // key.
     if (selectedItem.isSliceKey && selectedItem.text != OVERALL_SLICE_KEY) {
@@ -519,6 +556,41 @@ export class FairnessMetricSummary extends PolymerElement {
           // Remove from selectedSlicesDropDownMenuCandidates_.
           this.splice('selectedSlicesDropDownMenuCandidates_', index, 1);
         }
+      }
+    }
+  }
+
+  /**
+   * Disable slices drop down menu if max number of slices are selected. Or
+   * Undiabled it if less number of slices are selected. changed.
+   * @private
+   */
+  disableOrUndisableSlicesDropDownMenu_() {
+    const numOfSelectedSlices =
+        this.selectedSlicesDropDownMenuCandidates_
+            .filter(
+                sliceCandidate =>
+                    sliceCandidate.isSelected && !sliceCandidate.isSliceKey)
+            .length;
+
+    // Disable the slices dropdown menu if max number of slices is selected.
+    this.slicesDropDownMenuDisabled_ = numOfSelectedSlices >= MAX_NUM_SLICES;
+  }
+
+  /**
+   * Update the isDisable status of the slices drop down menu candidates.
+   * @param {boolean} newValue
+   * @param {boolean} oldValue
+   * @private
+   */
+  slicesDropDownMenuDisabledChanged_(newValue, oldValue) {
+    if (newValue === oldValue || !this.slicesDropDownMenuCandidates_) {
+      return;
+    }
+    for (let i = 0; i < this.slicesDropDownMenuCandidates_.length; i++) {
+      if (!this.slicesDropDownMenuCandidates_[i].isSelected) {
+        this.set(
+            'slicesDropDownMenuCandidates_.' + i + '.isDisabled', newValue);
       }
     }
   }
