@@ -37,6 +37,7 @@ export class FairnessTensorboardContainer extends SelectEventMixin
 
     tensorboard_util.core.getURLPluginData().then(url => {
       this.evaluationOutputPath_ = url['evaluation_output_path'];
+      this.evaluationOutputPathCompare_ = url['exp_evaluation_output_path'];
 
       if (this.evaluationOutputPath_ == undefined) {
         tensorboard_util.runs.getRuns().then(runs => {
@@ -81,6 +82,13 @@ export class FairnessTensorboardContainer extends SelectEventMixin
        */
       evaluationOutputPath_:
           {type: String, observer: 'evaluationOutputPathChanged_'},
+
+      /**
+       * Evaluation run selected by the user for model comparison.
+       * @private {string}
+       */
+      evaluationOutputPathCompare_:
+          {type: String, observer: 'evaluationOutputPathCompareChanged_'},
 
       /**
        * List of evaluation runs containing slicing metrics which will be
@@ -178,6 +186,26 @@ export class FairnessTensorboardContainer extends SelectEventMixin
         .then(res => res.json())
         .then(slicingMetrics => {
           this.slicingMetrics_ = slicingMetrics;
+        });
+  }
+
+  evaluationOutputPathCompareChanged_(path) {
+    if (path == undefined) {
+      return;
+    }
+    fetch(
+        `${GET_EVAL_RESULTS_ENDPOINT_FROM_URL}?evaluation_output_path=${path}`)
+        .then(res => res.json())
+        .then(slicingMetricsCompare => {
+          this.slicingMetricsCompare_ = slicingMetricsCompare;
+          let nbContainer =
+              this.shadowRoot.querySelector('fairness-nb-container');
+          nbContainer.evalName = 'base';
+          if (this.slicingMetricsCompare_) {
+            nbContainer.evalNameCompare = 'compare';
+          } else {
+            nbContainer.evalNameCompare = '';
+          }
         });
   }
 
