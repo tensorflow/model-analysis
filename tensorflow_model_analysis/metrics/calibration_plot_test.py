@@ -379,10 +379,7 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
                           'output1': 'label1',
                           'output2': 'label2'
                       },
-                      signature_names={
-                          'output1': 'default',
-                          'output2': 'signature2'
-                      }),
+                      signature_name='default'),
               ]),
           'schema':
               text_format.Parse(

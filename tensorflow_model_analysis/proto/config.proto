@@ -40,10 +40,6 @@ message ModelSpec {
   // type does not contain signatures (e.g. tflite). For estimator based
   // EvalSavedModels, this should be set to "eval".
   string signature_name = 3;
-  // Signature names (multi-output model) keyed by output_name. If all the
-  // outputs for a multi-output model use the same signature name, then a single
-  // name may also be used. Use one of signature_name or signature_names.
-  map<string, string> signature_names = 4;  // oneof not allowed with maps
   // Label key (single-output model). Use one of label_key or label_keys.
   string label_key = 5;
   // Label keys (multi-output model) keyed by output_name. If all the outputs
@@ -108,7 +104,7 @@ message ModelSpec {
   // per evaluation run.
   bool is_baseline = 11;
 
-  reserved 1;
+  reserved 1, 4;
 }
 
 // Slicing specification.

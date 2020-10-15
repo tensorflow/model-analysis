@@ -127,18 +127,15 @@ def get_model_type(model_spec: Optional[config.ModelSpec],
     else:
       return constants.TF_GENERIC
 
-  signature_names = []
+  signature_name = None
   if model_spec:
     if model_spec.signature_name:
-      signature_names.append(model_spec.signature_name)
-    elif model_spec.signature_names:
-      for signature_name in model_spec.signature_names:
-        signature_names.append(signature_name)
+      signature_name = model_spec.signature_name
     else:
-      signature_names.append(tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY)
+      signature_name = tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
 
   # Default to serving unless estimator is used and eval signature is used.
-  if eval_constants.EVAL_TAG in signature_names:
+  if signature_name == eval_constants.EVAL_TAG:
     return constants.TF_ESTIMATOR
   else:
     return constants.TF_GENERIC

@@ -57,10 +57,6 @@ def verify_eval_config(eval_config: EvalConfig,
   model_specs_by_name = {}
   baseline = None
   for spec in eval_config.model_specs:
-    if spec.signature_name and spec.signature_names:
-      raise ValueError(
-          'only one of signature_name or signature_names should be used at '
-          'a time: model_spec=\n{}'.format(spec))
     if spec.label_key and spec.label_keys:
       raise ValueError('only one of label_key or label_keys should be used at '
                        'a time: model_spec=\n{}'.format(spec))
