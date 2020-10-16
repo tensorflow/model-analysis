@@ -33,7 +33,7 @@ from tensorflow_model_analysis.eval_saved_model import load
 # TODO(b/162075791): Need to load tensorflow_text for models that use those ops.
 try:
   import tensorflow_text as _  # pylint: disable=g-import-not-at-top
-except ImportError:
+except (ImportError, tf.errors.NotFoundError):
   pass
 
 KERAS_INPUT_SUFFIX = '_input'
