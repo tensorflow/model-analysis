@@ -14,6 +14,7 @@
 *   Added support for aggregating metrics using top k values.
 *   Added support for padding labels and predictions with -1 to align a batch of
     inputs for use in tf-ranking metrics computations.
+*   Added support for fractional labels.
 
 ## Bug fixes and other changes
 

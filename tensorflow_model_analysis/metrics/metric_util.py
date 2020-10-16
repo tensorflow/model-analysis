@@ -20,8 +20,9 @@ from __future__ import division
 from __future__ import print_function
 
 import inspect
+import math
 
-from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -41,6 +42,15 @@ _LOGITS = 'logits'
 
 _MEAN_METRIC_WRAPPER = 'MeanMetricWrapper'
 _LOSS_FUNCTION_WRAPPER = 'LossFunctionWrapper'
+
+_EPSILON = 1e-7
+
+
+def within_interval(value: float, left: float, right: float) -> bool:
+  """Returns true if value is within [left, right]."""
+  # EPSILON is used to handle rounding errors that may occur if the value was
+  # created using floating point operations.
+  return value >= left - _EPSILON and value <= right + _EPSILON
 
 
 def serialize_metric(metric: tf.keras.metrics.Metric) -> Dict[Text, Any]:
@@ -246,6 +256,7 @@ def to_label_prediction_example_weight(
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
+    fractional_labels: bool = False,
     flatten: bool = True,
     squeeze: bool = True,
     allow_none: bool = False,
@@ -345,6 +356,15 @@ def to_label_prediction_example_weight(
     aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions. If used, flatten must also be True.
+    fractional_labels: If true, each incoming tuple of (label, prediction, and
+      example weight) will be split into two tuples as follows (where l, p, w
+      represent the resulting label, prediction, and example weight values):
+        (1) l = 0.0, p = prediction, and w = example_weight * (1.0 - label)
+        (2) l = 1.0, p = prediction, and w = example_weight * label
+      If enabled, an exception will be raised if labels are not within [0, 1].
+      The implementation is such that tuples associated with a weight of zero
+      are not yielded. This means it is safe to enable fractional_labels even
+      when the labels only take on the values of 0.0 or 1.0.
     flatten: True to flatten the final label and prediction outputs so that the
       yielded values are always arrays of size 1. For example, multi-class /
       multi-label outputs would be converted into label and prediction pairs
@@ -353,7 +373,8 @@ def to_label_prediction_example_weight(
     squeeze: True to squeeze any outputs that have rank > 1. This transforms
       outputs such as np.array([[1]]) to np.array([1]).
     allow_none: True to allow labels or predictions with None values to be
-      returned. The example weight will always be non-None.
+      returned. When used, the values will be returned as empty np.ndarrays. The
+      example weight will always be non-empty.
 
   Yields:
     Tuple of (label, prediction, example_weight).
@@ -481,35 +502,74 @@ def to_label_prediction_example_weight(
         for i in range(prediction.shape[-1] or label.shape[-1])
     ])
 
-  if (not flatten or (label is None and prediction is None) or
-      (label is not None and prediction is not None and label.size == 1 and
-       prediction.size == 1)):
-    if squeeze:
-      yield _squeeze(label), _squeeze(prediction), _squeeze(example_weight)
+  label = label if label is not None else np.array([])
+  prediction = prediction if prediction is not None else np.array([])
+
+  def yield_results(label, prediction, example_weight):
+    if (not flatten or (label.size == 0 and prediction.size == 0) or
+        (label.size == 1 and prediction.size == 1)):
+      if squeeze:
+        yield _squeeze(label), _squeeze(prediction), _squeeze(example_weight)
+      else:
+        yield label, prediction, example_weight
+    elif label.size == 0:
+      for p, w in (prediction.flatten(), example_weight.flatten()):
+        yield label, np.array([p]), np.array([w])
+    elif prediction.size == 0:
+      for l, w in (label.flatten(), example_weight.flatten()):
+        yield np.array([l]), prediction, np.array([w])
+    elif label.size == prediction.size:
+      for l, p, w in zip(label.flatten(), prediction.flatten(),
+                         example_weight.flatten()):
+        yield np.array([l]), np.array([p]), np.array([w])
+    elif label.shape[-1] == 1:
+      label = one_hot(label, prediction)
+      for l, p, w in zip(label.flatten(), prediction.flatten(),
+                         example_weight.flatten()):
+        yield np.array([l]), np.array([p]), np.array([w])
     else:
-      yield label, prediction, example_weight
-  elif label is None:
-    for p, w in (prediction.flatten(), example_weight.flatten()):
-      yield label, np.array([p]), np.array([w])
-  elif prediction is None:
-    for l, w in (label.flatten(), example_weight.flatten()):
-      yield np.array([l]), prediction, np.array([w])
-  elif label.size == prediction.size:
-    for l, p, w in zip(label.flatten(), prediction.flatten(),
-                       example_weight.flatten()):
-      yield np.array([l]), np.array([p]), np.array([w])
-  elif label.shape[-1] == 1:
-    label = one_hot(label, prediction)
-    for l, p, w in zip(label.flatten(), prediction.flatten(),
-                       example_weight.flatten()):
-      yield np.array([l]), np.array([p]), np.array([w])
-  else:
-    raise ValueError(
-        'unable to pair labels with predictions: labels={}, predictions={}, '
-        'model_name={}, output_name={}, sub_key={}, aggregation_type={}, '
-        'StandardMetricInputs={}\n\nThis is most likely a configuration '
-        'error.'.format(label, prediction, model_name, output_name, sub_key,
-                        aggregation_type, inputs))
+      raise ValueError(
+          'unable to pair labels with predictions: labels={}, predictions={}, '
+          'model_name={}, output_name={}, sub_key={}, aggregation_type={}, '
+          'StandardMetricInputs={}\n\nThis is most likely a configuration '
+          'error.'.format(label, prediction, model_name, output_name, sub_key,
+                          aggregation_type, inputs))
+
+  for result in yield_results(label, prediction, example_weight):
+    if fractional_labels and label.size:
+      for new_result in _yield_fractional_labels(*result):
+        yield new_result
+    else:
+      yield result
+
+
+def _yield_fractional_labels(
+    label: np.ndarray, prediction: np.ndarray, example_weight: np.ndarray
+) -> Iterable[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+  """Yields (label, prediction, example_weight) applying fractional labels.
+
+  The incoming label, prediction, and example weights will be split into two
+  tuples such that if l, p, w represent the resulting tuple values we will get:
+    (1) l = 0.0, p = prediction, and w = example_weight * (1.0 - label)
+    (2) l = 1.0, p = prediction, and w = example_weight * label
+
+  Args:
+    label: Label.
+    prediction: Prediction.
+    example_weight: Example weight.
+
+  Raises:
+    ValueError: If labels are not within [0, 1].
+  """
+  # Verify that labels are also within [0, 1]
+  if not within_interval(float(label), 0.0, 1.0):
+    raise ValueError('label must be within [0, 1]: '
+                     'label={}, prediction={}, example_weight={}'.format(
+                         label, prediction, example_weight))
+  for l, w in ((np.array([0], dtype=label.dtype), example_weight * (1 - label)),
+               (np.array([1], dtype=label.dtype), example_weight * label)):
+    if not math.isclose(w, 0.0):
+      yield (l, prediction, w)
 
 
 def _squeeze(arr: np.ndarray):

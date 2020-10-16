@@ -246,6 +246,74 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   @parameterized.named_parameters(
+      ('auc', 'auc', 0.8571428),
+      ('auc_pr', 'auc_pr', 0.77369833),
+      ('true_positives', 'true_positives', 1.4),
+      ('false_positives', 'false_positives', 0.6),
+      ('true_negatives', 'true_negatives', 1.0),
+      ('false_negatives', 'false_negatives', 0.0),
+  )
+  def testMetricsWithFractionalLabels(self, metric_name, expected_value):
+    computations = tf_metric_wrapper.tf_metric_computations(
+        [self._tf_metric_by_name(metric_name)])
+    histogram = computations[0]
+    matrix = computations[1]
+    metric = computations[2]
+
+    # The following examples will be expanded to:
+    #
+    # prediction | label | weight
+    #     0.0    |   -   |  1.0
+    #     0.7    |   -   |  0.4
+    #     0.7    |   +   |  0.6
+    #     1.0    |   -   |  0.2
+    #     1.0    |   +   |  0.8
+    example1 = {
+        'labels': np.array([0.0]),
+        'predictions': np.array([0.0]),
+        'example_weights': np.array([1.0]),
+    }
+    example2 = {
+        'labels': np.array([0.6]),
+        'predictions': np.array([0.7]),
+        'example_weights': np.array([1.0]),
+    }
+    example3 = {
+        'labels': np.array([0.8]),
+        'predictions': np.array([1.0]),
+        'example_weights': np.array([1.0]),
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([example1, example2, example3])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
+          | 'ComputeConfusionMatrix' >> beam.Map(
+              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
+          | 'ComputeMetric' >> beam.Map(
+              lambda x: (x[0], metric.result(x[1]))))  # pyformat: disable
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          key = metric_types.MetricKey(name=metric_name)
+          self.assertDictElementsAlmostEqual(
+              got_metrics, {key: expected_value}, places=5)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  @parameterized.named_parameters(
       ('precision@2', 'precision', 2, 1.6 / (1.6 + 3.2)),
       ('recall@2', 'recall', 2, 1.6 / (1.6 + 0.8)),
       ('precision@3', 'precision', 3, 1.9 / (1.9 + 5.3)),

@@ -116,6 +116,7 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
     self._num_buckets = num_buckets
     self._left = left
     self._range = right - left
+    self._is_unit_interval = (left == 0.0 and right == 1.0)
 
   def _bucket_index(self, prediction: float) -> int:
     """Returns bucket index given prediction value. Values are truncated."""
@@ -147,6 +148,7 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
             model_name=self._key.model_name,
             output_name=self._key.output_name,
             sub_key=self._key.sub_key,
+            fractional_labels=self._is_unit_interval,
             flatten=True,
             aggregation_type=self._aggregation_type,
             class_weights=self._class_weights)):
