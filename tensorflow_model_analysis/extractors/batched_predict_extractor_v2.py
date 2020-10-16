@@ -24,6 +24,7 @@ import copy
 from typing import Dict, List, Optional, Text
 
 import apache_beam as beam
+import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
@@ -33,8 +34,6 @@ from tensorflow_model_analysis.extractors import extractor
 from tfx_bsl.tfxio import tensor_adapter
 
 BATCHED_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractBatchPredictions'
-
-PREDICT_SIGNATURE_DEF_KEY = 'predict'
 
 
 def BatchedPredictExtractor(
@@ -112,71 +111,54 @@ class _BatchedPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
         raise ValueError(
             'loaded model for "{}" not found: eval_config={}'.format(
                 spec.name, self._eval_config))
-      loaded_model = self._loaded_models[model_name]
-      if not hasattr(loaded_model, 'signatures'):
-        raise ValueError(
-            'PredictExtractor V2 requires a keras model or a serving model. '
-            'If using EvalSavedModel then you must use PredictExtractor V1.')
-      signatures = loaded_model.signatures
-
-      signature_key = spec.signature_name
-      # TODO(mdreves): Add support for multiple signatures per output.
-      if not signature_key:
-        # First try 'predict' then try 'serving_default'. The estimator output
-        # for the 'serving_default' key does not include all the heads in a
-        # multi-head model. However, keras only uses the 'serving_default' for
-        # its outputs. Note that the 'predict' key only exists for estimators
-        # for multi-head models, for single-head models only 'serving_default'
-        # is used.
-        signature_key = tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
-        if PREDICT_SIGNATURE_DEF_KEY in signatures:
-          signature_key = PREDICT_SIGNATURE_DEF_KEY
-      if signature_key not in signatures:
-        raise ValueError('{} not found in model signatures: {}'.format(
-            signature_key, signatures))
-      signature = signatures[signature_key]
-
-      # If input names exist then filter the inputs by these names (unlike
-      # estimators, keras does not accept unknown inputs).
-      input_names = None
-      # First arg of structured_input_signature tuple is shape, second is dtype
-      # (we currently only support named params passed as a dict)
-      if (signature.structured_input_signature and
-          len(signature.structured_input_signature) == 2 and
-          isinstance(signature.structured_input_signature[1], dict)):
-        input_names = [name for name in signature.structured_input_signature[1]]
-      elif hasattr(loaded_model, 'input_names'):
-        # Calling keras_model.input_names does not work properly in TF 1.15.0.
-        # As a work around, make sure the signature.structured_input_signature
-        # check is before this check (see b/142807137).
-        input_names = loaded_model.input_names
-      inputs = None
-      if input_names:
-        get_tensors = True
-        if len(input_names) == 1:
-          # Avoid getting the tensors in case we are feeding serialized examples
-          # to the model.
-          if model_util.find_input_name_in_features(
-              set(record_batch.schema.names), input_names[0]) is None:
-            get_tensors = False
-        if get_tensors:
-          inputs = model_util.filter_tensors_by_input_names(
-              self._tensor_adapter.ToBatchTensors(record_batch), input_names)
+      model = self._loaded_models[model_name]
+      signature_name = spec.signature_name
+      input_specs = model_util.get_input_specs(model, signature_name) or {}
+      # If tensor_adaptor and input_specs exist then filter the inputs by input
+      # names (unlike estimators, keras does not accept unknown inputs).
+      # However, avoid getting the tensors if we appear to be feeding serialized
+      # examples to the model.
+      if (self._tensor_adapter and input_specs and
+          not (len(input_specs) == 1 and
+               next(iter(input_specs.values())).dtype == tf.string and
+               model_util.find_input_name_in_features(
+                   set(self._tensor_adapter.TypeSpecs().keys()),
+                   next(iter(input_specs.keys()))) is None)):
+        inputs = model_util.filter_tensors_by_input_names(
+            self._tensor_adapter.ToBatchTensors(record_batch),
+            list(input_specs.keys()))
+      else:
+        inputs = None
       if not inputs:
         # Assume serialized examples
         assert serialized_examples is not None, 'Raw examples not found.'
         inputs = serialized_examples
+        # If a signature name was not provided, default to using the serving
+        # signature since parsing normally will be done outside model.
+        if not signature_name:
+          signature_name = model_util.get_default_signature_name(model)
+      signature = model_util.get_callable(model, signature_name)
+      if signature is None:
+        raise ValueError(
+            'PredictExtractor V2 requires a keras model or a serving model. '
+            'If using EvalSavedModel then you must use PredictExtractor V1.')
       if isinstance(inputs, dict):
-        outputs = signature(**inputs)
+        if signature is model:
+          outputs = signature(inputs)
+        else:
+          outputs = signature(**inputs)
       else:
         outputs = signature(tf.constant(inputs, dtype=tf.string))
       for i in range(record_batch.num_rows):
-        output = {k: v[i].numpy() for k, v in outputs.items()}
-        # Keras and regression serving models return a dict of predictions even
-        # for single-outputs. Convert these to a single tensor for compatibility
-        # with the labels (and model.predict API).
-        if len(output) == 1:
-          output = list(output.values())[0]
+        if isinstance(outputs, dict):
+          output = {k: v[i].numpy() for k, v in outputs.items()}
+          # Keras and regression serving models return a dict of predictions
+          # even for single-outputs. Convert these to a single tensor for
+          # compatibility with the labels (and model.predict API).
+          if len(output) == 1:
+            output = list(output.values())[0]
+        else:
+          output = np.asarray(outputs)[i]
         # If only one model, the predictions are stored without using a dict
         if len(self._eval_config.model_specs) == 1:
           predictions[i] = output

@@ -18,14 +18,93 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tempfile
+import unittest
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import model_util
 
+_TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
+
 
 class ModelUtilTest(tf.test.TestCase, parameterized.TestCase):
+
+  def createModelWithSingleInput(self, save_as_keras):
+    input_layer = tf.keras.layers.Input(shape=(1,), name='input')
+    output_layer = tf.keras.layers.Dense(
+        1, activation=tf.nn.sigmoid)(
+            input_layer)
+    model = tf.keras.models.Model(input_layer, output_layer)
+
+    @tf.function
+    def serving_default(s):
+      return model(s)
+
+    input_spec = {
+        'input': tf.TensorSpec(shape=(None, 1), dtype=tf.string, name='input'),
+    }
+    signatures = {
+        'serving_default': serving_default.get_concrete_function(input_spec),
+        'custom_signature': serving_default.get_concrete_function(input_spec),
+    }
+
+    export_path = tempfile.mkdtemp()
+    if save_as_keras:
+      model.save(export_path, save_format='tf', signatures=signatures)
+      return tf.keras.models.load_model(export_path)
+    else:
+      tf.saved_model.save(model, export_path, signatures=signatures)
+      return tf.compat.v1.saved_model.load_v2(export_path)
+
+  def createModelWithMultipleInputs(self, save_as_keras):
+    dense_input = tf.keras.layers.Input(
+        shape=(2,), name='input_1', dtype=tf.int64)
+    dense_float_input = tf.cast(dense_input, tf.float32)
+    sparse_input = tf.keras.layers.Input(
+        shape=(1,), name='input_2', sparse=True)
+    dense_sparse_input = tf.keras.layers.Dense(
+        1, name='dense_input2')(
+            sparse_input)
+    ragged_input = tf.keras.layers.Input(
+        shape=(None,), name='input_3', ragged=True)
+    dense_ragged_input = tf.keras.layers.Lambda(lambda x: x.to_tensor())(
+        ragged_input)
+    dense_ragged_input.set_shape((None, 1))
+    inputs = [dense_input, sparse_input, ragged_input]
+    input_layer = tf.keras.layers.concatenate(
+        [dense_float_input, dense_sparse_input, dense_ragged_input])
+    output_layer = tf.keras.layers.Dense(
+        1, activation=tf.nn.sigmoid)(
+            input_layer)
+    model = tf.keras.models.Model(inputs, output_layer)
+
+    @tf.function
+    def serving_default(features):
+      return model(features)
+
+    input_spec = {
+        'input_1':
+            tf.TensorSpec(shape=(None, 2), dtype=tf.int64, name='input_1'),
+        'input_2':
+            tf.SparseTensorSpec(shape=(None, 1), dtype=tf.float32),
+        'input_3':
+            tf.RaggedTensorSpec(shape=(None, 1), dtype=tf.float32)
+    }
+    signatures = {
+        'serving_default': serving_default.get_concrete_function(input_spec),
+        'custom_signature': serving_default.get_concrete_function(input_spec),
+    }
+
+    export_path = tempfile.mkdtemp()
+    if save_as_keras:
+      model.save(export_path, save_format='tf', signatures=signatures)
+      return tf.keras.models.load_model(export_path)
+    else:
+      tf.saved_model.save(model, export_path, signatures=signatures)
+      return tf.compat.v1.saved_model.load_v2(export_path)
 
   def testRebatchByInputNames(self):
     extracts = [{
@@ -119,6 +198,66 @@ class ModelUtilTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(ValueError):
       model_util.get_label_key(
           config.ModelSpec(label_keys={'output1': 'label'}), '')
+
+  @parameterized.named_parameters(
+      ('keras_serving_default', True, 'serving_default'),
+      ('keras_custom_signature', True, 'custom_signature'),
+      ('tf2_serving_default', False, 'serving_default'),
+      ('tf2_custom_signature', False, 'custom_signature'))
+  def testGetCallableWithSignatures(self, save_as_keras, signature_name):
+    model = self.createModelWithSingleInput(save_as_keras)
+    self.assertIsNotNone(model_util.get_callable(model, signature_name))
+
+  @parameterized.named_parameters(('keras', True), ('tf2', False))
+  def testGetCallableWithMissingSignatures(self, save_as_keras):
+    model = self.createModelWithSingleInput(save_as_keras)
+    with self.assertRaises(ValueError):
+      model_util.get_callable(model, 'non_existent')
+
+  @unittest.skipIf(_TF_MAJOR_VERSION < 2,
+                   'not all input types supported for TF1')
+  def testGetCallableWithKerasModel(self):
+    model = self.createModelWithMultipleInputs(True)
+    self.assertEqual(model, model_util.get_callable(model))
+
+  @parameterized.named_parameters(
+      ('keras_serving_default', True, 'serving_default'),
+      ('keras_custom_signature', True, 'custom_signature'),
+      ('tf2_serving_default', False, None),
+      ('tf2_custom_signature', False, 'custom_signature'))
+  def testGetInputSpecsWithSignatures(self, save_as_keras, signature_name):
+    model = self.createModelWithSingleInput(save_as_keras)
+    self.assertEqual(
+        {
+            'input':
+                tf.TensorSpec(name='input', shape=(None, 1), dtype=tf.string),
+        }, model_util.get_input_specs(model, signature_name))
+
+  @parameterized.named_parameters(('keras', True), ('tf2', False))
+  def testGetInputSpecsWithMissingSignatures(self, save_as_keras):
+    model = self.createModelWithSingleInput(save_as_keras)
+    with self.assertRaises(ValueError):
+      model_util.get_callable(model, 'non_existent')
+
+  @unittest.skipIf(_TF_MAJOR_VERSION < 2,
+                   'not all input types supported for TF1')
+  def testGetInputSpecsWithKerasModel(self):
+    model = self.createModelWithMultipleInputs(True)
+    # Some versions of TF set the TensorSpec.name and others do not. Since we
+    # don't care about the name, clear it from the output for testing purposes
+    specs = model_util.get_input_specs(model)
+    for k, v in specs.items():
+      if isinstance(v, tf.TensorSpec):
+        specs[k] = tf.TensorSpec(shape=v.shape, dtype=v.dtype)
+    self.assertEqual(
+        {
+            'input_1':
+                tf.TensorSpec(shape=(None, 2), dtype=tf.int64),
+            'input_2':
+                tf.SparseTensorSpec(shape=(None, 1), dtype=tf.float32),
+            'input_3':
+                tf.RaggedTensorSpec(shape=(None, None), dtype=tf.float32),
+        }, specs)
 
 
 if __name__ == '__main__':

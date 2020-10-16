@@ -36,9 +36,13 @@ try:
 except (ImportError, tf.errors.NotFoundError):
   pass
 
+_TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
+
 KERAS_INPUT_SUFFIX = '_input'
 
 _TFLITE_FILE_NAME = 'tflite'
+
+_PREDICT_SIGNATURE_DEF_KEY = 'predict'
 
 
 class ModelContents(object):
@@ -186,6 +190,119 @@ def verify_and_update_eval_shared_models(
   elif len(eval_shared_models) == 1 and eval_shared_models[0].model_name:
     eval_shared_models[0] = eval_shared_models[0]._replace(model_name='')
   return eval_shared_models
+
+
+def get_default_signature_name(model: Any) -> Text:
+  """Returns default signature name for given model."""
+  # First try 'predict' then try 'serving_default'. The estimator output
+  # for the 'serving_default' key does not include all the heads in a
+  # multi-head model. However, keras only uses the 'serving_default' for
+  # its outputs. Note that the 'predict' key only exists for estimators
+  # for multi-head models, for single-head models only 'serving_default'
+  # is used.
+  if (hasattr(model, 'signatures') and
+      _PREDICT_SIGNATURE_DEF_KEY in model.signatures):
+    return _PREDICT_SIGNATURE_DEF_KEY
+  return tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
+
+
+def is_callable_model(model: Any) -> bool:
+  """Returns true if model is callable."""
+  return (_TF_MAJOR_VERSION >= 2 and hasattr(model, 'input_names') and
+          hasattr(model, 'inputs'))
+
+
+def get_callable(
+    model: Any,
+    signature_name: Optional[Text] = None) -> Optional[Callable[..., Any]]:
+  """Returns callable associated with given signature or None if not callable.
+
+  The available callables are defined by the model.signatures attribute which
+  are defined at the time the model is saved. For keras based models, the
+  model itself can also be used.
+
+  Args:
+    model: A model that is callable or contains a `signatures` attribute. If
+      neither of these conditions are met, then None will be returned.
+    signature_name: Optional name of signature to use. If not provided then
+      either the default serving signature will be used (if model is not
+      callable) or the model itself will be used (if the model is callable). If
+      provided then model.signatures will be used regardless of whether the
+      model is callable or not.
+
+  Returns:
+    Callable associated with given signature (or the model itself) or None if
+    no callable could be found.
+
+  Raises:
+    ValueError: If signature_name not found in model.signatures.
+  """
+  if not hasattr(model, 'signatures') and not is_callable_model(model):
+    return None
+
+  if not signature_name:
+    if is_callable_model(model):
+      return model
+    signature_name = get_default_signature_name(model)
+
+  if signature_name not in model.signatures:
+    raise ValueError('{} not found in model signatures: {}'.format(
+        signature_name, model.signatures))
+  return model.signatures[signature_name]
+
+
+def get_input_specs(
+    model: Any,
+    signature_name: Optional[Text] = None) -> Optional[Dict[Text, tf.TypeSpec]]:
+  """Returns the input names and tensor specs associated with callable or None.
+
+  Args:
+    model: A model that is callable or contains a `signatures` attribute. If
+      neither of these conditions are met, then None will be returned.
+    signature_name: Optional name of signature to use. If not provided then
+      either the default serving signature will be used (if model is not
+      callable) or the model itself will be used (if the model is callable). If
+      provided then model.signatures will be used regardless of whether the
+      model is callable or not.
+
+  Returns:
+    Dict mapping input names to their associated tensor specs or None if no
+    callable could be found.
+
+  Raises:
+    ValueError: If signature_name not found in model.signatures.
+  """
+  if not hasattr(model, 'signatures') and not is_callable_model(model):
+    return None
+
+  if not signature_name:
+    # Special support for keras-based models.
+    if is_callable_model(model):
+      # TODO(b/170241499): Update after TF adds support for specs to model.
+      input_specs = {}
+      for input_name, input_tensor in zip(model.input_names, model.inputs):
+        if hasattr(input_tensor, 'type_spec'):
+          # "KerasTensor" types have type_spec attributes.
+          type_spec = input_tensor.type_spec
+        else:
+          type_spec = tf.type_spec_from_value(input_tensor)
+        input_specs[input_name] = type_spec
+      return input_specs
+    signature_name = get_default_signature_name(model)
+
+  if signature_name not in model.signatures:
+    raise ValueError('{} not found in model signatures: {}'.format(
+        signature_name, model.signatures))
+  signature = model.signatures[signature_name]
+
+  # First arg of structured_input_signature tuple is shape, second is spec
+  # (we currently only support named params passed as a dict)
+  if (signature.structured_input_signature and
+      len(signature.structured_input_signature) == 2 and
+      isinstance(signature.structured_input_signature[1], dict)):
+    return signature.structured_input_signature[1]
+
+  return None
 
 
 def rebatch_by_input_names(
