@@ -23,14 +23,14 @@ import bisect
 import copy
 import itertools
 
-from typing import Dict, Iterator, List, Optional, Set, Text, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Text, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
 from tensorflow_model_analysis.extractors import extractor
-from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 from tensorflow_metadata.proto.v0 import statistics_pb2
@@ -40,7 +40,9 @@ TRANSFORMED_FEATURE_PREFIX = 'transformed_'
 
 
 def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
-    statistics: statistics_pb2.DatasetFeatureStatisticsList,
+    statistics: Union[beam.pvalue.PCollection,
+                      statistics_pb2.DatasetFeatureStatisticsList],
+    categorical_uniques_threshold: int = 100,
     max_cross_size: int = 2,
     allowlist_features: Optional[Set[Text]] = None,
     denylist_features: Optional[Set[Text]] = None,
@@ -57,7 +59,11 @@ def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
   of the slice keys will be added under the key tfma.MATERIALZED_SLICE_KEYS_KEY.
 
   Args:
-    statistics: Data statistics.
+    statistics: PCollection of data statistics proto or actual data statistics
+      proto. Note that when passed a PCollection, it would be matrialized and
+      passed as a side input.
+    categorical_uniques_threshold: Maximum number of unique values beyond which
+      we don't slice on that categorical feature.
     max_cross_size: Maximum size feature crosses to consider.
     allowlist_features: Set of features to be used for slicing.
     denylist_features: Set of features to ignore for slicing.
@@ -67,14 +73,13 @@ def AutoSliceKeyExtractor(  # pylint: disable=invalid-name
     Extractor for slice keys.
   """
   assert not allowlist_features or not denylist_features
-  slice_spec = slice_spec_from_stats(
-      statistics,
-      max_cross_size=max_cross_size,
-      allowlist_features=allowlist_features,
-      denylist_features=denylist_features)
+
   return extractor.Extractor(
       stage_name=SLICE_KEY_EXTRACTOR_STAGE_NAME,
-      ptransform=_AutoExtractSliceKeys(slice_spec, statistics, materialize))
+      ptransform=_AutoExtractSliceKeys(statistics,
+                                       categorical_uniques_threshold,
+                                       max_cross_size, allowlist_features,
+                                       denylist_features, materialize))
 
 
 def get_quantile_boundaries(
@@ -126,16 +131,21 @@ def get_bucket_boundary(bucket: int,
   return (start, end)
 
 
-@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_input_types(types.Extracts,
+                                 statistics_pb2.DatasetFeatureStatisticsList)
 @beam.typehints.with_output_types(types.Extracts)
 class _BucketizeNumericFeaturesFn(beam.DoFn):
-  """A DoFn that extracts slice keys that apply per example."""
+  """A DoFn that bucketizes numeric features using the quantiles."""
 
-  def __init__(self, statistics: statistics_pb2.DatasetFeatureStatisticsList):
-    # Get bucket boundaries for numeric features
-    self._bucket_boundaries = get_quantile_boundaries(statistics)
+  def __init__(self):
+    self._bucket_boundaries = None
 
-  def process(self, element: types.Extracts) -> List[types.Extracts]:
+  def process(
+      self, element: types.Extracts,
+      statistics: statistics_pb2.DatasetFeatureStatisticsList
+  ) -> List[types.Extracts]:
+    if self._bucket_boundaries is None:
+      self._bucket_boundaries = get_quantile_boundaries(statistics)
     # Make a deep copy, so we don't mutate the original.
     element_copy = copy.deepcopy(element)
     features = util.get_features_from_extracts(element_copy)
@@ -150,19 +160,104 @@ class _BucketizeNumericFeaturesFn(beam.DoFn):
     return [element_copy]
 
 
-@beam.ptransform_fn
+@beam.typehints.with_input_types(types.Extracts, List[slicer.SingleSliceSpec])
+@beam.typehints.with_output_types(types.Extracts)
+class _ExtractSliceKeysFn(beam.DoFn):
+  """A DoFn that extracts slice keys that apply per example.
+
+  This is a fork of slice_key_extractor.ExtractSliceKeys but taking the
+  slice_spec as a side input.
+  """
+
+  def __init__(self, materialize: bool):
+    self._materialize = materialize
+
+  def process(self, element: types.Extracts,
+              slice_spec: List[slicer.SingleSliceSpec]) -> List[types.Extracts]:
+    features = util.get_features_from_extracts(element)
+    slices = list(slicer.get_slices_for_features_dict(features, slice_spec))
+
+    # Make a a shallow copy, so we don't mutate the original.
+    element_copy = copy.copy(element)
+
+    element_copy[constants.SLICE_KEY_TYPES_KEY] = slices
+    # Add a list of stringified slice keys to be materialized to output table.
+    if self._materialize:
+      element_copy[constants.SLICE_KEYS_KEY] = types.MaterializedColumn(
+          name=constants.SLICE_KEYS_KEY,
+          value=(list(
+              slicer.stringify_slice_key(x).encode('utf-8') for x in slices)))
+    return [element_copy]
+
+
+@beam.typehints.with_input_types(Any,
+                                 statistics_pb2.DatasetFeatureStatisticsList)
+@beam.typehints.with_output_types(List[slicer.SingleSliceSpec])
+class _SliceSpecFromStatsFn(beam.DoFn):
+  """A DoFn that creates slice spec from statistics."""
+
+  def __init__(self, categorical_uniques_threshold: int, max_cross_size: int,
+               allowlist_features: Optional[Set[Text]],
+               denylist_features: Optional[Set[Text]]):
+    self._categorical_uniques_threshold = categorical_uniques_threshold
+    self._max_cross_size = max_cross_size
+    self._allowlist_features = allowlist_features
+    self._denylist_features = denylist_features
+
+  def process(
+      self, unused_element: Any,
+      statistics: statistics_pb2.DatasetFeatureStatisticsList
+  ) -> Iterable[List[slicer.SingleSliceSpec]]:
+    yield slice_spec_from_stats(
+        statistics,
+        categorical_uniques_threshold=self._categorical_uniques_threshold,
+        max_cross_size=self._max_cross_size,
+        allowlist_features=self._allowlist_features,
+        denylist_features=self._denylist_features)
+
+
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-def _AutoExtractSliceKeys(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection,
-    slice_spec: List[slicer.SingleSliceSpec],
-    statistics: statistics_pb2.DatasetFeatureStatisticsList,
-    materialize: bool = True) -> beam.pvalue.PCollection:
-  return (extracts
-          | 'BucketizeNumericFeatures' >> beam.ParDo(
-              _BucketizeNumericFeaturesFn(statistics))
-          | 'ExtractSliceKeys' >> slice_key_extractor.ExtractSliceKeys(
-              slice_spec, materialize))
+class _AutoExtractSliceKeys(beam.PTransform):
+  """Extract slice keys."""
+
+  def __init__(self,
+               statistics: Union[beam.pvalue.PCollection,
+                                 statistics_pb2.DatasetFeatureStatisticsList],
+               categorical_uniques_threshold: int = 100,
+               max_cross_size: int = 2,
+               allowlist_features: Optional[Set[Text]] = None,
+               denylist_features: Optional[Set[Text]] = None,
+               materialize: bool = True) -> beam.pvalue.PCollection:
+    if isinstance(statistics, beam.pvalue.PCollection):
+      self._statistics = beam.pvalue.AsSingleton(statistics)
+    else:
+      self._statistics = statistics
+    self._categorical_uniques_threshold = categorical_uniques_threshold
+    self._max_cross_size = max_cross_size
+    self._allowlist_features = allowlist_features
+    self._denylist_features = denylist_features
+    self._materialize = materialize
+
+  def expand(self, extracts):
+    slice_spec = (
+        extracts.pipeline
+        | beam.Create([None])
+        | 'SliceSpecFromStats' >> beam.ParDo(
+            _SliceSpecFromStatsFn(
+                categorical_uniques_threshold=self
+                ._categorical_uniques_threshold,
+                max_cross_size=self._max_cross_size,
+                allowlist_features=self._allowlist_features,
+                denylist_features=self._denylist_features,
+            ),
+            statistics=self._statistics))
+    return (extracts
+            | 'BucketizeNumericFeatures' >> beam.ParDo(
+                _BucketizeNumericFeaturesFn(), statistics=self._statistics)
+            | 'ExtractSliceKeys' >> beam.ParDo(
+                _ExtractSliceKeysFn(materialize=self._materialize),
+                slice_spec=beam.pvalue.AsSingleton(slice_spec)))
 
 
 def _get_slicable_numeric_features(

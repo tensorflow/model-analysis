@@ -250,21 +250,14 @@ class AutoSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
     transformed_age_feat_name = (
         auto_slice_key_extractor.TRANSFORMED_FEATURE_PREFIX + 'age')
     with beam.Pipeline() as pipeline:
+      statistics = pipeline | beam.Create([stats])
       slice_keys_extracts = (
           pipeline
           | 'CreateTestInput' >> beam.Create(features)
           | 'FeaturesToExtracts' >>
           beam.Map(lambda x: {constants.FEATURES_KEY: x})
-          |
-          'AutoExtractSlices' >> auto_slice_key_extractor._AutoExtractSliceKeys(
-              slice_spec=[
-                  slicer.SingleSliceSpec(),
-                  slicer.SingleSliceSpec(columns=[transformed_age_feat_name]),
-                  slicer.SingleSliceSpec(columns=['gender']),
-                  slicer.SingleSliceSpec(
-                      columns=['gender', transformed_age_feat_name])
-              ],
-              statistics=stats))
+          | 'AutoExtractSlices' >>
+          auto_slice_key_extractor._AutoExtractSliceKeys(statistics=statistics))
 
       def check_result(got):
         try:
