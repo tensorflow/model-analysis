@@ -23,9 +23,11 @@ import collections
 from absl.testing import absltest
 import apache_beam as beam
 from apache_beam.testing import util
+import numpy as np
 
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import jackknife
+from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import metric_types
 
@@ -93,6 +95,9 @@ class JackknifePTransformTest(absltest.TestCase):
   def test_jackknife_merge_jackknife_samples(self):
     x_key = metric_types.MetricKey(u'x')
     y_key = metric_types.MetricKey(u'y')
+    cm_key = metric_types.MetricKey(u'confusion_matrix')
+    cm_metric = binary_confusion_matrices.Matrices(
+        thresholds=[0.5], tp=[0], fp=[1], tn=[2], fn=[3])
     example_count_key = metric_types.MetricKey(example_count.EXAMPLE_COUNT_NAME)
     slice_key1 = (u'slice_feature', 1)
     slice_key2 = (u'slice_feature', 2)
@@ -102,6 +107,7 @@ class JackknifePTransformTest(absltest.TestCase):
                        jackknife._JACKKNIFE_FULL_SAMPLE_ID)), {
                            x_key: 1.6,
                            y_key: 16,
+                           cm_key: cm_metric,
                            example_count_key: 100,
                            jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY: 100
                        }),
@@ -109,12 +115,14 @@ class JackknifePTransformTest(absltest.TestCase):
         ((slice_key1, (jackknife._JACKKNIFE_SAMPLE_ID_KEY, 0)), {
             x_key: 1,
             y_key: 10,
+            cm_key: cm_metric,
             example_count_key: 45,
         }),
         # sample values 2 of 2 for slice 1
         ((slice_key1, (jackknife._JACKKNIFE_SAMPLE_ID_KEY, 1)), {
             x_key: 2,
             y_key: 20,
+            cm_key: cm_metric,
             example_count_key: 55,
         }),
         # unsampled value for slice 2
@@ -122,6 +130,7 @@ class JackknifePTransformTest(absltest.TestCase):
                        jackknife._JACKKNIFE_FULL_SAMPLE_ID)), {
                            x_key: 3.3,
                            y_key: 33,
+                           cm_key: cm_metric,
                            example_count_key: 1000,
                            jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY: 1000
                        }),
@@ -129,12 +138,14 @@ class JackknifePTransformTest(absltest.TestCase):
         ((slice_key2, (jackknife._JACKKNIFE_SAMPLE_ID_KEY, 0)), {
             x_key: 2,
             y_key: 20,
+            cm_key: cm_metric,
             example_count_key: 450,
         }),
         # sample values 2 of 2 for slice 2
         ((slice_key2, (jackknife._JACKKNIFE_SAMPLE_ID_KEY, 1)), {
             x_key: 4,
             y_key: 40,
+            cm_key: cm_metric,
             example_count_key: 550,
         }),
     ]
@@ -169,6 +180,8 @@ class JackknifePTransformTest(absltest.TestCase):
                             sample_standard_deviation=5,
                             sample_degrees_of_freedom=1,
                             unsampled_value=16),
+                    cm_key:
+                        cm_metric,
                     example_count_key:
                         100,
                 }),
@@ -189,6 +202,8 @@ class JackknifePTransformTest(absltest.TestCase):
                             sample_standard_deviation=10,
                             sample_degrees_of_freedom=1,
                             unsampled_value=33),
+                    cm_key:
+                        cm_metric,
                     example_count_key:
                         1000,
                 }),
@@ -311,6 +326,44 @@ class JackknifePTransformTest(absltest.TestCase):
       counters = result.metrics().query(filter=metric_filter)['counters']
       self.assertLen(counters, 1)
       self.assertEqual(2, counters[0].committed)
+
+  def test_jackknife_merge_jackknife_samples_numpy_overflow(self):
+    sample_values = np.random.RandomState(seed=0).randint(0, 1e10, 20)
+    slice_key = (u'slice_feature', 1)
+    metric_key = metric_types.MetricKey(u'metric')
+    sliced_derived_metrics = [
+        ((slice_key, (jackknife._JACKKNIFE_SAMPLE_ID_KEY,
+                      jackknife._JACKKNIFE_FULL_SAMPLE_ID)), {
+                          metric_key: 1,
+                          jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY: 200,
+                      })
+    ]
+    for sample_id, value in enumerate(sample_values):
+      sliced_derived_metrics.append(
+          ((slice_key, (jackknife._JACKKNIFE_SAMPLE_ID_KEY, sample_id)), {
+              metric_key: value,
+          }))
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline
+          | 'Create' >> beam.Create(sliced_derived_metrics, reshuffle=False)
+          | 'JackknifeCombinePerKey' >>
+          jackknife.MergeJackknifeSamples(num_jackknife_samples=20))
+
+      def check_result(got_pcoll):
+        expected_pcoll = [
+            ((slice_key,), {
+                metric_key:
+                    types.ValueWithTDistribution(
+                        sample_mean=5293977041.15,
+                        sample_standard_deviation=12845957824.018991,
+                        sample_degrees_of_freedom=19,
+                        unsampled_value=1),
+            }),
+        ]
+        self.assertCountEqual(expected_pcoll, got_pcoll)
+
+      util.assert_that(result, check_result)
 
 
 if __name__ == '__main__':
