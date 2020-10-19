@@ -22,6 +22,28 @@ import '@polymer/paper-listbox/paper-listbox.js';
 
 const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
 
+const METRIC_DEFINITIONS = {
+    'false_negative_rate': 'The percentage of positive data points (as labeled in the ground truth) that are incorrectly classified as negative',
+    'false_positive_rate': 'The percentage of negative data points (as labeled in the ground truth) that are incorrectly classified as positive',
+    'negative_rate': 'The percentage of data points that are classified as negative, independent of ground truth',
+    'positive_rate': 'The percentage of data points that are classified as positive, independent of ground truth',
+    'true_negative_rate': 'The percentage of negative data points (as labeled in the ground truth) that are correctly classified as negative',
+    'true_positive_rate': 'The percentage of positive data points (as labeled in the ground truth) that are correctly classified as positive',
+    'false_discovery_rate': 'The percentage of negative data points (as labeled in the ground truth) that are incorrectly classified as positive out of all data points classified as positive',
+    'false_omission_rate': 'The percentage of positive data points (as labeled in the ground truth) that are incorrectly classified as negative out of all data points classified as negative',
+    'accuracy': 'The percentage of data points that are classified correctly',
+    'accuracy_baseline': 'The percentage of data points that are classified correctly if the model always predicts one class',
+    'auc': 'The area under the ROC curve',
+    'auc_precision_recall': 'The area under the Precision-Recall curve',
+    'average_loss': 'The mean loss per data point',
+    'label/mean': 'The mean of all ground truth labels',
+    'example_count': 'The number of examples processed',
+    'precision': 'The percentage of positive data points (as labeled in the ground truth) that are correctly classified as positive out of all data points classified as positive',
+    'prediction/mean': 'The mean of all predicted labels',
+    'recall': 'The percentage of positive data points (as labeled in the ground truth) that are correctly classified as positive',
+    'totalWeightedExamples': 'The number of weighted examples processed',
+};
+
 export class FairnessMetricAndSliceSelector extends PolymerElement {
   constructor() {
     super();
@@ -107,6 +129,20 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
    */
   stripPrefix(metric) {
     return Util.removeMetricNamePrefix(metric);
+  }
+
+  /**
+   * Get the defintion of a metric, or return the metric if not defined.
+   * @param {string} metric
+   * @return {string}
+   */
+  getDefinition(metric) {
+    let strippedMetric = this.stripPrefix(metric);
+    if (strippedMetric in METRIC_DEFINITIONS) {
+      return METRIC_DEFINITIONS[strippedMetric];
+    } else {
+      return strippedMetric;
+    }
   }
 
   /**

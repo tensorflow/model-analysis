@@ -15,6 +15,8 @@
 *   Added support for padding labels and predictions with -1 to align a batch of
     inputs for use in tf-ranking metrics computations.
 *   Added support for fractional labels.
+*   Add metric definitions as tooltips in the Fairness Inidicators metric
+    selector UI
 
 ## Bug fixes and other changes
 

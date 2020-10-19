@@ -22,7 +22,10 @@
        'post_export_metrics/false_positive_rate',
        'post_export_metrics/negative_rate', 'post_export_metrics/positive_rate',
        'post_export_metrics/true_negative_rate',
-       'post_export_metrics/true_positive_rate', 'accuracy',
+       'post_export_metrics/true_positive_rate',
+       'post_export_metrics/false_discovery_rate',
+       'post_export_metrics/false_omission_rate',
+       'accuracy',
        'accuracy_baseline', 'auc', 'auc_precision_recall', 'average_loss',
        'label/mean', 'post_export_metrics/example_count', 'precision',
        'prediction/mean', 'recall', 'totalWeightedExamples'];
