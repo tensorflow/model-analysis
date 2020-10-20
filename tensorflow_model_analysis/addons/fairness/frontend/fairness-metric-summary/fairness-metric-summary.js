@@ -436,6 +436,20 @@ export class FairnessMetricSummary extends PolymerElement {
   }
 
   /**
+   * Compute the CSS class for the slices candidates.
+   * @param {!SlicesDropDownMenuCandidateType} sliceCandidate
+   * @return {string} css class based if slice is a key or value.
+   * @private
+   */
+  slicesDropDownCandidatesClass_(sliceCandidate) {
+    if (sliceCandidate.isSliceKey) {
+      return 'slice-key-true';
+    } else {
+      return 'slice-key-false';
+    }
+  }
+
+  /**
    * Initially select up to default number of slices. If it's eval comparison, 3
    * slices will be selected. Otherwise, 9 slices will be selected.
    * @param {!Array<!Object>} slicesDropDownMenuCandidates
