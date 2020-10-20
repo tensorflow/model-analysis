@@ -30,11 +30,16 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
 
-# TODO(b/162075791): Need to load tensorflow_text for models that use those ops.
+# TODO(b/162075791): Need to load tensorflow_ranking and tensorflow_text for
+# models that use those ops.
+try:
+  import tensorflow_ranking as _  # pylint: disable=g-import-not-at-top
+except (ImportError, tf.errors.NotFoundError) as e:
+  logging.info('tensorflow_ranking is not available: %s', e)
 try:
   import tensorflow_text as _  # pylint: disable=g-import-not-at-top
-except (ImportError, tf.errors.NotFoundError):
-  pass
+except (ImportError, tf.errors.NotFoundError) as e:
+  logging.info('tensorflow_text is not available: %s', e)
 
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 
