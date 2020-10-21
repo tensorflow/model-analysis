@@ -146,10 +146,8 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           key = metric_types.MetricKey(name='min_label_position')
-          self.assertDictElementsAlmostEqual(
-              got_metrics, {
-                  key: 0.66667,
-              }, places=5)
+          self.assertIn(key, got_metrics)
+          self.assertAllClose(got_metrics[key], np.array([1.333333]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

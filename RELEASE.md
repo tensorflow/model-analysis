@@ -20,6 +20,9 @@
 
 ## Bug fixes and other changes
 
+*   Fix incorrect calculation with MinLabelPosition when used with weighted
+    examples.
+
 ## Breaking changes
 
 *   `AggregationOptions` are now independent of `BinarizeOptions`. In order to
