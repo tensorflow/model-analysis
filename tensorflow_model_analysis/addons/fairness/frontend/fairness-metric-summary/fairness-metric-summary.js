@@ -53,8 +53,8 @@ const MAX_NUM_SLICES = 15;
 /**
  * It's a map that contains following fields:
  *   'text': used to render on UI, e.g. "gender" or "male".
- *   'rawSlice': store the original slices, e.g. "gender:male". If this is a
- *     slice key, this field will be an empty string.
+ *   'rawSlice': store the original slices, e.g. "gender:male", or "Overall".
+ *      If this is a slice key, this field will be an empty string.
  *   'id': An unique id that's convenient for search purpose.
  *   'isSliceKey': used to indicate whether this is a slice key element or a
  *     general slice key value pair element.
@@ -634,7 +634,8 @@ export class FairnessMetricSummary extends PolymerElement {
         .filter(
             sliceCandidate => !sliceCandidate.isSliceKey ||
                 (sliceCandidate.isSliceKey &&
-                 sliceCandidate.text == OVERALL_SLICE_KEY))
+                 sliceCandidate.text == OVERALL_SLICE_KEY &&
+                 sliceCandidate.rawSlice == OVERALL_SLICE_KEY))
         // Map from slice candidates to slice.
         .map(sliceCandidate => sliceCandidate.rawSlice);
   }
