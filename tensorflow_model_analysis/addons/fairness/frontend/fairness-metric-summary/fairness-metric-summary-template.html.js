@@ -47,7 +47,7 @@ template.innerHTML = `
 </style>
 
 <div id="metric-header" class="header">
-  [[metric]]
+  [[stripPrefix(metric)]]
 </div>
 <div class="config">
   <paper-button raised on-tap="openSlicesDropDownMenu_">

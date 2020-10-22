@@ -824,6 +824,15 @@ export class FairnessMetricSummary extends PolymerElement {
   openSlicesDropDownMenu_() {
     this.$['SlicesDropDownMenu'].open();
   }
+
+  /**
+   * Strip prefix from metric name.
+   * @param {string} metric
+   * @return {string}
+   */
+  stripPrefix(metric) {
+    return Util.removeMetricNamePrefix(metric);
+  }
 }
 
 customElements.define('fairness-metric-summary', FairnessMetricSummary);

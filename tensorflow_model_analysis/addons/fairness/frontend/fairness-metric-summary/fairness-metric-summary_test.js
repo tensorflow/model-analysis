@@ -134,7 +134,7 @@ suite('fairness-metric-summary tests', () => {
     assert.deepEqual(metricSummary.thresholds_, ['0.30', '0.50', '0.70']);
     assert.deepEqual(
         metricSummary.$['metric-header'].innerText.trim(),
-        'post_export_metrics/false_negative_rate');
+        'false_negative_rate');
     assert.deepEqual(metricSummary.$['table'].metrics, [
       'post_export_metrics/false_negative_rate@0.30',
       'post_export_metrics/false_negative_rate@0.30 against Overall',
