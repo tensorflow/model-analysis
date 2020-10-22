@@ -37,6 +37,7 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
     metric = ndcg.NDCG(
         gain_key='gain', top_k_list=[1, 2]).computations(
             sub_keys=[
+                None,
                 metric_types.SubKey(top_k=1),
                 metric_types.SubKey(top_k=2)
             ],

@@ -80,13 +80,14 @@ def _ndcg(gain_key: Text,
   """Returns metric computations for NDCG."""
   if not query_key:
     raise ValueError('a query_key is required to use NDCG metric')
+  sub_keys = [k for k in sub_keys if k is not None]
   if top_k_list:
     if sub_keys is None:
       sub_keys = []
     for k in top_k_list:
       if not any([sub_key.top_k == k for sub_key in sub_keys]):
         sub_keys.append(metric_types.SubKey(top_k=k))
-  if sub_keys is None or any([sub_key.top_k is None for sub_key in sub_keys]):
+  if not sub_keys or any([sub_key.top_k is None for sub_key in sub_keys]):
     raise ValueError(
         'top_k values are required to use NDCG metric: {}'.format(sub_keys))
   computations = []

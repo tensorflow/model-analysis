@@ -22,6 +22,7 @@
 
 *   Fix incorrect calculation with MinLabelPosition when used with weighted
     examples.
+*   Fix issue with using NDCG metric without binarization settings.
 
 ## Breaking changes
 
