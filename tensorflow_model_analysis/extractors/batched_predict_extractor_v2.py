@@ -19,13 +19,9 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-import copy
-
-from typing import Dict, List, Optional, Text
+from typing import Dict, Optional, Text
 
 import apache_beam as beam
-import numpy as np
-import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
@@ -73,103 +69,6 @@ def BatchedPredictExtractor(
           tensor_adapter_config=tensor_adapter_config))
 
 
-@beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(types.Extracts)
-class _BatchedPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
-  """A DoFn that loads the models and predicts."""
-
-  def __init__(
-      self,
-      eval_config: config.EvalConfig,
-      eval_shared_models: Dict[Text, types.EvalSharedModel],
-      tensor_adapter_config: Optional[
-          tensor_adapter.TensorAdapterConfig] = None,
-  ) -> None:
-    super(_BatchedPredictionDoFn, self).__init__(
-        {k: v.model_loader for k, v in eval_shared_models.items()})
-    self._eval_config = eval_config
-    self._tensor_adapter_config = tensor_adapter_config
-    self._tensor_adapter = None
-
-  def setup(self):
-    super(_BatchedPredictionDoFn, self).setup()
-    if self._tensor_adapter_config is not None:
-      self._tensor_adapter = tensor_adapter.TensorAdapter(
-          self._tensor_adapter_config)
-
-  def _batch_reducible_process(
-      self, batched_extract: types.Extracts) -> List[types.Extracts]:
-    result = copy.copy(batched_extract)
-    record_batch = batched_extract[constants.ARROW_RECORD_BATCH_KEY]
-    serialized_examples = batched_extract[constants.INPUT_KEY]
-    predictions = [None] * record_batch.num_rows
-    for spec in self._eval_config.model_specs:
-      # To maintain consistency between settings where single models are used,
-      # always use '' as the model name regardless of whether a name is passed.
-      model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
-      if model_name not in self._loaded_models:
-        raise ValueError(
-            'loaded model for "{}" not found: eval_config={}'.format(
-                spec.name, self._eval_config))
-      model = self._loaded_models[model_name]
-      signature_name = spec.signature_name
-      input_specs = model_util.get_input_specs(model, signature_name) or {}
-      # If tensor_adaptor and input_specs exist then filter the inputs by input
-      # names (unlike estimators, keras does not accept unknown inputs).
-      # However, avoid getting the tensors if we appear to be feeding serialized
-      # examples to the model.
-      if (self._tensor_adapter and input_specs and
-          not (len(input_specs) == 1 and
-               next(iter(input_specs.values())).dtype == tf.string and
-               model_util.find_input_name_in_features(
-                   set(self._tensor_adapter.TypeSpecs().keys()),
-                   next(iter(input_specs.keys()))) is None)):
-        inputs = model_util.filter_tensors_by_input_names(
-            self._tensor_adapter.ToBatchTensors(record_batch),
-            list(input_specs.keys()))
-      else:
-        inputs = None
-      if not inputs:
-        # Assume serialized examples
-        assert serialized_examples is not None, 'Raw examples not found.'
-        inputs = serialized_examples
-        # If a signature name was not provided, default to using the serving
-        # signature since parsing normally will be done outside model.
-        if not signature_name:
-          signature_name = model_util.get_default_signature_name(model)
-      signature = model_util.get_callable(model, signature_name)
-      if signature is None:
-        raise ValueError(
-            'PredictExtractor V2 requires a keras model or a serving model. '
-            'If using EvalSavedModel then you must use PredictExtractor V1.')
-      if isinstance(inputs, dict):
-        if signature is model:
-          outputs = signature(inputs)
-        else:
-          outputs = signature(**inputs)
-      else:
-        outputs = signature(tf.constant(inputs, dtype=tf.string))
-      for i in range(record_batch.num_rows):
-        if isinstance(outputs, dict):
-          output = {k: v[i].numpy() for k, v in outputs.items()}
-          # Keras and regression serving models return a dict of predictions
-          # even for single-outputs. Convert these to a single tensor for
-          # compatibility with the labels (and model.predict API).
-          if len(output) == 1:
-            output = list(output.values())[0]
-        else:
-          output = np.asarray(outputs)[i]
-        # If only one model, the predictions are stored without using a dict
-        if len(self._eval_config.model_specs) == 1:
-          predictions[i] = output
-        else:
-          if predictions[i] is None:
-            predictions[i] = {}
-          predictions[i][spec.name] = output  # pytype: disable=unsupported-operands
-    result[constants.PREDICTIONS_KEY] = predictions
-    return [result]
-
-
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
@@ -194,9 +93,16 @@ def _ExtractBatchedPredictions(  # pylint: disable=invalid-name
     PCollection of Extracts updated with the predictions.
   """
 
+  signature_names = {}
+  for spec in eval_config.model_specs:
+    model_name = '' if len(eval_config.model_specs) == 1 else spec.name
+    signature_names[model_name] = [spec.signature_name]
+
   return (extracts
           | 'Predict' >> beam.ParDo(
-              _BatchedPredictionDoFn(
+              model_util.ModelSignaturesDoFn(
                   eval_config=eval_config,
                   eval_shared_models=eval_shared_models,
+                  signature_names={constants.PREDICTIONS_KEY: signature_names},
+                  prefer_dict_outputs=False,
                   tensor_adapter_config=tensor_adapter_config)))

@@ -17,18 +17,21 @@
 # Standard __future__ imports
 
 import collections
+import copy
 import os
 
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text
 
 from absl import logging
 import apache_beam as beam
+import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
+from tfx_bsl.tfxio import tensor_adapter
 
 # TODO(b/162075791): Need to load tensorflow_ranking and tensorflow_text for
 # models that use those ops.
@@ -211,20 +214,21 @@ def get_default_signature_name(model: Any) -> Text:
   return tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
 
 
-def is_callable_model(model: Any) -> bool:
-  """Returns true if model is callable."""
-  return (_TF_MAJOR_VERSION >= 2 and hasattr(model, 'input_names') and
-          hasattr(model, 'inputs'))
+def is_callable_fn(fn: Any) -> bool:
+  """Returns true if function is callable."""
+  return (_TF_MAJOR_VERSION >= 2 and hasattr(fn, 'input_names') and
+          hasattr(fn, 'inputs'))
 
 
-def get_callable(
-    model: Any,
-    signature_name: Optional[Text] = None) -> Optional[Callable[..., Any]]:
+def get_callable(model: Any,
+                 signature_name: Optional[Text] = None,
+                 required: bool = True) -> Optional[Callable[..., Any]]:
   """Returns callable associated with given signature or None if not callable.
 
   The available callables are defined by the model.signatures attribute which
   are defined at the time the model is saved. For keras based models, the
-  model itself can also be used.
+  model itself can also be used as can a callable attribute on the model named
+  after the signature_name.
 
   Args:
     model: A model that is callable or contains a `signatures` attribute. If
@@ -234,6 +238,7 @@ def get_callable(
       callable) or the model itself will be used (if the model is callable). If
       provided then model.signatures will be used regardless of whether the
       model is callable or not.
+    required: True if signature_name is required to exist if provided.
 
   Returns:
     Callable associated with given signature (or the model itself) or None if
@@ -242,23 +247,30 @@ def get_callable(
   Raises:
     ValueError: If signature_name not found in model.signatures.
   """
-  if not hasattr(model, 'signatures') and not is_callable_model(model):
+  if not hasattr(model, 'signatures') and not is_callable_fn(model):
     return None
 
   if not signature_name:
-    if is_callable_model(model):
+    if is_callable_fn(model):
       return model
     signature_name = get_default_signature_name(model)
 
   if signature_name not in model.signatures:
-    raise ValueError('{} not found in model signatures: {}'.format(
-        signature_name, model.signatures))
+    if hasattr(model, signature_name):
+      fn = getattr(model, signature_name)
+      if is_callable_fn(fn):
+        return model
+    if required:
+      raise ValueError('{} not found in model signatures: {}'.format(
+          signature_name, model.signatures))
+    return None
+
   return model.signatures[signature_name]
 
 
-def get_input_specs(
-    model: Any,
-    signature_name: Optional[Text] = None) -> Optional[Dict[Text, tf.TypeSpec]]:
+def get_input_specs(model: Any,
+                    signature_name: Optional[Text] = None,
+                    required: bool = True) -> Optional[Dict[Text, tf.TypeSpec]]:
   """Returns the input names and tensor specs associated with callable or None.
 
   Args:
@@ -269,6 +281,7 @@ def get_input_specs(
       callable) or the model itself will be used (if the model is callable). If
       provided then model.signatures will be used regardless of whether the
       model is callable or not.
+    required: True if signature_name is required to exist if provided.
 
   Returns:
     Dict mapping input names to their associated tensor specs or None if no
@@ -277,35 +290,45 @@ def get_input_specs(
   Raises:
     ValueError: If signature_name not found in model.signatures.
   """
-  if not hasattr(model, 'signatures') and not is_callable_model(model):
+  if not hasattr(model, 'signatures') and not is_callable_fn(model):
     return None
+
+  def get_callable_input_specs(fn):
+    # TODO(b/170241499): Update after TF adds support for specs to model.
+    input_specs = {}
+    for input_name, input_tensor in zip(fn.input_names, fn.inputs):
+      if hasattr(input_tensor, 'type_spec'):
+        # "KerasTensor" types have type_spec attributes.
+        type_spec = input_tensor.type_spec
+      else:
+        type_spec = tf.type_spec_from_value(input_tensor)
+      input_specs[input_name] = type_spec
+    return input_specs
 
   if not signature_name:
     # Special support for keras-based models.
-    if is_callable_model(model):
-      # TODO(b/170241499): Update after TF adds support for specs to model.
-      input_specs = {}
-      for input_name, input_tensor in zip(model.input_names, model.inputs):
-        if hasattr(input_tensor, 'type_spec'):
-          # "KerasTensor" types have type_spec attributes.
-          type_spec = input_tensor.type_spec
-        else:
-          type_spec = tf.type_spec_from_value(input_tensor)
-        input_specs[input_name] = type_spec
-      return input_specs
+    if is_callable_fn(model):
+      return get_callable_input_specs(model)
     signature_name = get_default_signature_name(model)
 
-  if signature_name not in model.signatures:
+  if signature_name in model.signatures:
+    signature = model.signatures[signature_name]
+    # First arg of structured_input_signature tuple is shape, second is spec
+    # (we currently only support named params passed as a dict)
+    if (signature.structured_input_signature and
+        len(signature.structured_input_signature) == 2 and
+        isinstance(signature.structured_input_signature[1], dict)):
+      return signature.structured_input_signature[1]
+    else:
+      return None
+  elif hasattr(model, signature_name):
+    fn = getattr(model, signature_name)
+    if is_callable_fn(fn):
+      return get_callable_input_specs(fn)
+
+  if required:
     raise ValueError('{} not found in model signatures: {}'.format(
         signature_name, model.signatures))
-  signature = model.signatures[signature_name]
-
-  # First arg of structured_input_signature tuple is shape, second is spec
-  # (we currently only support named params passed as a dict)
-  if (signature.structured_input_signature and
-      len(signature.structured_input_signature) == 2 and
-      isinstance(signature.structured_input_signature[1], dict)):
-    return signature.structured_input_signature[1]
 
   return None
 
@@ -605,6 +628,166 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
         result.extend(self._batch_reducible_process(unbatched_element))
       self._num_instances.inc(len(result))
       return result
+
+
+@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_output_types(types.Extracts)
+class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
+  """Updates extracts by calling specified model signature functions."""
+
+  def __init__(self,
+               eval_config: config.EvalConfig,
+               eval_shared_models: Dict[Text, types.EvalSharedModel],
+               signature_names: Dict[Text, Dict[Text, List[Text]]],
+               default_signature_names: Optional[List[Text]] = None,
+               prefer_dict_outputs: bool = True,
+               tensor_adapter_config: Optional[
+                   tensor_adapter.TensorAdapterConfig] = None):
+    """Initializes DoFn.
+
+    Examples of combinations of signature_names and default_signatures that
+    might be used:
+
+    1) Update 'predictions' using default callable on a single model.
+
+      signature_names: {'predictions': {'': [None]}}
+
+    2) Update 'predictions' using custom callables
+
+      signature_names: {'predictions': {'model1': ['fn1'], 'model2': ['fn2']}}
+
+    3) Update 'features' using 'tft_layer' callable
+
+      signature_names: {'features': {'': ['tft_layer']}}
+
+    4) Updates 'features' using a specific setting for one model, but using
+       defaults signatures for another
+
+      signature_names: {'features': {'model1': ['tft_layer'], 'model2': []}}
+      default_signature_names: ['transformed_features', 'transformed_labels']
+
+    Args:
+      eval_config: Eval config.
+      eval_shared_models: Shared model parameters keyed by model name.
+      signature_names: Names of signature functions to call keyed by the
+        associated extracts that should be updated and the name of the model
+        they are associated with. The signature functions may be stored either
+        in a dict under a `signatures` attribute or directly as separate named
+        attributes of the model. If a signature name list is empty then the
+        default_signatures will be used. If a list entry is empty (None or ''),
+        then the model itself (or a common default signature for the model -
+        e.g. 'serving_default') will be used.
+      default_signature_names: One or more signature names to use by default
+        when an empty list is used in signature_names. All defaults will be
+        tried, but unlike signature_names it is not an error if a signature is
+        not found.
+      prefer_dict_outputs: True to convert results from calling a signature
+        function are are not dicts into dicts by using the signature_name as the
+        key. If False, dict outputs that have only one entry will be converted
+        into single output values. For example, it is preferable to store
+        predictions as single output values (unless a multi-output model is
+        used) whereas it is preferrable to always store features as a dict where
+        the output keys represent the feature names.
+      tensor_adapter_config: Tensor adapter config which specifies how to obtain
+        tensors from the Arrow RecordBatch.
+    """
+    super(ModelSignaturesDoFn, self).__init__(
+        {k: v.model_loader for k, v in eval_shared_models.items()})
+    self._eval_config = eval_config
+    self._signature_names = signature_names
+    self._default_signature_names = default_signature_names
+    self._prefer_dict_outputs = prefer_dict_outputs
+    self._tensor_adapter_config = tensor_adapter_config
+    self._tensor_adapter = None
+
+  def setup(self):
+    super(ModelSignaturesDoFn, self).setup()
+    if self._tensor_adapter_config is not None:
+      self._tensor_adapter = tensor_adapter.TensorAdapter(
+          self._tensor_adapter_config)
+    # Verify and filter models to only those used in ModelSpecs.
+    loaded_models = {}
+    for spec in self._eval_config.model_specs:
+      # To maintain consistency between settings where single models are used,
+      # always use '' as the model name regardless of whether a name is passed.
+      model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
+      if model_name not in self._loaded_models:
+        raise ValueError(
+            'loaded model for "{}" not found: eval_config={}'.format(
+                spec.name, self._eval_config))
+      loaded_models[model_name] = self._loaded_models[model_name]
+    self._loaded_models = loaded_models
+
+  def _batch_reducible_process(
+      self, batched_extract: types.Extracts) -> List[types.Extracts]:
+    result = copy.copy(batched_extract)
+    record_batch = batched_extract[constants.ARROW_RECORD_BATCH_KEY]
+    serialized_examples = batched_extract[constants.INPUT_KEY]
+    for extracts_key in self._signature_names.keys():
+      if extracts_key not in result or not result[extracts_key]:
+        result[extracts_key] = [None] * record_batch.num_rows
+    for model_name, model in self._loaded_models.items():
+      for extracts_key, signature_names in self._signature_names.items():
+        for signature_name in (signature_names[model_name] or
+                               self._default_signature_names):
+          required = bool(signature_names[model_name])
+          input_specs = get_input_specs(model, signature_name, required) or {}
+          # If tensor_adaptor and input_specs exist then filter the inputs by
+          # input names (unlike estimators, keras does not accept unknown
+          # inputs). However, avoid getting the tensors if we appear to be
+          # feeding serialized examples to the callable.
+          if (self._tensor_adapter and input_specs and
+              not (len(input_specs) == 1 and
+                   next(iter(input_specs.values())).dtype == tf.string and
+                   find_input_name_in_features(
+                       set(self._tensor_adapter.TypeSpecs().keys()),
+                       next(iter(input_specs.keys()))) is None)):
+            inputs = filter_tensors_by_input_names(
+                self._tensor_adapter.ToBatchTensors(record_batch),
+                list(input_specs.keys()))
+          else:
+            inputs = None
+          if not inputs:
+            # Assume serialized examples
+            assert serialized_examples is not None, 'Raw examples not found.'
+            inputs = serialized_examples
+            # If a signature name was not provided, default to using the serving
+            # signature since parsing normally will be done outside model.
+            if not signature_name:
+              signature_name = get_default_signature_name(model)
+          signature = get_callable(model, signature_name, required)
+          if signature is None:
+            if not required:
+              continue
+            raise ValueError('Unable to find %s function needed to update %s' %
+                             (signature_name, extracts_key))
+          if isinstance(inputs, dict):
+            if signature is model:
+              outputs = signature(inputs)
+            else:
+              outputs = signature(**inputs)
+          else:
+            outputs = signature(tf.constant(inputs, dtype=tf.string))
+          for i in range(record_batch.num_rows):
+            if isinstance(outputs, dict):
+              output = {k: v[i].numpy() for k, v in outputs.items()}
+            else:
+              output = {signature_name: np.asarray(outputs)[i]}
+            if result[extracts_key][i] is None:
+              result[extracts_key][i] = collections.defaultdict(dict)
+            result[extracts_key][i][model_name].update(output)  # pytype: disable=unsupported-operands
+    for i in range(len(result[extracts_key])):
+      # PyType doesn't recognize isinstance(..., dict).
+      # pytype: disable=attribute-error,unsupported-operands
+      if isinstance(result[extracts_key][i], dict):
+        for model_name, output in result[extracts_key][i].items():
+          if not self._prefer_dict_outputs and len(output) == 1:
+            result[extracts_key][i][model_name] = list(output.values())[0]
+        # If only one model, the output is stored without using a dict
+        if len(self._eval_config.model_specs) == 1:
+          result[extracts_key][i] = list(result[extracts_key][i].values())[0]
+      # pytype: enable=attribute-error,unsupported-operands
+    return [result]
 
 
 class CombineFnWithModels(beam.CombineFn):
