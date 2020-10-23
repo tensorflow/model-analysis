@@ -398,6 +398,18 @@ and the corresponding counts from binarization.
 
 ![MultiClassConfusionMatrixAtThresholds vs Binarized](images/multi_class_vs_binarized_metric_calculations.png)
 
+### Why do my precision@1 and recall@1 metrics have the same value?
+
+At a top k value of 1 precision and recall are the same thing. Precision is
+equal to `TP / (TP + FP)` and recall is equal to `TP / (TP + FN)`. The top
+prediction is always positive and will either match or not match the label. In
+other words, with `N` examples, `TP + FP = N`. However, if the label doesn't
+match the top prediction, then this also implies a non-top k prediction was
+matched and with top k set to 1, all non-top 1 predictions will be 0. This
+implies FN must be `(N - TP)` or `N = TP + FN`. The end result is
+`precision@1 = TP / N = recall@1`. Note that this only applies when there is a
+single label per example, not for multi-label.
+
 ### Why do I get an error about prediction key not found?
 
 Some model's output their prediction in the form of a dictionary. For example, a
