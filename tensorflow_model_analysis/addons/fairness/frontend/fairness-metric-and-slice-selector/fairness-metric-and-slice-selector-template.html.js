@@ -35,6 +35,7 @@ template.innerHTML = `
     display: block;
   }
 </style>
+
 <div id="metric-and-slice-selector-title">
   Select metrics to display:
 </div>
@@ -47,12 +48,15 @@ template.innerHTML = `
   </paper-checkbox>
 </paper-item>
 
-<paper-listbox multi attr-for-selected="item-name" selected-values="{{selectedMetrics}}" on-selected-items-changed="onCheckedChanged_">
-  <template is="dom-repeat" items="[[metricsSelectedStatus_]]">
-    <paper-item item-name="[[item.metricsName]]">
-      <paper-checkbox checked="[[item.selected]]">
-         <span class="metric-name" title$="[[getDefinition(item.metricsName)]]">
-           [[stripPrefix(item.metricsName)]]
+<paper-listbox multi attr-for-selected="metric"
+               selected-values="{{selectedMetricsListCandidates_}}"
+               on-iron-select="metricsListCandidatesSelected_"
+               on-iron-deselect="metricsListCandidatesUnselected_">
+  <template is="dom-repeat" items="[[metricsListCandidates_]]">
+    <paper-item metric="[[item]]">
+      <paper-checkbox checked="[[item.isSelected]]">
+        <span class="metric-name" title$="[[getDefinition(item)]]">
+          [[stripPrefix(item)]]
         </span>
       </paper-checkbox>
     </paper-item>

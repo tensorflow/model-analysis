@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {PolymerElement} from '@polymer/polymer/polymer-element.js';
-import {template} from './fairness-metric-and-slice-selector-template.html.js';
 
 import '@polymer/paper-checkbox/paper-checkbox.js';
 import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
+
+
+import {PolymerElement} from '@polymer/polymer/polymer-element.js';
+import {template} from './fairness-metric-and-slice-selector-template.html.js';
 
 const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
 
@@ -44,6 +46,49 @@ const METRIC_DEFINITIONS = {
     'totalWeightedExamples': 'The number of weighted examples processed',
 };
 
+/**
+ * It's a map that contains following fields:
+ *   'metricsName': the name of the metric. Usually it has prefix, but not
+ *     thresholds, e.g. 'post_export_metrics/false_negative_rate',
+ *   'selected': indicates if this element is selected by users. This will
+ *     also be used to change the checkbox status in front of the metrics.
+ * @typedef {{
+ *   metricsName: string,
+ *   isSelected: boolean,
+ * }}
+ */
+let MetricsListCandidateType;
+
+
+/**
+ * Type for Event.detail.item.
+ * @typedef {{
+ *   metric: !MetricsListCandidateType
+ * }}
+ */
+let ItemType;
+
+/**
+ * Type for Event.detail.
+ * @typedef {{
+ *   item: !ItemType
+ * }}
+ */
+let Detailype;
+
+/**
+ * Type for Event.
+ * @typedef {{
+ *   detail: !Detailype
+ * }}
+ */
+let CustomEvent;
+
+/**
+ * FairnessMetricAndSliceSelector renders a list of metrics.
+ *
+ * @polymer
+ */
 export class FairnessMetricAndSliceSelector extends PolymerElement {
   constructor() {
     super();
@@ -65,79 +110,74 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
        * A list string of all available metrics.
        * @type {!Array<string>}
        */
-      availableMetrics: {type: Array, observer: 'availableMetricsChanged_'},
+      availableMetrics: {type: Array},
 
       /**
        * A list of metrics selected.
        * @type {!Array<string>}
        */
-      selectedMetrics: {type: Array, notify: true},
+      selectedMetrics: {type: Array, notify: true, value: []},
+
+      /**
+       * A list of metrics candidates to be rendered on
+       * @private {!Array<!MetricsListCandidateType>}
+       */
+      metricsListCandidates_: {
+        type: Array,
+        computed: 'computedMetricsListCandidates_(availableMetrics)',
+      },
 
       /**
        * A list of objects which indicate if metrics have been selected.
-       * @private {!Array<!Object>}
+       * @private {!Array<!MetricsListCandidateType>}
        */
-      metricsSelectedStatus_: {
-        type: Array,
-        computed:
-            'computedMetricsSelectedStatus_(availableMetrics, selectedMetrics.length)',
-      },
+      selectedMetricsListCandidates_: {type: Array},
     };
   }
 
 
   /**
-   * Init the defult selected metrics.
+   * Generate the MetricsListCandidates_.
    * @param {!Array<string>} availableMetrics
+   * @return {!Array<!MetricsListCandidateType>}
    * @private
    */
-  availableMetricsChanged_(availableMetrics) {
-    if (availableMetrics) {
-      this.selectedMetrics = availableMetrics.slice(0, 1);
-    } else {
-      this.selectedMetrics = [];
-    }
-  }
+  computedMetricsListCandidates_(availableMetrics) {
+    this.selectedMetrics = [];
 
-
-  /**
-   * Generate a list of object to record the metrics select status.
-   * @param {!Array<string>} availableMetrics
-   * @param {number} length
-   * @return {!Array<!Object>}
-   * @private
-   */
-  computedMetricsSelectedStatus_(availableMetrics, length) {
-    let status = [];
     if (!availableMetrics) {
-      return status;
+      return [];
     }
-    availableMetrics.forEach((metricsName, idx) => {
-      status.push({
-        'metricsName': metricsName,
-        'selected':
-            this.selectedMetrics && this.selectedMetrics.includes(metricsName)
+
+    let candidates = [];
+    for (const name of availableMetrics) {
+      candidates.push({
+        metricsName: name,
+        isSelected: false,
       });
-    });
-    return status;
+    }
+
+    // Select 1st metric by default.
+    this.selectedMetricsListCandidates_ = [candidates[0]];
+    return candidates;
   }
 
   /**
    * Strip prefix from metric name.
-   * @param {string} metric
+   * @param {!MetricsListCandidateType} metricListCandidate
    * @return {string}
    */
-  stripPrefix(metric) {
-    return Util.removeMetricNamePrefix(metric);
+  stripPrefix(metricListCandidate) {
+    return Util.removeMetricNamePrefix(metricListCandidate.metricsName);
   }
 
   /**
    * Get the defintion of a metric, or return the metric if not defined.
-   * @param {string} metric
+   * @param {!MetricsListCandidateType} metricListCandidate
    * @return {string}
    */
-  getDefinition(metric) {
-    let strippedMetric = this.stripPrefix(metric);
+  getDefinition(metricListCandidate) {
+    let strippedMetric = this.stripPrefix(metricListCandidate);
     if (strippedMetric in METRIC_DEFINITIONS) {
       return METRIC_DEFINITIONS[strippedMetric];
     } else {
@@ -146,40 +186,76 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
   }
 
   /**
-   * Handler listening to any change in "Select all" check box.
+   * Handler listening to any change in 'Select all' check box.
    */
   onSelectAllCheckedChanged_(event) {
+    if (!this.metricsListCandidates_) {
+      return;
+    }
     const checked = event.detail.value;
     if (checked) {
-      this.selectedMetrics = this.availableMetrics.slice();
+      // Select all.
+      for (let i = 0; i < this.metricsListCandidates_.length; i++) {
+        if (!this.selectedMetricsListCandidates_.includes(
+                this.metricsListCandidates_[i])) {
+          this.push(
+              'selectedMetricsListCandidates_', this.metricsListCandidates_[i]);
+        }
+      }
     } else {
-      this.selectedMetrics = [];
+      // UnSelect all.
+      for (let i = 0; i < i < this.selectedMetricsListCandidates_.length; i++) {
+        this.pop('selectedMetricsListCandidates_');
+      }
     }
   }
 
   /**
-   * Handler listening to any changes in selected item list.
+   * This function will be triggered if user select a metric from metrics list.
+   * It updates the metric 'isSelected' status (which will be used to change the
+   * checkbox status) and selectedMetrics (which is a array of selected metrics
+   * names).
+   * @param {!CustomEvent} event
+   * @private
    */
-  onCheckedChanged_(event) {
-    if (!this.availableMetrics) {
-      return;
-    }
+  metricsListCandidatesSelected_(event) {
+    // Updates the selected status to true.
+    let selectedItem = event.detail.item['metric'];
+    let selectedItemIndex = this.metricsListCandidates_.findIndex(
+        item => item.metricsName == selectedItem.metricsName);
+    this.set(
+        'metricsListCandidates_.' + selectedItemIndex + '.isSelected', true);
 
-    let selectedMetrics = this.selectedMetrics.slice();
-    let availableMetrics = this.availableMetrics.slice();
-    if (JSON.stringify(selectedMetrics.sort()) ==
-        JSON.stringify(availableMetrics.sort())) {
-      this.$.selectAll.checked = true;
-    } else {
-      this.$.selectAll.checked = false;
-    }
+    // Updates the selectedMetrics.
+    this.push('selectedMetrics', selectedItem.metricsName);
+  }
 
-    // To To re-select all the checked metrics. Un-checking "Select all"
-    // checkbox in previous if else block, will de-select all the metrics
-    // user has selected initially.
-    this.selectedMetrics = selectedMetrics.slice();
+  /**
+   * This function will be triggered if user un-select a metric from metrics
+   * list. It updates the metric 'isSelected' status (which will be used to
+   * change the checkbox status) and selectedMetrics (which is a array of
+   * selected metrics names).
+   * @param {!CustomEvent} event
+   * @private
+   */
+  metricsListCandidatesUnselected_(event) {
+    // Updates the selected status to false.
+    let selectedItem = event.detail.item['metric'];
+    let selectedItemIndex = this.metricsListCandidates_.findIndex(
+        item => item.metricsName == selectedItem.metricsName);
+    this.set(
+        'metricsListCandidates_.' + selectedItemIndex + '.isSelected', false);
+
+    // Updates the selectedMetrics. Replace the unselected metric with undefined
+    // to maintain the index of original selectedMetrics. In this way, the user
+    // selected threshold in the fairness-metric-summary would not get
+    // overwritten.
+    this.splice(
+        'selectedMetrics',
+        this.selectedMetrics.indexOf(selectedItem.metricsName), 1, undefined);
   }
 }
+
 
 customElements.define(
     'fairness-metric-and-slice-selector', FairnessMetricAndSliceSelector);

@@ -41,10 +41,16 @@ template.innerHTML = `
   </span>
 </div>
 <template is="dom-repeat" items="[[metrics]]">
-  <fairness-metric-summary data="[[data]]" eval-name="[[evalName]]"
-                           metric="[[item]]" slices="[[slices_]]" baseline="[[baseline_]]"
-                           data-compare="[[dataCompare]]" eval-name-compare="[[evalNameCompare]]">
-  </fairness-metric-summary>
+  <!-- The metrics could contain "undefined" elements because we want to maintain the -->
+  <!-- index of selected metrics. If a metric is unselected, we will replace it with  -->
+  <!-- "undefined". Otherwise, the user selected thresholds in the fairness-metric-summary -->
+  <!-- will get overwritten. -->
+  <template is="dom-if" if="[[item]]">
+    <fairness-metric-summary data="[[data]]" eval-name="[[evalName]]"
+                             metric="[[item]]" slices="[[slices_]]" baseline="[[baseline_]]"
+                             data-compare="[[dataCompare]]" eval-name-compare="[[evalNameCompare]]">
+    </fairness-metric-summary>
+  </template>
 </template>
 `;
 export {template};
