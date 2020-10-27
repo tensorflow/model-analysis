@@ -456,7 +456,7 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
 
 @beam.typehints.with_input_types(validation_result_pb2.ValidationResult)
 @beam.typehints.with_output_types(validation_result_pb2.ValidationResult)
-class _CombineValidations(beam.CombineFn):
+class CombineValidations(beam.CombineFn):
   """Combines the ValidationResults protos.
 
   Combines PCollection of ValidationResults for different metrics and slices.
@@ -600,7 +600,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     validations = (
         evaluation[validations_key]
         | 'MergeValidationResults' >> beam.CombineGlobally(
-            _CombineValidations(eval_config)))
+            CombineValidations(eval_config)))
 
     file_path_prefix = output_paths[constants.VALIDATIONS_KEY]
     # We only use a single shard here because validations are usually single
