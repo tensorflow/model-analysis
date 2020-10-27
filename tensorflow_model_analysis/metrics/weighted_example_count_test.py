@@ -40,16 +40,19 @@ class WeightedExampleCountTest(testutil.TensorflowModelAnalysisTest,
     metric = weighted_example_count.WeightedExampleCount().computations(
         model_names=[model_name], output_names=[output_name])[0]
 
+    example0 = {'labels': None, 'predictions': None, 'example_weights': [0.0]}
     example1 = {'labels': None, 'predictions': None, 'example_weights': [0.5]}
     example2 = {'labels': None, 'predictions': None, 'example_weights': [1.0]}
     example3 = {'labels': None, 'predictions': None, 'example_weights': [0.7]}
 
     if output_name:
+      example0['example_weights'] = {output_name: example0['example_weights']}
       example1['example_weights'] = {output_name: example1['example_weights']}
       example2['example_weights'] = {output_name: example2['example_weights']}
       example3['example_weights'] = {output_name: example3['example_weights']}
 
     if model_name:
+      example0['example_weights'] = {model_name: example0['example_weights']}
       example1['example_weights'] = {model_name: example1['example_weights']}
       example2['example_weights'] = {model_name: example2['example_weights']}
       example3['example_weights'] = {model_name: example3['example_weights']}
@@ -75,7 +78,8 @@ class WeightedExampleCountTest(testutil.TensorflowModelAnalysisTest,
               model_name=model_name,
               output_name=output_name)
           self.assertDictElementsAlmostEqual(
-              got_metrics, {weighted_example_count_key: (0.5 + 1.0 + 0.7)})
+              got_metrics,
+              {weighted_example_count_key: (0.0 + 0.5 + 1.0 + 0.7)})
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

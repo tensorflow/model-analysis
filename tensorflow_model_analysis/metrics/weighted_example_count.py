@@ -90,7 +90,10 @@ class _WeightedExampleCountCombiner(beam.CombineFn):
 
   def add_input(self, accumulator: float,
                 element: metric_types.StandardMetricInputs) -> float:
-    example_weight = element.example_weight or np.array(1.0)
+    if element.example_weight is None:
+      example_weight = np.array(1.0)
+    else:
+      example_weight = element.example_weight
     if isinstance(example_weight, dict) and self._model_name:
       value = util.get_by_keys(
           example_weight, [self._model_name], optional=True)
