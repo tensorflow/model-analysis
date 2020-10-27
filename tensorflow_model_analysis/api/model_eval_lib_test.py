@@ -49,6 +49,7 @@ from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import validation_result_pb2
+from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflowjs.converters import converter as tfjs_converter
 
 from google.protobuf import text_format
@@ -225,8 +226,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [config.SlicingSpec(feature_keys=['my_slice'])]
-    eval_config = config.EvalConfig(slicing_specs=slicing_specs)
+    slicing_specs = [slicer_lib.SingleSliceSpec(columns=['my_slice'])]
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, example_weight_key='age')
     extractors_with_feature_extraction = [
@@ -236,15 +236,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             extract_source=constants.INPUT_KEY,
             extract_dest=constants.FEATURES_PREDICTIONS_LABELS_KEY),
         slice_key_extractor.SliceKeyExtractor(
-            eval_config=eval_config, materialize=False)
+            slice_spec=slicing_specs, materialize=False)
     ]
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
         eval_shared_model=model_eval_lib.default_eval_shared_model(
             eval_saved_model_path=model_location, example_weight_key='age'),
         data_location=data_location,
         output_path=self._getTempDir(),
-        extractors=extractors_with_feature_extraction)
+        extractors=extractors_with_feature_extraction,
+        slice_spec=slicing_specs)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -309,17 +309,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
-    options = config.Options()
-    options.min_slice_size.value = 2
-    eval_config = config.EvalConfig(
-        slicing_specs=slicing_specs, options=options)
+    slicing_specs = [slicer_lib.SingleSliceSpec(columns=['language'])]
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
         eval_shared_model=model_eval_lib.default_eval_shared_model(
             eval_saved_model_path=model_location, example_weight_key='age'),
         data_location=data_location,
-        output_path=self._getTempDir())
+        output_path=self._getTempDir(),
+        slice_spec=slicing_specs,
+        min_slice_size=2)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -448,7 +445,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertEqual(eval_result.config.slicing_specs[0],
                      config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
-    self.assertFalse(eval_result.plots)
 
   def testRunModelAnalysisMultipleModels(self):
     examples = [
@@ -929,12 +925,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='chinese', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [config.SlicingSpec()]
-    eval_config = config.EvalConfig(slicing_specs=slicing_specs)
+    slicing_specs = [slicer_lib.SingleSliceSpec()]
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, example_weight_key='age')
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         data_location=data_location,
         output_path=self._getTempDir(),
@@ -949,7 +943,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                     legacy_ndcg.NdcgMetricCombineFn(
                         at_vals=[1], gain_key='label', weight_key='')
                 ]),
-        ])
+        ],
+        slice_spec=slicing_specs)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -994,18 +989,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
-    options = config.Options()
-    options.compute_confidence_intervals.value = True
-    options.min_slice_size.value = 2
-    eval_config = config.EvalConfig(
-        slicing_specs=slicing_specs, options=options)
+    slicing_specs = [slicer_lib.SingleSliceSpec(columns=['language'])]
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
         eval_shared_model=model_eval_lib.default_eval_shared_model(
             eval_saved_model_path=model_location, example_weight_key='age'),
         data_location=data_location,
-        output_path=self._getTempDir())
+        output_path=self._getTempDir(),
+        slice_spec=slicing_specs,
+        compute_confidence_intervals=True,
+        min_slice_size=2)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
@@ -1068,18 +1060,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
-    options = config.Options()
-    options.compute_confidence_intervals.value = True
-    options.min_slice_size.value = 2
-    eval_config = config.EvalConfig(
-        slicing_specs=slicing_specs, options=options)
+    slicing_specs = [slicer_lib.SingleSliceSpec(columns=['language'])]
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
         eval_shared_model=model_eval_lib.default_eval_shared_model(
             eval_saved_model_path=model_location, example_weight_key='age'),
         data_location=data_location,
         output_path=self._getTempDir(),
+        slice_spec=slicing_specs,
+        compute_confidence_intervals=True,
+        min_slice_size=2,
         random_seed_for_testing=_TEST_SEED)
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
@@ -1199,12 +1188,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(prediction=1.0, label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig()
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location,
         add_metrics_callbacks=[post_export_metrics.auc_plots()])
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         data_location=data_location,
         output_path=self._getTempDir())
@@ -1238,7 +1225,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(prediction=1.0, label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig()
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location,
         add_metrics_callbacks=[
@@ -1246,7 +1232,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             post_export_metrics.auc_plots(metric_tag='test')
         ])
     eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         data_location=data_location,
         output_path=self._getTempDir())

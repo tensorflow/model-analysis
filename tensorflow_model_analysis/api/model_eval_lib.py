@@ -80,24 +80,37 @@ def _assert_tensorflow_version():
 
 
 def _is_legacy_eval(
+    config_version: Optional[int],
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels],
     eval_config: Optional[config.EvalConfig]):
-  """Returns True if legacy evaluation is being used."""
-  # A legacy evaluation is an evalution that uses only a single EvalSharedModel,
-  # has no tags (or uses "eval" as its tag), and does not specify an eval_config
-  # (or specifies an eval_config with no metrics). The legacy evaluation is
-  # based on using add_metrics_callbacks to create a modified version of the
-  # graph saved with an EvalSavedModel. The newer version of evaluation supports
-  # both add_metrics_callbacks as well as metrics defined in MetricsSpecs inside
-  # of EvalConfig. The newer version works with both "eval" and serving models
-  # and also supports multi-model evaluation. This function is used by code to
-  # support backwards compatibility for callers that have not updated to use the
-  # new EvalConfig.
-  return (eval_shared_model and not isinstance(eval_shared_model, dict) and
-          not isinstance(eval_shared_model, list) and
-          ((not eval_shared_model.model_loader.tags or
+  """Returns True if legacy evaluation is being used.
+
+  A legacy evaluation is an evalution that uses only a single EvalSharedModel,
+  has no tags (or uses "eval" as its tag), and does not specify an eval_config
+  The legacy evaluation is based on using add_metrics_callbacks to create a
+  modified version of the graph saved with an EvalSavedModel. The newer version
+  of evaluation supports both add_metrics_callbacks as well as metrics defined
+  in MetricsSpecs inside of EvalConfig. The newer version works with both "eval"
+  and serving models and also supports multi-model evaluation. This function is
+  used by code to support backwards compatibility for callers that have not
+  updated to use the new EvalConfig.
+
+  Args:
+    config_version: Optionally, An explicit version of the config determined
+      elsewhere. This is used to handle cases where the provided eval_config was
+      generated internally, and thus not a reliable indicator of user intent.
+    eval_shared_model: Optionally, the model to be evaluated.
+    eval_config: Optionally, an EvalConfig specifying v2 config.
+
+  Returns:
+    Whether the user inputs should trigger a legacy evaluation.
+  """
+  return ((config_version is not None and config_version == 1) or
+          (eval_shared_model and not isinstance(eval_shared_model, dict) and
+           not isinstance(eval_shared_model, list) and
+           (not eval_shared_model.model_loader.tags or
             eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags) and
-           (not eval_config or not eval_config.metrics_specs)))
+           not eval_config))
 
 
 def _default_eval_config(eval_shared_models: List[types.EvalSharedModel],
@@ -396,8 +409,8 @@ def default_extractors(  # pylint: disable=invalid-name
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     materialize: Optional[bool] = True,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
-    custom_predict_extractor: Optional[extractor.Extractor] = None
-) -> List[extractor.Extractor]:
+    custom_predict_extractor: Optional[extractor.Extractor] = None,
+    config_version: Optional[int] = None) -> List[extractor.Extractor]:
   """Returns the default extractors for use in ExtractAndEvaluate.
 
   Args:
@@ -412,6 +425,10 @@ def default_extractors(  # pylint: disable=invalid-name
       the model.
     custom_predict_extractor: Optional custom predict extractor for non-TF
       models.
+    config_version: Optional config version for this evaluation. This should not
+      be explicitly set by users. It is only intended to be used in cases where
+      the provided eval_config was generated internally, and thus not a reliable
+      indicator of user intent.
 
   Raises:
     NotImplementedError: If eval_config contains mixed serving and eval models.
@@ -422,7 +439,7 @@ def default_extractors(  # pylint: disable=invalid-name
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
 
-  if _is_legacy_eval(eval_shared_model, eval_config):
+  if _is_legacy_eval(config_version, eval_shared_model, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     if not eval_config and slice_spec:
       eval_config = config.EvalConfig(
@@ -520,7 +537,8 @@ def default_evaluators(  # pylint: disable=invalid-name
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
     serialize: bool = False,
-    random_seed_for_testing: Optional[int] = None) -> List[evaluator.Evaluator]:
+    random_seed_for_testing: Optional[int] = None,
+    config_version: Optional[int] = None) -> List[evaluator.Evaluator]:
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
@@ -533,6 +551,10 @@ def default_evaluators(  # pylint: disable=invalid-name
     min_slice_size: Deprecated (use eval_config).
     serialize: Deprecated.
     random_seed_for_testing: Provide for deterministic tests only.
+    config_version: Optional config version for this evaluation. This should not
+      be explicitly set by users. It is only intended to be used in cases where
+      the provided eval_config was generated internally, and thus not a reliable
+      indicator of user intent.
   """
   disabled_outputs = []
   if eval_config:
@@ -559,7 +581,7 @@ def default_evaluators(  # pylint: disable=invalid-name
   if (constants.METRICS_KEY in disabled_outputs and
       constants.PLOTS_KEY in disabled_outputs):
     return []
-  if _is_legacy_eval(eval_shared_model, eval_config):
+  if _is_legacy_eval(config_version, eval_shared_model, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     if eval_config is not None:
       if eval_config.options.HasField('compute_confidence_intervals'):
@@ -818,7 +840,8 @@ def WriteResults(  # pylint: disable=invalid-name
 
 def is_batched_input(eval_shared_model: Optional[
     types.MaybeMultipleEvalSharedModels] = None,
-                     eval_config: config.EvalConfig = None) -> bool:
+                     eval_config: config.EvalConfig = None,
+                     config_version: Optional[int] = None) -> bool:
   """Returns true if batched input should be used.
 
    We will keep supporting the legacy unbatched V1 PredictExtractor as it parses
@@ -831,11 +854,15 @@ def is_batched_input(eval_shared_model: Optional[
       models (multi-model evaluation). Required unless the predictions are
       provided alongside of the features (i.e. model-agnostic evaluations).
     eval_config: Eval config.
+    config_version: Optional config version for this evaluation. This should not
+      be explicitly set by users. It is only intended to be used in cases where
+      the provided eval_config was generated internally, and thus not a reliable
+      indicator of user intent.
 
   Returns:
     A boolean indicating if batched extractors should be used.
   """
-  if _is_legacy_eval(eval_shared_model, eval_config):
+  if _is_legacy_eval(config_version, eval_shared_model, eval_config):
     return False
   elif eval_shared_model:
     model_types = _model_types(eval_shared_model)
@@ -870,7 +897,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     min_slice_size: int = 1,
     random_seed_for_testing: Optional[int] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
-    schema: Optional[schema_pb2.Schema] = None) -> beam.pvalue.PDone:
+    schema: Optional[schema_pb2.Schema] = None,
+    config_version: Optional[int] = None) -> beam.pvalue.PDone:
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -935,6 +963,10 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       tensors from the Arrow RecordBatch. If None, we feed the raw examples to
       the model.
     schema: A schema to use for customizing evaluators.
+    config_version: Optional config version for this evaluation. This should not
+      be explicitly set by users. It is only intended to be used in cases where
+      the provided eval_config was generated internally, and thus not a reliable
+      indicator of user intent.
 
   Raises:
     ValueError: If EvalConfig invalid or matching Extractor not found for an
@@ -947,14 +979,15 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       eval_shared_model)
 
   if eval_config is None:
+    config_version = 1 if config_version is None else config_version
     eval_config = _default_eval_config(eval_shared_models, slice_spec,
                                        write_config,
                                        compute_confidence_intervals,
                                        min_slice_size)
   else:
+    config_version = 2 if config_version is None else config_version
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
-
   config.verify_eval_config(eval_config)
 
   if not extractors:
@@ -962,14 +995,16 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         materialize=False,
-        tensor_adapter_config=tensor_adapter_config)
+        tensor_adapter_config=tensor_adapter_config,
+        config_version=config_version)
 
   if not evaluators:
     evaluators = default_evaluators(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         random_seed_for_testing=random_seed_for_testing,
-        schema=schema)
+        schema=schema,
+        config_version=config_version)
 
   for v in evaluators:
     evaluator.verify_evaluator(v, extractors)
@@ -983,7 +1018,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         display_only_data_file_format=display_only_file_format)
 
   # pylint: disable=no-value-for-parameter
-  if is_batched_input(eval_shared_model, eval_config):
+  if is_batched_input(eval_shared_model, eval_config, config_version):
     extracts = (
         examples
         | 'BatchedInputsToExtracts' >> BatchedInputsToExtracts())
@@ -1068,6 +1103,7 @@ def run_model_analysis(
     tf.io.gfile.makedirs(output_path)
 
   if eval_config is None:
+    config_version = 1
     eval_shared_models = model_util.verify_and_update_eval_shared_models(
         eval_shared_model)
     eval_config = _default_eval_config(eval_shared_models, slice_spec,
@@ -1075,13 +1111,14 @@ def run_model_analysis(
                                        compute_confidence_intervals,
                                        min_slice_size)
   else:
+    config_version = 2
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
 
   tensor_adapter_config = None
   with beam.Pipeline(options=pipeline_options) as p:
     if file_format == 'tfrecords':
-      if is_batched_input(eval_shared_model, eval_config):
+      if is_batched_input(eval_shared_model, eval_config, config_version):
         tfxio = tf_example_record.TFExampleRecord(
             file_pattern=data_location,
             schema=schema,
@@ -1114,7 +1151,8 @@ def run_model_analysis(
             writers=writers,
             random_seed_for_testing=random_seed_for_testing,
             tensor_adapter_config=tensor_adapter_config,
-            schema=schema))
+            schema=schema,
+            config_version=config_version))
     # pylint: enable=no-value-for-parameter
 
   if len(eval_config.model_specs) <= 1:
