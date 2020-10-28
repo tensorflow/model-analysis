@@ -827,6 +827,17 @@ export class FairnessMetricSummary extends PolymerElement {
   }
 
   /**
+   * Display the info dialog.
+   * @param {!Object} event
+   * @private
+   */
+  openInfoDialog_(event) {
+    event.stopPropagation();
+    const dialog = event.target.parentElement.querySelector('paper-dialog');
+    dialog.open();
+  }
+
+  /**
    * Strip prefix from metric name.
    * @param {string} metric
    * @return {string}

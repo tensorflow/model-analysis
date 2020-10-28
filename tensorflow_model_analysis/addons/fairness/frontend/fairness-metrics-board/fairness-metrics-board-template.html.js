@@ -22,22 +22,38 @@ template.innerHTML = `
   .config > span {
     padding: 0 12px;
   }
+  paper-dialog p {
+    font-size: 18px;
+  }
+  paper-icon-button {
+    color: #5f6368;
+  }
 </style>
 <fairness-privacy-container hidden$="[[!omittedSlices_.length]]"
                             omitted-slices="[[omittedSlices_]]">
 </fairness-privacy-container>
 <div class="config">
+  <paper-dropdown-menu label="Baseline">
+    <paper-listbox selected="{{baseline_}}" attr-for-selected="slice"
+                   class="dropdown-content" slot="dropdown-content">
+      <template is="dom-repeat" items="[[slices_]]">
+        <paper-item slice="[[item]]">
+          [[item]]
+        </paper-item>
+      </template>
+    </paper-listbox>
+  </paper-dropdown-menu>
   <span>
-    <paper-dropdown-menu label="Baseline">
-      <paper-listbox selected="{{baseline_}}" attr-for-selected="slice"
-                     class="dropdown-content" slot="dropdown-content">
-        <template is="dom-repeat" items="[[slices_]]">
-          <paper-item slice="[[item]]">
-            [[item]]
-          </paper-item>
-        </template>
-      </paper-listbox>
-    </paper-dropdown-menu>
+    <paper-dialog id="dialog">
+      <h2>Baseline</h2>
+      <p>
+        Select a slice from the "Baseline" dropdown. Slices are the subsets of data for which metrics are evaluated. The baseline is the slice which all other slices are compared to. By default, baseline is "Overall", meaning the entire dataset.
+      </p>
+      <div class="buttons">
+        <paper-button dialog-confirm autofocus>Close</paper-button>
+      </div>
+    </paper-dialog>
+    <paper-icon-button icon="info-outline" id="Information" on-click="openInfoDialog_">
   </span>
 </div>
 <template is="dom-repeat" items="[[metrics]]">

@@ -178,6 +178,17 @@ export class FairnessMetricsBoard extends PolymerElement {
     }
     return false;
   }
+
+  /**
+   * Display the info dialog.
+   * @param {!Object} event
+   * @private
+   */
+  openInfoDialog_(event) {
+    event.stopPropagation();
+    const dialog = event.target.parentElement.querySelector('paper-dialog');
+    dialog.open();
+  }
 }
 
 customElements.define('fairness-metrics-board', FairnessMetricsBoard);

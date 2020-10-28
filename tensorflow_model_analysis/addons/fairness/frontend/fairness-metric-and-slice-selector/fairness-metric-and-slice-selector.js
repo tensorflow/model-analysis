@@ -254,6 +254,17 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
         'selectedMetrics',
         this.selectedMetrics.indexOf(selectedItem.metricsName), 1, undefined);
   }
+
+  /**
+   * Display the info dialog.
+   * @param {!Object} event
+   * @private
+   */
+  openInfoDialog_(event) {
+    event.stopPropagation();
+    const dialog = event.target.parentElement.querySelector('paper-dialog');
+    dialog.open();
+  }
 }
 
 

@@ -23,11 +23,15 @@ template.innerHTML = `
      */
     color: black
   }
-
+  paper-dialog p {
+    font-size: 18px;
+  }
+  paper-icon-button {
+    color: #5f6368;
+  }
   paper-listbox {
     width: 350px;
   }
-
   .metric-name {
     max-width: 290px;
     overflow: hidden;
@@ -38,6 +42,20 @@ template.innerHTML = `
 
 <div id="metric-and-slice-selector-title">
   Select metrics to display:
+  <span>
+    <paper-dialog id="dialog">
+      <h2>Metrics</h2>
+      <p>
+        Select metrics from the leftside column. Each metric will generate a barchart and table.
+      </p><p>
+        Hovering over a metric name will display a metric description tooltip.
+      </p>
+      <div class="buttons">
+        <paper-button dialog-confirm autofocus>Close</paper-button>
+      </div>
+    </paper-dialog>
+    <paper-icon-button icon="info-outline" id="Information" on-click="openInfoDialog_">
+  </span>
 </div>
 
 <paper-item>
