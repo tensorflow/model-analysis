@@ -62,7 +62,7 @@ class SlicedMetrics(
    '' by default. See `tfma.metrics.SubKey` for more info.
    3. metric_name: Name of the metric (`auc`, `accuracy`, etc).
    4. metric_value: A dictionary containing the metric's value. See
-   [tfma.proto.metrics_for_slice_pb2.MetricValue](https://github.com/tensorflow/model-analysis/blob/cdb6790dcd7a37c82afb493859b3ef4898963fee/tensorflow_model_analysis/proto/metrics_for_slice.proto#L194)
+   [`tfma.proto.metrics_for_slice_pb2.MetricValue`](https://github.com/tensorflow/model-analysis/blob/cdb6790dcd7a37c82afb493859b3ef4898963fee/tensorflow_model_analysis/proto/metrics_for_slice.proto#L194)
    for more info.
 
   Below is a sample SlicedMetrics:
