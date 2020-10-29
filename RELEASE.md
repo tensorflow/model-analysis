@@ -18,6 +18,19 @@
 *   Add metric definitions as tooltips in the Fairness Inidicators metric
     selector UI
 *   Added support for specifying label_key to use with MinLabelPosition metric.
+*   From this release TFMA will also be hosting nightly packages on
+    https://pypi-nightly.tensorflow.org. To install the nightly package use the
+    following command:
+
+    ```
+    pip install -i https://pypi-nightly.tensorflow.org/simple tensorflow-model-analysis
+    ```
+
+    Note: These nightly packages are unstable and breakages are likely to
+    happen. The fix could often take a week or more depending on the complexity
+    involved for the wheels to be available on the PyPI cloud service. You can
+    always use the stable version of TFMA available on PyPI by running the
+    command `pip install tensorflow-model-analysis` .
 
 ## Bug fixes and other changes
 

@@ -1,7 +1,7 @@
 # TensorFlow Model Analysis
 
-*TensorFlow Model Analysis* (TFMA) is a library for evaluating TensorFlow models.
-It allows users to evaluate their models on large amounts of data in a
+*TensorFlow Model Analysis* (TFMA) is a library for evaluating TensorFlow
+models. It allows users to evaluate their models on large amounts of data in a
 distributed manner, using the same metrics defined in their trainer. These
 metrics can be computed over different slices of data and visualized in Jupyter
 notebooks.
@@ -15,13 +15,30 @@ Caution: TFMA may introduce backwards incompatible changes before version 1.0.
 The recommended way to install TFMA is using the
 [PyPI package](https://pypi.org/project/tensorflow-model-analysis/):
 
+### Nightly Packages
+
+TFMA also hosts nightly packages at https://pypi-nightly.tensorflow.org on
+Google Cloud. To install the latest nightly package, please use the following
+command:
+
+```
+pip install -i https://pypi-nightly.tensorflow.org/simple tensorflow-model-analysis
+```
+
+This will install the nightly packages for the major dependencies of TFMA such
+as TensorFlow Metadata (TFMD), TFX Basic Shared Libraries (TFX-BSL).
+
+Note: These nightly packages are unstable and breakages are likely to happen.
+The fix could often take a week or more depending on the complexity involved.
+
 <pre class="devsite-terminal devsite-click-to-copy">
 pip install tensorflow-model-analysis
 </pre>
 
 Currently, TFMA requires that TensorFlow is installed but does not have an
 explicit dependency on the TensorFlow PyPI package. See the
-[TensorFlow install guides](https://www.tensorflow.org/install) for instructions.
+[TensorFlow install guides](https://www.tensorflow.org/install) for
+instructions.
 
 To enable TFMA visualization in Jupyter Notebook:
 

@@ -25,6 +25,12 @@ The recommended way to install TFMA is using the
 pip install tensorflow-model-analysis
 </pre>
 
+pip install from https://pypi-nightly.tensorflow.org
+
+<pre class="devsite-terminal devsite-click-to-copy">
+pip install -i https://pypi-nightly.tensorflow.org/simple tensorflow-model-analysis
+</pre>
+
 pip install from the HEAD of the git:
 
 <pre class="devsite-terminal devsite-click-to-copy">
