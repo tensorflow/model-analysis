@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import math
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -32,7 +33,8 @@ from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import min_label_position
 
 
-class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
+class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
+                           parameterized.TestCase):
 
   def testRaisesErrorIfNoQueryKey(self):
     with self.assertRaises(ValueError):
@@ -70,15 +72,18 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
             | 'AddSlice' >> beam.Map(lambda x: ((), x))
             | 'Combine' >> beam.CombinePerKey(metric.combiner))
 
-  def testMinLabelPosition(self):
-    metric = min_label_position.MinLabelPosition().computations(
-        query_key='query')[0]
+  @parameterized.named_parameters(('default_label', None),
+                                  ('custom_label', 'custom_label'))
+  def testMinLabelPosition(self, label_key):
+    metric = min_label_position.MinLabelPosition(
+        label_key=label_key).computations(query_key='query')[0]
 
     query1_example1 = {
         'labels': np.array([1.0]),
         'predictions': np.array([0.2]),
         'example_weights': np.array([1.0]),
         'features': {
+            'custom_label': np.array([0.0]),
             'query': np.array(['query1'])
         }
     }
@@ -87,6 +92,7 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
         'predictions': np.array([0.8]),
         'example_weights': np.array([1.0]),
         'features': {
+            'custom_label': np.array([1.0]),
             'query': np.array(['query1'])
         }
     }
@@ -95,6 +101,7 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
         'predictions': np.array([0.5]),
         'example_weights': np.array([2.0]),
         'features': {
+            'custom_label': np.array([0.0]),
             'query': np.array(['query2'])
         }
     }
@@ -103,6 +110,7 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
         'predictions': np.array([0.9]),
         'example_weights': np.array([2.0]),
         'features': {
+            'custom_label': np.array([0.0]),
             'query': np.array(['query2'])
         }
     }
@@ -111,6 +119,7 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
         'predictions': np.array([0.1]),
         'example_weights': np.array([2.0]),
         'features': {
+            'custom_label': np.array([1.0]),
             'query': np.array(['query2'])
         }
     }
@@ -119,6 +128,7 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
         'predictions': np.array([0.9]),
         'example_weights': np.array([3.0]),
         'features': {
+            'custom_label': np.array([0.0]),
             'query': np.array(['query3'])
         }
     }
@@ -129,12 +139,16 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
         tfma_util.merge_extracts([query3_example1])
     ]
 
+    if label_key:
+      self.assertIsNotNone(metric.preprocessor)
+
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
           | 'Create' >> beam.Create(examples)
-          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs, True)
+          | 'Process' >> beam.Map(
+              metric_util.to_standard_metric_inputs, include_features=True)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'Combine' >> beam.CombinePerKey(metric.combiner))
 
@@ -147,7 +161,12 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest):
           self.assertEqual(got_slice_key, ())
           key = metric_types.MetricKey(name='min_label_position')
           self.assertIn(key, got_metrics)
-          self.assertAllClose(got_metrics[key], np.array([1.333333]))
+          if label_key == 'custom_label':
+            # (2*1.0 + 3*2.0) / (1.0 + 2.0) = 2.666666
+            self.assertAllClose(got_metrics[key], np.array([2.666666]))
+          else:
+            # (1*1.0 + 2*2.0 + 1*3.0) / (1.0 + 2.0 + 3.0) = 1.333333
+            self.assertAllClose(got_metrics[key], np.array([1.333333]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

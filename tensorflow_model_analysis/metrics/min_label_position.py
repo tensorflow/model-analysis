@@ -24,6 +24,7 @@ from typing import Dict, List, Optional, Text
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import config
+from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 
@@ -43,13 +44,17 @@ class MinLabelPosition(metric_types.Metric):
   the associated metrics spec.
   """
 
-  def __init__(self, name=MIN_LABEL_POSITION_NAME):
+  def __init__(self,
+               name=MIN_LABEL_POSITION_NAME,
+               label_key: Optional[Text] = None):
     """Initializes min label position metric.
 
     Args:
       name: Metric name.
+      label_key: Optional label key to override default label.
     """
-    super(MinLabelPosition, self).__init__(_min_label_position, name=name)
+    super(MinLabelPosition, self).__init__(
+        _min_label_position, name=name, label_key=label_key)
 
 
 metric_types.register_metric(MinLabelPosition)
@@ -57,6 +62,7 @@ metric_types.register_metric(MinLabelPosition)
 
 def _min_label_position(
     name=MIN_LABEL_POSITION_NAME,
+    label_key: Optional[Text] = None,
     eval_config: Optional[config.EvalConfig] = None,
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
@@ -70,17 +76,19 @@ def _min_label_position(
     output_names = ['']
   keys = []
   computations = []
+  preprocessor = None
+  if label_key:
+    preprocessor = metric_types.FeaturePreprocessor(feature_keys=[label_key])
   for model_name in model_names:
     for output_name in output_names:
       key = metric_types.MetricKey(
           name=name, model_name=model_name, output_name=output_name)
       keys.append(key)
-
       computations.append(
           metric_types.MetricComputation(
               keys=[key],
-              preprocessor=None,
-              combiner=_MinLabelPositionCombiner(key, eval_config)))
+              preprocessor=preprocessor,
+              combiner=_MinLabelPositionCombiner(key, eval_config, label_key)))
   return computations
 
 
@@ -97,9 +105,11 @@ class _MinLabelPositionCombiner(beam.CombineFn):
   """Computes min label position metric."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig]):
+               eval_config: Optional[config.EvalConfig],
+               label_key: Optional[Text]):
     self._key = key
     self._eval_config = eval_config
+    self._label_key = label_key
 
   def create_accumulator(self) -> _MinLabelPositionAccumulator:
     return _MinLabelPositionAccumulator()
@@ -116,6 +126,8 @@ class _MinLabelPositionCombiner(beam.CombineFn):
             output_name=self._key.output_name,
             flatten=False,
             allow_none=True))  # pytype: disable=wrong-arg-types
+    if self._label_key:
+      labels = util.get_by_keys(element.features, [self._label_key])
     if labels is not None:
       min_label_pos = None
       for i, l in enumerate(labels):

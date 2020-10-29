@@ -17,6 +17,7 @@
 *   Added support for fractional labels.
 *   Add metric definitions as tooltips in the Fairness Inidicators metric
     selector UI
+*   Added support for specifying label_key to use with MinLabelPosition metric.
 
 ## Bug fixes and other changes
 
