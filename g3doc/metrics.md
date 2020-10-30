@@ -674,7 +674,7 @@ computation types that can be used: `tfma.metrics.MetricComputation` and
 below. The function that creates these computations will be passed the following
 parameters as input:
 
-*   `eval_config: tfam.EvalConfig`
+*   `eval_config: tfma.EvalConfig`
     *   The eval config passed to the evaluator (useful for looking up model
         spec settings such as prediction key to use, etc).
 *   `model_names: List[Text]`
