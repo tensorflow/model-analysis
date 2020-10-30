@@ -43,14 +43,6 @@ const DEFAULT_NUM_SLICES = 9;
 const DEFAULT_NUM_SLICES_EVAL_COMPARE = 3;
 
 /**
- * Number of max slices to be selected.
- * @private {number}
- * @const
- */
-const MAX_NUM_SLICES = 15;
-
-
-/**
  * It's a map that contains following fields:
  *   'text': used to render on UI, e.g. "gender" or "male".
  *   'rawSlice': store the original slices, e.g. "gender:male", or "Overall".
@@ -299,6 +291,20 @@ export class FairnessMetricSummary extends PolymerElement {
       'initializeSelectedThresholds_(thresholds_.*)',
       'selectDefaultSlicesFromDropDownMenuCandidates_(slicesDropDownMenuCandidates_, baseline)',
     ];
+  }
+
+  /**
+   *  @override
+   */
+  ready() {
+    super.ready();
+
+    /**
+     * Number of max slices to be selected.
+     * @export {number}
+     * @const
+     */
+    this.MAX_NUM_SLICES = 15;
   }
 
   /**
@@ -588,7 +594,8 @@ export class FairnessMetricSummary extends PolymerElement {
             .length;
 
     // Disable the slices dropdown menu if max number of slices is selected.
-    this.slicesDropDownMenuDisabled_ = numOfSelectedSlices >= MAX_NUM_SLICES;
+    this.slicesDropDownMenuDisabled_ =
+        numOfSelectedSlices >= this.MAX_NUM_SLICES;
   }
 
   /**

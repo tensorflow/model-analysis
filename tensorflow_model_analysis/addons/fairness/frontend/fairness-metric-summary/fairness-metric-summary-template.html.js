@@ -124,6 +124,7 @@ template.innerHTML = `
         <li><b>Slices</b>
           <p>
             For each metric, select a set of slices to evaluate using the "SELECT SLICES" dropdown.
+            At most [[MAX_NUM_SLICES]] slices can be selected and rendered.
           </p>
         </li>
         <li><b>Thresholds</b>
