@@ -311,8 +311,9 @@ def partition_slices(
       slicer_lib.deserialize_slice_key(slice_metrics.slice_key): slice_metrics
       for slice_metrics in metrics
   }
-  overall_slice_metrics = metrics_dict[()]
-  del metrics_dict[()]
+  overall_slice_metrics = metrics_dict[slicer_lib.OVERALL_SLICE_KEY]
+  # We do not want to investigate the slice that contains all of the data.
+  del metrics_dict[slicer_lib.OVERALL_SLICE_KEY]
 
   example_count_metric_key = metric_types.MetricKey(
       name=example_count.EXAMPLE_COUNT_NAME,

@@ -16,6 +16,7 @@
 
 from tensorflow_model_analysis.slicer.slicer_lib import deserialize_slice_key
 from tensorflow_model_analysis.slicer.slicer_lib import FanoutSlices
+from tensorflow_model_analysis.slicer.slicer_lib import OVERALL_SLICE_KEY
 from tensorflow_model_analysis.slicer.slicer_lib import serialize_slice_key
 from tensorflow_model_analysis.slicer.slicer_lib import SingleSliceSpec
 from tensorflow_model_analysis.slicer.slicer_lib import stringify_slice_key

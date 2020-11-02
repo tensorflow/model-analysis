@@ -55,6 +55,8 @@ CrossSliceKeyType = Tuple[SliceKeyType, SliceKeyType]  # pylint: disable=invalid
 SliceKeyOrCrossSliceKeyType = Union[SliceKeyType, CrossSliceKeyType]  # pylint: disable=invalid-name
 
 OVERALL_SLICE_NAME = 'Overall'
+# The slice key for the slice that includes all of the data.
+OVERALL_SLICE_KEY = ()
 
 
 class SingleSliceSpec(object):
@@ -120,12 +122,6 @@ class SingleSliceSpec(object):
     if spec is not None:
       columns = spec.feature_keys
       features = [(k, v) for k, v in spec.feature_values.items()]
-
-    if columns is None:
-      columns = []
-
-    if features is None:
-      features = []
 
     features = [(k, _to_type(v)) for (k, v) in features]
 
@@ -194,9 +190,9 @@ class SingleSliceSpec(object):
     Should only be called within this file.
 
     Examples:
-      - columns = [], features = []
+      - columns = [], features = [] (the overall slice case)
         slice accessor has features age=[5], gender=['f'], interest=['knitting']
-        returns [[]]
+        returns [()]
       - columns = ['age'], features = [('gender', 'f')]
         slice accessor has features age=[5], gender=['f'], interest=['knitting']
         returns [[('age', 5), ('gender, 'f')]]
@@ -254,7 +250,8 @@ class SingleSliceSpec(object):
 
     # We can now take the Cartesian product of the column_matches, and append
     # the value matches to each element of that, to generate the final list of
-    # slices.
+    # slices. Note that for the overall slice case the column_matches is [] and
+    # the Cartesian product of [] is ().
     for column_part in itertools.product(*column_matches):
       yield tuple(sorted(self._value_matches + list(column_part)))
 
