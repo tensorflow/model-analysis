@@ -233,7 +233,7 @@ def _convert_to_array_value(
 
 
 def convert_slice_metrics_to_proto(
-    metrics: Tuple[slicer.SliceKeyType, Dict[Any, Any]],
+    metrics: Tuple[slicer.SliceKeyOrCrossSliceKeyType, Dict[Any, Any]],
     add_metrics_callbacks: List[types.AddMetricsCallbackType]
 ) -> metrics_for_slice_pb2.MetricsForSlice:
   """Converts the given slice metrics into serialized proto MetricsForSlice.
@@ -253,7 +253,10 @@ def convert_slice_metrics_to_proto(
   result = metrics_for_slice_pb2.MetricsForSlice()
   slice_key, slice_metrics = metrics
 
-  result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+  if slicer.is_cross_slice_key(slice_key):
+    result.cross_slice_key.CopyFrom(slicer.serialize_cross_slice_key(slice_key))
+  else:
+    result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   slice_metrics = slice_metrics.copy()
 
@@ -333,7 +336,7 @@ def convert_slice_metrics_to_proto(
 
 
 def convert_slice_plots_to_proto(
-    plots: Tuple[slicer.SliceKeyType, Dict[Any, Any]],
+    plots: Tuple[slicer.SliceKeyOrCrossSliceKeyType, Dict[Any, Any]],
     add_metrics_callbacks: List[types.AddMetricsCallbackType]
 ) -> metrics_for_slice_pb2.PlotsForSlice:
   """Converts the given slice plots into PlotsForSlice proto.
@@ -349,7 +352,10 @@ def convert_slice_plots_to_proto(
   result = metrics_for_slice_pb2.PlotsForSlice()
   slice_key, slice_plots = plots
 
-  result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+  if slicer.is_cross_slice_key(slice_key):
+    result.cross_slice_key.CopyFrom(slicer.serialize_cross_slice_key(slice_key))
+  else:
+    result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   slice_plots = slice_plots.copy()
 
@@ -506,8 +512,18 @@ class CombineValidations(beam.CombineFn):
     missing = metrics_validator.get_missing_slices(
         accumulator.validation_details.slicing_details, self._eval_config)
     if missing:
+      missing_slices = []
+      missing_cross_slices = []
+      for m in missing:
+        if isinstance(m, config.SlicingSpec):
+          missing_slices.append(m)
+        elif isinstance(m, config.CrossSlicingSpec):
+          missing_cross_slices.append(m)
       accumulator.validation_ok = False
-      accumulator.missing_slices.extend(missing)
+      if missing_slices:
+        accumulator.missing_slices.extend(missing_slices)
+      if missing_cross_slices:
+        accumulator.missing_cross_slices.extend(missing_cross_slices)
     return accumulator
 
 

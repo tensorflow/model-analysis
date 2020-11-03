@@ -298,8 +298,14 @@ message MetricsForSlice {
     MetricValue value = 2;
   }
 
-  // The slice key for the metrics.
-  SliceKey slice_key = 1;
+  oneof slicing_spec_oneof {
+    // The slice key for the metrics.
+    SliceKey slice_key = 1;
+
+    // The cross slice key for the metrics.
+    CrossSliceKey cross_slice_key = 3;
+  }
+
   // Metric keys and values.
   repeated MetricKeyAndValue metric_keys_and_values = 51;
 
@@ -411,8 +417,14 @@ message PlotsForSlice {
     PlotData value = 2;
   }
 
-  // The slice key for the metrics.
-  SliceKey slice_key = 1;
+  oneof slicing_spec_oneof {
+    // The slice key for the metrics.
+    SliceKey slice_key = 1;
+
+    // The cross slice key for the metrics.
+    CrossSliceKey cross_slice_key = 4;
+  }
+
   // Plot keys and values.
   repeated PlotKeyAndValue plot_keys_and_values = 8;
 

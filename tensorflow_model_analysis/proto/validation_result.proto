@@ -64,6 +64,9 @@ message ValidationResult {
   // Information about missing slices.
   repeated SlicingSpec missing_slices = 3;
 
+  // Information about missing cross slices.
+  repeated CrossSlicingSpec missing_cross_slices = 5;
+
   // Extra details about validation performed.
   ValidationDetails validation_details = 4;
 }
