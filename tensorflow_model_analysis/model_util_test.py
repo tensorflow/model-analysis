@@ -457,6 +457,8 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           }
       }, None, True, 1),
   )
+  @unittest.skipIf(_TF_MAJOR_VERSION < 2,
+                   'not all signatures supported for TF1')
   def testModelSignaturesDoFn(self, save_as_keras, signature_names,
                               default_signature_names, prefer_dict_outputs,
                               expected_num_outputs):
