@@ -204,7 +204,8 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
       }
     } else {
       // UnSelect all.
-      for (let i = 0; i < i < this.selectedMetricsListCandidates_.length; i++) {
+      const length = this.selectedMetricsListCandidates_.length;
+      for (let i = 0; i < length; i++) {
         this.pop('selectedMetricsListCandidates_');
       }
     }
