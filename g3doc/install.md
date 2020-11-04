@@ -15,25 +15,25 @@ Caution: TFMA may introduce backwards incompatible changes before version 1.0.
 The recommended way to install TFMA is using the
 [PyPI package](https://pypi.org/project/tensorflow-model-analysis/):
 
+<pre class="devsite-terminal devsite-click-to-copy">
+pip install tensorflow-model-analysis
+</pre>
+
 ### Nightly Packages
 
 TFMA also hosts nightly packages at https://pypi-nightly.tensorflow.org on
 Google Cloud. To install the latest nightly package, please use the following
 command:
 
-```
+<pre class="devsite-terminal devsite-click-to-copy">
 pip install -i https://pypi-nightly.tensorflow.org/simple tensorflow-model-analysis
-```
+</pre>
 
 This will install the nightly packages for the major dependencies of TFMA such
 as TensorFlow Metadata (TFMD), TFX Basic Shared Libraries (TFX-BSL).
 
 Note: These nightly packages are unstable and breakages are likely to happen.
 The fix could often take a week or more depending on the complexity involved.
-
-<pre class="devsite-terminal devsite-click-to-copy">
-pip install tensorflow-model-analysis
-</pre>
 
 Currently, TFMA requires that TensorFlow is installed but does not have an
 explicit dependency on the TensorFlow PyPI package. See the
@@ -77,7 +77,8 @@ combinations may also work.
 
 tensorflow-model-analysis                                                            | apache-beam[gcp] | pyarrow | tensorflow        | tensorflow-metadata | tfx-bsl
 ------------------------------------------------------------------------------------ | ---------------- | ------- | ----------------- | ------------------- | -------
-[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.24.0           | 0.17.0  | nightly (1.x/2.x) | 0.24.0              | 0.24.1
+[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.25.0           | 0.17.0  | nightly (1.x/2.x) | 0.25.0              | 0.25.0
+[0.25.0](https://github.com/tensorflow/model-analysis/blob/v0.25.0/RELEASE.md)       | 2.25.0           | 0.17.0  | 1.15 / 2.3        | 0.25.0              | 0.25.0
 [0.24.3](https://github.com/tensorflow/model-analysis/blob/v0.24.3/RELEASE.md)       | 2.24.0           | 0.17.0  | 1.15 / 2.3        | 0.24.0              | 0.24.1
 [0.24.2](https://github.com/tensorflow/model-analysis/blob/v0.24.2/RELEASE.md)       | 2.23.0           | 0.17.0  | 1.15 / 2.3        | 0.24.0              | 0.24.0
 [0.24.1](https://github.com/tensorflow/model-analysis/blob/v0.24.1/RELEASE.md)       | 2.23.0           | 0.17.0  | 1.15 / 2.3        | 0.24.0              | 0.24.0

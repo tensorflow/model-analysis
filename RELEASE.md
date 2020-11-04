@@ -4,6 +4,16 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other changes
+
+## Breaking changes
+
+## Deprecations
+
+# Version 0.25.0
+
+## Major Features and Improvements
+
 *   Added support for reading and writing metrics, plots and validation results
     using Apache Parquet.
 *   Updated the FI indicator slicing selection UI.
@@ -38,6 +48,9 @@
     examples.
 *   Fix issue with using NDCG metric without binarization settings.
 *   Fix incorrect computation when example weight is set to zero.
+*   Depends on `apache-beam[gcp]>=2.25,<3`.
+*   Depends on `tensorflow-metadata>=0.25.0,<0.26.0`.
+*   Depends on `tfx-bsl>=0.25.0,<0.26.0`.
 
 ## Breaking changes
 
