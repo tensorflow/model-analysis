@@ -26,8 +26,8 @@ from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.evaluators import analysis_table_evaluator
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor
-from tensorflow_model_analysis.extractors import feature_extractor
-from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.extractors import legacy_feature_extractor
+from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
@@ -70,9 +70,9 @@ def BuildAnalysisTable(  # pylint: disable=invalid-name
 
   if not extractors:
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model,
-                                           desired_batch_size),
-        feature_extractor.FeatureExtractor(),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model,
+                                                  desired_batch_size),
+        legacy_feature_extractor.FeatureExtractor(),
         slice_key_extractor.SliceKeyExtractor(slice_spec)
     ]
   if not evaluators:

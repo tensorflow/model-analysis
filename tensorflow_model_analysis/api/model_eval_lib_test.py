@@ -35,13 +35,13 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_line
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_regressor
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
-from tensorflow_model_analysis.evaluators import query_based_metrics_evaluator
+from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
+from tensorflow_model_analysis.evaluators import legacy_query_based_metrics_evaluator
+from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.evaluators.query_metrics import ndcg as legacy_ndcg
 from tensorflow_model_analysis.evaluators.query_metrics import query_statistics
-from tensorflow_model_analysis.extractors import feature_extractor
-from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.extractors import legacy_feature_extractor
+from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import metric_specs
@@ -230,9 +230,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model_location, example_weight_key='age')
     extractors_with_feature_extraction = [
-        predict_extractor.PredictExtractor(
+        legacy_predict_extractor.PredictExtractor(
             eval_shared_model, desired_batch_size=3, materialize=False),
-        feature_extractor.FeatureExtractor(
+        legacy_feature_extractor.FeatureExtractor(
             extract_source=constants.INPUT_KEY,
             extract_dest=constants.FEATURES_PREDICTIONS_LABELS_KEY),
         slice_key_extractor.SliceKeyExtractor(
@@ -392,7 +392,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     extractors = model_eval_lib.default_extractors(
         eval_shared_model=eval_shared_model,
         eval_config=eval_config,
-        custom_predict_extractor=predict_extractor.PredictExtractor(
+        custom_predict_extractor=legacy_predict_extractor.PredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config))
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
@@ -874,7 +874,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         data_location=data_location,
         output_path=output_path,
         evaluators=[
-            metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+            metrics_plots_and_validations_evaluator
+            .MetricsPlotsAndValidationsEvaluator(
                 eval_config=eval_config, eval_shared_model=eval_shared_model)
         ],
         schema=schema)
@@ -933,9 +934,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         data_location=data_location,
         output_path=self._getTempDir(),
         evaluators=[
-            metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
+            legacy_metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
                 eval_shared_model),
-            query_based_metrics_evaluator.QueryBasedMetricsEvaluator(
+            legacy_query_based_metrics_evaluator.QueryBasedMetricsEvaluator(
                 query_id='language',
                 prediction_key='logistic',
                 combine_fns=[

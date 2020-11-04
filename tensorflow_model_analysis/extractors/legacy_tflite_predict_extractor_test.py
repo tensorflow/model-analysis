@@ -12,12 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfjs predict extractor."""
+"""Tests for tflite predict extractor."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import tempfile
 
 from absl.testing import parameterized
@@ -28,12 +29,11 @@ import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.extractors import tfjs_predict_extractor
-from tensorflowjs.converters import converter
+from tensorflow_model_analysis.extractors import legacy_tflite_predict_extractor as tflite_predict_extractor
 
 
-class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
-                               parameterized.TestCase):
+class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
+                                 parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('single_model_single_output_batched_examples_batched_inputs', False,
@@ -68,10 +68,10 @@ class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
        False, True),
       ('mult_model_multi_output_single_examples_not_batched_inputs', True, True,
        False, False))
-  def testTFJSPredictExtractorWithSingleOutputModel(self, multi_model,
-                                                    multi_output,
-                                                    batch_examples,
-                                                    batch_inputs):
+  def testTFlitePredictExtractorWithSingleOutputModel(self, multi_model,
+                                                      multi_output,
+                                                      batch_examples,
+                                                      batch_inputs):
     input1 = tf.keras.layers.Input(shape=(1,), name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), name='input2')
     inputs = [input1, input2]
@@ -104,38 +104,33 @@ class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
     dataset = dataset.shuffle(buffer_size=1).repeat().batch(2)
     model.fit(dataset, steps_per_epoch=1)
 
-    src_model_path = tempfile.mkdtemp()
-    model.save(src_model_path)
+    converter = tf.compat.v2.lite.TFLiteConverter.from_keras_model(model)
+    tflite_model = converter.convert()
 
-    dst_model_path = tempfile.mkdtemp()
-    converter.convert([
-        '--input_format=tf_saved_model',
-        '--saved_model_tags=serve',
-        '--signature_name=serving_default',
-        src_model_path,
-        dst_model_path,
-    ])
+    tflite_model_dir = tempfile.mkdtemp()
+    with tf.io.gfile.GFile(os.path.join(tflite_model_dir, 'tflite'), 'wb') as f:
+      f.write(tflite_model)
 
-    model_specs = [config.ModelSpec(name='model1', model_type='tf_js')]
+    model_specs = [config.ModelSpec(name='model1', model_type='tf_lite')]
     if multi_model:
-      model_specs.append(config.ModelSpec(name='model2', model_type='tf_js'))
+      model_specs.append(config.ModelSpec(name='model2', model_type='tf_lite'))
 
     eval_config = config.EvalConfig(model_specs=model_specs)
     eval_shared_models = [
         self.createTestEvalSharedModel(
             model_name='model1',
-            eval_saved_model_path=dst_model_path,
-            model_type='tf_js')
+            eval_saved_model_path=tflite_model_dir,
+            model_type='tf_lite')
     ]
     if multi_model:
       eval_shared_models.append(
           self.createTestEvalSharedModel(
               model_name='model2',
-              eval_saved_model_path=dst_model_path,
-              model_type='tf_js'))
+              eval_saved_model_path=tflite_model_dir,
+              model_type='tf_lite'))
 
     desired_batch_size = 2 if batch_examples else None
-    predictor = tfjs_predict_extractor.TFJSPredictExtractor(
+    predictor = tflite_predict_extractor.TFLitePredictExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_models,
         desired_batch_size=desired_batch_size)
@@ -176,6 +171,9 @@ class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
           for item in got:
             self.assertIn(constants.PREDICTIONS_KEY, item)
 
+            # TODO(dzats): TFLite seems to currently rename all outputs to
+            # Identity*. Update this test to check for output1 and output2
+            # when this changes.
             if multi_model:
               self.assertIn('model1', item[constants.PREDICTIONS_KEY])
               self.assertIn('model2', item[constants.PREDICTIONS_KEY])

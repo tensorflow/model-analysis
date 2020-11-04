@@ -30,7 +30,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tfx_bsl.coders import example_coder
 
-INPUT_EXTRACTOR_STAGE_NAME = 'ExtractInputs'
+_INPUT_EXTRACTOR_STAGE_NAME = 'ExtractInputs'
 
 
 def InputExtractor(eval_config: config.EvalConfig) -> extractor.Extractor:
@@ -65,7 +65,7 @@ def InputExtractor(eval_config: config.EvalConfig) -> extractor.Extractor:
   """
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
-      stage_name=INPUT_EXTRACTOR_STAGE_NAME,
+      stage_name=_INPUT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractInputs(eval_config=eval_config))
 
 

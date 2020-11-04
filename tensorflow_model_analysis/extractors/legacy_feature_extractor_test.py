@@ -26,7 +26,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.extractors import feature_extractor
+from tensorflow_model_analysis.extractors import legacy_feature_extractor as feature_extractor
 
 
 class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):

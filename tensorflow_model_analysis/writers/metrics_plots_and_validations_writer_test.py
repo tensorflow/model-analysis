@@ -33,11 +33,11 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
+from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
+from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.extractors import batched_input_extractor
 from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
-from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import metric_types
@@ -1301,7 +1301,8 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_models)
     ]
     output_paths = {
@@ -1442,11 +1443,12 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 num_buckets=2)
         ])
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model),
         slice_key_extractor.SliceKeyExtractor()
     ]
     evaluators = [
-        metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(eval_shared_model)
+        legacy_metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
+            eval_shared_model)
     ]
     output_paths = {
         constants.METRICS_KEY: metrics_file,
@@ -1587,12 +1589,13 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 num_buckets=2)
         ])
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model),
         slice_key_extractor.SliceKeyExtractor(
             eval_config=eval_config, materialize=False)
     ]
     evaluators = [
-        metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(eval_shared_model)
+        legacy_metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
+            eval_shared_model)
     ]
     output_paths = {
         constants.METRICS_KEY: metrics_file,

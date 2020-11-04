@@ -71,7 +71,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
+from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
@@ -287,7 +287,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
           | 'CreateExamples' >> beam.Create(serialized_examples)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> Extract(extractors=extractors)
-          | 'ComputeMetricsAndPlots' >> metrics_and_plots_evaluator
+          | 'ComputeMetricsAndPlots' >> legacy_metrics_and_plots_evaluator
           .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
       # pylint: enable=no-value-for-parameter
 
@@ -378,7 +378,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         examples_pcollection
         | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
         | 'Extract' >> Extract(extractors=extractors)
-        | 'ComputeMetricsAndPlots' >> metrics_and_plots_evaluator
+        | 'ComputeMetricsAndPlots' >> legacy_metrics_and_plots_evaluator
         .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
     # pylint: enable=no-value-for-parameter
 

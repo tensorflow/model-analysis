@@ -60,7 +60,7 @@ _DEFAULT_NUM_BOOTSTRAP_SAMPLES = 20
 _COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT = 8
 
 
-def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
+def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
     eval_config: config.EvalConfig,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     metrics_key: Text = constants.METRICS_KEY,
@@ -94,7 +94,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
   return evaluator.Evaluator(
       stage_name='EvaluateMetricsAndPlots',
       run_after=run_after,
-      ptransform=_EvaluateMetricsAndPlots(
+      ptransform=_EvaluateMetricsPlotsAndValidations(
           eval_config=eval_config,
           eval_shared_models=eval_shared_models,
           metrics_key=metrics_key,
@@ -749,7 +749,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Any)
-def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
+def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_config: config.EvalConfig,
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
@@ -758,7 +758,7 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     validations_key: Text = constants.VALIDATIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
     random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
-  """Evaluates metrics and plots.
+  """Evaluates metrics, plots, and validations.
 
   Args:
     extracts: PCollection of Extracts. The extracts must contain a list of

@@ -28,11 +28,11 @@ from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
-from tensorflow_model_analysis.evaluators import query_based_metrics_evaluator
+from tensorflow_model_analysis.evaluators import legacy_query_based_metrics_evaluator as query_based_metrics_evaluator
 from tensorflow_model_analysis.evaluators.query_metrics import min_label_position
 from tensorflow_model_analysis.evaluators.query_metrics import ndcg
 from tensorflow_model_analysis.evaluators.query_metrics import query_statistics
-from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 
 
@@ -122,7 +122,7 @@ class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir)
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model),
         slice_key_extractor.SliceKeyExtractor()
     ]
 

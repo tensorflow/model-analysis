@@ -24,9 +24,9 @@ from typing import Any, Dict, Optional, Text, Tuple
 import apache_beam as beam
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.evaluators import aggregate
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.evaluators import evaluator
+from tensorflow_model_analysis.evaluators import legacy_aggregate
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
@@ -155,7 +155,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       # plots if applicable.
       | 'ComputePerSliceMetrics' >>
       poisson_bootstrap.ComputeWithConfidenceIntervals(
-          aggregate.ComputePerSliceMetrics,
+          legacy_aggregate.ComputePerSliceMetrics,
           num_bootstrap_samples=(poisson_bootstrap.DEFAULT_NUM_BOOTSTRAP_SAMPLES
                                  if compute_confidence_intervals else 1),
           random_seed_for_testing=random_seed_for_testing,

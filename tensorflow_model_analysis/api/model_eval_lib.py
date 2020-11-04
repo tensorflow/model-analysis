@@ -37,16 +37,16 @@ from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.evaluators import evaluator
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
+from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
+from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.extractors import batched_input_extractor
 from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
 from tensorflow_model_analysis.extractors import extractor
-from tensorflow_model_analysis.extractors import input_extractor
-from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.extractors import legacy_input_extractor
+from tensorflow_model_analysis.extractors import legacy_predict_extractor
+from tensorflow_model_analysis.extractors import legacy_tfjs_predict_extractor
+from tensorflow_model_analysis.extractors import legacy_tflite_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
-from tensorflow_model_analysis.extractors import tfjs_predict_extractor
-from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -445,7 +445,7 @@ def default_extractors(  # pylint: disable=invalid-name
       eval_config = config.EvalConfig(
           slicing_specs=[s.to_proto() for s in slice_spec])
     return [
-        custom_predict_extractor or predict_extractor.PredictExtractor(
+        custom_predict_extractor or legacy_predict_extractor.PredictExtractor(
             eval_shared_model, materialize=materialize),
         slice_key_extractor.SliceKeyExtractor(
             eval_config=eval_config, materialize=materialize)
@@ -465,9 +465,9 @@ def default_extractors(  # pylint: disable=invalid-name
       # TODO(b/163889779): Convert TFLite extractor to operate on batched
       # extracts. Then we can remove the input extractor.
       return [
-          input_extractor.InputExtractor(eval_config=eval_config),
+          legacy_input_extractor.InputExtractor(eval_config=eval_config),
           (custom_predict_extractor or
-           tflite_predict_extractor.TFLitePredictExtractor(
+           legacy_tflite_predict_extractor.TFLitePredictExtractor(
                eval_config=eval_config, eval_shared_model=eval_shared_model)),
           slice_key_extractor.SliceKeyExtractor(
               eval_config=eval_config, materialize=materialize)
@@ -479,9 +479,9 @@ def default_extractors(  # pylint: disable=invalid-name
 
     if model_types == set([constants.TF_JS]):
       return [
-          input_extractor.InputExtractor(eval_config=eval_config),
+          legacy_input_extractor.InputExtractor(eval_config=eval_config),
           (custom_predict_extractor or
-           tfjs_predict_extractor.TFJSPredictExtractor(
+           legacy_tfjs_predict_extractor.TFJSPredictExtractor(
                eval_config=eval_config, eval_shared_model=eval_shared_model)),
           slice_key_extractor.SliceKeyExtractor(
               eval_config=eval_config, materialize=materialize)
@@ -495,7 +495,7 @@ def default_extractors(  # pylint: disable=invalid-name
           all(eval_constants.EVAL_TAG in m.model_loader.tags
               for m in eval_shared_models)):
       return [
-          custom_predict_extractor or predict_extractor.PredictExtractor(
+          custom_predict_extractor or legacy_predict_extractor.PredictExtractor(
               eval_shared_model,
               materialize=materialize,
               eval_config=eval_config),
@@ -590,7 +590,7 @@ def default_evaluators(  # pylint: disable=invalid-name
       if eval_config.options.HasField('min_slice_size'):
         min_slice_size = eval_config.options.min_slice_size.value
     return [
-        metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
+        legacy_metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
             eval_shared_model,
             compute_confidence_intervals=compute_confidence_intervals,
             min_slice_size=min_slice_size,
@@ -599,7 +599,8 @@ def default_evaluators(  # pylint: disable=invalid-name
     ]
   else:
     return [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config,
             eval_shared_model=eval_shared_model,
             schema=schema,

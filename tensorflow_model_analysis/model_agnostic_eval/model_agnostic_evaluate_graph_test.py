@@ -26,7 +26,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
+from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_evaluate_graph
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_extractor
@@ -216,7 +216,7 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
           | 'Create Examples' >> beam.Create(serialized_examples)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
-          | 'ComputeMetricsAndPlots' >> metrics_and_plots_evaluator
+          | 'ComputeMetricsAndPlots' >> legacy_metrics_and_plots_evaluator
           .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
 
       # Verify our metrics are properly generated per slice.

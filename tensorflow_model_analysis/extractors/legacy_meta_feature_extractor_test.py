@@ -24,7 +24,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.extractors import meta_feature_extractor
+from tensorflow_model_analysis.extractors import legacy_meta_feature_extractor as meta_feature_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 

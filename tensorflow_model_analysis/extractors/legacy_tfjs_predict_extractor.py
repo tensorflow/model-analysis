@@ -39,7 +39,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors.tfjs_predict_extractor_util import get_tfjs_binary
 
-TFJS_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFJSPredictions'
+_TFJS_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFJSPredictions'
 
 _MODELS_SUBDIR = 'Models'
 _EXAMPLES_SUBDIR = 'Input_Examples'
@@ -286,7 +286,7 @@ def TFJSPredictExtractor(  # pylint: disable=invalid-name
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
-      stage_name=TFJS_PREDICT_EXTRACTOR_STAGE_NAME,
+      stage_name=_TFJS_PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractTFJSPredictions(
           eval_config=eval_config,
           eval_shared_models={m.model_name: m for m in eval_shared_models},

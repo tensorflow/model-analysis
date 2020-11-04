@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test for MetricsAndPlotsEvaluator."""
+"""Test for MetricsPlotsAndValidationsEvaluator."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -31,10 +31,10 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import dnn_clas
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
+from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.extractors import batched_input_extractor
 from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
-from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import calibration
@@ -61,7 +61,8 @@ def _addExampleCountMetricCallback(  # pylint: disable=invalid-name
   return metric_ops
 
 
-class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
+class MetricsPlotsAndValidationsEvaluatorTest(
+    testutil.TensorflowModelAnalysisTest):
 
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
@@ -218,7 +219,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_models)
     ]
 
@@ -418,7 +420,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_models)
     ]
 
@@ -482,12 +485,13 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir)
     extractors = [
-        predict_extractor.PredictExtractor(
+        legacy_predict_extractor.PredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -606,7 +610,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -725,7 +730,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -913,7 +919,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_models)
     ]
 
@@ -981,7 +988,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -1072,7 +1080,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -1161,7 +1170,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -1253,7 +1263,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -1454,7 +1465,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
     with beam.Pipeline() as pipeline:
@@ -1523,7 +1535,8 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -1667,12 +1680,13 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=export_dir,
         add_metrics_callbacks=[_addExampleCountMetricCallback])
     extractors = [
-        predict_extractor.PredictExtractor(
+        legacy_predict_extractor.PredictExtractor(
             eval_shared_model, eval_config=eval_config),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -1773,12 +1787,13 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=export_dir,
         add_metrics_callbacks=[_addExampleCountMetricCallback])
     extractors = [
-        predict_extractor.PredictExtractor(
+        legacy_predict_extractor.PredictExtractor(
             eval_shared_model, eval_config=eval_config),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 
@@ -1965,12 +1980,13 @@ class MetricsAndPlotsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
             model_name='baseline', eval_saved_model_path=export_dir2),
     ]
     extractors = [
-        predict_extractor.PredictExtractor(
+        legacy_predict_extractor.PredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config, eval_shared_model=eval_shared_model)
     ]
 

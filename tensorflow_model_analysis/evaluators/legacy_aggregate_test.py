@@ -25,7 +25,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
-from tensorflow_model_analysis.evaluators import aggregate
+from tensorflow_model_analysis.evaluators import legacy_aggregate as aggregate
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
 
 

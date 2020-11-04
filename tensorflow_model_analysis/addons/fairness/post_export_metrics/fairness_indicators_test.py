@@ -32,7 +32,7 @@ from tensorflow_model_analysis.api import tfma_unit
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
+from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -79,7 +79,7 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
           | 'ComputeMetricsAndPlots' >>
-          metrics_and_plots_evaluator.ComputeMetricsAndPlots(
+          legacy_metrics_and_plots_evaluator.ComputeMetricsAndPlots(
               eval_shared_model=eval_shared_model,
               compute_confidence_intervals=self.compute_confidence_intervals,
               random_seed_for_testing=self.deterministic_test_seed))

@@ -32,9 +32,9 @@ from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
 from tensorflow_model_analysis.extractors import extractor
-from tensorflow_model_analysis.extractors import feature_extractor
+from tensorflow_model_analysis.extractors import legacy_feature_extractor
 
-PREDICT_EXTRACTOR_STAGE_NAME = 'Predict'
+_PREDICT_EXTRACTOR_STAGE_NAME = 'Predict'
 
 _FEATURES_PREDICTIONS_LABELS_KEY_MAP = {
     eval_saved_model_constants.FEATURES_NAME: constants.FEATURES_KEY,
@@ -74,7 +74,7 @@ def PredictExtractor(
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
-      stage_name=PREDICT_EXTRACTOR_STAGE_NAME,
+      stage_name=_PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_TFMAPredict(
           eval_shared_models={m.model_name: m for m in eval_shared_models},
           desired_batch_size=desired_batch_size,
@@ -210,7 +210,7 @@ def _TFMAPredict(  # pylint: disable=invalid-name
     for m in eval_shared_models.values():
       if m.additional_fetches:
         additional_fetches.extend(m.additional_fetches)
-    return extracts | 'ExtractFeatures' >> feature_extractor._ExtractFeatures(  # pylint: disable=protected-access
+    return extracts | 'ExtractFeatures' >> legacy_feature_extractor._ExtractFeatures(  # pylint: disable=protected-access
         additional_extracts=additional_fetches or None)
 
   return extracts

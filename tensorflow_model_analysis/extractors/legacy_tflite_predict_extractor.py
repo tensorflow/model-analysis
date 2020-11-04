@@ -32,7 +32,7 @@ from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 
-TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
+_TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
 
 
 # TODO(b/149981535) Determine if we should merge with RunInference.
@@ -216,7 +216,7 @@ def TFLitePredictExtractor(
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
-      stage_name=TFLITE_PREDICT_EXTRACTOR_STAGE_NAME,
+      stage_name=_TFLITE_PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractTFLitePredictions(
           eval_config=eval_config,
           eval_shared_models={m.model_name: m for m in eval_shared_models},

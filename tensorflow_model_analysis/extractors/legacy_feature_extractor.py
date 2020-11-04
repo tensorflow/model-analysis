@@ -33,7 +33,7 @@ from tensorflow_model_analysis import util
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.extractors import extractor
 
-FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
+_FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
 
 
 def FeatureExtractor(
@@ -43,7 +43,7 @@ def FeatureExtractor(
     extract_dest: Text = constants.MATERIALIZE_COLUMNS):
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
-      stage_name=FEATURE_EXTRACTOR_STAGE_NAME,
+      stage_name=_FEATURE_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractFeatures(
           additional_extracts=additional_extracts,
           excludes=excludes,

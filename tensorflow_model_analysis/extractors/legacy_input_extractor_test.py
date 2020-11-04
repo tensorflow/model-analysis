@@ -25,7 +25,7 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.extractors import input_extractor
+from tensorflow_model_analysis.extractors import legacy_input_extractor as input_extractor
 
 
 class InputExtractorTest(testutil.TensorflowModelAnalysisTest):

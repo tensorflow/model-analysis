@@ -52,6 +52,11 @@
 
 ## Deprecations
 
+*   `tfma.extractors.FeatureExtractor`, `tfma.extractors.PredictExtractor`,
+    `tfma.extractors.InputExtractor`, and
+    `tfma.evaluators.MetricsAndPlotsEvaluator` are deprecated and may be
+    replaced with newer versions in upcoming releases.
+
 # Version 0.24.3
 
 ## Major Features and Improvements

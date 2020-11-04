@@ -30,8 +30,8 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_no_labels
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator
-from tensorflow_model_analysis.extractors import predict_extractor
+from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator as metrics_and_plots_evaluator
+from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics as metric_fns
@@ -94,7 +94,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=[_addExampleCountMetricCallback])
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model),
         slice_key_extractor.SliceKeyExtractor()
     ]
 
@@ -143,7 +143,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=[_addExampleCountMetricCallback])
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model),
         slice_key_extractor.SliceKeyExtractor([
             slicer.SingleSliceSpec(),
             slicer.SingleSliceSpec(columns=['slice_key'])
@@ -233,7 +233,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=[_addExampleCountMetricCallback])
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model),
         slice_key_extractor.SliceKeyExtractor([
             slicer.SingleSliceSpec(),
             slicer.SingleSliceSpec(columns=['slice_key'])
@@ -331,7 +331,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             post_export_metrics.example_weight(example_weight_key='age')
         ])
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model),
         slice_key_extractor.SliceKeyExtractor()
     ]
 
@@ -392,7 +392,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             post_export_metrics.example_weight(example_weight_key='prediction')
         ])
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model),
         slice_key_extractor.SliceKeyExtractor()
     ]
 
@@ -441,7 +441,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             post_export_metrics.auc_plots()
         ])
     extractors = [
-        predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(eval_shared_model),
         slice_key_extractor.SliceKeyExtractor()
     ]
 
