@@ -32,6 +32,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 from tensorflow_metadata.proto.v0 import schema_pb2
+from google.protobuf import text_format
 
 # LINT.IfChange
 
@@ -254,6 +255,10 @@ class MetricKey(
 
   def __hash__(self):
     return hash(tuple(self))
+
+  def __str__(self):
+    return text_format.MessageToString(
+        self.to_proto(), as_one_line=True, force_colon=True)
 
   def to_proto(self) -> metrics_for_slice_pb2.MetricKey:
     """Converts key to proto."""

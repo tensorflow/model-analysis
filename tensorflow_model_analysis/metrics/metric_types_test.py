@@ -25,6 +25,23 @@ from tensorflow_model_analysis.metrics import metric_types
 
 class MetricTypesTest(tf.test.TestCase):
 
+  def testMetricKeyStrForMetricKeyWithOneField(self):
+    self.assertEqual(
+        str(metric_types.MetricKey(name='metric_name')), 'name: "metric_name"')
+
+  def testMetricKeyStrForMetricKeyWithAllFields(self):
+    self.assertEqual(
+        str(
+            metric_types.MetricKey(
+                name='metric_name',
+                model_name='model_name',
+                output_name='output_name',
+                sub_key=metric_types.SubKey(class_id=1),
+                is_diff=True)),
+        'name: "metric_name" output_name: "output_name" ' +
+        'sub_key: { class_id: { value: 1 } } model_name: "model_name" ' +
+        'is_diff: true')
+
   def testMetricKeyFromProto(self):
     metric_keys = [
         metric_types.MetricKey(name='metric_name'),

@@ -18,10 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import pandas as pd
+from pandas._testing import assert_frame_equal
+
 import tensorflow as tf
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import auto_slicing_util
+from tensorflow_model_analysis.slicer import slicer_lib
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import statistics_pb2
@@ -685,6 +689,161 @@ class AutoSlicingUtilTest(tf.test.TestCase):
     with self.assertRaises(AssertionError):
       auto_slicing_util._is_significant_slice(0.8, 0, 100, 0.9, 0, 1000,
                                               'LOWER', 0.01)
+
+  def test_get_slices_as_dataframe(self):
+    input_slices = [
+        auto_slicing_util.SliceComparisonResult(
+            slice_key=(('native-country', 'United-States'),),
+            num_examples=29170,
+            slice_metric=0.09,
+            base_metric=0.087,
+            p_value=0,
+            effect_size=0.46,
+            raw_slice_metrics=text_format.Parse(
+                """
+                slice_key {
+                  single_slice_keys {
+                    column: "native-country"
+                    bytes_value: "United-States"
+                    }
+                }
+                metric_keys_and_values {
+                  key { name: "false_positives" }
+                  value {
+                    bounded_value {
+                      lower_bound { value: 1754.6514199722158 }
+                      upper_bound { value: 2092.488580027784 }
+                      value { value: 1923.57 }
+                      methodology: POISSON_BOOTSTRAP
+                    }
+                    confidence_interval {
+                      lower_bound { value: 1754.6514199722158 }
+                      upper_bound { value: 2092.488580027784 }
+                      t_distribution_value {
+                        sample_mean { value: 1923.57 }
+                        sample_standard_deviation { value: 85.13110418664061 }
+                        sample_degrees_of_freedom { value: 99 }
+                        unsampled_value { value: 1943.0 }
+                      }
+                    }
+                  }
+                }
+                metric_keys_and_values {
+                  key { name: "false_negatives" }
+                  value {
+                    bounded_value {
+                      lower_bound { value: 3595.413107983637 }
+                      upper_bound { value: 4195.886892016363 }
+                      value { value: 3895.65 }
+                      methodology: POISSON_BOOTSTRAP
+                    }
+                    confidence_interval {
+                      lower_bound { value: 3595.413107983637 }
+                      upper_bound { value: 4195.886892016363 }
+                      t_distribution_value {
+                        sample_mean { value: 3895.65 }
+                        sample_standard_deviation { value: 151.31253252729257 }
+                        sample_degrees_of_freedom { value: 99 }
+                        unsampled_value { value: 3935.0 }
+                      }
+                    }
+                  }
+                }""", metrics_for_slice_pb2.MetricsForSlice())),
+        auto_slicing_util.SliceComparisonResult(
+            slice_key=(('age', '[58.0, 90.0)'),),
+            num_examples=2999,
+            slice_metric=0.09,
+            base_metric=0.0875,
+            p_value=7.8,
+            effect_size=0.98,
+            raw_slice_metrics=text_format.Parse(
+                """
+                slice_key {
+                  single_slice_keys {
+                    column: "age"
+                    bytes_value: "[58.0, 90.0)"
+                  }
+                }
+                metric_keys_and_values {
+                  key { name: "false_positives" }
+                  value {
+                    bounded_value {
+                      lower_bound { value: 167.54646972321814 }
+                      upper_bound { value: 236.37353027678188 }
+                      value { value: 201.96 }
+                      methodology: POISSON_BOOTSTRAP
+                    }
+                    confidence_interval {
+                      lower_bound { value: 167.54646972321814 }
+                      upper_bound { value: 236.37353027678188 }
+                      t_distribution_value {
+                        sample_mean { value: 201.96 }
+                        sample_standard_deviation { value: 17.343632837435358 }
+                        sample_degrees_of_freedom { value: 99 }
+                        unsampled_value { value: 204.0 }
+                      }
+                    }
+                  }
+                }
+                metric_keys_and_values {
+                  key { name: "false_negatives" }
+                  value {
+                    bounded_value {
+                      lower_bound { value: 486.4402337348782 }
+                      upper_bound { value: 610.479766265122 }
+                      value { value: 548.46 }
+                      methodology: POISSON_BOOTSTRAP
+                    }
+                    confidence_interval {
+                      lower_bound { value: 486.4402337348782 }
+                      upper_bound { value: 610.479766265122 }
+                      t_distribution_value {
+                        sample_mean { value: 548.46 }
+                        sample_standard_deviation { value: 31.256544914589938 }
+                        sample_degrees_of_freedom { value: 99 }
+                        unsampled_value { value: 554.0 }
+                      }
+                    }
+                  }
+                }""", metrics_for_slice_pb2.MetricsForSlice()))
+    ]
+    additional_metric_keys = [
+        metric_types.MetricKey('false_positives'),
+        metric_types.MetricKey('false_negatives')
+    ]
+    expected_dataframe_data = [{
+        'Slice': slicer_lib.stringify_slice_key(input_slices[0].slice_key),
+        'Size': input_slices[0].num_examples,
+        'Slice metric': input_slices[0].slice_metric,
+        'Base metric': input_slices[0].base_metric,
+        'P-Value': input_slices[0].p_value,
+        'Effect size': input_slices[0].effect_size,
+        str(additional_metric_keys[0]): 1923.57,
+        str(additional_metric_keys[1]): 3895.65
+    }, {
+        'Slice': slicer_lib.stringify_slice_key(input_slices[1].slice_key),
+        'Size': input_slices[1].num_examples,
+        'Slice metric': input_slices[1].slice_metric,
+        'Base metric': input_slices[1].base_metric,
+        'P-Value': input_slices[1].p_value,
+        'Effect size': input_slices[1].effect_size,
+        str(additional_metric_keys[0]): 201.96,
+        str(additional_metric_keys[1]): 548.46
+    }]
+    expected_dataframe_column_labels = [
+        'Slice', 'Size', 'Slice metric', 'Base metric', 'P-Value',
+        'Effect size',
+        str(additional_metric_keys[0]),
+        str(additional_metric_keys[1])
+    ]
+    expected_dataframe = pd.DataFrame(
+        expected_dataframe_data, columns=expected_dataframe_column_labels)
+    expected_dataframe.set_index('Slice', inplace=True)
+
+    actual_dataframe = auto_slicing_util.get_slices_as_dataframe(
+        input_slices, additional_metric_keys)
+
+    assert_frame_equal(actual_dataframe, expected_dataframe)
 
 
 if __name__ == '__main__':

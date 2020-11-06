@@ -408,21 +408,22 @@ def find_top_slices(
 
 def get_slices_as_dataframe(
     slices: List[SliceComparisonResult],
-    additional_metric_names: Optional[List[Text]] = None) -> pd.DataFrame:
+    additional_metric_keys: Optional[List[metric_types.MetricKey]] = None
+) -> pd.DataFrame:
   """Returns top slices as a dataframe.
 
   Args:
     slices: List of ordered slices.
-    additional_metric_names: An optional list of additional metric names to
-      display
+    additional_metric_keys: An optional list of additional metric keys to
+      display.
 
   Returns:
     Dataframe containing information about the slices.
   """
-  rows = []
+  dataframe_data = []
   for slice_info in slices:
     slice_metrics = _get_metrics_as_dict(slice_info.raw_slice_metrics)
-    row = {
+    row_data = {
         'Slice': slicer_lib.stringify_slice_key(slice_info.slice_key),
         'Size': slice_info.num_examples,
         'Slice metric': slice_info.slice_metric,
@@ -430,16 +431,21 @@ def get_slices_as_dataframe(
         'P-Value': slice_info.p_value,
         'Effect size': slice_info.effect_size
     }
-    if additional_metric_names:
-      for metric_key in additional_metric_names:
-        row[metric_key] = slice_metrics[metric_key].unsampled_value
-    rows.append(row)
+    if additional_metric_keys:
+      for metric_key in additional_metric_keys:
+        # The MetricKeys are converted to strings for the column names since
+        # all of the other column names in the dataframe are strings.
+        row_data[str(metric_key)] = slice_metrics[metric_key].unsampled_value
+    dataframe_data.append(row_data)
 
-  ordered_columns = [
+  # The column labels are used to ensure that the order of the columns is always
+  # the same.
+  ordered_column_labels = [
       'Slice', 'Size', 'Slice metric', 'Base metric', 'P-Value', 'Effect size'
   ]
-  if additional_metric_names:
-    ordered_columns.extend(additional_metric_names)
-  dataframe = pd.DataFrame(rows, columns=ordered_columns)
+  if additional_metric_keys:
+    ordered_column_labels.extend(
+        [str(metric_key) for metric_key in additional_metric_keys])
+  dataframe = pd.DataFrame(dataframe_data, columns=ordered_column_labels)
   dataframe.set_index('Slice', inplace=True)
   return dataframe
