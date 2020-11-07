@@ -33,6 +33,8 @@ from tensorflow_model_analysis.eval_saved_model import constants as eval_constan
 from tensorflow_model_analysis.eval_saved_model import load
 from tfx_bsl.tfxio import tensor_adapter
 
+from tensorflow_metadata.proto.v0 import schema_pb2
+
 # TODO(b/162075791): Need to load tensorflow_ranking and tensorflow_text for
 # models that use those ops.
 try:
@@ -259,7 +261,7 @@ def get_callable(model: Any,
     if hasattr(model, signature_name):
       fn = getattr(model, signature_name)
       if is_callable_fn(fn):
-        return model
+        return fn
     if required:
       raise ValueError('{} not found in model signatures: {}'.format(
           signature_name, model.signatures))
@@ -333,70 +335,29 @@ def get_input_specs(model: Any,
   return None
 
 
-def rebatch_by_input_names(
-    batch_of_extracts: List[types.Extracts],
-    input_names: List[Text],
-    input_specs: Optional[Dict[Text, tf.TypeSpec]] = None) -> Dict[Text, Any]:
-  """Converts a batch of extracts into multiple batches keyed by input names.
-
-  Args:
-    batch_of_extracts: Batch of extracts (one per example).
-    input_names: List of input names to search for features under.
-    input_specs: Optional list of type specs associated with inputs.
-
-  Returns:
-    Dict of batch aligned features keyed by input (feature) name.
-  """
-  # TODO(b/138474171): Make this code more efficient.
-  if input_specs is None:
-    input_specs = {}
-  inputs = collections.defaultdict(list)
-  found = {}
-  for name in input_names:
-    for extract in batch_of_extracts:
-      # If features key exist, use that for features, else use input_key
-      if constants.FEATURES_KEY in extract:
-        input_features = extract[constants.FEATURES_KEY]
-      else:
-        input_features = extract[constants.INPUT_KEY]
-      if isinstance(input_features, dict):
-        value = None
-        if name in input_features:
-          found[name] = True
-          value = input_features[name]
-        # Some keras models prepend '_input' to the names of the inputs
-        # so try under '<name>_input' as well.
-        elif (name.endswith(KERAS_INPUT_SUFFIX) and
-              name[:-len(KERAS_INPUT_SUFFIX)] in input_features):
-          found[name] = True
-          value = input_features[name[:-len(KERAS_INPUT_SUFFIX)]]
-        if value is not None:
-          # If the expected input shape contains only the batch dimension
-          # then we need to flatten the np.array. This it to handle tf_hub
-          # cases where the inputs can have a single dimension.
-          if name in input_specs and len(input_specs[name].shape) == 1:
-            if value.size != 1:
-              raise ValueError(
-                  'model expects inputs with shape (?,), but shape is '
-                  '{}: input_names={} input_specs={}, extract={}'.format(
-                      value.shape, input_names, input_specs, extract))
-            inputs[name].append(value.item())
-          else:
-            inputs[name].append(value)
-      else:
-        # Check that we have not previously added inputs before.
-        if inputs:
+def input_specs_to_tensor_representations(
+    input_specs: Dict[Text,
+                      tf.TypeSpec]) -> tensor_adapter.TensorRepresentations:
+  """Converts input specs into tensor representations."""
+  tensor_representations = {}
+  for name, type_spec in input_specs.items():
+    tensor_representation = schema_pb2.TensorRepresentation()
+    if isinstance(type_spec, tf.SparseTensorSpec):
+      tensor_representation.varlen_sparse_tensor.column_name = name
+    elif isinstance(type_spec, tf.RaggedTensorSpec):
+      tensor_representation.ragged_tensor.feature_path.step.append(name)
+    else:
+      tensor_representation.dense_tensor.column_name = name
+      for dim in type_spec.shape[1:] if len(type_spec.shape) > 1 else []:
+        if dim is None:
           raise ValueError(
-              'only a single input was passed, but model expects multiple: '
-              'input_names = {}, extract={}'.format(input_names, extract))
-        found[name] = True
-        inputs[name].append(input_features)
-  if len(found) != len(input_names):
-    logging.log_first_n(
-        logging.WARNING,
-        'inputs do not match those expected by the model: input_names=%s, '
-        'found in extracts=%s', 1, input_names, found)
-  return inputs
+              'input {} contains unknown dimensions which are not supported: '
+              'type_spec={}, input_specs={}'.format(name, type_spec,
+                                                    input_specs))
+        tensor_representation.dense_tensor.shape.dim.append(
+            schema_pb2.FixedShape.Dim(size=dim))
+    tensor_representations[name] = tensor_representation
+  return tensor_representations
 
 
 def find_input_name_in_features(features: Set[Text],
@@ -412,40 +373,38 @@ def find_input_name_in_features(features: Set[Text],
   return None
 
 
-def filter_tensors_by_input_names(
-    tensors: Dict[Text,
-                  Any], input_names: List[Text]) -> Optional[Dict[Text, Any]]:
-  """Filter tensors by input names.
+def filter_by_input_names(d: Dict[Text, Any],
+                          input_names: List[Text]) -> Optional[Dict[Text, Any]]:
+  """Filters dict by input names.
 
-  In case we don't find the specified input name in the tensors and there
+  In case we don't find the specified input name in the dict and there
   exists only one input name, we assume we are feeding serialized examples to
   the model and return None.
 
   Args:
-    tensors: Dict of tensors.
+    d: Dict to filter.
     input_names: List of input names.
 
   Returns:
-    Filtered tensors.
+    Dict with keys matching input_names.
 
   Raises:
-    RuntimeError: When the specified input tensor cannot be found.
+    RuntimeError: When the specified input name cannot be found.
   """
   if not input_names:
     return None
   result = {}
-  tensor_keys = set(tensors.keys())
+  dict_keys = set(d.keys())
   for name in input_names:
-    tensor_name = find_input_name_in_features(tensor_keys, name)
-    if tensor_name is None:
+    input_name = find_input_name_in_features(dict_keys, name)
+    if input_name is None:
       # This should happen only in the case where the model takes serialized
       # examples as input. Else raise an exception.
       if len(input_names) == 1:
         return None
-      raise RuntimeError(
-          'Input tensor not found: {}. Existing keys: {}.'.format(
-              name, ','.join(tensors.keys())))
-    result[name] = tensors[tensor_name]
+      raise RuntimeError('Input not found: {}. Existing keys: {}.'.format(
+          name, ','.join(d.keys())))
+    result[name] = d[input_name]
   return result
 
 
@@ -732,21 +691,30 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
                                self._default_signature_names):
           required = bool(signature_names[model_name])
           input_specs = get_input_specs(model, signature_name, required) or {}
-          # If tensor_adaptor and input_specs exist then filter the inputs by
-          # input names (unlike estimators, keras does not accept unknown
-          # inputs). However, avoid getting the tensors if we appear to be
-          # feeding serialized examples to the callable.
-          if (self._tensor_adapter and input_specs and
-              not (len(input_specs) == 1 and
-                   next(iter(input_specs.values())).dtype == tf.string and
-                   find_input_name_in_features(
-                       set(self._tensor_adapter.TypeSpecs().keys()),
-                       next(iter(input_specs.keys()))) is None)):
-            inputs = filter_tensors_by_input_names(
-                self._tensor_adapter.ToBatchTensors(record_batch),
-                list(input_specs.keys()))
-          else:
-            inputs = None
+          inputs = None
+          # If input_specs exist then try to filter the inputs by the input
+          # names (unlike estimators, keras does not accept unknown inputs).
+          if input_specs:
+            adapter = self._tensor_adapter
+            if (not adapter and
+                set(input_specs.keys()) <= set(record_batch.schema.names)):
+              # Create adapter based on input_specs
+              tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+                  arrow_schema=record_batch.schema,
+                  tensor_representations=input_specs_to_tensor_representations(
+                      input_specs))
+              adapter = tensor_adapter.TensorAdapter(tensor_adapter_config)
+            # Avoid getting the tensors if we appear to be feeding serialized
+            # examples to the callable.
+            if adapter and not (len(input_specs) == 1 and next(
+                iter(input_specs.values())).dtype == tf.string and
+                                find_input_name_in_features(
+                                    set(adapter.TypeSpecs().keys()),
+                                    next(iter(input_specs.keys()))) is None):
+              # TODO(b/172376802): Update to pass input specs to ToBatchTensors.
+              inputs = filter_by_input_names(
+                  adapter.ToBatchTensors(record_batch),
+                  list(input_specs.keys()))
           if not inputs:
             # Assume serialized examples
             assert serialized_examples is not None, 'Raw examples not found.'
@@ -762,10 +730,10 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
             raise ValueError('Unable to find %s function needed to update %s' %
                              (signature_name, extracts_key))
           if isinstance(inputs, dict):
-            if signature is model:
-              outputs = signature(inputs)
-            else:
+            if hasattr(signature, 'structured_input_signature'):
               outputs = signature(**inputs)
+            else:
+              outputs = signature(inputs)
           else:
             outputs = signature(tf.constant(inputs, dtype=tf.string))
           for i in range(record_batch.num_rows):

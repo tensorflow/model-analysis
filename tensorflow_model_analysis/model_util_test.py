@@ -217,55 +217,13 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
       tf.saved_model.save(model, export_path, signatures=signatures)
     return export_path
 
-  def testRebatchByInputNames(self):
-    extracts = [{
-        'features': {
-            'a': np.array([1.1]),
-            'b': np.array([1.2])
-        }
-    }, {
-        'features': {
-            'a': np.array([2.1]),
-            'b': np.array([2.2])
-        }
-    }]
-    expected = {
-        'a': [np.array([1.1]), np.array([2.1])],
-        'b': [np.array([1.2]), np.array([2.2])]
-    }
-    got = model_util.rebatch_by_input_names(extracts, input_names=['a', 'b'])
-    self.assertEqual(expected, got)
-
-  def testRebatchByInputNamesSingleDimInput(self):
-    extracts = [{
-        'features': {
-            'a': np.array([1.1]),
-            'b': np.array([1.2])
-        }
-    }, {
-        'features': {
-            'a': np.array([2.1]),
-            'b': np.array([2.2])
-        }
-    }]
-    expected = {'a': [1.1, 2.1], 'b': [1.2, 2.2]}
-    input_specs = {
-        'a': tf.TensorSpec(shape=(2,)),
-        'b': tf.TensorSpec(shape=(2,))
-    }
-    got = model_util.rebatch_by_input_names(
-        extracts, input_names=['a', 'b'], input_specs=input_specs)
-    self.assertEqual(expected, got)
-    self.assertNotIsInstance(got['a'][0], np.ndarray)
-
-  def testFilterTensorsByInputNames(self):
+  def testFilterByInputNames(self):
     tensors = {
         'f1': tf.constant([[1.1], [2.1]], dtype=tf.float32),
         'f2': tf.constant([[1], [2]], dtype=tf.int64),
         'f3': tf.constant([['hello'], ['world']], dtype=tf.string)
     }
-    filtered_tensors = model_util.filter_tensors_by_input_names(
-        tensors, ['f1', 'f3'])
+    filtered_tensors = model_util.filter_by_input_names(tensors, ['f1', 'f3'])
     self.assertLen(filtered_tensors, 2)
     self.assertAllEqual(
         tf.constant([[1.1], [2.1]], dtype=tf.float32), filtered_tensors['f1'])
@@ -273,17 +231,16 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
         tf.constant([['hello'], ['world']], dtype=tf.string),
         filtered_tensors['f3'])
 
-  def testFilterTensorsByInputNamesKeras(self):
+  def testFilterByInputNamesKeras(self):
     tensors = {
         'f1': tf.constant([[1.1], [2.1]], dtype=tf.float32),
         'f2': tf.constant([[1], [2]], dtype=tf.int64),
         'f3': tf.constant([['hello'], ['world']], dtype=tf.string)
     }
-    filtered_tensors = model_util.filter_tensors_by_input_names(
-        tensors, [
-            'f1' + model_util.KERAS_INPUT_SUFFIX,
-            'f3' + model_util.KERAS_INPUT_SUFFIX
-        ])
+    filtered_tensors = model_util.filter_by_input_names(tensors, [
+        'f1' + model_util.KERAS_INPUT_SUFFIX,
+        'f3' + model_util.KERAS_INPUT_SUFFIX
+    ])
     self.assertLen(filtered_tensors, 2)
     self.assertAllEqual(
         tf.constant([[1.1], [2.1]], dtype=tf.float32),
@@ -389,79 +346,131 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 tf.RaggedTensorSpec(shape=(None, None), dtype=tf.float32),
         }, specs)
 
+  def testInputSpecsToTensorRepresentations(self):
+    tensor_representations = model_util.input_specs_to_tensor_representations({
+        'input_1': tf.TensorSpec(shape=(None, 2), dtype=tf.int64),
+        'input_2': tf.SparseTensorSpec(shape=(None, 1), dtype=tf.float32),
+        'input_3': tf.RaggedTensorSpec(shape=(None, None), dtype=tf.float32),
+    })
+    dense_tensor_representation = text_format.Parse(
+        """
+        dense_tensor {
+          column_name: "input_1"
+          shape { dim { size: 2 } }
+        }
+        """, schema_pb2.TensorRepresentation())
+    sparse_tensor_representation = text_format.Parse(
+        """
+        varlen_sparse_tensor {
+          column_name: "input_2"
+        }
+        """, schema_pb2.TensorRepresentation())
+    ragged_tensor_representation = text_format.Parse(
+        """
+        ragged_tensor {
+          feature_path {
+            step: "input_3"
+          }
+        }
+        """, schema_pb2.TensorRepresentation())
+    self.assertEqual(
+        {
+            'input_1': dense_tensor_representation,
+            'input_2': sparse_tensor_representation,
+            'input_3': ragged_tensor_representation
+        }, tensor_representations)
+
+  def testInputSpecsToTensorRepresentationsRaisesWithUnknownDims(self):
+    with self.assertRaises(ValueError):
+      model_util.input_specs_to_tensor_representations({
+          'input_1': tf.TensorSpec(shape=(None, None), dtype=tf.int64),
+      })
+
   @parameterized.named_parameters(
       ('keras_default', True, {
           constants.PREDICTIONS_KEY: {
               '': [None]
           }
-      }, None, False, 1),
+      }, None, False, True, 1),
       ('tf_default', False, {
           constants.PREDICTIONS_KEY: {
               '': [None]
           }
-      }, None, False, 1),
+      }, None, False, True, 1),
       ('keras_serving_default', True, {
           constants.PREDICTIONS_KEY: {
               '': ['serving_default']
           }
-      }, None, False, 1),
+      }, None, False, True, 1),
       ('tf_serving_default', False, {
           constants.PREDICTIONS_KEY: {
               '': ['serving_default']
           }
-      }, None, False, 1),
+      }, None, False, True, 1),
       ('keras_custom_single_output', True, {
           constants.PREDICTIONS_KEY: {
               '': ['custom_single_output']
           }
-      }, None, False, 1),
+      }, None, False, True, 1),
       ('tf_custom_single_output', False, {
           constants.PREDICTIONS_KEY: {
               '': ['custom_single_output']
           }
-      }, None, False, 1),
+      }, None, False, True, 1),
       ('keras_custom_multi_output', True, {
           constants.PREDICTIONS_KEY: {
               '': ['custom_multi_output']
           }
-      }, None, False, 2),
+      }, None, False, True, 2),
       ('tf_custom_multi_output', False, {
           constants.PREDICTIONS_KEY: {
               '': ['custom_multi_output']
           }
-      }, None, False, 2),
+      }, None, False, True, 2),
       ('multi_model', True, {
           constants.PREDICTIONS_KEY: {
               'model1': ['custom_multi_output'],
               'model2': ['custom_multi_output']
           }
-      }, None, False, 2),
+      }, None, False, True, 2),
       ('default_signatures', True, {
           constants.PREDICTIONS_KEY: {
               '': [],
           }
-      }, ['unknown', 'custom_single_output'], False, 1),
+      }, ['unknown', 'custom_single_output'], False, True, 1),
       ('keras_prefer_dict_outputs', True, {
           constants.FEATURES_KEY: {
               '': [],
           }
-      }, ['unknown', 'custom_single_output', 'custom_multi_output'], True, 3),
+      }, ['unknown', 'custom_single_output', 'custom_multi_output'
+         ], True, True, 3),
       ('tf_prefer_dict_outputs', False, {
           constants.FEATURES_KEY: {
               '': [],
           }
-      }, ['unknown', 'custom_single_output', 'custom_multi_output'], True, 3),
+      }, ['unknown', 'custom_single_output', 'custom_multi_output'
+         ], True, True, 3),
       ('custom_attribute', True, {
           constants.FEATURES_KEY: {
               '': ['custom_attribute'],
           }
-      }, None, True, 1),
+      }, None, True, True, 1),
+      ('keras_no_schema', True, {
+          constants.PREDICTIONS_KEY: {
+              '': [None]
+          }
+      }, None, False, False, 1),
+      ('tf_no_schema', False, {
+          constants.PREDICTIONS_KEY: {
+              '': [None]
+          }
+      }, None, False, False, 1),
   )
   @unittest.skipIf(_TF_MAJOR_VERSION < 2,
                    'not all signatures supported for TF1')
   def testModelSignaturesDoFn(self, save_as_keras, signature_names,
                               default_signature_names, prefer_dict_outputs,
-                              expected_num_outputs):
+                              use_schema, expected_num_outputs):
     export_path = self.createModelWithMultipleDenseInputs(save_as_keras)
     eval_shared_models = {}
     model_specs = []
@@ -474,14 +483,16 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
               tags=[tf.saved_model.SERVING])
           model_specs.append(config.ModelSpec(name=model_name))
     eval_config = config.EvalConfig(model_specs=model_specs)
-    schema = self.createDenseInputsSchema()
+    schema = self.createDenseInputsSchema() if use_schema else None
     tfx_io = tf_example_record.TFExampleBeamRecord(
         physical_format='text',
         schema=schema,
         raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
+    tensor_adapter_config = None
+    if use_schema:
+      tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+          arrow_schema=tfx_io.ArrowSchema(),
+          tensor_representations=tfx_io.TensorRepresentations())
 
     examples = [
         self._makeExample(input_1=1.0, input_2=2.0),
