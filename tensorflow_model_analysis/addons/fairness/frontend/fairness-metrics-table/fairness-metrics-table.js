@@ -22,7 +22,7 @@ import {template} from './fairness-metrics-table-template.html.js';
 const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
 
 /** @const {number} */
-const FLOATING_POINT_PRECISION = 2;
+const FLOATING_POINT_PRECISION = 3;
 
 /**
  * @enum {string}
