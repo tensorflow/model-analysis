@@ -6,6 +6,9 @@
 
 ## Bug fixes and other changes
 
+*   Fix the bug that Fairness Indicator UI metric list won't refresh if the
+    input eval result changed.
+
 ## Breaking changes
 
 *   Changed MultiClassConfusionMatrix threshold check to prediction > threshold

@@ -131,10 +131,9 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
        * A list of objects which indicate if metrics have been selected.
        * @private {!Array<!MetricsListCandidateType>}
        */
-      selectedMetricsListCandidates_: {type: Array},
+      selectedMetricsListCandidates_: {type: Array, notify: true},
     };
   }
-
 
   /**
    * Generate the MetricsListCandidates_.
@@ -143,6 +142,7 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
    * @private
    */
   computedMetricsListCandidates_(availableMetrics) {
+    this.selectedMetricsListCandidates_ = [];
     this.selectedMetrics = [];
 
     if (!availableMetrics) {
@@ -158,7 +158,9 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
     }
 
     // Select 1st metric by default.
-    this.selectedMetricsListCandidates_ = [candidates[0]];
+    setTimeout(() => {
+      this.selectedMetricsListCandidates_ = [candidates[0]];
+    }, 0);
     return candidates;
   }
 
