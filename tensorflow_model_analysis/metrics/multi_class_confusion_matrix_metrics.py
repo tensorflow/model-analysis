@@ -203,7 +203,7 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
     for threshold in self._thresholds:
       if threshold not in accumulator:
         accumulator[threshold] = {}
-      if predictions[predicted_class_id] < threshold:
+      if predictions[predicted_class_id] <= threshold:
         predicted_class_id = NO_PREDICTED_CLASS_ID
       matrix_key = _MatrixEntryKey(actual_class_id, predicted_class_id)
       if matrix_key in accumulator[threshold]:

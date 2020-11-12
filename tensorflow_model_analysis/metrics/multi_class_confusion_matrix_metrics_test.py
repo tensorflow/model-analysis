@@ -51,12 +51,12 @@ class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     }
     example2 = {
         'labels': np.array([0.0]),
-        'predictions': np.array([0.1, 0.4, 0.5]),
+        'predictions': np.array([0.1, 0.3, 0.6]),
         'example_weights': np.array([1.0])
     }
     example3 = {
         'labels': np.array([1.0]),
-        'predictions': np.array([0.3, 0.2, 0.5]),
+        'predictions': np.array([0.3, 0.1, 0.6]),
         'example_weights': np.array([0.25])
     }
     example4 = {
@@ -71,7 +71,7 @@ class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     }
     example6 = {
         'labels': np.array([2.0]),
-        'predictions': np.array([0.3, 0.2, 0.5]),
+        'predictions': np.array([0.3, 0.1, 0.6]),
         'example_weights': np.array([1.0])
     }
 
@@ -119,8 +119,13 @@ class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
                 }
                 entries {
                   actual_class_id: 2
+                  predicted_class_id: -1
+                  num_weighted_examples: 0.5
+                }
+                entries {
+                  actual_class_id: 2
                   predicted_class_id: 2
-                  num_weighted_examples: 1.5
+                  num_weighted_examples: 1.0
                 }
               }
           """, got_matrix)

@@ -8,6 +8,9 @@
 
 ## Breaking changes
 
+*   Changed MultiClassConfusionMatrix threshold check to prediction > threshold
+    instead of prediction >= threshold.
+
 ## Deprecations
 
 # Version 0.25.0
