@@ -58,6 +58,9 @@ message ValidationResult {
   // false.
   bool validation_ok = 1;
 
+  // True if failure due to missing thresholds.
+  bool missing_thresholds = 6;
+
   // Information about which threshold is blocking which metric.
   repeated MetricsValidationForSlice metric_validations_per_slice = 2;
 

@@ -36,6 +36,7 @@ from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import metrics_validator
+from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -509,6 +510,11 @@ class CombineValidations(beam.CombineFn):
     # Verification fails if there is empty input.
     if not accumulator:
       accumulator = validation_result_pb2.ValidationResult(validation_ok=False)
+    thresholds = metric_specs.metric_thresholds_from_metrics_specs(
+        self._eval_config.metrics_specs)
+    if not thresholds:
+      accumulator.validation_ok = False
+      accumulator.missing_thresholds = True
     missing = metrics_validator.get_missing_slices(
         accumulator.validation_details.slicing_details, self._eval_config)
     if missing:

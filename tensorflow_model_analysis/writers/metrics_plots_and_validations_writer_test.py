@@ -1398,6 +1398,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             """, validation_result_pb2.ValidationFailure()),
     ]
     self.assertFalse(validation_result.validation_ok)
+    self.assertFalse(validation_result.missing_thresholds)
     self.assertLen(validation_result.metric_validations_per_slice, 1)
     self.assertCountEqual(
         expected_validations,
@@ -1421,6 +1422,145 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     self.assertLen(validation_result.validation_details.slicing_details, 1)
     self.assertCountEqual(expected_slicing_details,
                           validation_result.validation_details.slicing_details)
+
+  @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
+  def testWriteValidationResultsNoThresholds(self, output_file_format):
+    model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
+    eval_shared_model = self._build_keras_model(model_dir, mul=0)
+    baseline_eval_shared_model = self._build_keras_model(baseline_dir, mul=1)
+    validations_file = os.path.join(self._getTempDir(),
+                                    constants.VALIDATIONS_KEY)
+    schema = text_format.Parse(
+        """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "input"
+              value {
+                dense_tensor {
+                  column_name: "input"
+                  shape { dim { size: 1 } }
+                }
+              }
+            }
+          }
+        }
+        feature {
+          name: "input"
+          type: FLOAT
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        feature {
+          name: "example_weight"
+          type: FLOAT
+        }
+        feature {
+          name: "extra_feature"
+          type: BYTES
+        }
+        """, schema_pb2.Schema())
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
+    examples = [
+        self._makeExample(
+            input=0.0,
+            label=1.0,
+            example_weight=1.0,
+            extra_feature='non_model_feature'),
+        self._makeExample(
+            input=1.0,
+            label=0.0,
+            example_weight=0.5,
+            extra_feature='non_model_feature'),
+    ]
+
+    slicing_specs = [
+        config.SlicingSpec(),
+    ]
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(
+                name='candidate',
+                label_key='label',
+                example_weight_key='example_weight'),
+            config.ModelSpec(
+                name='baseline',
+                label_key='label',
+                example_weight_key='example_weight',
+                is_baseline=True)
+        ],
+        slicing_specs=slicing_specs,
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(class_name='WeightedExampleCount'),
+                    config.MetricConfig(class_name='ExampleCount'),
+                    config.MetricConfig(class_name='MeanLabel')
+                ],
+                model_names=['candidate', 'baseline']),
+        ],
+        options=config.Options(
+            disabled_outputs={'values': ['eval_config.json']}),
+    )
+    slice_spec = [
+        slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
+    ]
+    eval_shared_models = {
+        'candidate': eval_shared_model,
+        'baseline': baseline_eval_shared_model
+    }
+    extractors = [
+        batched_input_extractor.BatchedInputExtractor(eval_config),
+        batched_predict_extractor_v2.BatchedPredictExtractor(
+            eval_shared_model=eval_shared_models,
+            eval_config=eval_config,
+            tensor_adapter_config=tensor_adapter_config),
+        unbatch_extractor.UnbatchExtractor(),
+        slice_key_extractor.SliceKeyExtractor(slice_spec=slice_spec)
+    ]
+    evaluators = [
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_models)
+    ]
+    output_paths = {
+        constants.VALIDATIONS_KEY: validations_file,
+    }
+    writers = [
+        metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
+            output_paths,
+            eval_config=eval_config,
+            add_metrics_callbacks=[],
+            output_file_format=output_file_format)
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      _ = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | 'ExtractEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators)
+          | 'WriteResults' >> model_eval_lib.WriteResults(writers=writers))
+      # pylint: enable=no-value-for-parameter
+
+    validation_result = (
+        metrics_plots_and_validations_writer
+        .load_and_deserialize_validation_result(
+            os.path.dirname(validations_file), output_file_format))
+
+    self.assertFalse(validation_result.validation_ok)
+    self.assertTrue(validation_result.missing_thresholds)
+    self.assertEmpty(validation_result.metric_validations_per_slice)
 
   @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
   def testWriteMetricsAndPlots(self, output_file_format):

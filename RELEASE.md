@@ -8,6 +8,7 @@
 
 *   Fix the bug that Fairness Indicator UI metric list won't refresh if the
     input eval result changed.
+*   Add support for missing_thresholds failure to validations result.
 
 ## Breaking changes
 
