@@ -407,7 +407,7 @@ def default_extractors(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: config.EvalConfig = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-    materialize: Optional[bool] = True,
+    materialize: Optional[bool] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
     custom_predict_extractor: Optional[extractor.Extractor] = None,
     config_version: Optional[int] = None) -> List[extractor.Extractor]:
@@ -433,6 +433,10 @@ def default_extractors(  # pylint: disable=invalid-name
   Raises:
     NotImplementedError: If eval_config contains mixed serving and eval models.
   """
+  if materialize is None:
+    # TODO(b/172969312): Once analysis table is supported, remove defaulting
+    #  to false unless 'analysis' is in disabled_outputs.
+    materialize = False
   if slice_spec and eval_config:
     raise ValueError('slice_spec is deprecated, only use eval_config')
   if eval_config is not None:
@@ -995,7 +999,6 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     extractors = default_extractors(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
-        materialize=False,
         tensor_adapter_config=tensor_adapter_config,
         config_version=config_version)
 

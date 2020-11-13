@@ -13,6 +13,7 @@
 
 *   Changed MultiClassConfusionMatrix threshold check to prediction > threshold
     instead of prediction >= threshold.
+*   Changed default handling of materialize in default_extractors to False.
 
 ## Deprecations
 
