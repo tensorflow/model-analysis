@@ -265,6 +265,7 @@ export class FairnessMetricsTable extends PolymerElement {
     this.headerRow_ = this.populateHeaderRow_(
         data, dataCompare, metrics, evalName, evalNameCompare);
     let tableRows = this.populateTableRows_(metrics, data, dataCompare);
+    tableRows.sort();
     return [this.headerRow_].concat(tableRows);
   }
 
