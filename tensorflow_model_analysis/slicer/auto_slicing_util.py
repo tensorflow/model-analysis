@@ -320,7 +320,7 @@ def partition_slices(
       model_name=metric_key.model_name,
       output_name=metric_key.output_name,
       sub_key=metric_key.sub_key,
-      is_diff=metric_key.is_diff)
+      is_diff=False)
   overall_metrics_dict = _get_metrics_as_dict(overall_slice_metrics)
   significant_slices, non_significant_slices = [], []
   for slice_key, slice_metrics in metrics_dict.items():
