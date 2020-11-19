@@ -9,6 +9,7 @@
 *   Fix the bug that Fairness Indicator UI metric list won't refresh if the
     input eval result changed.
 *   Add support for missing_thresholds failure to validations result.
+*   Updated to set min/max value for precision/recall plot to 0 and 1.
 
 ## Breaking changes
 
