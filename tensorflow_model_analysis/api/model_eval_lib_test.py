@@ -55,6 +55,12 @@ from tensorflowjs.converters import converter as tfjs_converter
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+try:
+  import tensorflow_ranking as tfr  # pylint: disable=g-import-not-at-top
+  _TFR_IMPORTED = True
+except (ImportError, tf.errors.NotFoundError):
+  _TFR_IMPORTED = False
+
 _TEST_SEED = 982735
 
 
@@ -846,13 +852,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config.SlicingSpec()]
-    # Test with both a TFMA metric (NDCG) and a keras metric (Recall).
+    # Test with both a TFMA metric (NDCG), a keras metric (Recall).
+    metrics = [
+        ndcg.NDCG(gain_key='age', name='ndcg', top_k_list=[1, 2]),
+        tf.keras.metrics.Recall(top_k=1),
+    ]
+    # If tensorflow-ranking imported add MRRMetric.
+    if _TFR_IMPORTED:
+      metrics.append(tfr.keras.metrics.MRRMetric())
     metrics_specs = metric_specs.specs_from_metrics(
-        [ndcg.NDCG(gain_key='age', name='ndcg'),
-         tf.keras.metrics.Recall()],
-        binarize=config.BinarizationOptions(top_k_list={'values': [1, 2]}),
-        query_key='language',
-        include_weighted_example_count=True)
+        metrics, query_key='language', include_weighted_example_count=True)
     metrics_specs.append(
         config.MetricsSpec(metrics=[
             config.MetricConfig(
@@ -908,9 +917,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         },
         'topK:2': {
             'ndcg': True,
-            'recall': True,
         },
     }
+    if _TFR_IMPORTED:
+      expected_metrics['']['mrr_metric'] = True
     for group in expected_metrics:
       self.assertIn(group, got_metrics)
       for k in expected_metrics[group]:
