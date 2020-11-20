@@ -164,7 +164,8 @@ def _update_eval_config_with_defaults(
       eval_shared_model)
   has_baseline = eval_shared_models and len(eval_shared_models) == 2
 
-  return config.update_eval_config_with_defaults(eval_config, has_baseline)
+  return config.update_eval_config_with_defaults(
+      eval_config=eval_config, has_baseline=has_baseline)
 
 
 MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice

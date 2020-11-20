@@ -152,7 +152,8 @@ class ConfigTest(tf.test.TestCase):
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
                                              config.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(eval_config)
+    got_eval_config = config.update_eval_config_with_defaults(
+        eval_config, has_baseline=True)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsAutomaticallyAddsBaselineModel(self):
@@ -200,7 +201,8 @@ class ConfigTest(tf.test.TestCase):
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
                                              config.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(eval_config)
+    got_eval_config = config.update_eval_config_with_defaults(
+        eval_config, has_baseline=True)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsRemoveBaselineModel(self):

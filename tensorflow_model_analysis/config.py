@@ -93,7 +93,7 @@ def update_eval_config_with_defaults(
     eval_config: EvalConfig,
     maybe_add_baseline: Optional[bool] = None,
     maybe_remove_baseline: Optional[bool] = None,
-    has_baseline: Optional[bool] = None) -> EvalConfig:
+    has_baseline: Optional[bool] = False) -> EvalConfig:
   """Returns a new config with default settings applied.
 
   a) Add or remove a model_spec according to "has_baseline".
