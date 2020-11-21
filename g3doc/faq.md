@@ -378,23 +378,33 @@ document.
 
 ### Why don't MultiClassConfusionMatrix metrics match binarized ConfusionMatrix metrics
 
-These are actually different calculations. Binarization performs a one-vs-rest
-comparison for each class ID independently (i.e. the prediction for each class
-is compared separately against the thresholds provided). In this case it is
-possible for two or more classes to all indicate that they matched the
-prediction because their predicted value was greater than the threshold (this
-will be even more apparant at lower thresholds). In the case of the multiclass
-confusion matrix, there is still only one true predicted value and it either
-matches the actual value or it doesn't. The threshold is only used to force a
-prediction to match no class if it is less than the threshold. The higher the
-threshold the harder for a binarized class's prediction to match. Likewise the
-lower the threshold the easier it is for a binarized class's predictions to
-match. The means that at thresholds > 0.5 the binarized values and the
-multiclass matrix values will be closer aligned and at thresholds < 0.5 they
-will be farther apart. For these to align we would need to double count TP, etc
-which cause the multiclass table to be out of alignment. The following is an
-example of observed differences between MultiClassConfusionMatrixAtThresholds
-and the corresponding counts from binarization.
+These are actually different calculations. Binarization performs a comparison
+for each class ID independently (i.e. the prediction for each class is compared
+separately against the thresholds provided). In this case it is possible for two
+or more classes to all indicate that they matched the prediction because their
+predicted value was greater than the threshold (this will be even more apparant
+at lower thresholds). In the case of the multiclass confusion matrix, there is
+still only one true predicted value and it either matches the actual value or it
+doesn't. The threshold is only used to force a prediction to match no class if
+it is less than the threshold. The higher the threshold the harder for a
+binarized class's prediction to match. Likewise the lower the threshold the
+easier it is for a binarized class's predictions to match. The means that at
+thresholds > 0.5 the binarized values and the multiclass matrix values will be
+closer aligned and at thresholds < 0.5 they will be farther apart.
+
+For example, let's say we have 10 classes where class 2 was predicted with a
+probability of 0.8, but the actual class was class 1 which had a probability of
+0.15. If you binarize on class 1 and use a threshold of 0.1, then class 1 will
+be considered correct (0.15 > 0.1) so it will be counted as a TP, However, for
+the multiclass case, class 2 will be considered correct (0.8 > 0.1) and since
+class 1 was the actual, this will be counted as a FN. Because at lower
+thresholds more values will be considered positives, in general there will be
+higher TP and FP counts for binarized confusion matrix than for the multiclass
+confusion matrix, and similarly lower TN and FN.
+
+The following is an example of observed differences between
+MultiClassConfusionMatrixAtThresholds and the corresponding counts from
+binarization of one of the classes.
 
 ![MultiClassConfusionMatrixAtThresholds vs Binarized](images/multi_class_vs_binarized_metric_calculations.png)
 
