@@ -97,11 +97,22 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
             'gain': np.array([1.0])
         }
     }
+    query4_example1 = {
+        'labels': np.array([1.0]),
+        'predictions': np.array([0.9]),
+        'example_weights': np.array([3.0]),
+        'features': {
+            'query': np.array(['query4']),
+            'gain':
+                np.array([0.0])  # 0 gain is ignored
+        }
+    }
     examples = [
         tfma_util.merge_extracts([query1_example1, query1_example2]),
         tfma_util.merge_extracts(
             [query2_example1, query2_example2, query2_example3]),
-        tfma_util.merge_extracts([query3_example1])
+        tfma_util.merge_extracts([query3_example1]),
+        tfma_util.merge_extracts([query4_example1])
     ]
 
     with beam.Pipeline() as pipeline:

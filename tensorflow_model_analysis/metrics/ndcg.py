@@ -180,6 +180,9 @@ class _NDCGCombiner(beam.CombineFn):
                                                         self._metric_keys,
                                                         element))
     gains = gains.reshape(predictions.shape)
+    # Ignore non-positive gains.
+    if gains.max() <= 0:
+      example_weight = 0.0
     return (gains[np.argsort(predictions)[::-1]], float(example_weight))
 
   def _calculate_dcg_at_k(self, k: int, sorted_values: List[float]) -> float:
