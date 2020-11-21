@@ -97,15 +97,6 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
         }
     }
     query2_example1 = {
-        'labels': np.array([0.0]),
-        'predictions': np.array([0.5]),
-        'example_weights': np.array([2.0]),
-        'features': {
-            'custom_label': np.array([0.0]),
-            'query': np.array(['query2'])
-        }
-    }
-    query2_example2 = {
         'labels': np.array([1.0]),
         'predictions': np.array([0.9]),
         'example_weights': np.array([2.0]),
@@ -114,12 +105,21 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
             'query': np.array(['query2'])
         }
     }
-    query2_example3 = {
+    query2_example2 = {
         'labels': np.array([0.0]),
         'predictions': np.array([0.1]),
         'example_weights': np.array([2.0]),
         'features': {
             'custom_label': np.array([1.0]),
+            'query': np.array(['query2'])
+        }
+    }
+    query2_example3 = {
+        'labels': np.array([0.0]),
+        'predictions': np.array([0.5]),
+        'example_weights': np.array([2.0]),
+        'features': {
+            'custom_label': np.array([0.0]),
             'query': np.array(['query2'])
         }
     }
@@ -162,11 +162,11 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
           key = metric_types.MetricKey(name='min_label_position')
           self.assertIn(key, got_metrics)
           if label_key == 'custom_label':
-            # (2*1.0 + 3*2.0) / (1.0 + 2.0) = 2.666666
-            self.assertAllClose(got_metrics[key], np.array([2.666666]))
+            # (1*1.0 + 3*2.0) / (1.0 + 2.0) = 2.333333
+            self.assertAllClose(got_metrics[key], np.array([2.333333]))
           else:
-            # (1*1.0 + 2*2.0 + 1*3.0) / (1.0 + 2.0 + 3.0) = 1.333333
-            self.assertAllClose(got_metrics[key], np.array([1.333333]))
+            # (2*1.0 + 1*2.0 + 1*3.0) / (1.0 + 2.0 + 3.0) = 1.166666
+            self.assertAllClose(got_metrics[key], np.array([1.166666]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

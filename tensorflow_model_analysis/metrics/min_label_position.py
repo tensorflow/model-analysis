@@ -118,7 +118,7 @@ class _MinLabelPositionCombiner(beam.CombineFn):
       self, accumulator: _MinLabelPositionAccumulator,
       element: metric_types.StandardMetricInputs
   ) -> _MinLabelPositionAccumulator:
-    labels, _, example_weight = next(
+    labels, predictions, example_weight = next(
         metric_util.to_label_prediction_example_weight(
             element,
             eval_config=self._eval_config,
@@ -130,7 +130,7 @@ class _MinLabelPositionCombiner(beam.CombineFn):
       labels = util.get_by_keys(element.features, [self._label_key])
     if labels is not None:
       min_label_pos = None
-      for i, l in enumerate(labels):
+      for i, l in enumerate(labels[np.argsort(predictions)[::-1]]):
         if np.sum(l) > 0:
           min_label_pos = i + 1  # Use 1-indexed positions
           break

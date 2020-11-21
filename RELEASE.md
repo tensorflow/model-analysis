@@ -10,6 +10,7 @@
     input eval result changed.
 *   Add support for missing_thresholds failure to validations result.
 *   Updated to set min/max value for precision/recall plot to 0 and 1.
+*   Fix issue with MinLabelPosition not being sorted by predictions.
 
 ## Breaking changes
 
