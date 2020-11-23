@@ -20,7 +20,17 @@ template.innerHTML = `
     height: 360px;
     width: 600px;
   }
+  #tooltip {
+    font-size: 12px;
+    padding: 2px;
+    background-color: #616161;
+    color: #fff;
+    border-radius: 2px;
+    opacity: 0;
+    position: fixed;
+  }
 </style>
 <svg id="bar-chart"></svg>
+<div id="tooltip"></div>
 `;
 export {template};

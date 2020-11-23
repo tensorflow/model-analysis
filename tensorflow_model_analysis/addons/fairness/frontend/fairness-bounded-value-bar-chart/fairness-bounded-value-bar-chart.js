@@ -42,48 +42,52 @@ const CHART_BAR_COLOR_ = [
 const BASELINE_BAR_COLOR_ = [
   '#FF9230', '#3C7DBF', '#FFC700', '#7647EA', '#FC4F61', '#1F978A', '#B22A72'
 ];
+const DARKEN_COMPARE = 80;
+
 const NUM_DECIMAL_PLACES = 5;
 
+const TOOLTIP_OPACITY = 0.85;
+const TOOLTIP_Y_OFFSET = 20;
 
 /**
- * Build bar tips.
- * @return {!d3.tip.x}
+ * Tooltip text for a bar.
+ * @param {!Object} d Slice data for a bar.
+ * @return {string}
+ * @private
  */
-function buildTooltips() {
-  return d3.tip === undefined ?
-      undefined :
-      d3.tip()
-          .style('font-size', '12px')
-          .style('padding', '2px')
-          .style('background-color', '#616161')
-          .style('color', '#fff')
-          .style('border-radius', '2px')
-          .html(d => {
-            let html = '<table><tbody>';
-            html += '<tr><td>Slice</td><td>' + d.fullSliceName + '</td></tr>';
-            if (d.evalName) {
-              html += '<tr><td>Eval</td><td>' + d.evalName + '</td></tr>';
-            }
-            const metricName = Util.removeMetricNamePrefix(d.metricName);
-            html += '<tr><td>Metric</td><td>' + metricName + '</td></tr>';
-            html += '<tr><td>Value</td><td>' +
-                d.value.toFixed(NUM_DECIMAL_PLACES) + '</td></tr>';
-            if (d.upperBound && d.lowerBound) {
-              const conf_int = ' (' + d.upperBound.toFixed(NUM_DECIMAL_PLACES) +
-                  ', ' + d.lowerBound.toFixed(NUM_DECIMAL_PLACES) + ')';
-              html += '<tr><td>Confidence Interval</td><td>' + conf_int +
-                  '</td></tr>';
-            }
-            if (d.exampleCount) {
-              html += '<tr><td>Example Count</td><td>' + d.exampleCount +
-                  '</td></tr>';
-            }
-            html += '</tbody></table>';
-            return html;
-          });
-}
+function tooltipText_(d) {
+  const sliceRow = '<td>Slice</td><td>$(fullSliceName)</td>'.replace(
+      '$(fullSliceName)', d.fullSliceName);
+  const evalRow = d.evalName ?
+      '<td>Eval</td><td>$(evalName)</td>'.replace('$(evalName)', d.evalName) :
+      '';
+  const metricRow = '<td>Metric</td><td>$(metric)</td>'.replace(
+      '$(metric)', Util.removeMetricNamePrefix(d.metricName));
+  const valueRow = '<td>Value</td><td>$(value)</td>'.replace(
+      '$(value)', d.value.toFixed(NUM_DECIMAL_PLACES));
 
-const DARKEN_COMPARE = 80;
+  const confInt = (upperBound, lowerBound) => ' (' +
+      d.upperBound.toFixed(NUM_DECIMAL_PLACES) + ', ' +
+      d.lowerBound.toFixed(NUM_DECIMAL_PLACES) + ')';
+  const confIntRow = (d.upperBound && d.lowerBound) ?
+      '<td>Confidence Interval</td><td>$(confInt)</td>'.replace(
+          '$(confInt)', confInt(d.upperBound, d.lowerBound)) :
+      '';
+
+  const exampleCountRow = d.exampleCount ?
+      '<td>Example Count</td><td>$(exampleCount)</td>'.replace(
+          '$(exampleCount)', d.exampleCount) :
+      '';
+
+  const rows =
+      [sliceRow, evalRow, metricRow, valueRow, confIntRow, exampleCountRow];
+
+  const tablestart = '<table><tbody>';
+  const tablerows = rows.map((row) => '<tr>' + row + '</tr>').join('');
+  const tablestop = '</table></tbody>';
+
+  return tablestart + tablerows + tablestop;
+}
 
 /**
  * Darken a color.
@@ -156,11 +160,6 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       isAttached_: {type: Boolean, value: false},
 
       /**
-       * @private {!d3.tip.x}
-       */
-      tip_: {value: buildTooltips},
-
-      /**
        * The selected parameter to sort on - can be 'Slice' or 'Eval'.
        * @private {string}
        */
@@ -171,7 +170,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
   static get observers() {
     return [
       'renderClusteredBarChart_(data, dataCompare, metrics, slices, baseline, ' +
-          'evalName, evalNameCompare, sort, isAttached_, tip_)',
+          'evalName, evalNameCompare, sort, isAttached_)',
     ];
   }
 
@@ -193,12 +192,11 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    * @param {string} sort how to sort the clusters
    * @param {boolean} isAttached Whether this element is attached to
    *     the DOM.
-   * @param {!d3.tip.x} tip for bar chart.
    * @private
    */
   renderClusteredBarChart_(
       data, dataCompare, metrics, slices, baseline, evalName, evalNameCompare,
-      sort, isAttached, tip) {
+      sort, isAttached) {
     if (!data || !metrics || !slices || !baseline || !isAttached ||
         (this.evalComparison_() && (!evalName || !evalNameCompare))) {
       return;
@@ -235,7 +233,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         data, dataCompare, metrics, slices, baseline, evalName, evalNameCompare,
         sort);
     const graphConfig = this.buildGraphConfig_(d3Data);
-    this.drawGraph_(d3Data, baseline, graphConfig, tip);
+    this.drawGraph_(d3Data, baseline, graphConfig);
   }
 
   /**
@@ -387,10 +385,10 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
    * @param {!Array<!Object>} d3Data
    * @param {string} baseline
    * @param {!Object} graphConfig
-   * @param {!d3.tip.x} tip
    * @private
    */
-  drawGraph_(d3Data, baseline, graphConfig, tip) {
+  drawGraph_(d3Data, baseline, graphConfig) {
+
     const svg = d3.select(this.$['bar-chart']);
     svg.html('');
 
@@ -406,6 +404,23 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
                 'transform',
                 d => `translate(${
                     graphConfig['slicesX'](this.labelName_(d))},0)`);
+
+    const tooltip = d3.select(this.$['tooltip']);
+
+    const mouseover = function(d) {
+      // d3.mouse() requires Element, but svg.node() is (Element|null)
+      // so document.createElement('svg') is passed for the compiler
+      const pos = d3.mouse(svg.node() || document.createElement('svg'));
+
+      tooltip.style('opacity', TOOLTIP_OPACITY);
+      tooltip.html(tooltipText_(d));
+      tooltip.style('left', pos[0] + 'px')
+          .style('top', (pos[1] + TOOLTIP_Y_OFFSET) + 'px');
+    };
+
+    const mouseout = function(d) {
+      tooltip.style('opacity', 0);
+    };
 
     // For every cluster, add a bar for every eval-threshold pair
     bars.selectAll('rect')
@@ -428,8 +443,8 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
             d => d.fullSliceName === baseline ?
                 graphConfig['baselineColor'](d.metricName) :
                 graphConfig['metricsColor'](d.metricName))
-        .on('mouseover', tip ? tip.show : () => {})
-        .on('mouseout', tip ? tip.hide : () => {})
+        .on('mouseover', mouseover)
+        .on('mouseout', mouseout)
         .on('click', (d, i) => {
           this.dispatchEvent(new CustomEvent(
               tfma.Event.SELECT,
@@ -464,9 +479,6 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     // Draw X Y axis.
     svg.append('g').attr('id', 'xaxis').call(graphConfig['configureXAxis']);
     svg.append('g').attr('id', 'yaxis').call(graphConfig['configureYAxis']);
-    if (tip) {
-      svg.call(tip);
-    }
   }
 
   /**
