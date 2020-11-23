@@ -39,13 +39,13 @@ class WeightedExampleCount(metric_types.Metric):
       name: Metric name.
     """
     super(WeightedExampleCount, self).__init__(
-        _weighted_example_count, name=name)
+        weighted_example_count, name=name)
 
 
 metric_types.register_metric(WeightedExampleCount)
 
 
-def _weighted_example_count(
+def weighted_example_count(
     name: Text = WEIGHTED_EXAMPLE_COUNT_NAME,
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,

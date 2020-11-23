@@ -190,6 +190,19 @@ def load_plots(output_path: Text,
     yield p
 
 
+AttributionsForSlice = metrics_for_slice_pb2.AttributionsForSlice
+
+
+def load_attributions(
+    output_path: Text,
+    output_file_format: Text = '') -> Iterator[AttributionsForSlice]:
+  """Read and deserialize the AttributionsForSlice records."""
+  for a in (
+      metrics_plots_and_validations_writer.load_and_deserialize_attributions(
+          output_path, output_file_format)):
+    yield a
+
+
 # Define types here to avoid type errors between OSS and internal code.
 ValidationResult = validation_result_pb2.ValidationResult
 
@@ -284,6 +297,13 @@ def load_eval_result(
     plots = util.convert_plots_proto_to_dict(p, model_name=model_name)
     if plots is not None:
       plots_list.append(plots)
+  attributions_list = []
+  for a in metrics_plots_and_validations_writer.load_and_deserialize_attributions(
+      output_path, output_file_format):
+    attributions = util.convert_attributions_proto_to_dict(
+        a, model_name=model_name)
+    if attributions is not None:
+      attributions_list.append(attributions)
   if not model_locations:
     model_location = ''
   elif model_name is None:
@@ -293,6 +313,7 @@ def load_eval_result(
   return view_types.EvalResult(
       slicing_metrics=metrics_list,
       plots=plots_list,
+      attributions=attributions_list,
       config=eval_config,
       data_location=data_location,
       file_format=file_format,
@@ -584,7 +605,8 @@ def default_evaluators(  # pylint: disable=invalid-name
           eval_shared_model = eval_shared_model._replace(
               include_default_metrics=False)
   if (constants.METRICS_KEY in disabled_outputs and
-      constants.PLOTS_KEY in disabled_outputs):
+      constants.PLOTS_KEY in disabled_outputs and
+      constants.ATTRIBUTIONS_KEY in disabled_outputs):
     return []
   if _is_legacy_eval(config_version, eval_shared_model, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
@@ -681,6 +703,8 @@ def default_writers(
           os.path.join(output_path, constants.METRICS_KEY),
       constants.PLOTS_KEY:
           os.path.join(output_path, constants.PLOTS_KEY),
+      constants.ATTRIBUTIONS_KEY:
+          os.path.join(output_path, constants.ATTRIBUTIONS_KEY),
       constants.VALIDATIONS_KEY:
           os.path.join(output_path, constants.VALIDATIONS_KEY)
   }

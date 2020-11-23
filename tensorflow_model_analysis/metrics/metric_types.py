@@ -333,6 +333,36 @@ class PlotKey(MetricKey):
         sub_key=SubKey.from_proto(pb.sub_key))
 
 
+# A separate version from proto is used here because protos are not hashable and
+# SerializeToString is not guaranteed to be stable between different binaries.
+# In addition internally AttributionsKey is a subclass of MetricKey as each
+# attribution is stored separately.
+class AttributionsKey(MetricKey):
+  """An AttributionsKey is a metric key uniquely identifying attributions."""
+
+  def to_proto(self) -> metrics_for_slice_pb2.AttributionsKey:
+    """Converts key to proto."""
+    attribution_key = metrics_for_slice_pb2.AttributionsKey()
+    if self.name:
+      attribution_key.name = self.name
+    if self.model_name:
+      attribution_key.model_name = self.model_name
+    if self.output_name:
+      attribution_key.output_name = self.output_name
+    if self.sub_key:
+      attribution_key.sub_key.CopyFrom(self.sub_key.to_proto())
+    return attribution_key
+
+  @staticmethod
+  def from_proto(
+      pb: metrics_for_slice_pb2.AttributionsKey) -> 'AttributionsKey':
+    """Configures class from proto."""
+    return AttributionsKey(
+        name=pb.name,
+        model_name=pb.model_name,
+        output_name=pb.output_name,
+        sub_key=SubKey.from_proto(pb.sub_key))
+
 # LINT.ThenChange(../proto/metrics_for_slice.proto)
 
 

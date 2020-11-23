@@ -40,6 +40,7 @@ from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
 from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
+from tensorflow_model_analysis.metrics import attributions
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
@@ -1155,6 +1156,62 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         (slice_key, slice_metrics), [])
     self.assertProtoEquals(expected_metrics_for_slice, got)
 
+  def testConvertSliceAttributionsToProto(self):
+    slice_key = _make_slice_key('language', 'english', 'price', 0.3)
+    slice_attributions = {
+        metric_types.AttributionsKey(name='mean', output_name='output_name'): {
+            'age': 0.8,
+            'language': 1.2,
+            'price': 2.3,
+        },
+    }
+    expected_attributions_for_slice = text_format.Parse(
+        """
+        slice_key {
+          single_slice_keys {
+            column: 'language'
+            bytes_value: 'english'
+          }
+          single_slice_keys {
+            column: 'price'
+            float_value: 0.3
+          }
+        }
+        attributions_keys_and_values {
+          key {
+            name: "mean"
+            output_name: "output_name"
+          }
+          values {
+            key: "age"
+            value: {
+              double_value {
+                value: 0.8
+              }
+            }
+          }
+          values {
+            key: "language"
+            value: {
+              double_value {
+                value: 1.2
+              }
+            }
+          }
+          values {
+            key: "price"
+            value: {
+              double_value {
+                value: 2.3
+              }
+            }
+          }
+        }""", metrics_for_slice_pb2.AttributionsForSlice())
+
+    got = metrics_plots_and_validations_writer.convert_slice_attributions_to_proto(
+        (slice_key, slice_attributions))
+    self.assertProtoEquals(expected_attributions_for_slice, got)
+
   _OUTPUT_FORMAT_PARAMS = [('without_output_file_format', ''),
                            ('tfrecord_file_format', 'tfrecord'),
                            ('parquet_file_format', 'parquet')]
@@ -1221,6 +1278,14 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         config.SlicingSpec(),
         config.SlicingSpec(feature_keys=['slice_does_not_exist'])
     ]
+    cross_slicing_specs = [
+        config.CrossSlicingSpec(
+            baseline_spec=config.SlicingSpec(
+                feature_keys=['slice_does_not_exist']),
+            slicing_specs=[
+                config.SlicingSpec(feature_keys=['slice_does_not_exist'])
+            ])
+    ]
     eval_config = config.EvalConfig(
         model_specs=[
             config.ModelSpec(
@@ -1234,6 +1299,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 is_baseline=True)
         ],
         slicing_specs=slicing_specs,
+        cross_slicing_specs=cross_slicing_specs,
         metrics_specs=[
             config.MetricsSpec(
                 metrics=[
@@ -1243,6 +1309,15 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                             config.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 # 1.5 < 1, NOT OK.
+                                threshold=config.MetricThreshold(
+                                    value_threshold=config
+                                    .GenericValueThreshold(
+                                        upper_bound={'value': 1})))
+                        ],
+                        # missing cross slice
+                        cross_slice_thresholds=[
+                            config.CrossSliceMetricThreshold(
+                                cross_slicing_specs=cross_slicing_specs,
                                 threshold=config.MetricThreshold(
                                     value_threshold=config
                                     .GenericValueThreshold(
@@ -1410,6 +1485,17 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     self.assertLen(validation_result.missing_slices, 1)
     self.assertCountEqual(expected_missing_slices,
                           validation_result.missing_slices)
+    expected_missing_cross_slices = [
+        config.CrossSlicingSpec(
+            baseline_spec=config.SlicingSpec(
+                feature_keys=['slice_does_not_exist']),
+            slicing_specs=[
+                config.SlicingSpec(feature_keys=['slice_does_not_exist'])
+            ])
+    ]
+    self.assertLen(validation_result.missing_cross_slices, 1)
+    self.assertCountEqual(expected_missing_cross_slices,
+                          validation_result.missing_cross_slices)
 
     expected_slicing_details = [
         text_format.Parse(
@@ -1863,6 +1949,98 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             plots_file, output_file_format, slice_keys_filter))
     self.assertLen(plot_records, 1, 'plots: %s' % plot_records)
     self.assertProtoEquals(expected_plots_for_slice, plot_records[0])
+
+  @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
+  def testWriteAttributions(self, output_file_format):
+    attributions_file = os.path.join(self._getTempDir(), 'attributions')
+    eval_config = config.EvalConfig(
+        model_specs=[config.ModelSpec()],
+        metrics_specs=[
+            config.MetricsSpec(metrics=[
+                config.MetricConfig(class_name=attributions.TotalAttributions()
+                                    .__class__.__name__)
+            ])
+        ],
+        options=config.Options(
+            disabled_outputs={'values': ['eval_config.json']}))
+    extractors = [slice_key_extractor.SliceKeyExtractor()]
+    evaluators = [
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(eval_config=eval_config)
+    ]
+    output_paths = {
+        constants.ATTRIBUTIONS_KEY: attributions_file,
+    }
+    writers = [
+        metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
+            output_paths,
+            eval_config=eval_config,
+            output_file_format=output_file_format)
+    ]
+
+    example1 = {
+        'features': {},
+        'attributions': {
+            'feature1': 1.1,
+            'feature2': 1.2
+        }
+    }
+    example2 = {
+        'features': {},
+        'attributions': {
+            'feature1': 2.1,
+            'feature2': 2.2
+        }
+    }
+    example3 = {
+        'features': {},
+        'attributions': {
+            'feature1': np.array([3.1]),
+            'feature2': np.array([3.2])
+        }
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      _ = (
+          pipeline
+          | 'Create' >> beam.Create([example1, example2, example3])
+          | 'ExtractEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators)
+          | 'WriteResults' >> model_eval_lib.WriteResults(writers=writers))
+      # pylint: enable=no-value-for-parameter
+
+    expected_attributions_for_slice = text_format.Parse(
+        """
+        slice_key {}
+        attributions_keys_and_values {
+          key {
+            name: "total_attributions"
+          }
+          values {
+            key: "feature1"
+            value: {
+              double_value {
+                value: 6.3
+              }
+            }
+          }
+          values {
+            key: "feature2"
+            value: {
+              double_value {
+                value: 6.6
+              }
+            }
+          }
+        }""", metrics_for_slice_pb2.AttributionsForSlice())
+
+    attribution_records = list(
+        metrics_plots_and_validations_writer.load_and_deserialize_attributions(
+            attributions_file, output_file_format))
+    self.assertLen(attribution_records, 1)
+    self.assertProtoEquals(expected_attributions_for_slice,
+                           attribution_records[0])
 
 
 if __name__ == '__main__':

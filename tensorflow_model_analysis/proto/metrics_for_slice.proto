@@ -443,3 +443,33 @@ message PlotsForSlice {
 
   reserved 9;  // slice_key used in prefromance_statistics.proto
 }
+
+// LINT.IfChange
+// Attribution keys uniquely identify aggregated attribution values.
+message AttributionsKey {
+  // Attribution metric name (e.g. 'mean', 'total', etc)
+  string name = 1;
+  // Optional model name (if multi-model evaluation).
+  string model_name = 2;
+  // Optional output name (for multi-output models).
+  string output_name = 3;
+  // Optional sub key associated with attribution (class_id, etc).
+  SubKey sub_key = 4;
+  // If True, this is a diff of attributions based on comparison with baseline.
+  bool is_diff = 5;
+}
+// LINT.ThenChange(../metrics/metric_types.py)
+
+message AttributionsForSlice {
+  message AttributionsKeyAndValues {
+    AttributionsKey key = 1;
+    // Attribution values keyed by feature key (e.g. 'age', etc).
+    map<string, MetricValue> values = 2;
+  }
+
+  // Slice key.
+  SliceKey slice_key = 1;
+
+  // Attribution keys and values.
+  repeated AttributionsKeyAndValues attributions_keys_and_values = 2;
+}

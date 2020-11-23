@@ -4,6 +4,13 @@
 
 ## Major Features and Improvements
 
+*   Added support for aggregating feature attributions using special metrics
+    that extend from `tfma.metrics.AttributionMetric` (e.g.
+    `tfma.metrics.TotalAttributions`, `tfma.metrics.TotalAbsoluteAttributions`).
+    To use make use of these metrics a custom extractor that add attributions to
+    the `tfma.Extracts` under the key name `tfma.ATTRIBUTIONS_KEY` must be
+    manually created.
+
 ## Bug fixes and other changes
 
 *   Fix the bug that Fairness Indicator UI metric list won't refresh if the

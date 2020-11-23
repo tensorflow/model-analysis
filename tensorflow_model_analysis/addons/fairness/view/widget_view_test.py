@@ -37,6 +37,7 @@ class WidgetViewTest(testutil.TensorflowModelAnalysisTest):
     return view_types.EvalResult(
         slicing_metrics=slicing_metrics,
         plots=None,
+        attributions=None,
         config=None,
         data_location=None,
         file_format=None,

@@ -17,5 +17,6 @@ from tensorflow_model_analysis.view.view_types import SlicedMetrics
 from tensorflow_model_analysis.view.view_types import SlicedPlots
 
 from tensorflow_model_analysis.view.widget_view import render_plot
+from tensorflow_model_analysis.view.widget_view import render_slicing_attributions
 from tensorflow_model_analysis.view.widget_view import render_slicing_metrics
 from tensorflow_model_analysis.view.widget_view import render_time_series

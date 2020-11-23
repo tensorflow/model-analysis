@@ -24,10 +24,13 @@ import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer.slicer_lib import OVERALL_SLICE_NAME
 from tensorflow_model_analysis.slicer.slicer_lib import SingleSliceSpec
 from tensorflow_model_analysis.view import util
 from tensorflow_model_analysis.view import view_types
+
+from google.protobuf import text_format
 
 
 def _add_to_nested_dict(metrics):
@@ -195,6 +198,7 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
     result_a = view_types.EvalResult(
         slicing_metrics=self._makeTestData(),
         plots=None,
+        attributions=None,
         config=config.EvalConfig(),
         data_location=self.data_location_1,
         file_format='tfrecords',
@@ -202,6 +206,7 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
     result_b = view_types.EvalResult(
         slicing_metrics=[self.result_c2],
         plots=None,
+        attributions=None,
         config=config.EvalConfig(),
         data_location=self.full_data_location_2,
         file_format='tfrecords',
@@ -435,6 +440,74 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         eval_config, weighted_example_column_to_use=overriding_weight_column)
     self.assertEqual(slicing_config['weightedExamplesColumn'],
                      overriding_weight_column)
+
+  def testConvertAttributionsProto(self):
+    attributions_for_slice = text_format.Parse(
+        """
+      slice_key {}
+      attributions_keys_and_values {
+        key {
+          name: "total_attributions"
+        }
+        values {
+          key: "feature1"
+          value: {
+            double_value {
+              value: 1.0
+            }
+          }
+        }
+        values {
+          key: "feature2"
+          value: {
+            double_value {
+              value: 2.0
+            }
+          }
+        }
+      }
+      attributions_keys_and_values {
+        key {
+          name: "total_attributions"
+          output_name: "output1"
+          sub_key: {
+            class_id: { value: 1 }
+          }
+        }
+        values {
+          key: "feature1"
+          value: {
+            double_value {
+              value: 1.0
+            }
+          }
+        }
+      }""", metrics_for_slice_pb2.AttributionsForSlice())
+
+    got = util.convert_attributions_proto_to_dict(attributions_for_slice, None)
+    self.assertEqual(got, ((), {
+        '': {
+            '': {
+                'total_attributions': {
+                    'feature2': {
+                        'doubleValue': 2.0
+                    },
+                    'feature1': {
+                        'doubleValue': 1.0
+                    }
+                }
+            }
+        },
+        'output1': {
+            'classId:1': {
+                'total_attributions': {
+                    'feature1': {
+                        'doubleValue': 1.0
+                    }
+                }
+            }
+        }
+    }))
 
 
 if __name__ == '__main__':

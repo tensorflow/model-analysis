@@ -14,6 +14,11 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis metrics."""
 
+from tensorflow_model_analysis.metrics.attributions import AttributionsMetric
+from tensorflow_model_analysis.metrics.attributions import MeanAbsoluteAttributions
+from tensorflow_model_analysis.metrics.attributions import MeanAttributions
+from tensorflow_model_analysis.metrics.attributions import TotalAbsoluteAttributions
+from tensorflow_model_analysis.metrics.attributions import TotalAttributions
 from tensorflow_model_analysis.metrics.calibration import Calibration
 from tensorflow_model_analysis.metrics.calibration import MeanLabel
 from tensorflow_model_analysis.metrics.calibration import MeanPrediction

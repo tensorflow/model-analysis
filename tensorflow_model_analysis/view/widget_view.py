@@ -121,3 +121,62 @@ def render_plot(
                                             output_name, class_id, top_k, k,
                                             label)
   return visualization.render_plot(data, cfg)
+
+
+def render_slicing_attributions(
+    result: view_types.EvalResult,
+    slicing_column: Optional[Text] = None,
+    slicing_spec: Optional[Union[slicer.SingleSliceSpec,
+                                 config.SlicingSpec]] = None,
+    metric_name: Optional[Text] = None,
+    weighted_example_column: Text = None,
+    event_handlers: Optional[Callable[[Dict[Text, Union[Text, float]]],
+                                      None]] = None,
+) -> Optional[visualization.SlicingMetricsViewer]:  # pytype: disable=invalid-annotation
+  """Renders the slicing metrics view as widget.
+
+  Args:
+    result: An tfma.EvalResult.
+    slicing_column: The column to slice on.
+    slicing_spec: The tfma.SlicingSpec to filter results. If neither column nor
+      spec is set, show overall.
+    metric_name: Name of attributions metric to show attributions for. Optional
+      if only one metric used.
+    weighted_example_column: Override for the weighted example column. This can
+      be used when different weights are applied in different aprts of the model
+      (eg: multi-head).
+    event_handlers: The event handlers
+
+  Returns:
+    A SlicingMetricsViewer object if in Jupyter notebook; None if in Colab.
+  """
+  if slicing_spec and isinstance(slicing_spec, config.SlicingSpec):
+    slicing_spec = slicer.SingleSliceSpec(spec=slicing_spec)
+  data = util.get_slicing_metrics(result.attributions, slicing_column,
+                                  slicing_spec)
+  # Attributions have one additional level of indirection for the metric_name.
+  # Filter this out using the metric_name provided.
+  for d in data:
+    updated_data = {}
+    for output_name, per_output_items in d['metrics'].items():  # pytype: disable=attribute-error
+      updated_data[output_name] = {}
+      for sub_key, per_sub_key_items in per_output_items.items():
+        updated_data[output_name][sub_key] = {}
+        if metric_name:
+          if metric_name not in per_sub_key_items:
+            raise ValueError('metric_name={} not found in {}'.format(
+                metric_name, per_sub_key_items.keys()))
+          updated_data[output_name][sub_key] = per_sub_key_items[metric_name]
+        elif len(per_sub_key_items) == 1:
+          updated_data[output_name][sub_key] = list(
+              per_sub_key_items.values())[0]
+        else:
+          raise ValueError(
+              'metric_name must be one of the following: {}'.format(
+                  per_sub_key_items.keys()))
+    d['metrics'] = updated_data
+
+  cfg = util.get_slicing_config(result.config, weighted_example_column)
+
+  return visualization.render_slicing_metrics(
+      data, cfg, event_handlers=event_handlers)

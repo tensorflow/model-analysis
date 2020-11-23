@@ -22,6 +22,7 @@
 # the current tools, so we have a temporary stub.
 from tensorflow_model_analysis.api import tfma_unit as test
 
+from tensorflow_model_analysis.api.model_eval_lib import AttributionsForSlice
 from tensorflow_model_analysis.api.model_eval_lib import analyze_raw_data
 from tensorflow_model_analysis.api.model_eval_lib import BatchedInputsToExtracts
 from tensorflow_model_analysis.api.model_eval_lib import default_eval_shared_model
@@ -32,6 +33,7 @@ from tensorflow_model_analysis.api.model_eval_lib import ExtractAndEvaluate
 from tensorflow_model_analysis.api.model_eval_lib import ExtractEvaluateAndWriteResults
 from tensorflow_model_analysis.api.model_eval_lib import InputsToExtracts
 from tensorflow_model_analysis.api.model_eval_lib import is_batched_input
+from tensorflow_model_analysis.api.model_eval_lib import load_attributions
 from tensorflow_model_analysis.api.model_eval_lib import load_eval_result
 from tensorflow_model_analysis.api.model_eval_lib import load_eval_results
 from tensorflow_model_analysis.api.model_eval_lib import load_metrics

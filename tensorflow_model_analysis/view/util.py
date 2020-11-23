@@ -49,7 +49,7 @@ def get_slicing_metrics(
 
   Args:
     results: A list of records. Each record is a tuple of (slice_name,
-      {metric_name, metric_value}).
+      {output_name: {sub_key: {metric_name, metric_value}}}).
     slicing_column: The column to filter the resuslts with.
     slicing_spec: The slicer.SingleSliceSpec to filter the resutls with.
 
@@ -593,3 +593,58 @@ def convert_plots_proto_to_dict(
     return None
 
   return (slicer.deserialize_slice_key(plots_for_slice.slice_key), plots_map)
+
+
+def convert_attributions_proto_to_dict(
+    attributions_for_slice: metrics_for_slice_pb2.AttributionsForSlice,
+    model_name: Optional[Text] = None
+) -> Tuple[slicer.SliceKeyType, Optional[view_types.AttributionsByOutputName]]:
+  """Converts attributions proto to dict."""
+  model_metrics_map = {}
+  default_model_name = None
+  if attributions_for_slice.attributions_keys_and_values:
+    for kv in attributions_for_slice.attributions_keys_and_values:
+      current_model_name = kv.key.model_name
+      if current_model_name not in model_metrics_map:
+        model_metrics_map[current_model_name] = {}
+      output_name = kv.key.output_name
+      if output_name not in model_metrics_map[current_model_name]:
+        model_metrics_map[current_model_name][output_name] = {}
+      sub_key_metrics_map = model_metrics_map[current_model_name][output_name]
+      if kv.key.HasField('sub_key'):
+        sub_key_id = str(metric_types.SubKey.from_proto(kv.key.sub_key))
+      else:
+        sub_key_id = ''
+      if sub_key_id not in sub_key_metrics_map:
+        sub_key_metrics_map[sub_key_id] = {}
+      if kv.key.is_diff:
+        if default_model_name is None:
+          default_model_name = current_model_name
+        elif default_model_name != current_model_name:
+          # Setting '' to possibly trigger no match found ValueError below.
+          default_model_name = ''
+        metric_name = '{}_diff'.format(kv.key.name)
+      else:
+        metric_name = kv.key.name
+      attributions = {}
+      for k in kv.values:
+        attributions[k] = json_format.MessageToDict(kv.values[k])
+      sub_key_metrics_map[sub_key_id][metric_name] = attributions
+
+  metrics_map = None
+  keys = list(model_metrics_map.keys())
+  tmp_model_name = model_name or default_model_name
+  if tmp_model_name in model_metrics_map:
+    # Use the provided model name if there is a match.
+    metrics_map = model_metrics_map[tmp_model_name]
+  elif (not tmp_model_name) and len(keys) == 1:
+    # Show result of the only model if no model name is specified.
+    metrics_map = model_metrics_map[keys[0]]
+  elif keys:
+    # No match found.
+    raise ValueError('Fail to find attribution metrics for model name: %s . '
+                     'Available model names are [%s]' %
+                     (model_name, ', '.join(keys)))
+
+  return (slicer.deserialize_slice_key(attributions_for_slice.slice_key),
+          metrics_map)

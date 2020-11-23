@@ -180,6 +180,38 @@ def load_and_deserialize_plots(
     yield plots
 
 
+def load_and_deserialize_attributions(
+    output_path: Text,
+    output_file_format: Text = '',
+    slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
+) -> Iterator[metrics_for_slice_pb2.AttributionsForSlice]:
+  """Read and deserialize the AttributionsForSlice records.
+
+  Args:
+    output_path: Path or pattern to search for attribution files under. If a
+      directory is passed, files matching 'attributions*' will be searched for.
+    output_file_format: Optional file extension to filter files by.
+    slice_specs: A set of SingleSliceSpecs to use for filtering returned
+      attributions. The attributions for a given slice key will be returned if
+      that slice key matches any of the slice_specs.
+
+  Yields:
+    AttributionsForSlice protos found in matching files.
+  """
+  if tf.io.gfile.isdir(output_path):
+    output_path = os.path.join(output_path, constants.ATTRIBUTIONS_KEY)
+  pattern = _match_all_files(output_path)
+  if output_file_format:
+    pattern = pattern + '.' + output_file_format
+  paths = tf.io.gfile.glob(pattern)
+  for value in _raw_value_iterator(paths, output_file_format):
+    attributions = metrics_for_slice_pb2.AttributionsForSlice.FromString(value)
+    if slice_specs and not slicer.slice_key_matches_slice_specs(
+        slicer.deserialize_slice_key(attributions.slice_key), slice_specs):
+      continue
+    yield attributions
+
+
 def load_and_deserialize_validation_result(
     output_path: Text,
     output_file_format: Text = '') -> validation_result_pb2.ValidationResult:
@@ -417,12 +449,60 @@ def convert_slice_plots_to_proto(
   return result
 
 
+def convert_slice_attributions_to_proto(
+    attributions: Tuple[slicer.SliceKeyType, Dict[Any, Dict[Text, Any]]]
+) -> metrics_for_slice_pb2.AttributionsForSlice:
+  """Converts the given slice attributions into serialized AtributionsForSlice.
+
+  Args:
+    attributions: The slice attributions.
+
+  Returns:
+    The AttributionsForSlice proto.
+
+  Raises:
+    TypeError: If the type of the feature value in slice key cannot be
+      recognized.
+  """
+  result = metrics_for_slice_pb2.AttributionsForSlice()
+  slice_key, slice_attributions = attributions
+
+  result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+
+  slice_attributions = slice_attributions.copy()
+  for key in sorted(slice_attributions.keys()):
+    key_and_value = result.attributions_keys_and_values.add()
+    key_and_value.key.CopyFrom(key.to_proto())
+    for feature, value in slice_attributions[key].items():
+      attribution_value = metrics_for_slice_pb2.MetricValue()
+      if isinstance(value, six.binary_type):
+        # Convert textual types to string metrics.
+        attribution_value.bytes_value = value
+      elif isinstance(value, six.text_type):
+        # Convert textual types to string metrics.
+        attribution_value.bytes_value = value.encode('utf8')
+      elif isinstance(value, np.ndarray) and value.size != 1:
+        # Convert NumPy arrays to ArrayValue.
+        attribution_value.array_value.CopyFrom(_convert_to_array_value(value))
+      else:
+        # We try to convert to float values.
+        try:
+          attribution_value.double_value.value = float(value)
+        except (TypeError, ValueError) as e:
+          attribution_value.unknown_type.value = str(value)
+          attribution_value.unknown_type.error = e.message  # pytype: disable=attribute-error
+      key_and_value.values[feature].CopyFrom(attribution_value)
+
+  return result
+
+
 def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     output_paths: Dict[Text, Text],
     eval_config: config.EvalConfig,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
+    attributions_key: Text = constants.ATTRIBUTIONS_KEY,
     validations_key: Text = constants.VALIDATIONS_KEY,
     output_file_format: Text = '') -> writer.Writer:
   """Returns metrics and plots writer.
@@ -438,6 +518,7 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     add_metrics_callbacks: Optional list of metric callbacks (if used).
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
+    attributions_key: Name to use for attributions key in Evaluation output.
     validations_key: Name to use for validations key in Evaluation output.
     output_file_format: File format to use when saving files. Currently
       'tfrecord' and 'parquet' are supported. If using parquet, the output
@@ -457,6 +538,7 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
           add_metrics_callbacks=add_metrics_callbacks or [],
           metrics_key=metrics_key,
           plots_key=plots_key,
+          attributions_key=attributions_key,
           validations_key=validations_key,
           output_file_format=output_file_format))
 
@@ -540,8 +622,8 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation, output_paths: Dict[Text, Text],
     eval_config: config.EvalConfig,
     add_metrics_callbacks: List[types.AddMetricsCallbackType],
-    metrics_key: Text, plots_key: Text, validations_key: Text,
-    output_file_format: Text) -> beam.pvalue.PDone:
+    metrics_key: Text, plots_key: Text, attributions_key: Text,
+    validations_key: Text, output_file_format: Text) -> beam.pvalue.PDone:
   """PTransform to write metrics and plots."""
 
   if output_file_format and output_file_format not in _SUPPORTED_FORMATS:
@@ -561,7 +643,8 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
 
   def convert_to_parquet_columns(
       value: Union[metrics_for_slice_pb2.MetricsForSlice,
-                   metrics_for_slice_pb2.PlotsForSlice]
+                   metrics_for_slice_pb2.PlotsForSlice,
+                   metrics_for_slice_pb2.AttributionsForSlice]
   ) -> Dict[Text, Union[_SliceKeyDictPythonType, bytes]]:
     return {
         _SLICE_KEY_PARQUET_COLUMN_NAME:
@@ -616,6 +699,31 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
           file_name_suffix=('.' +
                             output_file_format if output_file_format else ''),
           coder=beam.coders.ProtoCoder(metrics_for_slice_pb2.PlotsForSlice))
+
+  if (attributions_key in evaluation and
+      constants.ATTRIBUTIONS_KEY in output_paths):
+    attributions = (
+        evaluation[attributions_key] | 'ConvertSliceAttributionsToProto' >>
+        beam.Map(convert_slice_attributions_to_proto))
+
+    file_path_prefix = output_paths[constants.ATTRIBUTIONS_KEY]
+    if output_file_format == _PARQUET_FORMAT:
+      _ = (
+          attributions
+          | 'ConvertAttributionsToParquetColumns' >>
+          beam.Map(convert_to_parquet_columns)
+          | 'WriteAttributionsToParquet' >> beam.io.WriteToParquet(
+              file_path_prefix=file_path_prefix,
+              schema=_SLICED_PARQUET_SCHEMA,
+              file_name_suffix='.' + output_file_format))
+    elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
+      _ = attributions | 'WriteAttributionsToTFRecord' >> beam.io.WriteToTFRecord(
+          file_path_prefix=file_path_prefix,
+          shard_name_template=None if output_file_format else '',
+          file_name_suffix=('.' +
+                            output_file_format if output_file_format else ''),
+          coder=beam.coders.ProtoCoder(
+              metrics_for_slice_pb2.AttributionsForSlice))
 
   if (validations_key in evaluation and
       constants.VALIDATIONS_KEY in output_paths):

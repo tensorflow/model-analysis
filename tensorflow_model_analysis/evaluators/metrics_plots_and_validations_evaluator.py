@@ -65,6 +65,7 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
+    attributions_key: Text = constants.ATTRIBUTIONS_KEY,
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     schema: Optional[schema_pb2.Schema] = None,
     random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluator:
@@ -77,6 +78,7 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
       metrics to be computed in-graph using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
+    attributions_key: Name to use for attributions key in Evaluation output.
     run_after: Extractor to run after (None means before any extractors).
     schema: A schema to use for customizing metrics and plots.
     random_seed_for_testing: Seed to use for unit testing.
@@ -99,6 +101,7 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
           eval_shared_models=eval_shared_models,
           metrics_key=metrics_key,
           plots_key=plots_key,
+          attributions_key=attributions_key,
           schema=schema,
           random_seed_for_testing=random_seed_for_testing))
 
@@ -539,20 +542,26 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
 
 
 def _filter_by_key_type(
-    sliced_metrics_and_plots: Tuple[slicer.SliceKeyType,
-                                    Dict[metric_types.MetricKey, Any]],
-    key_type: Type[Union[metric_types.MetricKey, metric_types.PlotKey]]
+    sliced_metrics_plots_attributions: Tuple[slicer.SliceKeyType,
+                                             Dict[metric_types.MetricKey, Any]],
+    key_type: Type[Union[metric_types.MetricKey, metric_types.PlotKey,
+                         metric_types.AttributionsKey]]
 ) -> Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]:
   """Filters metrics and plots by key type."""
-  slice_value, metrics_and_plots = sliced_metrics_and_plots
+  slice_value, metrics_plots_attributions = sliced_metrics_plots_attributions
   output = {}
-  for k, v in metrics_and_plots.items():
+  for k, v in metrics_plots_attributions.items():
     # PlotKey is a subclass of MetricKey so must check key_type based on PlotKey
     if key_type == metric_types.PlotKey:
       if isinstance(k, metric_types.PlotKey):
         output[k] = v
+    # AttributionsKey is a also subclass of MetricKey
+    elif key_type == metric_types.AttributionsKey:
+      if isinstance(k, metric_types.AttributionsKey):
+        output[k] = v
     else:
-      if not isinstance(k, metric_types.PlotKey):
+      if (not isinstance(k, metric_types.PlotKey) and
+          not isinstance(k, metric_types.AttributionsKey)):
         output[k] = v
   return (slice_value, output)
 
@@ -604,6 +613,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
+    attributions_key: Text = constants.ATTRIBUTIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
     random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
   """Computes metrics and plots.
@@ -618,14 +628,15 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       required if there are metrics to be computed in-graph using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
+    attributions_key: Name to use for attributions key in Evaluation output.
     schema: A schema to use for customizing metrics and plots.
     random_seed_for_testing: Seed to use for unit testing.
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
-    tuples where the dict is keyed by either the metrics_key (e.g. 'metrics') or
-    plots_key (e.g. 'plots') depending on what the results_dict contains.
-    schema: A schema to use for customizing metrics and plots.
+    tuples where the dict is keyed by either the metrics_key (e.g. 'metrics'),
+    plots_key (e.g. 'plots'), or attributions_key (e.g. 'attributions')
+    depending on what the results_dict contains.
   """
   computations = []
   # Add default metric computations
@@ -709,12 +720,12 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   # implementations more parallel.
 
   # Input: Tuple of (slice key, combiner input extracts).
-  # Output: Tuple of (slice key, dict of computed metrics/plots). The dicts will
-  #         be keyed by MetricKey/PlotKey and the values will be the result
-  #         of the associated computations. A given MetricComputation can
-  #         perform computations for multiple keys, but the keys should be
-  #         unique across computations.
-  sliced_metrics_and_plots = (
+  # Output: Tuple of (slice key, dict of computed metrics/plots/attributions).
+  #         The dicts will be keyed by MetricKey/PlotKey/AttributionsKey and the
+  #         values will be the result of the associated computations. A given
+  #         MetricComputation can perform computations for multiple keys, but
+  #         the keys should be unique across computations.
+  sliced_metrics_plots_and_attributions = (
       slices
       | 'ComputePerSlice' >> poisson_bootstrap.ComputeWithConfidenceIntervals(
           _ComputePerSlice,
@@ -728,22 +739,31 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
           random_seed_for_testing=random_seed_for_testing))
 
   if eval_config.options.min_slice_size.value > 1:
-    sliced_metrics_and_plots = (
-        sliced_metrics_and_plots
+    sliced_metrics_plots_and_attributions = (
+        sliced_metrics_plots_and_attributions
         | 'FilterSmallSlices' >> slicer.FilterOutSlices(
             slices_count, eval_config.options.min_slice_size.value))
 
   sliced_metrics = (
-      sliced_metrics_and_plots
+      sliced_metrics_plots_and_attributions
       | 'FilterByMetrics' >> beam.Map(_filter_by_key_type,
                                       metric_types.MetricKey))
   sliced_plots = (
-      sliced_metrics_and_plots
+      sliced_metrics_plots_and_attributions
       | 'FilterByPlots' >> beam.Map(_filter_by_key_type, metric_types.PlotKey))
+
+  sliced_attributions = (
+      sliced_metrics_plots_and_attributions
+      | 'FilterByAttributions' >> beam.Map(_filter_by_key_type,
+                                           metric_types.AttributionsKey))
 
   # pylint: enable=no-value-for-parameter
 
-  return {metrics_key: sliced_metrics, plots_key: sliced_plots}
+  return {
+      metrics_key: sliced_metrics,
+      plots_key: sliced_plots,
+      attributions_key: sliced_attributions
+  }
 
 
 @beam.ptransform_fn
@@ -755,6 +775,7 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
+    attributions_key: Text = constants.ATTRIBUTIONS_KEY,
     validations_key: Text = constants.VALIDATIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
     random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
@@ -773,14 +794,17 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
       required if there are metrics to be computed in-graph using the model.
     metrics_key: Name to use for metrics key in Evaluation output.
     plots_key: Name to use for plots key in Evaluation output.
+    attributions_key: Name to use for attributions key in Evaluation output.
     validations_key: Name to use for validation key in Evaluation output.
     schema: A schema to use for customizing metrics and plots.
     random_seed_for_testing: Seed to use for unit testing.
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
-    tuples where the dict is keyed by either the metrics_key (e.g. 'metrics') or
-    plots_key (e.g. 'plots') depending on what the results_dict contains.
+    tuples where the dict is keyed by either the metrics_key (e.g. 'metrics'),
+    plots_key (e.g. 'plots'), attributions_key (e.g. 'attributions'), or
+    validation_key (e.g. 'validations') depending on what the results_dict
+    contains.
   """
   # Separate metrics based on query_key (which may be None).
   metrics_specs_by_query_key = {}
@@ -821,6 +845,7 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
                                 if include_default_metrics else None),
             metrics_key=metrics_key,
             plots_key=plots_key,
+            attributions_key=attributions_key,
             schema=schema,
             random_seed_for_testing=random_seed_for_testing))
 
@@ -828,11 +853,11 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
       if k not in evaluations:
         evaluations[k] = []
       evaluations[k].append(v)
-  metrics_and_plots = evaluator.combine_dict_based_evaluations(evaluations)
+  evaluation_results = evaluator.combine_dict_based_evaluations(evaluations)
 
   validations = (
-      metrics_and_plots[metrics_key]
+      evaluation_results[metrics_key]
       | 'ValidateMetrics' >> beam.Map(metrics_validator.validate_metrics,
                                       eval_config))
-  metrics_and_plots[validations_key] = validations
-  return metrics_and_plots
+  evaluation_results[validations_key] = validations
+  return evaluation_results

@@ -16,6 +16,8 @@
 
 # Standard __future__ imports
 
+import copy
+
 from typing import Any, Dict, List, Sequence, Text, NamedTuple, Optional, Union
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
@@ -46,7 +48,7 @@ class SlicedPlots(
 
 MetricsByTextKey = Dict[Text, metrics_for_slice_pb2.MetricValue]
 MetricsBySubKey = Dict[Text, MetricsByTextKey]
-MetricsByOutputName = Dict[Text, Dict[Text, Dict[Text, MetricsBySubKey]]]
+MetricsByOutputName = Dict[Text, MetricsBySubKey]
 
 
 class SlicedMetrics(
@@ -94,9 +96,65 @@ class SlicedMetrics(
   """
 
 
+AttributionsByFeatureKey = Dict[Text, metrics_for_slice_pb2.MetricValue]
+AttributionsByMetricName = Dict[Text, AttributionsByFeatureKey]
+AttributionsBySubKey = Dict[Text, AttributionsByMetricName]
+AttributionsByOutputName = Dict[Text, AttributionsBySubKey]
+
+
+class SlicedAttributions(
+    NamedTuple('SlicedAttributions',
+               [('slice', slicer.SliceKeyType),
+                ('attributions', AttributionsByOutputName)])):
+  """A tuple containing the attributions belonging to a slice.
+
+  The attributions are stored in a nested dictionary with the following levels:
+
+   1. output_name: Optional output name associated with metric (for multi-output
+   models). '' by default.
+   2. sub_key: Optional sub key associated with metric (for multi-class models).
+   '' by default. See `tfma.metrics.SubKey` for more info.
+   3. metric_name: Name of the metric (`auc`, `accuracy`, etc).
+   4. feature_key: Key of feature ('age', etc).
+   5. metric_value: A dictionary containing the metric's value. See
+   [tfma.proto.metrics_for_slice_pb2.MetricValue](https://github.com/tensorflow/model-analysis/blob/cdb6790dcd7a37c82afb493859b3ef4898963fee/tensorflow_model_analysis/proto/metrics_for_slice.proto#L194)
+   for more info.
+
+  Below is a sample SlicedAttributions:
+
+  ```python
+  (
+    (('color', 'green')),
+    {
+      '': {  # default for single-output models
+        '': {  # default sub_key for non-multiclass-classification models
+          'total_attributions': {
+            'feature1': {
+              'doubleValue': 100.32
+            },
+            'feature2': {
+              'doubleValue': 54.2
+            }
+          }
+        }
+      }
+    }
+  )
+  ```
+
+  Attributes:
+    slice: A 2-element tuple representing a slice. The first element is the key
+      of a feature (ex: 'color'), and the second element is the value (ex:
+        'green'). An empty tuple represents an 'overall' slice (i.e. one that
+        encompasses the entire dataset.
+    attributions: A nested dictionary containing attribution names and values.
+  """
+
+
 class EvalResult(
     NamedTuple('EvalResult', [('slicing_metrics', List[SlicedMetrics]),
                               ('plots', List[SlicedPlots]),
+                              ('attributions', List[SlicedAttributions]),
                               ('config', config.EvalConfig),
                               ('data_location', Text), ('file_format', Text),
                               ('model_location', Text)])):
@@ -106,6 +164,8 @@ class EvalResult(
     slicing_metrics: a list of `tfma.SlicedMetrics`, containing metric values
       for each slice.
     plots: List of slice-plot pairs.
+    attributions: List of SlicedAttributions containing attribution values for
+      each slice.
     config: The config containing slicing and metrics specification.
     data_location: Optional location for data used with config.
     file_format: Optional format for data used with config.
@@ -203,6 +263,103 @@ class EvalResult(
         for metrics in slicing_metric[1][output_name].values():
           metric_names.update(metrics)
     return list(metric_names)
+
+  def get_attributions_for_slice(
+      self,
+      slice_name: slicer.SliceKeyType = (),
+      metric_name: Text = '',
+      output_name: Text = '',
+      class_id: Optional[int] = None,
+      k: Optional[int] = None,
+      top_k: Optional[int] = None) -> Union[AttributionsByFeatureKey, None]:
+    """Get attribution features names and values for a slice.
+
+    Args:
+      slice_name: A tuple of the form (column, value), indicating which slice to
+        get attributions from. Optional; if excluded, use overall slice.
+      metric_name: Name of metric to get attributions for. Optional if only one
+        metric used.
+      output_name: The name of the output. Optional, only used for multi-output
+        models.
+      class_id: Used with multi-class models to identify a specific class ID.
+      k: Used with multi-class models to identify the kth predicted value.
+      top_k: Used with multi-class models to identify top-k attribution values.
+
+    Returns:
+      Dictionary containing feature keys and values for the specified slice.
+
+    Raises:
+      ValueError: If metric_name is required.
+    """
+
+    if class_id or k or top_k:
+      sub_key = str(metric_types.SubKey(class_id, k, top_k))
+    else:
+      sub_key = ''
+
+    def equals_slice_name(slice_key):
+      if not slice_key:
+        return not slice_name
+      else:
+        return slice_key == slice_name
+
+    for sliced_attributions in self.attributions:
+      slice_key = sliced_attributions[0]
+      slice_val = sliced_attributions[1]
+      if equals_slice_name(slice_key):
+        if metric_name:
+          return slice_val[output_name][sub_key][metric_name]
+        elif len(slice_val[output_name][sub_key]) == 1:
+          return list(slice_val[output_name][sub_key].values())[0]
+        else:
+          raise ValueError(
+              'metric_name must be one of the following: {}'.format(
+                  slice_val[output_name][sub_key].keys()))
+
+    # if slice could not be found, return None
+    return None
+
+  def get_attributions_for_all_slices(
+      self,
+      metric_name: Text = '',
+      output_name: Text = '',
+      class_id: Optional[int] = None,
+      k: Optional[int] = None,
+      top_k: Optional[int] = None) -> Dict[Text, AttributionsByFeatureKey]:
+    """Get attribution feature keys and values for every slice.
+
+    Args:
+      metric_name: Name of metric to get attributions for. Optional if only one
+        metric used.
+      output_name: The name of the output (optional, only used for multi-output
+        models).
+      class_id: Used with multi-class metrics to identify a specific class ID.
+      k: Used with multi-class metrics to identify the kth predicted value.
+      top_k: Used with multi-class and ranking metrics to identify top-k
+        predicted values.
+
+    Returns:
+      Dictionary mapping slices to attribution feature keys and values.
+    """
+
+    if class_id or k or top_k:
+      sub_key = str(metric_types.SubKey(class_id, k, top_k))
+    else:
+      sub_key = ''
+
+    all_sliced_attributions = {}
+    for sliced_attributions in self.attributions:
+      slice_name = sliced_attributions[0]
+      attributions = sliced_attributions[1][output_name][sub_key]
+      if metric_name:
+        attributions = attributions[metric_name]
+      elif len(attributions) == 1:
+        attributions = list(attributions.values())[0]
+      else:
+        raise ValueError('metric_name must be one of the following: {}'.format(
+            attributions.keys()))
+      all_sliced_attributions[slice_name] = copy.copy(attributions)
+    return all_sliced_attributions  # pytype: disable=bad-return-type
 
   def get_slice_names(self) -> Sequence[Text]:
     """Get names of slices.

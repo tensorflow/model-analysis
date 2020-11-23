@@ -22,6 +22,7 @@ import os
 
 import apache_beam as beam
 from apache_beam.testing import util
+import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
@@ -37,6 +38,7 @@ from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
 from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
+from tensorflow_model_analysis.metrics import attributions
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import metric_specs
@@ -572,6 +574,77 @@ class MetricsPlotsAndValidationsEvaluatorTest(
 
         util.assert_that(
             metrics[constants.METRICS_KEY], check_metrics, label='metrics')
+
+  def testEvaluateWithAttributions(self):
+    eval_config = config.EvalConfig(
+        model_specs=[config.ModelSpec()],
+        metrics_specs=[
+            config.MetricsSpec(metrics=[
+                config.MetricConfig(class_name=attributions.TotalAttributions()
+                                    .__class__.__name__)
+            ])
+        ],
+        options=config.Options(
+            disabled_outputs={'values': ['eval_config.json']}))
+    extractors = [slice_key_extractor.SliceKeyExtractor()]
+    evaluators = [
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(eval_config=eval_config)
+    ]
+
+    example1 = {
+        'features': {},
+        'attributions': {
+            'feature1': 1.1,
+            'feature2': 1.2
+        }
+    }
+    example2 = {
+        'features': {},
+        'attributions': {
+            'feature1': 2.1,
+            'feature2': 2.2
+        }
+    }
+    example3 = {
+        'features': {},
+        'attributions': {
+            'feature1': np.array([3.1]),
+            'feature2': np.array([3.2])
+        }
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      results = (
+          pipeline
+          | 'Create' >> beam.Create([example1, example2, example3])
+          | 'ExtractEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_attributions(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_attributions = got[0]
+          self.assertEqual(got_slice_key, ())
+          total_attributions_key = metric_types.MetricKey(
+              name='total_attributions')
+          self.assertIn(total_attributions_key, got_attributions)
+          self.assertDictElementsAlmostEqual(
+              got_attributions[total_attributions_key], {
+                  'feature1': (1.1 + 2.1 + 3.1),
+                  'feature2': (1.2 + 2.2 + 3.2)
+              })
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(
+          results[constants.ATTRIBUTIONS_KEY],
+          check_attributions,
+          label='attributions')
 
   def testEvaluateWithConfidenceIntervals(self):
     # NOTE: This test does not actually test that confidence intervals are
