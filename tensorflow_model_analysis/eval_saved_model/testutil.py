@@ -155,17 +155,18 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     self.assertEqual(expected_sparse_tensor_value.dense_shape.dtype,
                      got_sparse_tensor_value.dense_shape.dtype)
 
-  def createTestEvalSharedModel(self,
-                                eval_saved_model_path: Optional[Text] = None,
-                                add_metrics_callbacks: Optional[List[
-                                    types.AddMetricsCallbackType]] = None,
-                                include_default_metrics: Optional[bool] = True,
-                                example_weight_key: Optional[Union[Text, Dict[
-                                    Text, Text]]] = None,
-                                additional_fetches: Optional[List[Text]] = None,
-                                tags: Optional[Text] = None,
-                                model_type: Optional[Text] = None,
-                                model_name: Text = '') -> types.EvalSharedModel:
+  def createTestEvalSharedModel(
+      self,
+      eval_saved_model_path: Optional[Text] = None,
+      add_metrics_callbacks: Optional[List[
+          types.AddMetricsCallbackType]] = None,
+      include_default_metrics: Optional[bool] = True,
+      example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
+      additional_fetches: Optional[List[Text]] = None,
+      tags: Optional[Text] = None,
+      model_type: Optional[Text] = None,
+      model_name: Text = '',
+      rubber_stamp: Optional[bool] = False) -> types.EvalSharedModel:
 
     if not model_type:
       model_type = model_util.get_model_type(None, eval_saved_model_path, tags)
@@ -182,6 +183,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
         model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks,
         example_weight_key=example_weight_key,
+        rubber_stamp=rubber_stamp,
         model_loader=types.ModelLoader(
             tags=tags,
             construct_fn=model_util.model_construct_fn(

@@ -53,7 +53,7 @@ from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.validators import validator
-from tensorflow_model_analysis.view import util
+from tensorflow_model_analysis.view import util as view_util
 from tensorflow_model_analysis.view import view_types
 from tensorflow_model_analysis.writers import eval_config_writer
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
@@ -163,9 +163,10 @@ def _update_eval_config_with_defaults(
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model)
   has_baseline = eval_shared_models and len(eval_shared_models) == 2
-
   return config.update_eval_config_with_defaults(
-      eval_config=eval_config, has_baseline=has_baseline)
+      eval_config=eval_config,
+      has_baseline=has_baseline,
+      rubber_stamp=model_util.has_rubber_stamp(eval_shared_models))
 
 
 MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice
@@ -288,19 +289,19 @@ def load_eval_result(
   metrics_list = []
   for p in metrics_plots_and_validations_writer.load_and_deserialize_metrics(
       output_path, output_file_format):
-    metrics = util.convert_metrics_proto_to_dict(p, model_name=model_name)
+    metrics = view_util.convert_metrics_proto_to_dict(p, model_name=model_name)
     if metrics is not None:
       metrics_list.append(metrics)
   plots_list = []
   for p in metrics_plots_and_validations_writer.load_and_deserialize_plots(
       output_path, output_file_format):
-    plots = util.convert_plots_proto_to_dict(p, model_name=model_name)
+    plots = view_util.convert_plots_proto_to_dict(p, model_name=model_name)
     if plots is not None:
       plots_list.append(plots)
   attributions_list = []
   for a in metrics_plots_and_validations_writer.load_and_deserialize_attributions(
       output_path, output_file_format):
-    attributions = util.convert_attributions_proto_to_dict(
+    attributions = view_util.convert_attributions_proto_to_dict(
         a, model_name=model_name)
     if attributions is not None:
       attributions_list.append(attributions)
@@ -330,8 +331,8 @@ def default_eval_shared_model(
     tags: Optional[List[Text]] = None,
     model_name: Text = '',
     eval_config: Optional[config.EvalConfig] = None,
-    custom_model_loader: Optional[types.ModelLoader] = None
-) -> types.EvalSharedModel:
+    custom_model_loader: Optional[types.ModelLoader] = None,
+    rubber_stamp: Optional[bool] = False) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
 
   Args:
@@ -359,6 +360,8 @@ def default_eval_shared_model(
       being evaluated.
     eval_config: Eval config. Only used for setting default tags.
     custom_model_loader: Optional custom model loader for non-TF models.
+    rubber_stamp: True when this run is a first run without a baseline
+      model while a baseline is configured, the diff thresholds will be ignored.
   """
   if not eval_config:
     model_type = constants.TF_ESTIMATOR
@@ -422,7 +425,8 @@ def default_eval_shared_model(
       include_default_metrics=include_default_metrics,
       example_weight_key=example_weight_key,
       additional_fetches=additional_fetches,
-      model_loader=model_loader)
+      model_loader=model_loader,
+      rubber_stamp=rubber_stamp)
 
 
 def default_extractors(  # pylint: disable=invalid-name
@@ -653,8 +657,8 @@ def default_writers(
   Args:
     output_path: Output path.
     eval_shared_model: Optional shared model (single-model evaluation) or list
-      of shared models (multi-model evaluation). Only required if legacy
-      add_metrics_callbacks are used.
+      of shared models (multi-model evaluation). Required unless the predictions
+      are provided alongside of the features (i.e. model-agnostic evaluations).
     eval_config: Eval config for writing out config along with results. Also
       used for to check for missing slices.
     display_only_data_location: Optional path indicating where the examples were
@@ -682,10 +686,11 @@ def default_writers(
       not isinstance(eval_shared_model, list)):
     add_metric_callbacks = eval_shared_model.add_metrics_callbacks
 
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
+
   if eval_config:
     model_locations = {}
-    eval_shared_models = model_util.verify_and_update_eval_shared_models(
-        eval_shared_model)
     for v in (eval_shared_models or [None]):
       k = '' if v is None else v.model_name
       model_locations[k] = ('<unknown>' if v is None or v.model_path is None
@@ -714,7 +719,8 @@ def default_writers(
           # Empty EvalConfig supported for backwards compatibility.
           eval_config=eval_config or config.EvalConfig(),
           add_metrics_callbacks=add_metric_callbacks,
-          output_file_format=output_file_format))
+          output_file_format=output_file_format,
+          rubber_stamp=model_util.has_rubber_stamp(eval_shared_models)))
   return writers
 
 

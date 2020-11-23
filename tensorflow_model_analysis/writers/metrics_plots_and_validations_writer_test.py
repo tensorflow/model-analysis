@@ -1648,6 +1648,37 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     self.assertTrue(validation_result.missing_thresholds)
     self.assertEmpty(validation_result.metric_validations_per_slice)
 
+    # Add rubber stamp would make validation ok.
+    writers = [
+        metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
+            output_paths,
+            eval_config=eval_config,
+            add_metrics_callbacks=[],
+            output_file_format=output_file_format,
+            rubber_stamp=True)
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      _ = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | 'ExtractEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators)
+          | 'WriteResults' >> model_eval_lib.WriteResults(writers=writers))
+      # pylint: enable=no-value-for-parameter
+
+    validation_result = (
+        metrics_plots_and_validations_writer
+        .load_and_deserialize_validation_result(
+            os.path.dirname(validations_file), output_file_format))
+
+    self.assertTrue(validation_result.validation_ok)
+    self.assertFalse(validation_result.missing_thresholds)
+    self.assertEmpty(validation_result.metric_validations_per_slice)
+
   @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
   def testWriteMetricsAndPlots(self, output_file_format):
     metrics_file = os.path.join(self._getTempDir(), 'metrics')

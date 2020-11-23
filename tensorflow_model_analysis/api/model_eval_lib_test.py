@@ -50,6 +50,7 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
+from tensorflow_model_analysis.view import view_types
 from tensorflowjs.converters import converter as tfjs_converter
 
 from google.protobuf import text_format
@@ -610,12 +611,19 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                      config.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
-  @parameterized.named_parameters(('tf_keras', constants.TF_KERAS),
-                                  ('tf_lite', constants.TF_LITE),
-                                  ('tf_js', constants.TF_JS))
-  def testRunModelAnalysisWithKerasModel(self, model_type):
+  @parameterized.named_parameters(
+      ('tf_keras', constants.TF_KERAS), ('tf_lite', constants.TF_LITE),
+      ('tf_js', constants.TF_JS),
+      ('baseline_missing', constants.TF_KERAS, True),
+      ('rubber_stamp', constants.TF_KERAS, True, True))
+  def testRunModelAnalysisWithKerasModel(self,
+                                         model_type,
+                                         remove_baseline=False,
+                                         rubber_stamp=False):
 
-    def _build_keras_model(eval_config, name='export_dir'):
+    def _build_keras_model(eval_config,
+                           export_name='export_dir',
+                           rubber_stamp=False):
       input_layer = tf.keras.layers.Input(shape=(28 * 28,), name='data')
       output_layer = tf.keras.layers.Dense(
           10, activation=tf.nn.softmax)(
@@ -631,7 +639,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
           (features, labels, example_weights))
       dataset = dataset.shuffle(buffer_size=1).repeat().batch(1)
       model.fit(dataset, steps_per_epoch=1)
-      model_location = os.path.join(self._getTempDir(), name)
+      model_location = os.path.join(self._getTempDir(), export_name)
       if model_type == constants.TF_LITE:
         converter = tf.compat.v2.lite.TFLiteConverter.from_keras_model(model)
         tflite_model = converter.convert()
@@ -654,7 +662,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         model.save(model_location, save_format='tf')
       return model_eval_lib.default_eval_shared_model(
           eval_saved_model_path=model_location,
-          eval_config=eval_config), model_location
+          eval_config=eval_config,
+          rubber_stamp=rubber_stamp)
 
     examples = [
         self._makeExample(data=[0.0] * 28 * 28, label=1.0),
@@ -708,9 +717,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                     slicing_specs=slicing_specs,
                     threshold=config.MetricThreshold(
                         value_threshold=config.GenericValueThreshold(
-                            lower_bound={'value': 0})))
+                            lower_bound={'value': 0}))),
+                # Change thresholds would be ignored when rubber stamp is true.
+                config.PerSliceMetricThreshold(
+                    slicing_specs=slicing_specs,
+                    threshold=config.MetricThreshold(
+                        change_threshold=config.GenericChangeThreshold(
+                            direction=config.MetricDirection.HIGHER_IS_BETTER,
+                            absolute={'value': 0})))
             ]))
-    for class_id in (0, 5, 9):
+    for class_id in (0, 5):
       metrics_spec.binarize.class_ids.values.append(class_id)
     eval_config = config.EvalConfig(
         model_specs=[config.ModelSpec(label_key='label')],
@@ -719,16 +735,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       for s in eval_config.model_specs:
         s.model_type = model_type
 
-    model, model_location = _build_keras_model(eval_config)
-    baseline, baseline_model_location = _build_keras_model(
-        eval_config, 'baseline_export')
+    model = _build_keras_model(eval_config, rubber_stamp=rubber_stamp)
+    baseline = _build_keras_model(eval_config, 'baseline_export')
+    if remove_baseline:
+      eval_shared_model = model
+    else:
+      eval_shared_model = {'candidate': model, 'baseline': baseline}
     output_path = self._getTempDir()
     eval_results = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
-        eval_shared_model={
-            'candidate': model,
-            'baseline': baseline
-        },
+        eval_shared_model=eval_shared_model,
         data_location=data_location,
         output_path=output_path,
         schema=schema)
@@ -741,6 +757,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       validation_records.append(
           validation_result_pb2.ValidationResult.FromString(record))
     self.assertLen(validation_records, 1)
+    # Change thresholds ignored when rubber stamping
     expected_result = text_format.Parse(
         """
         validation_ok: false
@@ -754,6 +771,47 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             num_matching_slices: 1
           }
         }""", validation_result_pb2.ValidationResult())
+    # Normal run with change threshold not satisfied.
+    if not rubber_stamp and not remove_baseline:
+      text_format.Parse(
+          """
+          metric_validations_per_slice {
+            slice_key {}
+            failures {
+             metric_key {
+               name: "weighted_example_count"
+               sub_key { class_id {} }
+               model_name: "candidate"
+               is_diff: true
+             }
+             metric_threshold {
+               change_threshold {
+                 absolute {}
+                 direction: HIGHER_IS_BETTER
+               }
+             }
+             metric_value { double_value {} }
+            }
+            failures {
+             metric_key {
+               name: "weighted_example_count"
+               sub_key {
+                 class_id {
+                   value: 5
+                 }
+               }
+               model_name: "candidate"
+               is_diff: true
+             }
+             metric_threshold {
+               change_threshold {
+                 absolute {}
+                 direction: HIGHER_IS_BETTER
+               }
+             }
+             metric_value { double_value {} }
+            }
+          }""", expected_result)
     self.assertProtoEquals(expected_result, validation_records[0])
 
     def check_eval_result(eval_result, model_location):
@@ -771,19 +829,22 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
           'classId:5': {
               'auc': True,
           },
-          'classId:9': {
-              'auc': True,
-          },
       }
       for class_id in expected_metrics:
         self.assertIn(class_id, got_metrics)
         for k in expected_metrics[class_id]:
           self.assertIn(k, got_metrics[class_id])
 
-    self.assertLen(eval_results._results, 2)
-    eval_result_0, eval_result_1 = eval_results._results
-    check_eval_result(eval_result_0, model_location)
-    check_eval_result(eval_result_1, baseline_model_location)
+    # TODO(b/173657964): assert exception for the missing baseline but non
+    # rubber stamping test.
+    if rubber_stamp or remove_baseline:
+      self.assertIsInstance(eval_results, view_types.EvalResult)
+      check_eval_result(eval_results, model.model_path)
+    else:
+      self.assertLen(eval_results._results, 2)
+      eval_result_0, eval_result_1 = eval_results._results
+      check_eval_result(eval_result_0, model.model_path)
+      check_eval_result(eval_result_1, baseline.model_path)
 
   def testRunModelAnalysisWithQueryBasedMetrics(self):
     input_layer = tf.keras.layers.Input(shape=(1,), name='age')

@@ -182,6 +182,7 @@ class EvalSharedModel(
             ('model_loader', ModelLoader),
             ('model_name', Text),
             ('model_type', Text),
+            ('rubber_stamp', bool),
         ])):
   # pyformat: disable
   """Shared model used during extraction and evaluation.
@@ -204,6 +205,10 @@ class EvalSharedModel(
     model_loader: Model loader.
     model_name: Model name (should align with ModelSpecs.name).
     model_type: Model type (tfma.TF_KERAS, tfma.TF_LITE, tfma.TF_ESTIMATOR, ..).
+    rubber_stamp: True if this model is being rubber stamped. When a
+      model is rubber stamped diff thresholds will be ignored if an associated
+      baseline model is not passed.
+
 
   More details on add_metrics_callbacks:
 
@@ -238,6 +243,7 @@ class EvalSharedModel(
       model_loader: Optional[ModelLoader] = None,
       model_name: Text = '',
       model_type: Text = '',
+      rubber_stamp: bool = False,
       construct_fn: Optional[Callable[[], Any]] = None):
     if not add_metrics_callbacks:
       add_metrics_callbacks = []
@@ -252,7 +258,7 @@ class EvalSharedModel(
                  cls).__new__(cls, model_path, add_metrics_callbacks,
                               include_default_metrics, example_weight_key,
                               additional_fetches, model_loader, model_name,
-                              model_type)
+                              model_type, rubber_stamp)
 
 
 # MaybeMultipleEvalSharedModels represents a parameter that can take on a single

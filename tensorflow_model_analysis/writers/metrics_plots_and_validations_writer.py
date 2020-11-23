@@ -504,7 +504,8 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     plots_key: Text = constants.PLOTS_KEY,
     attributions_key: Text = constants.ATTRIBUTIONS_KEY,
     validations_key: Text = constants.VALIDATIONS_KEY,
-    output_file_format: Text = '') -> writer.Writer:
+    output_file_format: Text = '',
+    rubber_stamp: Optional[bool] = False) -> writer.Writer:
   """Returns metrics and plots writer.
 
   Note, sharding will be enabled by default if a output_file_format is provided.
@@ -529,6 +530,9 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
       proto. The validation result file will contain a single column
       'serialized_value' which will contain a single serialized ValidationResult
       proto.
+    rubber_stamp: True if this model is being rubber stamped. When a model is
+      rubber stamped diff thresholds will be ignored if an associated baseline
+      model is not passed.
   """
   return writer.Writer(
       stage_name='WriteMetricsAndPlots',
@@ -540,7 +544,8 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
           plots_key=plots_key,
           attributions_key=attributions_key,
           validations_key=validations_key,
-          output_file_format=output_file_format))
+          output_file_format=output_file_format,
+          rubber_stamp=rubber_stamp))
 
 
 @beam.typehints.with_input_types(validation_result_pb2.ValidationResult)
@@ -551,8 +556,11 @@ class CombineValidations(beam.CombineFn):
   Combines PCollection of ValidationResults for different metrics and slices.
   """
 
-  def __init__(self, eval_config: config.EvalConfig):
+  def __init__(self,
+               eval_config: config.EvalConfig,
+               rubber_stamp: bool = False):
     self._eval_config = eval_config
+    self._rubber_stamp = rubber_stamp
 
   def create_accumulator(self) -> None:
     return
@@ -595,8 +603,10 @@ class CombineValidations(beam.CombineFn):
     thresholds = metric_specs.metric_thresholds_from_metrics_specs(
         self._eval_config.metrics_specs)
     if not thresholds:
-      accumulator.validation_ok = False
-      accumulator.missing_thresholds = True
+      # Default is to validation NOT ok when not rubber stamping.
+      accumulator.validation_ok = self._rubber_stamp
+      # Default is to missing thresholds when not rubber stamping.
+      accumulator.missing_thresholds = not self._rubber_stamp
     missing = metrics_validator.get_missing_slices(
         accumulator.validation_details.slicing_details, self._eval_config)
     if missing:
@@ -619,11 +629,16 @@ class CombineValidations(beam.CombineFn):
 # TODO(b/157600974): Add typehint.
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
-    evaluation: evaluator.Evaluation, output_paths: Dict[Text, Text],
+    evaluation: evaluator.Evaluation,
+    output_paths: Dict[Text, Text],
     eval_config: config.EvalConfig,
     add_metrics_callbacks: List[types.AddMetricsCallbackType],
-    metrics_key: Text, plots_key: Text, attributions_key: Text,
-    validations_key: Text, output_file_format: Text) -> beam.pvalue.PDone:
+    metrics_key: Text,
+    plots_key: Text,
+    attributions_key: Text,
+    validations_key: Text,
+    output_file_format: Text,
+    rubber_stamp: bool = False) -> beam.pvalue.PDone:
   """PTransform to write metrics and plots."""
 
   if output_file_format and output_file_format not in _SUPPORTED_FORMATS:
@@ -730,7 +745,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     validations = (
         evaluation[validations_key]
         | 'MergeValidationResults' >> beam.CombineGlobally(
-            CombineValidations(eval_config)))
+            CombineValidations(eval_config, rubber_stamp=rubber_stamp)))
 
     file_path_prefix = output_paths[constants.VALIDATIONS_KEY]
     # We only use a single shard here because validations are usually single

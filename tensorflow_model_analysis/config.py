@@ -93,7 +93,8 @@ def update_eval_config_with_defaults(
     eval_config: EvalConfig,
     maybe_add_baseline: Optional[bool] = None,
     maybe_remove_baseline: Optional[bool] = None,
-    has_baseline: Optional[bool] = False) -> EvalConfig:
+    has_baseline: Optional[bool] = False,
+    rubber_stamp: Optional[bool] = False) -> EvalConfig:
   """Returns a new config with default settings applied.
 
   a) Add or remove a model_spec according to "has_baseline".
@@ -122,7 +123,16 @@ def update_eval_config_with_defaults(
       baseline ModelSpec from the config if it already exists. Removal of the
       baseline also removes any change thresholds. Only one of has_baseline or
       maybe_remove_baseline should be used.
+    rubber_stamp: True if this model is being rubber stamped. When a model is
+      rubber stamped diff thresholds will be ignored if an associated baseline
+      model is not passed.
   """
+  if (not has_baseline and has_change_threshold(eval_config) and
+      not rubber_stamp):
+    # TODO(b/173657964): Raise an error instead of logging an error.
+    logging.error('There are change thresholds, but the baseline is missing. '
+                  'This is allowed only when rubber stamping (first run).')
+
   updated_config = EvalConfig()
   updated_config.CopyFrom(eval_config)
   # if user requests CIs but doesn't set method, use JACKKNIFE
@@ -174,9 +184,24 @@ def update_eval_config_with_defaults(
       for metric in metrics_spec.metrics:
         if metric.threshold.ByteSize():
           metric.threshold.ClearField('change_threshold')
+        for per_slice_threshold in metric.per_slice_thresholds:
+          if per_slice_threshold.threshold.ByteSize():
+            per_slice_threshold.threshold.ClearField('change_threshold')
+        for cross_slice_threshold in metric.cross_slice_thresholds:
+          if cross_slice_threshold.threshold.ByteSize():
+            cross_slice_threshold.threshold.ClearField('change_threshold')
       for threshold in metrics_spec.thresholds.values():
         if threshold.ByteSize():
           threshold.ClearField('change_threshold')
+      for per_slice_thresholds in metrics_spec.per_slice_thresholds.values():
+        for per_slice_threshold in per_slice_thresholds.thresholds:
+          if per_slice_threshold.threshold.ByteSize():
+            per_slice_threshold.threshold.ClearField('change_threshold')
+      for cross_slice_thresholds in metrics_spec.cross_slice_thresholds.values(
+      ):
+        for cross_slice_threshold in cross_slice_thresholds.thresholds:
+          if cross_slice_threshold.threshold.ByteSize():
+            cross_slice_threshold.threshold.ClearField('change_threshold')
     logging.info(
         'Request was made to ignore the baseline ModelSpec and any change '
         'thresholds. This is likely because a baseline model was not provided: '
@@ -207,3 +232,37 @@ def update_eval_config_with_defaults(
       spec.model_names.append(baseline_spec.name)
 
   return updated_config
+
+
+def has_change_threshold(eval_config: EvalConfig) -> bool:
+  """Checks whether the eval_config has any change thresholds.
+
+  Args:
+    eval_config: the TFMA eval_config.
+
+  Returns:
+    True when there are change thresholds otherwise False.
+  """
+
+  for metrics_spec in eval_config.metrics_specs:
+    for metric in metrics_spec.metrics:
+      if metric.threshold.change_threshold.ByteSize():
+        return True
+      for per_slice_threshold in metric.per_slice_thresholds:
+        if per_slice_threshold.threshold.change_threshold.ByteSize():
+          return True
+      for cross_slice_threshold in metric.cross_slice_thresholds:
+        if cross_slice_threshold.threshold.change_threshold.ByteSize():
+          return True
+    for threshold in metrics_spec.thresholds.values():
+      if threshold.change_threshold.ByteSize():
+        return True
+    for per_slice_thresholds in metrics_spec.per_slice_thresholds.values():
+      for per_slice_threshold in per_slice_thresholds.thresholds:
+        if per_slice_threshold.threshold.change_threshold.ByteSize():
+          return True
+    for cross_slice_thresholds in metrics_spec.cross_slice_thresholds.values():
+      for cross_slice_threshold in cross_slice_thresholds.thresholds:
+        if cross_slice_threshold.threshold.change_threshold.ByteSize():
+          return True
+  return False

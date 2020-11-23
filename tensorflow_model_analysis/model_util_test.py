@@ -533,6 +533,23 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
+  def testHasRubberStamp(self):
+    # Model agnostic.
+    self.assertFalse(model_util.has_rubber_stamp(None))
+
+    # All non baseline models has rubber stamp.
+    baseline = self.createTestEvalSharedModel(model_name=constants.BASELINE_KEY)
+    candidate = self.createTestEvalSharedModel(
+        model_name=constants.CANDIDATE_KEY, rubber_stamp=True)
+    self.assertTrue(model_util.has_rubber_stamp([baseline, candidate]))
+
+    # Not all non baseline has rubber stamp.
+    candidate_nr = self.createTestEvalSharedModel(
+        model_name=constants.CANDIDATE_KEY)
+    self.assertFalse(model_util.has_rubber_stamp([candidate_nr]))
+    self.assertFalse(
+        model_util.has_rubber_stamp([baseline, candidate, candidate_nr]))
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

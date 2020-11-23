@@ -788,3 +788,19 @@ class CombineFnWithModels(beam.CombineFn):
       if self._model_load_seconds is not None:
         self._model_load_seconds_distribution.update(self._model_load_seconds)
         self._model_load_seconds = None
+
+
+# Need to run after verify_and_update_eval_shared_models.
+def has_rubber_stamp(eval_shared_model: Optional[List[types.EvalSharedModel]]):
+  """Check whether the candidate model is being rubber stamped."""
+  # Model agnostic case, no baseline, change thresholds should not be
+  # configured.
+  if eval_shared_model is None:
+    return False
+  # In case of multiple candidate modules, all models need to has rubber stamp.
+  if isinstance(eval_shared_model, list):
+    return all(
+        m.rubber_stamp if m.model_name == constants.CANDIDATE_KEY else True
+        for m in eval_shared_model)
+  raise ValueError('Not supported eval_shared_model type: {}'.format(
+      type(eval_shared_model)))

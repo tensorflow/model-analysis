@@ -56,6 +56,7 @@ from tensorflow_model_analysis.config import ConfidenceIntervalOptions
 from tensorflow_model_analysis.config import EvalConfig
 from tensorflow_model_analysis.config import GenericChangeThreshold
 from tensorflow_model_analysis.config import GenericValueThreshold
+from tensorflow_model_analysis.config import has_change_threshold
 from tensorflow_model_analysis.config import MetricConfig
 from tensorflow_model_analysis.config import MetricDirection
 from tensorflow_model_analysis.config import MetricsSpec

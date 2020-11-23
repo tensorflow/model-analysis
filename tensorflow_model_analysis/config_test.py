@@ -218,7 +218,29 @@ class ConfigTest(tf.test.TestCase):
             }
             change_threshold {
               direction: HIGHER_IS_BETTER
-              absolute{ value: -1e-10 }
+              absolute { value: -1e-10 }
+            }
+          }
+          per_slice_thresholds {
+            threshold {
+              value_threshold {
+                lower_bound { value: 0.9 }
+              }
+              change_threshold {
+                direction: HIGHER_IS_BETTER
+                absolute { value: -1e-10 }
+              }
+            }
+          }
+          cross_slice_thresholds {
+            threshold {
+              value_threshold {
+                lower_bound { value: 0.9 }
+              }
+              change_threshold {
+                direction: HIGHER_IS_BETTER
+                absolute { value: -1e-10 }
+              }
             }
           }
         }
@@ -230,7 +252,39 @@ class ConfigTest(tf.test.TestCase):
             }
             change_threshold {
               direction: HIGHER_IS_BETTER
-              absolute{ value: -1e-10 }
+              absolute { value: -1e-10 }
+            }
+          }
+        }
+        per_slice_thresholds {
+          key: "my_metric"
+          value {
+            thresholds {
+              threshold {
+                value_threshold {
+                  lower_bound { value: 0.9 }
+                }
+                change_threshold {
+                  direction: HIGHER_IS_BETTER
+                  absolute { value: -1e-10 }
+                }
+              }
+            }
+          }
+        }
+        cross_slice_thresholds {
+          key: "my_metric"
+          value {
+            thresholds {
+              threshold {
+                value_threshold {
+                  lower_bound { value: 0.9 }
+                }
+                change_threshold {
+                  direction: HIGHER_IS_BETTER
+                  absolute { value: -1e-10 }
+                }
+              }
             }
           }
         }
@@ -248,6 +302,20 @@ class ConfigTest(tf.test.TestCase):
               lower_bound { value: 0.9 }
             }
           }
+          per_slice_thresholds {
+            threshold {
+              value_threshold {
+                lower_bound { value: 0.9 }
+              }
+            }
+          }
+          cross_slice_thresholds {
+            threshold {
+              value_threshold {
+                lower_bound { value: 0.9 }
+              }
+            }
+          }
         }
         thresholds {
           key: "my_metric"
@@ -257,15 +325,91 @@ class ConfigTest(tf.test.TestCase):
             }
           }
         }
+        per_slice_thresholds {
+          key: "my_metric"
+          value {
+            thresholds {
+              threshold {
+                value_threshold {
+                  lower_bound { value: 0.9 }
+                }
+              }
+            }
+          }
+        }
+        cross_slice_thresholds {
+          key: "my_metric"
+          value {
+            thresholds {
+              threshold {
+                value_threshold {
+                  lower_bound { value: 0.9 }
+                }
+              }
+            }
+          }
+        }
         model_names: [""]
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
                                              config.EvalConfig())
 
+    # Only valid when rubber stamping.
     got_eval_config = config.update_eval_config_with_defaults(
-        eval_config, has_baseline=False)
+        eval_config, has_baseline=False, rubber_stamp=True)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
+
+  def testHasChangeThreshold(self):
+    eval_config = text_format.Parse(
+        """
+      metrics_specs {
+        metrics {
+          class_name: "MeanLabel"
+          threshold {
+            change_threshold {
+              direction: HIGHER_IS_BETTER
+              absolute { value: 0.1 }
+            }
+          }
+        }
+      }
+    """, config.EvalConfig())
+
+    self.assertTrue(config.has_change_threshold(eval_config))
+
+    eval_config = text_format.Parse(
+        """
+      metrics_specs {
+        thresholds {
+          key: "my_metric"
+          value {
+            change_threshold {
+              direction: HIGHER_IS_BETTER
+              absolute { value: 0.1 }
+            }
+          }
+        }
+      }
+    """, config.EvalConfig())
+
+    self.assertTrue(config.has_change_threshold(eval_config))
+
+    eval_config = text_format.Parse(
+        """
+      metrics_specs {
+        metrics {
+          class_name: "MeanLabel"
+          threshold {
+            value_threshold {
+              lower_bound { value: 0.9 }
+            }
+          }
+        }
+      }
+    """, config.EvalConfig())
+
+    self.assertFalse(config.has_change_threshold(eval_config))
 
 
 if __name__ == '__main__':

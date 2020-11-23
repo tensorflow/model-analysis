@@ -58,7 +58,11 @@
     happen. The fix could often take a week or more depending on the complexity
     involved for the wheels to be available on the PyPI cloud service. You can
     always use the stable version of TFMA available on PyPI by running the
-    command `pip install tensorflow-model-analysis` .
+    command `pip install tensorflow-model-analysis`.
+
+*   Add support for rubber stamping (first run without a valid baseline model)
+    when validating a model. The change threshold is ignored only when the model
+    is rubber stamped, otherwise, an error is thrown.
 
 ## Bug fixes and other changes
 
