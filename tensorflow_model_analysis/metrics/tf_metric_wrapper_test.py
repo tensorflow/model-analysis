@@ -817,7 +817,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
     computation = tf_metric_wrapper.tf_metric_computations(
         [_CustomMetric(),
          tf.keras.metrics.MeanSquaredError(name='mse')],
-        batch_size=2)[0]
+        desired_batch_size=2)[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.0], 'example_weights': [1.0]}
     example2 = {'labels': [0.0], 'predictions': [0.5], 'example_weights': [1.0]}
@@ -860,7 +860,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
 
   def testMergeAccumulators(self):
     computation = tf_metric_wrapper.tf_metric_computations(
-        [tf.keras.metrics.MeanSquaredError(name='mse')], batch_size=2)[0]
+        [tf.keras.metrics.MeanSquaredError(name='mse')],
+        desired_batch_size=2)[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.0], 'example_weights': [1.0]}
     example2 = {'labels': [0.0], 'predictions': [0.5], 'example_weights': [1.0]}

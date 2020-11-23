@@ -30,6 +30,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -51,7 +52,8 @@ def tf_metric_computations(
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
-    batch_size: Optional[int] = None) -> metric_types.MetricComputations:
+    desired_batch_size: Optional[int] = None
+) -> metric_types.MetricComputations:
   """Returns metric computations for the given TF metrics.
 
   Note that there is no requirement that a one to one mapping exist between the
@@ -69,7 +71,8 @@ def tf_metric_computations(
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions. This should only be used when the aggregation_type
       is set.
-    batch_size: Batch size to use when calling TF metrics (testing only).
+    desired_batch_size: Batch size to use when calling TF metrics
+      (testing only).
 
   Returns:
     Metric computations.
@@ -136,7 +139,7 @@ def tf_metric_computations(
                   sub_key,
                   aggregation_type,
                   class_weights,
-                  batch_size,
+                  desired_batch_size,
               )))
 
   return computations
@@ -438,6 +441,11 @@ class _LossMetric(tf.keras.metrics.Mean):
         self.loss(y_true, y_pred), sample_weight=sample_weight)
 
 
+def _numpy_array_size_fn(array: np.ndarray) -> int:
+  """Size estimator for numpy arrays."""
+  return array.nbytes
+
+
 class _CompilableMetricsAccumulator(object):
   """Accumulator for compilable metrics.
 
@@ -453,84 +461,108 @@ class _CompilableMetricsAccumulator(object):
       single-output models this will only have one item). The second dimension
       is used to store the accumulated weights for each metric associated with
       the output dimension.
-    total_input_byte_size: Byte size of accumulated inputs.
     pad: True if padding needed.
     last_dim: Max size of the last dimension of labels or predictions (used with
       padding).
+    size_estimator: Batch size estimator.
+    desired_batch_size: Desired batch size.
   """
-  __slots__ = ['inputs', 'weights', 'total_input_byte_size', 'pad', 'last_dim']
-
-  def __init__(self, metric_counts: List[int]):
-    """Initializes accumulator using a list of metric counts per output."""
-    # Inputs have shape (num_outputs, num_metrics, num_accumulated_inputs)
-    self.inputs = [
-    ]  # type: List[Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]]
-    # Weights have shape (num_outputs, num_metrics)
-    self.weights = []  # type: List[List[Optional[np.ndarray]]]
-    for output_metric_count in metric_counts:
-      self.inputs.append(([], [], []))
-      self.weights.append([None] * output_metric_count)
-    self.total_input_byte_size = 0
-    self.pad = False
-    self.last_dim = 0
-
-  def len_inputs(self):
-    return len(self.inputs[0][0])
-
-  def add_input(self, output_index: int, label: np.ndarray,
-                prediction: np.ndarray, example_weight: np.ndarray):
-    for i, v in enumerate((label, prediction, example_weight)):
-      self.inputs[output_index][i].append(v)
-      self.total_input_byte_size += v.nbytes
-    last_dim = max(label.shape[-1], prediction.shape[-1])
-    if self.last_dim and self.last_dim != last_dim:
-      self.pad = True
-    self.last_dim = max(self.last_dim, last_dim)
-
-  def get_inputs(
-      self, output_index: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Returns labels, predictions, and weights for output at given offset."""
-    labels, preds, example_weights = self.inputs[output_index]
-    if self.pad:
-
-      def pad_value(a: np.array) -> Union[int, float]:
-        return -1 if a.dtype.kind == 'i' else -1.0
-
-      labels = [metric_util.pad(l, self.last_dim, pad_value(l)) for l in labels]
-      preds = [metric_util.pad(p, self.last_dim, pad_value(p)) for p in preds]
-    return (np.array(labels), np.array(preds), np.array(example_weights))
-
-  def clear_inputs(self):
-    for output_index in range(len(self.inputs)):
-      for i in (0, 1, 2):
-        del self.inputs[output_index][i][:]
-    self.total_input_byte_size = 0
-    self.pad = False
-    self.last_dim = 0
-
-  def add_weights(self, output_index: int, metric_index: int,
-                  weights: np.ndarray):
-    cur_weights = self.weights[output_index][metric_index]
-    if cur_weights is None:
-      self.weights[output_index][metric_index] = weights
-    else:
-      self.weights[output_index][metric_index] = np.add(cur_weights, weights)
-
-  def get_weights(self, output_index: int,
-                  metric_index: int) -> Optional[np.ndarray]:
-    return self.weights[output_index][metric_index]
-
-
-class _CompilableMetricsCombiner(beam.CombineFn):
-  """Combines compilable metric weights and computes result."""
 
   # We really want the batch size to be adaptive like it is in
   # beam.BatchElements(), but there isn't an easy way to make it so. For now
   # we will limit stored inputs to a max overall byte size.
   # TODO(b/73789023): Figure out how to make this batch size dynamic.
   _TOTAL_INPUT_BYTE_SIZE_THRESHOLD = 16 << 20  # 16MiB
-  _BATCH_SIZE = 1000
+  _DEFAULT_DESIRED_BATCH_SIZE = 1000
 
+  __slots__ = [
+      '_inputs', '_weights', '_pad', '_last_dim', '_size_estimator',
+      '_desired_batch_size'
+  ]
+
+  def __init__(self,
+               metric_counts: List[int],
+               desired_batch_size: Optional[int] = None):
+    """Initializes accumulator using a list of metric counts per output."""
+    # Inputs have shape (num_outputs, num_metrics, num_accumulated_inputs)
+    self._inputs = [
+    ]  # type: List[Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]]
+    # Weights have shape (num_outputs, num_metrics)
+    self._weights = []  # type: List[List[Optional[np.ndarray]]]
+    for output_metric_count in metric_counts:
+      self._inputs.append(([], [], []))
+      self._weights.append([None] * output_metric_count)
+    self._pad = False
+    self._last_dim = 0
+    self._size_estimator = util.SizeEstimator(
+        size_threshold=self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD,
+        size_fn=_numpy_array_size_fn)
+    if desired_batch_size and desired_batch_size > 0:
+      self._desired_batch_size = desired_batch_size
+    else:
+      self._desired_batch_size = self._DEFAULT_DESIRED_BATCH_SIZE
+
+  def len_inputs(self) -> int:
+    return len(self._inputs[0][0])
+
+  def add_input(self, output_index: int, label: np.ndarray,
+                prediction: np.ndarray, example_weight: np.ndarray):
+    for i, v in enumerate((label, prediction, example_weight)):
+      self._inputs[output_index][i].append(v)
+      self._size_estimator.update(v)
+    last_dim = max(label.shape[-1], prediction.shape[-1])
+    if self._last_dim and self._last_dim != last_dim:
+      self._pad = True
+    self._last_dim = max(self._last_dim, last_dim)
+
+  def get_inputs(
+      self, output_index: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Returns labels, predictions, and weights for output at given offset."""
+    labels, preds, example_weights = self._inputs[output_index]
+    if self._pad:
+
+      def pad_value(a: np.array) -> Union[int, float]:
+        return -1 if a.dtype.kind == 'i' else -1.0
+
+      labels = [
+          metric_util.pad(l, self._last_dim, pad_value(l)) for l in labels
+      ]
+      preds = [metric_util.pad(p, self._last_dim, pad_value(p)) for p in preds]
+    return (np.array(labels), np.array(preds), np.array(example_weights))
+
+  def clear_inputs(self):
+    for output_index in range(len(self._inputs)):
+      for i in (0, 1, 2):
+        del self._inputs[output_index][i][:]
+    self._size_estimator.clear()
+    self._pad = False
+    self._last_dim = 0
+
+  def add_weights(self, output_index: int, metric_index: int,
+                  weights: np.ndarray):
+    cur_weights = self._weights[output_index][metric_index]
+    if cur_weights is None:
+      self._weights[output_index][metric_index] = weights
+    else:
+      self._weights[output_index][metric_index] = np.add(cur_weights, weights)
+
+  def get_weights(self, output_index: int,
+                  metric_index: int) -> Optional[np.ndarray]:
+    return self._weights[output_index][metric_index]
+
+  def should_flush(self) -> bool:
+    return (self.len_inputs() >= self._desired_batch_size or
+            self._size_estimator.should_flush())
+
+  def get_size_estimate(self) -> int:
+    return self._size_estimator.get_estimate()
+
+
+class _CompilableMetricsCombiner(beam.CombineFn):
+  """Combines compilable metric weights and computes result."""
+
+  # TODO(b/173811366): Consider removing the desired_batch_size knob and
+  # only use input size.
   def __init__(self,
                metric_configs: Dict[Text, List[Dict[Text, Any]]],
                loss_configs: Dict[Text, List[Dict[Text, Any]]],
@@ -540,7 +572,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
                sub_key: Optional[metric_types.SubKey],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Dict[int, float],
-               batch_size: Optional[int] = None):
+               desired_batch_size: Optional[int] = None):
     # Use parallel lists to store output_names and configs to guarantee
     # consistent ordering and for natural alignment with the accumulator where
     # lists are used instead of dicts for efficency.
@@ -560,14 +592,16 @@ class _CompilableMetricsCombiner(beam.CombineFn):
         self._sub_key_in_config = False
         break
     self._metrics = None  # type: Dict[Text, List[tf.keras.metrics.Metric]]
-    self._batch_size = (
-        batch_size if batch_size is not None else self._BATCH_SIZE)
+    self._desired_batch_size = desired_batch_size
     self._batch_size_beam_metric = (
         beam.metrics.Metrics.distribution(
-            constants.METRICS_NAMESPACE, 'keras_compilable_metrics_batch_size'))
+            constants.METRICS_NAMESPACE,
+            'keras_compilable_metrics_combine_batch_size'))
     self._total_input_byte_size_beam_metric = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE,
-        'keras_compilable_metrics_total_input_byte_size')
+        'keras_compilable_metrics_combine_batch_bytes_size')
+    self._num_compacts = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_compacts')
 
   def _setup_if_needed(self):
     if self._metrics is None:
@@ -586,7 +620,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
       return
     self._batch_size_beam_metric.update(accumulator.len_inputs())
     self._total_input_byte_size_beam_metric.update(
-        accumulator.total_input_byte_size)
+        accumulator.get_size_estimate())
     for output_index, output_name in enumerate(self._output_names):
       inputs = accumulator.get_inputs(output_index)
       for metric_index, metric in enumerate(self._metrics[output_name]):
@@ -598,7 +632,9 @@ class _CompilableMetricsCombiner(beam.CombineFn):
 
   def create_accumulator(self) -> _CompilableMetricsAccumulator:
     configs = zip(self._metric_configs, self._loss_configs)
-    return _CompilableMetricsAccumulator([len(m) + len(l) for m, l in configs])
+    return _CompilableMetricsAccumulator(
+        [len(m) + len(l) for m, l in configs],
+        desired_batch_size=self._desired_batch_size)
 
   def add_input(
       self, accumulator: _CompilableMetricsAccumulator,
@@ -624,16 +660,8 @@ class _CompilableMetricsCombiner(beam.CombineFn):
         if self._sub_key_in_config and label.shape != prediction.shape:
           label = metric_util.one_hot(label, prediction)
         accumulator.add_input(i, label, prediction, example_weight)
-    if (accumulator.len_inputs() >= self._batch_size or
-        accumulator.total_input_byte_size >=
-        self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD):
+    if accumulator.should_flush():
       self._process_batch(accumulator)
-    return accumulator
-
-  def compact(
-      self, accumulator: _CompilableMetricsAccumulator
-  ) -> _CompilableMetricsAccumulator:
-    self._process_batch(accumulator)
     return accumulator
 
   def merge_accumulators(
@@ -654,6 +682,13 @@ class _CompilableMetricsCombiner(beam.CombineFn):
             continue
           result.add_weights(output_index, metric_index, weights)
     return result
+
+  def compact(
+      self, accumulator: _CompilableMetricsAccumulator
+  ) -> _CompilableMetricsAccumulator:
+    self._process_batch(accumulator)
+    self._num_compacts.inc(1)
+    return accumulator
 
   def extract_output(
       self, accumulator: _CompilableMetricsAccumulator

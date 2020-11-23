@@ -234,6 +234,20 @@ class UtilTest(tf.test.TestCase):
     }
     self.assertAllClose(expected, util.merge_extracts(extracts))
 
+  def testSizeEstimator(self):
+    size_estimator = util.SizeEstimator(size_threshold=10, size_fn=len)
+    self.assertEqual(size_estimator.get_estimate(), 0)
+    size_estimator.update(b'hello')
+    self.assertEqual(size_estimator.get_estimate(), 5)
+    self.assertFalse(size_estimator.should_flush())
+    other_size_estimator = util.SizeEstimator(size_threshold=10, size_fn=len)
+    other_size_estimator.update(b'hello')
+    size_estimator += other_size_estimator
+    self.assertEqual(size_estimator.get_estimate(), 10)
+    self.assertTrue(size_estimator.should_flush())
+    size_estimator.clear()
+    self.assertEqual(size_estimator.get_estimate(), 0)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

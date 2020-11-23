@@ -27,6 +27,7 @@ import numpy as np
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis import util
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
@@ -98,35 +99,49 @@ class _AggState(object):
   _AggregateCombineFn for why we need this.
   """
 
-  __slots__ = ['metric_variables', 'inputs', 'total_input_byte_size']
+  # We really want the batch size to be adaptive like it is in
+  # beam.BatchElements(), but there isn't an easy way to make it so. For now
+  # we will limit stored inputs to a max overall byte size.
+  # TODO(b/73789023): Figure out how to make this batch size dynamic.
+  _TOTAL_INPUT_BYTE_SIZE_THRESHOLD = 16 << 20  # 16MiB
+  _DEFAULT_DESIRED_BATCH_SIZE = 1000
 
-  def __init__(self):
+  __slots__ = [
+      'metric_variables', 'inputs', 'size_estimator', '_desired_batch_size'
+  ]
+
+  def __init__(self, desired_batch_size: Optional[int] = None):
     self.metric_variables = None  # type: Optional[types.MetricVariablesType]
     self.inputs = []  # type: List[bytes]
-    self.total_input_byte_size = 0
-
-  def copy_from(self, other: '_AggState'):
-    if other.metric_variables:
-      self.metric_variables = other.metric_variables
-    self.inputs = other.inputs
+    self.size_estimator = util.SizeEstimator(
+        size_threshold=self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD, size_fn=len)
+    if desired_batch_size and desired_batch_size > 0:
+      self._desired_batch_size = desired_batch_size
+    else:
+      self._desired_batch_size = self._DEFAULT_DESIRED_BATCH_SIZE
 
   def __iadd__(self, other: '_AggState') -> '_AggState':
     self.metric_variables = _add_metric_variables(self.metric_variables,
                                                   other.metric_variables)
     self.inputs.extend(other.inputs)
+    self.size_estimator += other.size_estimator
     return self
 
   def add_input(self, new_input: bytes):
     self.inputs.append(new_input)
-    self.total_input_byte_size += len(new_input)
+    self.size_estimator.update(new_input)
 
   def clear_inputs(self):
     del self.inputs[:]
-    self.total_input_byte_size = 0
+    self.size_estimator.clear()
 
   def add_metrics_variables(self, metric_variables: types.MetricVariablesType):
     self.metric_variables = _add_metric_variables(self.metric_variables,
                                                   metric_variables)
+
+  def should_flush(self) -> bool:
+    return (len(self.inputs) >= self._desired_batch_size or
+            self.size_estimator.should_flush())
 
 
 @beam.typehints.with_input_types(types.Extracts)
@@ -159,13 +174,8 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
   (https://issues.apache.org/jira/browse/BEAM-3737).
   """
 
-  # We really want the batch size to be adaptive like it is in
-  # beam.BatchElements(), but there isn't an easy way to make it so. For now
-  # we will limit stored inputs to a max overall byte size.
-  # TODO(b/73789023): Figure out how to make this batch size dynamic.
-  _TOTAL_INPUT_BYTE_SIZE_THRESHOLD = 16 << 20  # 16MiB
-  _DEFAULT_DESIRED_BATCH_SIZE = 1000
-
+  # TODO(b/173811366): Consider removing the desired_batch_size knob and
+  # only use input size.
   def __init__(self,
                eval_shared_model: types.EvalSharedModel,
                desired_batch_size: Optional[int] = None,
@@ -175,10 +185,7 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
           self).__init__({'': eval_shared_model.model_loader})
     self._seed_for_testing = seed_for_testing
     self._eval_metrics_graph = None  # type: eval_metrics_graph.EvalMetricsGraph
-    if desired_batch_size and desired_batch_size > 0:
-      self._desired_batch_size = desired_batch_size
-    else:
-      self._desired_batch_size = self._DEFAULT_DESIRED_BATCH_SIZE
+    self._desired_batch_size = desired_batch_size
 
     self._compute_with_sampling = compute_with_sampling
     self._random_state = np.random.RandomState(seed_for_testing)
@@ -186,10 +193,10 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
     # Metrics.
     self._combine_batch_size = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'combine_batch_size')
+    self._combine_total_input_byte_size = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE, 'combine_batch_bytes_size')
     self._num_compacts = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_compacts')
-    self._combine_total_input_byte_size = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'combine_total_input_byte_size')
 
   def _poissonify(self, accumulator: _AggState) -> List[bytes]:
     # pylint: disable=line-too-long
@@ -236,14 +243,11 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
     if self._eval_metrics_graph is None:
       self._setup_if_needed()
       self._eval_metrics_graph = self._loaded_models['']
-    batch_size = len(accumulator.inputs)
-    if (force or batch_size >= self._desired_batch_size or
-        accumulator.total_input_byte_size >=
-        self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD):
+    if force or accumulator.should_flush():
       if accumulator.inputs:
-        self._combine_batch_size.update(batch_size)
+        self._combine_batch_size.update(len(accumulator.inputs))
         self._combine_total_input_byte_size.update(
-            accumulator.total_input_byte_size)
+            accumulator.size_estimator.get_estimate())
         inputs_for_metrics = accumulator.inputs
         if self._compute_with_sampling:
           # If we are computing with multiple bootstrap replicates, use fpls
@@ -261,7 +265,7 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
         accumulator.clear_inputs()
 
   def create_accumulator(self) -> _AggState:
-    return _AggState()
+    return _AggState(desired_batch_size=self._desired_batch_size)
 
   def add_input(self, accumulator: _AggState,
                 elem: types.Extracts) -> _AggState:
