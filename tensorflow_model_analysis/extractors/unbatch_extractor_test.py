@@ -26,7 +26,10 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.extractors import batched_input_extractor
+from tensorflow_model_analysis.extractors import example_weights_extractor
+from tensorflow_model_analysis.extractors import features_extractor
+from tensorflow_model_analysis.extractors import labels_extractor
+from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tfx_bsl.tfxio import test_util
 
@@ -34,13 +37,17 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
+class UnbatchExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testUnbatchExtractor(self):
     model_spec = config.ModelSpec(
         label_key='label', example_weight_key='example_weight')
     eval_config = config.EvalConfig(model_specs=[model_spec])
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    label_extractor = labels_extractor.LabelsExtractor(eval_config)
+    example_weight_extractor = (
+        example_weights_extractor.ExampleWeightsExtractor(eval_config))
+    predict_extractor = predictions_extractor.PredictionsExtractor(eval_config)
     unbatch_inputs_extractor = unbatch_extractor.UnbatchExtractor()
 
     schema = text_format.Parse(
@@ -97,7 +104,11 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | label_extractor.stage_name >> label_extractor.ptransform
+          | example_weight_extractor.stage_name >>
+          example_weight_extractor.ptransform
+          | predict_extractor.stage_name >> predict_extractor.ptransform
           | unbatch_inputs_extractor.stage_name >>
           unbatch_inputs_extractor.ptransform)
 
@@ -139,7 +150,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testBatchedInputExtractorMultiOutput(self):
+  def testUnbatchExtractorMultiOutput(self):
     model_spec = config.ModelSpec(
         label_keys={
             'output1': 'label1',
@@ -150,7 +161,11 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
             'output2': 'example_weight2'
         })
     eval_config = config.EvalConfig(model_specs=[model_spec])
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    label_extractor = labels_extractor.LabelsExtractor(eval_config)
+    example_weight_extractor = (
+        example_weights_extractor.ExampleWeightsExtractor(eval_config))
+    predict_extractor = predictions_extractor.PredictionsExtractor(eval_config)
     unbatch_inputs_extractor = unbatch_extractor.UnbatchExtractor()
 
     schema = text_format.Parse(
@@ -214,7 +229,11 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | label_extractor.stage_name >> label_extractor.ptransform
+          | example_weight_extractor.stage_name >>
+          example_weight_extractor.ptransform
+          | predict_extractor.stage_name >> predict_extractor.ptransform
           | unbatch_inputs_extractor.stage_name >>
           unbatch_inputs_extractor.ptransform)
 
@@ -259,7 +278,7 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testBatchedInputExtractorMultiModel(self):
+  def testUnbatchExtractorMultiModel(self):
     model_spec1 = config.ModelSpec(
         name='model1',
         label_key='label',
@@ -280,7 +299,11 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
             'output2': 'fixed_float'
         })
     eval_config = config.EvalConfig(model_specs=[model_spec1, model_spec2])
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    label_extractor = labels_extractor.LabelsExtractor(eval_config)
+    example_weight_extractor = (
+        example_weights_extractor.ExampleWeightsExtractor(eval_config))
+    predict_extractor = predictions_extractor.PredictionsExtractor(eval_config)
     unbatch_inputs_extractor = unbatch_extractor.UnbatchExtractor()
 
     schema = text_format.Parse(
@@ -356,7 +379,11 @@ class BatchedInputExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | label_extractor.stage_name >> label_extractor.ptransform
+          | example_weight_extractor.stage_name >>
+          example_weight_extractor.ptransform
+          | predict_extractor.stage_name >> predict_extractor.ptransform
           | unbatch_inputs_extractor.stage_name >>
           unbatch_inputs_extractor.ptransform)
 

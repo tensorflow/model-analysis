@@ -25,6 +25,9 @@
 *   Changed MultiClassConfusionMatrix threshold check to prediction > threshold
     instead of prediction >= threshold.
 *   Changed default handling of materialize in default_extractors to False.
+*   Separated `tfma.extractors.BatchedInputExtractor` into
+    `tfma.extractors.FeaturesExtractor`, `tfma.extractors.LabelsExtractor`, and
+    `tfma.extractors.ExampleWeightsExtractor`.
 
 ## Deprecations
 

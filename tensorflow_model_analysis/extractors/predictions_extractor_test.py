@@ -22,6 +22,7 @@ import os
 
 import apache_beam as beam
 from apache_beam.testing import util
+import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
@@ -31,8 +32,8 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import batch_si
 from tensorflow_model_analysis.eval_saved_model.example_trainers import dnn_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
-from tensorflow_model_analysis.extractors import batched_input_extractor
-from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
+from tensorflow_model_analysis.extractors import features_extractor
+from tensorflow_model_analysis.extractors import predictions_extractor
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 
@@ -40,12 +41,12 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
+class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
 
-  def testPredictExtractorWithRegressionModel(self):
+  def testPredictionsExtractorWithRegressionModel(self):
     temp_export_dir = self._getExportDir()
     export_dir, _ = (
         fixed_prediction_estimator_extra_fields
@@ -82,8 +83,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
-    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
@@ -117,8 +118,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
-          | predict_extractor.stage_name >> predict_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
 
@@ -135,7 +136,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictExtractorWithBinaryClassificationModel(self):
+  def testPredictionsExtractorWithBinaryClassificationModel(self):
     temp_export_dir = self._getExportDir()
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
         temp_export_dir, None, n_classes=2)
@@ -163,8 +164,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
-    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
@@ -183,8 +184,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
-          | predict_extractor.stage_name >> predict_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
 
@@ -203,7 +204,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictExtractorWithMultiClassModel(self):
+  def testPredictionsExtractorWithMultiClassModel(self):
     temp_export_dir = self._getExportDir()
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
         temp_export_dir, None, n_classes=3)
@@ -231,8 +232,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
-    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
@@ -252,8 +253,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=4)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
-          | predict_extractor.stage_name >> predict_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
 
@@ -272,7 +273,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictExtractorWithMultiOutputModel(self):
+  def testPredictionsExtractorWithMultiOutputModel(self):
     temp_export_dir = self._getExportDir()
     export_dir, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
@@ -307,8 +308,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
-    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
@@ -348,8 +349,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=4)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
-          | predict_extractor.stage_name >> predict_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
 
@@ -369,7 +370,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictExtractorWithMultiModels(self):
+  def testPredictionsExtractorWithMultiModels(self):
     temp_export_dir = self._getExportDir()
     export_dir1, _ = multi_head.simple_multi_head(temp_export_dir, None)
     export_dir2, _ = multi_head.simple_multi_head(temp_export_dir, None)
@@ -410,8 +411,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
-    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model={
             'model1': eval_shared_model1,
@@ -454,8 +455,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=4)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
-          | predict_extractor.stage_name >> predict_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
 
@@ -479,7 +480,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictExtractorWithKerasModel(self):
+  def testPredictionsExtractorWithKerasModel(self):
     input1 = tf.keras.layers.Input(shape=(2,), name='input1')
     input2 = tf.keras.layers.Input(shape=(2,), name='input2')
     inputs = [input1, input2]
@@ -553,8 +554,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
-    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
@@ -576,8 +577,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
-          | predict_extractor.stage_name >> predict_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
 
@@ -593,7 +594,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictExtractorWithSequentialKerasModel(self):
+  def testPredictionsExtractorWithSequentialKerasModel(self):
     # Note that the input will be called 'test_input'
     model = tf.keras.models.Sequential([
         tf.keras.layers.Dense(
@@ -648,8 +649,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
-    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
@@ -671,8 +672,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
-          | predict_extractor.stage_name >> predict_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
 
@@ -751,8 +752,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
-    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
@@ -768,8 +769,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=1)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
-          | predict_extractor.stage_name >> predict_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
       def check_result(got):
@@ -811,8 +812,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    input_extractor = batched_input_extractor.BatchedInputExtractor(eval_config)
-    predict_extractor = batched_predict_extractor_v2.BatchedPredictExtractor(
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config)
@@ -829,8 +830,8 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=1)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | input_extractor.stage_name >> input_extractor.ptransform
-          | predict_extractor.stage_name >> predict_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
       def check_result(got):
         try:
@@ -843,6 +844,89 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           raise util.BeamAssertException(err)
 
       util.assert_that(predict_extracts, check_result, label='result')
+
+  def testPredictionsExtractorWithoutEvalSharedModel(self):
+    model_spec1 = config.ModelSpec(name='model1', prediction_key='prediction')
+    model_spec2 = config.ModelSpec(
+        name='model2',
+        prediction_keys={
+            'output1': 'prediction1',
+            'output2': 'prediction2'
+        })
+    eval_config = config.EvalConfig(model_specs=[model_spec1, model_spec2])
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
+        eval_config)
+
+    schema = text_format.Parse(
+        """
+        feature {
+          name: "prediction"
+          type: FLOAT
+        }
+        feature {
+          name: "prediction1"
+          type: FLOAT
+        }
+        feature {
+          name: "prediction2"
+          type: FLOAT
+        }
+        feature {
+          name: "fixed_int"
+          type: INT
+        }
+        """, schema_pb2.Schema())
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+
+    examples = [
+        self._makeExample(
+            prediction=1.0, prediction1=1.0, prediction2=0.0, fixed_int=1),
+        self._makeExample(
+            prediction=1.0, prediction1=1.0, prediction2=1.0, fixed_int=1)
+    ]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          for model_name in ('model1', 'model2'):
+            self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY][0])
+          self.assertAlmostEqual(got[0][constants.PREDICTIONS_KEY][0]['model1'],
+                                 np.array([1.0]))
+          self.assertDictElementsAlmostEqual(
+              got[0][constants.PREDICTIONS_KEY][0]['model2'], {
+                  'output1': np.array([1.0]),
+                  'output2': np.array([0.0])
+              })
+
+          for model_name in ('model1', 'model2'):
+            self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY][1])
+          self.assertAlmostEqual(got[0][constants.PREDICTIONS_KEY][1]['model1'],
+                                 np.array([1.0]))
+          self.assertDictElementsAlmostEqual(
+              got[0][constants.PREDICTIONS_KEY][1]['model2'], {
+                  'output1': np.array([1.0]),
+                  'output2': np.array([1.0])
+              })
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
 
 
 if __name__ == '__main__':

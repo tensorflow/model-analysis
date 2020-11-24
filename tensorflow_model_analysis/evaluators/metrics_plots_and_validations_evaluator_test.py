@@ -33,9 +33,11 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_pr
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
-from tensorflow_model_analysis.extractors import batched_input_extractor
-from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
+from tensorflow_model_analysis.extractors import example_weights_extractor
+from tensorflow_model_analysis.extractors import features_extractor
+from tensorflow_model_analysis.extractors import labels_extractor
 from tensorflow_model_analysis.extractors import legacy_predict_extractor
+from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import attributions
@@ -212,8 +214,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     )
     eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_models,
             eval_config=eval_config,
             tensor_adapter_config=tensor_adapter_config),
@@ -413,8 +417,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
 
     eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_models,
             eval_config=eval_config,
             tensor_adapter_config=tensor_adapter_config),
@@ -676,8 +682,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
@@ -796,8 +804,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
@@ -983,8 +993,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     ]
 
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_models,
             eval_config=eval_config,
             tensor_adapter_config=tensor_adapter_config),
@@ -1054,8 +1066,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
@@ -1146,8 +1160,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
@@ -1236,8 +1252,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
@@ -1329,8 +1347,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
@@ -1529,8 +1549,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_model,
             eval_config=eval_config,
             tensor_adapter_config=tensor_adapter_config),
@@ -1601,8 +1623,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     extractors = [
-        batched_input_extractor.BatchedInputExtractor(eval_config),
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)

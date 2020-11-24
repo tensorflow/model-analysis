@@ -39,13 +39,15 @@ from tensorflow_model_analysis.eval_saved_model import constants as eval_constan
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
-from tensorflow_model_analysis.extractors import batched_input_extractor
-from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
+from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.extractors import features_extractor
+from tensorflow_model_analysis.extractors import labels_extractor
 from tensorflow_model_analysis.extractors import legacy_input_extractor
 from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import legacy_tfjs_predict_extractor
 from tensorflow_model_analysis.extractors import legacy_tflite_predict_extractor
+from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
@@ -540,10 +542,12 @@ def default_extractors(  # pylint: disable=invalid-name
           'implemented: eval_config={}'.format(eval_config))
     else:
       return [
-          batched_input_extractor.BatchedInputExtractor(
+          features_extractor.FeaturesExtractor(eval_config=eval_config),
+          labels_extractor.LabelsExtractor(eval_config=eval_config),
+          example_weights_extractor.ExampleWeightsExtractor(
               eval_config=eval_config),
           (custom_predict_extractor or
-           batched_predict_extractor_v2.BatchedPredictExtractor(
+           predictions_extractor.PredictionsExtractor(
                eval_config=eval_config,
                eval_shared_model=eval_shared_model,
                tensor_adapter_config=tensor_adapter_config)),
@@ -553,7 +557,11 @@ def default_extractors(  # pylint: disable=invalid-name
       ]
   else:
     return [
-        batched_input_extractor.BatchedInputExtractor(eval_config=eval_config),
+        features_extractor.FeaturesExtractor(eval_config=eval_config),
+        labels_extractor.LabelsExtractor(eval_config=eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(
+            eval_config=eval_config),
+        predictions_extractor.PredictionsExtractor(eval_config=eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(
             eval_config=eval_config, materialize=materialize)

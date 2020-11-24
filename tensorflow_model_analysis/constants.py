@@ -61,6 +61,8 @@ SLICE_KEY_TYPES_KEY = '_slice_key_types'
 SLICE_KEYS_KEY = 'slice_keys'
 # Features key.
 FEATURES_KEY = 'features'
+# Transformed features key.
+TRANSFORMED_FEATURES_KEY = 'transformed_features'
 # Labels key.
 LABELS_KEY = 'labels'
 # Predictions key.
