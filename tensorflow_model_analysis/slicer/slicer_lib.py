@@ -63,8 +63,8 @@ class SingleSliceSpec(object):
   """Specification for a single slice.
 
   This is intended to be an immutable class that specifies a single slice.
-  Use this in conjunction with get_slices_for_features_dict to generate slices
-  for a dictionary of features.
+  Use this in conjunction with get_slices_for_features_dicts to generate slices
+  for dictionaries of features.
 
   Examples:
     - columns = ['age'], features = []
@@ -340,20 +340,25 @@ def deserialize_slice_key(
   return tuple(result)
 
 
-def get_slices_for_features_dict(
-    features_dict: Union[types.DictOfTensorValue,
-                         types.DictOfFetchedTensorValues],
+def get_slices_for_features_dicts(
+    features_dicts: Iterable[Union[types.DictOfTensorValue,
+                                   types.DictOfFetchedTensorValues]],
+    default_features_dict: Union[types.DictOfTensorValue,
+                                 types.DictOfFetchedTensorValues],
     slice_spec: List[SingleSliceSpec]) -> Iterable[SliceKeyType]:
-  """Generates the slice keys appropriate for the given features dictionary.
+  """Generates the slice keys appropriate for the given features dictionaries.
 
   Args:
-    features_dict: Features dictionary.
+    features_dicts: Features dictionaries. For example a list of transformed
+      features dictionaries.
+    default_features_dict: Additional dict to search if a match is not found in
+      features dictionaries. For example the raw features.
     slice_spec: slice specification.
 
   Yields:
-    Slice keys appropriate for the given features dictionary.
+    Slice keys appropriate for the given features dictionaries.
   """
-  accessor = slice_accessor.SliceAccessor(features_dict)
+  accessor = slice_accessor.SliceAccessor(features_dicts, default_features_dict)
   for single_slice_spec in slice_spec:
     for slice_key in single_slice_spec.generate_slices(accessor):
       yield slice_key

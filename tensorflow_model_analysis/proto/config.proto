@@ -44,7 +44,27 @@ message ModelSpec {
   // assumed. For models that don't use signatures ("tf_lite", etc) this setting
   // will be ignored.
   string signature_name = 3;
-  // Label key (single-output model). Use one of label_key or label_keys.
+  // Optional names of preprocessing functions to run in the order that they
+  // should be invoked. Preprocessing functions are used to transform the
+  // features into the form required for inference and metrics evaluation. The
+  // output from preprocessing can also be used for slicing. Preprocessing
+  // functions can be saved as signatures or as attributes on the saved model.
+  // If no names are provided, the names "tft_layer", "transformed_features",
+  // and "transformed_labels" will be searched for.
+  //
+  // Note that the output of a preprocessing function will be merged with the
+  // raw input features. If any of the output names used by the preprocessing
+  // function have the same name as the raw input features, then the associated
+  // feature values will be overridden. If a preprocessing function outputs a
+  // non-dict value, then it will be stored as a feature under the preprocessing
+  // function name itself. For example, if a function called
+  // "transformed_labels" outputs a single array value then it will associated
+  // with the feature name "transformed_labels". This name can be used when
+  // setting the "label_key" or in slicing configs.
+  repeated string preprocessing_function_names = 13;
+  // Label key (single-output model). The key can identify either a transformed
+  // feature (see preprocessing_function_names) or a raw input feature. Use one
+  // of label_key or label_keys.
   string label_key = 5;
   // Label keys (multi-output model) keyed by output_name. If all the outputs
   // for a multi-output model use the same key, then a single key may also be
@@ -97,7 +117,9 @@ message ModelSpec {
   // of prediction_key or prediction_keys. See comment under prediction_key on
   // the difference between output_name and prediction_key.
   map<string, string> prediction_keys = 8;  // oneof not allowed with maps
-  // Optional example weight key (single-output model). Use one of
+  // Optional example weight key (single-output model). The example_weight_key
+  // can identify either a transformed feature (see
+  // preprocessing_function_names) or raw input feature. Use one of
   // example_weight_key or example_weight_keys.
   string example_weight_key = 9;
   // Optional example weight keys (multi-output model) keyed by output_name.  If
@@ -114,8 +136,20 @@ message ModelSpec {
 // Slicing specification.
 message SlicingSpec {
   // Feature keys to slice on.
+  //
+  // Note that the feature key can be either a transformed feature key (see
+  // ModelSpec.preprocessing_function_names) or a raw feature key parsed
+  // directly from the inputs. If a transformed feature key and raw feature key
+  // use the same name, the transformed feature will take precedence. Note also
+  // that while transformed features are associated with the models that
+  // processed them, when it comes to slicing all the unique values across all
+  // models will be used.
   repeated string feature_keys = 1;
   // Feature values to slice on keyed by associated feature keys.
+  //
+  // The same caveats that apply to feature_keys with respect to feature
+  // transformations and raw features apply to feature_values as well (see
+  // feature_keys for more information).
   //
   // Note that strings representing ints and floats will be automatically
   // converted to ints and floats respectively and will be compared against both

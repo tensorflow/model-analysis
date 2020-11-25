@@ -10,6 +10,8 @@
     To use make use of these metrics a custom extractor that add attributions to
     the `tfma.Extracts` under the key name `tfma.ATTRIBUTIONS_KEY` must be
     manually created.
+*   Added support for feature transformations using TFT and other preprocessing
+    functions.
 
 ## Bug fixes and other changes
 

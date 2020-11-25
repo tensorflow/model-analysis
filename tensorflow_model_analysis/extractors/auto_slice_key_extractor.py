@@ -175,7 +175,9 @@ class _ExtractSliceKeysFn(beam.DoFn):
   def process(self, element: types.Extracts,
               slice_spec: List[slicer.SingleSliceSpec]) -> List[types.Extracts]:
     features = util.get_features_from_extracts(element)
-    slices = list(slicer.get_slices_for_features_dict(features, slice_spec))
+    # There are no transformed features so only search raw features for slices.
+    slices = list(
+        slicer.get_slices_for_features_dicts([], features, slice_spec))
 
     # Make a a shallow copy, so we don't mutate the original.
     element_copy = copy.copy(element)

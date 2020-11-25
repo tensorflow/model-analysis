@@ -65,6 +65,9 @@ specs are as follows:
 *   `{ feature_keys: ["country"] feature_values: [{key: "age", value: "20"}] }`
     *   Slices for all values in feature "country" crossed with value "age:20"
 
+Note that feature keys may be either transformed features or raw input features.
+See `tfma.SlicingSpec` for more information.
+
 ## EvalSharedModel
 
 In addition to the configuration settings, TFMA also requires that an instance

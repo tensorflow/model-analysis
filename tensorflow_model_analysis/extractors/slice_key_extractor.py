@@ -41,9 +41,8 @@ def SliceKeyExtractor(
     materialize: Optional[bool] = True) -> extractor.Extractor:
   """Creates an extractor for extracting slice keys.
 
-  The incoming Extracts must contain a FeaturesPredictionsLabels extract keyed
-  by tfma.FEATURES_PREDICTIONS_LABELS_KEY. Typically this will be obtained by
-  calling the PredictExtractor.
+  The incoming Extracts must contain features stored under tfma.FEATURES_KEY
+  and optionally under tfma.TRANSFORMED_FEATURES.
 
   The extractor's PTransform yields a copy of the Extracts input with an
   additional extract pointing at the list of SliceKeyType values keyed by
@@ -70,7 +69,7 @@ def SliceKeyExtractor(
     slice_spec = [slicer.SingleSliceSpec()]
   return extractor.Extractor(
       stage_name=SLICE_KEY_EXTRACTOR_STAGE_NAME,
-      ptransform=ExtractSliceKeys(slice_spec, materialize))
+      ptransform=ExtractSliceKeys(slice_spec, eval_config, materialize))
 
 
 @beam.typehints.with_input_types(types.Extracts)
@@ -79,14 +78,31 @@ class ExtractSliceKeysFn(beam.DoFn):
   """A DoFn that extracts slice keys that apply per example."""
 
   def __init__(self, slice_spec: List[slicer.SingleSliceSpec],
-               materialize: bool):
+               eval_config: Optional[config.EvalConfig], materialize: bool):
     self._slice_spec = slice_spec
+    self._eval_config = eval_config
     self._materialize = materialize
 
   def process(self, element: types.Extracts) -> List[types.Extracts]:
-    features = util.get_features_from_extracts(element)
+    # Slice on transformed features if available.
+    features_dicts = []
+    if (constants.TRANSFORMED_FEATURES_KEY in element and
+        element[constants.TRANSFORMED_FEATURES_KEY] is not None):
+      transformed_features = element[constants.TRANSFORMED_FEATURES_KEY]
+      # If only one model, the output is stored without keying on model name.
+      if not self._eval_config or len(self._eval_config.model_specs) == 1:
+        features_dicts.append(transformed_features)
+      else:
+        # Search for slices in each model's transformed features output.
+        for spec in self._eval_config.model_specs:
+          if spec.name in transformed_features:
+            features_dicts.append(transformed_features[spec.name])
+    # Search for slices first in transformed features (if any). If a match is
+    # not found there then search in raw features.
     slices = list(
-        slicer.get_slices_for_features_dict(features, self._slice_spec))
+        slicer.get_slices_for_features_dicts(
+            features_dicts, util.get_features_from_extracts(element),
+            self._slice_spec))
 
     # Make a a shallow copy, so we don't mutate the original.
     element_copy = copy.copy(element)
@@ -106,5 +122,7 @@ class ExtractSliceKeysFn(beam.DoFn):
 @beam.typehints.with_output_types(types.Extracts)
 def ExtractSliceKeys(extracts: beam.pvalue.PCollection,
                      slice_spec: List[slicer.SingleSliceSpec],
+                     eval_config: Optional[config.EvalConfig] = None,
                      materialize: bool = True) -> beam.pvalue.PCollection:
-  return extracts | beam.ParDo(ExtractSliceKeysFn(slice_spec, materialize))
+  return extracts | beam.ParDo(
+      ExtractSliceKeysFn(slice_spec, eval_config, materialize))

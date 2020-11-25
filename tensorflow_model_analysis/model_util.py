@@ -242,14 +242,14 @@ def get_feature_values_for_model_spec_field(
     values = {}
     for spec in model_specs:
       # Get transformed features (if any) for this model.
-      if constants.TRANSFORMED_FEATURES_KEY in batched_extracts:
+      if (constants.TRANSFORMED_FEATURES_KEY in batched_extracts and
+          batched_extracts[constants.TRANSFORMED_FEATURES_KEY]):
         transformed_features = batched_extracts[
             constants.TRANSFORMED_FEATURES_KEY][i]
-        if len(model_specs) > 1:
+        if len(model_specs) > 1 and transformed_features:
           if spec.name in transformed_features:
             transformed_features = transformed_features[spec.name]
-          else:
-            transformed_features = {}
+        transformed_features = transformed_features or {}
       else:
         transformed_features = {}
       # Lookup first in transformed_features and then in features.
@@ -303,7 +303,7 @@ def get_default_signature_name(model: Any) -> Text:
 def is_callable_fn(fn: Any) -> bool:
   """Returns true if function is callable."""
   return (_TF_MAJOR_VERSION >= 2 and hasattr(fn, 'input_names') and
-          hasattr(fn, 'inputs'))
+          fn.input_names and hasattr(fn, 'inputs') and fn.inputs)
 
 
 def get_callable(model: Any,

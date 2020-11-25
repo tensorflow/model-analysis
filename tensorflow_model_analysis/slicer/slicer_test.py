@@ -94,7 +94,8 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
                                                               features)
     six.assertCountEqual(
         self, expected,
-        slicer.get_slices_for_features_dict(features_dict, [spec]), msg)
+        slicer.get_slices_for_features_dicts([features_dict], None, [spec]),
+        msg)
 
   def testDeserializeSliceKey(self):
     slice_metrics = text_format.Parse(
@@ -285,8 +286,8 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
     slice_spec = [spec_overall, spec_age, spec_age4, spec_age5_gender]
     expected = [(), (('age', 5),), (('age', 5), ('gender', 'f'))]
     self.assertCountEqual(
-        expected, slicer.get_slices_for_features_dict(features_dict,
-                                                      slice_spec))
+        expected,
+        slicer.get_slices_for_features_dicts([features_dict], None, slice_spec))
 
   def testStringifySliceKey(self):
     test_cases = [

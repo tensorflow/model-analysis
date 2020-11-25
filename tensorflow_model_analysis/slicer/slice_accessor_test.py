@@ -50,7 +50,21 @@ class SliceAccessorTest(tf.test.TestCase, parameterized.TestCase):
       ('pyarrow', pa.array([1, 2, 3]), [1, 2, 3]),
       ('pyarrow_ragged', pa.array([[1, 2], [3]]), [1, 2, 3]))
   def testAccessFeaturesDict(self, feature_value, slice_value):
-    accessor = slice_accessor.SliceAccessor({'feature': feature_value})
+    accessor = slice_accessor.SliceAccessor([{'feature': feature_value}])
+    self.assertEqual(slice_value, accessor.get('feature'))
+    # Test with multiple dicts and duplicate values
+    accessor = slice_accessor.SliceAccessor([{
+        'feature': feature_value
+    }, {
+        'feature': feature_value
+    }])
+    self.assertEqual(slice_value, accessor.get('feature'))
+    # Test with default features dict
+    accessor = slice_accessor.SliceAccessor(
+        [{
+            'unmatched_feature': feature_value
+        }],
+        default_features_dict={'feature': feature_value})
     self.assertEqual(slice_value, accessor.get('feature'))
 
   def testLegacyAccessFeaturesDict(self):
@@ -84,7 +98,7 @@ class SliceAccessorTest(tf.test.TestCase, parameterized.TestCase):
               encoding.NODE_SUFFIX: dense_multidim_value
           },
       }
-      accessor = slice_accessor.SliceAccessor(features_dict)
+      accessor = slice_accessor.SliceAccessor([features_dict])
       self.assertEqual([b'apple', b'banana'], accessor.get('sparse'))
       self.assertEqual([1.0, 2.0], accessor.get('dense'))
       self.assertEqual([7.0], accessor.get('dense_single'))
