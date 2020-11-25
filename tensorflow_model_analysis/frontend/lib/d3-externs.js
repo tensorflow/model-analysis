@@ -296,6 +296,11 @@ d3.selection.prototype.exit = function() {};
  */
 d3.selection.prototype.datum = function(value) {};
 
+/**
+ * @type {?Event |
+ *     {type: string, target: ?, sourceEvent: ?{type: string, target: ?}}}
+ */
+d3.event;
 
 /**
  * @param {!Element} container

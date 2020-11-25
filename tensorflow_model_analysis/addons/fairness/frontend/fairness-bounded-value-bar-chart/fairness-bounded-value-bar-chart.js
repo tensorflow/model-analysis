@@ -46,7 +46,6 @@ const DARKEN_COMPARE = 80;
 
 const NUM_DECIMAL_PLACES = 5;
 
-const TOOLTIP_OPACITY = 0.85;
 const TOOLTIP_Y_OFFSET = 20;
 
 /**
@@ -408,18 +407,15 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     const tooltip = d3.select(this.$['tooltip']);
 
     const mouseover = function(d) {
-      // d3.mouse() requires Element, but svg.node() is (Element|null)
-      // so document.createElement('svg') is passed for the compiler
-      const pos = d3.mouse(svg.node() || document.createElement('svg'));
-
-      tooltip.style('opacity', TOOLTIP_OPACITY);
-      tooltip.html(tooltipText_(d));
-      tooltip.style('left', pos[0] + 'px')
-          .style('top', (pos[1] + TOOLTIP_Y_OFFSET) + 'px');
+      tooltip.html(tooltipText_(d))
+          .style('display', 'inline')
+          .style('left', d3.event.clientX + 'px')
+          .style('top', (d3.event.clientY + TOOLTIP_Y_OFFSET) + 'px')
+          .style('position', 'fixed');
     };
 
     const mouseout = function(d) {
-      tooltip.style('opacity', 0);
+      tooltip.html('').style('display', 'none').style('position', 'static');
     };
 
     // For every cluster, add a bar for every eval-threshold pair

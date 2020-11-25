@@ -26,8 +26,9 @@ template.innerHTML = `
     background-color: #616161;
     color: #fff;
     border-radius: 2px;
-    opacity: 0;
-    position: fixed;
+    opacity: 0.85;
+    z-index: 1000;
+    display: none;
   }
 </style>
 <svg id="bar-chart"></svg>
