@@ -223,11 +223,15 @@ export class SliceOverview extends PolymerElement {
     const selection = this.chart_.getSelection();
     if (selection.length) {
       const table = this.slices.getDataTable();
-      const selectedRow = selection[0]['row'];
-      selectedSlice = table[selectedRow][0];
-      this.dispatchEvent(new CustomEvent(
-          tfma.Event.SELECT,
-          {detail: selectedSlice, composed: true, bubbles: true}));
+      // TODO(b/161803357): Remove cast to unknown type. Cannot do '[]' access
+      // on a struct.
+      const selectedRow = (/** @type {?} */ (selection[0]))['row'];
+      if (selectedRow !== undefined) {
+        selectedSlice = table[selectedRow][0];
+        this.dispatchEvent(new CustomEvent(
+            tfma.Event.SELECT,
+            {detail: selectedSlice, composed: true, bubbles: true}));
+      }
     }
     this.selectedSlice_ = /** @type{string} */ (selectedSlice);
   }
