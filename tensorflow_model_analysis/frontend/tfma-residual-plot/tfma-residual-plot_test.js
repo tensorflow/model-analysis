@@ -21,18 +21,21 @@ suite('tests', () => {
         'numWeightedExamples': 5,
         'upperThresholdExclusive': 0.25,
         'lowerThresholdInclusive': 0,
+        'totalWeightedLabel': 10,
         'totalWeightedRefinedPrediction': 0.4,
       },
       {
         'numWeightedExamples': 10,
         'upperThresholdExclusive': 0.5,
         'lowerThresholdInclusive': 0.25,
+        'totalWeightedLabel': 0,
         'totalWeightedRefinedPrediction': 4,
       },
       {
         'numWeightedExamples': 20,
         'upperThresholdExclusive': 0.75,
         'lowerThresholdInclusive': 0.5,
+        'totalWeightedLabel': 10,
         'totalWeightedRefinedPrediction': 10,
       },
       {
@@ -46,7 +49,7 @@ suite('tests', () => {
         element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
     assert.equal(chartData.length, 5);
     assert.deepEqual(chartData[0], [
-      'Label',
+      'Prediction',
       'Residual',
       {'type': 'string', 'role': 'tooltip'},
       '',
@@ -55,40 +58,42 @@ suite('tests', () => {
       {'type': 'string', 'role': 'tooltip'},
     ]);
     assert.deepEqual(chartData[1], [
-      0.125, 0.045, 'Residual is 0.04500 for label in [0.00000, 0.25000)', 0,
-      'Prediction range is [0.00000, 0.25000)', 5,
-      'There are 5 example(s) for label in [0.00000, 0.25000)'
+      0.125, 1.92, 'Residual is 1.92000 for predictions in [0.00000, 0.25000)',
+      0, 'Prediction range is [0.00000, 0.25000)', 5,
+      'There are 5 predictions in [0.00000, 0.25000)'
     ]);
     assert.deepEqual(chartData[2], [
-      0.375, -0.025000000000000022,
-      'Residual is -0.02500 for label in [0.25000, 0.50000)', 0,
-      'Prediction range is [0.25000, 0.50000)', 10,
-      'There are 10 example(s) for label in [0.25000, 0.50000)'
+      0.375, -0.4, 'Residual is -0.40000 for predictions in [0.25000, 0.50000)',
+      0, 'Prediction range is [0.25000, 0.50000)', 10,
+      'There are 10 predictions in [0.25000, 0.50000)'
     ]);
     assert.deepEqual(chartData[3], [
-      0.625, 0.125, 'Residual is 0.12500 for label in [0.50000, 0.75000)', 0,
+      0.625, 0, 'Residual is 0.00000 for predictions in [0.50000, 0.75000)', 0,
       'Prediction range is [0.50000, 0.75000)', 20,
-      'There are 20 example(s) for label in [0.50000, 0.75000)'
+      'There are 20 predictions in [0.50000, 0.75000)'
     ]);
     assert.deepEqual(chartData[4], [
-      0.875, 0, 'Residual is 0.00000 for label in [0.75000, 1.00000)', 0,
+      0.875, -.875,
+      'Residual is -0.87500 for predictions in [0.75000, 1.00000)', 0,
       'Prediction range is [0.75000, 1.00000)', 1,
-      'There are 1 example(s) for label in [0.75000, 1.00000)'
+      'There are 1 predictions in [0.75000, 1.00000)'
     ]);
   });
-  test('HandleInifity', () => {
+  test('HandleInfinity', () => {
     const element = fixture('residual-plot-fixture');
     element.data = [
       {
         'numWeightedExamples': 5,
         'upperThresholdExclusive': 0,
         'lowerThresholdInclusive': '-Infinity',
+        'totalWeightedLabel': 5,
         'totalWeightedRefinedPrediction': 0.4,
       },
       {
         'numWeightedExamples': 10,
         'upperThresholdExclusive': 0.75,
         'lowerThresholdInclusive': 0.25,
+        'totalWeightedLabel': 2,
         'totalWeightedRefinedPrediction': 4,
       },
       {
@@ -102,7 +107,7 @@ suite('tests', () => {
         element.shadowRoot.querySelector('tfma-google-chart-wrapper').data;
     assert.equal(chartData.length, 4);
     assert.deepEqual(chartData[0], [
-      'Label',
+      'Prediction',
       'Residual',
       {'type': 'string', 'role': 'tooltip'},
       '',
@@ -111,20 +116,19 @@ suite('tests', () => {
       {'type': 'string', 'role': 'tooltip'},
     ]);
     assert.deepEqual(chartData[1], [
-      0, -0.08000, 'Residual is -0.08000 for label in [-Infinity, 0.00000)', 0,
+      0, 0.92, 'Residual is 0.92000 for predictions in [-Infinity, 0.00000)', 0,
       'Prediction range is [-Infinity, 0.00000)', 5,
-      'There are 5 example(s) for label in [-Infinity, 0.00000)'
+      'There are 5 predictions in [-Infinity, 0.00000)'
     ]);
     assert.deepEqual(chartData[2], [
-      0.5, 0.09999999999999998,
-      'Residual is 0.10000 for label in [0.25000, 0.75000)', 0,
-      'Prediction range is [0.25000, 0.75000)', 10,
-      'There are 10 example(s) for label in [0.25000, 0.75000)'
+      0.5, -0.2, 'Residual is -0.20000 for predictions in [0.25000, 0.75000)',
+      0, 'Prediction range is [0.25000, 0.75000)', 10,
+      'There are 10 predictions in [0.25000, 0.75000)'
     ]);
     assert.deepEqual(chartData[3], [
-      1, 0.125, 'Residual is 0.12500 for label in [1.00000, Infinity)', 0,
-      'Prediction range is [1.00000, Infinity)', 1,
-      'There are 1 example(s) for label in [1.00000, Infinity)'
+      1, -0.875, 'Residual is -0.87500 for predictions in [1.00000, Infinity)',
+      0, 'Prediction range is [1.00000, Infinity)', 1,
+      'There are 1 predictions in [1.00000, Infinity)'
     ]);
   });
 });

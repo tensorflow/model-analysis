@@ -52,7 +52,7 @@ export class ResidualPlot extends PolymerElement {
         type: Object,
         value: {
           'legend': {'position': 'top'},
-          'hAxis': {'title': 'Label'},
+          'hAxis': {'title': 'Prediction'},
           'vAxes': {0: {'title': 'Residual'}, 1: {'title': 'Sample Count'}},
           'series': {
             0: {'visibleInLegend': true, 'targetAxisIndex': 0, 'type': 'line'},
@@ -94,7 +94,7 @@ export class ResidualPlot extends PolymerElement {
 
     const plotData = [
       [
-        'Label',
+        'Prediction',
         'Residual',
         {'type': 'string', 'role': 'tooltip'},
         '',
@@ -107,13 +107,15 @@ export class ResidualPlot extends PolymerElement {
     for (let i = 0; i < data.length; i++) {
       const entry = data[i];
       const count = entry['numWeightedExamples'] || 0;
+      const weightedLabel = entry['totalWeightedLabel'] || 0;
       const upperBound = parseFloat(entry['upperThresholdExclusive'] || 0);
       const lowerBound = parseFloat(entry['lowerThresholdInclusive'] || 0);
       // We assume only one of upperBound and lowerBound can be infinite. When
       // that happens, use the other value as the label.
-      const label = isFinite(upperBound) ?
+      const x = isFinite(upperBound) ?
           (isFinite(lowerBound) ? (upperBound + lowerBound) / 2 : upperBound) :
           lowerBound;
+      const label = count ? weightedLabel / count : 0;
       const prediction =
           count ? entry['totalWeightedRefinedPrediction'] / count : 0;
       const residual = count ? label - prediction : 0;
@@ -122,14 +124,14 @@ export class ResidualPlot extends PolymerElement {
           upperBound.toFixed(tfma.FLOATING_POINT_PRECISION) + ')';
 
       plotData.push([
-        label,
+        x,
         residual,
         'Residual is ' + residual.toFixed(tfma.FLOATING_POINT_PRECISION) +
-            ' for label in ' + predictionRange,
+            ' for predictions in ' + predictionRange,
         0,
         'Prediction range is ' + predictionRange,
         count,
-        'There are ' + count + ' example(s) for label in ' + predictionRange,
+        'There are ' + count + ' predictions in ' + predictionRange,
       ]);
     }
 
