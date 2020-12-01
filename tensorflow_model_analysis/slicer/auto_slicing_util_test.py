@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import List, Text
+from absl.testing import parameterized
 import pandas as pd
 from pandas._testing import assert_frame_equal
 
@@ -31,7 +33,7 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import statistics_pb2
 
 
-class AutoSlicingUtilTest(tf.test.TestCase):
+class AutoSlicingUtilTest(tf.test.TestCase, parameterized.TestCase):
 
   def _get_metrics(self):
     return [
@@ -343,163 +345,212 @@ class AutoSlicingUtilTest(tf.test.TestCase):
         """, metrics_for_slice_pb2.MetricsForSlice())
     ]
 
-  def test_partition_slices_without_metric_sub_key(self):
+  @parameterized.named_parameters(
+      {
+          'testcase_name':
+              'with_higher_metrics',
+          'comparison_type':
+              'HIGHER',
+          'expected_significant_slice_keys': [(('age', '[12.0, 18.0)'),),
+                                              (('country', 'USA'),),
+                                              (('country', 'USA'),
+                                               ('age', '[12.0, 18.0)'))],
+          'expected_non_significant_slice_keys': [(('age', '[1.0, 6.0)'),),
+                                                  (('age', '[6.0, 12.0)'),)]
+      }, {
+          'testcase_name':
+              'with_lower_metrics',
+          'comparison_type':
+              'LOWER',
+          'expected_significant_slice_keys': [(('age', '[1.0, 6.0)'),)],
+          'expected_non_significant_slice_keys': [(('age', '[6.0, 12.0)'),),
+                                                  (('age', '[12.0, 18.0)'),),
+                                                  (('country', 'USA'),),
+                                                  (('country', 'USA'),
+                                                   ('age', '[12.0, 18.0)'))]
+      }, {
+          'testcase_name': 'with_lower_or_higher_metrics',
+          'comparison_type': 'LOWER_OR_HIGHER',
+          'expected_significant_slice_keys': [(('age', '[1.0, 6.0)'),),
+                                              (('age', '[12.0, 18.0)'),),
+                                              (('country', 'USA'),),
+                                              (('country', 'USA'),
+                                               ('age', '[12.0, 18.0)'))],
+          'expected_non_significant_slice_keys': [(('age', '[6.0, 12.0)'),)]
+      })
+  def test_partition_slices_without_metric_sub_key(
+      self, comparison_type: Text,
+      expected_significant_slice_keys: List[slicer_lib.SliceKeyType],
+      expected_non_significant_slice_keys: List[slicer_lib.SliceKeyType]):
     metrics = self._get_metrics()
-    result = auto_slicing_util.partition_slices(
-        metrics,
-        metric_key=metric_types.MetricKey(name='accuracy'),
-        comparison_type='LOWER')
-    self.assertCountEqual([s.slice_key for s in result[0]],
-                          [(('age', '[1.0, 6.0)'),)])
-    self.assertCountEqual([s.slice_key for s in result[1]],
-                          [(('age', '[6.0, 12.0)'),),
-                           (('age', '[12.0, 18.0)'),), (('country', 'USA'),),
-                           (('country', 'USA'), ('age', '[12.0, 18.0)'))])
+    significant_slices, non_significant_slices = (
+        auto_slicing_util.partition_slices(
+            metrics,
+            metric_key=metric_types.MetricKey(name='accuracy'),
+            comparison_type=comparison_type))
+    self.assertCountEqual([s.slice_key for s in significant_slices],
+                          expected_significant_slice_keys)
+    self.assertCountEqual([s.slice_key for s in non_significant_slices],
+                          expected_non_significant_slice_keys)
 
-    result = auto_slicing_util.partition_slices(
-        metrics,
-        metric_key=metric_types.MetricKey(name='accuracy'),
-        comparison_type='HIGHER')
-    self.assertCountEqual([s.slice_key for s in result[0]],
-                          [(('age', '[12.0, 18.0)'),), (('country', 'USA'),),
-                           (('country', 'USA'), ('age', '[12.0, 18.0)'))])
-    self.assertCountEqual([s.slice_key for s in result[1]],
-                          [(('age', '[1.0, 6.0)'),), (('age', '[6.0, 12.0)'),)])
-
-  def test_partition_slices_with_metric_sub_key(self):
+  @parameterized.named_parameters(
+      {
+          'testcase_name':
+              'with_higher_metrics',
+          'comparison_type':
+              'HIGHER',
+          'expected_significant_slice_keys': [(('age', '[12.0, 18.0)'),),
+                                              (('country', 'USA'),),
+                                              (('country', 'USA'),
+                                               ('age', '[12.0, 18.0)'))],
+          'expected_non_significant_slice_keys': [(('age', '[1.0, 6.0)'),),
+                                                  (('age', '[6.0, 12.0)'),)]
+      }, {
+          'testcase_name':
+              'with_lower_metrics',
+          'comparison_type':
+              'LOWER',
+          'expected_significant_slice_keys': [(('age', '[1.0, 6.0)'),)],
+          'expected_non_significant_slice_keys': [(('age', '[6.0, 12.0)'),),
+                                                  (('age', '[12.0, 18.0)'),),
+                                                  (('country', 'USA'),),
+                                                  (('country', 'USA'),
+                                                   ('age', '[12.0, 18.0)'))]
+      }, {
+          'testcase_name': 'with_lower_or_higher_metrics',
+          'comparison_type': 'LOWER_OR_HIGHER',
+          'expected_significant_slice_keys': [(('age', '[1.0, 6.0)'),),
+                                              (('age', '[12.0, 18.0)'),),
+                                              (('country', 'USA'),),
+                                              (('country', 'USA'),
+                                               ('age', '[12.0, 18.0)'))],
+          'expected_non_significant_slice_keys': [(('age', '[6.0, 12.0)'),)]
+      })
+  def test_partition_slices_with_metric_sub_key(
+      self, comparison_type: Text,
+      expected_significant_slice_keys: List[slicer_lib.SliceKeyType],
+      expected_non_significant_slice_keys: List[slicer_lib.SliceKeyType]):
     metrics = self._get_metrics()
     # Set sub_key.
     for metric in metrics:
       for kv in metric.metric_keys_and_values:
         kv.key.sub_key.MergeFrom(metric_types.SubKey(class_id=0).to_proto())
-    result = auto_slicing_util.partition_slices(
-        metrics,
-        metric_key=metric_types.MetricKey(
-            name='accuracy', sub_key=metric_types.SubKey(class_id=0)),
-        comparison_type='LOWER')
-    self.assertCountEqual([s.slice_key for s in result[0]],
-                          [(('age', '[1.0, 6.0)'),)])
-    self.assertCountEqual([s.slice_key for s in result[1]],
-                          [(('age', '[6.0, 12.0)'),),
-                           (('age', '[12.0, 18.0)'),), (('country', 'USA'),),
-                           (('country', 'USA'), ('age', '[12.0, 18.0)'))])
-
-    result = auto_slicing_util.partition_slices(
-        metrics,
-        metric_key=metric_types.MetricKey(
-            name='accuracy', sub_key=metric_types.SubKey(class_id=0)),
-        comparison_type='HIGHER')
-    self.assertCountEqual([s.slice_key for s in result[0]],
-                          [(('age', '[12.0, 18.0)'),), (('country', 'USA'),),
-                           (('country', 'USA'), ('age', '[12.0, 18.0)'))])
-    self.assertCountEqual([s.slice_key for s in result[1]],
-                          [(('age', '[1.0, 6.0)'),), (('age', '[6.0, 12.0)'),)])
+    significant_slices, non_significant_slices = (
+        auto_slicing_util.partition_slices(
+            metrics,
+            metric_key=metric_types.MetricKey(
+                name='accuracy', sub_key=metric_types.SubKey(class_id=0)),
+            comparison_type=comparison_type))
+    self.assertCountEqual([s.slice_key for s in significant_slices],
+                          expected_significant_slice_keys)
+    self.assertCountEqual([s.slice_key for s in non_significant_slices],
+                          expected_non_significant_slice_keys)
 
   def test_find_top_slices(self):
     input_slices = [
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '[6.0, 12.0)'),),
-            num_examples=1500.0,
+            num_examples=1500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.8,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '[12.0, 18.0)'),),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0.00001,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '[12.0, 18.0)'), ('country', 'USA')),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.91,
             base_metric=0.8,
             p_value=0.000011,
             effect_size=0.91,
-            raw_slice_metrics=None)
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice())
     ]
     self.assertCountEqual(
         auto_slicing_util.find_top_slices(
             input_slices, rank_by='EFFECT_SIZE', prune_subset_slices=False), [
                 auto_slicing_util.SliceComparisonResult(
                     slice_key=(('age', '[12.0, 18.0)'), ('country', 'USA')),
-                    num_examples=500.0,
+                    num_examples=500,
                     slice_metric=0.91,
                     base_metric=0.8,
                     p_value=0.000011,
                     effect_size=0.91,
-                    raw_slice_metrics=None),
+                    raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
                 auto_slicing_util.SliceComparisonResult(
                     slice_key=(('age', '[12.0, 18.0)'),),
-                    num_examples=500.0,
+                    num_examples=500,
                     slice_metric=0.9,
                     base_metric=0.8,
                     p_value=0.00001,
                     effect_size=0.9,
-                    raw_slice_metrics=None),
+                    raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
                 auto_slicing_util.SliceComparisonResult(
                     slice_key=(('age', '[6.0, 12.0)'),),
-                    num_examples=1500.0,
+                    num_examples=1500,
                     slice_metric=0.9,
                     base_metric=0.8,
                     p_value=0,
                     effect_size=0.8,
-                    raw_slice_metrics=None),
+                    raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
             ])
     self.assertCountEqual(
         auto_slicing_util.find_top_slices(
             input_slices, rank_by='EFFECT_SIZE', prune_subset_slices=True), [
                 auto_slicing_util.SliceComparisonResult(
                     slice_key=(('age', '[12.0, 18.0)'),),
-                    num_examples=500.0,
+                    num_examples=500,
                     slice_metric=0.9,
                     base_metric=0.8,
                     p_value=0.00001,
                     effect_size=0.9,
-                    raw_slice_metrics=None),
+                    raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
                 auto_slicing_util.SliceComparisonResult(
                     slice_key=(('age', '[6.0, 12.0)'),),
-                    num_examples=1500.0,
+                    num_examples=1500,
                     slice_metric=0.9,
                     base_metric=0.8,
                     p_value=0,
                     effect_size=0.8,
-                    raw_slice_metrics=None),
+                    raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
             ])
     self.assertCountEqual(
         auto_slicing_util.find_top_slices(input_slices, rank_by='PVALUE'), [
             auto_slicing_util.SliceComparisonResult(
                 slice_key=(('age', '[6.0, 12.0)'),),
-                num_examples=1500.0,
+                num_examples=1500,
                 slice_metric=0.9,
                 base_metric=0.8,
                 p_value=0,
                 effect_size=0.8,
-                raw_slice_metrics=None),
+                raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
             auto_slicing_util.SliceComparisonResult(
                 slice_key=(('age', '[12.0, 18.0)'),),
-                num_examples=500.0,
+                num_examples=500,
                 slice_metric=0.9,
                 base_metric=0.8,
                 p_value=0.00001,
                 effect_size=0.9,
-                raw_slice_metrics=None),
+                raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         ])
     self.assertCountEqual(
         auto_slicing_util.find_top_slices(
             input_slices, min_num_examples=1000, rank_by='EFFECT_SIZE'), [
                 auto_slicing_util.SliceComparisonResult(
                     slice_key=(('age', '[6.0, 12.0)'),),
-                    num_examples=1500.0,
+                    num_examples=1500,
                     slice_metric=0.9,
                     base_metric=0.8,
                     p_value=0,
                     effect_size=0.8,
-                    raw_slice_metrics=None),
+                    raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
             ])
 
   def test_revert_slice_keys_for_transformed_features(self):
@@ -550,70 +601,70 @@ class AutoSlicingUtilTest(tf.test.TestCase):
     slices = [
         auto_slicing_util.SliceComparisonResult(
             slice_key=(),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('transformed_age', 1),),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('transformed_age', 2),),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('country', 'USA'),),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
     ]
     expected_slices = [
         auto_slicing_util.SliceComparisonResult(
             slice_key=(),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '(1.0, 6.0]'),),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '(6.0, 12.0]'),),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('country', 'USA'),),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
     ]
     actual = auto_slicing_util.revert_slice_keys_for_transformed_features(
         slices, statistics)
@@ -623,54 +674,54 @@ class AutoSlicingUtilTest(tf.test.TestCase):
     input_slices = [
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '[12.0, 18.0)'),),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '[12.0, 18.0)'), ('country', 'USA')),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '[6.0, 12.0)'), ('country', 'UK')),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '[6.0, 12.0)'), ('country', 'UK'), ('sex', 'M')),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
     ]
     expected_slices = [
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '[12.0, 18.0)'),),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
         auto_slicing_util.SliceComparisonResult(
             slice_key=(('age', '[6.0, 12.0)'), ('country', 'UK')),
-            num_examples=500.0,
+            num_examples=500,
             slice_metric=0.9,
             base_metric=0.8,
             p_value=0,
             effect_size=0.9,
-            raw_slice_metrics=None),
+            raw_slice_metrics=metrics_for_slice_pb2.MetricsForSlice()),
     ]
     self.assertCountEqual(
         auto_slicing_util.remove_subset_slices(input_slices), expected_slices)

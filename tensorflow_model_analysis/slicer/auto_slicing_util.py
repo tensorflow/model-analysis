@@ -129,10 +129,14 @@ def _is_significant_slice(slice_metric: float, slice_std_dev: float,
             slice_metric, slice_std_dev, slice_weight, base_metric,
             base_std_dev, base_weight))
 
+  # If the comparison type is `LOWER_OR_HIGHER`, we are looking for differences
+  # in both directions, therefore we want the two sided p value.
+  if comparison_type == 'LOWER_OR_HIGHER':
+    return p_value_two_sided < alpha, p_value_two_sided
   metric_diff = slice_metric - base_metric
   one_sided_p_value = _two_sided_to_one_sided_pvalue(
       p_value_two_sided, metric_diff, comparison_type=comparison_type)
-  return (one_sided_p_value < alpha, one_sided_p_value)
+  return one_sided_p_value < alpha, one_sided_p_value
 
 
 # We use effect size to capture the magnitude of the metric difference.
@@ -294,7 +298,9 @@ def partition_slices(
     metric_key: Name of the metric based on which significance testing is done.
     comparison_type: Type of comparison indicating if we are looking for slices
       whose metric is higher (`HIGHER`) or lower (`LOWER`) than the metric of
-      the base slice (overall dataset).
+      the base slice (overall dataset). If the comparison type is
+      `LOWER_OR_HIGHER` then we are looking for slices whose metric is either
+      lower or higher.
     alpha: Significance-level for statistical significance testing.
     min_num_examples: Minimum number of examples that a slice should have. If it
       is set to zero, we don't do any filtering.
@@ -303,7 +309,7 @@ def partition_slices(
     Tuple containing list of statistically significant and non-significant
     slices.
   """
-  assert comparison_type in ['HIGHER', 'LOWER']
+  assert comparison_type in ['HIGHER', 'LOWER', 'LOWER_OR_HIGHER']
   if min_num_examples == 0:
     min_num_examples = 1
 
