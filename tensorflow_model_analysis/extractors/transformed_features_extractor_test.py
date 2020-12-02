@@ -163,8 +163,9 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
                   'non_model_feature',  # from schema
               ],
               'transformed_features': [
-                  'tft_feature',  # added by tft_layer
-                  'tft_label',  # added by tft_layer
+                  # TODO(b/173029091): Re-add tft_layer
+                  # 'tft_feature',  # added by tft_layer
+                  # 'tft_label',  # added by tft_layer
                   'transformed_feature',  # added by transformed_features
                   'transformed_label',  # added by transformed_labels
               ]
@@ -180,8 +181,9 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
                   'non_model_feature',  # from schema
               ],
               'transformed_features': [
-                  'tft_feature',  # added by tft_layer
-                  'tft_label',  # added by tft_layer
+                  # TODO(b/173029091): Re-add tft_layer
+                  # 'tft_feature',  # added by tft_layer
+                  # 'tft_label',  # added by tft_layer
                   'transformed_feature',  # added by transformed_features
                   'transformed_label',  # added by transformed_labels
               ]

@@ -31,8 +31,8 @@ from tfx_bsl.tfxio import tensor_adapter
 
 _TRANSFORMED_FEATURES_EXTRACTOR_STAGE_NAME = 'ExtractTransformedFeatures'
 
-_DEFAULT_SIGNATURE_NAMES = ('tft_layer', 'transformed_features',
-                            'transformed_labels')
+# TODO(b/173029091): Re-add tft_layer.
+_DEFAULT_SIGNATURE_NAMES = ('transformed_features', 'transformed_labels')
 
 
 def TransformedFeaturesExtractor(

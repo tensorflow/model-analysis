@@ -49,8 +49,8 @@ message ModelSpec {
   // features into the form required for inference and metrics evaluation. The
   // output from preprocessing can also be used for slicing. Preprocessing
   // functions can be saved as signatures or as attributes on the saved model.
-  // If no names are provided, the names "tft_layer", "transformed_features",
-  // and "transformed_labels" will be searched for.
+  // If no names are provided, the names "transformed_features" and
+  // "transformed_labels" will be searched for.
   //
   // Note that the output of a preprocessing function will be merged with the
   // raw input features. If any of the output names used by the preprocessing
