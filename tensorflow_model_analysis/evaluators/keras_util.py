@@ -21,6 +21,7 @@ from __future__ import print_function
 
 from typing import List, Text
 
+import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_specs
@@ -59,7 +60,12 @@ def metrics_specs_from_keras(
     # overall loss metric is an average of the other losses which doesn't take
     # y_true, y_pred as inputs so it can't be calculated via standard inputs so
     # we remove it.
-    metrics.extend(model.compiled_loss.metrics[1:])
+    for m in model.compiled_loss.metrics:
+      # TODO(b/143228390): Pure Mean metrics cannot be calculated using labels,
+      # predictions, and example weights.
+      if type(m) in (tf.keras.metrics.Mean,):  # pylint: disable=unidiomatic-typecheck
+        continue
+      metrics.append(m)
     metrics.extend(model.compiled_metrics.metrics)
     metric_names = [m.name for m in metrics]
 
