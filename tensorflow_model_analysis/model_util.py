@@ -881,10 +881,13 @@ def has_rubber_stamp(eval_shared_model: Optional[List[types.EvalSharedModel]]):
   # configured.
   if eval_shared_model is None:
     return False
-  # In case of multiple candidate modules, all models need to has rubber stamp.
+  # In case of multiple candidate modules, all non baseline models need to have
+  # rubber stamp.
   if isinstance(eval_shared_model, list):
-    return all(
-        m.rubber_stamp if m.model_name == constants.CANDIDATE_KEY else True
-        for m in eval_shared_model)
+    if (len(eval_shared_model) == 1 and eval_shared_model[0].is_baseline):
+      raise ValueError('Only a baseline model is provided. '
+                       'A candidate model is required for evaluation.')
+    return all(m.rubber_stamp if not m.is_baseline else True
+               for m in eval_shared_model)
   raise ValueError('Not supported eval_shared_model type: {}'.format(
       type(eval_shared_model)))

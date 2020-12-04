@@ -108,6 +108,7 @@ try:
   from tensorflow_model_analysis.model_util import CombineFnWithModels
   from tensorflow_model_analysis.model_util import DoFnWithModels
   from tensorflow_model_analysis.model_util import get_model_type
+  from tensorflow_model_analysis.model_util import get_model_spec
   from tensorflow_model_analysis.model_util import model_construct_fn
   from tensorflow_model_analysis.model_util import verify_and_update_eval_shared_models
 

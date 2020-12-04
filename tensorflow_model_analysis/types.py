@@ -183,6 +183,7 @@ class EvalSharedModel(
             ('model_name', Text),
             ('model_type', Text),
             ('rubber_stamp', bool),
+            ('is_baseline', bool)
         ])):
   # pyformat: disable
   """Shared model used during extraction and evaluation.
@@ -244,6 +245,7 @@ class EvalSharedModel(
       model_name: Text = '',
       model_type: Text = '',
       rubber_stamp: bool = False,
+      is_baseline: bool = False,
       construct_fn: Optional[Callable[[], Any]] = None):
     if not add_metrics_callbacks:
       add_metrics_callbacks = []
@@ -254,11 +256,13 @@ class EvalSharedModel(
       model_loader = ModelLoader(tags=None, construct_fn=construct_fn)
     if model_path is not None:
       model_path = six.ensure_str(model_path)
+    if is_baseline and rubber_stamp:
+      raise ValueError('Baseline model cannot be rubber stamped.')
     return super(EvalSharedModel,
                  cls).__new__(cls, model_path, add_metrics_callbacks,
                               include_default_metrics, example_weight_key,
                               additional_fetches, model_loader, model_name,
-                              model_type, rubber_stamp)
+                              model_type, rubber_stamp, is_baseline)
 
 
 # MaybeMultipleEvalSharedModels represents a parameter that can take on a single

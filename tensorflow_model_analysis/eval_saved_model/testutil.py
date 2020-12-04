@@ -166,7 +166,8 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
       tags: Optional[Text] = None,
       model_type: Optional[Text] = None,
       model_name: Text = '',
-      rubber_stamp: Optional[bool] = False) -> types.EvalSharedModel:
+      rubber_stamp: Optional[bool] = False,
+      is_baseline: Optional[bool] = False) -> types.EvalSharedModel:
 
     if not model_type:
       model_type = model_util.get_model_type(None, eval_saved_model_path, tags)
@@ -184,6 +185,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
         add_metrics_callbacks=add_metrics_callbacks,
         example_weight_key=example_weight_key,
         rubber_stamp=rubber_stamp,
+        is_baseline=is_baseline,
         model_loader=types.ModelLoader(
             tags=tags,
             construct_fn=model_util.model_construct_fn(

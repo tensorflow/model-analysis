@@ -766,7 +766,8 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
     self.assertFalse(model_util.has_rubber_stamp(None))
 
     # All non baseline models has rubber stamp.
-    baseline = self.createTestEvalSharedModel(model_name=constants.BASELINE_KEY)
+    baseline = self.createTestEvalSharedModel(
+        model_name=constants.BASELINE_KEY, is_baseline=True)
     candidate = self.createTestEvalSharedModel(
         model_name=constants.CANDIDATE_KEY, rubber_stamp=True)
     self.assertTrue(model_util.has_rubber_stamp([baseline, candidate]))

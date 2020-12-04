@@ -367,6 +367,7 @@ def default_eval_shared_model(
       model while a baseline is configured, the diff thresholds will be ignored.
   """
   if not eval_config:
+    is_baseline = False
     model_type = constants.TF_ESTIMATOR
     if tags is None:
       tags = [eval_constants.EVAL_TAG]
@@ -375,6 +376,7 @@ def default_eval_shared_model(
     if not model_spec:
       raise ValueError('ModelSpec for model name {} not found in EvalConfig: '
                        'config={}'.format(model_name, eval_config))
+    is_baseline = model_spec.is_baseline
     model_type = model_util.get_model_type(model_spec, eval_saved_model_path,
                                            tags)
     if tags is None:
@@ -429,7 +431,8 @@ def default_eval_shared_model(
       example_weight_key=example_weight_key,
       additional_fetches=additional_fetches,
       model_loader=model_loader,
-      rubber_stamp=rubber_stamp)
+      rubber_stamp=rubber_stamp,
+      is_baseline=is_baseline)
 
 
 def default_extractors(  # pylint: disable=invalid-name
