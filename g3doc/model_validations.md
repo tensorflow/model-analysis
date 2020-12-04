@@ -80,8 +80,8 @@ It might be more readable to write down the config in proto format:
 from google.protobuf import text_format
 
 auc_threshold = text_format.Parse("""
-  value_threshold {lower_bound {value: 0.6}}
-  change_threshold {relative {value: 1.01}
+  value_threshold { lower_bound { value: 0.6 } }
+  change_threshold { relative { value: 1.01 } }
 """, tfma.MetricThreshold())
 ```
 
@@ -134,7 +134,7 @@ eval_config = text_format.Parse("""
       class_name: "AUC"
       threshold {
         value_threshold {
-          lower_bound {value: 0}
+          lower_bound { value: 0 }
         }
       }
     }
@@ -180,8 +180,8 @@ example where the "weighted_examle_count" is failing a value threshold (1.5 is
 not smaller than 1.0, thus the failure):
 
 ```proto
-  valition_ok: False
-  metri_validations_per_slice {
+  validation_ok: False
+  metric_validations_per_slice {
     failures {
       metric_key {
         name: "weighted_example_count"
