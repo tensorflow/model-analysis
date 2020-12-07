@@ -137,11 +137,8 @@ suite('fairness-metric-summary tests', () => {
         'false_negative_rate');
     assert.deepEqual(metricSummary.$['table'].metrics, [
       'post_export_metrics/false_negative_rate@0.30',
-      'post_export_metrics/false_negative_rate@0.30 against Overall',
       'post_export_metrics/false_negative_rate@0.50',
-      'post_export_metrics/false_negative_rate@0.50 against Overall',
       'post_export_metrics/false_negative_rate@0.70',
-      'post_export_metrics/false_negative_rate@0.70 against Overall'
     ]);
 
     assert.deepEqual(metricSummary.$['bar-chart'].metrics, [
@@ -154,10 +151,6 @@ suite('fairness-metric-summary tests', () => {
         SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT));
     assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
     assert.deepEqual(metricSummary.$['bar-chart'].data, BOUNDED_VALUE_DATA);
-    assert.deepEqual(
-        metricSummary.computeExampleCounts_(
-            'Overall', BOUNDED_VALUE_DATA, ['Slice:15', 'Slice:7', 'Slice:4']),
-        [524, 54, 95, 52]);
     done();
   });
 
@@ -174,9 +167,7 @@ suite('fairness-metric-summary tests', () => {
     // Check the computed values.
     assert.deepEqual(
         metricSummary.$['metric-header'].innerText.trim(), 'accuracy');
-    assert.deepEqual(
-        metricSummary.$['table'].metrics,
-        ['accuracy', 'accuracy against Overall']);
+    assert.deepEqual(metricSummary.$['table'].metrics, ['accuracy']);
 
     assert.deepEqual(metricSummary.$['bar-chart'].metrics, ['accuracy']);
     assert.deepEqual(
@@ -184,10 +175,6 @@ suite('fairness-metric-summary tests', () => {
         SLICES.slice(1, DEFAULT_NUM_OF_SLICES_TO_PLOT));
     assert.deepEqual(metricSummary.$['bar-chart'].baseline, 'Overall');
     assert.deepEqual(metricSummary.$['bar-chart'].data, DOUBLE_VALUE_DATA);
-    assert.deepEqual(
-        metricSummary.computeExampleCounts_(
-            'Overall', BOUNDED_VALUE_DATA, ['Slice:15', 'Slice:7', 'Slice:4']),
-        [524, 54, 95, 52]);
     done();
   });
 
@@ -204,9 +191,7 @@ suite('fairness-metric-summary tests', () => {
     // Check the computed values.
     assert.deepEqual(
         metricSummary.$['metric-header'].innerText.trim(), 'accuracy');
-    assert.deepEqual(
-        metricSummary.$['table'].metrics,
-        ['accuracy', 'accuracy against Overall']);
+    assert.deepEqual(metricSummary.$['table'].metrics, ['accuracy']);
 
     assert.deepEqual(metricSummary.$['bar-chart'].metrics, ['accuracy']);
     assert.deepEqual(
@@ -216,10 +201,6 @@ suite('fairness-metric-summary tests', () => {
     assert.deepEqual(metricSummary.$['bar-chart'].data, BOUNDED_VALUE_DATA);
     assert.deepEqual(
         metricSummary.$['bar-chart'].dataCompare, DOUBLE_VALUE_DATA);
-    assert.deepEqual(
-        metricSummary.computeExampleCounts_(
-            'Overall', BOUNDED_VALUE_DATA, ['Slice:15', 'Slice:7', 'Slice:4']),
-        [524, 54, 95, 52]);
     done();
   });
 
@@ -330,36 +311,10 @@ suite('fairness-metric-summary tests', () => {
     metricSummary.dataCompare = DOUBLE_VALUE_DATA_COMPARE.slice(0, 3);
     await delay(TEST_STEP_TIMEOUT_MS);
 
-    const expected_data = [
-      {'slice': 'Overall', 'metrics': {'accuracy': 0.2}},
-      {'slice': 'Slice:1', 'metrics': {'accuracy': 0.2}},
-      {'slice': 'Slice:2', 'metrics': {'accuracy': 0.2}}
-    ];
-    const expected_data_compare = [
-      {'slice': 'Overall', 'metrics': {'accuracy': 0.3}},
-      {'slice': 'Slice:1', 'metrics': {'accuracy': 0.3}},
-      {'slice': 'Slice:2', 'metrics': {'accuracy': 0.3}}
-    ];
-
     // Check table data.
-    assert.equal(metricSummary.$['table'].data.length, expected_data.length);
-    for (var i = 0; i < 3; i++) {
-      const actualVal = metricSummary.$['table'].data[i];
-      const expectedVal = expected_data[i];
-      assert.deepEqual(Object.keys(actualVal), Object.keys(expectedVal));
-      assert.equal(actualVal['slice'], expectedVal['slice']);
-      assert.equal(
-          actualVal['metrics']['accuracy'], expectedVal['metrics']['accuracy']);
-
-      const actualCompareVal = metricSummary.$['table'].dataCompare[i];
-      const expectedCompareVal = expected_data_compare[i];
-      assert.deepEqual(
-          Object.keys(actualCompareVal), Object.keys(expectedCompareVal));
-      assert.equal(actualCompareVal['slice'], expectedCompareVal['slice']);
-      assert.equal(
-          actualCompareVal['metrics']['accuracy'],
-          expectedCompareVal['metrics']['accuracy']);
-    }
+    assert.equal(metricSummary.$['table'].data, metricSummary.data);
+    assert.equal(
+        metricSummary.$['table'].dataCompare, metricSummary.dataCompare);
     done();
   });
 

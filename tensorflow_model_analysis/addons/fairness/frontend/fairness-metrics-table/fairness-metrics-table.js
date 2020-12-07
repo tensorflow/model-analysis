@@ -34,6 +34,27 @@ const BoundedValueFieldNames = {
 };
 
 /**
+ * It's a class that contains following fields:
+ *   'text': used to render on UI.
+ *   'arrow': arrow iron-icon string. e.g. arrow-upward.
+ *   'arrow_icon_css_class': css class defines the color of the arrow.
+ */
+/** @record */
+class Cell {
+  constructor() {
+    /** @type {string} */
+    this.text;
+
+    /** @type {string|undefined} */
+    this.arrow;
+
+    /** @type {string|undefined} */
+    this.arrow_icon_css_class;
+  }
+}
+
+
+/**
  * fairness-metrics-table renders a div-based table showing evaluation
  * metrics.
  *
@@ -52,38 +73,19 @@ export class FairnessMetricsTable extends PolymerElement {
   /** @return {!PolymerElementProperties} */
   static get properties() {
     return {
-      /**
-       * Metric name.
-       * @type {string}
-       */
-      metric: {type: String, value: ''},
 
       /**
-       * List of metrics to be shown in the table.
-       * @type {!Array<string>}
+       * A dictionary of slice names and metrics values which itself is a
+       * dictionary.
+       * @type {!Array<!Object>}
        */
-      metrics: {
-        type: Array,
-        value: () => ([]),
-      },
+      data: {type: Array},
 
       /**
-       * Metrics table data.
-       * @type {!Array}
+       * Data dictionary for the second eval. Optional.
+       * @type {!Array<!Object>}
        */
-      data: {
-        type: Array,
-        value: () => ([]),
-      },
-
-      /**
-       * Metrics table data. Optional - used for model comparison.
-       * @type {!Array}
-       */
-      dataCompare: {
-        type: Array,
-        value: () => ([]),
-      },
+      dataCompare: {type: Array},
 
       /**
        * Name of the first model.
@@ -98,13 +100,22 @@ export class FairnessMetricsTable extends PolymerElement {
       evalNameCompare: {type: String, value: ''},
 
       /**
-       * List of example counts for each slice.
-       * @type {!Array<number>}
+       * The one slice that will be used as the baseline.
+       * @type {string}
        */
-      exampleCounts: {
-        type: Array,
-        value: () => ([]),
-      },
+      baseline: {type: String},
+
+      /**
+       * Only include the slices to plot. The baseline is not included.
+       * @type {!Array<string>}
+       */
+      slices: {type: Array},
+
+      /**
+       * List of metrics to be shown in the table.
+       * @type {!Array<string>}
+       */
+      metrics: {type: Array, value: undefined},
 
       /**
        * Header of the table.
@@ -113,20 +124,17 @@ export class FairnessMetricsTable extends PolymerElement {
       headerRow_: {
         type: Array,
         computed:
-            'populateHeaderRow_(data, dataCompare, metrics, evalName, evalNameCompare)',
+            'populateHeaderRow_(data, dataCompare, evalName, evalNameCompare, metrics, baseline)',
         notify: true,
       },
-
       /**
-       * Generated plot data piped to google-chart. It should be 2d array
-       * where the each element in the top level array represents a row in
-       * the table.
-       * @private {!Array<!Array>}
+       * Content of the table.
+       * @private {!Array<!Array<!Cell>>}
        */
-      tableData_: {
+      contentRows_: {
         type: Array,
         computed:
-            'computeTableData_(data, dataCompare, metrics, evalName, evalNameCompare)',
+            'populateContentRows_(data, dataCompare, evalName, evalNameCompare, metrics, baseline, slices)',
       },
     };
   }
@@ -143,100 +151,117 @@ export class FairnessMetricsTable extends PolymerElement {
    * Populate header row
    * @param {!Array} data
    * @param {!Array} dataCompare
-   * @param {!Array<string>} metrics
    * @param {string} evalName
    * @param {string} evalCompareName
+   * @param {!Array<string>} metrics
+   * @param {string} baseline
    * @return {!Array<string>}
    * @private
    */
-  populateHeaderRow_(data, dataCompare, metrics, evalName, evalCompareName) {
-    if (!metrics) {
+  populateHeaderRow_(
+      data, dataCompare, evalName, evalCompareName, metrics, baseline) {
+    if (!data || !metrics || !metrics.length) {
       return [];
     }
-    const metricCols = metrics.map(Util.removeMetricNamePrefix);
-
+    const header = ['feature'];
     if (!this.evalComparison_()) {
-      return ['feature'].concat(metricCols);
+      for (let i = 0; i < metrics.length; i++) {
+        const metric = Util.removeMetricNamePrefix(metrics[i]);
+        header.push(metric, metric + ' against ' + baseline);
+      }
     } else {
-      const colName = (metricName, evalName) => {
-        const threshold = metricName.split('@')[1];
-        const baseline = metricName.split('against')[1];
-        return threshold ?
-            evalName.concat('@', threshold) :
-            baseline ? evalName.concat(' against', baseline) : evalName;
-      };
-
-      const evalCols = [];
-      const evalCompareCols = [];
-      for (let j = 0; j < metricCols.length; j += 2) {
-        evalCols.push(colName(metricCols[j], evalName));
-        evalCompareCols.push(colName(metricCols[j], evalCompareName));
+      const thresholds = metrics.map(metric => {
+        return metric.split('@')[1] || '';
+      });
+      const evalNames = [evalName, evalCompareName];
+      for (const evaluation of evalNames) {
+        for (const threshold of thresholds) {
+          if (threshold) {
+            header.push(evaluation + '@' + threshold);
+          } else {
+            header.push(evaluation);
+          }
+        }
       }
-
-      // +=2 to skip 'against Baseline' columns
-      const againstCols = [];
-      for (let j = 0; j < metrics.length; j += 2) {
-        var againstCol = evalCompareName.concat(' against ', evalName);
-        const threshold = metricCols[j].split('@')[1];
-        againstCols.push(
-            threshold ? againstCol.concat('@', threshold) : againstCol);
+      for (const threshold of thresholds) {
+        if (threshold) {
+          header.push(
+              evalName + ' against ' + evalCompareName + ' @' + threshold);
+        } else {
+          header.push(evalName + ' against ' + evalCompareName);
+        }
       }
-
-      return ['feature'].concat(evalCols, evalCompareCols, againstCols);
     }
+    header.push('example count');
+    return header;
   }
 
   /**
-   * Populate table rows
-   * @param {!Array<string>} metrics
+   * Populate header row
    * @param {!Array} data
    * @param {!Array} dataCompare
-   * @return {!Array<string>}
+   * @param {string} evalName
+   * @param {string} evalCompareName
+   * @param {!Array<string>} metrics
+   * @param {string} baseline
+   * @param {!Array<string>} slices
+   * @return {!Array<!Array<!Cell>>}
    * @private
    */
-  populateTableRows_(metrics, data, dataCompare) {
+  populateContentRows_(
+      data, dataCompare, evalName, evalCompareName, metrics, baseline, slices) {
+    if (!data || !metrics || !metrics.length || !baseline || !slices) {
+      return [];
+    }
+
+    slices = [baseline, ...slices];
+
     var tableRows = [];
-    for (let i = 0; i < data.length; i++) {
+    for (const slice of slices) {
       var tableRow = [];
+      const sliceMetricsData = data.find(d => d['slice'] == slice);
 
-      // slice name
-      tableRow.push(data[i]['slice']);
+      // Add slice name cell.
+      tableRow.push({text: slice});
 
-      const metricsData = data[i]['metrics'];
-
-      // In comparison, skip over 'metric against Baseline' (+=2)
       if (this.evalComparison_()) {
-        // First Eval column
-        for (let j = 0; j < metrics.length; j += 2) {
-          tableRow.push(this.formatCell_(metricsData[metrics[j]]));
+        const sliceMetricsDataCompare =
+            dataCompare.find(d => d['slice'] == slice);
+        for (const metricName of metrics) {
+          const metricData = sliceMetricsData['metrics'][metricName];
+          const metricDataCompare =
+              sliceMetricsDataCompare['metrics'][metricName];
+          // Add metric cell.
+          tableRow.push(this.formatCell_(metricData));
+          // Add metric of second Eval.
+          tableRow.push(this.formatCell_(metricDataCompare));
         }
-
-        // Second Eval column
-        const metricsDataCompare = dataCompare[i]['metrics'];
-        for (let j = 0; j < metrics.length; j += 2) {
-          tableRow.push(this.formatCell_(metricsDataCompare[metrics[j]]));
+        for (const metricName of metrics) {
+          const metricData = sliceMetricsData['metrics'][metricName];
+          const metricDataCompare =
+              sliceMetricsDataCompare['metrics'][metricName];
+          // Add comparison cell (between first Eval and second Eval).
+          tableRow.push(this.formatComparisonCell_(
+              metricDataCompare, metricData, metricName));
         }
+      } else {
+        for (const metricName of metrics) {
+          const metricData = sliceMetricsData['metrics'][metricName];
 
-        // Comparison columns
-        for (let j = 0; j < metrics.length; j += 2) {
-          const evalMetric = this.isBoundedValue_(metricsData[metrics[j]]) ?
-              metricsData[metrics[j]]['value'] :
-              metricsData[metrics[j]];
-          const evalCompareMetric =
-              this.isBoundedValue_(metricsDataCompare[metrics[j]]) ?
-              metricsDataCompare[metrics[j]]['value'] :
-              metricsDataCompare[metrics[j]];
-          const comparison = evalCompareMetric / evalMetric - 1;
-          tableRow.push(comparison.toString());
+          // Add metric cell.
+          tableRow.push(this.formatCell_(metricData));
+
+          // Add comparison cell (between slice and baseline).
+          const baselineMetricData =
+              data.find(d => d['slice'] == baseline)['metrics'][metricName];
+          tableRow.push(this.formatComparisonCell_(
+              metricData, baselineMetricData, metricName));
         }
       }
 
-      // In non-comparison, include both 'metric' and 'metric against Baseline'
-      else {
-        metrics.forEach(entry => {
-          tableRow.push(this.formatCell_(metricsData[entry]));
-        });
-      }
+      // Add example count cell.
+      tableRow.push(this.formatCell_(
+          Util.getMetricsValues(sliceMetricsData, 'example_count')));
 
       tableRows.push(tableRow);
     }
@@ -244,50 +269,70 @@ export class FairnessMetricsTable extends PolymerElement {
   }
 
   /**
-   * Computes the data table.
-   * @param {!Array} data
-   * @param {!Array} dataCompare
-   * @param {!Array<string>} metrics
-   * @param {string} evalName
-   * @param {string} evalNameCompare
-   * @return {!Array<!Array<string>>|undefined}
+   * Formats cell data so that it can be rendered in the table.
+   * @param {number|string|!Object|undefined} cellData
+   * @return {!Cell}
    * @private
    */
-  computeTableData_(data, dataCompare, metrics, evalName, evalNameCompare) {
-    if (!data || !metrics) {
-      return [];
+  formatCell_(cellData) {
+    // TODO(b/137209618): Handle other data types as well.
+    if (!cellData) {
+      return {
+        text: 'NO_DATA',
+        arrow: undefined,
+        arrow_icon_css_class: undefined,
+      };
+    } else if (typeof cellData === 'object' && this.isBoundedValue_(cellData)) {
+      return {
+        text: this.formatFloatValue_(cellData['value']) + ' (' +
+            this.formatFloatValue_(cellData['lowerBound']) + ', ' +
+            this.formatFloatValue_(cellData['upperBound']) + ')',
+        arrow: undefined,
+        arrow_icon_css_class: undefined,
+      };
+    } else if (typeof cellData === 'string') {
+      return {
+        text: cellData,
+        arrow: undefined,
+        arrow_icon_css_class: undefined,
+      };
+    } else {
+      return {
+        text: JSON.stringify(cellData),
+        arrow: undefined,
+        arrow_icon_css_class: undefined,
+      };
     }
-    if (data.length == 0) {
-      // No need to compute plot data if data is empty.
-      return [[]];
-    }
-
-    this.headerRow_ = this.populateHeaderRow_(
-        data, dataCompare, metrics, evalName, evalNameCompare);
-    let tableRows = this.populateTableRows_(metrics, data, dataCompare);
-    tableRows.sort();
-    return [this.headerRow_].concat(tableRows);
   }
+
 
   /**
    * Formats cell data so that it can be rendered in the table.
-   * @param {number|string|!Object} cell_data
-   * @return {string}
+   * @param {number|!Object|undefined} cellData1
+   * @param {number|!Object|undefined} cellData2
+   * @param {string} metricName
+   * @return {!Cell}
    * @private
    */
-  formatCell_(cell_data) {
+  formatComparisonCell_(cellData1, cellData2, metricName) {
     // TODO(b/137209618): Handle other data types as well.
-    if (typeof cell_data === 'object' && this.isBoundedValue_(cell_data)) {
-      return this.formatFloatValue_(cell_data['value']) + ' (' +
-          this.formatFloatValue_(cell_data['lowerBound']) + ', ' +
-          this.formatFloatValue_(cell_data['upperBound']) + ')';
-    } else if (typeof cell_data === 'string') {
-      return cell_data;
+    if (!cellData1 || !cellData2) {
+      return {
+        text: 'NO_DATA',
+        arrow: undefined,
+        arrow_icon_css_class: undefined,
+      };
     } else {
-      return JSON.stringify(cell_data);
+      const diff = (tfma.CellRenderer.maybeExtractBoundedValue(cellData1) /
+                    tfma.CellRenderer.maybeExtractBoundedValue(cellData2)) -
+          1;
+      return {
+        text: this.toPercentage_(diff),
+        arrow: this.arrow_(diff),
+        arrow_icon_css_class: this.arrowIconCssClass_(diff, metricName)
+      };
     }
   }
-
   /**
    * Formats float value.
    * @param {string|number} value
@@ -306,7 +351,7 @@ export class FairnessMetricsTable extends PolymerElement {
 
   /**
    * Convert decimal value to percentage.
-   * @param {string|number} value
+   * @param {number} value
    * @return {string} The given value formatted as a string.
    * @private
    */
@@ -345,73 +390,17 @@ export class FairnessMetricsTable extends PolymerElement {
         value[BoundedValueFieldNames.VALUE] !== undefined;
   }
 
-  /**
-   * @param {(number)} index
-   * @param {!Array} headerRow
-   * @return {boolean} Returns true if the given column index corresponds to a
-   * percentage column.
-   * @private
-   */
-  isPercentageColumn_(index, headerRow) {
-    return headerRow && index < headerRow.length &&
-        headerRow[index].includes(' against ');
-  }
 
   /**
-   * @param {(string)} rowNum
-   * @param {!Array} exampleCounts
-   * @return {string} Get example count for the corresponding row.
+   * @param {number} row_num
+   * @return {string} Returns css class of the row.
    * @private
    */
-  getExampleCount_(rowNum, exampleCounts) {
-    if (!exampleCounts) {
-      return '';
+  tableRowCssClass_(row_num) {
+    if (parseFloat(row_num) === 0) {
+      return 'baseline-row';
     }
-
-    // We skip the first row, since it is a header row which does not correspond
-    // to a slice.
-    let value = exampleCounts[parseFloat(rowNum) - 1];
-    if (typeof value === 'number') {
-      return this.toFixedNumber_(value, FLOATING_POINT_PRECISION);
-    } else {
-      return '';
-    }
-  }
-
-  /**
-   * @param {(string)} row_num
-   * @return {boolean} Returns true if row_num is 0.
-   * @private
-   */
-  isHeaderRow_(row_num) {
-    return parseFloat(row_num) === 0;
-  }
-
-  /**
-   * @param {(string)} row_num
-   * @return {boolean} Returns true if row_num is 1.
-   * @private
-   */
-  isBaselineRow_(row_num) {
-    return parseFloat(row_num) === 1;
-  }
-
-  /**
-   * @param {(string)} row_num
-   * @return {boolean} Returns true if row_num is greater than 1.
-   * @private
-   */
-  isSliceRow_(row_num) {
-    return parseFloat(row_num) > 1;
-  }
-
-  /**
-   * @param {(string|number)} metric_diff
-   * @return {boolean} Returns true if value is nonzero.
-   * @private
-   */
-  isNonzero_(metric_diff) {
-    return metric_diff != 0;
+    return 'table-row';
   }
 
   /**
@@ -435,8 +424,8 @@ export class FairnessMetricsTable extends PolymerElement {
    * @return {string} Returns icon's class based on metric_diff's value.
    * @private
    */
-  icon_class_(metric_diff, metric) {
-    const unprefixed_metric = Util.removeMetricNamePrefix(metric);
+  arrowIconCssClass_(metric_diff, metric) {
+    const unprefixed_metric = Util.removeMetricNamePrefix(metric).split('@')[0];
     const parsed_metric_diff = parseFloat(metric_diff);
     if ((Util.POSITIVE_METRICS.includes(unprefixed_metric) &&
          parsed_metric_diff > 0) ||

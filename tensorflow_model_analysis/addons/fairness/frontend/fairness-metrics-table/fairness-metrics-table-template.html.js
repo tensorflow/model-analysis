@@ -95,70 +95,36 @@ template.innerHTML = `
   }
 </style>
 <div class="table-holder" id="table">
-  <template is="dom-repeat" items="[[tableData_]]" as="row">
-    <template is="dom-if" if="[[isHeaderRow_(index)]]">
-      <div class="table-head-row">
-        <template is="dom-repeat" items="[[row]]">
-          <template is="dom-if" if="[[!index]]">
-            <div class="table-feature-column" title="[[item]]">[[item]]</div>
-          </template>
-          <template is="dom-if" if="[[index]]">
-            <div class="table-entry" title="[[item]]">[[item]]</div>
-          </template>
-        </template>
-        <div class="table-feature-column" title="[[item]]">example_count</div>
-      </div>
+
+  <!-- Table Header -->
+  <div class="table-head-row">
+    <template is="dom-repeat" items="[[headerRow_]]">
+      <template is="dom-if" if="[[!index]]">
+        <div class="table-feature-column" title="[[item]]">[[item]]</div>
+      </template>
+      <template is="dom-if" if="[[index]]">
+        <div class="table-entry" title="[[item]]">[[item]]</div>
+      </template>
     </template>
-    <template is="dom-if" if="[[isBaselineRow_(index)]]">
-      <div class="baseline-row" on-tap="togglePerfRow">
-        <template is="dom-repeat" items="[[row]]">
-          <template is="dom-if" if="[[!index]]">
-            <div class="table-feature-column" title="[[item]]">[[item]]</div>
-          </template>
-          <template is="dom-if" if="[[index]]">
-            <div class="table-entry" title="[[item]]">
-              <template is="dom-if" if="[[isPercentageColumn_(index, headerRow_)]]">
-                <template is="dom-if" if="[[isNonzero_(item)]]">
-                  <iron-icon class$="[[icon_class_(item, metric)]]" icon="[[arrow_(item)]]"></iron-icon>
-                </template>
-                [[toPercentage_(item)]]
-              </template>
-              <template is="dom-if" if="[[!isPercentageColumn_(index, headerRow_)]]">
-                [[formatFloatValue_(item)]]
-              </template>
-            </div>
-          </template>
+  </div>
+
+  <!-- Table Content -->
+  <template is="dom-repeat" items="[[contentRows_]]" as="row">
+    <div class$="[[tableRowCssClass_(index)]]">
+      <template is="dom-repeat" items="[[row]]">
+        <template is="dom-if" if="[[!index]]">
+          <div class="table-feature-column" title="[[item.text]]">[[item.text]]</div>
         </template>
-        <div class="table-entry" title="[[item]]">
-          [[getExampleCount_(index, exampleCounts)]]
-        </div>
-      </div>
-    </template>
-    <template is="dom-if" if="[[isSliceRow_(index)]]">
-      <div class="table-row" on-tap="togglePerfRow">
-        <template is="dom-repeat" items="[[row]]">
-          <template is="dom-if" if="[[!index]]">
-            <div class="table-feature-column" title="[[item]]">[[item]]</div>
-          </template>
-          <template is="dom-if" if="[[index]]">
-            <div class="table-entry" title="[[item]]">
-              <template is="dom-if" if="[[isPercentageColumn_(index, headerRow_)]]">
-                <template is="dom-if" if="[[isNonzero_(item)]]">
-                  <iron-icon class$="[[icon_class_(item, metric)]]" icon="[[arrow_(item)]]"></iron-icon>
-                </template>
-                [[toPercentage_(item)]]
-              </template>
-              <template is="dom-if" if="[[!isPercentageColumn_(index, headerRow_)]]">
-                [[formatFloatValue_(item)]]
-              </template>
-            </div>
-          </template>
+        <template is="dom-if" if="[[index]]">
+          <div class="table-entry" title="[[item.text]]">
+            <template is="dom-if" if="[[item.arrow]]">
+              <iron-icon class$="[[item.arrow_icon_css_class]]" icon="[[item.arrow]]"></iron-icon>
+            </template>
+            [[item.text]]
+          </div>
         </template>
-        <div class="table-entry" title="[[item]]">
-          [[getExampleCount_(index, exampleCounts)]]
-        </div>
-      </div>
-    </template>
+      </template>
+    </div>
   </template>
 </div>
 `;

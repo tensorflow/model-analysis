@@ -15,53 +15,59 @@
  */
 
 suite('fairness-metrics-table tests', () => {
-  const TABLE_DATA = [
+  const DATA = [
     {
       'slice': 'col:1',
       'metrics': {
         'loss': 0.7,
-        'loss against Overall': 0.5,
+        'fairness_indicators_metrics/false_negative_rate@0.5': 0.7,
+        'example_count': 1,
       }
     },
     {
       'slice': 'col:2',
       'metrics': {
         'loss': 0.72,
-        'loss against Overall': 0.52,
+        'fairness_indicators_metrics/false_negative_rate@0.5': 0.72,
+        'example_count': 1,
       }
     },
     {
       'slice': 'col:3',
       'metrics': {
         'loss': 0.74,
-        'loss against Overall': 0.54,
+        'fairness_indicators_metrics/false_negative_rate@0.5': 0.74,
+        'example_count': 1,
       },
     }
   ];
-  const TABLE_DATA_TO_COMPARE = [
+  const DATA_TO_COMPARE = [
     {
       'slice': 'col:1',
       'metrics': {
         'loss': 0.35,
-        'loss against Overall': 0.15,
+        'fairness_indicators_metrics/false_negative_rate@0.5': 0.35,
+        'example_count': 1,
       }
     },
     {
       'slice': 'col:2',
       'metrics': {
         'loss': 0.36,
-        'loss against Overall': 0.16,
+        'fairness_indicators_metrics/false_negative_rate@0.5': 0.36,
+        'example_count': 1,
       }
     },
     {
       'slice': 'col:3',
       'metrics': {
         'loss': 0.37,
-        'loss against Overall': 0.17,
+        'fairness_indicators_metrics/false_negative_rate@0.5': 0.37,
+        'example_count': 1,
       },
     }
   ];
-  const BOUNDED_VALUE_DATA = [
+  const BOUNDED_DATA = [
     {
       'slice': 'col:1',
       'metrics': {
@@ -70,10 +76,15 @@ suite('fairness-metrics-table tests', () => {
           'upperBound': 0.8,
           'value': 0.7,
         },
-        'loss against Overall': {
-          'lowerBound': 0.4,
-          'upperBound': 0.6,
-          'value': 0.5,
+        'fairness_indicators_metrics/false_negative_rate@0.5': {
+          'lowerBound': 0.6,
+          'upperBound': 0.8,
+          'value': 0.7,
+        },
+        'example_count': {
+          'lowerBound': 1,
+          'upperBound': 1,
+          'value': 1,
         },
       }
     },
@@ -85,10 +96,15 @@ suite('fairness-metrics-table tests', () => {
           'upperBound': 0.82,
           'value': 0.72,
         },
-        'loss against Overall': {
-          'lowerBound': 0.42,
-          'upperBound': 0.62,
-          'value': 0.52,
+        'fairness_indicators_metrics/false_negative_rate@0.5': {
+          'lowerBound': 0.62,
+          'upperBound': 0.82,
+          'value': 0.72,
+        },
+        'example_count': {
+          'lowerBound': 1,
+          'upperBound': 1,
+          'value': 1,
         },
       }
     },
@@ -100,15 +116,20 @@ suite('fairness-metrics-table tests', () => {
           'upperBound': 0.84,
           'value': 0.74,
         },
-        'loss against Overall': {
-          'lowerBound': 0.44,
-          'upperBound': 0.64,
-          'value': 0.54,
+        'fairness_indicators_metrics/false_negative_rate@0.5': {
+          'lowerBound': 0.64,
+          'upperBound': 0.84,
+          'value': 0.74,
+        },
+        'example_count': {
+          'lowerBound': 1,
+          'upperBound': 1,
+          'value': 1,
         },
       }
     }
   ];
-  const BOUNDED_VALUE_DATA_TO_COMPARE = [
+  const BOUNDED_DATA_TO_COMPARE = [
     {
       'slice': 'col:1',
       'metrics': {
@@ -117,10 +138,15 @@ suite('fairness-metrics-table tests', () => {
           'upperBound': 0.45,
           'value': 0.35,
         },
-        'loss against Overall': {
-          'lowerBound': 0.05,
-          'upperBound': 0.25,
-          'value': 0.15,
+        'fairness_indicators_metrics/false_negative_rate@0.5': {
+          'lowerBound': 0.25,
+          'upperBound': 0.45,
+          'value': 0.35,
+        },
+        'example_count': {
+          'lowerBound': 1,
+          'upperBound': 1,
+          'value': 1,
         },
       }
     },
@@ -132,10 +158,15 @@ suite('fairness-metrics-table tests', () => {
           'upperBound': 0.46,
           'value': 0.36,
         },
-        'loss against Overall': {
-          'lowerBound': 0.06,
-          'upperBound': 0.26,
-          'value': 0.16,
+        'fairness_indicators_metrics/false_negative_rate@0.5': {
+          'lowerBound': 0.26,
+          'upperBound': 0.46,
+          'value': 0.36,
+        },
+        'example_count': {
+          'lowerBound': 1,
+          'upperBound': 1,
+          'value': 1,
         },
       }
     },
@@ -147,163 +178,209 @@ suite('fairness-metrics-table tests', () => {
           'upperBound': 0.47,
           'value': 0.37,
         },
-        'loss against Overall': {
-          'lowerBound': 0.07,
-          'upperBound': 0.27,
-          'value': 0.17,
+        'fairness_indicators_metrics/false_negative_rate@0.5': {
+          'lowerBound': 0.27,
+          'upperBound': 0.47,
+          'value': 0.37,
+        },
+        'example_count': {
+          'lowerBound': 1,
+          'upperBound': 1,
+          'value': 1,
         },
       }
     }
   ];
 
-  const METRICS = ['loss', 'loss against Overall'];
-  const EXAMPLE_COUNTS = [34, 84, 49];
-
   const MODEL_A_NAME = 'ModelA';
   const MODEL_B_NAME = 'ModelB';
 
-  const NUM_ROWS = 4;
+  const TEST_STEP_TIMEOUT_MS = 100;
 
-  let table;
+  const TEST_CASES = [
+    {
+      test_name: 'DoubleValues_GeneralMetrics_NonComparison',
+      test_data: {
+        data: DATA,
+        dataCompare: undefined,
+        evalName: undefined,
+        evalNameCompare: undefined,
+        baseline: 'col:1',
+        slices: ['col:2', 'col:3'],
+        metrics: ['loss']
+      },
+      expected_data: {
+        expected_header:
+            ['feature', 'loss', 'loss against col:1', 'example count'],
+        expected_rows: [
+          ['col:1', '0.7', '0%', 1],
+          ['col:2', '0.72', '2.857%', 1],
+          ['col:3', '0.74', '5.714%', 1],
+        ]
+      }
+    },
+    {
+      test_name: 'BoundedValues_GeneralMetrics_NonComparison',
+      test_data: {
+        data: BOUNDED_DATA,
+        dataCompare: undefined,
+        evalName: undefined,
+        evalNameCompare: undefined,
+        baseline: 'col:1',
+        slices: ['col:2', 'col:3'],
+        metrics: ['loss']
+      },
+      expected_data: {
+        expected_header:
+            ['feature', 'loss', 'loss against col:1', 'example count'],
+        expected_rows: [
+          ['col:1', '0.7 (0.6, 0.8)', '0%', '1 (1, 1)'],
+          ['col:2', '0.72 (0.62, 0.82)', '2.857%', '1 (1, 1)'],
+          ['col:3', '0.74 (0.64, 0.84)', '5.714%', '1 (1, 1)'],
+        ]
+      }
+    },
+    {
+      test_name: 'DoubleValues_ThresholdMetrics_NonComparison',
+      test_data: {
+        data: DATA,
+        dataCompare: undefined,
+        evalName: undefined,
+        evalNameCompare: undefined,
+        baseline: 'col:1',
+        slices: ['col:2', 'col:3'],
+        metrics: ['fairness_indicators_metrics/false_negative_rate@0.5'],
+      },
+      expected_data: {
+        expected_header: [
+          'feature', 'false_negative_rate@0.5',
+          'false_negative_rate@0.5 against col:1', 'example count'
+        ],
+        expected_rows: [
+          ['col:1', '0.7', '0%', 1],
+          ['col:2', '0.72', '2.857%', 1],
+          ['col:3', '0.74', '5.714%', 1],
+        ]
+      }
+    },
+    {
+      test_name: 'BoundedValues_ThresholdMetrics_NonComparison',
+      test_data: {
+        data: BOUNDED_DATA,
+        dataCompare: undefined,
+        evalName: undefined,
+        evalNameCompare: undefined,
+        baseline: 'col:1',
+        slices: ['col:2', 'col:3'],
+        metrics: ['fairness_indicators_metrics/false_negative_rate@0.5'],
+      },
+      expected_data: {
+        expected_header: [
+          'feature', 'false_negative_rate@0.5',
+          'false_negative_rate@0.5 against col:1', 'example count'
+        ],
+        expected_rows: [
+          ['col:1', '0.7 (0.6, 0.8)', '0%', '1 (1, 1)'],
+          ['col:2', '0.72 (0.62, 0.82)', '2.857%', '1 (1, 1)'],
+          ['col:3', '0.74 (0.64, 0.84)', '5.714%', '1 (1, 1)'],
+        ],
+      }
+    },
+    {
+      test_name: 'DoubleValues_ThresholdMetrics_Comparison',
+      test_data: {
+        data: DATA,
+        dataCompare: DATA_TO_COMPARE,
+        evalName: MODEL_A_NAME,
+        evalNameCompare: MODEL_B_NAME,
+        baseline: 'col:1',
+        slices: ['col:2', 'col:3'],
+        metrics: ['fairness_indicators_metrics/false_negative_rate@0.5'],
+      },
+      expected_data: {
+        expected_header: [
+          'feature', 'ModelA@0.5', 'ModelB@0.5', 'ModelA against ModelB @0.5',
+          'example count'
+        ],
+        expected_rows: [
+          ['col:1', '0.7', '0.35', '-50%', 1],
+          ['col:2', '0.72', '0.36', '-50%', 1],
+          ['col:3', '0.74', '0.37', '-50%', 1],
+        ],
+      }
+    },
+    {
+      test_name: 'BoundedValues_ThresholdMetrics_Comparison',
+      test_data: {
+        data: BOUNDED_DATA,
+        dataCompare: BOUNDED_DATA_TO_COMPARE,
+        evalName: MODEL_A_NAME,
+        evalNameCompare: MODEL_B_NAME,
+        baseline: 'col:1',
+        slices: ['col:2', 'col:3'],
+        metrics: ['fairness_indicators_metrics/false_negative_rate@0.5'],
+      },
+      expected_data: {
+        expected_header: [
+          'feature', 'ModelA@0.5', 'ModelB@0.5', 'ModelA against ModelB @0.5',
+          'example count'
+        ],
+        expected_rows: [
+          ['col:1', '0.7 (0.6, 0.8)', '0.35 (0.25, 0.45)', '-50%', '1 (1, 1)'],
+          [
+            'col:2', '0.72 (0.62, 0.82)', '0.36 (0.26, 0.46)', '-50%',
+            '1 (1, 1)'
+          ],
+          [
+            'col:3', '0.74 (0.64, 0.84)', '0.37 (0.27, 0.47)', '-50%',
+            '1 (1, 1)'
+          ],
+        ],
+      }
+    }
+  ];
 
-  test('ComputingTableData', done => {
-    table = fixture('test-fixture');
+  // Returns a promise that resolves after a given amount of time.
+  const delay = (delayInMs) => {
+    return new Promise((resolve) => setTimeout(resolve, delayInMs));
+  };
 
-    const fillData = () => {
-      table.metrics = METRICS;
-      table.data = TABLE_DATA;
-      table.exampleCounts = EXAMPLE_COUNTS;
-      table.evalName = MODEL_A_NAME;
-      setTimeout(CheckProperties, 500);
-    };
+  for (const test_case of TEST_CASES) {
+    test(test_case.test_name, async (done) => {
+      debugger;
+      const table = fixture('test-fixture');
+      // Setup input of the compnent.
+      table.data = test_case.test_data.data;
+      table.dataCompare = test_case.test_data.dataCompare;
+      table.evalName = test_case.test_data.evalName;
+      table.evalNameCompare = test_case.test_data.evalNameCompare;
+      table.baseline = test_case.test_data.baseline;
+      table.slices = test_case.test_data.slices;
+      table.metrics = test_case.test_data.metrics;
+      await delay(TEST_STEP_TIMEOUT_MS);
 
-    const CheckProperties = () => {
-      const expected_data = [
-        ['feature', 'loss', 'loss against Overall'],
-        ['col:1', '0.7', '0.5'],
-        ['col:2', '0.72', '0.52'],
-        ['col:3', '0.74', '0.54'],
-      ];
-
-      assert.equal(table.tableData_.length, expected_data.length);
-      for (var i = 0; i < NUM_ROWS; i++) {
-        for (var j = 0; j < 4; j++) {
-          assert.equal(table.tableData_[i][j], expected_data[i][j]);
+      // Check the computation of table rows.
+      assert.deepEqual(
+          table.headerRow_, test_case.expected_data.expected_header);
+      for (let i = 0; i < table.contentRows_.length; i++) {
+        const row = table.contentRows_[i];
+        for (let j = 0; j < row.length; j++) {
+          assert.equal(
+              row[j].text, test_case.expected_data.expected_rows[i][j]);
         }
       }
-
-      table.shadowRoot.querySelectorAll('.table-row').forEach(function(row) {
-        const tableEntries = row.querySelectorAll('.table-entry');
-
-        // Three values: metric, metricAgainstBaseline, and exampleCount
-        assert.equal(tableEntries.length, 3);
-
-        // metric and exampleCount should not be percentages
-        const metric = tableEntries[0].textContent.trim();
-        assert.isTrue(metric[metric.length - 1] !== '%');
-        const count = tableEntries[2].textContent.trim();
-        assert.isTrue(count[count.length - 1] !== '%');
-
-        // metricAgainstBaseline should be a percentage
-        const metricAgainstBaseline = tableEntries[1].textContent.trim();
-        assert.isTrue(
-            metricAgainstBaseline[metricAgainstBaseline.length - 1] === '%');
-      });
-
       done();
-    };
-
-    setTimeout(fillData, 0);
-  });
-
-  test('ComputingTableData_ModelComparison', done => {
-    table = fixture('test-fixture');
-
-    const fillData = (data, dataCompare, bounded) => {
-      table.metrics = METRICS;
-      table.data = data;
-      table.dataCompare = dataCompare;
-      table.exampleCounts = EXAMPLE_COUNTS;
-      table.evalName = MODEL_A_NAME;
-      table.evalNameCompare = MODEL_B_NAME;
-      setTimeout(() => {
-        CheckProperties(bounded);
-      }, 500);
-    };
-
-    const CheckProperties = (bounded) => {
-      const expected_data = [
-        ['feature', 'ModelA', 'ModelB', 'ModelB against ModelA'],
-        ['col:1', '0.7', '0.35', '-0.5'],
-        ['col:2', '0.72', '0.36', '-0.5'],
-        ['col:3', '0.74', '0.37', '-0.5'],
-      ];
-      const numCol = 4;
-
-      // check table dimensions
-      assert.equal(table.tableData_.length, expected_data.length);
-      assert.equal(table.tableData_[0].length, expected_data[0].length);
-
-      // check table header values
-      for (var j = 0; j < 6; j++) {
-        assert.equal(table.tableData_[0][j], expected_data[0][j]);
-      }
-
-      // check table content values
-      for (var i = 0; i < NUM_ROWS; i++) {
-        for (var j = 0; j < numCol; j++) {
-          const actual_data = bounded ? table.tableData_[i][j].split(' ')[0] :
-                                        table.tableData_[i][j];
-          assert.equal(actual_data, expected_data[i][j]);
-        }
-      }
-
-      // check which cells are percentages
-      table.shadowRoot.querySelectorAll('.table-row').forEach(function(row) {
-        const tableEntries = row.querySelectorAll('.table-entry');
-
-        // Four values
-        //   The first eval's metric, the second eval's metric, evalAgainstEval,
-        //   and exampleCount
-        assert.equal(tableEntries.length, numCol);
-
-        // metrics and exampleCount should not be percentages
-        const noPercIndices = [0, 1, 3];
-        noPercIndices.forEach(noPercIndex => {
-          const text = tableEntries[noPercIndex].textContent.trim();
-          assert.isTrue(text[text.length - 1] !== '%');
-          assert.isFalse(text.startsWith('NaN'));
-        });
-
-        // evalAgainstEval should be a percentage
-        const percIndex = 2;
-        const text = tableEntries[percIndex].textContent.trim();
-        assert.isTrue(text[text.length - 1] === '%');
-        assert.isFalse(text.startsWith('NaN'));
-      });
-
-      done();
-    };
-
-    setTimeout(() => {
-      fillData(TABLE_DATA, TABLE_DATA_TO_COMPARE, false);
-    }, 0);
-    setTimeout(() => {
-      fillData(BOUNDED_VALUE_DATA, BOUNDED_VALUE_DATA_TO_COMPARE, true);
-    }, 5000);  // 5000ms to ensure previous test finishes before this one begins
-    setTimeout(() => {
-      fillData(TABLE_DATA, BOUNDED_VALUE_DATA_TO_COMPARE, true);
-    }, 5000);  // 5000ms to ensure previous test finishes before this one begins
-  });
+    });
+  }
 
   test('ToPercentage', done => {
-    table = fixture('test-fixture');
+    const table = fixture('test-fixture');
     assert.equal(table.toPercentage_(0.25), '25%');
     assert.equal(table.toPercentage_('0.6'), '60%');
   });
 
   test('Arrow', done => {
-    table = fixture('test-fixture');
+    const table = fixture('test-fixture');
     assert.equal(table.arrow_(0.25), 'arrow-upward');
     assert.equal(table.arrow_('-1.6'), 'arrow-downward');
     assert.equal(table.arrow_(0), '');
@@ -311,16 +388,21 @@ suite('fairness-metrics-table tests', () => {
   });
 
   test('IconClass', done => {
-    table = fixture('test-fixture');
+    const table = fixture('test-fixture');
 
-    assert.equal(table.icon_class_(0.25, 'false_positive_rate'), 'red-icon');
     assert.equal(
-        table.icon_class_('-0.25', 'false_positive_rate'), 'green-icon');
+        table.arrowIconCssClass_(0.25, 'false_positive_rate'), 'red-icon');
+    assert.equal(
+        table.arrowIconCssClass_('-0.25', 'false_positive_rate'), 'green-icon');
 
-    assert.equal(table.icon_class_('0.25', 'true_positive_rate'), 'green-icon');
-    assert.equal(table.icon_class_(-0.25, 'true_positive_rate'), 'red-icon');
+    assert.equal(
+        table.arrowIconCssClass_('0.25', 'true_positive_rate'), 'green-icon');
+    assert.equal(
+        table.arrowIconCssClass_(-0.25, 'true_positive_rate'), 'red-icon');
 
-    assert.equal(table.icon_class_('0.25', 'true_neutral_rate'), 'blue-icon');
-    assert.equal(table.icon_class_(-0.25, 'true_neutral_rate'), 'blue-icon');
+    assert.equal(
+        table.arrowIconCssClass_('0.25', 'true_neutral_rate'), 'blue-icon');
+    assert.equal(
+        table.arrowIconCssClass_(-0.25, 'true_neutral_rate'), 'blue-icon');
   });
 });

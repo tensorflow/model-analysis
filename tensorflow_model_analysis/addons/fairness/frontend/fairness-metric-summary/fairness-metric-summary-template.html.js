@@ -151,10 +151,10 @@ template.innerHTML = `
                                   eval-name="[[evalName]]" eval-name-compare="[[evalNameCompare]]"
                                   sort="[[sort_]]">
 </fairness-bounded-value-bar-chart>
-<fairness-metrics-table id="table" metric="[[metric]]" metrics="[[metricsForTable_]]"
-                        data="[[tableData_]]" data-compare="[[tableDataCompare_]]"
-                        eval-name="[[evalName]]" eval-name-compare="[[evalNameCompare]]"
-                        example-counts="[[exampleCounts_]]">
+<fairness-metrics-table id="table" metric="[[metric]]" metrics="[[metrics_]]"
+                        data="[[data]]" data-compare="[[dataCompare]]"
+                        slices="[[slicesToPlot_]]" baseline="[[baseline]]"
+                        eval-name="[[evalName]]" eval-name-compare="[[evalNameCompare]]">
 </fairness-metrics-table>
 
 `;
