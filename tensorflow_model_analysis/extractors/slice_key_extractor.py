@@ -82,6 +82,8 @@ class ExtractSliceKeysFn(beam.DoFn):
     self._slice_spec = slice_spec
     self._eval_config = eval_config
     self._materialize = materialize
+    self._duplicate_slice_keys_counter = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_examples_with_duplicate_slice_keys')
 
   def process(self, element: types.Extracts) -> List[types.Extracts]:
     # Slice on transformed features if available.
@@ -99,21 +101,25 @@ class ExtractSliceKeysFn(beam.DoFn):
             features_dicts.append(transformed_features[spec.name])
     # Search for slices first in transformed features (if any). If a match is
     # not found there then search in raw features.
-    slices = list(
+    slice_keys = list(
         slicer.get_slices_for_features_dicts(
             features_dicts, util.get_features_from_extracts(element),
             self._slice_spec))
+    unique_slice_keys = list(set(slice_keys))
+    if len(slice_keys) != len(unique_slice_keys):
+      self._duplicate_slice_keys_counter.inc()
 
     # Make a a shallow copy, so we don't mutate the original.
     element_copy = copy.copy(element)
 
-    element_copy[constants.SLICE_KEY_TYPES_KEY] = slices
+    element_copy[constants.SLICE_KEY_TYPES_KEY] = unique_slice_keys
     # Add a list of stringified slice keys to be materialized to output table.
     if self._materialize:
       element_copy[constants.SLICE_KEYS_KEY] = types.MaterializedColumn(
           name=constants.SLICE_KEYS_KEY,
           value=(list(
-              slicer.stringify_slice_key(x).encode('utf-8') for x in slices)))
+              slicer.stringify_slice_key(x).encode('utf-8')
+              for x in unique_slice_keys)))
     return [element_copy]
 
 

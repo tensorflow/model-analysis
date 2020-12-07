@@ -88,7 +88,26 @@ class SliceTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
                   'age': [12],
                   'interest': ['cars']
               })
-      }], 'gender', [[(('gender', 'm'),)], [(('gender', 'f'),)]]),
+      }], [slicer.SingleSliceSpec(columns=['gender'])], [[(('gender', 'm'),)],
+                                                         [(('gender', 'f'),)]]),
+      ('duplicate_feature_keys', [''], [{
+          constants.FEATURES_KEY:
+              make_features_dict({
+                  'gender': ['m'],
+                  'age': [10],
+                  'interest': ['cars']
+              })
+      }, {
+          constants.FEATURES_KEY:
+              make_features_dict({
+                  'gender': ['f'],
+                  'age': [12],
+                  'interest': ['cars']
+              })
+      }], [
+          slicer.SingleSliceSpec(columns=['gender']),
+          slicer.SingleSliceSpec(columns=['gender'])
+      ], [[(('gender', 'm'),)], [(('gender', 'f'),)]]),
       ('transformed_features', [''], [{
           constants.FEATURES_KEY:
               make_features_dict({
@@ -115,8 +134,8 @@ class SliceTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
                   'age': [10],
                   'interest': ['planes']
               })
-      }], 'interest', [[(('interest', 'boats'),)], [(('interest', 'planes'),)]
-                      ]),
+      }], [slicer.SingleSliceSpec(columns=['interest'])
+          ], [[(('interest', 'boats'),)], [(('interest', 'planes'),)]]),
       ('transformed_features_with_multiple_models', ['model1', 'model2'], [{
           constants.FEATURES_KEY:
               make_features_dict({
@@ -139,10 +158,11 @@ class SliceTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
               'model1': make_features_dict({'interest': ['trains']}),
               'model2': make_features_dict({'interest': ['planes']})
           }
-      }], 'interest', [[(('interest', 'boats'),), (('interest', 'planes'),)],
-                       [(('interest', 'planes'),), (('interest', 'trains'),)]]),
+      }], [slicer.SingleSliceSpec(columns=['interest'])], [[
+          (('interest', 'boats'),), (('interest', 'planes'),)
+      ], [(('interest', 'planes'),), (('interest', 'trains'),)]]),
   )
-  def testSliceKeys(self, model_names, extracts, slice_column, expected_slices):
+  def testSliceKeys(self, model_names, extracts, slice_specs, expected_slices):
     eval_config = config.EvalConfig(
         model_specs=[config.ModelSpec(name=name) for name in model_names])
     with beam.Pipeline() as pipeline:
@@ -150,8 +170,7 @@ class SliceTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
           pipeline
           | 'CreateTestInput' >> beam.Create(extracts)
           | 'ExtractSlices' >> slice_key_extractor.ExtractSliceKeys(
-              [slicer.SingleSliceSpec(columns=[slice_column])],
-              eval_config=eval_config))
+              slice_spec=slice_specs, eval_config=eval_config))
 
       def check_result(got):
         try:
@@ -210,18 +229,20 @@ class SliceTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       def check_result(got):
         try:
           self.assertLen(got, 2)
-          expected_results = sorted([
+          expected_results = [
               types.MaterializedColumn(
                   name=constants.SLICE_KEYS_KEY,
                   value=[b'Overall', b'gender:f']),
               types.MaterializedColumn(
                   name=constants.SLICE_KEYS_KEY,
                   value=[b'Overall', b'gender:m'])
-          ])
+          ]
           got_results = []
           for item in got:
             self.assertIn(constants.SLICE_KEYS_KEY, item)
-            got_results.append(item[constants.SLICE_KEYS_KEY])
+            got_result = item[constants.SLICE_KEYS_KEY]
+            got_results.append(
+                got_result._replace(value=sorted(got_result.value)))
           self.assertCountEqual(got_results, expected_results)
         except AssertionError as err:
           raise util.BeamAssertException(err)

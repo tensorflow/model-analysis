@@ -24,6 +24,8 @@
 *   Updated to set min/max value for precision/recall plot to 0 and 1.
 *   Fix issue with MinLabelPosition not being sorted by predictions.
 *   Updated NDCG to ignore non-positive gains.
+*   Fix bug where an example could be aggregated more than once in a single
+    slice if the same slice key were generated from more than one SlicingSpec.
 
 ## Breaking changes
 

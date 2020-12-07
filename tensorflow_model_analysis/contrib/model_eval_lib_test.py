@@ -56,17 +56,22 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
   def _assertMaterializedColumns(self,
                                  got_values_dict,
                                  expected_values_dict,
-                                 places=3):
+                                 places=3,
+                                 sort_values=False):
     for key, expected_column in expected_values_dict.items():
       self.assertIn(key, got_values_dict)
 
       got_column = got_values_dict[key]
       self.assertIsInstance(got_column, types.MaterializedColumn)
 
-      if (isinstance(expected_column.value, np.ndarray) or
-          isinstance(expected_column.value, list)):
+      if isinstance(expected_column.value, (np.ndarray, list)):
         # verify the arrays are identical
-        for got_v, expected_v in zip(got_column.value, expected_column.value):
+        if sort_values:
+          # sort got value for testing non-deterministic values
+          got_value = sorted(got_column.value)
+        else:
+          got_value = got_column.value
+        for got_v, expected_v in zip(got_value, expected_column.value):
           self.assertAlmostEqual(got_v, expected_v, places, msg='key %s' % key)
       else:
         self.assertAlmostEqual(
@@ -167,11 +172,9 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
                 constants.SLICE_KEYS_KEY:
                     types.MaterializedColumn(
                         name=constants.SLICE_KEYS_KEY,
-                        value=[
-                            b'age:3.0', b'age:3',
-                            b'age_X_language:3.0_X_english'
-                        ])
-            })
+                        value=[b'age:3.0', b'age_X_language:3.0_X_english'])
+            },
+            sort_values=True)
         self._assertMaterializedColumnsExist(materialized_dict, [
             'predictions__logits', 'predictions__probabilities',
             'predictions__classes', 'predictions__logistic',
