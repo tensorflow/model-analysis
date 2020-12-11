@@ -216,10 +216,13 @@ export class FairnessMetricsTable extends PolymerElement {
 
     slices = [baseline, ...slices];
 
-    var tableRows = [];
+    let tableRows = [];
     for (const slice of slices) {
-      var tableRow = [];
+      let tableRow = [];
       const sliceMetricsData = data.find(d => d['slice'] == slice);
+      if (!sliceMetricsData) {
+        continue;
+      }
 
       // Add slice name cell.
       tableRow.push({text: slice});
