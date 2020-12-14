@@ -279,9 +279,15 @@ export class FairnessMetricsTable extends PolymerElement {
    */
   formatCell_(cellData) {
     // TODO(b/137209618): Handle other data types as well.
-    if (!cellData) {
+    if (cellData === undefined) {
       return {
         text: 'NO_DATA',
+        arrow: undefined,
+        arrow_icon_css_class: undefined,
+      };
+    } else if (typeof cellData === 'number' && Number.isNaN(cellData)) {
+      return {
+        text: 'NaN',
         arrow: undefined,
         arrow_icon_css_class: undefined,
       };
@@ -319,7 +325,7 @@ export class FairnessMetricsTable extends PolymerElement {
    */
   formatComparisonCell_(cellData1, cellData2, metricName) {
     // TODO(b/137209618): Handle other data types as well.
-    if (!cellData1 || !cellData2) {
+    if (cellData1 === undefined || cellData2 === undefined) {
       return {
         text: 'NO_DATA',
         arrow: undefined,

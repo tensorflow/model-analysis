@@ -347,7 +347,6 @@ suite('fairness-metrics-table tests', () => {
 
   for (const test_case of TEST_CASES) {
     test(test_case.test_name, async (done) => {
-      debugger;
       const table = fixture('test-fixture');
       // Setup input of the compnent.
       table.data = test_case.test_data.data;
@@ -372,6 +371,74 @@ suite('fairness-metrics-table tests', () => {
       done();
     });
   }
+
+  test('formatCell', done => {
+    const table = fixture('test-fixture');
+    assert.deepEqual(table.formatCell_(undefined), {
+      text: 'NO_DATA',
+      arrow: undefined,
+      arrow_icon_css_class: undefined,
+    });
+    assert.deepEqual(
+        table.formatCell_({
+          'value': 0.5,
+          'lowerBound': 0.4,
+          'upperBound': 0.6,
+        }),
+        {
+          text: '0.5 (0.4, 0.6)',
+          arrow: undefined,
+          arrow_icon_css_class: undefined,
+        });
+    assert.deepEqual(table.formatCell_(0), {
+      text: '0',
+      arrow: undefined,
+      arrow_icon_css_class: undefined,
+    });
+    assert.deepEqual(table.formatCell_(NaN), {
+      text: 'NaN',
+      arrow: undefined,
+      arrow_icon_css_class: undefined,
+    });
+  });
+
+  test('formatComparisonCell', done => {
+    const table = fixture('test-fixture');
+    assert.deepEqual(
+        table.formatComparisonCell_(undefined, undefined, undefined), {
+          text: 'NO_DATA',
+          arrow: undefined,
+          arrow_icon_css_class: undefined,
+        });
+    assert.deepEqual(
+        table.formatComparisonCell_(
+            {
+              'value': 0.5,
+              'lowerBound': 0.4,
+              'upperBound': 0.6,
+            },
+            {
+              'value': 0.5,
+              'lowerBound': 0.4,
+              'upperBound': 0.6,
+            },
+            'metric'),
+        {
+          text: '0%',
+          arrow: '',
+          arrow_icon_css_class: 'blue-icon',
+        });
+    assert.deepEqual(table.formatComparisonCell_(NaN, NaN, 'metric'), {
+      text: 'NaN%',
+      arrow: '',
+      arrow_icon_css_class: 'blue-icon',
+    });
+    assert.deepEqual(table.formatComparisonCell_(1, 0, 'metric'), {
+      text: 'Infinity%',
+      arrow: 'arrow-upward',
+      arrow_icon_css_class: 'blue-icon',
+    });
+  });
 
   test('ToPercentage', done => {
     const table = fixture('test-fixture');
