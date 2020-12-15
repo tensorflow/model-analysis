@@ -302,8 +302,16 @@ def get_default_signature_name(model: Any) -> Text:
 
 def is_callable_fn(fn: Any) -> bool:
   """Returns true if function is callable."""
-  return (_TF_MAJOR_VERSION >= 2 and hasattr(fn, 'input_names') and
-          fn.input_names and hasattr(fn, 'inputs') and fn.inputs)
+  if _TF_MAJOR_VERSION >= 2:
+    # TODO(b/175357313): Temporary until input_spec fully supported on all
+    #  models.
+    if (hasattr(fn, '_get_save_spec') and
+        isinstance(fn._get_save_spec(), dict)):  # pylint: disable=protected-access
+      return True
+    if (hasattr(fn, 'input_names') and fn.input_names and
+        hasattr(fn, 'inputs') and fn.inputs):
+      return True
+  return False
 
 
 def get_callable(model: Any,
@@ -381,15 +389,18 @@ def get_input_specs(model: Any,
 
   def get_callable_input_specs(fn):
     # TODO(b/170241499): Update after TF adds support for specs to model.
-    input_specs = {}
-    for input_name, input_tensor in zip(fn.input_names, fn.inputs):
-      if hasattr(input_tensor, 'type_spec'):
-        # "KerasTensor" types have type_spec attributes.
-        type_spec = input_tensor.type_spec
-      else:
-        type_spec = tf.type_spec_from_value(input_tensor)
-      input_specs[input_name] = type_spec
-    return input_specs
+    if hasattr(fn, '_get_save_spec') and isinstance(fn._get_save_spec(), dict):  # pylint: disable=protected-access
+      return fn._get_save_spec()  # pylint: disable=protected-access
+    else:
+      input_specs = {}
+      for input_name, input_tensor in zip(fn.input_names, fn.inputs):
+        if hasattr(input_tensor, 'type_spec'):
+          # "KerasTensor" types have type_spec attributes.
+          type_spec = input_tensor.type_spec
+        else:
+          type_spec = tf.type_spec_from_value(input_tensor)
+        input_specs[input_name] = type_spec
+      return input_specs
 
   if not signature_name:
     # Special support for keras-based models.
@@ -822,9 +833,15 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
             outputs = signature(tf.constant(inputs, dtype=tf.string))
           for i in range(record_batch.num_rows):
             if isinstance(outputs, dict):
-              output = {k: v[i].numpy() for k, v in outputs.items()}
+              output = {
+                  k: np.expand_dims(v[i].numpy(), axis=0)
+                  for k, v in outputs.items()
+              }
             else:
-              output = {signature_name: np.asarray(outputs)[i]}
+              output = {
+                  signature_name: np.expand_dims(
+                      np.asarray(outputs)[i], axis=0)
+              }
             if result[extracts_key][i] is None:
               result[extracts_key][i] = collections.defaultdict(dict)
             result[extracts_key][i][model_name].update(output)  # pytype: disable=unsupported-operands
