@@ -781,6 +781,9 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
       else:
         return arr
 
+    def to_dense(t):
+      return tf.sparse.to_dense(t) if isinstance(t, tf.SparseTensor) else t
+
     result = copy.copy(batched_extract)
     record_batch = batched_extract[constants.ARROW_RECORD_BATCH_KEY]
     serialized_examples = batched_extract[constants.INPUT_KEY]
@@ -841,12 +844,13 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
           for i in range(record_batch.num_rows):
             if isinstance(outputs, dict):
               output = {
-                  k: maybe_expand_dims(v[i].numpy())
+                  k: maybe_expand_dims(to_dense(v)[i].numpy())
                   for k, v in outputs.items()
               }
             else:
               output = {
-                  signature_name: maybe_expand_dims(np.asarray(outputs)[i])
+                  signature_name:
+                      maybe_expand_dims(np.asarray(to_dense(outputs))[i])
               }
             if result[extracts_key][i] is None:
               result[extracts_key][i] = collections.defaultdict(dict)
