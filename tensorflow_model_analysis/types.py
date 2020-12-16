@@ -69,6 +69,11 @@ class ValueWithTDistribution(
                  cls).__new__(cls, sample_mean, sample_standard_deviation,
                               sample_degrees_of_freedom, unsampled_value)
 
+  def __float__(self):
+    # unsampled_value can be numpy.float which is a subclass of float, but here
+    # need to return a strict float.
+    return float(self.unsampled_value)
+
 
 # AddMetricsCallback should have the following prototype:
 #   def add_metrics_callback(features_dict, predictions_dict, labels_dict):

@@ -19,10 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import parameterized
-
 import tensorflow as tf
 
 from tensorflow_model_analysis import config
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_validator
 from tensorflow_model_analysis.metrics import metric_types
@@ -144,6 +144,144 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
           }
         }""", validation_result_pb2.ValidationResult())
     self.assertProtoEquals(expected, result)
+
+  @parameterized.named_parameters(_NO_SLICE_TEST, _GLOBAL_SLICE_TEST,
+                                  _FEATURE_SLICE_TEST,
+                                  _FEATURE_VALUE_SLICE_TEST,
+                                  _MULTIPLE_SLICES_TEST)
+  def testValidateMetricsMetricTDistributionValueAndThreshold(
+      self, slicing_specs, slice_key):
+    threshold = config.MetricThreshold(
+        value_threshold=config.GenericValueThreshold(
+            lower_bound={'value': 0.9}))
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(),
+        ],
+        slicing_specs=slicing_specs,
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='AUC',
+                        threshold=threshold if slicing_specs is None else None,
+                        per_slice_thresholds=[
+                            config.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs,
+                                threshold=threshold)
+                        ]),
+                ],
+                model_names=['']),
+        ],
+    )
+    sliced_metrics = (slice_key, {
+        metric_types.MetricKey(name='auc'):
+            types.ValueWithTDistribution(sample_mean=0.91, unsampled_value=0.8)
+    })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertFalse(result.validation_ok)
+    expected = text_format.Parse(
+        """
+        metric_validations_per_slice {
+          failures {
+            metric_key {
+              name: "auc"
+            }
+            metric_value {
+              double_value {
+                value: 0.8
+              }
+            }
+          }
+        }""", validation_result_pb2.ValidationResult())
+    expected.metric_validations_per_slice[0].failures[
+        0].metric_threshold.CopyFrom(threshold)
+    expected.metric_validations_per_slice[0].slice_key.CopyFrom(
+        slicer.serialize_slice_key(slice_key))
+    for spec in slicing_specs or [None]:
+      if (spec is None or
+          slicer.SingleSliceSpec(spec=spec).is_slice_applicable(slice_key)):
+        slicing_details = expected.validation_details.slicing_details.add()
+        if spec is not None:
+          slicing_details.slicing_spec.CopyFrom(spec)
+        else:
+          slicing_details.slicing_spec.CopyFrom(config.SlicingSpec())
+        slicing_details.num_matching_slices = 1
+    self.assertEqual(result, expected)
+
+  @parameterized.named_parameters(_NO_SLICE_TEST, _GLOBAL_SLICE_TEST,
+                                  _FEATURE_SLICE_TEST,
+                                  _FEATURE_VALUE_SLICE_TEST,
+                                  _MULTIPLE_SLICES_TEST)
+  def testValidateMetricsMetricTDistributionChangeAndThreshold(
+      self, slicing_specs, slice_key):
+    threshold = config.MetricThreshold(
+        change_threshold=config.GenericChangeThreshold(
+            direction=config.MetricDirection.LOWER_IS_BETTER,
+            absolute={'value': -1}))
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(),
+            config.ModelSpec(name='baseline', is_baseline=True)
+        ],
+        slicing_specs=slicing_specs,
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='AUC',
+                        threshold=threshold if slicing_specs is None else None,
+                        per_slice_thresholds=[
+                            config.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs,
+                                threshold=threshold)
+                        ]),
+                ],
+                model_names=['']),
+        ],
+    )
+    sliced_metrics = (
+        slice_key,
+        {
+            # This is the mean of the diff.
+            metric_types.MetricKey(name='auc', model_name='baseline'):
+                types.ValueWithTDistribution(
+                    sample_mean=0.91, unsampled_value=0.6),
+            metric_types.MetricKey(name='auc', is_diff=True):
+                types.ValueWithTDistribution(
+                    sample_mean=0.1, unsampled_value=0.1),
+        })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertFalse(result.validation_ok)
+    expected = text_format.Parse(
+        """
+        metric_validations_per_slice {
+          failures {
+            metric_key {
+              name: "auc"
+              is_diff: true
+            }
+            metric_value {
+              double_value {
+                value: 0.1
+              }
+            }
+          }
+        }""", validation_result_pb2.ValidationResult())
+    expected.metric_validations_per_slice[0].failures[
+        0].metric_threshold.CopyFrom(threshold)
+    expected.metric_validations_per_slice[0].slice_key.CopyFrom(
+        slicer.serialize_slice_key(slice_key))
+    for spec in slicing_specs or [None]:
+      if (spec is None or
+          slicer.SingleSliceSpec(spec=spec).is_slice_applicable(slice_key)):
+        slicing_details = expected.validation_details.slicing_details.add()
+        if spec is not None:
+          slicing_details.slicing_spec.CopyFrom(spec)
+        else:
+          slicing_details.slicing_spec.CopyFrom(config.SlicingSpec())
+        slicing_details.num_matching_slices = 1
+    self.assertAlmostEqual(result, expected)
 
   @parameterized.named_parameters(_NO_SLICE_TEST, _GLOBAL_SLICE_TEST,
                                   _FEATURE_SLICE_TEST,

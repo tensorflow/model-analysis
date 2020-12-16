@@ -26,6 +26,8 @@
 *   Updated NDCG to ignore non-positive gains.
 *   Fix bug where an example could be aggregated more than once in a single
     slice if the same slice key were generated from more than one SlicingSpec.
+*   Add threshold support for confidence interval type metrics based on its
+    unsampled_value.
 
 ## Breaking changes
 

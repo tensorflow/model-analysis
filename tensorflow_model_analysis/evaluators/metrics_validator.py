@@ -54,6 +54,7 @@ def validate_metrics(
   def _check_threshold(key: metric_types.MetricKey, threshold: _ThresholdType,
                        metric: Any) -> bool:
     """Verify a metric given its metric key and metric value."""
+    metric = float(metric)
     if isinstance(threshold, config.GenericValueThreshold):
       lower_bound, upper_bound = -np.inf, np.inf
       if threshold.HasField('lower_bound'):
@@ -63,7 +64,9 @@ def validate_metrics(
       return metric > lower_bound and metric < upper_bound
     elif isinstance(threshold, config.GenericChangeThreshold):
       diff = metric
-      ratio = diff / metrics[key.make_baseline_key(baseline_model_name)]
+      metric_baseline = float(
+          metrics[key.make_baseline_key(baseline_model_name)])
+      ratio = diff / metric_baseline
       if threshold.direction == config.MetricDirection.LOWER_IS_BETTER:
         absolute, relative = np.inf, np.inf
       elif threshold.direction == config.MetricDirection.HIGHER_IS_BETTER:
@@ -78,6 +81,8 @@ def validate_metrics(
         return diff < absolute and ratio < relative
       elif threshold.direction == config.MetricDirection.HIGHER_IS_BETTER:
         return diff > absolute and ratio > relative
+    else:
+      raise ValueError('Unknown threshold: {}'.format(threshold))
 
   def _copy_metric(metric, to):
     # Will add more types when more MetricValue are supported.
@@ -111,14 +116,6 @@ def validate_metrics(
     if metric_key.model_name == baseline_model_name:
       continue
     msg = ''
-    # We try to convert to float values.
-    try:
-      metric = float(metric)
-    except (TypeError, ValueError):
-      msg = """
-        Invalid threshold config: This metric is not comparable to the
-        threshold. The type of the threshold is: {}, and the metric value is:
-        \n{}""".format(type(metric), metric)
     existing_failures = set()
     for slice_spec, threshold in thresholds[metric_key]:
       if slice_spec is not None:
@@ -132,7 +129,17 @@ def validate_metrics(
           continue
       elif is_cross_slice:
         continue
-      if not _check_threshold(metric_key, threshold, metric):
+      try:
+        check_result = _check_threshold(metric_key, threshold, metric)
+      except ValueError:
+        msg = """
+          Invalid metrics or threshold for comparison: The type of the metric
+          is: {}, the metric value is: {}, and the threshold is: {}.
+          """.format(type(metric), metric, threshold)
+        check_result = False
+      else:
+        msg = ''
+      if not check_result:
         # The same threshold values could be set for multiple matching slice
         # specs. Only store the first match.
         #
