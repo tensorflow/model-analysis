@@ -78,7 +78,11 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
     for model_name, model_path in self._src_model_paths.items():
       with tf.io.gfile.GFile(os.path.join(model_path, _MODEL_JSON)) as f:
         model_json = json.load(f)
-        model_signature = model_json['userDefinedMetadata']['signature']
+        if ('userDefinedMetadata' in model_json and
+            'signature' in model_json['userDefinedMetadata']):
+          model_signature = model_json['userDefinedMetadata']['signature']
+        else:
+          model_signature = model_json['signature']
         model_inputs = {}
         for k, v in model_signature['inputs'].items():
           model_inputs[k] = [int(i['size']) for i in v['tensorShape']['dim']]
