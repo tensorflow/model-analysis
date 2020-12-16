@@ -4,6 +4,16 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other changes
+
+## Breaking changes
+
+## Deprecations
+
+# Version 0.26.0
+
+## Major Features and Improvements
+
 *   Added support for aggregating feature attributions using special metrics
     that extend from `tfma.metrics.AttributionMetric` (e.g.
     `tfma.metrics.TotalAttributions`, `tfma.metrics.TotalAbsoluteAttributions`).
@@ -28,6 +38,10 @@
     slice if the same slice key were generated from more than one SlicingSpec.
 *   Add threshold support for confidence interval type metrics based on its
     unsampled_value.
+*   Depends on `apache-beam[gcp]>=2.25,!=2.26.*,<3`.
+*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.4.*,<3`.
+*   Depends on `tensorflow-metadata>=0.26.0,<0.27.0`.
+*   Depends on `tfx-bsl>=0.26.0,<0.27.0`.
 
 ## Breaking changes
 
@@ -39,6 +53,8 @@
     `tfma.extractors.ExampleWeightsExtractor`.
 
 ## Deprecations
+
+*   N/A
 
 # Version 0.25.0
 
