@@ -343,28 +343,29 @@ def default_eval_shared_model(
     add_metrics_callbacks: Optional list of callbacks for adding additional
       metrics to the graph (see EvalSharedModel for more information on how to
       configure additional metrics). Metrics for example count and example
-      weights will be added automatically.
-    include_default_metrics: True to include the default metrics that are part
-      of the saved model graph during evaluation. Note that
-      eval_config.options.include_default_metrics must also be true.
-    example_weight_key: Example weight key (single-output model) or dict of
-      example weight keys (multi-output model) keyed by output name.
-    additional_fetches: Prefixes of additional tensors stored in
+      weights will be added automatically. Only used if EvalSavedModel used.
+    include_default_metrics: DEPRECATED. Use
+      eval_config.options.include_default_metrics.
+    example_weight_key: DEPRECATED. Use
+      eval_config.model_specs.example_weight_key or
+      eval_config.model_specs.example_weight_keys.
+    additional_fetches: Optional prefixes of additional tensors stored in
       signature_def.inputs that should be fetched at prediction time. The
       "features" and "labels" tensors are handled automatically and should not
-      be included.
-    blacklist_feature_fetches: List of tensor names in the features dictionary
-      which should be excluded from the fetches request. This is useful in
-      scenarios where features are large (e.g. images) and can lead to excessive
-      memory use if stored.
-    tags: Model tags (e.g. 'serve' for serving or 'eval' for EvalSavedModel).
+      be included. Only used if EvalSavedModel used.
+    blacklist_feature_fetches: Optional list of tensor names in the features
+      dictionary which should be excluded from the fetches request. This is
+      useful in scenarios where features are large (e.g. images) and can lead to
+      excessive memory use if stored. Only used if EvalSavedModel used.
+    tags: Optional model tags (e.g. 'serve' for serving or 'eval' for
+      EvalSavedModel).
     model_name: Optional name of the model being created (should match
       ModelSpecs.name). The name should only be provided if multiple models are
       being evaluated.
-    eval_config: Eval config. Only used for setting default tags.
+    eval_config: Eval config.
     custom_model_loader: Optional custom model loader for non-TF models.
-    rubber_stamp: True when this run is a first run without a baseline
-      model while a baseline is configured, the diff thresholds will be ignored.
+    rubber_stamp: True when this run is a first run without a baseline model
+      while a baseline is configured, the diff thresholds will be ignored.
   """
   if not eval_config:
     is_baseline = False
@@ -385,6 +386,12 @@ def default_eval_shared_model(
         tags = [eval_constants.EVAL_TAG]
       else:
         tags = [tf.saved_model.SERVING]
+    if model_spec.example_weight_key or model_spec.example_weight_keys:
+      example_weight_key = (
+          model_spec.example_weight_key or model_spec.example_weight_keys)
+    if eval_config.options.HasField('include_default_metrics'):
+      include_default_metrics = (
+          eval_config.options.include_default_metrics.value)
 
   # Backwards compatibility for legacy add_metrics_callbacks implementation.
   if model_type == constants.TF_ESTIMATOR and eval_constants.EVAL_TAG in tags:
@@ -959,12 +966,16 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   Example usage:
 
   ```python
-  eval_config = tfma.EvalConfig(slicing_specs=[...], metrics_specs=[...])
+  eval_config = tfma.EvalConfig(model_specs=[...], metrics_specs=[...],
+                                slicing_specs=[...])
   eval_shared_model = tfma.default_eval_shared_model(
       eval_saved_model_path=model_location, eval_config=eval_config)
+  tfx_io = tf_example_record.TFExampleRecord(
+      file_pattern=data_location,
+      raw_record_column_name=tfma.ARROW_INPUT_COLUMN)
   with beam.Pipeline(runner=...) as p:
     _ = (p
-         | 'ReadData' >> beam.io.ReadFromTFRecord(data_location)
+         | 'ReadData' >> tfx_io.BeamSource()
          | 'ExtractEvaluateAndWriteResults' >>
          tfma.ExtractEvaluateAndWriteResults(
              eval_shared_model=eval_shared_model,
@@ -972,6 +983,10 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
              ...))
   result = tfma.load_eval_result(output_path=output_path)
   tfma.view.render_slicing_metrics(result)
+
+  NOTE: If running with an EvalSavedModel (i.e. the ModelSpec has signature_name
+  "eval"), then instead of using the tfxio.BeamSource() code use the following
+  beam.io.ReadFromTFRecord(data_location)
   ```
 
   Note that the exact serialization format is an internal implementation detail

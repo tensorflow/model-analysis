@@ -156,6 +156,7 @@ For example:
 ```python
 # To run the pipeline.
 from google.protobuf import text_format
+from tfx_bsl.tfxio import tf_example_record
 
 eval_config = text_format.Parse("""
   ## Model information
@@ -186,13 +187,16 @@ eval_shared_model = tfma.default_eval_shared_model(
 
 output_path = '/path/for/output'
 
+tfx_io = tf_example_record.TFExampleRecord(
+    file_pattern=data_location, raw_record_column_name=tfma.ARROW_INPUT_COLUMN)
+
 with beam.Pipeline(runner=...) as p:
   _ = (p
        # You can change the source as appropriate, e.g. read from BigQuery.
        # This assumes your data is a TFRecords file containing records in the
-       # tf.train.Example format.
-       | 'ReadData' >> beam.io.ReadFromTFRecord(
-           '/path/to/file/containing/tfrecords')
+       # tf.train.Example format. If using EvalSavedModel then use the following
+       # instead: 'ReadData' >> beam.io.ReadFromTFRecord(file_pattern=...)
+       | 'ReadData' >> tfx_io.BeamSource()
        | 'ExtractEvaluateAndWriteResults' >>
        tfma.ExtractEvaluateAndWriteResults(
             eval_shared_model=eval_shared_model,
