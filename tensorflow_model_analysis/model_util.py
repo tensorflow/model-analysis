@@ -20,7 +20,7 @@ import collections
 import copy
 import os
 
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Text
 
 from absl import logging
 import apache_beam as beam
@@ -73,6 +73,12 @@ def get_baseline_model_spec(
     if spec.is_baseline:
       return spec
   return None
+
+
+def get_non_baseline_model_specs(
+    eval_config: config.EvalConfig) -> Iterable[config.ModelSpec]:
+  """Returns non-baseline model specs."""
+  return [spec for spec in eval_config.model_specs if not spec.is_baseline]
 
 
 def get_model_spec(eval_config: config.EvalConfig,

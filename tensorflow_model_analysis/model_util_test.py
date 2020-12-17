@@ -232,6 +232,66 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
         tf.constant([['hello'], ['world']], dtype=tf.string),
         filtered_tensors['f3'])
 
+  @parameterized.named_parameters(
+      ('one_baseline',
+       text_format.Parse(
+           """
+             model_specs {
+               name: "candidate"
+             }
+             model_specs {
+               name: "baseline"
+               is_baseline: true
+             }
+           """, config.EvalConfig()),
+       text_format.Parse(
+           """
+             name: "baseline"
+             is_baseline: true
+           """, config.ModelSpec())),
+      ('no_baseline',
+       text_format.Parse(
+           """
+             model_specs {
+               name: "candidate"
+             }
+           """, config.EvalConfig()), None),
+  )
+  def test_get_baseline_model(self, eval_config, expected_baseline_model_spec):
+    self.assertEqual(expected_baseline_model_spec,
+                     model_util.get_baseline_model_spec(eval_config))
+
+  @parameterized.named_parameters(
+      ('one_non_baseline',
+       text_format.Parse(
+           """
+             model_specs {
+               name: "candidate"
+             }
+             model_specs {
+               name: "baseline"
+               is_baseline: true
+             }
+           """, config.EvalConfig()), [
+               text_format.Parse(
+                   """
+             name: "candidate"
+           """, config.ModelSpec())
+           ]),
+      ('no_non_baseline',
+       text_format.Parse(
+           """
+             model_specs {
+               name: "baseline"
+               is_baseline: true
+             }
+           """, config.EvalConfig()), []),
+  )
+  def test_get_non_baseline_model(self, eval_config,
+                                  expected_non_baseline_model_specs):
+    self.assertCountEqual(expected_non_baseline_model_specs,
+                          model_util.get_non_baseline_model_specs(eval_config))
+
   def testFilterByInputNamesKeras(self):
     tensors = {
         'f1': tf.constant([[1.1], [2.1]], dtype=tf.float32),
