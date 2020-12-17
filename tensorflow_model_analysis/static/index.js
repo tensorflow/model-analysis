@@ -67,7 +67,7 @@ define(["@jupyter-widgets/base"], function(__WEBPACK_EXTERNAL_MODULE_3__) { retu
 /* 0 */
 /***/ (function(module, exports) {
 
-module.exports = {"name":"tensorflow_model_analysis","version":"0.22.0.dev","homepage":"https://github.com/tensorflow/model-analysis","bugs":"https://github.com/tensorflow/model-analysis/issues","license":"Apache-2.0","repository":{"type":"git","url":"https://github.com/tensorflow/model-analysis.git"},"main":"lib/index.js","files":["lib/**/*.js","dist/*.js","README.md","LICENSE"],"scripts":{"clean":"rimraf dist/","prepare":"webpack && ./collect-files-before-publish.sh","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"webpack":"^3.5.5","rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.0.0","lodash":"^4.17.4"}}
+module.exports = {"name":"tensorflow_model_analysis","version":"0.26.0.dev","homepage":"https://github.com/tensorflow/model-analysis","bugs":"https://github.com/tensorflow/model-analysis/issues","license":"Apache-2.0","repository":{"type":"git","url":"https://github.com/tensorflow/model-analysis.git"},"main":"lib/index.js","files":["lib/**/*.js","dist/*.js","README.md","LICENSE"],"scripts":{"clean":"rimraf dist/","prepare":"webpack && ./collect-files-before-publish.sh","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.1 || ^2 || ^3","lodash":"^4.17.15","webpack":"^3.5.5"},"jupyterlab":{"extension":"lib/labplugin"},"publishConfig":{"registry":"https://wombat-dressing-room.appspot.com"}}
 
 /***/ }),
 /* 1 */
@@ -88,16 +88,12 @@ module.exports = {"name":"tensorflow_model_analysis","version":"0.22.0.dev","hom
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Entry point for the notebook bundle containing custom model definitions.
+
+// Entry point for the unpkg bundle containing custom model definitions.
 //
-// Setup notebook base URL
-//
-// Some static assets may be required by the custom widget javascript. The base
-// url for the notebook is not known at build time and is therefore computed
-// dynamically.
-__webpack_require__.p =
-    document.querySelector('body').getAttribute('data-base-url') +
-    'nbextensions/tensorflow_model_analysis/';
+// It differs from the notebook bundle in that it does not need to define a
+// dynamic baseURL for the static assets and may load some css that would
+// already be loaded by the notebook otherwise.
 
 // Export widget models and views, and the npm package version number.
 module.exports = __webpack_require__(2);
@@ -131,7 +127,9 @@ const version = __webpack_require__(0).version;
  * Helper method to load the vulcanized templates.
  */
 function loadVulcanizedTemplate() {
-  const templateLocation = __webpack_require__.p + 'vulcanized_tfma.js';
+  const templateLocation =
+      (document.querySelector('body').getAttribute('data-base-url') || '/') +
+      'nbextensions/tensorflow_model_analysis/vulcanized_tfma.js';
 
   // If the vulcanizes tempalets are not loaded yet, load it now.
   if (!document.querySelector('script[src="' + templateLocation + '"]')) {
