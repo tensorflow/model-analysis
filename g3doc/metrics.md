@@ -10,11 +10,13 @@ TFMA supports the following metrics and plots:
         are computed outside of the graph in beam using the metrics classes
         directly.
 *   Standard TFMA metrics and plots
-    ([`tfma.metrics.*`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/api/metrics))
+    ([`tfma.metrics.*`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/metrics))
+
 *   Custom keras metrics (metrics derived from
     [`tf.keras.metrics.Metric`](https://www.tensorflow.org/api_docs/python/tf/keras/metrics/Metric))
+
 *   Custom TFMA metrics (metrics derived from
-    [`tfma.metrics.Metric`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/api/metrics/Metric))
+    [`tfma.metrics.Metric`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/metrics/Metric))
     using custom beam combiners or metrics derived from other metrics).
 
 NOTE: In TFMA, plots and metrics are both defined under the metrics library. By
