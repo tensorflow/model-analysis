@@ -23,7 +23,7 @@ import inspect
 import sys
 import traceback
 
-from typing import Any, Callable, Dict, List, Optional, Text, Union
+from typing import Any, Dict, List, Optional, Text, Union
 
 import numpy as np
 import six
@@ -312,29 +312,3 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
     for k, v in x.items():
       merge_with_lists(result, k, v)
   return to_numpy(result)
-
-
-# TODO(b/162743769): Account for pointer fanout in byte size estimation.
-class SizeEstimator(object):
-  """Size estimator."""
-
-  def __init__(self, size_threshold: int, size_fn: Callable[[Any], int]):
-    self._size_threshold = size_threshold
-    self._curr_size = 0
-    self._size_fn = size_fn
-
-  def __iadd__(self, other: 'SizeEstimator') -> 'SizeEstimator':
-    self._curr_size += other.get_estimate()
-    return self
-
-  def update(self, value: Any):
-    self._curr_size += self._size_fn(value)
-
-  def should_flush(self) -> bool:
-    return self._curr_size >= self._size_threshold
-
-  def clear(self):
-    self._curr_size = 0
-
-  def get_estimate(self) -> int:
-    return self._curr_size

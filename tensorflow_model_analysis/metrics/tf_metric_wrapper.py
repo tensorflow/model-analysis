@@ -30,7 +30,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import util
+from tensorflow_model_analysis import size_estimator
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -494,7 +494,7 @@ class _CompilableMetricsAccumulator(object):
       self._weights.append([None] * output_metric_count)
     self._pad = False
     self._last_dim = 0
-    self._size_estimator = util.SizeEstimator(
+    self._size_estimator = size_estimator.SizeEstimator(
         size_threshold=self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD,
         size_fn=_numpy_array_size_fn)
     if desired_batch_size and desired_batch_size > 0:

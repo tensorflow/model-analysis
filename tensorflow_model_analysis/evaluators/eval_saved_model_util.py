@@ -24,8 +24,8 @@ from typing import Any, Dict, Iterable, List, Optional, Text
 import apache_beam as beam
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
+from tensorflow_model_analysis import size_estimator
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.metrics import metric_types
 
@@ -139,7 +139,7 @@ class _AggState(object):
   def __init__(self, desired_batch_size: Optional[int] = None):
     self.metric_variables = None  # type: Optional[types.MetricVariablesType]
     self.inputs = []  # type: List[bytes]
-    self.size_estimator = util.SizeEstimator(
+    self.size_estimator = size_estimator.SizeEstimator(
         size_threshold=self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD, size_fn=len)
     if desired_batch_size and desired_batch_size > 0:
       self._desired_batch_size = desired_batch_size
