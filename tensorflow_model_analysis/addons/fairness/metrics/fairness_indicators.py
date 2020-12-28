@@ -34,14 +34,14 @@ FAIRNESS_INDICATORS_SUB_METRICS = ('false_positive_rate', 'false_negative_rate',
                                    'false_discovery_rate',
                                    'false_omission_rate')
 
-DEFAULT_THERSHOLDS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+DEFAULT_THRESHOLDS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
 
 class FairnessIndicators(metric_types.Metric):
   """Fairness indicators metrics."""
 
   def __init__(self,
-               thresholds: List[float] = DEFAULT_THERSHOLDS,
+               thresholds: List[float] = DEFAULT_THRESHOLDS,
                name: Text = FAIRNESS_INDICATORS_METRICS_NAME):
     """Initializes fairness indicators metrics.
 
