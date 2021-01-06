@@ -279,18 +279,27 @@ export class FairnessMetricsTable extends PolymerElement {
    */
   formatCell_(cellData) {
     // TODO(b/137209618): Handle other data types as well.
-    if (cellData === undefined) {
+    if (cellData === undefined ||
+        JSON.stringify(cellData) === JSON.stringify({})) {
       return {
         text: 'NO_DATA',
         arrow: undefined,
         arrow_icon_css_class: undefined,
       };
-    } else if (typeof cellData === 'number' && Number.isNaN(cellData)) {
-      return {
-        text: 'NaN',
-        arrow: undefined,
-        arrow_icon_css_class: undefined,
-      };
+    } else if (typeof cellData === 'number') {
+      if (Number.isNaN(cellData)) {
+        return {
+          text: 'NaN',
+          arrow: undefined,
+          arrow_icon_css_class: undefined,
+        };
+      } else {
+        return {
+          text: this.formatFloatValue_(cellData),
+          arrow: undefined,
+          arrow_icon_css_class: undefined,
+        };
+      }
     } else if (typeof cellData === 'object' && this.isBoundedValue_(cellData)) {
       return {
         text: this.formatFloatValue_(cellData['value']) + ' (' +

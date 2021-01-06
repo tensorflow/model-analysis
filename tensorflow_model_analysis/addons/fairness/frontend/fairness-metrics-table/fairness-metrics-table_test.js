@@ -379,6 +379,27 @@ suite('fairness-metrics-table tests', () => {
       arrow: undefined,
       arrow_icon_css_class: undefined,
     });
+    assert.deepEqual(table.formatCell_({}), {
+      text: 'NO_DATA',
+      arrow: undefined,
+      arrow_icon_css_class: undefined,
+    });
+    assert.deepEqual(table.formatCell_(0.555555), {
+      text: '0.556',
+      arrow: undefined,
+      arrow_icon_css_class: undefined,
+    });
+    assert.deepEqual(
+        table.formatCell_({
+          'value': 0.234567,
+          'lowerBound': 0.123456,
+          'upperBound': 0.345678,
+        }),
+        {
+          text: '0.235 (0.123, 0.346)',
+          arrow: undefined,
+          arrow_icon_css_class: undefined,
+        });
     assert.deepEqual(
         table.formatCell_({
           'value': 0.5,
@@ -444,6 +465,7 @@ suite('fairness-metrics-table tests', () => {
     const table = fixture('test-fixture');
     assert.equal(table.toPercentage_(0.25), '25%');
     assert.equal(table.toPercentage_('0.6'), '60%');
+    assert.equal(table.toPercentage_('0.123456'), '12.346%');
   });
 
   test('Arrow', done => {
