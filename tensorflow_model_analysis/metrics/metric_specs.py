@@ -341,6 +341,34 @@ def default_multi_class_classification_specs(
   return multi_class_metrics
 
 
+def metric_instance(
+    metric_config: config.MetricConfig,
+    tfma_metric_classes: Optional[Dict[Text, Type[metric_types.Metric]]] = None
+) -> metric_types.Metric:
+  """Creates instance of metric associated with config."""
+  if tfma_metric_classes is None:
+    tfma_metric_classes = metric_types.registered_metrics()
+  if metric_config.class_name in tfma_metric_classes:
+    return _deserialize_tfma_metric(metric_config, tfma_metric_classes)
+  elif not metric_config.module:
+    return _deserialize_tf_metric(metric_config, {})
+  else:
+    cls = getattr(
+        importlib.import_module(metric_config.module), metric_config.class_name)
+    if issubclass(cls, tf.keras.metrics.Metric):
+      return _deserialize_tf_metric(metric_config,
+                                    {metric_config.class_name: cls})
+    elif issubclass(cls, tf.keras.losses.Loss):
+      return _deserialize_tf_loss(metric_config,
+                                  {metric_config.class_name: cls})
+    elif issubclass(cls, metric_types.Metric):
+      return _deserialize_tfma_metric(metric_config,
+                                      {metric_config.class_name: cls})
+    else:
+      raise NotImplementedError('unknown metric type {}: metric={}'.format(
+          cls, metric_config))
+
+
 def _keys_for_metric(
     metric_name: Text, spec: config.MetricsSpec,
     aggregation_type: Optional[metric_types.AggregationType],
@@ -368,28 +396,7 @@ def _keys_and_metrics_from_specs(
   for spec in metrics_specs:
     for aggregation_type, sub_keys in _create_sub_keys(spec).items():
       for metric_config in spec.metrics:
-        if metric_config.class_name in tfma_metric_classes:
-          instance = _deserialize_tfma_metric(metric_config,
-                                              tfma_metric_classes)
-        elif not metric_config.module:
-          instance = _deserialize_tf_metric(metric_config, {})
-        else:
-          cls = getattr(
-              importlib.import_module(metric_config.module),
-              metric_config.class_name)
-          if issubclass(cls, tf.keras.metrics.Metric):
-            instance = _deserialize_tf_metric(metric_config,
-                                              {metric_config.class_name: cls})
-          elif issubclass(cls, tf.keras.losses.Loss):
-            instance = _deserialize_tf_loss(metric_config,
-                                            {metric_config.class_name: cls})
-          elif issubclass(cls, metric_types.Metric):
-            instance = _deserialize_tfma_metric(metric_config,
-                                                {metric_config.class_name: cls})
-          else:
-            raise NotImplementedError(
-                'unknown metric type {}: metric={}'.format(cls, metric_config))
-
+        instance = metric_instance(metric_config, tfma_metric_classes)
         for key in _keys_for_metric(instance.name, spec, aggregation_type,
                                     sub_keys):
           yield key, metric_config, instance

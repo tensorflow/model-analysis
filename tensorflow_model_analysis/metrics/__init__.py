@@ -15,6 +15,7 @@
 """Init module for TensorFlow Model Analysis metrics."""
 
 from tensorflow_model_analysis.metrics.attributions import AttributionsMetric
+from tensorflow_model_analysis.metrics.attributions import has_attributions_metrics
 from tensorflow_model_analysis.metrics.attributions import MeanAbsoluteAttributions
 from tensorflow_model_analysis.metrics.attributions import MeanAttributions
 from tensorflow_model_analysis.metrics.attributions import TotalAbsoluteAttributions

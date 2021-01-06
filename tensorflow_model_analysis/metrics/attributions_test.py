@@ -26,11 +26,27 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import attributions
+from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 
 
 class AttributionsTest(testutil.TensorflowModelAnalysisTest,
                        parameterized.TestCase):
+
+  def testHasAttributionsMetrics(self):
+    specs_with_attributions = metric_specs.specs_from_metrics({
+        'output_name': [
+            tf.keras.metrics.MeanSquaredError('mse'),
+            attributions.TotalAttributions()
+        ]
+    })
+    self.assertTrue(
+        attributions.has_attributions_metrics(specs_with_attributions))
+    specs_without_attributions = metric_specs.specs_from_metrics([
+        tf.keras.metrics.MeanSquaredError('mse'),
+    ])
+    self.assertFalse(
+        attributions.has_attributions_metrics(specs_without_attributions))
 
   def testMeanAttributions(self):
     computation = attributions.MeanAttributions().computations()[-1]

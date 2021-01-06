@@ -19,13 +19,17 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import functools
+
 from typing import Any, Dict, Iterable, List, Optional, Text, Union
 
 import apache_beam as beam
 import numpy as np
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import util
+from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import weighted_example_count
@@ -40,6 +44,19 @@ class AttributionsMetric(metric_types.Metric):
   """Base type for attribution metrics."""
 
 
+def has_attributions_metrics(
+    metrics_specs: Iterable[config.MetricsSpec]) -> bool:
+  """Returns true if any of the metrics_specs have attributions metrics."""
+  tfma_metric_classes = metric_types.registered_metrics()
+  for metrics_spec in metrics_specs:
+    for metric_config in metrics_spec.metrics:
+      instance = metric_specs.metric_instance(metric_config,
+                                              tfma_metric_classes)
+      if isinstance(instance, AttributionsMetric):
+        return True
+  return False
+
+
 class MeanAttributions(AttributionsMetric):
   """Mean attributions metric."""
 
@@ -50,8 +67,8 @@ class MeanAttributions(AttributionsMetric):
       name: Attribution metric name.
     """
     super(MeanAttributions, self).__init__(
-        metric_util.merge_per_key_computations(_mean_attributions),
-        absolute=False,
+        metric_util.merge_per_key_computations(
+            functools.partial(_mean_attributions, False)),
         name=name)
 
 
@@ -68,8 +85,8 @@ class MeanAbsoluteAttributions(AttributionsMetric):
       name: Attribution metric name.
     """
     super(MeanAbsoluteAttributions, self).__init__(
-        metric_util.merge_per_key_computations(_mean_attributions),
-        absolute=True,
+        metric_util.merge_per_key_computations(
+            functools.partial(_mean_attributions, True)),
         name=name)
 
 
@@ -137,8 +154,8 @@ class TotalAttributions(AttributionsMetric):
       name: Attribution metric name.
     """
     super(TotalAttributions, self).__init__(
-        metric_util.merge_per_key_computations(_total_attributions),
-        absolute=False,
+        metric_util.merge_per_key_computations(
+            functools.partial(_total_attributions, False)),
         name=name)
 
 
@@ -155,8 +172,8 @@ class TotalAbsoluteAttributions(AttributionsMetric):
       name: Attribution metric name.
     """
     super(TotalAbsoluteAttributions, self).__init__(
-        metric_util.merge_per_key_computations(_total_attributions),
-        absolute=True,
+        metric_util.merge_per_key_computations(
+            functools.partial(_total_attributions, True)),
         name=name)
 
 
