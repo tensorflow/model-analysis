@@ -552,12 +552,16 @@ def default_extractors(  # pylint: disable=invalid-name
           'support for mixing eval and non-eval estimator models is not '
           'implemented: eval_config={}'.format(eval_config))
     else:
-      return [
-          features_extractor.FeaturesExtractor(eval_config=eval_config),
-          transformed_features_extractor.TransformedFeaturesExtractor(
-              eval_config=eval_config,
-              eval_shared_model=eval_shared_model,
-              tensor_adapter_config=tensor_adapter_config),
+      extractors = [
+          features_extractor.FeaturesExtractor(eval_config=eval_config)
+      ]
+      if not custom_predict_extractor:
+        extractors.append(
+            transformed_features_extractor.TransformedFeaturesExtractor(
+                eval_config=eval_config,
+                eval_shared_model=eval_shared_model,
+                tensor_adapter_config=tensor_adapter_config))
+      extractors.extend([
           labels_extractor.LabelsExtractor(eval_config=eval_config),
           example_weights_extractor.ExampleWeightsExtractor(
               eval_config=eval_config),
@@ -569,7 +573,8 @@ def default_extractors(  # pylint: disable=invalid-name
           unbatch_extractor.UnbatchExtractor(),
           slice_key_extractor.SliceKeyExtractor(
               eval_config=eval_config, materialize=materialize)
-      ]
+      ])
+      return extractors
   else:
     return [
         features_extractor.FeaturesExtractor(eval_config=eval_config),
