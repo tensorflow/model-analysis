@@ -178,13 +178,13 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                                 lower_bound={'value': 10}))),
                     config.MetricConfig(
                         class_name='MeanLabel',
-                        # 0 > 0 and 0 > 0%: NOT OK.
+                        # 0 > 1 and 0 > 1?: NOT OK.
                         threshold=config.MetricThreshold(
                             change_threshold=config.GenericChangeThreshold(
                                 direction=config.MetricDirection
                                 .HIGHER_IS_BETTER,
-                                relative={'value': 0},
-                                absolute={'value': 0}))),
+                                relative={'value': 1},
+                                absolute={'value': 1}))),
                     config.MetricConfig(
                         # MeanPrediction = (0+0)/(1+0.5) = 0
                         class_name='MeanPrediction',
@@ -295,10 +295,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                   metric_threshold {
                     change_threshold {
                       absolute {
-                        value: 0.0
+                        value: 1.0
                       }
                       relative {
-                        value: 0.0
+                        value: 1.0
                       }
                       direction: HIGHER_IS_BETTER
                     }
@@ -1978,21 +1978,21 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir2))
     example_count_metric = config.MetricConfig(
         class_name='ExampleCount',
-        # 5 > 2, OK for overall slice
-        # 3 > 2, OK for ('fixed_string', 'fixed_string1')
-        # 2 > 2, NOT OK for ('fixed_string', 'fixed_string2')
+        # 5 >= 3, OK for overall slice
+        # 3 >= 3, OK for ('fixed_string', 'fixed_string1')
+        # 2 < 3, NOT OK for ('fixed_string', 'fixed_string2')
         # Keep this for verifying cross slice thresholds and single slice
         # thresholds are working together.
         threshold=config.MetricThreshold(
             value_threshold=config.GenericValueThreshold(
-                lower_bound={'value': 2})),
+                lower_bound={'value': 3})),
         cross_slice_thresholds=[
             config.CrossSliceMetricThreshold(
-                # 5-2 > 2, OK for ((), (('fixed_string', 'fixed_string1'),))
-                # 5-3 > 2, NOT OK for ((), (('fixed_string', 'fixed_string2'),))
+                # 5-2 >= 2, OK for ((), (('fixed_string', 'fixed_string1'),))
+                # 5-3 < 3, NOT OK for ((), (('fixed_string', 'fixed_string2'),))
                 threshold=config.MetricThreshold(
                     value_threshold=config.GenericValueThreshold(
-                        lower_bound={'value': 2})),
+                        lower_bound={'value': 3})),
                 cross_slicing_specs=[
                     config.CrossSlicingSpec(
                         baseline_spec=config.SlicingSpec(),
@@ -2180,7 +2180,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                     metric_threshold {
                       value_threshold {
                         lower_bound {
-                          value: 2.0
+                          value: 3.0
                         }
                       }
                     }
@@ -2196,7 +2196,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                     metric_threshold {
                       value_threshold {
                         lower_bound {
-                          value: 2.0
+                          value: 3.0
                         }
                       }
                     }

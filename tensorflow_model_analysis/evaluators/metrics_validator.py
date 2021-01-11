@@ -61,7 +61,7 @@ def validate_metrics(
         lower_bound = threshold.lower_bound.value
       if threshold.HasField('upper_bound'):
         upper_bound = threshold.upper_bound.value
-      return metric > lower_bound and metric < upper_bound
+      return metric >= lower_bound and metric <= upper_bound
     elif isinstance(threshold, config.GenericChangeThreshold):
       diff = metric
       metric_baseline = float(
@@ -72,15 +72,16 @@ def validate_metrics(
       elif threshold.direction == config.MetricDirection.HIGHER_IS_BETTER:
         absolute, relative = -np.inf, -np.inf
       else:
-        raise ValueError('"UNKNOWN" direction for change threshold.')
+        raise ValueError(
+            '"UNKNOWN" direction for change threshold: {}.'.format(threshold))
       if threshold.HasField('absolute'):
         absolute = threshold.absolute.value
       if threshold.HasField('relative'):
         relative = threshold.relative.value
       if threshold.direction == config.MetricDirection.LOWER_IS_BETTER:
-        return diff < absolute and ratio < relative
+        return diff <= absolute and ratio <= relative
       elif threshold.direction == config.MetricDirection.HIGHER_IS_BETTER:
-        return diff > absolute and ratio > relative
+        return diff >= absolute and ratio >= relative
     else:
       raise ValueError('Unknown threshold: {}'.format(threshold))
 

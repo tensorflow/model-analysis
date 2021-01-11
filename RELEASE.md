@@ -51,6 +51,8 @@
 *   Separated `tfma.extractors.BatchedInputExtractor` into
     `tfma.extractors.FeaturesExtractor`, `tfma.extractors.LabelsExtractor`, and
     `tfma.extractors.ExampleWeightsExtractor`.
+*   Change the thresholding to be inclusive, i.e. model passes when value is >=
+    or <= to the threshold rather than > or <.
 
 ## Deprecations
 

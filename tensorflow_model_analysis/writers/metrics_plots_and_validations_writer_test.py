@@ -1333,13 +1333,13 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                                 lower_bound={'value': 10}))),
                     config.MetricConfig(
                         class_name='MeanLabel',
-                        # 0 > 0 and 0 > 0%?: NOT OK.
+                        # 0.5 > 1 and 0.5 > 1?: NOT OK.
                         threshold=config.MetricThreshold(
                             change_threshold=config.GenericChangeThreshold(
                                 direction=config.MetricDirection
                                 .HIGHER_IS_BETTER,
-                                relative={'value': 0},
-                                absolute={'value': 0}))),
+                                relative={'value': 1},
+                                absolute={'value': 1}))),
                     config.MetricConfig(
                         # MeanPrediction = (0+0)/(1+0.5) = 0
                         class_name='MeanPrediction',
@@ -1461,10 +1461,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             metric_threshold {
               change_threshold {
                 absolute {
-                  value: 0.0
+                  value: 1.0
                 }
                 relative {
-                  value: 0.0
+                  value: 1.0
                 }
                 direction: HIGHER_IS_BETTER
               }

@@ -729,6 +729,101 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _FEATURE_SLICE_TEST,
                                   _FEATURE_VALUE_SLICE_TEST,
                                   _MULTIPLE_SLICES_TEST)
+  def testValidateMetricsChangeThresholdEqualPass(self, slicing_specs,
+                                                  slice_key):
+    # Change thresholds.
+    threshold1 = config.MetricThreshold(
+        change_threshold=config.GenericChangeThreshold(
+            direction=config.MetricDirection.HIGHER_IS_BETTER,
+            absolute={'value': -.333},
+            relative={'value': -.333}))
+    threshold2 = config.MetricThreshold(
+        change_threshold=config.GenericChangeThreshold(
+            direction=config.MetricDirection.LOWER_IS_BETTER,
+            absolute={'value': -.333},
+            relative={'value': -.333}))
+    # Value thresholds.
+    threshold3 = config.MetricThreshold(
+        value_threshold=config.GenericValueThreshold(lower_bound={'value': 1}))
+    threshold4 = config.MetricThreshold(
+        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(name='candidate'),
+            config.ModelSpec(name='baseline', is_baseline=True)
+        ],
+        slicing_specs=slicing_specs,
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='MeanPrediction',
+                        # Diff = -.333 == -.333, OK.
+                        threshold=threshold1 if slicing_specs is None else None,
+                        per_slice_thresholds=[
+                            config.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs,
+                                threshold=threshold1)
+                        ]),
+                    config.MetricConfig(
+                        class_name='MeanLabel',
+                        # Diff = -.333 == -.333, OK.
+                        threshold=threshold2 if slicing_specs is None else None,
+                        per_slice_thresholds=[
+                            config.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs,
+                                threshold=threshold2)
+                        ]),
+                    config.MetricConfig(
+                        class_name='ExampleCount',
+                        # 1 == 1, OK.
+                        threshold=threshold3 if slicing_specs is None else None,
+                        per_slice_thresholds=[
+                            config.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs,
+                                threshold=threshold3)
+                        ]),
+                    config.MetricConfig(
+                        class_name='WeightedExampleCount',
+                        # 1 == 1, OK.
+                        threshold=threshold4 if slicing_specs is None else None,
+                        per_slice_thresholds=[
+                            config.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs,
+                                threshold=threshold4)
+                        ]),
+                ],
+                model_names=['candidate']),
+        ],
+    )
+    sliced_metrics = (slice_key, {
+        metric_types.MetricKey(name='mean_prediction', model_name='candidate'):
+            0.677,
+        metric_types.MetricKey(name='mean_prediction', model_name='baseline'):
+            1,
+        metric_types.MetricKey(
+            name='mean_prediction', is_diff=True, model_name='candidate'):
+            -0.333,
+        metric_types.MetricKey(name='mean_label', model_name='candidate'):
+            0.677,
+        metric_types.MetricKey(name='mean_label', model_name='baseline'):
+            1,
+        metric_types.MetricKey(
+            name='mean_label', is_diff=True, model_name='candidate'):
+            -0.333,
+        metric_types.MetricKey(name='example_count', model_name='candidate'):
+            1,
+        metric_types.MetricKey(
+            name='weighted_example_count', model_name='candidate'):
+            1,
+    })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertTrue(result.validation_ok)
+
+  @parameterized.named_parameters(_NO_SLICE_TEST, _GLOBAL_SLICE_TEST,
+                                  _FEATURE_SLICE_TEST,
+                                  _FEATURE_VALUE_SLICE_TEST,
+                                  _MULTIPLE_SLICES_TEST)
   def testValidateMetricsChangeThresholdHigherIsBetterFail(
       self, slicing_specs, slice_key):
     threshold = config.MetricThreshold(

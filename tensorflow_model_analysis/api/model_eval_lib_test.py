@@ -717,14 +717,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                     slicing_specs=slicing_specs,
                     threshold=config.MetricThreshold(
                         value_threshold=config.GenericValueThreshold(
-                            lower_bound={'value': 0}))),
+                            lower_bound={'value': 1}))),
                 # Change thresholds would be ignored when rubber stamp is true.
                 config.PerSliceMetricThreshold(
                     slicing_specs=slicing_specs,
                     threshold=config.MetricThreshold(
                         change_threshold=config.GenericChangeThreshold(
                             direction=config.MetricDirection.HIGHER_IS_BETTER,
-                            absolute={'value': 0})))
+                            absolute={'value': 1})))
             ]))
     for class_id in (0, 5):
       metrics_spec.binarize.class_ids.values.append(class_id)
@@ -786,7 +786,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
              }
              metric_threshold {
                change_threshold {
-                 absolute {}
+                 absolute { value: 1 }
                  direction: HIGHER_IS_BETTER
                }
              }
@@ -805,7 +805,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
              }
              metric_threshold {
                change_threshold {
-                 absolute {}
+                 absolute { value: 1}
                  direction: HIGHER_IS_BETTER
                }
              }
