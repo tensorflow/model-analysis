@@ -234,6 +234,32 @@ class UtilTest(tf.test.TestCase):
     }
     self.assertAllClose(expected, util.merge_extracts(extracts))
 
+  def testMergeExtractsRaisesException(self):
+    extracts = [
+        {
+            'features': {
+                'feature_3':
+                    tf.compat.v1.SparseTensorValue(
+                        indices=np.array([[0, 1]]),
+                        values=np.array([1]),
+                        dense_shape=(1, 2))
+            },
+        },
+        {
+            'features': {
+                'feature_3':
+                    tf.compat.v1.SparseTensorValue(
+                        indices=np.array([[0, 2]]),
+                        values=np.array([2]),
+                        dense_shape=(1, 3))
+            },
+        },
+    ]
+
+    with self.assertRaisesWithPredicateMatch(
+        RuntimeError, lambda exc: isinstance(exc.__cause__, RuntimeError)):
+      util.merge_extracts(extracts)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

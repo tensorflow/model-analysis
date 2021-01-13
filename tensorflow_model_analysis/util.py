@@ -287,6 +287,13 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
 
   def to_numpy(target):
     if isinstance(target, dict):
+      result = {}
+      for key, value in target.items():
+        try:
+          result[key] = to_numpy(value)
+        except Exception as e:
+          raise RuntimeError(
+              'Failed to convert value for key "{}"'.format(key)) from e
       return {k: to_numpy(v) for k, v in target.items()}
     elif target and isinstance(target[0], tf.compat.v1.SparseTensorValue):
       t = tf.sparse.concat(0, target)
