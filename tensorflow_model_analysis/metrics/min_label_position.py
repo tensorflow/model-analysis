@@ -135,7 +135,7 @@ class _MinLabelPositionCombiner(beam.CombineFn):
           min_label_pos = i + 1  # Use 1-indexed positions
           break
       if min_label_pos:
-        accumulator.total_min_position += min_label_pos * example_weight
+        accumulator.total_min_position += min_label_pos * float(example_weight)
         accumulator.total_weighted_examples += float(example_weight)
     return accumulator
 
