@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import datetime
 
-from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union, NamedTuple
+from typing import Any, Callable, Dict, List, MutableMapping, Optional, Text, Tuple, Union, NamedTuple
 
 import numpy as np
 import six
@@ -38,6 +38,9 @@ TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
 TensorValue = Union[tf.compat.v1.SparseTensorValue, np.ndarray]
 DictOfTensorValue = Dict[Text, TensorValue]
 TensorValueMaybeDict = Union[TensorValue, DictOfTensorValue]
+DictOfTensorValueMaybeDict = Dict[Text, TensorValueMaybeDict]
+TensorValueMaybeMultiLevelDict = Union[TensorValueMaybeDict,
+                                       DictOfTensorValueMaybeDict]
 
 MetricVariablesType = List[Any]
 
@@ -116,7 +119,7 @@ MaterializedColumn = NamedTuple(
 # (reserved for use) by different extractor implementations. For example, the
 # PredictExtractor stores the data for the features, labels, and predictions
 # under the keys "features", "labels", and "predictions".
-Extracts = Dict[Text, Any]
+Extracts = MutableMapping[Text, Any]
 
 # pylint: enable=invalid-name
 

@@ -121,8 +121,10 @@ def pad(arr: np.ndarray, last_dim: int, value: float) -> np.ndarray:
 
 def to_standard_metric_inputs(
     extracts: types.Extracts,
-    include_features: bool = False) -> metric_types.StandardMetricInputs:
-  """Filters and converts extracts to StandardMetricInputs."""
+    include_features: bool = False,
+    include_transformed_features: bool = False,
+    include_attributions: bool = False) -> metric_types.StandardMetricInputs:
+  """Verifies extract keys and converts extracts to StandardMetricInputs."""
   if constants.LABELS_KEY not in extracts:
     raise ValueError('"{}" key not found in extracts. Check that the '
                      'configuration is setup properly to specify the name of '
@@ -133,19 +135,22 @@ def to_standard_metric_inputs(
     raise ValueError('"{}" key not found in extracts. Check that the proper '
                      'extractor has been configured to perform model '
                      'inference.'.format(constants.PREDICTIONS_KEY))
-  example_weights = None
-  if constants.EXAMPLE_WEIGHTS_KEY in extracts:
-    example_weights = extracts[constants.EXAMPLE_WEIGHTS_KEY]
-  features = None
-  if include_features:
-    if constants.FEATURES_KEY not in extracts:
-      raise ValueError('"{}" key not found in extracts. Check that the proper '
-                       'extractor has been configured to extract the features '
-                       'from the inputs.'.format(constants.FEATURES_KEY))
-    features = extracts[constants.FEATURES_KEY]
-  return metric_types.StandardMetricInputs(extracts[constants.LABELS_KEY],
-                                           extracts[constants.PREDICTIONS_KEY],
-                                           example_weights, features)
+  if include_features and constants.FEATURES_KEY not in extracts:
+    raise ValueError('"{}" key not found in extracts. Check that the proper '
+                     'extractor has been configured to extract the features '
+                     'from the inputs.'.format(constants.FEATURES_KEY))
+  if (include_transformed_features and
+      constants.TRANSFORMED_FEATURES_KEY not in extracts):
+    raise ValueError('"{}" key not found in extracts. Check that the proper '
+                     'extractor has been configured to extract the transformed '
+                     'features from the inputs.'.format(
+                         constants.TRANSFORMED_FEATURES_KEY))
+  if (include_attributions and constants.ATTRIBUTIONS_KEY not in extracts):
+    raise ValueError('"{}" key not found in extracts. Check that the proper '
+                     'extractor has been configured to extract the '
+                     'attributions from the inputs.'.format(
+                         constants.ATTRIBUTIONS_KEY))
+  return metric_types.StandardMetricInputs(extracts)
 
 
 def top_k_indices(

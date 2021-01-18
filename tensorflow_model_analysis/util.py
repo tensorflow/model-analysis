@@ -23,7 +23,7 @@ import inspect
 import sys
 import traceback
 
-from typing import Any, Dict, List, Optional, Text, Union
+from typing import Any, List, Mapping, MutableMapping, Optional, Text, Union
 
 import numpy as np
 import six
@@ -87,7 +87,7 @@ def create_values_key(key: Text) -> Text:
   return '_'.join([key, VALUES_SUFFIX])
 
 
-def get_by_keys(data: Dict[Text, Any],
+def get_by_keys(data: Mapping[Text, Any],
                 keys: List[Any],
                 default_value=None,
                 optional: bool = False) -> Any:
@@ -122,7 +122,7 @@ def get_by_keys(data: Dict[Text, Any],
       keys_matched += 1
       continue
 
-    if not isinstance(value, dict):
+    if not isinstance(value, Mapping):
       raise ValueError('expected dict for "%s" but found %s: %s' %
                        (format_keys(keys[:i + 1]), type(value), data))
 
@@ -144,7 +144,7 @@ def get_by_keys(data: Dict[Text, Any],
 
     break
 
-  if keys_matched < len(keys) or isinstance(value, dict) and not value:
+  if keys_matched < len(keys) or isinstance(value, Mapping) and not value:
     if default_value is not None:
       return default_value
     if optional:
@@ -152,6 +152,90 @@ def get_by_keys(data: Dict[Text, Any],
     raise ValueError('"%s" key not found (or value is empty dict): %s' %
                      (format_keys(keys[:keys_matched + 1]), data))
   return value
+
+
+def include_filter(
+    include: MutableMapping[Any, Any],
+    target: MutableMapping[Any, Any]) -> MutableMapping[Any, Any]:
+  """Filters target by tree structure in include.
+
+  Args:
+    include: Dict of keys from target to include. An empty dict matches all
+      values.
+    target: Target dict to apply filter to.
+
+  Returns:
+    A new dict with values from target filtered out. If a filter key is passed
+    that did not match any values, then an empty dict will be returned for that
+    key.
+  """
+  if not include:
+    return target
+
+  result = {}
+  for key, subkeys in include.items():
+    if key in target:
+      if subkeys:
+        result[key] = include_filter(subkeys, target[key])
+      else:
+        result[key] = target[key]
+  return result
+
+
+def exclude_filter(
+    exclude: MutableMapping[Any, Any],
+    target: MutableMapping[Any, Any]) -> MutableMapping[Any, Any]:
+  """Filters output to only include keys not in exclude.
+
+  Args:
+    exclude: Dict of keys from target to exclude. An empty dict matches all
+      values.
+    target: Target dict to apply filter to.
+
+  Returns:
+    A new dict with values from target filtered out.
+  """
+  result = {}
+  for key, value in target.items():
+    if key in exclude:
+      if exclude[key]:
+        value = exclude_filter(exclude[key], target[key])
+        if value:
+          result[key] = value
+    else:
+      result[key] = value
+  return result
+
+
+def merge_filters(
+    filter1: MutableMapping[Any, Any],
+    filter2: MutableMapping[Any, Any]) -> MutableMapping[Any, Any]:
+  """Merges two filters together.
+
+  Args:
+    filter1: Filter 1.
+    filter2: Filter 2
+
+  Returns:
+    A new filter with merged values from both filter1 and filter2.
+  """
+  if (not isinstance(filter1, MutableMapping) or
+      not isinstance(filter2, MutableMapping)):
+    raise ValueError('invalid filter, non-dict type used as a value: {}'.format(
+        [filter1, filter2]))
+  if not filter1:
+    return filter1
+  if not filter2:
+    return filter2
+  result = {}
+  for k in set(filter1.keys()) | set(filter2.keys()):
+    if k in filter1 and k in filter2:
+      result[k] = merge_filters(filter1[k], filter2[k])
+    elif k in filter1:
+      result[k] = filter1[k]
+    else:
+      result[k] = filter2[k]
+  return result
 
 
 def reraise_augmented(exception: Exception, additional_message: Text) -> None:
@@ -272,7 +356,7 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
   """Merges list of extracts into single extract with multi-dimentional data."""
 
   def merge_with_lists(target, key, value):
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
       if key not in target:
         target[key] = {}
       target = target[key]
@@ -286,7 +370,7 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
       target[key].append(value)
 
   def to_numpy(target):
-    if isinstance(target, dict):
+    if isinstance(target, Mapping):
       result = {}
       for key, value in target.items():
         try:
@@ -319,3 +403,118 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
     for k, v in x.items():
       merge_with_lists(result, k, v)
   return to_numpy(result)
+
+
+class StandardExtracts(MutableMapping):
+  """Standard extracts wrap extracts with helpers for accessing common keys.
+
+  Note that the extract values returned may be multi-level dicts depending on
+  whether or not multi-model and/or multi-output evalutions were performed.
+  """
+
+  def __init__(self, extracts: types.Extracts = None, **kwargs):
+    """Initializes StandardExtracts.
+
+    Args:
+      extracts: Reference to existing extracts to use.
+      **kwargs: Name/value pairs to create new extracts from. Only one of either
+        extracts or kwargs should be used.
+    """
+    if extracts is not None and kwargs:
+      raise ValueError('only one of extracts or kwargs should be used')
+    if extracts is not None:
+      self.extracts = extracts
+    else:
+      self.extracts = kwargs
+
+  def __getitem__(self, key):
+    return self.extracts[key]
+
+  def __setitem__(self, key, value):
+    self.extracts[key] = value
+
+  def __delitem__(self, key):
+    del self.extracts[key]
+
+  def __iter__(self):
+    return iter(self.extracts)
+
+  def __len__(self):
+    return len(self.extracts)
+
+  def get_labels(
+      self,
+      model_name: Optional[Text] = None,
+      output_name: Optional[Text] = None
+  ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    """Returns tfma.LABELS_KEY extract."""
+    return self.get_by_key(constants.LABELS_KEY, model_name, output_name)
+
+  labels = property(get_labels)
+
+  def get_predictions(
+      self,
+      model_name: Optional[Text] = None,
+      output_name: Optional[Text] = None
+  ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    """Returns tfma.PREDICTIONS_KEY extract."""
+    return self.get_by_key(constants.PREDICTIONS_KEY, model_name, output_name)
+
+  predictions = property(get_predictions)
+
+  def get_example_weights(
+      self,
+      model_name: Optional[Text] = None,
+      output_name: Optional[Text] = None
+  ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    """Returns tfma.EXAMPLE_WEIGHTS_KEY extract."""
+    return self.get_by_key(constants.EXAMPLE_WEIGHTS_KEY, model_name,
+                           output_name)
+
+  example_weights = property(get_example_weights)
+
+  def get_features(self) -> Optional[types.DictOfTensorValueMaybeDict]:
+    """Returns tfma.FEATURES_KEY extract."""
+    return self.get_by_key(constants.FEATURES_KEY)
+
+  features = property(get_features)
+
+  def get_transformed_features(
+      self,
+      model_name: Optional[Text] = None
+  ) -> Optional[types.DictOfTensorValueMaybeDict]:
+    """Returns tfma.TRANSFORMED_FEATURES_KEY extract."""
+    return self.get_by_key(constants.TRANSFORMED_FEATURES_KEY, model_name)
+
+  transformed_features = property(get_transformed_features)
+
+  def get_attributions(
+      self,
+      model_name: Optional[Text] = None,
+      output_name: Optional[Text] = None
+  ) -> Optional[types.DictOfTensorValueMaybeDict]:
+    """Returns tfma.ATTRIBUTIONS_KEY extract."""
+    return self.get_by_key(constants.ATTRIBUTIONS_KEY, model_name, output_name)
+
+  attributions = property(get_attributions)
+
+  def get_by_key(self,
+                 key: Text,
+                 model_name: Optional[Text] = None,
+                 output_name: Optional[Text] = None) -> Any:
+    """Returns item for key possibly filtered by model and/or output names."""
+
+    def optionally_get_by_keys(value: Any, keys: List[Any]) -> Any:
+      """Returns item in dict (if value is dict and path exists) else value."""
+      if isinstance(value, Mapping):
+        new_value = get_by_keys(value, keys, optional=True)
+        if new_value is not None:
+          return new_value
+      return value
+
+    value = self[key] if key in self else None
+    if model_name is not None:
+      value = optionally_get_by_keys(value, [model_name])
+    if output_name is not None:
+      value = optionally_get_by_keys(value, [output_name])
+    return value

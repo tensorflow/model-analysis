@@ -23,6 +23,7 @@ from typing import Any, Dict, Iterable, NamedTuple, Optional, Text, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis import util
 
 # Tag for the last extractor in list of extractors.
 LAST_EXTRACTOR_STAGE_NAME = '<last-extractor>'
@@ -85,55 +86,8 @@ def Filter(  # pylint: disable=invalid-name
     if not include and not exclude:
       return extracts
     elif include:
-      return _include_filter(include, extracts)
+      return util.include_filter(include, extracts)
     else:
-      return _exclude_filter(exclude, extracts)
+      return util.exclude_filter(exclude, extracts)
 
   return extracts | beam.Map(filter_extracts)
-
-
-def _include_filter(include, target):
-  """Filters target to only include keys in include.
-
-  Args:
-    include: Dict of keys from target to include. An empty dict matches all
-      values.
-    target: Target dict to apply filter to.
-
-  Returns:
-    A new dict with values from target filtered out.
-  """
-  if not include:
-    return target
-
-  result = {}
-  for key, subkeys in include.items():
-    if key in target:
-      if subkeys:
-        result[key] = _include_filter(subkeys, target[key])
-      else:
-        result[key] = target[key]
-  return result
-
-
-def _exclude_filter(exclude, target):
-  """Filters output to only include keys not in exclude.
-
-  Args:
-    exclude: Dict of keys from target to exclude. An empty dict matches all
-      values.
-    target: Target dict to apply filter to.
-
-  Returns:
-    A new dict with values from target filtered out.
-  """
-  result = {}
-  for key, value in target.items():
-    if key in exclude:
-      if exclude[key]:
-        value = _exclude_filter(exclude[key], target[key])
-        if value:
-          result[key] = value
-    else:
-      result[key] = value
-  return result

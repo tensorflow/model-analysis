@@ -23,12 +23,13 @@ import copy
 import functools
 import inspect
 
-from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Text, Type, Union
+from typing import Any, Callable, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Text, Type, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis import util
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -574,53 +575,203 @@ def registered_metrics() -> Dict[Text, Type[Metric]]:
   return copy.copy(_METRIC_OBJECTS)
 
 
-class StandardMetricInputs(
-    NamedTuple('StandardMetricInputs',
-               [('label', types.TensorValueMaybeDict),
-                ('prediction', Union[types.TensorValueMaybeDict,
-                                     Dict[Text, types.TensorValueMaybeDict]]),
-                ('example_weight', types.TensorValueMaybeDict),
-                ('features', Dict[Text, types.TensorValueMaybeDict])])):
+class StandardMetricInputs(util.StandardExtracts):
   """Standard inputs used by most metric computations.
 
-  All values are copies of the respective values that were stored in the
-  extracts. These may be multi-level dicts if a multi-model evalations was run
-  or the models are multi-output models.
-
-  Attributes:
-    label: Copy of LABELS_KEY extract.
-    prediction: Copy of PREDICTIONS_KEY extract.
-    example_weight: Copy of EXAMPLE_WEIGHT_KEY extract.
-    features: Optional additional extracts.
+  StandardMetricInputs is a wrapper around Extracts where only the extracts keys
+  used by one or more ExtractsPreprocessors will be present.
   """
 
-  def __new__(cls,
-              label: types.TensorValueMaybeDict,
-              prediction: Union[types.TensorValueMaybeDict,
-                                Dict[Text, types.TensorValueMaybeDict]],
-              example_weight: types.TensorValueMaybeDict,
-              features: Optional[Dict[Text,
-                                      types.TensorValueMaybeDict]] = None):
-    return super(StandardMetricInputs, cls).__new__(cls, label, prediction,
-                                                    example_weight, features)
+  @property
+  def label(self) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    """Same as labels (DEPRECATED - use labels)."""
+    return self.get_labels()
+
+  @property
+  def prediction(self) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    """Same as predictions (DEPRECATED - use predictions)."""
+    return self.get_predictions()
+
+  @property
+  def example_weight(self) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    """Same as example_weights (DEPRECATED - use example_weights)."""
+    return self.get_example_weights()
+
+  def get_by_key(self,
+                 key: Text,
+                 model_name: Optional[Text] = None,
+                 output_name: Optional[Text] = None) -> Any:
+    if key not in self and key.endswith('s'):
+      # The previous version of StandardMetricInputs was a NamedTuple that
+      # used label, prediction, and example_weight as the field names. Some
+      # tests may be creating StandardMetricInputs using these names, so also
+      # search under the non-pluralized form of the key.
+      key = key[:-1]
+    return super(StandardMetricInputs, self).get_by_key(key, model_name,
+                                                        output_name)
 
 
-class FeaturePreprocessor(beam.DoFn):
-  """Preprocessor for copying features to the standard metric inputs.
+class StandardMetricInputsPreprocessor(beam.DoFn):
+  """Preprocessor for filtering the extracts used in StandardMetricInputs."""
 
-  By default StandardMetricInputs only includes labels, predictions, and example
-  weights. To add additional input features this FeaturePreprocessor must be
-  used.
-  """
+  def __init__(self,
+               include_filter: Optional[Union[Iterable[Text],
+                                              Dict[Text, Any]]] = None,
+               include_default_inputs: bool = True,
+               model_names: Optional[Iterable[Text]] = None,
+               output_names: Optional[Iterable[Text]] = None):
+    """Initializes preprocessor.
 
-  def __init__(self, feature_keys: List[Text]):
-    self.feature_keys = feature_keys
+    Args:
+      include_filter: Optional list or map of extracts keys to include in
+        output. If a map of keys is passed then the keys and sub-keys that exist
+        in the map will be included in the output. An empty dict behaves as a
+        wildcard matching all keys or the value itself. Since matching on values
+        is not currently supported, an empty dict must be used to represent the
+        leaf nodes. For example, {'key1': {'key1-subkey': {}}, 'key2': {}}.
+      include_default_inputs: True to include default inputs (labels,
+        predictions, example weights) in addition to any inputs that may be
+        specified using include_filter.
+      model_names: Optional model names. Only used if include_default_inputs is
+        True. If unset all models will be included with the default inputs.
+      output_names: Optional output names. Only used if include_default_inputs
+        is True. If unset all outputs will be included with the default inputs.
+    """
+    if include_filter is None:
+      include_filter = {}
+    if not isinstance(include_filter, MutableMapping):
+      if isinstance(include_filter, Iterable):
+        include_filter = {k: {} for k in include_filter or []}
+      else:
+        raise ValueError('include_filter must be a list or dict')
+
+    if include_default_inputs:
+      default_filter = {}
+      if output_names:
+        default_filter = {name: default_filter for name in output_names}
+      if model_names:
+        default_filter = {name: default_filter for name in model_names}
+      include_filter = copy.copy(include_filter)
+      include_filter.update({
+          constants.LABELS_KEY: default_filter,
+          constants.PREDICTIONS_KEY: default_filter,
+          constants.EXAMPLE_WEIGHTS_KEY: default_filter,
+      })
+    self.include_filter = include_filter
 
   def process(self, extracts: types.Extracts) -> Iterable[types.Extracts]:
-    if constants.FEATURES_KEY in extracts:
-      features = extracts[constants.FEATURES_KEY]
-      out = {}
-      for k in self.feature_keys:
-        if k in features:
-          out[k] = features[k]
-      yield out
+    if not self.filter:
+      return {}
+    yield util.include_filter(self.filter, extracts)
+
+
+def FeaturePreprocessor(  # pylint: disable=invalid-name
+    feature_keys: Iterable[Text],
+    include_default_inputs: bool = True,
+    model_names: Optional[Iterable[Text]] = None,
+    output_names: Optional[Iterable[Text]] = None
+) -> StandardMetricInputsPreprocessor:
+  """Returns preprocessor for including features in StandardMetricInputs.
+
+  Args:
+    feature_keys: List of feature keys. An empty list means all.
+    include_default_inputs: True to include default inputs (labels, predictions,
+      example weights) in addition to the features.
+    model_names: Optional model names. Only used if include_default_inputs is
+      True. If unset all models will be included with the default inputs.
+    output_names: Optional output names. Only used if include_default_inputs is
+      True. If unset all outputs will be included with the default inputs.
+  """
+  if feature_keys:
+    include_features = {k: {} for k in feature_keys}
+  else:
+    include_features = {}
+  return StandardMetricInputsPreprocessor(
+      include_filter={constants.FEATURES_KEY: include_features},
+      include_default_inputs=include_default_inputs,
+      model_names=model_names,
+      output_names=output_names)
+
+
+def TransformedFeaturePreprocessor(  # pylint: disable=invalid-name
+    feature_keys: Iterable[Text],
+    include_default_inputs: bool = True,
+    model_names: Optional[Iterable[Text]] = None,
+    output_names: Optional[Iterable[Text]] = None,
+) -> StandardMetricInputsPreprocessor:
+  """Returns preprocessor for incl transformed features in StandardMetricInputs.
+
+  Args:
+    feature_keys: List of feature keys. An empty list means all.
+    include_default_inputs: True to include default inputs (labels, predictions,
+      example weights) in addition to the transformed features.
+    model_names: Optional model names (required if transformed_features used
+      with multi-model evaluations).
+    output_names: Optional output names. Only used if include_default_inputs is
+      True. If unset all outputs will be included with the default inputs.
+  """
+  if feature_keys:
+    include_features = {k: {} for k in feature_keys}
+  else:
+    include_features = {}
+  if model_names:
+    include_features = {name: include_features for name in model_names}
+  return StandardMetricInputsPreprocessor(
+      include_filter={constants.TRANSFORMED_FEATURES_KEY: include_features},
+      include_default_inputs=include_default_inputs,
+      model_names=model_names,
+      output_names=output_names)
+
+
+def AttributionPreprocessor(  # pylint: disable=invalid-name
+    feature_keys: Iterable[Text],
+    include_default_inputs: bool = True,
+    model_names: Optional[Iterable[Text]] = None,
+    output_names: Optional[Iterable[Text]] = None
+) -> StandardMetricInputsPreprocessor:
+  """Returns preprocessor for including attributions in StandardMetricInputs.
+
+  Args:
+    feature_keys: List of feature keys under attributions to keep. An empty list
+      means all.
+    include_default_inputs: True to include default inputs (labels, predictions,
+      example weights) in addition to the transformed features.
+    model_names: Optional model names (required for multi-model evaluations).
+    output_names: Optional output names (required for multi-output evaluations).
+  """
+  if feature_keys:
+    include_features = {k: {} for k in feature_keys}
+  else:
+    include_features = {}
+  if output_names:
+    include_features = {name: include_features for name in output_names}
+  if model_names:
+    include_features = {name: include_features for name in model_names}
+  return StandardMetricInputsPreprocessor(
+      include_filter={constants.ATTRIBUTIONS_KEY: include_features},
+      include_default_inputs=include_default_inputs,
+      model_names=model_names,
+      output_names=output_names)
+
+
+def StandardMetricInputsPreprocessorList(  # pylint: disable=invalid-name
+    preprocessors: List[StandardMetricInputsPreprocessor]
+) -> StandardMetricInputsPreprocessor:
+  """Returns preprocessor combining multiple standard preprocessors together.
+
+  Args:
+    preprocessors: List of StandardMetricInputsPreprocessors. Must be of type
+      StandardMetricInputsPreprocessor (subclasses not supported).
+  """
+  include_filter = {}
+  for p in preprocessors:
+    if type(p) != StandardMetricInputsPreprocessor:  # pylint: disable=unidiomatic-typecheck
+      raise ValueError(
+          'Only direct instances of StandardMetricsInputPreprocessor '
+          '(excluding sub-classes) are supported')
+    if not include_filter:
+      include_filter = p.include_filter
+    else:
+      include_filter = util.merge_filters(include_filter, p.include_filter)
+  return StandardMetricInputsPreprocessor(
+      include_filter=include_filter, include_default_inputs=False)

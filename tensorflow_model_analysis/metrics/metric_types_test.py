@@ -98,6 +98,121 @@ class MetricTypesTest(tf.test.TestCase):
         metric_types.AggregationType(weighted_macro_average=True),
         metric_types.AggregationType(macro_average=True))
 
+  def testPreprocessors(self):
+    preprocessor = metric_types.StandardMetricInputsPreprocessorList([
+        metric_types.FeaturePreprocessor(feature_keys=['feature1', 'feature2']),
+        metric_types.TransformedFeaturePreprocessor(feature_keys=['feature1']),
+        metric_types.AttributionPreprocessor(feature_keys=['feature1'])
+    ])
+    self.assertEqual(
+        preprocessor.include_filter, {
+            'labels': {},
+            'predictions': {},
+            'example_weights': {},
+            'features': {
+                'feature1': {},
+                'feature2': {},
+            },
+            'transformed_features': {
+                'feature1': {},
+            },
+            'attributions': {
+                'feature1': {},
+            },
+        })
+
+  def testPreprocessorsWithoutDefaults(self):
+    preprocessor = metric_types.StandardMetricInputsPreprocessorList([
+        metric_types.FeaturePreprocessor(
+            feature_keys=['feature1', 'feature2'],
+            include_default_inputs=False),
+        metric_types.TransformedFeaturePreprocessor(
+            feature_keys=['feature1'], include_default_inputs=False),
+        metric_types.AttributionPreprocessor(
+            feature_keys=['feature1'], include_default_inputs=False)
+    ])
+    self.assertEqual(
+        preprocessor.include_filter, {
+            'features': {
+                'feature1': {},
+                'feature2': {},
+            },
+            'transformed_features': {
+                'feature1': {},
+            },
+            'attributions': {
+                'feature1': {},
+            },
+        })
+
+  def testMultiModelMultiOutputPreprocessors(self):
+    preprocessor = metric_types.StandardMetricInputsPreprocessorList([
+        metric_types.FeaturePreprocessor(
+            feature_keys=['feature1', 'feature2'],
+            model_names=['model1', 'model2'],
+            output_names=['output1', 'output2']),
+        metric_types.TransformedFeaturePreprocessor(
+            feature_keys=['feature1'],
+            model_names=['model1', 'model2'],
+            output_names=['output1', 'output2']),
+        metric_types.AttributionPreprocessor(
+            feature_keys=['feature1'],
+            model_names=['model1'],
+            output_names=['output2'])
+    ])
+    self.assertEqual(
+        preprocessor.include_filter, {
+            'labels': {
+                'model1': {
+                    'output1': {},
+                    'output2': {},
+                },
+                'model2': {
+                    'output1': {},
+                    'output2': {},
+                },
+            },
+            'predictions': {
+                'model1': {
+                    'output1': {},
+                    'output2': {},
+                },
+                'model2': {
+                    'output1': {},
+                    'output2': {},
+                },
+            },
+            'example_weights': {
+                'model1': {
+                    'output1': {},
+                    'output2': {},
+                },
+                'model2': {
+                    'output1': {},
+                    'output2': {},
+                },
+            },
+            'features': {
+                'feature1': {},
+                'feature2': {},
+            },
+            'transformed_features': {
+                'model1': {
+                    'feature1': {},
+                },
+                'model2': {
+                    'feature1': {},
+                },
+            },
+            'attributions': {
+                'model1': {
+                    'output2': {
+                        'feature1': {},
+                    }
+                },
+            },
+        })
+
 
 if __name__ == '__main__':
   tf.test.main()

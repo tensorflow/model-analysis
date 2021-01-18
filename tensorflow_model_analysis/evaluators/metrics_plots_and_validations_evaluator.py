@@ -249,21 +249,34 @@ class _PreprocessorDoFn(beam.DoFn):
     start_time = datetime.datetime.now()
     self._evaluate_num_instances.inc(1)
 
-    use_default_combiner_input = None
-    features = None
+    # Any combiner_inputs that are set to None will have the default
+    # StandardMetricInputs passed to the combiner's add_input method. Note
+    # that for efficiency a single StandardMetricInputs type is created that has
+    # an include_filter that is a merger of the include_filter values for all
+    # StandardMetricInputsProcessors used by all metrics. This avoids processing
+    # extracts more than once, but does mean metrics may contain
+    # StandardMetricInputs with keys that are not part of their preprocessing
+    # filters.
     combiner_inputs = []
+    standard_preprocessors = []
+    added_default_standard_preprocessor = False
     for computation in self._computations:
       if computation.preprocessor is None:
+        # In this case, the combiner is requesting to be passed the default
+        # StandardMetricInputs (i.e. labels, predictions, and example weights).
         combiner_inputs.append(None)
-        use_default_combiner_input = True
-      elif isinstance(computation.preprocessor,
-                      metric_types.FeaturePreprocessor):
-        if features is None:
-          features = {}
-        for v in computation.preprocessor.process(extracts):
-          features.update(v)
+        if not added_default_standard_preprocessor:
+          standard_preprocessors.append(
+              metric_types.StandardMetricInputsPreprocessor())
+          added_default_standard_preprocessor = True
+      elif (type(computation.preprocessor) ==  # pylint: disable=unidiomatic-typecheck
+            metric_types.StandardMetricInputsPreprocessor):
+        # In this case a custom filter was used, but it is still part of the
+        # StandardMetricInputs. This will be merged into a single preprocessor
+        # for efficiency later, but we still use None to indicate that the
+        # shared StandardMetricInputs value should be passed to the combiner.
         combiner_inputs.append(None)
-        use_default_combiner_input = True
+        standard_preprocessors.append(computation.preprocessor)
       else:
         combiner_inputs.append(next(computation.preprocessor.process(extracts)))
 
@@ -271,13 +284,19 @@ class _PreprocessorDoFn(beam.DoFn):
         constants.SLICE_KEY_TYPES_KEY: extracts[constants.SLICE_KEY_TYPES_KEY],
         _COMBINER_INPUTS_KEY: combiner_inputs
     }
-    if use_default_combiner_input:
-      default_combiner_input = []
-      if features is not None:
-        extracts = copy.copy(extracts)
-        extracts.update({constants.FEATURES_KEY: features})
+    if standard_preprocessors:
+      preprocessor = metric_types.StandardMetricInputsPreprocessorList(
+          standard_preprocessors)
+      extracts = copy.copy(extracts)
+      preprocessor.process(extracts)
       default_combiner_input = metric_util.to_standard_metric_inputs(
-          extracts, include_features=features is not None)
+          extracts,
+          include_features=(
+              constants.FEATURES_KEY in preprocessor.include_filter),
+          include_transformed_features=(constants.TRANSFORMED_FEATURES_KEY in
+                                        preprocessor.include_filter),
+          include_attributions=(
+              constants.ATTRIBUTIONS_KEY in preprocessor.include_filter))
       output[_DEFAULT_COMBINER_INPUT_KEY] = default_combiner_input
     yield output
 

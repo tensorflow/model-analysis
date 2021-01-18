@@ -51,9 +51,9 @@ class UtilTest(tf.test.TestCase):
         'a', util.get_by_keys({'labels': {}}, ['labels'], default_value='a'))
 
   def testGetByKeysMissingAndOptional(self):
-    self.assertEqual(None, util.get_by_keys({}, ['labels'], optional=True))
-    self.assertEqual(
-        None, util.get_by_keys({'labels': {}}, ['labels'], optional=True))
+    self.assertIsNone(util.get_by_keys({}, ['labels'], optional=True))
+    self.assertIsNone(
+        util.get_by_keys({'labels': {}}, ['labels'], optional=True))
 
   def testGetByKeysMissingAndNonOptional(self):
     with self.assertRaisesRegexp(ValueError, 'not found'):
@@ -106,6 +106,161 @@ class UtilTest(tf.test.TestCase):
       util.get_by_keys({'predictions': {
           'missing': [1]
       }}, ['predictions', 'output'])
+
+  def testIncludeFilter(self):
+    got = util.include_filter(
+        include={
+            'b': {},
+            'c': {
+                'c2': {
+                    'c21': {}
+                }
+            },
+            'e': {
+                'e2': {
+                    'e21': {}
+                }
+            }
+        },
+        target={
+            'a': 1,
+            'b': {
+                'b2': 2
+            },
+            'c': {
+                'c2': {
+                    'c21': 3,
+                    'c22': 4
+                }
+            },
+            'd': {
+                'd2': 4
+            },
+            'e': {
+                'e2': {
+                    'e22': {}
+                }
+            }
+        })
+    self.assertEqual(got, {
+        'b': {
+            'b2': 2
+        },
+        'c': {
+            'c2': {
+                'c21': 3
+            }
+        },
+        'e': {
+            'e2': {}
+        }
+    })
+
+  def testExcludeFilter(self):
+    got = util.exclude_filter(
+        exclude={
+            'b': {},
+            'c': {
+                'c2': {
+                    'c21': {}
+                }
+            }
+        },
+        target={
+            'a': 1,
+            'b': {
+                'b2': 2
+            },
+            'c': {
+                'c2': {
+                    'c21': 3,
+                    'c22': 4
+                }
+            },
+            'd': {
+                'd2': 4
+            }
+        })
+    self.assertEqual(got, {'a': 1, 'c': {'c2': {'c22': 4}}, 'd': {'d2': 4}})
+
+  def testMergeFilters(self):
+    filter1 = {
+        'features': {
+            'feature_1': {},
+            'feature_2': {},
+        },
+        'labels': {},
+        'example_weights': {
+            'model1': {},
+        },
+        'predictions': {
+            'model1': {
+                'output1': {},
+            },
+            'model2': {
+                'output1': {}
+            }
+        },
+        'attributions': {
+            'model1': {}
+        },
+    }
+    filter2 = {
+        'features': {
+            'feature_2': {},
+            'feature_3': {},
+        },
+        'labels': {
+            'model1': {},
+            'model2': {},
+        },
+        'example_weights': {
+            'model2': {},
+        },
+        'predictions': {
+            'model1': {
+                'output2': {},
+            },
+            'model2': {
+                'output1': {},
+                'output2': {},
+            }
+        },
+        'attributions': {
+            'model1': {
+                'output1': {
+                    'feature1': {}
+                },
+            },
+        },
+    }
+    merged = util.merge_filters(filter1, filter2)
+    self.assertEqual(
+        merged, {
+            'features': {
+                'feature_1': {},
+                'feature_2': {},
+                'feature_3': {},
+            },
+            'labels': {},
+            'example_weights': {
+                'model1': {},
+                'model2': {},
+            },
+            'predictions': {
+                'model1': {
+                    'output1': {},
+                    'output2': {},
+                },
+                'model2': {
+                    'output1': {},
+                    'output2': {},
+                }
+            },
+            'attributions': {
+                'model1': {},
+            },
+        })
 
   def testKwargsOnly(self):
 
