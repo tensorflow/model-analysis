@@ -36,10 +36,19 @@ Matrices = NamedTuple('Matrices', [('thresholds', List[float]),
 _EPSILON = 1e-7
 
 
+def _interpolated_thresholds(num_thresholds: int) -> List[float]:
+  """Returns thresholds interpolated over a range equal to num_thresholds."""
+  # The interpolation strategy used here matches that used by keras for AUC.
+  thresholds = [
+      (i + 1) * 1.0 / (num_thresholds - 1) for i in range(num_thresholds - 2)
+  ]
+  return [-_EPSILON] + thresholds + [1.0 + _EPSILON]
+
+
 def binary_confusion_matrices(
     num_thresholds: Optional[int] = None,
     thresholds: Optional[List[float]] = None,
-    name: Text = BINARY_CONFUSION_MATRICES_NAME,
+    name: Optional[Text] = None,
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
@@ -71,25 +80,33 @@ def binary_confusion_matrices(
   Raises:
     ValueError: If both num_thresholds and thresholds are set at the same time.
   """
-  key = metric_types.MetricKey(
-      name=name,
-      model_name=model_name,
-      output_name=output_name,
-      sub_key=sub_key)
-
   if num_thresholds is not None and thresholds is not None:
     raise ValueError(
         'only one of thresholds or num_thresholds can be set at a time')
   if num_thresholds is None and thresholds is None:
     num_thresholds = DEFAULT_NUM_THRESHOLDS
+  # Keras AUC turns num_thresholds parameters into thresholds which circumvents
+  # sharing of settings. If the thresholds match the interpolated version of the
+  # thresholds then reset back to num_thresholds.
+  if (name is None and thresholds and
+      thresholds == _interpolated_thresholds(len(thresholds))):
+    num_thresholds = len(thresholds)
+    thresholds = None
   if num_thresholds is not None:
     if num_thresholds <= 1:
       raise ValueError('num_thresholds must be > 1')
     # The interpolation strategy used here matches that used by keras for AUC.
-    thresholds = [
-        (i + 1) * 1.0 / (num_thresholds - 1) for i in range(num_thresholds - 2)
-    ]
-    thresholds = [-_EPSILON] + thresholds + [1.0 + _EPSILON]
+    thresholds = _interpolated_thresholds(num_thresholds)
+    if name is None:
+      name = '{}_{}'.format(BINARY_CONFUSION_MATRICES_NAME, num_thresholds)
+  elif name is None:
+    name = '{}_{}'.format(BINARY_CONFUSION_MATRICES_NAME, list(thresholds))
+
+  key = metric_types.MetricKey(
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key)
 
   # Use calibration histogram to calculate matrices. For efficiency (unless all
   # predictions are matched - i.e. thresholds <= 0) we will assume that other

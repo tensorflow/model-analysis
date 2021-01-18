@@ -131,7 +131,10 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 1)
-          key = metric_types.MetricKey(name='_binary_confusion_matrices')
+          name = '_binary_confusion_matrices_{}'.format(
+              kwargs['num_thresholds'] if 'num_thresholds' in
+              kwargs else kwargs['thresholds'])
+          key = metric_types.MetricKey(name=name)
           self.assertIn(key, got_metrics)
           got_matrices = got_metrics[key]
           self.assertEqual(got_matrices, expected_matrices)
@@ -189,7 +192,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 1)
           key = metric_types.MetricKey(
-              name='_binary_confusion_matrices',
+              name='_binary_confusion_matrices_[-inf]',
               sub_key=metric_types.SubKey(top_k=3))
           self.assertIn(key, got_metrics)
           got_matrices = got_metrics[key]

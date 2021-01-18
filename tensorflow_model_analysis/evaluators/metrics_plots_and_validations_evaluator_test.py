@@ -43,6 +43,7 @@ from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import attributions
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import calibration_plot
+from tensorflow_model_analysis.metrics import confusion_matrix_plot
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
@@ -89,6 +90,52 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     model.save(model_dir, save_format='tf')
     return self.createTestEvalSharedModel(
         model_name=model_name, eval_saved_model_path=model_dir)
+
+  def testFilterAndSeparateComputations(self):
+    eval_config = config.EvalConfig(model_specs=[
+        config.ModelSpec(name='candidate', label_key='tips'),
+        config.ModelSpec(name='baseline', label_key='tips', is_baseline=True)
+    ])
+    metrics_specs = metric_specs.specs_from_metrics(
+        [
+            tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+            tf.keras.metrics.AUC(name='auc', num_thresholds=10000),
+            tf.keras.metrics.AUC(
+                name='auc_precison_recall', curve='PR', num_thresholds=10000),
+            tf.keras.metrics.Precision(name='precision'),
+            tf.keras.metrics.Recall(name='recall'),
+            calibration.MeanLabel(name='mean_label'),
+            calibration.MeanPrediction(name='mean_prediction'),
+            calibration.Calibration(name='calibration'),
+            confusion_matrix_plot.ConfusionMatrixPlot(
+                name='confusion_matrix_plot'),
+            calibration_plot.CalibrationPlot(name='calibration_plot'),
+        ],
+        model_names=['candidate', 'baseline'],
+        binarize=config.BinarizationOptions(class_ids={'values': [0, 5]}))
+    computations = metric_specs.to_computations(
+        metrics_specs, eval_config=eval_config)
+    non_derived, derived = metrics_plots_and_validations_evaluator._filter_and_separate_computations(
+        computations)
+    # 2 models x 2 classes x _CalibrationHistogramCombiner
+    # 2 models x 2 classes x _CompilableMetricsCombiner,
+    # 2 models x 2 classes x _WeightedLabelsPredictionsExamplesCombiner,
+    # 2 models x _WeightedExampleCountCombiner
+    # 1 x _ExampleCountCombiner
+    self.assertLen(non_derived, 15)
+    # 2 models x 2 classes x _binary_confusion_matrices_10000
+    # 2 models x 2 classes x _binary_confusion_matrices_[0.5]
+    # 2 models x 2 classes x _binary_confusion_matrices_confusion_matrix_plot
+    # 2 models x 2 classes x precision
+    # 2 models x 2 classes x recall
+    # 2 models x 2 classes x calibration
+    # 2 models x 2 classes x auc_precision_recall
+    # 2 models x 2 classes x mean_prediction
+    # 2 models x 2 classes x mean_label
+    # 2 models x 2 classes x confusion_matrix_plot
+    # 2 models x 2 classes x calibration_plot
+    # 2 models x 2 classes x auc
+    self.assertLen(derived, 48)
 
   def testEvaluateWithKerasAndValidateMetrics(self):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()

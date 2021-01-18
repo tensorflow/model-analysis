@@ -381,8 +381,15 @@ class MetricComputation(
   efficient as possible. If the preprocessor is None, then StandardMetricInputs
   will be passed.
 
+  A MetricComputation is uniquely identified by the combination of the
+  combiner's name and the keys. Duplicate computations will be removed
+  automatically.
+
   Attributes:
-    keys: List of metric keys associated with computation.
+    keys: List of metric keys associated with computation. If the keys are
+      defined as part of the computation then this may be empty in which case
+      only the combiner name will be used for identifying computation
+      uniqueness.
     preprocessor: Takes a extracts (or a list of extracts) as input (which
       typically will contain labels, predictions, example weights, and
       optionally features) and should return the initial state that the combiner
@@ -401,6 +408,22 @@ class MetricComputation(
     return super(MetricComputation, cls).__new__(cls, keys, preprocessor,
                                                  combiner)
 
+  def _computation_id(self):
+    # Some computations do not define the keys until the end of the computation
+    # is complete. In these cases the keys will be empty so we also distinguish
+    # based on the combiner name used. We don't use __class__ since classes may
+    # be defined inline which wouldn't compare equal.
+    return (self.combiner.__class__.__name__, tuple(sorted(self.keys or [])))
+
+  def __eq__(self, other):
+    if isinstance(other, MetricComputation):
+      return self._computation_id() == other._computation_id()
+    else:
+      return False
+
+  def __hash__(self):
+    return hash(self._computation_id())
+
 
 class DerivedMetricComputation(
     NamedTuple(
@@ -417,8 +440,15 @@ class DerivedMetricComputation(
   pipeline is responsible for de-duplicating overlapping MetricComputations so
   that only one computation is actually run.
 
+  A DerivedMetricComputation is uniquely identified by the combination of the
+  result function's name and the keys. Duplicate computations will be removed
+  automatically.
+
   Attributes:
-    keys: List of metric keys associated with derived computation.
+    keys: List of metric keys associated with derived computation. If the keys
+      are defined as part of the computation then this may be empty in which
+      case only the result function name will be used for identifying
+      computation uniqueness.
     result: Function (called per slice) to compute the result using the results
       of other metric computations.
   """
@@ -426,6 +456,22 @@ class DerivedMetricComputation(
   def __new__(cls, keys: List[MetricKey],
               result: Callable[[Dict[MetricKey, Any]], Dict[MetricKey, Any]]):
     return super(DerivedMetricComputation, cls).__new__(cls, keys, result)
+
+  def _computation_id(self):
+    # Some computations do not define the keys until the end of the computation
+    # is complete. In these cases the keys will be empty so we also distinguish
+    # based on the result function name used. We don't use __class__ since
+    # functions may be defined inline which wouldn't compare equal.
+    return (self.result.__class__.__name__, tuple(sorted(self.keys or [])))
+
+  def __eq__(self, other):
+    if isinstance(other, DerivedMetricComputation):
+      return self._computation_id() == other._computation_id()
+    else:
+      return False
+
+  def __hash__(self):
+    return hash(self._computation_id())
 
 
 # MetricComputations is a list of derived and non-derived computations used to

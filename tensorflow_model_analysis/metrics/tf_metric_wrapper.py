@@ -357,32 +357,16 @@ def _wrap_confusion_matrix_metric(
       _get_config_value(_THRESHOLDS_KEY, metric_config) is None):
     thresholds = [float('-inf')]
   elif hasattr(metric, _THRESHOLDS_KEY):
-    if (len(
-        metric.thresholds) == binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS):
-      num_thresholds = binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS
-    else:
-      thresholds = metric.thresholds
+    thresholds = metric.thresholds
   # Only one of either thresholds or num_thresholds should be used. Keras AUC
   # allows both but thresholds has more precedence.
   if thresholds is None and hasattr(metric, _NUM_THRESHOLDS_KEY):
     num_thresholds = metric.num_thresholds
 
-  # By default use separate compuations for the confusion matrices since the
-  # metrics might be using different thresholds (note, the underlying histogram
-  # the confusion matrices are based on will still only be calculated once).
-  if (num_thresholds is not None and
-      num_thresholds == binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS):
-    name = binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME
-  else:
-    name = '{}{}'.format(
-        metric.name, binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME)
-    name = name if name.startswith('_') else '_' + name
-
   # Make sure matrices are calculated.
   computations = binary_confusion_matrices.binary_confusion_matrices(
       num_thresholds=num_thresholds,
       thresholds=thresholds,
-      name=name,
       eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,

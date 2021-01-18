@@ -120,8 +120,8 @@ def _filter_and_separate_computations(
   typically include copies of the MetricComputations that they depend on in
   order to avoid having to pre-construct and pass around all the dependencies at
   the time the metrics are constructed. Instead, each derived metric creates a
-  version of the metric it depends on and then this code de-dups metrics that
-  are identical so only one gets computed.
+  version of the metric it depends on and then this code de-dups computations
+  that are identical so only one gets computed.
 
   Args:
     computations: Computations.
@@ -130,24 +130,27 @@ def _filter_and_separate_computations(
     Tuple of (metric computations, derived metric computations).
   """
   non_derived_computations = []
+  processed_non_derived_computations = {}
   derived_computations = []
-  types_and_keys = {}
+  processed_derived_computations = {}
+  # The order of the computations matters (i.e. one computation may depend on
+  # another). While there shouldn't be any differences in matching computations
+  # the implemented hash is only based on combiner/result names and the keys, so
+  # for consistency with TFMA's practice of having later metrics overide earlier
+  # we will return the latest computation added when there are duplicates.
   for c in computations:
     if isinstance(c, metric_types.MetricComputation):
-      cls = c.__class__.__name__
-      keys = sorted(c.keys)
-      if cls in types_and_keys:
-        # TODO(mdreves): This assumes the user used unique names for all the
-        # keys and classes. This could mask a bug where the same name is
-        # accidently used for different metric configurations. Add support for
-        # creating a dict config for the computations (similar to keras) and
-        # then comparing the configs to ensure the classes are identical.
-        if keys == types_and_keys[cls]:
-          continue
-      types_and_keys[cls] = keys
-      non_derived_computations.append(c)
+      if c in processed_non_derived_computations:
+        non_derived_computations[processed_non_derived_computations[c]] = c
+      else:
+        processed_non_derived_computations[c] = len(non_derived_computations)
+        non_derived_computations.append(c)
     elif isinstance(c, metric_types.DerivedMetricComputation):
-      derived_computations.append(c)
+      if c in processed_derived_computations:
+        derived_computations[processed_derived_computations[c]] = c
+      else:
+        processed_derived_computations[c] = len(derived_computations)
+        derived_computations.append(c)
     else:
       raise TypeError('Unsupported metric computation type: {}'.format(c))
   return non_derived_computations, derived_computations

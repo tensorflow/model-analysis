@@ -10,6 +10,7 @@
 
 ## Bug fixes and other changes
 
+*   Fixed issue with metric computation deduplication logic.
 *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 
 ## Breaking changes
