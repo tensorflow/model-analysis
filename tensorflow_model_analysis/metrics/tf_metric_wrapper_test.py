@@ -24,6 +24,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -456,7 +457,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
 
-class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
+class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
+                                    parameterized.TestCase):
 
   def testSimpleMetric(self):
     computation = tf_metric_wrapper.tf_metric_computations(
@@ -654,44 +656,69 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result, label='result')
 
-  def testCustomTFMetricWithPadding(self):
-    computation = tf_metric_wrapper.tf_metric_computations([
-        _CustomMetric(name='custom_label', update_y_pred=False),
-        _CustomMetric(name='custom_pred', update_y_pred=True)
-    ])[0]
+  @parameterized.named_parameters(*[
+      dict(
+          testcase_name='within_example',
+          example_indices=[0],
+          # label_sum = (1 - 1 - 1 - 1) * 1.0 = -2.0
+          # pred_sum = (0.1 + 0.2 + 0.3 + 0.0) = 0.6
+          # weights_total = 1.0 * 4 = 4.0
+          expected={
+              metric_types.MetricKey(name='custom_label'): -2.0 / 4.0,
+              metric_types.MetricKey(name='custom_pred'): 0.6 / 4.0
+          }),
+      dict(
+          testcase_name='across_examples',
+          # label_sum = (1 - 1 - 1 - 1) * 1.0 +
+          #             (1 + 2 - 1.0 - 1) * 1.0 +
+          #             (1 + 2 + 3 - 1) * 2.0
+          #           = 9.0
+          #
+          # pred_sum = (0.1 + 0.2 + 0.3 + 0.0) * 1.0 +
+          #            (0.1 + 0.2 + 0.0 - 1.0) * 1.0 +
+          #            (0.1 + 0.2 + 0.3 - 1.0) * 2.0
+          #           = -0.9
+          #
+          # weights_total = (1.0 * 4 + 1.0 * 4 + 2.0 * 4) = 16.0
+          example_indices=[0, 1, 2],
+          expected={
+              metric_types.MetricKey(name='custom_label'): 9.0 / 16.0,
+              metric_types.MetricKey(name='custom_pred'): -0.9 / 16.0
+          }),
+  ])
+  def testCustomTFMetricWithPadding(self, example_indices, expected):
+    computation = tf_metric_wrapper.tf_metric_computations(
+        [
+            _CustomMetric(name='custom_label', update_y_pred=False),
+            _CustomMetric(name='custom_pred', update_y_pred=True),
+        ],
+        eval_config=config.EvalConfig(model_specs=[
+            config.ModelSpec(
+                padding_options=config.PaddingOptions(
+                    label_int_padding=-1,
+                    prediction_float_padding=-1.0,
+                ))
+        ]))[0]
 
-    # label_sum = (1 - 1 - 1 - 1) * 1.0 +
-    #             (1 + 2 - 1.0 - 1) * 1.0 +
-    #             (1 + 2 + 3 - 1) * 2.0
-    #           = 9.0
-    #
-    # pred_sum = (0.1 + 0.2 + 0.3 + 0.0) * 1.0 +
-    #            (0.1 + 0.2 + 0.0 - 1.0) * 1.0 +
-    #            (0.1 + 0.2 + 0.3 - 1.0) * 2.0
-    #           = -0.9
-    #
-    # weights_total = (1.0 * 4 + 1.0 * 4 + 2.0 * 4) = 16.0
-    example1 = {
+    examples = [{
         'labels': np.array([1], dtype=np.int64),
         'predictions': np.array([0.1, 0.2, 0.3, 0.0]),
         'example_weights': np.array([1.0])
-    }
-    example2 = {
+    }, {
         'labels': np.array([1, 2], dtype=np.int64),
         'predictions': np.array([0.1, 0.2, 0.0]),
         'example_weights': np.array([1.0])
-    }
-    example3 = {
+    }, {
         'labels': np.array([1, 2, 3], dtype=np.int64),
         'predictions': np.array([0.1, 0.2, 0.3]),
         'example_weights': np.array([2.0])
-    }
+    }]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([example1, example2, example3])
+          | 'Create' >> beam.Create([examples[i] for i in example_indices])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'Combine' >> beam.CombinePerKey(computation.combiner))
@@ -706,10 +733,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
 
           custom_label_key = metric_types.MetricKey(name='custom_label')
           custom_pred_key = metric_types.MetricKey(name='custom_pred')
-          self.assertDictElementsAlmostEqual(got_metrics, {
-              custom_label_key: 9.0 / 16.0,
-              custom_pred_key: -0.9 / 16.0
-          })
+          self.assertDictElementsAlmostEqual(got_metrics, expected)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -839,7 +863,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest):
 
       def check_result(got):
         try:
-          self.assertEqual(1, len(got), 'got: %s' % got)
+          self.assertLen(got, 1, 'got: %s' % got)
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
 

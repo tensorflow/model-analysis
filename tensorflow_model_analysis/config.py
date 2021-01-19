@@ -44,6 +44,7 @@ PerSliceMetricThresholds = config_pb2.PerSliceMetricThresholds
 CrossSliceMetricThreshold = config_pb2.CrossSliceMetricThreshold
 CrossSliceMetricThresholds = config_pb2.CrossSliceMetricThresholds
 EvalConfig = config_pb2.EvalConfig
+PaddingOptions = config_pb2.PaddingOptions
 
 
 def verify_eval_config(eval_config: EvalConfig,

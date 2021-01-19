@@ -130,6 +130,15 @@ message ModelSpec {
   // per evaluation run.
   bool is_baseline = 11;
 
+  // Options for padding prediction and label arrays before feeding to metrics.
+  //
+  // Predictions and labels may not have the same length (for example,
+  // the model may pad the predictions so that a batch of predictions is aligned
+  // while labels are extracted from the input and is not padded) while metrics
+  // may require they be of the same length. TFMA can pad the shorter one with
+  // the configured values.
+  PaddingOptions padding_options = 14;
+
   reserved 1, 4;
 }
 
@@ -241,6 +250,27 @@ message BinarizationOptions {
   RepeatedInt32Value top_k_list = 6;
 
   reserved 1, 2, 3;
+}
+
+// Options for padding prediction and label arrays before feeding to metrics.
+//
+// Predictions and labels may not have the same length (for example,
+// the model may pad the predictions so that a batch of predictions is aligned,
+// while labels are extracted from the input and is not padded) while metrics
+// may require they be of the same length. TFMA can pad the shorter one with
+// the configured values.
+message PaddingOptions {
+  // If neither of the oneof is set, 0 will be used.
+  oneof label_padding {
+    int64 label_int_padding = 1;
+    float label_float_padding = 2;
+  }
+
+  // If neither of the oneof is set, 0 will be used.
+  oneof prediction_padding {
+    int64 prediction_int_padding = 3;
+    float prediction_float_padding = 4;
+  }
 }
 
 // Determines how to compute the deltas.
