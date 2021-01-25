@@ -14,6 +14,8 @@
 ## Bug fixes and other changes
 
 *   Fixed issue with metric computation deduplication logic.
+*   Depends on `apache-beam[gcp]>=2.27,<3`.
+*   Depends on `pyarrow>=1,<3`.
 *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 
 ## Breaking changes
