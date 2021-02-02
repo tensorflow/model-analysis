@@ -19,6 +19,8 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import math
+
 from typing import Any, Dict, Iterable, List, Tuple, Union
 import numpy as np
 
@@ -66,7 +68,10 @@ def validate_metrics(
       diff = metric
       metric_baseline = float(
           metrics[key.make_baseline_key(baseline_model_name)])
-      ratio = diff / metric_baseline
+      if math.isclose(metric_baseline, 0.0):
+        ratio = float('nan')
+      else:
+        ratio = diff / metric_baseline
       if threshold.direction == config.MetricDirection.LOWER_IS_BETTER:
         absolute, relative = np.inf, np.inf
       elif threshold.direction == config.MetricDirection.HIGHER_IS_BETTER:

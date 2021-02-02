@@ -1079,6 +1079,43 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertTrue(result.validation_ok)
 
+  def testValidateMetricsDivByZero(self):
+    threshold = config.MetricThreshold(
+        change_threshold=config.GenericChangeThreshold(
+            direction=config.MetricDirection.HIGHER_IS_BETTER,
+            relative={'value': 0.1}))
+    slicing_specs = [config.SlicingSpec()]
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(name='candidate'),
+            config.ModelSpec(name='baseline', is_baseline=True)
+        ],
+        slicing_specs=slicing_specs,
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[
+                    config.MetricConfig(
+                        class_name='MeanPrediction',
+                        threshold=threshold if slicing_specs is None else None,
+                        per_slice_thresholds=[
+                            config.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs,
+                                threshold=threshold)
+                        ])
+                ],
+                model_names=['baseline', 'candidate']),
+        ],
+    )
+    sliced_metrics = ((()), {
+        metric_types.MetricKey(name='mean_prediction', model_name='baseline'):
+            0.0,
+        metric_types.MetricKey(
+            name='mean_prediction', model_name='candidate', is_diff=True):
+            0.1,
+    })
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertFalse(result.validation_ok)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

@@ -6,6 +6,7 @@
 
 ## Bug fixes and other changes
 
+*   Fixed division by zero error for diff metrics.
 *   Depends on `numpy>=1.16,<1.20`.
 
 ## Breaking changes
