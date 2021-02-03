@@ -364,6 +364,7 @@ class AttributionsKey(MetricKey):
         output_name=pb.output_name,
         sub_key=SubKey.from_proto(pb.sub_key))
 
+
 # LINT.ThenChange(../proto/metrics_for_slice.proto)
 
 
@@ -706,9 +707,22 @@ class StandardMetricInputsPreprocessor(beam.DoFn):
     self.include_filter = include_filter
 
   def process(self, extracts: types.Extracts) -> Iterable[types.Extracts]:
-    if not self.filter:
+    if not self.include_filter:
       return {}
-    yield util.include_filter(self.filter, extracts)
+    yield util.include_filter(self.include_filter, extracts)
+
+
+def InputPreprocessor(  # pylint: disable=invalid-name
+    include_default_inputs: bool = False) -> StandardMetricInputsPreprocessor:
+  """Returns preprocessor for including raw inputs in StandardMetricInputs.
+
+  Args:
+    include_default_inputs: True to include default inputs (labels, predictions,
+      example weights) in addition to the inputs.
+  """
+  return StandardMetricInputsPreprocessor(
+      include_filter={constants.INPUT_KEY: {}},
+      include_default_inputs=include_default_inputs)
 
 
 def FeaturePreprocessor(  # pylint: disable=invalid-name

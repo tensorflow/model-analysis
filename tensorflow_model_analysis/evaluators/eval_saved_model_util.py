@@ -47,31 +47,12 @@ def metric_computations_using_eval_saved_model(
     batch_size: Batch size to use during evaluation (testing only).
   """
   return [
-      # _EvalSavedModelPreprocessor loads the EvalSavedModel into memory under a
-      # shared handle that can be used by subsequent steps. Combiner lifting and
-      # producer-consumer fusion should ensure that the processor and combiner
-      # run in the same process and memory space.
-      #
-      # TODO(b/69566045): Remove model loading from _EvalSavedModelPreprocessor
-      # and move model loading to _EvalSavedModelCombiner.setup after it is
-      # available in Beam.
       metric_types.MetricComputation(
           keys=[],
-          preprocessor=_EvalSavedModelPreprocessor(model_name, model_loader),
+          preprocessor=metric_types.InputPreprocessor(),
           combiner=_EvalSavedModelCombiner(model_name, model_loader,
                                            batch_size))
   ]
-
-
-class _EvalSavedModelPreprocessor(model_util.DoFnWithModels):
-  """A DoFn that loads the EvalSavedModel and returns the input."""
-
-  def __init__(self, model_name: Text, model_loader: types.ModelLoader):
-    super(_EvalSavedModelPreprocessor,
-          self).__init__({model_name: model_loader})
-
-  def process(self, extracts: types.Extracts) -> Iterable[bytes]:
-    yield extracts[constants.INPUT_KEY]
 
 
 def _add_metric_variables(  # pylint: disable=invalid-name
@@ -170,7 +151,7 @@ class _AggState(object):
             self.size_estimator.should_flush())
 
 
-@beam.typehints.with_input_types(bytes)
+@beam.typehints.with_input_types(metric_types.StandardMetricInputs)
 @beam.typehints.with_output_types(Dict[metric_types.MetricKey, Any])
 class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
   """Aggregate combine function.
@@ -253,8 +234,9 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
   def create_accumulator(self) -> _AggState:
     return _AggState(desired_batch_size=self._desired_batch_size)
 
-  def add_input(self, accumulator: _AggState, elem: bytes) -> _AggState:
-    accumulator.add_input(elem)
+  def add_input(self, accumulator: _AggState,
+                elem: metric_types.StandardMetricInputs) -> _AggState:
+    accumulator.add_input(elem.inputs)
     self._maybe_do_batch(accumulator)
     return accumulator
 

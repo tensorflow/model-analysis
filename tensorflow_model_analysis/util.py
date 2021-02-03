@@ -442,6 +442,12 @@ class StandardExtracts(MutableMapping):
   def __len__(self):
     return len(self.extracts)
 
+  def get_inputs(self) -> Any:
+    """Returns tfma.INPUT_KEY extract."""
+    return self[constants.INPUT_KEY]
+
+  inputs = property(get_inputs)
+
   def get_labels(
       self,
       model_name: Optional[Text] = None,
