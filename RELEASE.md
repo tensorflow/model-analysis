@@ -4,6 +4,10 @@
 
 ## Major Features and Improvements
 
+*   Add a new base computation for binary confusion matrix (other than based on
+    calibration histogram). It also provides a sample of examples for the
+    confusion matrix.
+
 ## Bug fixes and other changes
 
 *   Fixed division by zero error for diff metrics.
@@ -20,9 +24,8 @@
 *   Created tfma.StandardExtracts with helper methods for common keys.
 *   Updated StandardMetricInputs to extend from the tfma.StandardExtracts.
 *   Created set of StandardMetricInputsPreprocessors for filtering extracts.
-*   Introduced a `padding_options` config to ModelSpec to configure whether
-    and how to pad the prediction and label tensors expected by the model's
-    metrics.
+*   Introduced a `padding_options` config to ModelSpec to configure whether and
+    how to pad the prediction and label tensors expected by the model's metrics.
 
 ## Bug fixes and other changes
 

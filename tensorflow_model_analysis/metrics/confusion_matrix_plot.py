@@ -90,7 +90,8 @@ def _confusion_matrix_plot(
       sub_key=sub_key,
       aggregation_type=aggregation_type,
       class_weights=class_weights,
-      thresholds=thresholds)
+      thresholds=thresholds,
+      use_histogram=True)
   matrices_key = matrices_computations[-1].keys[-1]
 
   def result(

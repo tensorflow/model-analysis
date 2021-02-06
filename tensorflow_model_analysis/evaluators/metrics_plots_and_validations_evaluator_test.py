@@ -117,14 +117,15 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         metrics_specs, eval_config=eval_config)
     non_derived, derived = metrics_plots_and_validations_evaluator._filter_and_separate_computations(
         computations)
+    # 2 models x 2 classes x _binary_confusion_matrix_[0.5]_100,
     # 2 models x 2 classes x _CalibrationHistogramCombiner
     # 2 models x 2 classes x _CompilableMetricsCombiner,
     # 2 models x 2 classes x _WeightedLabelsPredictionsExamplesCombiner,
     # 2 models x _WeightedExampleCountCombiner
     # 1 x _ExampleCountCombiner
-    self.assertLen(non_derived, 15)
+    self.assertLen(non_derived, 19)
+    # 2 models x 2 classes x _binary_confusion_matrices_[0.5],
     # 2 models x 2 classes x _binary_confusion_matrices_10000
-    # 2 models x 2 classes x _binary_confusion_matrices_[0.5]
     # 2 models x 2 classes x _binary_confusion_matrices_confusion_matrix_plot
     # 2 models x 2 classes x precision
     # 2 models x 2 classes x recall
