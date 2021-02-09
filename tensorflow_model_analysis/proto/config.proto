@@ -164,6 +164,59 @@ message SlicingSpec {
   // converted to ints and floats respectively and will be compared against both
   // the string versions and int or float versions of the associated features.
   map<string, string> feature_values = 2;
+
+  // This config is an alternative to the config above.
+  // It must have the pattern:
+  //   "SELECT STRUCT({feature_name} [AS {slice_key}])
+  //    [FROM example.feature_name [, example.feature_name, ... ]
+  //    [WHERE ... ]]"
+  //
+  // The “example.feature_name” inside the FROM statement is used to flatten the
+  // repeated fields. For non-repeated fields, you can directly write the config
+  // as follows:
+  //   “SELECT STRUCT(non_repeated_feature_a, non_repeated_feature_b)”.
+  //
+  // When executing, this SQL expression will be further wrapped as:
+  //   “SELECT ARRAY({slice_keys_sql}) as slices FROM Examples as example”.
+  //
+  // The resulting output of the query will have the same number of rows as the
+  // input dataset. Each row will only have one column named "slices". Each row
+  // is a list. Each element in the list will be a list of tuple with
+  // ('key', 'value') pairs representing a slice. For example, a single row
+  // could be:
+  //   [[(‘gender’, ‘male’), (‘country’: ‘USA’)], [(‘zip_code’, ‘123456’)]]
+  //
+  // In the user’s SQL statement, the “example” is a key word that binds to each
+  // input "row". The semantics of this variable will depend on the decoding of
+  // the input data to the Arrow representation (e.g., for tf.Example, each key
+  // is decoded to a separate column). Thus, structured data can be readily
+  // accessed by iterating/unnesting the fields of the "example" variable.
+  //
+  // Example 1:
+  //   slice_keys_sql="SELECT STRUCT(gender) FROM example.gender"
+  //   - This equals to config: feature_keys=[gender]
+  //   - the slice key and value will be: (gender, {gender_value})
+  //
+  // Example 2:
+  //   slice_keys_sql =
+  //      "SELECT STRUCT(gender, country)
+  //       FROM example.gender, example.country
+  //       WHERE country = 'USA'"
+  //   - This equals to config:
+  //       feature_keys=[gender], feature_values={country:'USA'}
+  //   - the slice key and value will be:
+  //       (gender_x_country, {gender_value}_x_USA)
+  //
+  // Example 3 (background positive subgroup negative):
+  //   slice_keys_sql=
+  //     "SELECT STRUCT('male' as bpsn)
+  //      FROM example
+  //      WHERE ('male' not in UNNEST(example.gender) and 1 in
+  //             UNNEST(example.label)) or
+  //            ('male' in UNNEST(example.gender) and 0 in
+  //             UNNEST(example.label))"
+  //   - the slice key and value will be: (bpsn, male)
+  string slice_keys_sql = 3;
 }
 
 // Cross slicing specification.

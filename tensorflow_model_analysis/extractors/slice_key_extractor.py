@@ -105,6 +105,14 @@ class ExtractSliceKeysFn(beam.DoFn):
         slicer.get_slices_for_features_dicts(
             features_dicts, util.get_features_from_extracts(element),
             self._slice_spec))
+
+    # If SLICE_KEY_TYPES_KEY already exists, that means the
+    # SqlSliceKeyExtractor has generated some slice keys. We need to add
+    # them to current slice_keys list.
+    if (constants.SLICE_KEY_TYPES_KEY in element and
+        element[constants.SLICE_KEY_TYPES_KEY]):
+      slice_keys.extend(element[constants.SLICE_KEY_TYPES_KEY])
+
     unique_slice_keys = list(set(slice_keys))
     if len(slice_keys) != len(unique_slice_keys):
       self._duplicate_slice_keys_counter.inc()

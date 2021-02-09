@@ -161,6 +161,41 @@ class SliceTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       }], [slicer.SingleSliceSpec(columns=['interest'])], [[
           (('interest', 'boats'),), (('interest', 'planes'),)
       ], [(('interest', 'planes'),), (('interest', 'trains'),)]]),
+      ('features_with_batched_slices_keys', [''], [{
+          constants.FEATURES_KEY:
+              make_features_dict({
+                  'gender': ['m'],
+                  'age': [10],
+                  'interest': ['cars']
+              }),
+          constants.SLICE_KEY_TYPES_KEY: [(
+              ('age', '10'),
+              ('interest', 'cars'),
+          )]
+      }, {
+          constants.FEATURES_KEY:
+              make_features_dict({
+                  'gender': ['f'],
+                  'age': [12],
+                  'interest': ['cars']
+              }),
+          constants.SLICE_KEY_TYPES_KEY: [(
+              ('age', '12'),
+              ('interest', 'cars'),
+          )]
+      }], [slicer.SingleSliceSpec(columns=['gender'])], [[
+          (
+              ('age', '10'),
+              ('interest', 'cars'),
+          ),
+          (('gender', 'm'),),
+      ], [
+          (
+              ('age', '12'),
+              ('interest', 'cars'),
+          ),
+          (('gender', 'f'),),
+      ]]),
   )
   def testSliceKeys(self, model_names, extracts, slice_specs, expected_slices):
     eval_config = config.EvalConfig(
