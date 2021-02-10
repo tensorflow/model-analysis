@@ -68,7 +68,8 @@ def binary_confusion_matrices(
         ..., Any]] = metric_util.to_label_prediction_example_weight,
     preprocessor: Optional[Callable[..., Any]] = None,
     example_id_key: Optional[Text] = None,
-    example_ids_count: Optional[int] = None) -> metric_types.MetricComputations:
+    example_ids_count: Optional[int] = None,
+    fractional_labels: float = True) -> metric_types.MetricComputations:
   """Returns metric computations for computing binary confusion matrices.
 
   Args:
@@ -102,6 +103,15 @@ def binary_confusion_matrices(
     example_ids_count: Max number of example ids to be extracted for false
       positives and false negatives (relevant only when use_histogram flag is
       not true).
+    fractional_labels: If true, each incoming tuple of (label, prediction, and
+      example weight) will be split into two tuples as follows (where l, p, w
+      represent the resulting label, prediction, and example weight values): (1)
+        l = 0.0, p = prediction, and w = example_weight * (1.0 - label) (2) l =
+        1.0, p = prediction, and w = example_weight * label If enabled, an
+        exception will be raised if labels are not within [0, 1]. The
+        implementation is such that tuples associated with a weight of zero are
+        not yielded. This means it is safe to enable fractional_labels even when
+        the labels only take on the values of 0.0 or 1.0.
 
   Raises:
     ValueError: If both num_thresholds and thresholds are set at the same time.
@@ -178,7 +188,8 @@ def binary_confusion_matrices(
         example_id_key=example_id_key,
         example_ids_count=example_ids_count,
         aggregation_type=aggregation_type,
-        class_weights=class_weights)
+        class_weights=class_weights,
+        fractional_labels=fractional_labels)
     metric_key = computations[-1].keys[-1]
 
   def result(
@@ -294,8 +305,8 @@ def _binary_confusion_matrix_computation(
     example_id_key: Optional[Text] = None,
     example_ids_count: Optional[int] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    fractional_labels: float = True) -> metric_types.MetricComputations:
   """Returns metric computations for computing binary confusion matrix."""
   if example_ids_count is None:
     example_ids_count = DEFAULT_NUM_EXAMPLE_IDS
@@ -323,7 +334,8 @@ def _binary_confusion_matrix_computation(
               example_id_key=example_id_key,
               example_ids_count=example_ids_count,
               aggregation_type=aggregation_type,
-              class_weights=class_weights))
+              class_weights=class_weights,
+              fractional_labels=fractional_labels))
   ]
 
 
@@ -336,7 +348,8 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
                extract_label_prediction_and_weight: Callable[..., Any],
                example_id_key: Optional[Text], example_ids_count: float,
                aggregation_type: Optional[metric_types.AggregationType],
-               class_weights: Optional[Dict[int, float]]):
+               class_weights: Optional[Dict[int,
+                                            float]], fractional_labels: float):
     self._key = key
     self._eval_config = eval_config
     self._thresholds = thresholds
@@ -345,6 +358,7 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
     self._example_ids_count = example_ids_count
     self._aggregation_type = aggregation_type
     self._class_weights = class_weights
+    self._fractional_labels = fractional_labels
 
   def _merge_example_ids(self, list_1: List[Text],
                          list_2: List[Text]) -> List[Text]:
@@ -391,7 +405,7 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
         model_name=self._key.model_name,
         output_name=self._key.output_name,
         sub_key=self._key.sub_key,
-        fractional_labels=True,
+        fractional_labels=self._fractional_labels,
         flatten=True,
         aggregation_type=self._aggregation_type,
         class_weights=self._class_weights):
@@ -409,20 +423,21 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
       fp_example = None
       fn_example = None
       for i, _ in enumerate(labels):
-        if labels[i] == 0.0:
-          if predictions[i] > threshold:
-            fp += example_weights[i]
-            fp_example = example_id
-          else:
-            tn += example_weights[i]
-            tn_example = example_id
-        else:
+        if (labels[i] == 1.0
+            if self._fractional_labels else labels[i] > threshold):
           if predictions[i] > threshold:
             tp += example_weights[i]
             tp_example = example_id
           else:
             fn += example_weights[i]
             fn_example = example_id
+        else:
+          if predictions[i] > threshold:
+            fp += example_weights[i]
+            fp_example = example_id
+          else:
+            tn += example_weights[i]
+            tn_example = example_id
 
       result[threshold] = self._merge_matrix(
           result, threshold,
