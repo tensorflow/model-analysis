@@ -72,4 +72,9 @@ message ValidationResult {
 
   // Extra details about validation performed.
   ValidationDetails validation_details = 4;
+
+  // True if this run is rubbertamped. A rubberstamped validation is one in
+  // which there was no baseline model, so diff thresholds were ignored, but in
+  // which the non-diff thresholds are still checked.
+  bool rubber_stamp = 7;
 }

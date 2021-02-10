@@ -761,6 +761,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     expected_result = text_format.Parse(
         """
         validation_ok: false
+        rubber_stamp: %s
         missing_slices: {
           feature_keys: "non_existent_slice"
         }
@@ -770,7 +771,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             }
             num_matching_slices: 1
           }
-        }""", validation_result_pb2.ValidationResult())
+        }""" % rubber_stamp, validation_result_pb2.ValidationResult())
     # Normal run with change threshold not satisfied.
     if not rubber_stamp and not remove_baseline:
       text_format.Parse(

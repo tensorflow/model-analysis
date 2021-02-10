@@ -1684,6 +1684,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     self.assertTrue(validation_result.validation_ok)
     self.assertFalse(validation_result.missing_thresholds)
     self.assertEmpty(validation_result.metric_validations_per_slice)
+    self.assertTrue(validation_result.rubber_stamp)
 
   @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
   def testWriteMetricsAndPlots(self, output_file_format):

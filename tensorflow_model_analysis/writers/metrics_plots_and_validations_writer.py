@@ -622,6 +622,8 @@ class CombineValidations(beam.CombineFn):
         accumulator.missing_slices.extend(missing_slices)
       if missing_cross_slices:
         accumulator.missing_cross_slices.extend(missing_cross_slices)
+    if self._rubber_stamp:
+      accumulator.rubber_stamp = True
     return accumulator
 
 
