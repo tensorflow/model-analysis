@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tfx_bsl.telemetry import util
+
+
 # Mode for multiple model analysis runs
 UNKNOWN_EVAL_MODE = 'unknown_eval_mode'
 MODEL_CENTRIC_MODE = 'model_centric_mode'
@@ -36,7 +39,7 @@ TF_JS = 'tf_js'
 VALID_TF_MODEL_TYPES = (TF_GENERIC, TF_ESTIMATOR, TF_KERAS, TF_LITE, TF_JS)
 
 # LINT.IfChange
-METRICS_NAMESPACE = 'tfx.ModelAnalysis'
+METRICS_NAMESPACE = util.MakeTfxNamespace(['ModelAnalysis'])
 # LINT.ThenChange(../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
 
 # Keys for Extracts dictionary (keys starting with _ will not be materialized).
