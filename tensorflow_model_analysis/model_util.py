@@ -37,14 +37,18 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 
 # TODO(b/162075791): Need to load tensorflow_ranking and tensorflow_text for
 # models that use those ops.
+# pylint: disable=g-import-not-at-top
 try:
-  import tensorflow_ranking as _  # pylint: disable=g-import-not-at-top
-except (ImportError, tf.errors.NotFoundError) as e:
+  import tensorflow_ranking as _
+# tensorflow_ranking may not be available, or it may fail to be imported
+# (because it does not support TF 1.x).
+except Exception as e:  # pylint: disable=broad-except
   logging.info('tensorflow_ranking is not available: %s', e)
 try:
-  import tensorflow_text as _  # pylint: disable=g-import-not-at-top
+  import tensorflow_text as _
 except (ImportError, tf.errors.NotFoundError) as e:
   logging.info('tensorflow_text is not available: %s', e)
+# pylint: enable=g-import-not-at-top
 
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 
