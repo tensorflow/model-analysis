@@ -125,7 +125,7 @@ let PointerEventData;
 
 const ModeText = {
   [SortBy.POSITIVES]: 'Total prediction count',
-  [SortBy.FALSE_POSITIVES]: 'Incorrect prediciton counts',
+  [SortBy.FALSE_POSITIVES]: 'Incorrect prediction counts',
   [SortBy.FALSE_NEGATIVES]: 'False negative count',
 };
 
