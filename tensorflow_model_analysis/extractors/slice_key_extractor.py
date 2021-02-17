@@ -72,20 +72,20 @@ def SliceKeyExtractor(
       ptransform=ExtractSliceKeys(slice_spec, eval_config, materialize))
 
 
-@beam.typehints.with_input_types(types.Extracts)
+@beam.typehints.with_input_types(types.Extracts, List[slicer.SingleSliceSpec])
 @beam.typehints.with_output_types(types.Extracts)
 class ExtractSliceKeysFn(beam.DoFn):
   """A DoFn that extracts slice keys that apply per example."""
 
-  def __init__(self, slice_spec: List[slicer.SingleSliceSpec],
-               eval_config: Optional[config.EvalConfig], materialize: bool):
-    self._slice_spec = slice_spec
+  def __init__(self, eval_config: Optional[config.EvalConfig],
+               materialize: bool):
     self._eval_config = eval_config
     self._materialize = materialize
     self._duplicate_slice_keys_counter = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_examples_with_duplicate_slice_keys')
 
-  def process(self, element: types.Extracts) -> List[types.Extracts]:
+  def process(self, element: types.Extracts,
+              slice_spec: List[slicer.SingleSliceSpec]) -> List[types.Extracts]:
     # Slice on transformed features if available.
     features_dicts = []
     if (constants.TRANSFORMED_FEATURES_KEY in element and
@@ -104,7 +104,7 @@ class ExtractSliceKeysFn(beam.DoFn):
     slice_keys = list(
         slicer.get_slices_for_features_dicts(
             features_dicts, util.get_features_from_extracts(element),
-            self._slice_spec))
+            slice_spec))
 
     # If SLICE_KEY_TYPES_KEY already exists, that means the
     # SqlSliceKeyExtractor has generated some slice keys. We need to add
@@ -139,4 +139,4 @@ def ExtractSliceKeys(extracts: beam.pvalue.PCollection,
                      eval_config: Optional[config.EvalConfig] = None,
                      materialize: bool = True) -> beam.pvalue.PCollection:
   return extracts | beam.ParDo(
-      ExtractSliceKeysFn(slice_spec, eval_config, materialize))
+      ExtractSliceKeysFn(eval_config, materialize), slice_spec=slice_spec)
