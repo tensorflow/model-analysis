@@ -35,7 +35,8 @@ TensorOrOperationType = Union[TensorType, tf.Operation]
 DictOfTensorType = Dict[Text, TensorType]
 TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
 
-TensorValue = Union[tf.compat.v1.SparseTensorValue, np.ndarray]
+SparseTensorValue = tf.compat.v1.SparseTensorValue
+TensorValue = Union[SparseTensorValue, np.ndarray]
 DictOfTensorValue = Dict[Text, TensorValue]
 TensorValueMaybeDict = Union[TensorValue, DictOfTensorValue]
 DictOfTensorValueMaybeDict = Dict[Text, TensorValueMaybeDict]
