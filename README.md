@@ -70,6 +70,51 @@ Note: If Jupyter notebook is already installed in your home directory, add
 `--user` to these commands. If Jupyter is installed as root, or using a virtual
 environment, the parameter `--sys-prefix` might be required.
 
+### Jupyter Lab
+
+As of writing, because of https://github.com/pypa/pip/issues/9187, `pip install`
+might never finish. In that case, you should revert pip to version 19 instead of
+20: `pip install "pip<20"`.
+
+Using a JupyterLab extension requires installing dependencies on the command
+line. You can do this within the console in the JupyterLab UI or on the command
+line. This includes separately installing any pip package dependencies and
+JupyterLab labextension plugin dependencies, and the version numbers must be
+compatible.
+
+The examples below use 0.27.0. Check available [versions](#compatible-versions)
+below to use the latest.
+
+#### Jupyter Lab 1.2.x
+
+```Shell
+pip install tensorflow_model_analysis==0.27.0
+jupyter labextension install tensorflow_model_analysis@0.27.0
+jupyter labextension install @jupyter-widgets/jupyterlab-manager@1.1
+```
+
+#### Jupyter Lab 2
+
+```Shell
+pip install tensorflow_model_analysis==0.27.0
+jupyter labextension install tensorflow_model_analysis@0.27.0
+jupyter labextension install @jupyter-widgets/jupyterlab-manager@2
+```
+
+#### Troubleshooting
+
+Check pip packages:
+
+```Shell
+pip list
+```
+
+Check extensions:
+
+```Shell
+jupyter labextension list
+```
+
 ### Notable Dependencies
 
 TensorFlow is required.

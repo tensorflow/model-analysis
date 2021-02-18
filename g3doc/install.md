@@ -51,13 +51,62 @@ Note: If Jupyter notebook is already installed in your home directory, add
 `--user` to these commands. If Jupyter is installed as root, or using a virtual
 environment, the parameter `--sys-prefix` might be required.
 
+### Jupyter Lab
+
+As of writing, because of https://github.com/pypa/pip/issues/9187, `pip install`
+might never finish. In that case, you should revert pip to version 19 instead of
+20: `pip install "pip<20"`.
+
+Using a JupyterLab extension requires installing dependencies on the command
+line. You can do this within the console in the JupyterLab UI or on the command
+line. This includes separately installing any pip package dependencies and
+JupyterLab labextension plugin dependencies, and the version numbers must be
+compatible.
+
+The examples below use 0.27.0. Check available [versions](#compatible-versions)
+below to use the latest.
+
+#### Jupyter Lab 1.2.x
+
+```posix-terminal
+pip install tensorflow_model_analysis==0.27.0
+
+jupyter labextension install tensorflow_model_analysis@0.27.0
+
+jupyter labextension install @jupyter-widgets/jupyterlab-manager@1.1
+```
+
+#### Jupyter Lab 2
+
+```posix-terminal
+pip install tensorflow_model_analysis==0.27.0
+
+jupyter labextension install tensorflow_model_analysis@0.27.0
+
+jupyter labextension install @jupyter-widgets/jupyterlab-manager@2
+```
+
+#### Troubleshooting
+
+Check pip packages:
+
+```posix-terminal
+pip list
+```
+
+Check extensions:
+
+```posix-terminal
+jupyter labextension list
+```
+
 ### Notable Dependencies
 
 TensorFlow is required.
 
 [Apache Beam](https://beam.apache.org/) is required; it's the way that efficient
-distributed computation is supported. By default, Apache Beam runs in local
-mode but can also run in distributed mode using
+distributed computation is supported. By default, Apache Beam runs in local mode
+but can also run in distributed mode using
 [Google Cloud Dataflow](https://cloud.google.com/dataflow/) and other Apache
 Beam
 [runners](https://beam.apache.org/documentation/runners/capability-matrix/).
