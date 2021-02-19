@@ -25,11 +25,17 @@
     "rimraf": "^2.6.1"
   },
   "dependencies": {
-    "@jupyter-widgets/base": "^1.1 || ^2 || ^3",
+    "@jupyter-widgets/base": "^1.1 || ^2 || ^3 || ^4",
     "lodash": "^4.17.4"
   },
   "jupyterlab": {
-    "extension": "lib/labplugin"
+    "extension": "lib/labplugin",
+    "sharedPackages": {
+      "@jupyter-widgets/base": {
+        "bundled": false,
+        "singleton": true
+      }
+    }
   },
   "publishConfig": {
     "registry": "https://wombat-dressing-room.appspot.com"
