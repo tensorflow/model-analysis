@@ -59,6 +59,31 @@ Currently, TFMA requires that TensorFlow is installed but does not have an
 explicit dependency on the TensorFlow PyPI package. See the
 [TensorFlow install guides](https://www.tensorflow.org/install/) for instructions.
 
+### Build TFMA from source
+
+To build from source follow the following steps:
+
+Install the protoc as per the link mentioned:
+[protoc](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os)
+
+Create a virtual environment by running the commands
+
+```
+python3 -m venv <virtualenv_name>
+source <virtualenv_name>/bin/activate
+pip3 install setuptools wheel
+git clone https://github.com/tensorflow/model-analysis.git
+cd model-analysis
+python3 setup.py bdist_wheel
+```
+This will build the TFMA wheel in the dist directory. To install the wheel from
+dist directory run the commands
+
+```
+cd dist
+pip3 install tensorflow_model_analysis-<version>-py3-none-any.whl
+```
+
 To enable TFMA visualization in Jupyter Notebook:
 
 <pre class="prettyprint">
