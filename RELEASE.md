@@ -7,6 +7,8 @@
 *   Add a new base computation for binary confusion matrix (other than based on
     calibration histogram). It also provides a sample of examples for the
     confusion matrix.
+*   Adding two new metrics - Flip Count and Flip Rate to evaluate Counterfactual
+    Fairness.
 
 ## Bug fixes and other changes
 

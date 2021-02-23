@@ -12,8 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Init module for TensorFlow Model Analysis fairness metrics."""
+"""Init module for TensorFlow Model Analysis Counterfactual Fairness metrics."""
 
 # The import will trigger the metrics registration.
-from tensorflow_model_analysis.addons.fairness.metrics import counterfactual_fairness
-from tensorflow_model_analysis.addons.fairness.metrics.fairness_indicators import FairnessIndicators
+from tensorflow_model_analysis.addons.fairness.metrics.counterfactual_fairness.flip_count import FlipCount
+from tensorflow_model_analysis.addons.fairness.metrics.counterfactual_fairness.flip_rate import FlipRate
