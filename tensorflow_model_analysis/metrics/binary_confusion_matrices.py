@@ -465,7 +465,19 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
     return result
 
   def extract_output(
-      self, accumulator: Matrices) -> Dict[metric_types.MetricKey, Matrices]:
+      self, accumulator: MatrixAccumulator
+  ) -> Dict[metric_types.MetricKey, MatrixAccumulator]:
+    for threshold in self._thresholds:
+      if threshold not in accumulator:
+        accumulator[threshold] = Matrix(
+            tp=0.0,
+            tn=0.0,
+            fp=0.0,
+            fn=0.0,
+            tp_examples=[],
+            tn_examples=[],
+            fp_examples=[],
+            fn_examples=[])
     return {self._key: accumulator}
 
 
