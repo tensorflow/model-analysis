@@ -49,6 +49,7 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metrics as metric_fns
 from tensorflow_model_analysis.proto import validation_result_pb2
+from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 from google.protobuf import text_format
@@ -543,6 +544,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     extractors = [
         legacy_predict_extractor.PredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
@@ -573,12 +575,17 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             fixed_string='fixed_string2')
     ]
 
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -1827,6 +1834,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     extractors = [
         legacy_predict_extractor.PredictExtractor(
             eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
@@ -1848,12 +1856,17 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             age=5.0, language='chinese', label=1.0, slice_key='second_slice')
     ]
 
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       metrics = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -1934,6 +1947,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     extractors = [
         legacy_predict_extractor.PredictExtractor(
             eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
@@ -1955,12 +1969,17 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             age=5.0, language='chinese', label=1.0, slice_key='second_slice')
     ]
 
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       evaluations = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 
@@ -2127,6 +2146,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     extractors = [
         legacy_predict_extractor.PredictExtractor(
             eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]
     evaluators = [
@@ -2169,12 +2189,17 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             fixed_string='fixed_string2'),
     ]
 
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       evaluations = (
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
               extractors=extractors, evaluators=evaluators))
 

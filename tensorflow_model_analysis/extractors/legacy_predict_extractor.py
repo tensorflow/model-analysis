@@ -19,12 +19,14 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import collections
 import copy
 
 from typing import Any, Dict, List, Optional, Sequence, Text
 
 import apache_beam as beam
 import numpy as np
+import pyarrow as pa
 
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
@@ -43,7 +45,7 @@ _FEATURES_PREDICTIONS_LABELS_KEY_MAP = {
 }
 
 
-def PredictExtractor(
+def PredictExtractor(  # pylint: disable=invalid-name
     eval_shared_model: types.MaybeMultipleEvalSharedModels,
     desired_batch_size: Optional[int] = None,
     materialize: Optional[bool] = True,
@@ -158,7 +160,44 @@ class _TFMAPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
           # Assume values except for predictions are same for all models.
           element_copy[constants.PREDICTIONS_KEY][model_name] = fetched.values[
               eval_saved_model_constants.PREDICTIONS_NAME]
+    if self._eval_config:
+      return [_wrap_as_batched_extract(result)]
     return result
+
+
+# TODO(pachristopher): Currently the batched extract has a list of per-example
+# feature dicts. Convert this to a batched feature dict where each feature
+# will have a batch of ndarrays.
+def _wrap_as_batched_extract(extracts: List[types.Extracts]) -> types.Extracts:
+  """Wrap list of per-example extracts as a batched extract."""
+  result = collections.defaultdict(list)
+  for e in extracts:
+    for key, value in e.items():
+      result[key].append(value)
+  return result
+
+
+def _fetch_raw_data_column(record_batch: pa.RecordBatch) -> np.ndarray:
+  """Fetch the raw data column.
+
+  Args:
+    record_batch: An Arrow RecordBatch.
+
+  Returns:
+    Raw data column.
+  """
+  column_index = record_batch.schema.get_field_index(
+      constants.ARROW_INPUT_COLUMN)
+  assert column_index >= 0, 'Arrow input column not found.'
+  return np.asarray(record_batch.column(column_index).flatten())
+
+
+def _unwrap_batched_extract(
+    batched_extract: types.Extracts) -> List[types.Extracts]:
+  """Unwraps batched extract."""
+  serialized_examples = _fetch_raw_data_column(
+      batched_extract[constants.ARROW_RECORD_BATCH_KEY])
+  return [{constants.INPUT_KEY: e} for e in serialized_examples]
 
 
 @beam.ptransform_fn
@@ -185,13 +224,20 @@ def _TFMAPredict(  # pylint: disable=invalid-name
     PCollection of Extracts, where the extracts contains the features,
     predictions, labels retrieved.
   """
-  batch_args = {}
+  if not eval_config:
+    batch_args = {}
 
-  # TODO(b/143484017): Consider removing this option if autotuning is better
-  # able to handle batch size selection.
-  if desired_batch_size:
-    batch_args = dict(
-        min_batch_size=desired_batch_size, max_batch_size=desired_batch_size)
+    # TODO(b/143484017): Consider removing this option if autotuning is better
+    # able to handle batch size selection.
+    if desired_batch_size:
+      batch_args = dict(
+          min_batch_size=desired_batch_size, max_batch_size=desired_batch_size)
+
+    extracts = (extracts | 'Batch' >> beam.BatchElements(**batch_args))
+  else:
+    extracts = (
+        extracts
+        | 'UnwrapBatchedExtract' >> beam.Map(_unwrap_batched_extract))
 
   # We don't actually need to add the add_metrics_callbacks to do Predict,
   # but because if we want to share the model between Predict and subsequent
@@ -200,7 +246,6 @@ def _TFMAPredict(  # pylint: disable=invalid-name
   # in the model in the later stages if we reuse the model from this stage.
   extracts = (
       extracts
-      | 'Batch' >> beam.BatchElements(**batch_args)
       | 'Predict' >> beam.ParDo(
           _TFMAPredictionDoFn(
               eval_shared_models=eval_shared_models, eval_config=eval_config)))

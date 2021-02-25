@@ -37,6 +37,7 @@ try:
   from tensorflow_model_analysis.api.model_eval_lib import ExtractEvaluateAndWriteResults
   from tensorflow_model_analysis.api.model_eval_lib import InputsToExtracts
   from tensorflow_model_analysis.api.model_eval_lib import is_batched_input
+  from tensorflow_model_analysis.api.model_eval_lib import is_legacy_estimator
   from tensorflow_model_analysis.api.model_eval_lib import load_attributions
   from tensorflow_model_analysis.api.model_eval_lib import load_eval_result
   from tensorflow_model_analysis.api.model_eval_lib import load_eval_results

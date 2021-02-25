@@ -49,7 +49,8 @@ def _ExtractUnbatchedInputs(
     batched_extract: types.Extracts) -> Sequence[types.Extracts]:
   """Extract features, predictions, labels and weights from batched extract."""
   keys_to_retain = set(batched_extract.keys())
-  keys_to_retain.remove(constants.ARROW_RECORD_BATCH_KEY)
+  if constants.ARROW_RECORD_BATCH_KEY in keys_to_retain:
+    keys_to_retain.remove(constants.ARROW_RECORD_BATCH_KEY)
   dataframe = pd.DataFrame()
   for key in keys_to_retain:
     dataframe[key] = batched_extract[key]

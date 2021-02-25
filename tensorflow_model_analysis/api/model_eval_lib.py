@@ -62,6 +62,7 @@ from tensorflow_model_analysis.writers import eval_config_writer
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 from tensorflow_model_analysis.writers import writer
 from tfx_bsl.arrow import table_util
+from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import tf_example_record
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -542,6 +543,7 @@ def default_extractors(  # pylint: disable=invalid-name
               eval_shared_model,
               materialize=materialize,
               eval_config=eval_config),
+          unbatch_extractor.UnbatchExtractor(),
           slice_key_extractor.SliceKeyExtractor(
               eval_config=eval_config, materialize=materialize)
       ]
@@ -902,6 +904,27 @@ def WriteResults(  # pylint: disable=invalid-name
   return beam.pvalue.PDone(list(evaluation_or_validation.values())[0].pipeline)
 
 
+def is_legacy_estimator(
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None
+) -> bool:
+  """Returns true if there is a legacy estimator.
+
+  Args:
+    eval_shared_model: Shared model (single-model evaluation) or list of shared
+      models (multi-model evaluation). Required unless the predictions are
+      provided alongside of the features (i.e. model-agnostic evaluations).
+
+  Returns:
+    A boolean indicating if legacy predict extractor will be used.
+  """
+  model_types = _model_types(eval_shared_model)
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
+  return (model_types == set([constants.TF_ESTIMATOR]) and
+          all(eval_constants.EVAL_TAG in m.model_loader.tags
+              for m in eval_shared_models))
+
+
 def is_batched_input(eval_shared_model: Optional[
     types.MaybeMultipleEvalSharedModels] = None,
                      eval_config: config.EvalConfig = None,
@@ -930,14 +953,8 @@ def is_batched_input(eval_shared_model: Optional[
     return False
   elif eval_shared_model:
     model_types = _model_types(eval_shared_model)
-    eval_shared_models = model_util.verify_and_update_eval_shared_models(
-        eval_shared_model)
     if (model_types == set([constants.TF_LITE]) or
         model_types == set([constants.TF_JS])):
-      return False
-    elif (eval_config and model_types == set([constants.TF_ESTIMATOR]) and
-          all(eval_constants.EVAL_TAG in m.model_loader.tags
-              for m in eval_shared_models)):
       return False
   return True
 
@@ -1190,21 +1207,36 @@ def run_model_analysis(
   with beam.Pipeline(options=pipeline_options) as p:
     if file_format == 'tfrecords':
       if is_batched_input(eval_shared_model, eval_config, config_version):
-        tfxio = tf_example_record.TFExampleRecord(
-            file_pattern=data_location,
-            schema=schema,
-            raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-        if schema is not None:
-          tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-              arrow_schema=tfxio.ArrowSchema(),
-              tensor_representations=tfxio.TensorRepresentations())
+        if is_legacy_estimator(eval_shared_model):
+          tfxio = raw_tf_record.RawTfRecordTFXIO(
+              file_pattern=data_location,
+              raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+              telemetry_descriptors=['StandaloneTFMA'])
+        else:
+          tfxio = tf_example_record.TFExampleRecord(
+              file_pattern=data_location,
+              schema=schema,
+              raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+              telemetry_descriptors=['StandaloneTFMA'])
+          if schema is not None:
+            tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+                arrow_schema=tfxio.ArrowSchema(),
+                tensor_representations=tfxio.TensorRepresentations())
         data = p | 'ReadFromTFRecordToArrow' >> tfxio.BeamSource()
       else:
         data = p | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
             file_pattern=data_location,
             compression_type=beam.io.filesystem.CompressionTypes.AUTO)
     elif file_format == 'text':
-      data = p | 'ReadFromText' >> beam.io.textio.ReadFromText(data_location)
+      tfxio = raw_tf_record.RawBeamRecordTFXIO(
+          physical_format='csv',
+          raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+          telemetry_descriptors=['StandaloneTFMA'])
+      data = (
+          p
+          | 'ReadFromText' >> beam.io.textio.ReadFromText(
+              data_location, coder=beam.coders.BytesCoder())
+          | 'ConvertToArrow' >> tfxio.BeamSource())
     else:
       raise ValueError('unknown file_format: {}'.format(file_format))
 

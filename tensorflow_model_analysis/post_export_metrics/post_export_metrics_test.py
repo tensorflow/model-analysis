@@ -27,6 +27,7 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
 from tensorflow_model_analysis.eval_saved_model import export
@@ -45,6 +46,8 @@ from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evalua
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
+
+from tfx_bsl.tfxio import raw_tf_record
 
 _TEST_SEED = 857586
 
@@ -75,11 +78,16 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     eval_config = config.EvalConfig()
     extractors = model_eval_lib.default_extractors(
         eval_config=eval_config, eval_shared_model=eval_shared_model)
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
     with beam.Pipeline() as pipeline:
       (metrics, plots), _ = (
           pipeline
           | 'Create' >> beam.Create(serialized_examples, reshuffle=False)
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'ToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
           | 'ComputeMetricsAndPlots' >>
           legacy_metrics_and_plots_evaluator.ComputeMetricsAndPlots(

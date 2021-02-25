@@ -50,6 +50,7 @@ from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
+from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 
@@ -1707,7 +1708,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 num_buckets=2)
         ])
     extractors = [
-        legacy_predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(
+            eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor()
     ]
     evaluators = [
@@ -1726,6 +1729,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             output_file_format=output_file_format)
     ]
 
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
     with beam.Pipeline() as pipeline:
       example1 = self._makeExample(prediction=0.0, label=1.0)
       example2 = self._makeExample(prediction=1.0, label=1.0)
@@ -1737,6 +1744,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
               example1.SerializeToString(),
               example2.SerializeToString(),
           ])
+          | 'BatchExamples' >> tfx_io.BeamSource()
           | 'ExtractEvaluateAndWriteResults' >>
           model_eval_lib.ExtractEvaluateAndWriteResults(
               eval_config=eval_config,
@@ -1853,7 +1861,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 num_buckets=2)
         ])
     extractors = [
-        legacy_predict_extractor.PredictExtractor(eval_shared_model),
+        legacy_predict_extractor.PredictExtractor(
+            eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(
             eval_config=eval_config, materialize=False)
     ]
@@ -1873,6 +1883,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             output_file_format=output_file_format)
     ]
 
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
     with beam.Pipeline() as pipeline:
       example1 = self._makeExample(prediction=0.0, label=1.0, country='US')
       example2 = self._makeExample(prediction=1.0, label=1.0, country='CA')
@@ -1884,6 +1898,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
               example1.SerializeToString(),
               example2.SerializeToString(),
           ])
+          | 'BatchExamples' >> tfx_io.BeamSource()
           | 'ExtractEvaluateAndWriteResults' >>
           model_eval_lib.ExtractEvaluateAndWriteResults(
               eval_config=eval_config,

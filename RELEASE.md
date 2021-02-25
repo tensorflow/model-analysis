@@ -6,6 +6,8 @@
 
 ## Bug fixes and other Changes
 
+*   Make legacy predict extractor also input/output batched extracts.
+
 ## Breaking Changes
 
 ## Deprecations

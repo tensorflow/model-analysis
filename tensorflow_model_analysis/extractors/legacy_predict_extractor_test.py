@@ -39,6 +39,8 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import fake_mul
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.extractors import legacy_predict_extractor as predict_extractor
 
+from tfx_bsl.tfxio import raw_tf_record
+
 
 class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
                            parameterized.TestCase):
@@ -107,11 +109,18 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
         None, temp_eval_export_dir)
     model2 = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model2_dir)
+    eval_shared_model = {'model1': model1, 'model2': model2}
     eval_config = config.EvalConfig(model_specs=[
         config.ModelSpec(name='model1', example_weight_key='age'),
         config.ModelSpec(name='model2', example_weight_key='age')
     ])
 
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
+    extractor = predict_extractor.PredictExtractor(
+        eval_shared_model, eval_config=eval_config)
     with beam.Pipeline() as pipeline:
       examples = [
           self._makeExample(age=3.0, language='english', label=1.0),
@@ -124,31 +133,27 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
       predict_extracts = (
           pipeline
           | beam.Create(serialized_examples, reshuffle=False)
-          # Our diagnostic outputs, pass types.Extracts throughout, however our
-          # aggregating functions do not use this interface.
-          | beam.Map(lambda x: {constants.INPUT_KEY: x})
-          | 'Predict' >> predict_extractor._TFMAPredict(
-              eval_shared_models={
-                  'model1': model1,
-                  'model2': model2
-              },
-              desired_batch_size=3,
-              eval_config=eval_config))
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | 'Predict' >> extractor.ptransform)
 
       def check_result(got):
         try:
-          self.assertLen(got, 4)
+          self.assertLen(got, 2)
           for item in got:
             self.assertIn(constants.FEATURES_KEY, item)
             for feature in ('language', 'age'):
-              self.assertIn(feature, item[constants.FEATURES_KEY])
+              for features_dict in item[constants.FEATURES_KEY]:
+                self.assertIn(feature, features_dict)
             self.assertIn(constants.LABELS_KEY, item)
             self.assertIn(constants.PREDICTIONS_KEY, item)
             for model in ('model1', 'model2'):
-              self.assertIn(model, item[constants.PREDICTIONS_KEY])
+              for predictions_dict in item[constants.PREDICTIONS_KEY]:
+                self.assertIn(model, predictions_dict)
             self.assertIn(constants.EXAMPLE_WEIGHTS_KEY, item)
-            self.assertAlmostEqual(item[constants.FEATURES_KEY]['age'],
-                                   item[constants.EXAMPLE_WEIGHTS_KEY])
+            for i in range(len(item[constants.FEATURES_KEY])):
+              self.assertAlmostEqual(item[constants.FEATURES_KEY][i]['age'],
+                                     item[constants.EXAMPLE_WEIGHTS_KEY][i])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -226,6 +231,51 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
               eval_shared_models={'': eval_shared_model}, desired_batch_size=3))
 
       util.assert_that(predict_extracts, check_result)
+
+  def testBatchedPredict(self):
+    temp_eval_export_dir = self._getEvalExportDir()
+    _, eval_export_dir = linear_classifier.simple_linear_classifier(
+        None, temp_eval_export_dir)
+    eval_shared_model = model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=eval_export_dir)
+    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    with beam.Pipeline() as pipeline:
+      examples = [
+          self._makeExample(age=3.0, language='english', label=1.0),
+          self._makeExample(age=3.0, language='chinese', label=0.0),
+          self._makeExample(age=4.0, language='english', label=1.0),
+          self._makeExample(age=5.0, language='chinese', label=0.0),
+      ]
+      serialized_examples = [e.SerializeToString() for e in examples]
+
+      tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+          physical_format='inmemory',
+          raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+          telemetry_descriptors=['TFMATest'])
+      extractor = predict_extractor.PredictExtractor(
+          eval_shared_model, eval_config=eval_config)
+      predict_extracts = (
+          pipeline
+          | 'Create' >> beam.Create(serialized_examples, reshuffle=False)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | 'Predict' >> extractor.ptransform)
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 2)
+          for item in got:
+            self.assertIn(constants.FEATURES_KEY, item)
+            for feature in ('language', 'age'):
+              for features_dict in item[constants.FEATURES_KEY]:
+                self.assertIn(feature, features_dict)
+            self.assertIn(constants.LABELS_KEY, item)
+            self.assertIn(constants.PREDICTIONS_KEY, item)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(predict_extracts, check_result, label='result')
 
 
 if __name__ == '__main__':

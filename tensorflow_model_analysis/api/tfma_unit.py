@@ -67,6 +67,7 @@ import apache_beam as beam
 from apache_beam.testing import util as beam_util
 
 from tensorflow_model_analysis import config
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import load
@@ -74,6 +75,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tfx_bsl.tfxio import raw_tf_record
 
 
 @beam.ptransform_fn
@@ -280,12 +282,17 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     extractors = model_eval_lib.default_extractors(
         eval_config=eval_config, eval_shared_model=eval_shared_model)
 
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       (metrics, _), _ = (
           pipeline
           | 'CreateExamples' >> beam.Create(serialized_examples)
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'Extract' >> Extract(extractors=extractors)
           | 'ComputeMetricsAndPlots' >> legacy_metrics_and_plots_evaluator
           .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
@@ -373,10 +380,15 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     extractors = model_eval_lib.default_extractors(
         eval_config=eval_config, eval_shared_model=eval_shared_model)
 
+    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
+        physical_format='inmemory',
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        telemetry_descriptors=['TFMATest'])
     # pylint: disable=no-value-for-parameter
     (metrics, _), _ = (
         examples_pcollection
-        | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+        | 'BatchExamples' >> tfx_io.BeamSource()
+        | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
         | 'Extract' >> Extract(extractors=extractors)
         | 'ComputeMetricsAndPlots' >> legacy_metrics_and_plots_evaluator
         .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
