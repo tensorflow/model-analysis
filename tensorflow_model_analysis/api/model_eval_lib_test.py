@@ -666,9 +666,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
           rubber_stamp=rubber_stamp)
 
     examples = [
-        self._makeExample(data=[0.0] * 28 * 28, label=1.0),
-        self._makeExample(data=[1.0] * 28 * 28, label=5.0),
-        self._makeExample(data=[1.0] * 28 * 28, label=9.0),
+        self._makeExample(
+            data=[0.0] * 28 * 28,
+            label=[0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        self._makeExample(
+            data=[1.0] * 28 * 28,
+            label=[0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        self._makeExample(
+            data=[1.0] * 28 * 28,
+            label=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]),
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
 

@@ -860,12 +860,18 @@ def one_hot(tensor: np.ndarray, target: np.ndarray) -> np.ndarray:
     Tensor with last dimension encoded as a one-hot vector with the overall
     shape the same as that of target.
   """
-  # For values that are OOV (i.e. set to -1) we will use a vector of all 0's.
-  # When np.eye is indexed by -1, a value of all 0's followed by 1 is used for
-  # the row. The following handles -1 values by adding an additional column for
-  # indexing the -1 and then removing it after.
-  tensor = np.delete(np.eye(target.shape[-1] + 1)[tensor], -1, axis=-1)
-  return tensor.reshape(target.shape)
+  try:
+    # For values that are OOV (i.e. set to -1) we will use a vector of all 0's.
+    # When np.eye is indexed by -1, a value of all 0's followed by 1 is used for
+    # the row. The following handles -1 values by adding an additional column
+    # for indexing the -1 and then removing it after.
+    tensor = np.delete(
+        np.eye(target.shape[-1] + 1)[tensor.astype(int)], -1, axis=-1)
+    return tensor.reshape(target.shape)
+  except IndexError as e:
+    raise ValueError(
+        'invalid inputs to one_hot: tensor={}, target={}, error={}'.format(
+            tensor, target, e))
 
 
 def merge_per_key_computations(

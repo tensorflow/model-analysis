@@ -663,22 +663,30 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   computations = []
   # Add default metric computations
   if eval_shared_models:
+    # Note that there is the possibility for metric naming collisions here
+    # (e.g. 'auc' calculated within the model as well as by AUC metric
+    # computation performed outside the model). Currently all the overlapping
+    # metrics such as AUC that are computed outside the model are all derived
+    # metrics so they will override the metrics calculated by the model which is
+    # the desired behavior.
     for model_name, eval_shared_model in eval_shared_models.items():
       if not eval_shared_model.include_default_metrics:
         continue
       if eval_shared_model.model_type == constants.TF_KERAS:
-        keras_specs = keras_util.metrics_specs_from_keras(
-            model_name, eval_shared_model.model_loader)
-        metrics_specs = keras_specs + metrics_specs[:]
-        # TODO(mdreves): Add support for calling keras.evaluate().
+        # TODO(b/154395500): Add support for calling keras model.evaluate() and
+        # remove call to metrics_specs_from_keras.
+        model = eval_shared_model.model_loader.construct_fn()
+        if (hasattr(model, 'compiled_metrics') and
+            hasattr(model, 'compiled_loss')):
+          computations.extend(
+              keras_util.metric_computations_using_keras_saved_model(
+                  model_name, eval_shared_model.model_loader, eval_config))
+        else:
+          keras_specs = keras_util.metrics_specs_from_keras(
+              model_name, eval_shared_model.model_loader)
+          metrics_specs = keras_specs + metrics_specs[:]
       elif (eval_shared_model.model_type == constants.TF_ESTIMATOR and
             eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags):
-        # Note that there is the possibility for metric naming collisions here
-        # (e.g. 'auc' calculated within the EvalSavedModel as well as by AUC
-        # metric computation performed outside the model). Currently all the
-        # overlapping metrics such as AUC that are computed outside the model
-        # are all derived metrics so they will override the metrics calculated
-        # by the model which is the desired behavior.
         computations.extend(
             eval_saved_model_util.metric_computations_using_eval_saved_model(
                 model_name, eval_shared_model.model_loader))

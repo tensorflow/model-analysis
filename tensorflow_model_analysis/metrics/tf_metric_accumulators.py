@@ -93,7 +93,8 @@ class TFMetricsAccumulator(object):
     """Adds new inputs to the lists of input args stored at output_index."""
     for i, v in enumerate(args):
       self._inputs[output_index][i].append(v)
-      self._size_estimator.update(v)
+      if v is not None:
+        self._size_estimator.update(v)
 
   def get_inputs(self, output_index: int) -> Any:
     """Returns input args for output at given offset."""

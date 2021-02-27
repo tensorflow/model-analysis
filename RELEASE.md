@@ -7,6 +7,8 @@
 ## Bug fixes and other Changes
 
 *   Make legacy predict extractor also input/output batched extracts.
+*   Updated to use new compiled_metrics and compiled_loss APIs for keras
+    in-graph metric computations.
 
 ## Breaking Changes
 
