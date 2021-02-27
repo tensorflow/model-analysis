@@ -31,91 +31,18 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_accumulators
-
-
-def metrics_specs_from_keras(
-    model_name: Text,
-    model_loader: types.ModelLoader,
-) -> List[config.MetricsSpec]:
-  """Returns metrics specs for metrics and losses associated with the model."""
-  model = model_loader.construct_fn()
-  if model is None:
-    return []
-
-  metric_names = []
-  metrics = []
-  if hasattr(model, 'loss_functions'):
-    # Legacy keras metrics separate the losses from the metrics and store them
-    # under loss_functions. The first name in metric_names is always 'loss'
-    # followed by the loss_function names (prefixed by output_name if multiple
-    # outputs) and then followed by the metric names (also prefixed by output
-    # name). Note that names in loss_functions will not have any output name
-    # prefixes (if used) while the metrics will so we need to use the names in
-    # metric_names for matching with outputs not the names in the functions.
-    metric_names = model.metrics_names
-    metrics.extend(model.loss_functions)
-    metrics.extend(model.metrics)
-    if len(metric_names) > len(metrics) and metric_names[0] == 'loss':
-      metric_names = metric_names[1:]
-  elif hasattr(model, 'compiled_loss') and hasattr(model, 'compiled_metrics'):
-    # In the new keras metric setup the metrics include the losses (in the form
-    # of a metric type not a loss type) and the metrics_names align with the
-    # names in the metric classes. The metrics itself contains compiled_loss,
-    # compiled_metrics, and custom metrics (added via add_metric). Since we only
-    # care about compiled metrics we use these APIs instead. Note that the
-    # overall loss metric is an average of the other losses which doesn't take
-    # y_true, y_pred as inputs so it can't be calculated via standard inputs so
-    # we remove it.
-    for m in model.compiled_loss.metrics:
-      # TODO(b/143228390): Pure Mean metrics cannot be calculated using labels,
-      # predictions, and example weights.
-      if type(m) in (tf.keras.metrics.Mean,):  # pylint: disable=unidiomatic-typecheck
-        continue
-      metrics.append(m)
-    metrics.extend(model.compiled_metrics.metrics)
-    metric_names = [m.name for m in metrics]
-
-  specs = []
-
-  # Need to check if model.output_names exists because the keras Sequential
-  # model doesn't always contain output_names (b/150510258).
-  if hasattr(model, 'output_names') and len(model.output_names) > 1:
-    unmatched_metrics = {m for m in metrics}
-    for output_name in model.output_names:
-      per_output_metrics = []
-      for (name, metric) in zip(metric_names, metrics):
-        if name.startswith(output_name + '_'):
-          per_output_metrics.append(metric)
-          unmatched_metrics.remove(metric)
-      if per_output_metrics:
-        specs.extend(
-            metric_specs.specs_from_metrics(
-                metrics=per_output_metrics,
-                model_names=[model_name],
-                output_names=[output_name],
-                include_example_count=False,
-                include_weighted_example_count=False))
-    metrics = list(unmatched_metrics)
-
-  if metrics:
-    specs.extend(
-        metric_specs.specs_from_metrics(
-            metrics=metrics,
-            model_names=[model_name],
-            include_example_count=False,
-            include_weighted_example_count=False))
-
-  return specs
+from tfx_bsl.coders import example_coder
+from tfx_bsl.tfxio import tensor_adapter
 
 
 def metric_computations_using_keras_saved_model(
     model_name: Text,
     model_loader: types.ModelLoader,
     eval_config: Optional[config.EvalConfig],
+    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
     batch_size: Optional[int] = None) -> metric_types.MetricComputations:
   """Returns computations for computing metrics natively using keras.
 
@@ -124,17 +51,18 @@ def metric_computations_using_keras_saved_model(
     model_loader: Loader for shared model containing keras saved model to use
       for metric computations.
     eval_config: Eval config.
+    tensor_adapter_config: Tensor adapter config which specifies how to obtain
+      tensors from the Arrow RecordBatch.
     batch_size: Batch size to use during evaluation (testing only).
   """
   model = model_loader.load()
-  if hasattr(model, 'compiled_metrics') and hasattr(model, 'compiled_loss'):
-    # TODO(b/154395500): Add support for calling keras model.evaluate() when
-    # custom metrics used.
-    if (len(model.compiled_metrics.metrics) + len(model.compiled_loss.metrics)
-        != len(model.metrics)):
-      tf.compat.v1.logging.warning(
-          'TFMA does not currently support custom metrics added by '
-          'model.add_metric, silently ignoring custom metrics')
+  # If metrics were only added using model.compile then use
+  # model.compiled_metrics and model.compiled_loss to compute the metrics,
+  # otherwise custom metrics added via model.add_metric were also used and we
+  # need to call model.evaluate.
+  if (hasattr(model, 'compiled_metrics') and hasattr(model, 'compiled_loss') and
+      len(model.compiled_metrics.metrics) +
+      len(model.compiled_loss.metrics) == len(model.metrics)):
     output_names = model.output_names if hasattr(model, 'output_names') else []
     keys = _metric_keys(
         chain(model.compiled_metrics.metrics, model.compiled_loss.metrics),
@@ -148,8 +76,19 @@ def metric_computations_using_keras_saved_model(
                                                    batch_size))
     ]
   else:
-    raise NotImplementedError(
-        'evaluation using model.evaluate is not yet supported')
+    output_names = model.output_names if hasattr(model, 'output_names') else []
+    keys = _metric_keys(model.metrics, model_name, output_names)
+    return [
+        metric_types.MetricComputation(
+            keys=keys,
+            # TODO(b/178158073): By using inputs instead of batched features we
+            # incur the cost of having to parse the inputs a second time. In
+            # addition, transformed features (i.e. TFT, KPL) are not supported.
+            preprocessor=metric_types.InputPreprocessor(),
+            combiner=_KerasEvaluateCombiner(keys, model_name, model_loader,
+                                            eval_config, tensor_adapter_config,
+                                            batch_size))
+    ]
 
 
 def _metric_keys(metrics: Iterable[tf.keras.metrics.Metric], model_name: Text,
@@ -413,3 +352,104 @@ class _KerasCompiledMetricsCombiner(_KerasCombiner):
         labels, predictions, sample_weight=example_weights)
     self._model.compiled_loss(
         labels, predictions, sample_weight=example_weights)
+
+
+@beam.typehints.with_input_types(metric_types.StandardMetricInputs)
+@beam.typehints.with_output_types(Dict[metric_types.MetricKey, np.ndarray])
+class _KerasEvaluateCombiner(_KerasCombiner):
+  """Aggregates metrics using keras model.evaluate method."""
+
+  def __init__(self,
+               keys: List[metric_types.MetricKey],
+               model_name: Text,
+               model_loader: types.ModelLoader,
+               eval_config: Optional[config.EvalConfig],
+               tensor_adapter_config: Optional[
+                   tensor_adapter.TensorAdapterConfig] = None,
+               desired_batch_size: Optional[int] = None):
+    super(_KerasEvaluateCombiner,
+          self).__init__(keys, model_name, model_loader, eval_config,
+                         desired_batch_size, 'keras_evaluate_combine')
+    self._tensor_adapter_config = tensor_adapter_config
+    self._tensor_adapter = None
+    self._decoder = None
+
+  def _setup_if_needed(self):
+    super(_KerasEvaluateCombiner, self)._setup_if_needed()
+    # TODO(b/180125126): Re-enable use of passed in TensorAdapter after bug
+    # requiring matching schema's is fixed.
+    # if self._tensor_adapter is None and
+    #    self._tensor_adapter_config is not None:
+    #   self._tensor_adapter = tensor_adapter.TensorAdapter(
+    #       self._tensor_adapter_config)
+    if self._decoder is None:
+      self._decoder = example_coder.ExamplesToRecordBatchDecoder()
+
+  def _metrics(self) -> Iterable[tf.keras.metrics.Metric]:
+    return self._model.metrics
+
+  def _create_accumulator(self) -> tf_metric_accumulators.TFMetricsAccumulator:
+    return tf_metric_accumulators.TFMetricsAccumulator(
+        # Separate inputs are tracked for (inputs, labels, example_weights).
+        # Since the inputs are the same for each output, only the first output
+        # index will set the input data.
+        input_counts=[3] * len(self._output_counts),
+        metric_counts=self._output_counts,
+        size_estimator_fn=len,
+        desired_batch_size=self._desired_batch_size)
+
+  def _add_input(
+      self, accumulator: tf_metric_accumulators.TFMetricsAccumulator,
+      element: metric_types.StandardMetricInputs
+  ) -> tf_metric_accumulators.TFMetricsAccumulator:
+    for i, output_name in enumerate(self._output_names):
+      if not output_name and len(self._output_names) > 1:
+        # The first output_name for multi-output models is '' and is used to
+        # store combined metric weights for all outputs, but is not for labels
+        # and example weights.
+        labels, example_weights = None, None
+      else:
+        labels, _, example_weights = next(
+            metric_util.to_label_prediction_example_weight(
+                element,
+                self._eval_config,
+                self._model_name,
+                output_name,
+                flatten=False))
+      accumulator.add_input(i, element.inputs if i == 0 else None, labels,
+                            example_weights)
+
+    return accumulator
+
+  def _update_state(self,
+                    accumulator: tf_metric_accumulators.TFMetricsAccumulator):
+    serialized_examples = None
+    labels = {}
+    example_weights = {}
+    for i, output_name in enumerate(self._output_names):
+      e, l, w = accumulator.get_inputs(i)
+      if i == 0:
+        serialized_examples = e
+      if not output_name and len(self._output_names) > 1:
+        # The empty output_name for multi-output models is not used for inputs.
+        continue
+      labels[output_name] = np.array(l)
+      example_weights[output_name] = np.array(w)
+    if len(self._output_names) == 1:
+      # Single-output models don't use dicts.
+      labels = next(iter(labels.values()))
+      example_weights = next(iter(example_weights.values()))
+    record_batch = self._decoder.DecodeBatch(serialized_examples)
+    input_specs = model_util.get_input_specs(self._model, signature_name=None)
+    inputs = model_util.get_inputs(record_batch, input_specs,
+                                   self._tensor_adapter)
+    if inputs is None:
+      raise ValueError('unable to prepare inputs for evaluation: '
+                       'input_specs={}, record_batch={}'.format(
+                           input_specs, record_batch))
+    self._model.evaluate(
+        x=inputs,
+        y=labels,
+        batch_size=record_batch.num_rows,
+        verbose=0,
+        sample_weight=example_weights)

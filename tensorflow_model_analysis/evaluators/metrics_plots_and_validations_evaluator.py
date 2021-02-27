@@ -43,6 +43,7 @@ from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tfx_bsl.tfxio import tensor_adapter
 from google.protobuf import message
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -68,7 +69,9 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
     attributions_key: Text = constants.ATTRIBUTIONS_KEY,
     run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     schema: Optional[schema_pb2.Schema] = None,
-    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluator:
+    random_seed_for_testing: Optional[int] = None,
+    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
+) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -82,6 +85,12 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
     run_after: Extractor to run after (None means before any extractors).
     schema: A schema to use for customizing metrics and plots.
     random_seed_for_testing: Seed to use for unit testing.
+    tensor_adapter_config: Tensor adapter config which specifies how to obtain
+      tensors from the Arrow RecordBatch. The model's signature will be invoked
+      with those tensors (matched by names). If None, an attempt will be made to
+      create an adapter based on the model's input signature otherwise the model
+      will be invoked with raw examples (assuming a  signature of a single 1-D
+      string tensor).
 
   Returns:
     Evaluator for evaluating metrics and plots. The output will be stored under
@@ -103,7 +112,8 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
           plots_key=plots_key,
           attributions_key=attributions_key,
           schema=schema,
-          random_seed_for_testing=random_seed_for_testing))
+          random_seed_for_testing=random_seed_for_testing,
+          tensor_adapter_config=tensor_adapter_config))
 
 
 def _filter_and_separate_computations(
@@ -637,7 +647,9 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     plots_key: Text = constants.PLOTS_KEY,
     attributions_key: Text = constants.ATTRIBUTIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
-    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
+    random_seed_for_testing: Optional[int] = None,
+    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
+) -> evaluator.Evaluation:
   """Computes metrics and plots.
 
   Args:
@@ -653,6 +665,12 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     attributions_key: Name to use for attributions key in Evaluation output.
     schema: A schema to use for customizing metrics and plots.
     random_seed_for_testing: Seed to use for unit testing.
+    tensor_adapter_config: Tensor adapter config which specifies how to obtain
+      tensors from the Arrow RecordBatch. The model's signature will be invoked
+      with those tensors (matched by names). If None, an attempt will be made to
+      create an adapter based on the model's input signature otherwise the model
+      will be invoked with raw examples (assuming a  signature of a single 1-D
+      string tensor).
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
@@ -673,18 +691,10 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       if not eval_shared_model.include_default_metrics:
         continue
       if eval_shared_model.model_type == constants.TF_KERAS:
-        # TODO(b/154395500): Add support for calling keras model.evaluate() and
-        # remove call to metrics_specs_from_keras.
-        model = eval_shared_model.model_loader.construct_fn()
-        if (hasattr(model, 'compiled_metrics') and
-            hasattr(model, 'compiled_loss')):
-          computations.extend(
-              keras_util.metric_computations_using_keras_saved_model(
-                  model_name, eval_shared_model.model_loader, eval_config))
-        else:
-          keras_specs = keras_util.metrics_specs_from_keras(
-              model_name, eval_shared_model.model_loader)
-          metrics_specs = keras_specs + metrics_specs[:]
+        computations.extend(
+            keras_util.metric_computations_using_keras_saved_model(
+                model_name, eval_shared_model.model_loader, eval_config,
+                tensor_adapter_config))
       elif (eval_shared_model.model_type == constants.TF_ESTIMATOR and
             eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags):
         computations.extend(
@@ -808,7 +818,9 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     attributions_key: Text = constants.ATTRIBUTIONS_KEY,
     validations_key: Text = constants.VALIDATIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
-    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
+    random_seed_for_testing: Optional[int] = None,
+    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
+) -> evaluator.Evaluation:
   """Evaluates metrics, plots, and validations.
 
   Args:
@@ -828,6 +840,12 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     validations_key: Name to use for validation key in Evaluation output.
     schema: A schema to use for customizing metrics and plots.
     random_seed_for_testing: Seed to use for unit testing.
+    tensor_adapter_config: Tensor adapter config which specifies how to obtain
+      tensors from the Arrow RecordBatch. The model's signature will be invoked
+      with those tensors (matched by names). If None, an attempt will be made to
+      create an adapter based on the model's input signature otherwise the model
+      will be invoked with raw examples (assuming a  signature of a single 1-D
+      string tensor).
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
@@ -877,7 +895,8 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
             plots_key=plots_key,
             attributions_key=attributions_key,
             schema=schema,
-            random_seed_for_testing=random_seed_for_testing))
+            random_seed_for_testing=random_seed_for_testing,
+            tensor_adapter_config=tensor_adapter_config))
 
     for k, v in evaluation.items():
       if k not in evaluations:

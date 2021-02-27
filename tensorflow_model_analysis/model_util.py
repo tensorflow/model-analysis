@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set,
 from absl import logging
 import apache_beam as beam
 import numpy as np
+import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
@@ -513,6 +514,43 @@ def filter_by_input_names(d: Dict[Text, Any],
   return result
 
 
+def get_inputs(
+    record_batch: pa.RecordBatch,
+    input_specs: Dict[Text, tf.TypeSpec],
+    adapter: Optional[tensor_adapter.TensorAdapter] = None
+) -> Optional[Dict[Text, Any]]:
+  """Returns inputs from record batch for given input specs.
+
+  Args:
+    record_batch: Record batch to prepare inputs from.
+    input_specs: Input specs keyed by input name.
+    adapter: Optional tensor adapter.
+
+  Returns:
+    Input tensors keyed by input name.
+  """
+  inputs = None
+  if (not adapter and
+      set(input_specs.keys()) <= set(record_batch.schema.names)):
+    # Create adapter based on input_specs
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=record_batch.schema,
+        tensor_representations=input_specs_to_tensor_representations(
+            input_specs))
+    adapter = tensor_adapter.TensorAdapter(tensor_adapter_config)
+  # Avoid getting the tensors if we appear to be feeding serialized
+  # examples to the callable.
+  if adapter and not (len(input_specs) == 1 and
+                      next(iter(input_specs.values())).dtype == tf.string and
+                      find_input_name_in_features(
+                          set(adapter.TypeSpecs().keys()),
+                          next(iter(input_specs.keys()))) is None):
+    # TODO(b/172376802): Update to pass input specs to ToBatchTensors.
+    inputs = filter_by_input_names(
+        adapter.ToBatchTensors(record_batch), list(input_specs.keys()))
+  return inputs
+
+
 def model_construct_fn(  # pylint: disable=invalid-name
     eval_saved_model_path: Optional[Text] = None,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
@@ -810,26 +848,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
           # If input_specs exist then try to filter the inputs by the input
           # names (unlike estimators, keras does not accept unknown inputs).
           if input_specs:
-            adapter = self._tensor_adapter
-            if (not adapter and
-                set(input_specs.keys()) <= set(record_batch.schema.names)):
-              # Create adapter based on input_specs
-              tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-                  arrow_schema=record_batch.schema,
-                  tensor_representations=input_specs_to_tensor_representations(
-                      input_specs))
-              adapter = tensor_adapter.TensorAdapter(tensor_adapter_config)
-            # Avoid getting the tensors if we appear to be feeding serialized
-            # examples to the callable.
-            if adapter and not (len(input_specs) == 1 and next(
-                iter(input_specs.values())).dtype == tf.string and
-                                find_input_name_in_features(
-                                    set(adapter.TypeSpecs().keys()),
-                                    next(iter(input_specs.keys()))) is None):
-              # TODO(b/172376802): Update to pass input specs to ToBatchTensors.
-              inputs = filter_by_input_names(
-                  adapter.ToBatchTensors(record_batch),
-                  list(input_specs.keys()))
+            inputs = get_inputs(record_batch, input_specs, self._tensor_adapter)
           if not inputs:
             # Assume serialized examples
             assert serialized_examples is not None, 'Raw examples not found.'

@@ -69,8 +69,11 @@ def PredictionsExtractor(
       models (multi-model evaluation) or None (predictions obtained from
       features).
     tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. If None, we feed the raw examples to
-      the model.
+      tensors from the Arrow RecordBatch. The model's signature will be invoked
+      with those tensors (matched by names). If None, an attempt will be made to
+      create an adapter based on the model's input signature otherwise the model
+      will be invoked with raw examples (assuming a  signature of a single 1-D
+      string tensor).
 
   Returns:
     Extractor for extracting predictions.

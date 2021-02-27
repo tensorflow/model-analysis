@@ -612,14 +612,18 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
   @parameterized.named_parameters(
-      ('tf_keras', constants.TF_KERAS), ('tf_lite', constants.TF_LITE),
+      ('tf_keras', constants.TF_KERAS),
+      ('tf_lite', constants.TF_LITE),
       ('tf_js', constants.TF_JS),
       ('baseline_missing', constants.TF_KERAS, True),
-      ('rubber_stamp', constants.TF_KERAS, True, True))
+      ('rubber_stamp', constants.TF_KERAS, True, True),
+      ('tf_keras_custom_metrics', constants.TF_KERAS, False, False, True),
+  )
   def testRunModelAnalysisWithKerasModel(self,
                                          model_type,
                                          remove_baseline=False,
-                                         rubber_stamp=False):
+                                         rubber_stamp=False,
+                                         add_custom_metrics=False):
 
     def _build_keras_model(eval_config,
                            export_name='export_dir',
@@ -632,13 +636,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       model.compile(
           optimizer=tf.keras.optimizers.Adam(lr=.001),
           loss=tf.keras.losses.categorical_crossentropy)
-      features = {'data': [[0.0] * 28 * 28]}
-      labels = [[0, 0, 0, 0, 0, 0, 0, 1, 0, 0]]
-      example_weights = [1.0]
-      dataset = tf.data.Dataset.from_tensor_slices(
-          (features, labels, example_weights))
-      dataset = dataset.shuffle(buffer_size=1).repeat().batch(1)
-      model.fit(dataset, steps_per_epoch=1)
+      if add_custom_metrics:
+        model.add_metric(tf.reduce_sum(input_layer), 'custom')
       model_location = os.path.join(self._getTempDir(), export_name)
       if model_type == constants.TF_LITE:
         converter = tf.compat.v2.lite.TFLiteConverter.from_keras_model(model)
@@ -837,6 +836,10 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
               'auc': True,
           },
       }
+      if model_type not in (constants.TF_LITE, constants.TF_JS):
+        expected_metrics[''] = {'loss': True}
+        if add_custom_metrics:
+          expected_metrics['']['custom'] = True
       for class_id in expected_metrics:
         self.assertIn(class_id, got_metrics)
         for k in expected_metrics[class_id]:

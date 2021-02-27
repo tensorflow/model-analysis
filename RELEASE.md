@@ -9,6 +9,8 @@
 *   Make legacy predict extractor also input/output batched extracts.
 *   Updated to use new compiled_metrics and compiled_loss APIs for keras
     in-graph metric computations.
+*   Add support for calling model.evaluate on keras models containing custom
+    metrics.
 
 ## Breaking Changes
 

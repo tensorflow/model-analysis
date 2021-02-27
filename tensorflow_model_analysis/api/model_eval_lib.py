@@ -461,8 +461,11 @@ def default_extractors(  # pylint: disable=invalid-name
     slice_spec: Deprecated (use EvalConfig).
     materialize: True to have extractors create materialized output.
     tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. If None, we feed the raw examples to
-      the model.
+      tensors from the Arrow RecordBatch. The model's signature will be invoked
+      with those tensors (matched by names). If None, an attempt will be made to
+      create an adapter based on the model's input signature otherwise the model
+      will be invoked with raw examples (assuming a  signature of a single 1-D
+      string tensor).
     custom_predict_extractor: Optional custom predict extractor for non-TF
       models.
     config_version: Optional config version for this evaluation. This should not
@@ -598,7 +601,9 @@ def default_evaluators(  # pylint: disable=invalid-name
     min_slice_size: int = 1,
     serialize: bool = False,
     random_seed_for_testing: Optional[int] = None,
-    config_version: Optional[int] = None) -> List[evaluator.Evaluator]:
+    config_version: Optional[int] = None,
+    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
+) -> List[evaluator.Evaluator]:
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
@@ -615,6 +620,12 @@ def default_evaluators(  # pylint: disable=invalid-name
       be explicitly set by users. It is only intended to be used in cases where
       the provided eval_config was generated internally, and thus not a reliable
       indicator of user intent.
+    tensor_adapter_config: Tensor adapter config which specifies how to obtain
+      tensors from the Arrow RecordBatch. The model's signature will be invoked
+      with those tensors (matched by names). If None, an attempt will be made to
+      create an adapter based on the model's input signature otherwise the model
+      will be invoked with raw examples (assuming a  signature of a single 1-D
+      string tensor).
   """
   disabled_outputs = []
   if eval_config:
@@ -665,7 +676,8 @@ def default_evaluators(  # pylint: disable=invalid-name
             eval_config=eval_config,
             eval_shared_model=eval_shared_model,
             schema=schema,
-            random_seed_for_testing=random_seed_for_testing)
+            random_seed_for_testing=random_seed_for_testing,
+            tensor_adapter_config=tensor_adapter_config)
     ]
 
 
@@ -1092,7 +1104,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         eval_shared_model=eval_shared_model,
         random_seed_for_testing=random_seed_for_testing,
         schema=schema,
-        config_version=config_version)
+        config_version=config_version,
+        tensor_adapter_config=tensor_adapter_config)
 
   for v in evaluators:
     evaluator.verify_evaluator(v, extractors)

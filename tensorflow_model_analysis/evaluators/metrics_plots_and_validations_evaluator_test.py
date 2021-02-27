@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -68,7 +69,7 @@ def _addExampleCountMetricCallback(  # pylint: disable=invalid-name
 
 
 class MetricsPlotsAndValidationsEvaluatorTest(
-    testutil.TensorflowModelAnalysisTest):
+    testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
@@ -84,10 +85,8 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     model = tf.keras.models.Model([input_layer], output_layer)
     model.compile(
         optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.BinaryCrossentropy(name='binary_crossentropy'),
+        loss=tf.keras.losses.BinaryCrossentropy(name='loss'),
         metrics=['accuracy'])
-
-    model.fit(x=[[0], [1]], y=[[0], [1]], steps_per_epoch=1)
     model.save(model_dir, save_format='tf')
     return self.createTestEvalSharedModel(
         model_name=model_name, eval_saved_model_path=model_dir)
@@ -250,14 +249,12 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                                 relative={'value': -.99},
                                 absolute={'value': 0})))
                 ],
-                # TODO(b/149995449): Add thresholds for Keras metrics once the
-                # bug is fixed.
-                # thresholds={
-                #     'binary_crossentropy':
-                #         config.MetricThreshold(
-                #             value_threshold=config.GenericValueThreshold(
-                #                 upper_bound={'value': 0}))
-                # },
+                thresholds={
+                    'loss':
+                        config.MetricThreshold(
+                            value_threshold=config.GenericValueThreshold(
+                                upper_bound={'value': 0}))
+                },
                 model_names=['candidate', 'baseline']),
         ],
     )
@@ -296,6 +293,25 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           self.assertLen(got, 1)
           got = got[0]
           expected_metric_validations_per_slice = [
+              text_format.Parse(
+                  """
+                  metric_key {
+                    name: "loss"
+                    model_name: "candidate"
+                  }
+                  metric_threshold {
+                    value_threshold {
+                      upper_bound {
+                        value: 0.0
+                      }
+                    }
+                  }
+                  metric_value {
+                    double_value {
+                      value: 7.712474346160889
+                    }
+                  }
+                  """, validation_result_pb2.ValidationFailure()),
               text_format.Parse(
                   """
                   metric_key {
@@ -361,13 +377,6 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           ]
           self.assertFalse(got.validation_ok)
           self.assertLen(got.metric_validations_per_slice, 1)
-          # TODO(b/149995449): Keras does not support re-loading metrics with
-          # its new API so the loss added at compile time will be missing.
-          # Re-enable after this is fixed.
-          if hasattr(eval_shared_model.model_loader.construct_fn(),
-                     'compiled_metrics'):
-            expected_metric_validations_per_slice = (
-                expected_metric_validations_per_slice[:3])
           self.assertLen(got.metric_validations_per_slice[0].failures,
                          len(expected_metric_validations_per_slice))
           self.assertCountEqual(got.metric_validations_per_slice[0].failures,
@@ -1496,7 +1505,11 @@ class MetricsPlotsAndValidationsEvaluatorTest(
       util.assert_that(
           metrics[constants.METRICS_KEY], check_metrics, label='metrics')
 
-  def testEvaluateWithKerasModelWithDefaultMetrics(self):
+  @parameterized.named_parameters(
+      ('compiled_metrics', False),
+      ('evaluate', True),
+  )
+  def testEvaluateWithKerasModelWithInGraphMetrics(self, add_custom_metrics):
     input1 = tf.keras.layers.Input(shape=(1,), name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), name='input2')
     inputs = [input1, input2]
@@ -1505,23 +1518,14 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         1, activation=tf.nn.sigmoid, name='output')(
             input_layer)
     model = tf.keras.models.Model(inputs, output_layer)
+    # The model.evaluate API is used when custom metrics are used. Otherwise
+    # model.compiled_metrics is used.
+    if add_custom_metrics:
+      model.add_metric(tf.reduce_sum(input_layer), name='custom')
     model.compile(
         optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.BinaryCrossentropy('binary_crossentropy'),
+        loss=tf.keras.losses.BinaryCrossentropy(name='loss'),
         metrics=[tf.keras.metrics.BinaryAccuracy(name='binary_accuracy')])
-
-    features = {'input1': [[0.0], [1.0]], 'input2': [[1.0], [0.0]]}
-    labels = [[1], [0]]
-    example_weights = [1.0, 0.5]
-    dataset = tf.data.Dataset.from_tensor_slices(
-        (features, labels, example_weights))
-    dataset = dataset.shuffle(buffer_size=1).repeat().batch(2)
-    model.fit(dataset, steps_per_epoch=1)
-
-    # TODO(b/149995449): Keras does not support re-loading metrics with the new
-    #   API. Re-enable after this is fixed
-    if hasattr(model, 'compiled_metrics'):
-      return
 
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
@@ -1642,15 +1646,18 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           label_key = metric_types.MetricKey(name='mean_label')
           binary_accuracy_key = metric_types.MetricKey(name='binary_accuracy')
           self.assertIn(binary_accuracy_key, got_metrics)
-          binary_crossentropy_key = metric_types.MetricKey(
-              name='binary_crossentropy')
-          self.assertIn(binary_crossentropy_key, got_metrics)
-          self.assertDictElementsAlmostEqual(
-              got_metrics, {
-                  example_count_key: 2,
-                  weighted_example_count_key: (1.0 + 0.5),
-                  label_key: (1.0 * 1.0 + 0.0 * 0.5) / (1.0 + 0.5),
-              })
+          loss_key = metric_types.MetricKey(name='loss')
+          self.assertIn(loss_key, got_metrics)
+          expected_values = {
+              example_count_key: 2,
+              weighted_example_count_key: (1.0 + 0.5),
+              label_key: (1.0 * 1.0 + 0.0 * 0.5) / (1.0 + 0.5),
+          }
+          if add_custom_metrics:
+            custom_key = metric_types.MetricKey(name='custom')
+            self.assertIn(custom_key, got_metrics)
+            expected_values[custom_key] = 0.0 + 1.0 + 0.0 + 1.0
+          self.assertDictElementsAlmostEqual(got_metrics, expected_values)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
