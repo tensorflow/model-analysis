@@ -119,30 +119,35 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
 def _filter_and_separate_computations(
     computations: metric_types.MetricComputations
 ) -> Tuple[List[metric_types.MetricComputation],
-           List[metric_types.DerivedMetricComputation]]:
+           List[metric_types.DerivedMetricComputation],
+           List[metric_types.CrossSliceMetricComputation]]:
   """Filters duplicate computations and separates non-derived and derived.
 
   All metrics are based on either direct computations using combiners or are
   based on the results of one or more other computations. This code separates
-  the two types of computations so that only the combiner based computations are
-  passed to the main combiner call and the remainder are processed after those
-  combiners have run. Filtering is required because DerivedMetricComputations
-  typically include copies of the MetricComputations that they depend on in
-  order to avoid having to pre-construct and pass around all the dependencies at
-  the time the metrics are constructed. Instead, each derived metric creates a
-  version of the metric it depends on and then this code de-dups computations
-  that are identical so only one gets computed.
+  the three types of computations so that only the combiner based computations
+  are passed to the main combiner call and the remainder are processed after
+  those combiners have run. Filtering is required because
+  DerivedMetricComputations and CrossSliceMetricComputations typically include
+  copies of the MetricComputations that they depend on in order to avoid having
+  to pre-construct and pass around all the dependencies at the time the metrics
+  are constructed. Instead, each derived metric creates a version of the metric
+  it depends on and then this code de-dups computations that are identical so
+  only one gets computed.
 
   Args:
     computations: Computations.
 
   Returns:
-    Tuple of (metric computations, derived metric computations).
+    Tuple of (metric computations, derived metric computations, cross slice
+    metric computations).
   """
   non_derived_computations = []
   processed_non_derived_computations = {}
   derived_computations = []
   processed_derived_computations = {}
+  cross_slice_computations = []
+  processed_cross_slice_computations = {}
   # The order of the computations matters (i.e. one computation may depend on
   # another). While there shouldn't be any differences in matching computations
   # the implemented hash is only based on combiner/result names and the keys, so
@@ -161,9 +166,16 @@ def _filter_and_separate_computations(
       else:
         processed_derived_computations[c] = len(derived_computations)
         derived_computations.append(c)
+    elif isinstance(c, metric_types.CrossSliceMetricComputation):
+      if c in processed_cross_slice_computations:
+        cross_slice_computations[processed_cross_slice_computations[c]] = c
+      else:
+        processed_cross_slice_computations[c] = len(cross_slice_computations)
+        cross_slice_computations.append(c)
     else:
       raise TypeError('Unsupported metric computation type: {}'.format(c))
-  return non_derived_computations, derived_computations
+  return (non_derived_computations, derived_computations,
+          cross_slice_computations)
 
 
 @beam.ptransform_fn
@@ -397,10 +409,23 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
     return tuple(result)
 
 
+def _is_private_metrics(metric_key: metric_types.MetricKey):
+  return metric_key.name.startswith(
+      '_') and not metric_key.name.startswith('__')
+
+
+def _remove_private_metrics(result: Dict[metric_types.MetricKey, Any]):
+  keys = list(result.keys())
+  for k in keys:
+    if _is_private_metrics(k):
+      result.pop(k)
+
+
 @beam.ptransform_fn
 def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
     sliced_combiner_outputs: beam.pvalue.PCollection,
-    cross_slice_specs: Optional[Iterable[config.CrossSlicingSpec]]
+    cross_slice_specs: Optional[Iterable[config.CrossSlicingSpec]],
+    cross_slice_computations: List[metric_types.CrossSliceMetricComputation],
 ) -> Tuple[slicer.SliceKeyOrCrossSliceKeyType, metric_types.MetricsDict]:
   """Generates CrossSlice metrics from SingleSlices."""
 
@@ -427,10 +452,20 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
       result = {}
       for (comparison_metric_key,
            comparison_metric_value) in comparison_metrics.items():
-        if comparison_metric_key not in baseline_metrics:
+        if (comparison_metric_key not in baseline_metrics or
+            _is_private_metrics(comparison_metric_key)):
           continue
         result[comparison_metric_key] = (
             baseline_metrics[comparison_metric_key] - comparison_metric_value)
+
+      # Compute cross slice comparison for CrossSliceDerivedComputations
+      for c in cross_slice_computations:
+        result.update(
+            c.cross_slice_comparison(baseline_metrics, comparison_metrics))
+
+      # Remove private metrics
+      _remove_private_metrics(result)
+
       yield ((baseline_slice_key, comparison_slice_key), result)
 
   cross_slice_outputs = []
@@ -470,6 +505,7 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     sliced_extracts: beam.pvalue.PCollection,
     computations: List[metric_types.MetricComputation],
     derived_computations: List[metric_types.DerivedMetricComputation],
+    cross_slice_computations: List[metric_types.CrossSliceMetricComputation],
     cross_slice_specs: Optional[Iterable[config.CrossSlicingSpec]] = None,
     compute_with_sampling: Optional[bool] = False,
     num_jackknife_samples: int = 0,
@@ -482,6 +518,7 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     sliced_extracts: Incoming PCollection consisting of slice key and extracts.
     computations: List of MetricComputations.
     derived_computations: List of DerivedMetricComputations.
+    cross_slice_computations: List of CrossSliceMetricComputation.
     cross_slice_specs: List of CrossSlicingSpec.
     compute_with_sampling: True to compute with bootstrap sampling. This allows
       _ComputePerSlice to be used to generate unsampled values from the whole
@@ -511,11 +548,6 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
       result.update(v)
     for c in derived_computations:
       result.update(c.result(result))
-    # Remove private metrics
-    keys = list(result.keys())
-    for k in keys:
-      if k.name.startswith('_') and not k.name.startswith('__'):
-        result.pop(k)
     return sliced_results[0], result
 
   def add_diff_metrics(
@@ -531,6 +563,8 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     if baseline_model_name:
       diff_result = {}
       for k, v in result.items():
+        if _is_private_metrics(k):
+          continue
         if k.model_name != baseline_model_name and k.make_baseline_key(
             baseline_model_name) in result:
           # plots will not be diffed.
@@ -538,6 +572,9 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
             diff_result[k.make_diff_key(
             )] = v - result[k.make_baseline_key(baseline_model_name)]
       result.update(diff_result)
+
+    # Remove private metrics
+    _remove_private_metrics(result)
 
     return (sliced_metrics[0], result)
 
@@ -562,7 +599,8 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
       sliced_combiner_outputs
       | 'ConvertAndAddDerivedValues' >> beam.Map(convert_and_add_derived_values,
                                                  derived_computations)
-      | 'AddCrossSliceMetrics' >> _AddCrossSliceMetrics(cross_slice_specs)  # pylint: disable=no-value-for-parameter
+      | 'AddCrossSliceMetrics' >> _AddCrossSliceMetrics(  # pylint: disable=no-value-for-parameter
+          cross_slice_specs, cross_slice_computations)
       | 'AddDiffMetrics' >> beam.Map(add_diff_metrics, baseline_model_name))
 
   if num_jackknife_samples:
@@ -701,7 +739,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
             eval_saved_model_util.metric_computations_using_eval_saved_model(
                 model_name, eval_shared_model.model_loader))
   # Add metric computations from specs
-  computations_from_specs, derived_computations = (
+  computations_from_specs, derived_computations, cross_slice_computations = (
       _filter_and_separate_computations(
           metric_specs.to_computations(
               metrics_specs, eval_config=eval_config, schema=schema)))
@@ -771,6 +809,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
           _ComputePerSlice,
           computations=computations,
           derived_computations=derived_computations,
+          cross_slice_computations=cross_slice_computations,
           baseline_model_name=baseline_model_name,
           cross_slice_specs=cross_slice_specs,
           num_jackknife_samples=ci_params.num_jackknife_samples,

@@ -475,10 +475,66 @@ class DerivedMetricComputation(
     return hash(self._computation_id())
 
 
+CrossSliceComparisonCallable = Callable[
+    [Dict[MetricKey, Any], Dict[MetricKey, Any]], Dict[MetricKey, Any]]
+
+
+class CrossSliceMetricComputation(
+    NamedTuple('CrossSliceMetricComputation', [
+        ('keys', List[MetricKey]),
+        ('cross_slice_comparison', CrossSliceComparisonCallable),
+    ])):
+  """CrossSliceMetricComputation derives its result from other computations.
+
+  It is used for metrics which are based upon cross slice comparison.
+  When creating these metric computations it is recommended (but not required)
+  that the underlying MetricComputations that they depend on are defined at the
+  same time. This is to avoid having to pre-construct and pass around all the
+  required dependencies in order to construct a derived metric. The evaluation
+  pipeline is responsible for de-duplicating overlapping MetricComputations so
+  that only one computation is actually run.
+
+  A CrossSliceMetricComputation is uniquely identified by the combination of the
+  result function's name and the keys. Duplicate computations will be removed
+  automatically.
+
+  Attributes:
+    keys: List of metric keys associated with derived computation. If the keys
+      are defined as part of the computation then this may be empty in which
+      case only the result function name will be used for identifying
+      computation uniqueness.
+    cross_slice_comparison: Function called to perform cross slice comparison
+      using the results of the other metric computations.
+  """
+
+  def __new__(cls, keys: List[MetricKey],
+              cross_slice_comparison: CrossSliceComparisonCallable):
+    return super(CrossSliceMetricComputation,
+                 cls).__new__(cls, keys, cross_slice_comparison)
+
+  def _computation_id(self):
+    # Some computations do not define the keys until the end of the computation
+    # is complete. In these cases the keys will be empty so we also distinguish
+    # based on the result function name used. We don't use __class__ since
+    # functions may be defined inline which wouldn't compare equal.
+    return (self.cross_slice_comparison.__class__.__name__,
+            tuple(sorted(self.keys or [])))
+
+  def __eq__(self, other):
+    if isinstance(other, CrossSliceMetricComputation):
+      return self._computation_id() == other._computation_id()
+    else:
+      return False
+
+  def __hash__(self):
+    return hash(self._computation_id())
+
+
 # MetricComputations is a list of derived and non-derived computations used to
 # calculate one or more metric values. Derived metrics should come after the
 # computations they depend on in the list.
-MetricComputations = List[Union[MetricComputation, DerivedMetricComputation]]
+MetricComputations = List[Union[MetricComputation, DerivedMetricComputation,
+                                CrossSliceMetricComputation]]
 
 
 def update_create_computations_fn_kwargs(

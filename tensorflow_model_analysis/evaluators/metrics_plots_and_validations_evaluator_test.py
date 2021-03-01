@@ -27,6 +27,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis.addons.fairness.metrics import lift
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import dnn_classifier
@@ -92,10 +93,13 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         model_name=model_name, eval_saved_model_path=model_dir)
 
   def testFilterAndSeparateComputations(self):
-    eval_config = config.EvalConfig(model_specs=[
-        config.ModelSpec(name='candidate', label_key='tips'),
-        config.ModelSpec(name='baseline', label_key='tips', is_baseline=True)
-    ])
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(name='candidate', label_key='tips'),
+            config.ModelSpec(
+                name='baseline', label_key='tips', is_baseline=True)
+        ],
+        cross_slicing_specs=[config.CrossSlicingSpec()])
     metrics_specs = metric_specs.specs_from_metrics(
         [
             tf.keras.metrics.BinaryAccuracy(name='accuracy'),
@@ -110,20 +114,22 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             confusion_matrix_plot.ConfusionMatrixPlot(
                 name='confusion_matrix_plot'),
             calibration_plot.CalibrationPlot(name='calibration_plot'),
+            lift.Lift(name='lift'),
         ],
         model_names=['candidate', 'baseline'],
         binarize=config.BinarizationOptions(class_ids={'values': [0, 5]}))
     computations = metric_specs.to_computations(
         metrics_specs, eval_config=eval_config)
-    non_derived, derived = metrics_plots_and_validations_evaluator._filter_and_separate_computations(
+    non_derived, derived, cross_slice = metrics_plots_and_validations_evaluator._filter_and_separate_computations(
         computations)
     # 2 models x 2 classes x _binary_confusion_matrix_[0.5]_100,
     # 2 models x 2 classes x _CalibrationHistogramCombiner
+    # 2 models x 2 classes x _calibration_historgram_27
     # 2 models x 2 classes x _CompilableMetricsCombiner,
     # 2 models x 2 classes x _WeightedLabelsPredictionsExamplesCombiner,
     # 2 models x _WeightedExampleCountCombiner
     # 1 x _ExampleCountCombiner
-    self.assertLen(non_derived, 19)
+    self.assertLen(non_derived, 23)
     # 2 models x 2 classes x _binary_confusion_matrices_[0.5],
     # 2 models x 2 classes x _binary_confusion_matrices_10000
     # 2 models x 2 classes x _binary_confusion_matrices_confusion_matrix_plot
@@ -137,6 +143,8 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     # 2 models x 2 classes x calibration_plot
     # 2 models x 2 classes x auc
     self.assertLen(derived, 48)
+    # 2 models x 2 classes x lift
+    self.assertLen(cross_slice, 4)
 
   def testEvaluateWithKerasAndValidateMetrics(self):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
@@ -390,7 +398,6 @@ class MetricsPlotsAndValidationsEvaluatorTest(
 
     metric_filter = beam.metrics.metric.MetricsFilter().with_name(
         'metric_computed_ExampleCount_v2')
-    print(pipeline.run().metrics().query())
     actual_metrics_count = pipeline.run().metrics().query(
         filter=metric_filter)['counters'][0].committed
     self.assertEqual(actual_metrics_count, 1)
@@ -1197,6 +1204,159 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                   label_key: (1.0 + 0.0 + 2 * 0.0) / (1.0 + 1.0 + 2.0),
                   pred_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0),
               })
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(
+          metrics[constants.METRICS_KEY], check_metrics, label='metrics')
+
+  def testEvaluateWithCrossSliceLiftMetric(self):
+    temp_export_dir = self._getExportDir()
+    _, export_dir = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(
+                label_key='label', example_weight_key='fixed_float')
+        ],
+        slicing_specs=[
+            config.SlicingSpec(
+                feature_values={'fixed_string': 'fixed_string1'}),
+            config.SlicingSpec(feature_values={'fixed_string': 'fixed_string2'})
+        ],
+        cross_slicing_specs=[
+            config.CrossSlicingSpec(
+                baseline_spec=config.SlicingSpec(
+                    feature_values={'fixed_string': 'fixed_string1'}),
+                slicing_specs=[
+                    config.SlicingSpec(
+                        feature_values={'fixed_string': 'fixed_string2'})
+                ]),
+        ],
+        metrics_specs=metric_specs.specs_from_metrics(
+            [lift.Lift(num_buckets=3)]))
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+    extractors = [
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(
+            eval_shared_model=eval_shared_model, eval_config=eval_config),
+        unbatch_extractor.UnbatchExtractor(),
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
+    ]
+    evaluators = [
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
+            eval_config=eval_config, eval_shared_model=eval_shared_model)
+    ]
+
+    # fixed_float used as example_weight key
+    examples = [
+        self._makeExample(
+            prediction=0.1,
+            label=0.0,
+            fixed_int=1,
+            fixed_float=3.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.5,
+            label=0.3,
+            fixed_int=1,
+            fixed_float=5.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.8,
+            label=0.6,
+            fixed_int=2,
+            fixed_float=2.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.3,
+            label=0.9,
+            fixed_int=1,
+            fixed_float=8.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.9,
+            label=1.0,
+            fixed_int=1,
+            fixed_float=3.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.8,
+            label=0.0,
+            fixed_int=2,
+            fixed_float=1.0,
+            fixed_string='fixed_string2'),
+        self._makeExample(
+            prediction=0.3,
+            label=0.2,
+            fixed_int=1,
+            fixed_float=2.0,
+            fixed_string='fixed_string2'),
+        self._makeExample(
+            prediction=0.5,
+            label=0.5,
+            fixed_int=1,
+            fixed_float=5.0,
+            fixed_string='fixed_string2'),
+        self._makeExample(
+            prediction=0.4,
+            label=0.7,
+            fixed_int=2,
+            fixed_float=2.0,
+            fixed_string='fixed_string2'),
+        self._makeExample(
+            prediction=0.3,
+            label=1.0,
+            fixed_int=2,
+            fixed_float=3.0,
+            fixed_string='fixed_string2')
+    ]
+
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      metrics = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_metrics(got):
+        try:
+          self.assertLen(got, 3)
+          example_count_key = metric_types.MetricKey(name='example_count')
+          weighted_example_count_key = metric_types.MetricKey(
+              name='weighted_example_count')
+          lift_key = metric_types.MetricKey(name='lift@3')
+          for slice_key, metrics in got:
+            if slice_key == (('fixed_string', 'fixed_string1'),):
+              self.assertDictElementsAlmostEqual(metrics, {
+                  example_count_key: 5.0,
+                  weighted_example_count_key: 21.0,
+              })
+            elif slice_key == (('fixed_string', 'fixed_string2'),):
+              self.assertDictElementsAlmostEqual(metrics, {
+                  example_count_key: 5.0,
+                  weighted_example_count_key: 13.0,
+              })
+            else:
+              self.assertDictElementsAlmostEqual(
+                  metrics, {
+                      example_count_key: 0.0,
+                      weighted_example_count_key: 8.0,
+                      lift_key: -0.211538456165,
+                  })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

@@ -52,7 +52,9 @@ def calibration_histogram(
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
+    class_weights: Optional[Dict[int, float]] = None,
+    prediction_based_bucketing: bool = True,
+    fractional_labels: Optional[bool] = None,
 ) -> metric_types.MetricComputations:
   """Returns metric computations for calibration histogram.
 
@@ -69,6 +71,17 @@ def calibration_histogram(
     aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions prior to flattening (when micro averaging is used).
+    prediction_based_bucketing: If true, create buckets based on predictions
+      else use labels to perform bucketing.
+    fractional_labels: If true, each incoming tuple of (label, prediction, and
+      example weight) will be split into two tuples as follows (where l, p, w
+      represent the resulting label, prediction, and example weight values): (1)
+        l = 0.0, p = prediction, and w = example_weight * (1.0 - label) (2) l =
+        1.0, p = prediction, and w = example_weight * label If enabled, an
+        exception will be raised if labels are not within [0, 1]. The
+        implementation is such that tuples associated with a weight of zero are
+        not yielded. This means it is safe to enable fractional_labels even when
+        the labels only take on the values of 0.0 or 1.0.
 
   Returns:
     MetricComputations for computing the histogram(s).
@@ -79,6 +92,8 @@ def calibration_histogram(
     left = 0.0
   if right is None:
     right = 1.0
+  if fractional_labels is None:
+    fractional_labels = (left == 0.0 and right == 1.0)
   if name is None:
     name = '{}_{}'.format(CALIBRATION_HISTOGRAM_NAME, num_buckets)
   key = metric_types.PlotKey(
@@ -97,7 +112,9 @@ def calibration_histogram(
               class_weights=class_weights,
               num_buckets=num_buckets,
               left=left,
-              right=right))
+              right=right,
+              prediction_based_bucketing=prediction_based_bucketing,
+              fractional_labels=fractional_labels))
   ]
 
 
@@ -108,7 +125,8 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
                eval_config: Optional[config.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]], num_buckets: int,
-               left: float, right: float):
+               left: float, right: float, prediction_based_bucketing: bool,
+               fractional_labels: bool):
     self._key = key
     self._eval_config = eval_config
     self._aggregation_type = aggregation_type
@@ -116,7 +134,8 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
     self._num_buckets = num_buckets
     self._left = left
     self._range = right - left
-    self._is_unit_interval = (left == 0.0 and right == 1.0)
+    self._fractional_labels = fractional_labels
+    self._prediction_based_bucketing = prediction_based_bucketing
 
   def _bucket_index(self, prediction: float) -> int:
     """Returns bucket index given prediction value. Values are truncated."""
@@ -148,7 +167,7 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
             model_name=self._key.model_name,
             output_name=self._key.output_name,
             sub_key=self._key.sub_key,
-            fractional_labels=self._is_unit_interval,
+            fractional_labels=self._fractional_labels,
             flatten=True,
             aggregation_type=self._aggregation_type,
             class_weights=self._class_weights)):
@@ -157,7 +176,10 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
       prediction = float(prediction)
       weighted_label = label * example_weight
       weighted_prediction = prediction * example_weight
-      bucket_index = self._bucket_index(prediction)
+      if self._prediction_based_bucketing:
+        bucket_index = self._bucket_index(prediction)
+      else:
+        bucket_index = self._bucket_index(label)
       # Check if bucket exists, all bucket values are > 0, so -1 are always less
       insert_index = bisect.bisect_left(accumulator,
                                         Bucket(bucket_index, -1, -1, -1))

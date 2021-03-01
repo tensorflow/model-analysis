@@ -11,6 +11,8 @@
     in-graph metric computations.
 *   Add support for calling model.evaluate on keras models containing custom
     metrics.
+*   Add CrossSliceMetricComputation metric type.
+*   Add Lift metrics under addons/fairness.
 
 ## Breaking Changes
 

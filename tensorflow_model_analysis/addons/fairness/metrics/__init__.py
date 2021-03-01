@@ -17,3 +17,4 @@
 # The import will trigger the metrics registration.
 from tensorflow_model_analysis.addons.fairness.metrics import counterfactual_fairness
 from tensorflow_model_analysis.addons.fairness.metrics.fairness_indicators import FairnessIndicators
+from tensorflow_model_analysis.addons.fairness.metrics.lift import Lift
