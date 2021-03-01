@@ -420,6 +420,85 @@ implies FN must be `(N - TP)` or `N = TP + FN`. The end result is
 `precision@1 = TP / N = recall@1`. Note that this only applies when there is a
 single label per example, not for multi-label.
 
+### How to interpret the MultiLabelConfusionMatrixPlot?
+
+Given a particular label, the `MultiLabelConfusionMatrixPlot` (and associated
+`MultiLabelConfusionMatrix`) can be used to compare the outcomes of other labels
+and their predictions when the chosen label was actually true. For example,
+let's say that we have three classes `bird`, `plane`, and `superman` and we are
+classifying pictures to indicate if they contain one or more of any of these
+classes. The `MultiLabelConfusionMatrix` will compute the cartesian product of
+each actual class against each other class (called the predicted class). Note
+that while the pairing is `(actual, predicted)`, the `predicted` class does not
+necessarily imply a positive prediction, it merely represents the predicted
+column in the actual vs predicted matrix. For example, let's say we have
+computed the following matrices:
+
+```
+   (bird, bird)         ->    { tp: 6, fp: 0, fn: 2, tn: 0}
+   (bird, plane)        ->    { tp: 2, fp: 2, fn: 2, tn: 2}
+   (bird, superman)     ->    { tp: 1, fp: 1, fn: 4, tn: 2}
+   (plane, bird)        ->    { tp: 3, fp: 1, fn: 1, tn: 3}
+   (plane, plane)       ->    { tp: 4, fp: 0, fn: 4, tn: 0}
+   (plane, superman)    ->    { tp: 1, fp: 3, fn: 3, tn: 1}
+   (superman, bird)     ->    { tp: 3, fp: 2, fn: 2, tn: 2}
+   (superman, plane)    ->    { tp: 2, fp: 3, fn: 2, tn: 2}
+   (superman, superman) ->    { tp: 4, fp: 0, fn: 5, tn: 0}
+
+   num_examples: 20
+```
+
+The `MultiLabelConfusionMatrixPlot` has three ways to display this data. In all
+cases the way to read the table is row by row from the perspective of the actual
+class.
+
+Note: Do NOT expect the counts to add up to the number of examples, these counts
+are done across labels and since this is a multi-label problem, there will be
+double counting.
+
+1) Total Prediction Count
+
+In this case, for a given row (i.e. actual class) what were the `TP + FP` counts
+for the other classes. For the counts above, our display would be as follows:
+
+                | Predicted bird | Predicted plane | Predicted superman
+--------------- | -------------- | --------------- | ------------------
+Actual bird     | 6              | 4               | 2
+Actual plane    | 4              | 4               | 4
+Actual superman | 5              | 5               | 4
+
+When the pictures actually contained a `bird` we correctly predicted 6 of them.
+At the same time we also predicted `plane` (either correctly or wrongly) 4 times
+and `superman` (either correctly or wrongly) 2 times.
+
+2) Incorrect Prediction Count
+
+In this case, for a given row (i.e. actual class) what were the `FP` counts for
+the other classes. For the counts above, our display would be as follows:
+
+                | Predicted bird | Predicted plane | Predicted superman
+--------------- | -------------- | --------------- | ------------------
+Actual bird     | 0              | 2               | 1
+Actual plane    | 1              | 0               | 3
+Actual superman | 2              | 3               | 0
+
+When the pictures actually contained a `bird` we incorrectly predicted `plane` 2
+times and `superman` 1 times.
+
+3) False Negative Count
+
+In this case, for a given row (i.e. actual class) what were the `FN` counts for
+the other classes. For the counts above, our display would be as follows:
+
+                | Predicted bird | Predicted plane | Predicted superman
+--------------- | -------------- | --------------- | ------------------
+Actual bird     | 2              | 2               | 4
+Actual plane    | 1              | 4               | 3
+Actual superman | 2              | 2               | 5
+
+When the pictures actually contained a `bird` we failed to predict it 2 times.
+At the same time, we failed to predict `plane` 2 times and `superman` 4 times.
+
 ### Why do I get an error about prediction key not found?
 
 Some model's output their prediction in the form of a dictionary. For example, a
