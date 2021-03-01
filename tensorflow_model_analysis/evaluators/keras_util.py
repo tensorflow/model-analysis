@@ -60,9 +60,12 @@ def metric_computations_using_keras_saved_model(
   # model.compiled_metrics and model.compiled_loss to compute the metrics,
   # otherwise custom metrics added via model.add_metric were also used and we
   # need to call model.evaluate.
-  if (hasattr(model, 'compiled_metrics') and hasattr(model, 'compiled_loss') and
-      len(model.compiled_metrics.metrics) +
-      len(model.compiled_loss.metrics) == len(model.metrics)):
+  if not model.metrics:
+    return []
+  elif (hasattr(model, 'compiled_metrics') and
+        hasattr(model, 'compiled_loss') and
+        len(model.compiled_metrics.metrics) +
+        len(model.compiled_loss.metrics) == len(model.metrics)):
     output_names = model.output_names if hasattr(model, 'output_names') else []
     keys = _metric_keys(
         chain(model.compiled_metrics.metrics, model.compiled_loss.metrics),
@@ -105,7 +108,7 @@ def _metric_keys(metrics: Iterable[tf.keras.metrics.Metric], model_name: Text,
       sub_key = metric_types.SubKey(class_id=metric.class_id)
     elif hasattr(metric, 'top_k') and metric.top_k is not None:
       sub_key = metric_types.SubKey(top_k=metric.top_k)
-    for output_name in output_names:
+    for output_name in output_names or []:
       if metric.name.startswith(output_name + '_'):
         # TODO(b/171559113): Output prefixes used to be added multiple times.
         # Remove this while loop after the last TF version with the issue is
