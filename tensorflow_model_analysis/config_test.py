@@ -156,6 +156,32 @@ class ConfigTest(tf.test.TestCase):
         eval_config, has_baseline=True)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
+  def testUpdateConfigWithoutBaselineModelWhenModelNameProvided(self):
+    eval_config_pbtxt = """
+      model_specs { name: "candidate" }
+      model_specs { name: "baseline" is_baseline: true }
+      metrics_specs {
+        metrics { class_name: "WeightedExampleCount" }
+        model_names: "candidate"
+      }
+    """
+    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+
+    expected_eval_config_pbtxt = """
+      model_specs { name: "candidate" }
+      model_specs { name: "baseline" is_baseline: true }
+      metrics_specs {
+        metrics { class_name: "WeightedExampleCount" }
+        model_names: ["candidate"]
+      }
+    """
+    expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
+                                             config.EvalConfig())
+
+    got_eval_config = config.update_eval_config_with_defaults(
+        eval_config, has_baseline=True)
+    self.assertProtoEquals(got_eval_config, expected_eval_config)
+
   def testUpdateConfigWithDefaultsAutomaticallyAddsBaselineModel(self):
     eval_config_pbtxt = """
       model_specs { label_key: "my_label" }

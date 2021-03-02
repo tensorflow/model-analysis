@@ -110,8 +110,8 @@ def update_eval_config_with_defaults(
       present. This is only applied if a single ModelSpec already exists in the
       config and that spec doesn't have a name associated with it. When applied
       the model specs will use the names tfma.CANDIDATE_KEY and
-      tfma.BASELINE_KEY. Only one of maybe_add_baseline or
-      maybe_remove_baseline should be used.
+      tfma.BASELINE_KEY. Only one of maybe_add_baseline or maybe_remove_baseline
+      should be used.
     maybe_remove_baseline: DEPRECATED. True to remove a baseline ModelSpec from
       the config if it already exists. Removal of the baseline also removes any
       change thresholds. Only one of maybe_add_baseline or maybe_remove_baseline
@@ -211,11 +211,8 @@ def update_eval_config_with_defaults(
   if not updated_config.model_specs:
     updated_config.model_specs.add()
 
-  baseline_spec = None
   model_names = []
   for spec in updated_config.model_specs:
-    if spec.is_baseline:
-      baseline_spec = spec
     model_names.append(spec.name)
   if len(model_names) == 1 and model_names[0]:
     logging.info(
@@ -229,8 +226,6 @@ def update_eval_config_with_defaults(
     elif len(model_names) == 1:
       del spec.model_names[:]
       spec.model_names.append('')
-    elif baseline_spec and baseline_spec.name not in spec.model_names:
-      spec.model_names.append(baseline_spec.name)
 
   return updated_config
 

@@ -427,9 +427,9 @@ message MetricsSpec {
   // List of metric configurations.
   repeated MetricConfig metrics = 1;
   // Names of models (as defined by model_specs) the metrics should be
-  // calculated for. If a baseline is configured in the model_specs, it will be
-  // added automatically. If this list is empty then all the names defined in
-  // the model_specs will be assumed.
+  // calculated for. If this list is empty then all the names defined in
+  // the model_specs will be assumed else these metrics will only be
+  // computed for the model names provided.
   repeated string model_names = 2;
   // Optional names of outputs the metrics should be calculated for (for
   // multi-output models). See comment under the ModelSpec.prediction_key on the

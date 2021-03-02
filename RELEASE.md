@@ -13,6 +13,8 @@
     metrics.
 *   Add CrossSliceMetricComputation metric type.
 *   Add Lift metrics under addons/fairness.
+*   Don't add metric config from config.MetricsSpec to baseline model spec by
+    default.
 
 ## Breaking Changes
 

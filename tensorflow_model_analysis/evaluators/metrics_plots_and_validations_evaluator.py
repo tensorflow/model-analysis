@@ -497,6 +497,13 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
     return sliced_combiner_outputs
 
 
+def _is_metric_diffable(metric_value: Any):
+  return (not isinstance(metric_value, message.Message) and
+          not (isinstance(metric_value, np.ndarray) and
+               not issubclass(metric_value.dtype.type, np.integer) and
+               not issubclass(metric_value.dtype.type, np.floating)))
+
+
 @beam.ptransform_fn
 @beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
 @beam.typehints.with_output_types(Tuple[slicer.SliceKeyType,
@@ -567,8 +574,8 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
           continue
         if k.model_name != baseline_model_name and k.make_baseline_key(
             baseline_model_name) in result:
-          # plots will not be diffed.
-          if not isinstance(v, message.Message):
+          # Check if metric is diffable, skip plots and non-numerical values.
+          if _is_metric_diffable(v):
             diff_result[k.make_diff_key(
             )] = v - result[k.make_baseline_key(baseline_model_name)]
       result.update(diff_result)

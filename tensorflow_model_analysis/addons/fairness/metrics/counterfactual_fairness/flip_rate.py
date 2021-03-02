@@ -19,6 +19,7 @@ from typing import Dict, Optional, List
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.addons.fairness.metrics.counterfactual_fairness import flip_count
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.metrics import metric_util
 
 FLIP_RATE_NAME = 'flip_rate'
 
@@ -64,7 +65,7 @@ class FlipRate(metric_types.Metric):
         positives and false negatives.
     """
     super().__init__(
-        _flip_rate,
+        metric_util.merge_per_key_computations(_flip_rate),
         counterfactual_prediction_key=counterfactual_prediction_key,
         thresholds=thresholds,
         name=name,
