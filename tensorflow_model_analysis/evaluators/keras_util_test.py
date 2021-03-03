@@ -30,6 +30,8 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import keras_util
 from tensorflow_model_analysis.metrics import metric_types
 
+_TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
+
 
 class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                               parameterized.TestCase):
@@ -174,7 +176,11 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       ('evaluate', False, True),
   )
   def testWithBinaryClassification(self, sequential_model, add_custom_metrics):
-    # If custom metrics are used, then model.evaluate is called.
+    # Custom metrics not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      add_custom_metrics = False
+
+    # If custom metrics are used (or TFv1), then model.evaluate is called.
     export_dir = self._createBinaryClassificationModel(
         sequential=sequential_model, add_custom_metrics=add_custom_metrics)
     eval_shared_model = self.createTestEvalSharedModel(
@@ -223,6 +229,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         'weighted_sensitivity_at_specificity': 1.0,
         'loss': 2.861993
     }
+    # Loss not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      del expected_values['loss']
     if add_custom_metrics:
       # Loss is different due to rounding errors from tf.Example conversion.
       expected_values['loss'] = 2.8327076
@@ -259,7 +268,11 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       ('evaluate', True),
   )
   def testWithBinaryClassificationMultiOutput(self, add_custom_metrics):
-    # If custom metrics are used, then model.evaluate is called.
+    # Custom metrics not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      add_custom_metrics = False
+
+    # If custom metrics are used (or TFv1), then model.evaluate is called.
     export_dir = self._createBinaryClassificationModel(
         sequential=False,
         output_names=('output_1', 'output_2'),
@@ -368,6 +381,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             'loss': 2.861993 + 0.21259646
         }
     }
+    # Loss not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      del expected_values['loss']
     if add_custom_metrics:
       # Loss is different due to rounding errors from tf.Example conversion.
       expected_values['output_1']['loss'] = 2.8327076
@@ -409,6 +425,10 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       ('evaluate', False, True))
   def testWithMultiClassClassification(self, sequential_model,
                                        add_custom_metrics):
+    # Custom metrics not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      add_custom_metrics = False
+
     export_dir = self._createMultiClassClassificationModel(
         sequential=sequential_model, add_custom_metrics=add_custom_metrics)
     eval_shared_model = self.createTestEvalSharedModel(
@@ -475,6 +495,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         'weighted_recall@3': 1.9 / (1.9 + 0.5),
         'loss': 0.77518
     }
+    # Loss not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      del expected_values['loss']
     if add_custom_metrics:
       expected_values['custom'] = 4.0
 
@@ -510,6 +533,10 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(('compiled_metrics', False),
                                   ('evaluate', True))
   def testWithMultiClassClassificationMultiOutput(self, add_custom_metrics):
+    # Custom metrics not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      add_custom_metrics = False
+
     export_dir = self._createMultiClassClassificationModel(
         sequential=False,
         output_names=('output_1', 'output_2'),
@@ -634,6 +661,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             'loss': 0.77518433 + 0.77518433
         }
     }
+    # Loss not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      del expected_values['loss']
     if add_custom_metrics:
       expected_values['']['custom_output_1'] = 4.0
       expected_values['']['custom_output_2'] = 4.0

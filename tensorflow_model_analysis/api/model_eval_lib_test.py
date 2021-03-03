@@ -64,6 +64,8 @@ except (ImportError, tf.errors.NotFoundError):
 
 _TEST_SEED = 982735
 
+_TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
+
 
 class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                    parameterized.TestCase):
@@ -624,6 +626,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                                          remove_baseline=False,
                                          rubber_stamp=False,
                                          add_custom_metrics=False):
+    # Custom metrics not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      add_custom_metrics = False
 
     def _build_keras_model(eval_config,
                            export_name='export_dir',
@@ -836,7 +841,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
               'auc': True,
           },
       }
-      if model_type not in (constants.TF_LITE, constants.TF_JS):
+      if (model_type not in (constants.TF_LITE, constants.TF_JS) and
+          _TF_MAJOR_VERSION >= 2):
         expected_metrics[''] = {'loss': True}
         if add_custom_metrics:
           expected_metrics['']['custom'] = True
