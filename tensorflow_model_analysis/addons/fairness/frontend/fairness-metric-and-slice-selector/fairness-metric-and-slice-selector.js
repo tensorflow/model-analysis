@@ -44,6 +44,9 @@ const METRIC_DEFINITIONS = {
     'prediction/mean': 'The mean of all predicted labels',
     'recall': 'The percentage of positive data points (as labeled in the ground truth) that are correctly classified as positive',
     'totalWeightedExamples': 'The number of weighted examples processed',
+    'lift': 'The difference between the average of predictions for in-slice and the background items.'
+       + ' The Lift metric can be used to see whether the predictions on a given slice of items are, on average,'
+       + ' higher/lower than the background. Metric name format: "lift@<num_buckets>"',
 };
 
 /**
@@ -180,11 +183,13 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
    */
   getDefinition(metricListCandidate) {
     let strippedMetric = this.stripPrefix(metricListCandidate);
-    if (strippedMetric in METRIC_DEFINITIONS) {
-      return METRIC_DEFINITIONS[strippedMetric];
-    } else {
-      return strippedMetric;
+    for (const [key, value] of  Object.entries(METRIC_DEFINITIONS)) {
+      if (strippedMetric.startsWith(key)) {
+        return value;
+      }
     }
+
+    return strippedMetric;
   }
 
   /**

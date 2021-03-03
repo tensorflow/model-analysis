@@ -28,6 +28,12 @@ suite('fairness-nb-container tests', () => {
         'slice': slice,
         'sliceValue': slice.split(':')[1] || 'Overall',
         'metrics': {
+          'lift@2': {
+            'doubleValue': Math.random(),
+          },
+          'lift@23': {
+            'doubleValue': Math.random(),
+          },
           'accuracy': {
             'doubleValue': Math.random(),
           },
@@ -73,7 +79,7 @@ suite('fairness-nb-container tests', () => {
         'post_export_metrics/false_positive_rate',
         'post_export_metrics/positive_rate',
         'post_export_metrics/true_positive_rate', 'accuracy',
-        'totalWeightedExamples'
+        'lift@2', 'lift@23', 'totalWeightedExamples'
       ]);
       assert.deepEqual(
           metricsList.selectedMetrics,

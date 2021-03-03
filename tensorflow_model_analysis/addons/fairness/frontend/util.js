@@ -28,6 +28,12 @@ const MULTIHEAD_METRIC_PREFIX_ = 'post_export_metrics/';
  */
 const FAIRNESS_METRIC_PREFIX_ = 'fairness_indicators_metrics/';
 
+/**
+ * Lift metrics.
+ * @const {string}
+ * @private
+ */
+const LIFT_METRICS_ = 'lift';
 
 /**
  * The list of fainress metrics. The order is used to determine which
@@ -85,6 +91,13 @@ exports.removeMetricNamePrefix = function(metricName) {
  *     threshold or null if the named metric is not a fairness metric.
  */
 exports.extractFairnessMetric = function(metricName) {
+  // Exempt lift metrics and return it as is since it contain number of
+  // buckets (not thresholds) in the metric name.
+  // Lift metric name format: 'lift@<num_buckets>'.
+  if (metricName.startsWith(LIFT_METRICS_)) {
+    return null;
+  }
+
   for (let i = 0; i < FAIRNESS_METRICS_.length; i++) {
     const parts = metricName.split(FAIRNESS_METRICS_[i] + '@');
     const prefix = parts[0];
