@@ -287,8 +287,7 @@ class MetricKey(
         output_name=pb.output_name,
         sub_key=SubKey.from_proto(pb.sub_key),
         aggregation_type=AggregationType.from_proto(pb.aggregation_type),
-        # TODO(mdreves): Find out why some tests don't recognize is_diff.
-        is_diff=pb.is_diff if hasattr(pb, 'is_diff') else False)
+        is_diff=pb.is_diff)
 
   # Generate a copy of the key except that the is_diff is True.
   def make_diff_key(self) -> 'MetricKey':
