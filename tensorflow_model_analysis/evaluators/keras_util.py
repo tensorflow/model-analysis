@@ -64,8 +64,8 @@ def metric_computations_using_keras_saved_model(
     return []
   elif (hasattr(model, 'compiled_metrics') and
         hasattr(model, 'compiled_loss') and
-        len(model.compiled_metrics.metrics) +
-        len(model.compiled_loss.metrics) == len(model.metrics)):
+        len(model.compiled_metrics.metrics) + len(model.compiled_loss.metrics)
+        == len(model.metrics)):
     output_names = model.output_names if hasattr(model, 'output_names') else []
     keys = _metric_keys(
         chain(model.compiled_metrics.metrics, model.compiled_loss.metrics),
@@ -437,7 +437,11 @@ class _KerasEvaluateCombiner(_KerasCombiner):
         # The empty output_name for multi-output models is not used for inputs.
         continue
       labels[output_name] = np.array(l)
-      example_weights[output_name] = np.array(w)
+      weights = np.array(w)
+      # TFv1 will not squeeze the weights, so must do manually
+      if weights.shape[-1] == 1:
+        weights = weights.squeeze(axis=-1)
+      example_weights[output_name] = weights
     if len(self._output_names) == 1:
       # Single-output models don't use dicts.
       labels = next(iter(labels.values()))

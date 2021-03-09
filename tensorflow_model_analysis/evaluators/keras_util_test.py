@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tempfile
+import unittest
 
 from absl.testing import parameterized
 import apache_beam as beam
@@ -103,7 +104,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 {n: np.array([[1]]) for n in output_names})
 
     export_path = tempfile.mkdtemp()
-    model.save(export_path)
+    model.save(export_path, save_format='tf')
     return export_path
 
   def _createMultiClassClassificationMetrics(self):
@@ -167,7 +168,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 {n: np.array([[1, 0, 0, 0, 0]]) for n in output_names})
 
     export_path = tempfile.mkdtemp()
-    model.save(export_path)
+    model.save(export_path, save_format='tf')
     return export_path
 
   @parameterized.named_parameters(
@@ -175,12 +176,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       ('compiled_metrics_functional_model', False, False),
       ('evaluate', False, True),
   )
+  @unittest.skipIf(_TF_MAJOR_VERSION < 2, 'not all options supported in TFv1')
   def testWithBinaryClassification(self, sequential_model, add_custom_metrics):
-    # Custom metrics not supported in TFv1
-    if _TF_MAJOR_VERSION < 2:
-      add_custom_metrics = False
-
-    # If custom metrics are used (or TFv1), then model.evaluate is called.
+    # If custom metrics are used, then model.evaluate is called.
     export_dir = self._createBinaryClassificationModel(
         sequential=sequential_model, add_custom_metrics=add_custom_metrics)
     eval_shared_model = self.createTestEvalSharedModel(
@@ -229,9 +227,6 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         'weighted_sensitivity_at_specificity': 1.0,
         'loss': 2.861993
     }
-    # Loss not supported in TFv1
-    if _TF_MAJOR_VERSION < 2:
-      del expected_values['loss']
     if add_custom_metrics:
       # Loss is different due to rounding errors from tf.Example conversion.
       expected_values['loss'] = 2.8327076
@@ -267,12 +262,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       ('compiled_metrics', False),
       ('evaluate', True),
   )
+  @unittest.skipIf(_TF_MAJOR_VERSION < 2, 'not all options supported in TFv1')
   def testWithBinaryClassificationMultiOutput(self, add_custom_metrics):
-    # Custom metrics not supported in TFv1
-    if _TF_MAJOR_VERSION < 2:
-      add_custom_metrics = False
-
-    # If custom metrics are used (or TFv1), then model.evaluate is called.
+    # If custom metrics are used, then model.evaluate is called.
     export_dir = self._createBinaryClassificationModel(
         sequential=False,
         output_names=('output_1', 'output_2'),
@@ -381,9 +373,6 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             'loss': 2.861993 + 0.21259646
         }
     }
-    # Loss not supported in TFv1
-    if _TF_MAJOR_VERSION < 2:
-      del expected_values['loss']
     if add_custom_metrics:
       # Loss is different due to rounding errors from tf.Example conversion.
       expected_values['output_1']['loss'] = 2.8327076
@@ -423,12 +412,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       ('compiled_metrics_sequential_model', True, False),
       ('compiled_metrics_functional_model', False, False),
       ('evaluate', False, True))
+  @unittest.skipIf(_TF_MAJOR_VERSION < 2, 'not all options supported in TFv1')
   def testWithMultiClassClassification(self, sequential_model,
                                        add_custom_metrics):
-    # Custom metrics not supported in TFv1
-    if _TF_MAJOR_VERSION < 2:
-      add_custom_metrics = False
-
     export_dir = self._createMultiClassClassificationModel(
         sequential=sequential_model, add_custom_metrics=add_custom_metrics)
     eval_shared_model = self.createTestEvalSharedModel(
@@ -495,9 +481,6 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         'weighted_recall@3': 1.9 / (1.9 + 0.5),
         'loss': 0.77518
     }
-    # Loss not supported in TFv1
-    if _TF_MAJOR_VERSION < 2:
-      del expected_values['loss']
     if add_custom_metrics:
       expected_values['custom'] = 4.0
 
@@ -532,11 +515,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
 
   @parameterized.named_parameters(('compiled_metrics', False),
                                   ('evaluate', True))
+  @unittest.skipIf(_TF_MAJOR_VERSION < 2, 'not all options supported in TFv1')
   def testWithMultiClassClassificationMultiOutput(self, add_custom_metrics):
-    # Custom metrics not supported in TFv1
-    if _TF_MAJOR_VERSION < 2:
-      add_custom_metrics = False
-
     export_dir = self._createMultiClassClassificationModel(
         sequential=False,
         output_names=('output_1', 'output_2'),
@@ -661,9 +641,6 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             'loss': 0.77518433 + 0.77518433
         }
     }
-    # Loss not supported in TFv1
-    if _TF_MAJOR_VERSION < 2:
-      del expected_values['loss']
     if add_custom_metrics:
       expected_values['']['custom_output_1'] = 4.0
       expected_values['']['custom_output_2'] = 4.0

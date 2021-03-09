@@ -86,7 +86,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     return os.path.join(self._getTempDir(), 'baseline_export_dir')
 
   def _build_keras_model(self, model_dir, mul):
-    input_layer = tf.keras.layers.Input(shape=(1,), name='input')
+    input_layer = tf.keras.layers.Input(shape=(1,), name='input_1')
     output_layer = tf.keras.layers.Lambda(
         lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul})(
             input_layer)
@@ -1232,10 +1232,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
           key: ""
           value {
             tensor_representation {
-              key: "input"
+              key: "input_1"
               value {
                 dense_tensor {
-                  column_name: "input"
+                  column_name: "input_1"
                   shape { dim { size: 1 } }
                 }
               }
@@ -1243,7 +1243,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
           }
         }
         feature {
-          name: "input"
+          name: "input_1"
           type: FLOAT
         }
         feature {
@@ -1266,12 +1266,12 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         tensor_representations=tfx_io.TensorRepresentations())
     examples = [
         self._makeExample(
-            input=0.0,
+            input_1=0.0,
             label=1.0,
             example_weight=1.0,
             extra_feature='non_model_feature'),
         self._makeExample(
-            input=1.0,
+            input_1=1.0,
             label=0.0,
             example_weight=0.5,
             extra_feature='non_model_feature'),
@@ -1527,10 +1527,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
           key: ""
           value {
             tensor_representation {
-              key: "input"
+              key: "input_1"
               value {
                 dense_tensor {
-                  column_name: "input"
+                  column_name: "input_1"
                   shape { dim { size: 1 } }
                 }
               }
@@ -1538,7 +1538,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
           }
         }
         feature {
-          name: "input"
+          name: "input_1"
           type: FLOAT
         }
         feature {
@@ -1561,12 +1561,12 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         tensor_representations=tfx_io.TensorRepresentations())
     examples = [
         self._makeExample(
-            input=0.0,
+            input_1=0.0,
             label=1.0,
             example_weight=1.0,
             extra_feature='non_model_feature'),
         self._makeExample(
-            input=1.0,
+            input_1=1.0,
             label=0.0,
             example_weight=0.5,
             extra_feature='non_model_feature'),

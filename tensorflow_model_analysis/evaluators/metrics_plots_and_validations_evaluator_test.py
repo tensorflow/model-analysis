@@ -57,6 +57,8 @@ from tfx_bsl.tfxio import test_util
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+_TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
+
 
 def _addExampleCountMetricCallback(  # pylint: disable=invalid-name
     features_dict, predictions_dict, labels_dict):
@@ -79,7 +81,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     return os.path.join(self._getTempDir(), 'baseline_export_dir')
 
   def _build_keras_model(self, model_name, model_dir, mul):
-    input_layer = tf.keras.layers.Input(shape=(1,), name='input')
+    input_layer = tf.keras.layers.Input(shape=(1,), name='input_1')
     output_layer = tf.keras.layers.Lambda(
         lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul})(
             input_layer)
@@ -158,10 +160,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           key: ""
           value {
             tensor_representation {
-              key: "input"
+              key: "input_1"
               value {
                 dense_tensor {
-                  column_name: "input"
+                  column_name: "input_1"
                   shape { dim { size: 1 } }
                 }
               }
@@ -169,7 +171,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           }
         }
         feature {
-          name: "input"
+          name: "input_1"
           type: FLOAT
         }
         feature {
@@ -193,12 +195,12 @@ class MetricsPlotsAndValidationsEvaluatorTest(
 
     examples = [
         self._makeExample(
-            input=0.0,
+            input_1=0.0,
             label=1.0,
             example_weight=1.0,
             extra_feature='non_model_feature'),
         self._makeExample(
-            input=1.0,
+            input_1=1.0,
             label=0.0,
             example_weight=0.5,
             extra_feature='non_model_feature'),
@@ -383,6 +385,11 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                   }
                   """, validation_result_pb2.ValidationFailure()),
           ]
+          # Loss not supported in TFv1
+          if _TF_MAJOR_VERSION < 2:
+            expected_metric_validations_per_slice[0].ClearField('metric_value')
+            expected_metric_validations_per_slice[0].message = (
+                'Metric not found.')
           self.assertFalse(got.validation_ok)
           self.assertLen(got.metric_validations_per_slice, 1)
           self.assertLen(got.metric_validations_per_slice[0].failures,
@@ -414,10 +421,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           key: ""
           value {
             tensor_representation {
-              key: "input"
+              key: "input_1"
               value {
                 dense_tensor {
-                  column_name: "input"
+                  column_name: "input_1"
                   shape { dim { size: 1 } }
                 }
               }
@@ -425,7 +432,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           }
         }
         feature {
-          name: "input"
+          name: "input_1"
           type: FLOAT
         }
         feature {
@@ -449,12 +456,12 @@ class MetricsPlotsAndValidationsEvaluatorTest(
 
     examples = [
         self._makeExample(
-            input=0.0,
+            input_1=0.0,
             label=1.0,
             example_weight=1.0,
             extra_feature='non_model_feature'),
         self._makeExample(
-            input=1.0,
+            input_1=1.0,
             label=0.0,
             example_weight=0.5,
             extra_feature='non_model_feature'),
@@ -1017,10 +1024,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           key: ""
           value {
             tensor_representation {
-              key: "input"
+              key: "input_1"
               value {
                 dense_tensor {
-                  column_name: "input"
+                  column_name: "input_1"
                   shape { dim { size: 1 } }
                 }
               }
@@ -1028,7 +1035,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           }
         }
         feature {
-          name: "input"
+          name: "input_1"
           type: FLOAT
         }
         feature {
@@ -1052,12 +1059,12 @@ class MetricsPlotsAndValidationsEvaluatorTest(
 
     examples = [
         self._makeExample(
-            input=0.0,
+            input_1=0.0,
             label=1.0,
             example_weight=1.0,
             extra_feature='non_model_feature'),
         self._makeExample(
-            input=1.0,
+            input_1=1.0,
             label=0.0,
             example_weight=0.5,
             extra_feature='non_model_feature'),
@@ -1670,8 +1677,12 @@ class MetricsPlotsAndValidationsEvaluatorTest(
       ('evaluate', True),
   )
   def testEvaluateWithKerasModelWithInGraphMetrics(self, add_custom_metrics):
-    input1 = tf.keras.layers.Input(shape=(1,), name='input1')
-    input2 = tf.keras.layers.Input(shape=(1,), name='input2')
+    # Custom metrics not supported in TFv1
+    if _TF_MAJOR_VERSION < 2:
+      add_custom_metrics = False
+
+    input1 = tf.keras.layers.Input(shape=(1,), name='input_1')
+    input2 = tf.keras.layers.Input(shape=(1,), name='input_2')
     inputs = [input1, input2]
     input_layer = tf.keras.layers.concatenate(inputs)
     output_layer = tf.keras.layers.Dense(
@@ -1703,14 +1714,14 @@ class MetricsPlotsAndValidationsEvaluatorTest(
 
     examples = [
         self._makeExample(
-            input1=0.0,
-            input2=1.0,
+            input_1=0.0,
+            input_2=1.0,
             label=1.0,
             example_weight=1.0,
             extra_feature='non_model_feature'),
         self._makeExample(
-            input1=1.0,
-            input2=0.0,
+            input_1=1.0,
+            input_2=0.0,
             label=0.0,
             example_weight=0.5,
             extra_feature='non_model_feature'),
@@ -1722,19 +1733,19 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           key: ""
           value {
             tensor_representation {
-              key: "input1"
+              key: "input_1"
               value {
                 dense_tensor {
-                  column_name: "input1"
+                  column_name: "input_1"
                   shape { dim { size: 1 } }
                 }
               }
             }
             tensor_representation {
-              key: "input2"
+              key: "input_2"
               value {
                 dense_tensor {
-                  column_name: "input2"
+                  column_name: "input_2"
                   shape { dim { size: 1 } }
                 }
               }
@@ -1742,11 +1753,11 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           }
         }
         feature {
-          name: "input1"
+          name: "input_1"
           type: FLOAT
         }
         feature {
-          name: "input2"
+          name: "input_2"
           type: FLOAT
         }
         feature {
@@ -1806,8 +1817,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           label_key = metric_types.MetricKey(name='mean_label')
           binary_accuracy_key = metric_types.MetricKey(name='binary_accuracy')
           self.assertIn(binary_accuracy_key, got_metrics)
-          loss_key = metric_types.MetricKey(name='loss')
-          self.assertIn(loss_key, got_metrics)
+          # Loss not supported in TFv1
+          if _TF_MAJOR_VERSION > 1:
+            loss_key = metric_types.MetricKey(name='loss')
+            self.assertIn(loss_key, got_metrics)
           expected_values = {
               example_count_key: 2,
               weighted_example_count_key: (1.0 + 0.5),
