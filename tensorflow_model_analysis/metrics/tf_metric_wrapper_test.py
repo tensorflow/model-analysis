@@ -991,7 +991,7 @@ class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
           self.assertDictElementsAlmostEqual(
               got_metrics, {
                   mse_key: 0.1875,
-                  binary_crossentropy_key: 0.0
+                  binary_crossentropy_key: 0.50061995
               },
               places=5)
 

@@ -550,8 +550,8 @@ class _CompilableMetricsCombiner(beam.CombineFn):
       # Finish processing last batch
       self._process_batch(accumulator)
       # Merge the weights
-      for output_index in range(len(self._output_names)):
-        for metric_index in range(len(self._metric_configs[output_index])):
+      for output_index, output_name in enumerate(self._output_names):
+        for metric_index in range(len(self._metrics[output_name])):
           weights = accumulator.get_weights(output_index, metric_index)
           if weights is None:
             # It is possible for beam to create an accumulator but pass no
