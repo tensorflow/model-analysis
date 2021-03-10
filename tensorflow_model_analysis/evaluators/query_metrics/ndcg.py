@@ -28,12 +28,12 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Any, Dict, Iterable, List, NamedTuple, Text, Tuple
+
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
-
-from typing import Any, Dict, List, NamedTuple, Text, Tuple
 
 _State = NamedTuple('_State', [('ndcg', Dict[int, float]), ('weight', float)])
 
@@ -151,8 +151,9 @@ class NdcgMetricCombineFn(beam.CombineFn):
 
     return self._add_states(accumulator, _State(ndcg=ndcg_dict, weight=weight))
 
-  def merge_accumulators(self, accumulators: List[_State]) -> _State:
-    result = self.create_accumulator()
+  def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for accumulator in accumulators:
       result = self._add_states(result, accumulator)
     return result

@@ -24,7 +24,7 @@ import heapq
 import itertools
 import operator
 
-from typing import Dict, List, Optional, NamedTuple, Text
+from typing import Dict, Iterable, List, Optional, NamedTuple, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis import config
@@ -197,7 +197,7 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
             existing_bucket.weighted_examples + example_weight)
     return accumulator
 
-  def merge_accumulators(self, accumulators: List[Histogram]) -> Histogram:
+  def merge_accumulators(self, accumulators: Iterable[Histogram]) -> Histogram:
     result = []
     for bucket_id, buckets in itertools.groupby(
         heapq.merge(*accumulators), key=operator.attrgetter('bucket_id')):

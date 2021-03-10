@@ -763,8 +763,9 @@ class _ExampleCountCombiner(beam.CombineFn):
   def add_input(self, accumulator: int, state: int) -> int:
     return accumulator + state
 
-  def merge_accumulators(self, accumulators: List[int]) -> int:
-    result = 0
+  def merge_accumulators(self, accumulators: Iterable[int]) -> int:
+    accumulators = iter(accumulators)
+    result = next(accumulator)
     for accumulator in accumulators:
       result += accumulator
     return result

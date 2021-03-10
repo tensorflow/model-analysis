@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, List, NamedTuple, Text
+from typing import Any, Dict, Iterable, List, NamedTuple, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis.extractors import extractor
@@ -94,8 +94,9 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[Dict[Text, Any]]) -> Dict[Text, Any]:
-    result = self.create_accumulator()
+      self, accumulators: Iterable[Dict[Text, Any]]) -> Dict[Text, Any]:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for acc in accumulators:
       self._merge(result, acc)
     return result

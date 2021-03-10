@@ -212,7 +212,6 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
     """
 
     if self._eval_metrics_graph is None:
-      self._setup_if_needed()
       self._eval_metrics_graph = self._loaded_models[self._model_name]
     if force or accumulator.should_flush():
       if accumulator.inputs:
@@ -241,7 +240,9 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
     return accumulator
 
   def merge_accumulators(self, accumulators: Iterable[_AggState]) -> _AggState:
-    result = self.create_accumulator()
+    accumulators = iter(accumulators)
+    result = next(accumulators)
+    self._maybe_do_batch(result)
     for acc in accumulators:
       result += acc
       # Compact within the loop to avoid accumulating too much data.

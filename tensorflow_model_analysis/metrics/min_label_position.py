@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Dict, List, Optional, Text
+from typing import Dict, Iterable, List, Optional, Text
 
 import apache_beam as beam
 import numpy as np
@@ -140,9 +140,10 @@ class _MinLabelPositionCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[_MinLabelPositionAccumulator]
+      self, accumulators: Iterable[_MinLabelPositionAccumulator]
   ) -> _MinLabelPositionAccumulator:
-    result = self.create_accumulator()
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for accumulator in accumulators:
       result.total_min_position += accumulator.total_min_position
       result.total_weighted_examples += accumulator.total_weighted_examples

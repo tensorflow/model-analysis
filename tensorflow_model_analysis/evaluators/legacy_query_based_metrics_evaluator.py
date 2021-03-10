@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Text, Tuple
 
 import apache_beam as beam
 import numpy as np
@@ -40,7 +40,8 @@ def QueryBasedMetricsEvaluator(  # pylint: disable=invalid-name
     prediction_key: Text,
     combine_fns: List[beam.CombineFn],
     metrics_key: Text = constants.METRICS_KEY,
-    run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
+    run_after: Optional[Text] = slice_key_extractor
+    .SLICE_KEY_EXTRACTOR_STAGE_NAME,
 ) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
@@ -95,8 +96,10 @@ class CreateQueryExamples(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[List[types.Extracts]]) -> List[types.Extracts]:
-    result = []
+      self,
+      accumulators: Iterable[List[types.Extracts]]) -> List[types.Extracts]:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for acc in accumulators:
       result.extend(acc)
     return result

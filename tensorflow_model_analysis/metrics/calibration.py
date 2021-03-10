@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, Iterable, Optional, Text
 
 import apache_beam as beam
 import numpy as np
@@ -317,9 +317,10 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[_WeightedLabelsPredictionsExamples]
+      self, accumulators: Iterable[_WeightedLabelsPredictionsExamples]
   ) -> _WeightedLabelsPredictionsExamples:
-    result = self.create_accumulator()
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for accumulator in accumulators:
       result.total_weighted_labels += accumulator.total_weighted_labels
       result.total_weighted_predictions += (

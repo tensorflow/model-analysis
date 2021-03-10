@@ -893,6 +893,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     example4 = {'labels': [1.0], 'predictions': [0.9], 'example_weights': [1.0]}
     example5 = {'labels': [1.0], 'predictions': [0.5], 'example_weights': [0.0]}
 
+    computation.combiner.setup()
     combiner_inputs = []
     for e in (example1, example2, example3, example4, example5):
       combiner_inputs.append(metric_util.to_standard_metric_inputs(e))

@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Dict, List, Optional, Text
+from typing import Dict, Iterable, Optional, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis import config
@@ -129,9 +129,10 @@ class _SquaredPearsonCorrelationCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[_SquaredPearsonCorrelationAccumulator]
+      self, accumulators: Iterable[_SquaredPearsonCorrelationAccumulator]
   ) -> _SquaredPearsonCorrelationAccumulator:
-    result = self.create_accumulator()
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for accumulator in accumulators:
       result.total_weighted_labels += accumulator.total_weighted_labels
       result.total_weighted_predictions += (

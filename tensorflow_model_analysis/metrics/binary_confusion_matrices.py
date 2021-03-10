@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, List, NamedTuple, Optional, Text, Callable
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Text, Callable
 
 import apache_beam as beam
 from tensorflow_model_analysis import config
@@ -454,9 +454,10 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
     return result
 
   def merge_accumulators(
-      self, accumulators: List[MatrixAccumulator]) -> MatrixAccumulator:
-    result = accumulators[0]
-    for accumulator in accumulators[1:]:
+      self, accumulators: Iterable[MatrixAccumulator]) -> MatrixAccumulator:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
+    for accumulator in accumulators:
       for threshold in self._thresholds:
         if threshold not in accumulator:
           continue

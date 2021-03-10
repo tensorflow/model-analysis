@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Dict, List, Optional, Text
+from typing import Dict, Iterable, List, Optional, Text
 
 import apache_beam as beam
 import numpy as np
@@ -111,7 +111,7 @@ class _WeightedExampleCountCombiner(beam.CombineFn):
               example_weight, self._model_name, self._output_name))
     return accumulator + np.sum(example_weight)
 
-  def merge_accumulators(self, accumulators: List[float]) -> float:
+  def merge_accumulators(self, accumulators: Iterable[float]) -> float:
     result = 0.0
     for accumulator in accumulators:
       result += accumulator

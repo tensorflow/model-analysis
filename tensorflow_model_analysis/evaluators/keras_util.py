@@ -175,7 +175,7 @@ class _KerasCombiner(model_util.CombineFnWithModels):
     self._num_compacts = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_compacts')
 
-  def _setup_if_needed(self):
+  def setup(self):
     if self._model is None:
       # TODO(b/179500321): We are skipping the shared handle here to ensure that
       # we don't have issues with sharing the model between threads. This is
@@ -207,7 +207,6 @@ class _KerasCombiner(model_util.CombineFnWithModels):
 
   def _process_batch(self,
                      accumulator: tf_metric_accumulators.TFMetricsAccumulator):
-    self._setup_if_needed()
     if accumulator.len_inputs() == 0:
       return
     self._batch_size_beam_metric_dist.update(accumulator.len_inputs())
@@ -236,12 +235,13 @@ class _KerasCombiner(model_util.CombineFnWithModels):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[tf_metric_accumulators.TFMetricsAccumulator]
+      self, accumulators: Iterable[tf_metric_accumulators.TFMetricsAccumulator]
   ) -> tf_metric_accumulators.TFMetricsAccumulator:
-    result = accumulators[0]
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     # Finish processing last batch
     self._process_batch(result)
-    for accumulator in accumulators[1:]:
+    for accumulator in accumulators:
       # Finish processing last batch
       self._process_batch(accumulator)
       # Merge the weights
@@ -377,8 +377,8 @@ class _KerasEvaluateCombiner(_KerasCombiner):
     self._tensor_adapter = None
     self._decoder = None
 
-  def _setup_if_needed(self):
-    super(_KerasEvaluateCombiner, self)._setup_if_needed()
+  def setup(self):
+    super(_KerasEvaluateCombiner, self).setup()
     # TODO(b/180125126): Re-enable use of passed in TensorAdapter after bug
     # requiring matching schema's is fixed.
     # if self._tensor_adapter is None and

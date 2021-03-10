@@ -313,10 +313,12 @@ class _TotalAttributionsCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[Dict[Text,
-                                    List[float]]]) -> Dict[Text, List[float]]:
-    result = accumulators[0]
-    for accumulator in accumulators[1:]:
+      self,
+      accumulators: Iterable[Dict[Text,
+                                  List[float]]]) -> Dict[Text, List[float]]:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
+    for accumulator in accumulators:
       for k, v in accumulator.items():
         if k in result:
           self._sum(result[k], v)

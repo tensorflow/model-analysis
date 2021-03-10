@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Dict, List, Text
+from typing import Dict, Iterable, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
@@ -131,9 +131,10 @@ class _QueryStatisticsCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[_QueryStatisticsAccumulator]
+      self, accumulators: Iterable[_QueryStatisticsAccumulator]
   ) -> _QueryStatisticsAccumulator:
-    result = self.create_accumulator()
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for accumulator in accumulators:
       result.total_queries += accumulator.total_queries
       result.total_documents += accumulator.total_documents

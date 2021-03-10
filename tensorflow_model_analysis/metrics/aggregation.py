@@ -268,8 +268,9 @@ class _ClassWeightsFromLabelsCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[Dict[int, float]]) -> Dict[int, float]:
-    result = self.create_accumulator()
+      self, accumulators: Iterable[Dict[int, float]]) -> Dict[int, float]:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for accumulator in accumulators:
       for k, v in accumulator.items():
         result[k] += v

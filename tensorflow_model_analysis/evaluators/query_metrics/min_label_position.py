@@ -24,13 +24,13 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Any, Dict, Iterable, NamedTuple, Text
+
 import apache_beam as beam
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
 from tensorflow_model_analysis.eval_saved_model import util as eval_saved_model_util
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
-
-from typing import Any, Dict, List, NamedTuple, Text
 
 _State = NamedTuple('_State', [('min_pos_sum', float), ('weight_sum', float)])
 
@@ -121,8 +121,9 @@ class MinLabelPositionCombineFn(beam.CombineFn):
 
     return self._add_states(accumulator, state_to_add)
 
-  def merge_accumulators(self, accumulators: List[_State]) -> _State:
-    result = self.create_accumulator()
+  def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for accumulator in accumulators:
       result = self._add_states(result, accumulator)
     return result

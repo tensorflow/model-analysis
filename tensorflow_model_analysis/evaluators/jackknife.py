@@ -107,6 +107,9 @@ class _AccumulateOnlyCombiner(beam.CombineFn):
   def __init__(self, combiner: beam.CombineFn):
     self._combiner = combiner
 
+  def setup(self, *args, **kwargs):
+    self._combiner.setup(*args, **kwargs)
+
   def create_accumulator(self) -> Any:
     return self._combiner.create_accumulator()
 
@@ -198,6 +201,11 @@ def _make_jackknife_samples(
     Tuples of the form (slice_key, metrics), for each jackknife sample and for
     the unsampled value.
   """
+  # The combiner.setup needs to be called here, adding a DoFn prior to the
+  # FlatMap will not work. Fortunately most setup() implementations check that
+  # they have intialized their state already so this shouldn't be too expensive.
+  combiner.setup()
+
   slice_key, accumulators_sizes_and_ids = slice_partitions
   accumulators, sizes, partition_ids = zip(*accumulators_sizes_and_ids)
   unsampled_accumulator = None

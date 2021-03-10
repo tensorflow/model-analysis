@@ -18,11 +18,12 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from typing import Any, Dict, Iterable, NamedTuple, Text
+
 import apache_beam as beam
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 
-from typing import Any, Dict, List, NamedTuple, Text
 
 _State = NamedTuple('_State', [('total_queries', int), ('total_documents', int),
                                ('min_documents', int), ('max_documents', int)])
@@ -48,7 +49,7 @@ class QueryStatisticsCombineFn(beam.CombineFn):
         min_documents=min(accumulator.min_documents, len(query_fpl.fpls)),
         max_documents=max(accumulator.max_documents, len(query_fpl.fpls)))
 
-  def merge_accumulators(self, accumulators: List[_State]) -> _State:
+  def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
     total_queries = 0
     total_documents = 0
     min_documents = self.LARGE_INT

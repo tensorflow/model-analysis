@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Dict, List, Optional, NamedTuple, Text
+from typing import Dict, Iterable, List, Optional, NamedTuple, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis import config
@@ -221,8 +221,9 @@ class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
             accumulator[threshold][matrix_key] = matrix
     return accumulator
 
-  def merge_accumulators(self, accumulators: List[_Matrices]) -> _Matrices:
-    result = {}
+  def merge_accumulators(self, accumulators: Iterable[_Matrices]) -> _Matrices:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for accumulator in accumulators:
       for threshold, matrix in accumulator.items():
         if threshold not in result:

@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Dict, List, Optional, Text, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Text, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
@@ -237,8 +237,9 @@ class _NDCGCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[_NDCGAccumulator]) -> _NDCGAccumulator:
-    result = self.create_accumulator()
+      self, accumulators: Iterable[_NDCGAccumulator]) -> _NDCGAccumulator:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for accumulator in accumulators:
       result.ndcg = [a + b for a, b in zip(result.ndcg, accumulator.ndcg)]
       result.total_weighted_examples += accumulator.total_weighted_examples

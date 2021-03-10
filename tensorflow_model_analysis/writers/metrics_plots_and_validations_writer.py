@@ -581,7 +581,7 @@ class CombineValidations(beam.CombineFn):
 
   def merge_accumulators(
       self,
-      accumulators: 'List[Optional[validation_result_pb2.ValidationResult]]'
+      accumulators: 'Iterable[Optional[validation_result_pb2.ValidationResult]]'
   ) -> 'Optional[validation_result_pb2.ValidationResult]':
     accumulators = [accumulator for accumulator in accumulators if accumulator]
     if not accumulators:

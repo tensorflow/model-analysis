@@ -24,7 +24,7 @@ from __future__ import print_function
 import os
 import tempfile
 
-from typing import Any, Dict, Iterator, List, Optional, Set, Text, Union
+from typing import Any, Dict, Iterator, Iterable, List, Optional, Set, Text, Union
 
 from absl import logging
 import apache_beam as beam
@@ -881,8 +881,9 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: List[Dict[Text, Any]]) -> Dict[Text, Any]:
-    result = self.create_accumulator()
+      self, accumulators: Iterable[Dict[Text, Any]]) -> Dict[Text, Any]:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
     for acc in accumulators:
       self._merge(result, acc)
     return result

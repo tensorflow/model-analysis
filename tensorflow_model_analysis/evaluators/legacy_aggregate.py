@@ -58,14 +58,6 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
 
   return (
       slice_result
-      # _ModelLoadingIdentityFn loads the EvalSavedModel into memory
-      # under a shared handle that can be used by subsequent steps.
-      # Combiner lifting and producer-consumer fusion should ensure
-      # that these steps run in the same process and memory space.
-      # TODO(b/69566045): Remove _ModelLoadingIdentityFn and move model
-      # loading to CombineFn.setup after it is available in Beam.
-      | 'LoadModel' >> beam.ParDo(
-          _ModelLoadingIdentityFn(eval_shared_model=eval_shared_model))
       | 'CombinePerSlice' >> beam.CombinePerKey(
           _AggregateCombineFn(
               eval_shared_model=eval_shared_model,
@@ -241,7 +233,6 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
     """
 
     if self._eval_metrics_graph is None:
-      self._setup_if_needed()
       self._eval_metrics_graph = self._loaded_models['']
     if force or accumulator.should_flush():
       if accumulator.inputs:
@@ -274,7 +265,9 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
     return accumulator
 
   def merge_accumulators(self, accumulators: Iterable[_AggState]) -> _AggState:
-    result = self.create_accumulator()
+    accumulators = iter(accumulators)
+    result = next(accumulators)
+    self._maybe_do_batch(result)
     for acc in accumulators:
       result += acc
       # Compact within the loop to avoid accumulating too much data.
@@ -335,18 +328,3 @@ class _ExtractOutputDoFn(model_util.DoFnWithModels):
       # slice sizes are incredibly small, and seeing large values of this
       # counter is a sign that something has gone wrong.
       self._num_bootstrap_empties.inc(1)
-
-
-@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
-@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, types.Extracts])
-class _ModelLoadingIdentityFn(model_util.DoFnWithModels):
-  """A DoFn that loads the EvalSavedModel and returns the input unchanged."""
-
-  def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
-    super(_ModelLoadingIdentityFn,
-          self).__init__({'': eval_shared_model.model_loader})
-
-  def process(
-      self, element: Tuple[slicer.SliceKeyType, types.Extracts]
-  ) -> List[Tuple[slicer.SliceKeyType, types.Extracts]]:
-    return [element]

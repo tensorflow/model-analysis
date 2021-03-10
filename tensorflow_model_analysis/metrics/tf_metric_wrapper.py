@@ -23,7 +23,7 @@ import collections
 import importlib
 import itertools
 
-from typing import Any, Dict, List, Optional, Text, Type, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Text, Type, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
@@ -471,7 +471,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._num_compacts = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_compacts')
 
-  def _setup_if_needed(self):
+  def setup(self):
     if self._metrics is None:
       self._metrics = {}
       with tf.keras.utils.custom_object_scope(
@@ -484,7 +484,6 @@ class _CompilableMetricsCombiner(beam.CombineFn):
 
   def _process_batch(
       self, accumulator: tf_metric_accumulators.TFCompilableMetricsAccumulator):
-    self._setup_if_needed()
     if accumulator.len_inputs() == 0:
       return
     self._batch_size_beam_metric.update(accumulator.len_inputs())
@@ -542,10 +541,12 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self,
-      accumulators: List[tf_metric_accumulators.TFCompilableMetricsAccumulator]
+      self, accumulators: Iterable[
+          tf_metric_accumulators.TFCompilableMetricsAccumulator]
   ) -> tf_metric_accumulators.TFCompilableMetricsAccumulator:
-    result = self.create_accumulator()
+    accumulators = iter(accumulators)
+    result = next(accumulators)
+    self._process_batch(result)
     for accumulator in accumulators:
       # Finish processing last batch
       self._process_batch(accumulator)

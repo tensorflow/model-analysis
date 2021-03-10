@@ -899,11 +899,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
 
 
 class CombineFnWithModels(beam.CombineFn):
-  """Abstract class for CombineFns that need the shared models.
-
-  Until BEAM-3736 (Add SetUp() and TearDown() for CombineFns) is implemented
-  users of this class are responsible for calling _setup_if_needed manually.
-  """
+  """Abstract class for CombineFns that need the shared models."""
 
   def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
     """Initializes CombineFn using dict of loaders keyed by model location."""
@@ -916,10 +912,7 @@ class CombineFnWithModels(beam.CombineFn):
   def _set_model_load_seconds(self, model_load_seconds):
     self._model_load_seconds = model_load_seconds
 
-  # TODO(yifanmai): Merge _setup_if_needed into setup
-  # There's no initialisation method for CombineFns.
-  # See BEAM-3736: Add SetUp() and TearDown() for CombineFns.
-  def _setup_if_needed(self) -> None:
+  def setup(self):
     if self._loaded_models is None:
       self._loaded_models = {}
       for model_name, model_loader in self._model_loaders.items():
