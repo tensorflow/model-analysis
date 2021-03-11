@@ -396,4 +396,32 @@ suite('fairness-bounded-value-bar-chart tests', () => {
     assert.sameOrderedMembers(actualSlices, ALTERNATING_SLICES);
     assert.sameOrderedMembers(actualEvals, expectedEvals);
   });
+
+  test('negativeValuesWork', done => {
+    const liftBarChart = fixture('main');
+
+    const fillData = () => {
+      liftBarChart.data = [
+        {"slice":"Overall","sliceValue":"Overall","metrics":{"lift@23":0.17}},
+        {"slice":"slice:1","sliceValue":"1","metrics":{"lift@23":0.13}},
+        {"slice":"slice:2","sliceValue":"2","metrics":{"lift@23":-0.47}}
+      ];
+      liftBarChart.metrics = ['lift@23'];
+      liftBarChart.baseline = 'Overall';
+      liftBarChart.slices = ['slice:1', 'slice:2'];
+      setTimeout(checkValue, 100);
+    };
+
+    const checkValue = () => {
+      let bars = d3.select(liftBarChart.shadowRoot.querySelector('svg'))
+        .select('#bars')
+        .selectAll('rect')
+        .nodes();
+      let barHeights = bars.map(b => b.getAttribute('height'));
+      assert.deepEqual(barHeights, ['80','222','61']);
+      done();
+    };
+
+    setTimeout(fillData, 0);
+  });
 });

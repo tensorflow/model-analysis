@@ -127,6 +127,7 @@
     };
   });
 
+
   let boundedValueBarChart = document.getElementById('bounded-value');
   boundedValueBarChart.data = generateBoundedValueData(SLICES);
   boundedValueBarChart.metrics = METRICS;
@@ -158,4 +159,14 @@
   doubleCompareBarChart.evalName = 'EvalA';
   doubleCompareBarChart.evalNameCompare = 'EvalB';
   doubleCompareBarChart.sort = 'Eval';
+
+  let liftBarChart = document.getElementById('lift');
+  liftBarChart.data = [
+    {"slice":"Overall","sliceValue":"Overall","metrics":{"lift@23":0.17}},
+    {"slice":"slice:1","sliceValue":"1","metrics":{"lift@23":0.13}},
+    {"slice":"slice:2","sliceValue":"2","metrics":{"lift@23":-0.47}}
+  ];
+  liftBarChart.metrics = ['lift@23'];
+  liftBarChart.baseline = 'Overall';
+  liftBarChart.slices = ['slice:1', 'slice:2'];
 })();

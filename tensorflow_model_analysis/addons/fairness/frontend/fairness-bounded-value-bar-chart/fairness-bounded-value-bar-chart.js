@@ -202,7 +202,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     }
 
     slices = [baseline, ...slices];
-    var absentSlices =
+    const absentSlices =
         slices.filter(slice => !(data.find(d => d['slice'] == slice)));
     if (absentSlices.length) {
       return;
@@ -287,7 +287,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
           dataCompare.find(d => d['slice'] == slice) :
           undefined;
 
-      var undefinedMetrics = metrics.filter(
+      const undefinedMetrics = metrics.filter(
           metric => sliceMetrics['metrics'][metric] === undefined);
       if (undefinedMetrics.length) {
         return;
@@ -390,7 +390,6 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
 
     const svg = d3.select(this.$['bar-chart']);
     svg.html('');
-
     // Create a group of bars for every cluster
     const bars =
         svg.append('g')
@@ -418,22 +417,33 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
       tooltip.html('').style('display', 'none').style('position', 'static');
     };
 
+    // Negative and positive bars are projected into pixel space differently
+    // (eg, top of positive bar is at y(value) while the top of a negative bar
+    // is always at y(0)).
+    function barY(d) {
+      if (isNaN(d.value) || d.value < 0) {
+        return graphConfig['y'](0);
+      } else {
+        return graphConfig['y'](d.value);
+      }
+    }
+    function barHeight(d) {
+      if (isNaN(d.value)) {
+        return 0;
+      } else {
+        return Math.abs(graphConfig['y'](0) - graphConfig['y'](d.value));
+      }
+    }
+
     // For every cluster, add a bar for every eval-threshold pair
     bars.selectAll('rect')
         .data(d => d.metricsData)
         .enter()
         .append('rect')
         .attr('x', d => graphConfig['metricsX'](d.metricName))
-        .attr(
-            'y',
-            d => isNaN(d.value) ? graphConfig['y'](0) :
-                                  graphConfig['y'](d.value))
+        .attr('y', barY)
+        .attr('height', barHeight)
         .attr('width', graphConfig['metricsX'].bandwidth())
-        .attr(
-            'height',
-            d => isNaN(d.value) ?
-                0 :
-                graphConfig['y'](0) - graphConfig['y'](d.value))
         .attr(
             'fill',
             d => d.fullSliceName === baseline ?
@@ -475,6 +485,16 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     // Draw X Y axis.
     svg.append('g').attr('id', 'xaxis').call(graphConfig['configureXAxis']);
     svg.append('g').attr('id', 'yaxis').call(graphConfig['configureYAxis']);
+
+    // And zero line
+    svg.append('line')
+      .attr('stroke', 'black')
+      .attr('stroke-width', 1)
+      .style('shape-rendering', 'crispEdges')
+      .attr('x1', GRAPH_BOUND.left)
+      .attr('y1', graphConfig['y'](0) + 1)
+      .attr('x2', GRAPH_BOUND.right)
+      .attr('y2', graphConfig['y'](0) + 1);
   }
 
   /**
