@@ -118,6 +118,40 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
     self.assertCountEqual([('age', 5), ('language', 'english'), ('price', 1.0)],
                           got_slice_key)
 
+  def testDeserializeCrossSliceKey(self):
+    slice_metrics = text_format.Parse(
+        """
+          baseline_slice_key {
+            single_slice_keys {
+              column: 'age'
+              int64_value: 5
+            }
+            single_slice_keys {
+              column: 'language'
+              bytes_value: 'english'
+            }
+            single_slice_keys {
+              column: 'price'
+              float_value: 1.0
+            }
+          }
+          comparison_slice_key {
+            single_slice_keys {
+              column: 'age'
+              int64_value: 8
+            }
+            single_slice_keys {
+              column: 'language'
+              bytes_value: 'hindi'
+            }
+          }
+        """, metrics_for_slice_pb2.CrossSliceKey())
+
+    got_slice_key = slicer.deserialize_cross_slice_key(slice_metrics)
+    self.assertCountEqual(
+        ((('age', 5), ('language', 'english'), ('price', 1.0)),
+         (('age', 8), ('language', 'hindi'))), got_slice_key)
+
   def testSliceEquality(self):
     overall = slicer.SingleSliceSpec()
     age_column = slicer.SingleSliceSpec(columns=['age'])

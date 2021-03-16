@@ -18,7 +18,6 @@ package tensorflow_model_analysis;
 
 import "google/protobuf/wrappers.proto";
 
-
 // Sync with PerformanceStatistics because of b/110954446.
 // LINT.IfChange
 //
@@ -77,7 +76,6 @@ message MetricKey {
 // LINT.ThenChange(
 //   ../metrics/metric_types.py,
 //   ../../../../intelligence/lantern/proto/stats/performance_statistics.proto)
-
 
 // Sync the MetricValue types with PerformanceStatistics because of b/110954446.
 // LINT.IfChange
@@ -467,8 +465,13 @@ message AttributionsForSlice {
     map<string, MetricValue> values = 2;
   }
 
-  // Slice key.
-  SliceKey slice_key = 1;
+  oneof slicing_spec_oneof {
+    // The slice key for the metrics.
+    SliceKey slice_key = 1;
+
+    // The cross slice key for the metrics.
+    CrossSliceKey cross_slice_key = 3;
+  }
 
   // Attribution keys and values.
   repeated AttributionsKeyAndValues attributions_keys_and_values = 2;

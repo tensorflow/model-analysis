@@ -79,6 +79,45 @@ class WidgetViewTest(testutil.TensorflowModelAnalysisTest):
         }
     }])
 
+  def testConvertEvalResultToUIInputForCrossSliceKeyType(self):
+    eval_result = self._makeEvalResult(
+        slices=(((), (('slice_1', 1), ('slice_2', 2))),
+                ((('slice_1', 5), ('slice_2', 6)), (('slice_1', 3), ('slice_2',
+                                                                     4)))))
+    result = widget_view.convert_slicing_metrics_to_ui_input(
+        eval_result.slicing_metrics)
+    self.assertEqual(result, [{
+        'slice': 'Overall__XX__slice_1_X_slice_2:1_X_2',
+        'sliceValue': 'Overall__XX__1_X_2',
+        'metrics': {
+            'metrics2': {
+                'double_value': {
+                    'value': 0.5
+                }
+            },
+            'metrics1': {
+                'double_value': {
+                    'value': 0.5
+                }
+            }
+        }
+    }, {
+        'slice': 'slice_1_X_slice_2:5_X_6__XX__slice_1_X_slice_2:3_X_4',
+        'sliceValue': '5_X_6__XX__3_X_4',
+        'metrics': {
+            'metrics2': {
+                'double_value': {
+                    'value': 0.5
+                }
+            },
+            'metrics1': {
+                'double_value': {
+                    'value': 0.5
+                }
+            }
+        }
+    }])
+
   def testConvertEvalResultToUIInputWithSlicingColumn(self):
     eval_result = self._makeEvalResult()
     result = widget_view.convert_slicing_metrics_to_ui_input(

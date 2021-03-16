@@ -340,6 +340,24 @@ def deserialize_slice_key(
   return tuple(result)
 
 
+def deserialize_cross_slice_key(
+    cross_slice_key: metrics_for_slice_pb2.CrossSliceKey) -> CrossSliceKeyType:
+  """Converts CrossSliceKey proto to CrossSliceKeyType.
+
+  Args:
+    cross_slice_key: The cross slice key in the format of proto CrossSliceKey.
+
+  Returns:
+    The cross slice key in the format of CrossSliceKeyType.
+
+  Raises:
+    TypeError: If the evaluate type is unrecognized.
+  """
+  baseline_key = deserialize_slice_key(cross_slice_key.baseline_slice_key)
+  comparison_key = deserialize_slice_key(cross_slice_key.comparison_slice_key)
+  return (baseline_key, comparison_key)
+
+
 def get_slices_for_features_dicts(
     features_dicts: Iterable[Union[types.DictOfTensorValue,
                                    types.DictOfFetchedTensorValues]],

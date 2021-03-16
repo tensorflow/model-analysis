@@ -450,7 +450,8 @@ def convert_slice_plots_to_proto(
 
 
 def convert_slice_attributions_to_proto(
-    attributions: Tuple[slicer.SliceKeyType, Dict[Any, Dict[Text, Any]]]
+    attributions: Tuple[slicer.SliceKeyOrCrossSliceKeyType,
+                        Dict[Any, Dict[Text, Any]]]
 ) -> metrics_for_slice_pb2.AttributionsForSlice:
   """Converts the given slice attributions into serialized AtributionsForSlice.
 
@@ -467,7 +468,10 @@ def convert_slice_attributions_to_proto(
   result = metrics_for_slice_pb2.AttributionsForSlice()
   slice_key, slice_attributions = attributions
 
-  result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
+  if slicer.is_cross_slice_key(slice_key):
+    result.cross_slice_key.CopyFrom(slicer.serialize_cross_slice_key(slice_key))
+  else:
+    result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   slice_attributions = slice_attributions.copy()
   for key in sorted(slice_attributions.keys()):

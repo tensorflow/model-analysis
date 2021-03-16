@@ -71,8 +71,32 @@ def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> Text:
   return '_X_'.join(values)
 
 
+def _add_cross_slice_key_data(slice_key: slicer.CrossSliceKeyType,
+                              metrics: view_types.MetricsByTextKey,
+                              data: List[Any]):
+  """Adds data for cross slice key.
+
+  Baseline and comparison slice keys are joined by '__XX__'.
+  Args:
+    slice_key: Cross slice key.
+    metrics: Metrics data for the cross slice key.
+    data: List where UI data is to be appended.
+  """
+  baseline_key = slice_key[0]
+  comparison_key = slice_key[1]
+  stringify_slice_value = stringify_slice_key_value(
+      baseline_key) + '__XX__' + stringify_slice_key_value(comparison_key)
+  stringify_slice = slicer.stringify_slice_key(
+      baseline_key) + '__XX__' + slicer.stringify_slice_key(comparison_key)
+  data.append({
+      'sliceValue': stringify_slice_value,
+      'slice': stringify_slice,
+      'metrics': metrics
+  })
+
+
 def convert_slicing_metrics_to_ui_input(
-    slicing_metrics: List[Tuple[slicer.SliceKeyType,
+    slicing_metrics: List[Tuple[slicer.SliceKeyOrCrossSliceKeyType,
                                 view_types.MetricsByOutputName]],
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
@@ -108,19 +132,20 @@ def convert_slicing_metrics_to_ui_input(
 
   data = []
   for (slice_key, metric_value) in slicing_metrics:
-    slice_key_ok = (
-        slicing_spec is None or not slice_key or
-        slicing_spec.is_slice_applicable(slice_key))
-    metric_ok = (
-        output_name in metric_value and
-        multi_class_key in metric_value[output_name])
-
-    if slice_key_ok and metric_ok:
-      data.append({
-          'sliceValue': stringify_slice_key_value(slice_key),
-          'slice': slicer.stringify_slice_key(slice_key),
-          'metrics': metric_value[output_name][multi_class_key]
-      })
+    if (metric_value is not None and output_name in metric_value and
+        multi_class_key in metric_value[output_name]):
+      metrics = metric_value[output_name][multi_class_key]
+      # To add evaluation data for cross slice comparison.
+      if slicer.is_cross_slice_key(slice_key):
+        _add_cross_slice_key_data(slice_key, metrics, data)
+      # To add evaluation data for regular slices.
+      elif (slicing_spec is None or not slice_key or
+            slicing_spec.is_slice_applicable(slice_key)):
+        data.append({
+            'sliceValue': stringify_slice_key_value(slice_key),
+            'slice': slicer.stringify_slice_key(slice_key),
+            'metrics': metrics
+        })
   if not data:
     raise ValueError(
         'No eval result found for output_name:"%s" and '
@@ -146,9 +171,11 @@ def render_fairness_indicator(
       eval or model name to an EvalResult. This can be used for model
       comparison.
     slicing_column: The slicing column to to filter results. If both
-      slicing_column and slicing_spec are None, show all eval results.
+      slicing_column and slicing_spec are None, show all eval results. This is
+      ignored for cross slice comparison based results.
     slicing_spec: The slicing spec to filter results. If both slicing_column and
-      slicing_spec are None, show all eval results.
+      slicing_spec are None, show all eval results. This is ignored for cross
+      slice comparison based results.
     output_name: The output name associated with metric (for multi-output
       models).
     multi_class_key: The multi-class key associated with metric (for multi-class

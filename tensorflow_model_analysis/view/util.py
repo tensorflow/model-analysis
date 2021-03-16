@@ -476,7 +476,7 @@ def _convert_proto_map_to_dict(proto_map: Any) -> Dict[Text, Dict[Text, Any]]:
 def convert_metrics_proto_to_dict(
     metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice,
     model_name: Optional[Text] = None
-) -> Optional[Tuple[slicer.SliceKeyType,
+) -> Optional[Tuple[slicer.SliceKeyOrCrossSliceKeyType,
                     Optional[view_types.MetricsByOutputName]]]:
   """Converts metrics proto to dict."""
   model_metrics_map = {}
@@ -539,8 +539,13 @@ def convert_metrics_proto_to_dict(
         'Available model names are [%s]', model_name, ', '.join(keys))
     return None
 
-  return (slicer.deserialize_slice_key(metrics_for_slice.slice_key),
-          metrics_map)
+  slice_key = None
+  if metrics_for_slice.HasField('cross_slice_key'):
+    slice_key = slicer.deserialize_cross_slice_key(
+        metrics_for_slice.cross_slice_key)
+  else:
+    slice_key = slicer.deserialize_slice_key(metrics_for_slice.slice_key)
+  return (slice_key, metrics_map)
 
 
 def convert_plots_proto_to_dict(

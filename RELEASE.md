@@ -17,6 +17,10 @@
 *   Don't add metric config from config.MetricsSpec to baseline model spec by
     default.
 *   Fix invalid calculations for metrics derived from tf.keras.losses.
+*   Fixes following bugs related to CrossSlicingSpec based evaluation results.
+    *   metrics_plots_and_validations_writer was failing while writing cross
+        slice comparison results to metrics file.
+    *   Fairness widget view was not compatible with cross slicing key type.
 
 ## Breaking Changes
 
