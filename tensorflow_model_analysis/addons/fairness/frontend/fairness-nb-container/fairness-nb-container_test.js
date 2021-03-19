@@ -69,7 +69,12 @@ suite('fairness-nb-container tests', () => {
     fairnessContainer = fixture('test-fixture');
 
     const fillData = () => {
-      fairnessContainer.slicingMetrics = generateSlicingMetrics();
+      let slicingMetrics = generateSlicingMetrics();
+      // Available metrics should include all the metrics from all the slices
+      // even if any of the slice doesn't have some of the metrics.
+      delete slicingMetrics[0]['metrics']['lift@2'];
+      delete slicingMetrics[0]['metrics']['lift@23'];
+      fairnessContainer.slicingMetrics = slicingMetrics;
       setTimeout(checkValue, 0);
     };
     const checkValue = () => {
