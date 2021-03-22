@@ -290,7 +290,7 @@ setup_args = {
     # protobuf) with TF.
     'install_requires': [
         # Sort alphabetically
-        'absl-py>=0.9,<0.11',
+        'absl-py>=0.9,<0.13',
         'apache-beam[gcp]>=2.28,<3',
         'ipython>=7,<8',
         'ipywidgets>=7,<8',

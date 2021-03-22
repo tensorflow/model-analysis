@@ -8,7 +8,8 @@
 
 ## Bug fixes and other Changes
 
-*   For lift metrics, support negative values in the Fairness Indicator UI bar chart.
+*   For lift metrics, support negative values in the Fairness Indicator UI bar
+    chart.
 *   Make legacy predict extractor also input/output batched extracts.
 *   Updated to use new compiled_metrics and compiled_loss APIs for keras
     in-graph metric computations.
@@ -24,6 +25,7 @@
         slice comparison results to metrics file.
     *   Fairness widget view was not compatible with cross slicing key type.
 *   Fix support for loading the UI outside of a notebook.
+*   Depends on `absl-py>=0.9,<0.13`.
 
 ## Breaking Changes
 
