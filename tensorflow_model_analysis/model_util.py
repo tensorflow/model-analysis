@@ -242,15 +242,24 @@ def get_feature_values_for_model_spec_field(
     model name. If no values are found and allow_missing is False then None
     will be returned.
   """
-  if (constants.FEATURES_KEY not in batched_extracts or
-      batched_extracts[constants.FEATURES_KEY] is None):
+  if (constants.FEATURES_KEY in batched_extracts and
+      batched_extracts[constants.FEATURES_KEY]):
+    batch_size = len(batched_extracts[constants.FEATURES_KEY])
+  elif (constants.TRANSFORMED_FEATURES_KEY in batched_extracts and
+        batched_extracts[constants.TRANSFORMED_FEATURES_KEY]):
+    batch_size = len(batched_extracts[constants.TRANSFORMED_FEATURES_KEY])
+  else:
     batch_size = batched_extracts[constants.ARROW_RECORD_BATCH_KEY].num_rows
-    return [None] * batch_size if allow_missing else None
 
   batched_values = []
   all_none = True
-  for i, features in enumerate(batched_extracts[constants.FEATURES_KEY]):
+  for i in range(batch_size):
     values = {}
+    if (constants.FEATURES_KEY in batched_extracts and
+        batched_extracts[constants.FEATURES_KEY]):
+      features = batched_extracts[constants.FEATURES_KEY][i]
+    else:
+      features = {}
     for spec in model_specs:
       # Get transformed features (if any) for this model.
       if (constants.TRANSFORMED_FEATURES_KEY in batched_extracts and
