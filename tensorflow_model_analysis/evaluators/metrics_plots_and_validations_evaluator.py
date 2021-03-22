@@ -518,7 +518,7 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
     num_jackknife_samples: int = 0,
     skip_ci_metric_keys: Set[metric_types.MetricKey] = frozenset(),
     random_seed_for_testing: Optional[int] = None,
-    baseline_model_name: Optional[Text] = None) -> beam.pvalue.PCollection:
+    baseline_model_name: Optional[Text] = None) -> beam.pvalue.PCollection:  # pytype: disable=annotation-type-mismatch
   """PTransform for computing, aggregating and combining metrics and plots.
 
   Args:
