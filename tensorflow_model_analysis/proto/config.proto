@@ -435,6 +435,15 @@ message MetricsSpec {
   // multi-output models). See comment under the ModelSpec.prediction_key on the
   // difference between output_name and prediction_key.
   repeated string output_names = 3;
+  // Optional weights to use when aggregating across outputs. Output aggregation
+  // will only be performed when weights are configured and only between outputs
+  // that have a weight set. For example, assume metrics contains 'auc' and the
+  // following output information was configured:
+  //   output_names = ['output_1', 'output_2', 'output_3']
+  //   output_weights = {'output_1': 1.0, 'output_2': 1.0}
+  // An 'auc' metric will be computed for each output along with an overall auc
+  // metric calculated as (1.0*(auc output_1) + 1.0*(auc output_2)) / (1.0+1.0).
+  map<string, float> output_weights = 10;
   // Optional binarization options for converting multi-class / multi-label
   // model outputs into outputs suitable for binary classification metrics.
   BinarizationOptions binarize = 4;

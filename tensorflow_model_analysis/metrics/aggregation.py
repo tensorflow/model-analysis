@@ -29,6 +29,50 @@ from tensorflow_model_analysis.metrics import metric_util
 _CLASS_WEIGHTS_FROM_LABELS_NAME = '_class_weights_from_labels'
 
 
+def output_average(
+    metric_name: Text,
+    output_weights: Dict[Text, float],
+    eval_config: Optional[config.EvalConfig] = None,
+    model_name: Text = '',
+    sub_key: Optional[metric_types.SubKey] = None,
+) -> metric_types.MetricComputations:
+  """Returns metric computations for computing output average of given metric.
+
+  Args:
+    metric_name: Name of underlying metric average is being computed for.
+    output_weights: Output weights to use to compute metric.
+    eval_config: Eval config.
+    model_name: Optional model name.
+    sub_key: Optional sub key associated with metric (e.g. top_k).
+
+  Returns:
+    Computation for performing the output average.
+  """
+  del eval_config
+
+  key = metric_types.MetricKey(
+      name=metric_name, model_name=model_name, sub_key=sub_key)
+
+  def result(
+      metrics: Dict[metric_types.MetricKey, float]
+  ) -> Dict[metric_types.MetricKey, float]:
+    """Returns output average."""
+    total_value = 0.0
+    total_weight = 0.0
+    for output_name, output_weight in output_weights.items():
+      child_key = metric_types.MetricKey(
+          name=metric_name,
+          model_name=model_name,
+          output_name=output_name,
+          sub_key=sub_key)
+      total_value += _to_float(metrics[child_key]) * output_weight
+      total_weight += output_weight
+    average = total_value / total_weight if total_weight else float('nan')
+    return {key: average}
+
+  return [metric_types.DerivedMetricComputation(keys=[key], result=result)]
+
+
 def macro_average(
     metric_name: Text,
     sub_keys: Iterable[metric_types.SubKey],

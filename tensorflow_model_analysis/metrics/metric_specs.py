@@ -72,6 +72,7 @@ def specs_from_metrics(
     metrics: Union[List[_TFOrTFMAMetric], Dict[Text, List[_TFOrTFMAMetric]]],
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
+    output_weights: Optional[Dict[Text, float]] = None,
     binarize: Optional[config.BinarizationOptions] = None,
     aggregate: Optional[config.AggregationOptions] = None,
     query_key: Optional[Text] = None,
@@ -113,6 +114,9 @@ def specs_from_metrics(
     model_names: Optional model names (if multi-model evaluation).
     output_names: Optional output names (if multi-output models). If the metrics
       are a dict this should not be set.
+    output_weights: Optional output weights for creating overall metric
+      aggregated across outputs (if multi-output model). If a weight is not
+      provided for an output, it's weight defaults to 0.0 (i.e. output ignored).
     binarize: Optional settings for binarizing multi-class/multi-label metrics.
     aggregate: Optional settings for aggregating multi-class/multi-label
       metrics.
@@ -151,6 +155,7 @@ def specs_from_metrics(
   specs = example_count_specs(
       model_names=model_names,
       output_names=output_names,
+      output_weights=output_weights,
       include_example_count=include_example_count,
       include_weighted_example_count=include_weighted_example_count)
 
@@ -170,6 +175,7 @@ def specs_from_metrics(
           metrics=metric_configs,
           model_names=model_names,
           output_names=output_names,
+          output_weights=output_weights,
           binarize=binarize,
           aggregate=aggregate,
           query_key=query_key))
@@ -180,6 +186,7 @@ def specs_from_metrics(
 def example_count_specs(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
+    output_weights: Optional[Dict[Text, float]] = None,
     include_example_count: bool = True,
     include_weighted_example_count: bool = True) -> List[config.MetricsSpec]:
   """Returns metric specs for example count and weighted example counts.
@@ -187,6 +194,9 @@ def example_count_specs(
   Args:
     model_names: Optional list of model names (if multi-model evaluation).
     output_names: Optional list of output names (if multi-output model).
+    output_weights: Optional output weights for creating overall metric
+      aggregated across outputs (if multi-output model). If a weight is not
+      provided for an output, it's weight defaults to 0.0 (i.e. output ignored).
     include_example_count: True to add example_count metric.
     include_weighted_example_count: True to add weighted_example_count metric. A
       weighted example count will be added per output for multi-output models.
@@ -203,13 +213,15 @@ def example_count_specs(
         config.MetricsSpec(
             metrics=[metric_config],
             model_names=model_names,
-            output_names=output_names))
+            output_names=output_names,
+            output_weights=output_weights))
   return specs
 
 
 def default_regression_specs(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
+    output_weights: Optional[Dict[Text, float]] = None,
     loss_functions: Optional[List[Union[tf.keras.metrics.Metric,
                                         tf.keras.losses.Loss]]] = None,
     min_value: Optional[float] = None,
@@ -219,6 +231,9 @@ def default_regression_specs(
   Args:
     model_names: Optional model names (if multi-model evaluation).
     output_names: Optional list of output names (if multi-output model).
+    output_weights: Optional output weights for creating overall metric
+      aggregated across outputs (if multi-output model). If a weight is not
+      provided for an output, it's weight defaults to 0.0 (i.e. output ignored).
     loss_functions: Loss functions to use (if None MSE is used).
     min_value: Min value for calibration plot (if None no plot will be created).
     max_value: Max value for calibration plot (if None no plot will be created).
@@ -241,12 +256,16 @@ def default_regression_specs(
             name='calibration_plot', left=min_value, right=max_value))
 
   return specs_from_metrics(
-      metrics, model_names=model_names, output_names=output_names)
+      metrics,
+      model_names=model_names,
+      output_names=output_names,
+      output_weights=output_weights)
 
 
 def default_binary_classification_specs(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
+    output_weights: Optional[Dict[Text, float]] = None,
     binarize: Optional[config.BinarizationOptions] = None,
     aggregate: Optional[config.AggregationOptions] = None,
     include_loss: bool = True) -> List[config.MetricsSpec]:
@@ -255,6 +274,9 @@ def default_binary_classification_specs(
   Args:
     model_names: Optional model names (if multi-model evaluation).
     output_names: Optional list of output names (if multi-output model).
+    output_weights: Optional output weights for creating overall metric
+      aggregated across outputs (if multi-output model). If a weight is not
+      provided for an output, it's weight defaults to 0.0 (i.e. output ignored).
     binarize: Optional settings for binarizing multi-class/multi-label metrics.
     aggregate: Optional settings for aggregating multi-class/multi-label
       metrics.
@@ -285,6 +307,7 @@ def default_binary_classification_specs(
       metrics,
       model_names=model_names,
       output_names=output_names,
+      output_weights=output_weights,
       binarize=binarize,
       aggregate=aggregate)
 
@@ -292,6 +315,7 @@ def default_binary_classification_specs(
 def default_multi_class_classification_specs(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
+    output_weights: Optional[Dict[Text, float]] = None,
     binarize: Optional[config.BinarizationOptions] = None,
     aggregate: Optional[config.AggregationOptions] = None,
     sparse: bool = True) -> List[config.MetricsSpec]:
@@ -300,6 +324,9 @@ def default_multi_class_classification_specs(
   Args:
     model_names: Optional model names if multi-model evaluation.
     output_names: Optional list of output names (if multi-output model).
+    output_weights: Optional output weights for creating overall metric
+      aggregated across outputs (if multi-output model). If a weight is not
+      provided for an output, it's weight defaults to 0.0 (i.e. output ignored).
     binarize: Optional settings for binarizing multi-class/multi-label metrics.
     aggregate: Optional settings for aggregating multi-class/multi-label
       metrics.
@@ -329,13 +356,17 @@ def default_multi_class_classification_specs(
     binarize_without_top_k.ClearField('top_k_list')
     binarize = binarize_without_top_k
   multi_class_metrics = specs_from_metrics(
-      metrics, model_names=model_names, output_names=output_names)
+      metrics,
+      model_names=model_names,
+      output_names=output_names,
+      output_weights=output_weights)
   if aggregate is None:
     aggregate = config.AggregationOptions(micro_average=True)
   multi_class_metrics.extend(
       default_binary_classification_specs(
           model_names=model_names,
           output_names=output_names,
+          output_weights=output_weights,
           binarize=binarize,
           aggregate=aggregate))
   return multi_class_metrics
@@ -585,39 +616,54 @@ def to_computations(
                                   per_tfma_spec_metric_instances, eval_config,
                                   schema))
 
-  # Process macro averaging metrics (note that processing of TF and TFMA specs
-  # were setup to create the binarized metrics that macro averaging depends on).
+  # Process aggregation based metrics (output aggregation and macro averaging).
+  # Note that processing of TF and TFMA specs were setup to create the binarized
+  # metrics that macro averaging depends on.
   for i, spec in enumerate(metrics_specs):
     for aggregation_type, sub_keys in _create_sub_keys(spec).items():
-      if not (aggregation_type and (aggregation_type.macro_average or
-                                    aggregation_type.weighted_macro_average)):
-        continue
-      class_weights = _class_weights(spec) or {}
+      output_names = spec.output_names or ['']
+      output_weights = dict(spec.output_weights)
+      if not set(output_weights.keys()).issubset(output_names):
+        raise ValueError(
+            'one or more output_names used in output_weights does not exist: '
+            'output_names={}, output_weights={}'.format(output_names,
+                                                        output_weights))
       for model_name in spec.model_names or ['']:
-        for output_name in spec.output_names or ['']:
-          for sub_key in sub_keys:
-            for metric in per_spec_metric_instances[i]:
-              sub_keys = _macro_average_sub_keys(sub_key, class_weights)
-              if aggregation_type.macro_average:
-                computations.extend(
-                    aggregation.macro_average(
-                        metric.get_config()['name'],
-                        sub_keys=sub_keys,
-                        eval_config=eval_config,
-                        model_name=model_name,
-                        output_name=output_name,
-                        sub_key=sub_key,
-                        class_weights=class_weights))
-              elif aggregation_type.weighted_macro_average:
-                computations.extend(
-                    aggregation.weighted_macro_average(
-                        metric.get_config()['name'],
-                        sub_keys=sub_keys,
-                        eval_config=eval_config,
-                        model_name=model_name,
-                        output_name=output_name,
-                        sub_key=sub_key,
-                        class_weights=class_weights))
+        for sub_key in sub_keys:
+          for metric in per_spec_metric_instances[i]:
+            if (aggregation_type and (aggregation_type.macro_average or
+                                      aggregation_type.weighted_macro_average)):
+              class_weights = _class_weights(spec) or {}
+              for output_name in output_names:
+                sub_keys = _macro_average_sub_keys(sub_key, class_weights)
+                if aggregation_type.macro_average:
+                  computations.extend(
+                      aggregation.macro_average(
+                          metric.get_config()['name'],
+                          sub_keys=sub_keys,
+                          eval_config=eval_config,
+                          model_name=model_name,
+                          output_name=output_name,
+                          sub_key=sub_key,
+                          class_weights=class_weights))
+                elif aggregation_type.weighted_macro_average:
+                  computations.extend(
+                      aggregation.weighted_macro_average(
+                          metric.get_config()['name'],
+                          sub_keys=sub_keys,
+                          eval_config=eval_config,
+                          model_name=model_name,
+                          output_name=output_name,
+                          sub_key=sub_key,
+                          class_weights=class_weights))
+            if output_weights:
+              computations.extend(
+                  aggregation.output_average(
+                      metric.get_config()['name'],
+                      output_weights=output_weights,
+                      eval_config=eval_config,
+                      model_name=model_name,
+                      sub_key=sub_key))
 
   return computations
 

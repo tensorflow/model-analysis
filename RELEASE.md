@@ -4,6 +4,8 @@
 
 ## Major Features and Improvements
 
+*   Added support for output aggregation.
+
 ## Bug fixes and other Changes
 
 *   For lift metrics, support negative values in the Fairness Indicator UI bar chart.

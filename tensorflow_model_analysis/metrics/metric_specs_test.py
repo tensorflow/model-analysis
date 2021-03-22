@@ -459,16 +459,19 @@ class MetricSpecsTest(tf.test.TestCase):
   def testToComputations(self):
     computations = metric_specs.to_computations(
         metric_specs.specs_from_metrics(
-            {
-                'output_name': [
-                    tf.keras.metrics.MeanSquaredError('mse'),
-                    # Add a loss exactly same as metric
-                    # (https://github.com/tensorflow/tfx/issues/1550)
-                    tf.keras.losses.MeanSquaredError(name='loss'),
-                    calibration.MeanLabel('mean_label')
-                ]
-            },
+            [
+                tf.keras.metrics.MeanSquaredError('mse'),
+                # Add a loss exactly same as metric
+                # (https://github.com/tensorflow/tfx/issues/1550)
+                tf.keras.losses.MeanSquaredError(name='loss'),
+                calibration.MeanLabel('mean_label')
+            ],
             model_names=['model_name'],
+            output_names=['output_1', 'output_2'],
+            output_weights={
+                'output_1': 1.0,
+                'output_2': 1.0
+            },
             binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
             aggregate=config.AggregationOptions(
                 macro_average=True, class_weights={
@@ -482,64 +485,65 @@ class MetricSpecsTest(tf.test.TestCase):
       for k in m.keys:
         if not k.name.startswith('_'):
           keys.append(k)
-    self.assertLen(keys, 11)
+    self.assertLen(keys, 31)
     self.assertIn(
         metric_types.MetricKey(name='example_count', model_name='model_name'),
         keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='weighted_example_count',
-            model_name='model_name',
-            output_name='output_name'), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='mse',
-            model_name='model_name',
-            output_name='output_name',
-            sub_key=metric_types.SubKey(class_id=0)), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='mse',
-            model_name='model_name',
-            output_name='output_name',
-            sub_key=metric_types.SubKey(class_id=1)), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='mse', model_name='model_name', output_name='output_name'),
-        keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='loss',
-            model_name='model_name',
-            output_name='output_name',
-            sub_key=metric_types.SubKey(class_id=0)), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='loss',
-            model_name='model_name',
-            output_name='output_name',
-            sub_key=metric_types.SubKey(class_id=1)), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='loss', model_name='model_name', output_name='output_name'),
-        keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='mean_label',
-            model_name='model_name',
-            output_name='output_name',
-            sub_key=metric_types.SubKey(class_id=0)), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='mean_label',
-            model_name='model_name',
-            output_name='output_name',
-            sub_key=metric_types.SubKey(class_id=1)), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='mean_label',
-            model_name='model_name',
-            output_name='output_name'), keys)
+    for output_name in ('output_1', 'output_2', ''):
+      self.assertIn(
+          metric_types.MetricKey(
+              name='weighted_example_count',
+              model_name='model_name',
+              output_name=output_name), keys)
+      self.assertIn(
+          metric_types.MetricKey(
+              name='mse',
+              model_name='model_name',
+              output_name=output_name,
+              sub_key=metric_types.SubKey(class_id=0)), keys)
+      self.assertIn(
+          metric_types.MetricKey(
+              name='mse',
+              model_name='model_name',
+              output_name=output_name,
+              sub_key=metric_types.SubKey(class_id=1)), keys)
+      self.assertIn(
+          metric_types.MetricKey(
+              name='mse', model_name='model_name', output_name=output_name),
+          keys)
+      self.assertIn(
+          metric_types.MetricKey(
+              name='loss',
+              model_name='model_name',
+              output_name=output_name,
+              sub_key=metric_types.SubKey(class_id=0)), keys)
+      self.assertIn(
+          metric_types.MetricKey(
+              name='loss',
+              model_name='model_name',
+              output_name=output_name,
+              sub_key=metric_types.SubKey(class_id=1)), keys)
+      self.assertIn(
+          metric_types.MetricKey(
+              name='loss', model_name='model_name', output_name=output_name),
+          keys)
+      self.assertIn(
+          metric_types.MetricKey(
+              name='mean_label',
+              model_name='model_name',
+              output_name=output_name,
+              sub_key=metric_types.SubKey(class_id=0)), keys)
+      self.assertIn(
+          metric_types.MetricKey(
+              name='mean_label',
+              model_name='model_name',
+              output_name=output_name,
+              sub_key=metric_types.SubKey(class_id=1)), keys)
+      self.assertIn(
+          metric_types.MetricKey(
+              name='mean_label',
+              model_name='model_name',
+              output_name=output_name), keys)
 
   # This tests b/155810786
   def testToComputationsWithMixedAggregationAndNonAggregationMetrics(self):

@@ -862,6 +862,155 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       check_eval_result(eval_result_0, model.model_path)
       check_eval_result(eval_result_1, baseline.model_path)
 
+  def testRunModelAnalysisWithKerasMultiOutputModel(self):
+
+    def _build_keras_model(eval_config, export_name='export_dir'):
+      layers_per_output = {}
+      for output_name in ('output_1', 'output_2'):
+        layers_per_output[output_name] = tf.keras.layers.Input(
+            shape=(1,), name=output_name)
+      model = tf.keras.models.Model(layers_per_output, layers_per_output)
+      model.compile(loss=tf.keras.losses.categorical_crossentropy)
+      model_location = os.path.join(self._getTempDir(), export_name)
+      model.save(model_location, save_format='tf')
+      return model_eval_lib.default_eval_shared_model(
+          eval_saved_model_path=model_location,
+          eval_config=eval_config,
+          rubber_stamp=False)
+
+    examples = [
+        self._makeExample(output_1=1.0, output_2=0.0, label_1=0.0, label_2=0.0),
+        self._makeExample(output_1=0.7, output_2=0.3, label_1=1.0, label_2=1.0),
+        self._makeExample(output_1=0.5, output_2=0.8, label_1=0.0, label_2=1.0),
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+
+    metrics_spec = config.MetricsSpec(
+        output_names=['output_1', 'output_2'],
+        output_weights={
+            'output_1': 1.0,
+            'output_2': 1.0
+        })
+    for metric in (tf.keras.metrics.AUC(),):
+      cfg = tf.keras.utils.serialize_keras_object(metric)
+      metrics_spec.metrics.append(
+          config.MetricConfig(
+              class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
+    slicing_specs = [
+        config.SlicingSpec(),
+        config.SlicingSpec(feature_keys=['non_existent_slice'])
+    ]
+    metrics_spec.metrics.append(
+        config.MetricConfig(
+            class_name='WeightedExampleCount',
+            per_slice_thresholds=[
+                config.PerSliceMetricThreshold(
+                    slicing_specs=slicing_specs,
+                    threshold=config.MetricThreshold(
+                        value_threshold=config.GenericValueThreshold(
+                            lower_bound={'value': 1}))),
+                # Change thresholds would be ignored when rubber stamp is true.
+                config.PerSliceMetricThreshold(
+                    slicing_specs=slicing_specs,
+                    threshold=config.MetricThreshold(
+                        change_threshold=config.GenericChangeThreshold(
+                            direction=config.MetricDirection.HIGHER_IS_BETTER,
+                            absolute={'value': 1})))
+            ]))
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(label_keys={
+                'output_1': 'label_1',
+                'output_2': 'label_2'
+            })
+        ],
+        metrics_specs=[metrics_spec])
+
+    model = _build_keras_model(eval_config)
+    baseline = _build_keras_model(eval_config, 'baseline_export')
+    eval_shared_model = {'candidate': model, 'baseline': baseline}
+    output_path = self._getTempDir()
+    eval_results = model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
+        data_location=data_location,
+        output_path=output_path)
+
+    # Directly check validaton file since it is not in EvalResult.
+    validations_file = os.path.join(output_path, constants.VALIDATIONS_KEY)
+    self.assertTrue(os.path.exists(validations_file))
+    validation_records = []
+    for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
+      validation_records.append(
+          validation_result_pb2.ValidationResult.FromString(record))
+    self.assertLen(validation_records, 1)
+    expected_result = text_format.Parse(
+        """
+          metric_validations_per_slice {
+            slice_key {}
+            failures {
+              metric_key {
+                name: "weighted_example_count"
+                model_name: "candidate"
+                output_name: "output_1"
+                is_diff: true
+              }
+              metric_threshold {
+                change_threshold {
+                  absolute { value: 1 }
+                  direction: HIGHER_IS_BETTER
+                }
+              }
+              metric_value { double_value {} }
+            }
+            failures {
+              metric_key {
+                name: "weighted_example_count"
+                model_name: "candidate"
+                output_name: "output_2"
+                is_diff: true
+              }
+              metric_threshold {
+                change_threshold {
+                  absolute { value: 1}
+                  direction: HIGHER_IS_BETTER
+                }
+              }
+              metric_value { double_value {} }
+            }
+          }
+          missing_slices {
+            feature_keys: "non_existent_slice"
+          }
+          validation_details {
+            slicing_details {
+              slicing_spec {}
+              num_matching_slices: 1
+            }
+          }""", validation_result_pb2.ValidationResult())
+    self.assertProtoEquals(expected_result, validation_records[0])
+
+    def check_eval_result(eval_result, model_location):
+      self.assertEqual(eval_result.model_location, model_location)
+      self.assertEqual(eval_result.data_location, data_location)
+      self.assertLen(eval_result.slicing_metrics, 1)
+      got_slice_key, got_metrics = eval_result.slicing_metrics[0]
+      self.assertEqual(got_slice_key, ())
+      self.assertIn('output_1', got_metrics)
+      self.assertIn('auc', got_metrics['output_1'][''])
+      self.assertIn('output_2', got_metrics)
+      self.assertIn('auc', got_metrics['output_2'][''])
+      # Aggregate metrics
+      self.assertIn('', got_metrics)
+      self.assertIn('auc', got_metrics[''][''])
+
+    # TODO(b/173657964): assert exception for the missing baseline but non
+    # rubber stamping test.
+    self.assertLen(eval_results._results, 2)
+    eval_result_0, eval_result_1 = eval_results._results
+    check_eval_result(eval_result_0, model.model_path)
+    check_eval_result(eval_result_1, baseline.model_path)
+
   def testRunModelAnalysisWithQueryBasedMetrics(self):
     input_layer = tf.keras.layers.Input(shape=(1,), name='age')
     output_layer = tf.keras.layers.Dense(

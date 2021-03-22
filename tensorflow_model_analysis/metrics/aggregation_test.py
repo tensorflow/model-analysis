@@ -33,6 +33,46 @@ from tensorflow_model_analysis.metrics import metric_util
 
 class AggregationMetricsTest(testutil.TensorflowModelAnalysisTest):
 
+  def testOutputAverage(self):
+    metric_name = 'test'
+    computations = aggregation.output_average(
+        metric_name, output_weights={
+            'output_1': 0.3,
+            'output_2': 0.7
+        })
+    metric = computations[0]
+
+    sub_metrics = {}
+    output_names = ('output_1', 'output_2', 'output_3')
+    output_values = (0.1, 0.2, 0.3)
+    for output_name, output_value in zip(output_names, output_values):
+      key = metric_types.MetricKey(name=metric_name, output_name=output_name)
+      sub_metrics[key] = output_value
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([((), sub_metrics)])
+          | 'ComputeMetric' >> beam.Map(lambda x: (x[0], metric.result(x[1]))))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          key = metric.keys[0]
+          expected_value = (0.3 * 0.1 + 0.7 * 0.2) / (0.3 + 0.7)
+          self.assertDictElementsAlmostEqual(
+              got_metrics, {key: expected_value}, places=5)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
   def testMacroAverage(self):
     metric_name = 'test'
     class_ids = [0, 1, 2]
