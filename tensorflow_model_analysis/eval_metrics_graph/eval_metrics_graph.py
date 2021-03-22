@@ -347,7 +347,8 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
         self._reset_metric_variables()
         self._perform_metrics_update_list(examples_list)
         self._batch_size.update(batch_size)
-      except (ValueError, tf.errors.InvalidArgumentError) as e:
+      except (ValueError, tf.errors.InvalidArgumentError,
+              tf.errors.ResourceExhaustedError) as e:
         self._reset_metric_variables()
         self._batch_size_failed.update(batch_size)
         tf.compat.v1.logging.warning(

@@ -666,7 +666,8 @@ class BatchReducibleDoFnWithModels(DoFnWithModels):
       self._batch_size.update(batch_size)
       self._num_instances.inc(batch_size)
       return result
-    except (ValueError, tf.errors.InvalidArgumentError) as e:
+    except (ValueError, tf.errors.InvalidArgumentError,
+            tf.errors.ResourceExhaustedError) as e:
       tf.compat.v1.logging.warning(
           'Large batch_size %s failed with error %s. '
           'Attempting to run batch through serially.', batch_size, e)
@@ -711,7 +712,8 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
       self._batch_size.update(batch_size)
       self._num_instances.inc(batch_size)
       return result
-    except (ValueError, tf.errors.InvalidArgumentError) as e:
+    except (ValueError, tf.errors.InvalidArgumentError,
+            tf.errors.ResourceExhaustedError) as e:
       logging.warning(
           'Large batch_size %s failed with error %s. '
           'Attempting to run batch through serially. Note that this will '
