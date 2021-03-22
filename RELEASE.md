@@ -21,6 +21,7 @@
     *   metrics_plots_and_validations_writer was failing while writing cross
         slice comparison results to metrics file.
     *   Fairness widget view was not compatible with cross slicing key type.
+*   Fix support for loading the UI outside of a notebook.
 
 ## Breaking Changes
 
