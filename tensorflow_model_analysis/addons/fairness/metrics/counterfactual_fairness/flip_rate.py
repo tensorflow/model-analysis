@@ -14,7 +14,7 @@
 # limitations under the License.
 """Flip Rate Metrics."""
 
-from typing import Dict, Optional, List
+from typing import Dict, Optional, Sequence
 
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.addons.fairness.metrics.counterfactual_fairness import flip_count
@@ -49,7 +49,7 @@ class FlipRate(metric_types.Metric):
       self,
       counterfactual_prediction_key: str,
       name: str = FLIP_RATE_NAME,
-      thresholds: List[float] = flip_count.DEFAULT_THRESHOLDS,
+      thresholds: Sequence[float] = flip_count.DEFAULT_THRESHOLDS,
       example_id_key: Optional[str] = None,
       example_ids_count: int = flip_count.DEFAULT_NUM_EXAMPLE_IDS,
   ):
@@ -78,7 +78,7 @@ def _flip_rate(
     example_id_key: Optional[str] = None,
     example_ids_count: int = flip_count.DEFAULT_NUM_EXAMPLE_IDS,
     name: str = FLIP_RATE_NAME,
-    thresholds: List[float] = flip_count.DEFAULT_THRESHOLDS,
+    thresholds: Sequence[float] = flip_count.DEFAULT_THRESHOLDS,
     model_name: str = '',
     output_name: str = '',
     eval_config: Optional[config.EvalConfig] = None,

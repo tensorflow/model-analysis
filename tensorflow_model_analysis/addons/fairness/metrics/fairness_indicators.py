@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional, Sequence, Text
 
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
@@ -41,7 +41,7 @@ class FairnessIndicators(metric_types.Metric):
   """Fairness indicators metrics."""
 
   def __init__(self,
-               thresholds: List[float] = DEFAULT_THRESHOLDS,
+               thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
                name: Text = FAIRNESS_INDICATORS_METRICS_NAME):
     """Initializes fairness indicators metrics.
 

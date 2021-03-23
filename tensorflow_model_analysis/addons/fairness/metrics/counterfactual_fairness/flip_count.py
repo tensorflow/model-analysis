@@ -16,7 +16,7 @@
 
 import collections
 
-from typing import Dict, Optional, Any, Iterator, Tuple, List
+from typing import Dict, Optional, Any, Iterator, Sequence, Tuple, List
 
 import numpy as np
 from tensorflow_model_analysis import config
@@ -63,7 +63,7 @@ class FlipCount(metric_types.Metric):
                example_id_key: Optional[str] = None,
                example_ids_count: int = DEFAULT_NUM_EXAMPLE_IDS,
                name: str = FLIP_COUNT_NAME,
-               thresholds: List[float] = DEFAULT_THRESHOLDS):
+               thresholds: Sequence[float] = DEFAULT_THRESHOLDS):
     """Initializes flip count.
 
     Args:
@@ -105,7 +105,7 @@ def _calculate_digits(thresholds):
 
 
 def create_metric_keys(
-    thresholds: List[float], metrics: List[str], metric_name: str,
+    thresholds: Sequence[float], metrics: List[str], metric_name: str,
     model_name: str, output_name: str
 ) -> Tuple[List[metric_types.MetricKey], Dict[float, Dict[
     str, metric_types.MetricKey]]]:
@@ -129,7 +129,7 @@ def flip_count(
     example_id_key: Optional[str] = None,
     example_ids_count: int = DEFAULT_NUM_EXAMPLE_IDS,
     name: str = FLIP_COUNT_NAME,
-    thresholds: List[float] = DEFAULT_THRESHOLDS,
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
     model_name: str = '',
     output_name: str = '',
     eval_config: Optional[config.EvalConfig] = None,
@@ -251,7 +251,7 @@ def flip_count(
   # Setting fractional label to false, since prediction is being used as label
   # and it can be a non-binary value.
   computations = binary_confusion_matrices.binary_confusion_matrices(
-      thresholds=thresholds,
+      thresholds=list(thresholds),
       eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
