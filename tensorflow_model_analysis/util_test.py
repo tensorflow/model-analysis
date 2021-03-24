@@ -300,8 +300,7 @@ class UtilTest(tf.test.TestCase):
                 'a': np.array([1])
             }}),
     )
-    with self.assertRaisesRegexp(RuntimeError, 'Features missing'):
-      util.get_features_from_extracts({})
+    self.assertEqual({}, util.get_features_from_extracts({}))
 
   def testMergeExtracts(self):
     extracts = [

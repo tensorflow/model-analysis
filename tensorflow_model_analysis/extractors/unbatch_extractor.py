@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Sequence
+from typing import Mapping, Sequence
 
 import apache_beam as beam
 import pandas as pd
@@ -53,6 +53,8 @@ def _ExtractUnbatchedInputs(
     keys_to_retain.remove(constants.ARROW_RECORD_BATCH_KEY)
   dataframe = pd.DataFrame()
   for key in keys_to_retain:
+    if isinstance(batched_extract[key], Mapping) and not batched_extract[key]:
+      continue
     dataframe[key] = batched_extract[key]
   return dataframe.to_dict(orient='records')
 

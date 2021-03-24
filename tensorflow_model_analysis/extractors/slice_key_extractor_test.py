@@ -136,6 +136,22 @@ class SliceTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
               })
       }], [slicer.SingleSliceSpec(columns=['interest'])
           ], [[(('interest', 'boats'),)], [(('interest', 'planes'),)]]),
+      ('missing_features', [''], [{
+          constants.TRANSFORMED_FEATURES_KEY:
+              make_features_dict({
+                  'gender': ['m'],
+                  'age': [10],
+                  'interest': ['boats']
+              })
+      }, {
+          constants.TRANSFORMED_FEATURES_KEY:
+              make_features_dict({
+                  'gender': ['m'],
+                  'age': [10],
+                  'interest': ['planes']
+              })
+      }], [slicer.SingleSliceSpec(columns=['interest'])
+          ], [[(('interest', 'boats'),)], [(('interest', 'planes'),)]]),
       ('transformed_features_with_multiple_models', ['model1', 'model2'], [{
           constants.FEATURES_KEY:
               make_features_dict({

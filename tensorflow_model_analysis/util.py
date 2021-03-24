@@ -337,7 +337,7 @@ def get_features_from_extracts(
     element: types.Extracts
 ) -> Union[types.DictOfTensorValue, types.DictOfFetchedTensorValues]:
   """Fetch features from the extracts."""
-  features = None
+  features = {}
   if constants.FEATURES_PREDICTIONS_LABELS_KEY in element:
     fpl = element[constants.FEATURES_PREDICTIONS_LABELS_KEY]
     if not isinstance(fpl, types.FeaturesPredictionsLabels):
@@ -347,8 +347,6 @@ def get_features_from_extracts(
     features = fpl.features
   elif constants.FEATURES_KEY in element:
     features = element[constants.FEATURES_KEY]
-  else:
-    raise RuntimeError('Features missing, Please ensure Predict() was called.')
   return features
 
 
