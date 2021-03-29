@@ -236,7 +236,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
   }
 
   /**
-   * Convert the data into the d3 friendly data structure.
+   * Convert the data into an array of d3 friendly data structures.
    * @param {!Object} data for plot.
    * @param {!Object} dataCompare for plot.
    * @param {!Array<string>} metrics list.
@@ -251,6 +251,15 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
   createD3Data_(
       data, dataCompare, metrics, slices, baseline, evalName, evalNameCompare,
       sort) {
+    const labelName_ = (sliceValue, evalName) => {
+      if (!this.evalComparison_()) {
+        return sliceValue;
+      } else if (this.sort === 'Slice') {
+        return evalName + '-' + sliceValue;
+      } else {  // this.sort === 'Eval'
+        return sliceValue + '-' + evalName;
+      }
+    };
     // d3DataObjects = metrics data for each slice
     const d3DataObject = (metricsData) => {
       return {
@@ -258,6 +267,8 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         sliceValue: metricsData.length ? metricsData[0].sliceValue : '',
         evalName: metricsData.length ? metricsData[0].evalName : '',
         metricsData: metricsData,
+        labelName: metricsData.length ?
+            labelName_(metricsData[0].sliceValue, metricsData[0].evalName) : ''
       };
     };
     // d3Data = array of d3DataObjects, returned by createD3Data_()
@@ -323,7 +334,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
   buildGraphConfig_(d3Data) {
     // Build slice scale - these are groups of bars.
     const slicesX = d3.scaleBand()
-                        .domain(d3Data.map(d => this.labelName_(d)))
+                        .domain(d3Data.map(d => d.labelName))
                         .rangeRound([GRAPH_BOUND.left, GRAPH_BOUND.right])
                         .padding(SLICES_PADDING);
 
@@ -400,8 +411,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
             .append('g')
             .attr(
                 'transform',
-                d => `translate(${
-                    graphConfig['slicesX'](this.labelName_(d))},0)`);
+                d => `translate(${graphConfig['slicesX'](d.labelName)},0)`);
 
     const tooltip = d3.select(this.$['tooltip']);
 
@@ -575,24 +585,6 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
           return 1;
         }
       };
-    }
-  }
-
-  /**
-   * Label name for a bar cluster.
-   * @param {!Object} d a d3DataObject, used to create a bar cluster.
-   * @return {string}
-   * @private
-   */
-  labelName_(d) {
-    if (!this.evalComparison_()) {
-      return d.sliceValue;
-    }
-    else if (this.sort === 'Slice') {
-      return d.evalName + '-' + d.sliceValue;
-    }
-    else {  // this.sort === 'Eval'
-      return d.sliceValue + '-' + d.evalName;
     }
   }
 }
