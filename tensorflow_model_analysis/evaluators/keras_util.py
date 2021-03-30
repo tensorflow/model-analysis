@@ -62,8 +62,8 @@ def metric_computations_using_keras_saved_model(
   # need to call model.evaluate.
   if not model.metrics:
     return []
-  elif (hasattr(model, 'compiled_metrics') and
-        hasattr(model, 'compiled_loss') and
+  elif (hasattr(model, 'compiled_metrics') and model.compiled_metrics and
+        hasattr(model, 'compiled_loss') and model.compiled_loss and
         len(model.compiled_metrics.metrics) + len(model.compiled_loss.metrics)
         == len(model.metrics)):
     output_names = model.output_names if hasattr(model, 'output_names') else []
