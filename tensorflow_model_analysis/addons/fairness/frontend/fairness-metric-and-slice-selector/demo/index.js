@@ -15,18 +15,53 @@
  */
 
 (() => {
-  const element =
-      document.getElementsByTagName('fairness-metric-and-slice-selector')[0];
-  element.availableMetrics =
-      ['post_export_metrics/false_negative_rate',
-       'post_export_metrics/false_positive_rate',
-       'post_export_metrics/negative_rate', 'post_export_metrics/positive_rate',
-       'post_export_metrics/true_negative_rate',
-       'post_export_metrics/true_positive_rate',
-       'post_export_metrics/false_discovery_rate',
-       'post_export_metrics/false_omission_rate',
-       'accuracy',
-       'accuracy_baseline', 'auc', 'auc_precision_recall', 'average_loss',
-       'label/mean', 'post_export_metrics/example_count', 'precision',
-       'prediction/mean', 'recall', 'totalWeightedExamples'];
+  const one = document.querySelector('fairness-metric-and-slice-selector#one');
+  one.availableMetrics = [
+    'post_export_metrics/false_negative_rate',
+    'post_export_metrics/false_positive_rate',
+    'post_export_metrics/negative_rate', 'post_export_metrics/positive_rate',
+    'post_export_metrics/true_negative_rate',
+    'post_export_metrics/true_positive_rate',
+    'post_export_metrics/false_discovery_rate',
+    'post_export_metrics/false_omission_rate',
+    'accuracy',
+    'accuracy_baseline',
+    'auc',
+    'auc_precision_recall',
+    'average_loss',
+    'label/mean',
+    'post_export_metrics/example_count',
+    'precision',
+    'prediction/mean',
+    'recall',
+    'totalWeightedExamples'
+  ];
+
+  // from AutoTFX-generated example
+  const two = document.querySelector('fairness-metric-and-slice-selector#two');
+  two.availableMetrics = [
+    "fairness_indicators_metrics/false_discovery_rate",
+    "fairness_indicators_metrics/false_negative_rate",
+    "fairness_indicators_metrics/false_omission_rate",
+    "fairness_indicators_metrics/false_positive_rate",
+    "fairness_indicators_metrics/negative_rate",
+    "fairness_indicators_metrics/positive_rate",
+    "fairness_indicators_metrics/true_negative_rate",
+    "fairness_indicators_metrics/true_positive_rate",
+    "accuracy",
+    "accuracy_baseline",
+    "auc",
+    "auc_precision_recall",
+    "average_loss",
+    "binary_accuracy",
+    "binary_cross_entropy",
+    "calibration",
+    "example_count",
+    "label/mean",
+    "mean_label",
+    "mean_prediction",
+    "precision",
+    "prediction/mean",
+    "recall"
+  ];
 })();

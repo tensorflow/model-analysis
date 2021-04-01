@@ -152,19 +152,50 @@ export class FairnessMetricAndSliceSelector extends PolymerElement {
       return [];
     }
 
-    let candidates = [];
+    let unsortedCandidates = [];
     for (const name of availableMetrics) {
-      candidates.push({
+      unsortedCandidates.push({
         metricsName: name,
         isSelected: false,
       });
     }
+
+    // Sort to show common or recommended metrics first
+    const candidates = unsortedCandidates.sort(this.candidateSortFn.bind(this));
 
     // Select 1st metric by default.
     setTimeout(() => {
       this.selectedMetricsListCandidates_ = [candidates[0]];
     }, 0);
     return candidates;
+  }
+
+  /**
+   * JS sort function to order candidates for the list of metrics
+   * @param {!MetricsListCandidateType} aCandidate
+   * @param {!MetricsListCandidateType} bCandidate
+   * @return {number}
+   */
+  candidateSortFn(aCandidate, bCandidate) {
+    const METRIC_SORTING_WEIGHT_DEFAULT = 9999;
+    const METRIC_SORTING_WEIGHTS = {
+      'accuracy': 1000,
+      'precision': 2000,
+      'recall': 3000,
+      'auc': 4000,
+      'false_positive_rate': 5000,
+      'false_negative_rate': 6000,
+      'example_count': 7000
+    };
+
+    const aMetric = this.stripPrefix(aCandidate);
+    const bMetric = this.stripPrefix(bCandidate);
+    const aWeight = METRIC_SORTING_WEIGHTS[aMetric] || METRIC_SORTING_WEIGHT_DEFAULT;
+    const bWeight = METRIC_SORTING_WEIGHTS[bMetric] || METRIC_SORTING_WEIGHT_DEFAULT;
+    if (aWeight !== bWeight) {
+      return aWeight - bWeight;
+    }
+    return aMetric.localeCompare(bMetric);
   }
 
   /**

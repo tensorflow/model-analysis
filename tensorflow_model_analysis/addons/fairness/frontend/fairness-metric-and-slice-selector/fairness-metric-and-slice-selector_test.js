@@ -23,7 +23,7 @@ suite('tests', () => {
     return new Promise((resolve) => setTimeout(resolve, delayInMs));
   };
 
-  test('TestBehaviorOfMetrics', async (done) => {
+  test('TestBehaviorOfMetrics', async () => {
     const element = fixture('test-fixture');
     element.availableMetrics = AVAILABLE_METRICS;
     await delay(TEST_STEP_TIMEOUT_MS);
@@ -95,22 +95,58 @@ suite('tests', () => {
           item.querySelector('paper-checkbox').checked,
           'All metrics should be unselected.');
     });
-
-    done();
   });
 
-  test('ListsAllAvailableMetrics', async (done) => {
+  test('ListsAllAvailableMetrics, always shows in expected order and format', async () => {
     const element = fixture('test-fixture');
-    element.availableMetrics = AVAILABLE_METRICS;
+    element.availableMetrics = shuffledCopy([
+      'post_export_metrics/false_discovery_rate',
+      'aaa_unexpected_unknown',
+      'accuracy',
+      'lift@3',
+      'post_export_metrics/false_positive_rate',
+      'auc'
+    ]);
     await delay(TEST_STEP_TIMEOUT_MS);
 
-    let items = element.shadowRoot.querySelector('paper-listbox').items;
-    assert.equal(items.length, AVAILABLE_METRICS.length);
-    items.forEach((item, index) => {
-      assert.equal(
-          item.textContent.trim(), AVAILABLE_METRICS[index],
-          'metrics name in the UI should match the "availableMetrics".');
-    });
-    done();
+    const items = element.shadowRoot.querySelector('paper-listbox').items;
+    const uiTexts = Array.from(items).map(item => item.textContent.trim());
+    assert.sameOrderedMembers(uiTexts, [
+      'accuracy',
+      'auc',
+      'false_positive_rate',
+      'aaa_unexpected_unknown',
+      'false_discovery_rate',
+      'lift@3',
+    ], 'metrics name in the UI list should be in the expected order');
   });
 });
+
+
+// from https://stackoverflow.com/a/2450976
+/**
+ * Copies an array then shuffles it randomly.  Non-deterministic.
+ * @param {!Array} original
+ * @return {!Array}
+ */
+function shuffledCopy(original) {
+  const array = original.slice(0);
+  let currentIndex = array.length;
+  let temporaryValue;
+  let randomIndex;
+
+  // While there remain elements to shuffle...
+  while (0 !== currentIndex) {
+
+    // Pick a remaining element...
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+
+    // And swap it with the current element.
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
+
+  return array;
+}

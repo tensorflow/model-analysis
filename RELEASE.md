@@ -18,6 +18,7 @@
 
 ## Bug fixes and other Changes
 
+*   In Fairness Indicators UI, sort metrics list to show common metrics first
 *   For lift metrics, support negative values in the Fairness Indicator UI bar
     chart.
 *   Make legacy predict extractor also input/output batched extracts.

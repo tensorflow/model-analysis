@@ -88,7 +88,7 @@ suite('fairness-nb-container tests', () => {
       ]);
       assert.deepEqual(
           metricsList.selectedMetrics,
-          ['post_export_metrics/false_positive_rate']);
+          ['accuracy']);
       done();
     };
 
@@ -106,7 +106,7 @@ suite('fairness-nb-container tests', () => {
       let fairnessElement =
           fairnessContainer.shadowRoot.querySelector('fairness-metrics-board');
       assert.deepEqual(
-          fairnessElement.metrics, ['post_export_metrics/false_positive_rate']);
+          fairnessElement.metrics, ['accuracy']);
       done();
     };
     setTimeout(fillData, 0);
@@ -126,7 +126,7 @@ suite('fairness-nb-container tests', () => {
       let fairnessElement =
           fairnessContainer.shadowRoot.querySelector('fairness-metrics-board');
       assert.deepEqual(
-          fairnessElement.metrics, ['post_export_metrics/false_positive_rate']);
+          fairnessElement.metrics, ['accuracy']);
       assert.deepEqual(fairnessElement.evalName, 'EvalA');
       assert.deepEqual(fairnessElement.evalNameCompare, 'EvalB');
       done();
