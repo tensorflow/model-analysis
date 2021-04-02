@@ -35,9 +35,6 @@ from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 
 
-# TODO(mdreves): Perhaps keep this as the only public method and privatize
-# several other PTransforms and functions in this modoule (and other parts of
-# TFMA).
 def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
@@ -74,7 +71,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
   return evaluator.Evaluator(
       stage_name='EvaluateMetricsAndPlots',
       run_after=run_after,
-      ptransform=EvaluateMetricsAndPlots(
+      ptransform=_EvaluateMetricsAndPlots(
           eval_shared_model=eval_shared_model,
           desired_batch_size=desired_batch_size,
           metrics_key=metrics_key,
@@ -89,7 +86,7 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
 @beam.typehints.with_input_types(types.Extracts)
 # No typehint for output type, since it's a multi-output DoFn result that
 # Beam doesn't support typehints for yet (BEAM-3280).
-def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
+def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
@@ -171,7 +168,7 @@ def ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
-def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
+def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
@@ -213,7 +210,7 @@ def EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
 
   (metrics, plots), slices_count = (
       extracts
-      | 'ComputeMetricsAndPlots' >> ComputeMetricsAndPlots(
+      | 'ComputeMetricsAndPlots' >> _ComputeMetricsAndPlots(
           eval_shared_model,
           desired_batch_size,
           compute_confidence_intervals=compute_confidence_intervals,

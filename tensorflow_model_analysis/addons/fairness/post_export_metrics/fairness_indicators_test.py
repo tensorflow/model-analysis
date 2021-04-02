@@ -86,7 +86,7 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
           | 'ComputeMetricsAndPlots' >>
-          legacy_metrics_and_plots_evaluator.ComputeMetricsAndPlots(
+          legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
               eval_shared_model=eval_shared_model,
               compute_confidence_intervals=self.compute_confidence_intervals,
               random_seed_for_testing=self.deterministic_test_seed))

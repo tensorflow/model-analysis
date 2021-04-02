@@ -115,7 +115,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
           | 'ComputeMetricsAndPlots' >> metrics_and_plots_evaluator
-          .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
+          ._ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
 
       def check_result(got):
         try:
@@ -176,7 +176,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
             | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint:disable=no-value-for-parameter
             | 'ComputeMetricsAndPlots' >>
-            metrics_and_plots_evaluator.ComputeMetricsAndPlots(
+            metrics_and_plots_evaluator._ComputeMetricsAndPlots(
                 eval_shared_model=eval_shared_model,
                 desired_batch_size=batch_size))
 
@@ -266,7 +266,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
             | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
             | 'ComputeMetricsAndPlots' >>
-            metrics_and_plots_evaluator.ComputeMetricsAndPlots(
+            metrics_and_plots_evaluator._ComputeMetricsAndPlots(
                 eval_shared_model=eval_shared_model,
                 desired_batch_size=batch_size,
                 compute_confidence_intervals=True))
@@ -352,7 +352,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
           | 'ComputeMetricsAndPlots' >> metrics_and_plots_evaluator
-          .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
+          ._ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
 
       def check_result(got):
         try:
@@ -409,7 +409,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
           | 'ComputeMetricsAndPlots' >> metrics_and_plots_evaluator
-          .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
+          ._ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
 
       def check_result(got):
         try:
@@ -462,7 +462,7 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
           | 'ComputeMetricsAndPlots' >> metrics_and_plots_evaluator
-          .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
+          ._ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
 
       def check_metrics(got):
         try:

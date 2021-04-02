@@ -294,8 +294,9 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
           | 'BatchExamples' >> tfx_io.BeamSource()
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'Extract' >> Extract(extractors=extractors)
-          | 'ComputeMetricsAndPlots' >> legacy_metrics_and_plots_evaluator
-          .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
+          | 'ComputeMetricsAndPlots' >>
+          legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
+              eval_shared_model=eval_shared_model))
       # pylint: enable=no-value-for-parameter
 
       beam_util.assert_that(metrics, check_metrics)
@@ -390,8 +391,9 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         | 'BatchExamples' >> tfx_io.BeamSource()
         | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
         | 'Extract' >> Extract(extractors=extractors)
-        | 'ComputeMetricsAndPlots' >> legacy_metrics_and_plots_evaluator
-        .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
+        | 'ComputeMetricsAndPlots' >>
+        legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
+            eval_shared_model=eval_shared_model))
     # pylint: enable=no-value-for-parameter
 
     beam_util.assert_that(metrics, check_metrics)

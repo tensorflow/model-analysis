@@ -216,8 +216,9 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
           | 'Create Examples' >> beam.Create(serialized_examples)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
-          | 'ComputeMetricsAndPlots' >> legacy_metrics_and_plots_evaluator
-          .ComputeMetricsAndPlots(eval_shared_model=eval_shared_model))
+          | 'ComputeMetricsAndPlots' >>
+          legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
+              eval_shared_model=eval_shared_model))
 
       # Verify our metrics are properly generated per slice.
       def check_result(got):
