@@ -349,7 +349,7 @@ setup_args = {
     'namespace_packages': [],
     'requires': [],
     'keywords': 'tensorflow model analysis tfx',
-    'url': 'https://www.tensorflow.org/tfx/model_analysis',
+    'url': 'https://www.tensorflow.org/tfx/model_analysis/get_started',
     'download_url': 'https://github.com/tensorflow/model-analysis/tags',
 }
 
