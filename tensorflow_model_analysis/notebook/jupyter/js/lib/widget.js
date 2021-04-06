@@ -21,15 +21,9 @@ const version = require('../package.json').version;
  * Helper method to load the vulcanized templates.
  */
 function loadVulcanizedTemplate() {
-  const isWebpackPublicPathDefined =
-      typeof __webpack_public_path__ !== 'undefined';
-  const templatePath = isWebpackPublicPathDefined ?
-      __webpack_public_path__ :
-      // Jupyter hosted path.
-      ((document.querySelector('body').getAttribute('data-base-url') || '/') +
-       'nbextensions/tensorflow_model_analysis/');
-  // templatePath ends with a slash.
-  const templateLocation = `${templatePath}vulcanized_tfma.js`;
+  const templateLocation =
+      (document.querySelector('body').getAttribute('data-base-url') || '/') +
+      'nbextensions/tensorflow_model_analysis/vulcanized_tfma.js';
 
   // If the vulcanizes tempalets are not loaded yet, load it now.
   if (!document.querySelector('script[src="' + templateLocation + '"]')) {

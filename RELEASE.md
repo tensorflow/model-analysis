@@ -35,7 +35,6 @@
     *   metrics_plots_and_validations_writer was failing while writing cross
         slice comparison results to metrics file.
     *   Fairness widget view was not compatible with cross slicing key type.
-*   Fix support for loading the UI outside of a notebook.
 *   Depends on `absl-py>=0.9,<0.13`.
 *   Depends on `tensorflow-metadata>=0.29.0,<0.30.0`.
 *   Depends on `tfx-bsl>=0.29.0,<0.30.0`.
