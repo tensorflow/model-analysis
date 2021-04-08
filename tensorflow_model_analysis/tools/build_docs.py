@@ -57,6 +57,10 @@ flags.DEFINE_bool('search_hints', True,
 flags.DEFINE_string('site_path', 'tfx/model_analysis/api_docs/python',
                     'Path prefix in the _toc.yaml')
 
+flags.DEFINE_bool('gen_report', False,
+                  ('Generate an API report containing the health of the'
+                   'docstrings of the public API.'))
+
 FLAGS = flags.FLAGS
 
 # pylint: disable=line-too-long
@@ -184,6 +188,7 @@ def main(args):
       search_hints=FLAGS.search_hints,
       site_path=FLAGS.site_path,
       private_map={},
+      gen_report=FLAGS.gen_report,
       callbacks=[
           public_api.local_definitions_filter, depth_filter, suppress_docs
       ])
