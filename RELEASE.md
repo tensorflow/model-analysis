@@ -6,6 +6,9 @@
 
 ## Bug fixes and other Changes
 
+*  Fix bug that `FeaturesExtractor` incorrectly handles RecordBatches that
+   have only the raw input column but no other feature columns.
+
 ## Breaking Changes
 
 ## Deprecations

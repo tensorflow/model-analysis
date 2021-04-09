@@ -128,8 +128,13 @@ def _ExtractFeatures(
     (record_batch, serialized_examples) = (
         _DropUnsupportedColumnsAndFetchRawDataColumn(
             batched_extract[constants.ARROW_RECORD_BATCH_KEY]))
-    dataframe = record_batch.to_pandas()
-    result[constants.FEATURES_KEY] = dataframe.to_dict(orient='records')
+    # Special case: if record_batch contains 0 column, it will have 0 row, but
+    # we want a list of empty dicts, of the same length as serialized_examples.
+    if record_batch.num_columns == 0:
+      result[constants.FEATURES_KEY] = [dict() for _ in serialized_examples]
+    else:
+      dataframe = record_batch.to_pandas()
+      result[constants.FEATURES_KEY] = dataframe.to_dict(orient='records')
     # TODO(pachristopher): Consider avoiding setting this key if we don't need
     # this any further in the pipeline. This can avoid a potentially costly copy
     result[constants.INPUT_KEY] = serialized_examples

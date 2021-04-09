@@ -28,7 +28,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
-from tfx_bsl.tfxio import test_util
+from tfx_bsl.tfxio import tf_example_record
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -37,7 +37,31 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 class FeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
                             parameterized.TestCase):
 
-  def testFeaturesExtractor(self):
+  def test_features_extractor_no_features(self):
+    model_spec = config.ModelSpec()
+    eval_config = config.EvalConfig(model_specs=[model_spec])
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    tfx_io = tf_example_record.TFExampleBeamRecord(
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        physical_format='inmem',
+        telemetry_descriptors=['testing'])
+
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline | 'Create' >> beam.Create([b''] * 3)
+          | 'DecodeToRecordBatch' >> tfx_io.BeamSource(batch_size=3)
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | feature_extractor.stage_name >> feature_extractor.ptransform)
+
+      def check_result(got):
+        self.assertLen(got, 1)
+        self.assertLen(got[0], 3)
+        for d in got[0][constants.FEATURES_KEY]:
+          self.assertEmpty(d)
+
+      util.assert_that(result, check_result, label='CheckResult')
+
+  def test_features_extractor(self):
     model_spec = config.ModelSpec()
     eval_config = config.EvalConfig(model_specs=[model_spec])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
@@ -61,8 +85,11 @@ class FeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
           type: BYTES
         }
         """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    tfx_io = tf_example_record.TFExampleBeamRecord(
+        schema=schema,
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
+        physical_format='inmem',
+        telemetry_descriptors=['testing'])
 
     example_kwargs = [
         {
@@ -91,7 +118,7 @@ class FeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
               for kwargs in example_kwargs
           ],
                                     reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
+          | 'DecodeToRecordBatch' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform)
 
