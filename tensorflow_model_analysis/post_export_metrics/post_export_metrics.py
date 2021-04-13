@@ -357,8 +357,8 @@ class _PostExportMetric(six.with_metaclass(abc.ABCMeta, object)):
     """
     self._target_prediction_keys = (
         target_prediction_keys or list(DEFAULT_KEY_PREFERENCE))
-    self._tensor_index = tensor_index
-    self._labels_key = labels_key
+    self._tensor_index = tensor_index  # pytype: disable=annotation-type-mismatch
+    self._labels_key = labels_key  # pytype: disable=annotation-type-mismatch
     if target_prediction_keys:
       self._metric_tag = target_prediction_keys[0]
     if metric_tag:
@@ -1840,7 +1840,7 @@ class _TFMetricBaseClass(_PostExportMetric):
     """
     self._metric_name = metric_name
     self._metric_fn = metric_fn
-    self._example_weight_key = example_weight_key
+    self._example_weight_key = example_weight_key  # pytype: disable=annotation-type-mismatch
     super(_TFMetricBaseClass, self).__init__(
         target_prediction_keys,
         labels_key,
