@@ -243,7 +243,11 @@ class SingleSliceSpec(object):
       column_match = []
       for value in accessor.get(column):
         if isinstance(value, bytes):
-          column_match.append((column, tf.compat.as_text(value)))
+          try:
+            column_match.append((column, tf.compat.as_text(value)))
+          except UnicodeDecodeError as e:
+            raise ValueError('Found non-UTF8 feature value {} in '
+                             'column "{}"'.format(value, column)) from e
         else:
           column_match.append((column, value))
       column_matches.append(column_match)

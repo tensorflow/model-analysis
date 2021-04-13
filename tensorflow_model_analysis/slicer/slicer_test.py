@@ -190,6 +190,16 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
   def testNoOverlappingColumns(self):
     self.assertRaises(ValueError, slicer.SingleSliceSpec, ['age'], [('age', 5)])
 
+  def testNonUTF8ValueRaisesValueError(self):
+    column_name = 'column_name'
+    invalid_value = b'\x8a'
+    spec = slicer.SingleSliceSpec(columns=[column_name])
+    features_dict = self._makeFeaturesDict({
+        column_name: [invalid_value],
+    })
+    with self.assertRaisesRegex(ValueError, column_name):
+      list(slicer.get_slices_for_features_dicts([features_dict], None, [spec]))
+
   def testGetSlicesForFeaturesDictUnivalent(self):
     test_cases = [
         ('Overall', [], [], [()]),
