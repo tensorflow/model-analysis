@@ -23,55 +23,29 @@ import tempfile
 from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
-import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.extractors import legacy_tfjs_predict_extractor as tfjs_predict_extractor
+from tensorflow_model_analysis.extractors import features_extractor
+from tensorflow_model_analysis.extractors import tfjs_predict_extractor
 from tensorflowjs.converters import converter
+from tfx_bsl.tfxio import test_util
+
+from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
                                parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('single_model_single_output_batched_examples_batched_inputs', False,
-       False, True, True),
-      ('single_model_single_output_batched_examples_not_batched_inputs', False,
-       False, True, False),
-      ('single_model_single_output_single_examples_batched_inputs', False,
-       False, False, True),
-      ('single_model_single_output_single_examples_not_batched_inputs', False,
-       False, False, False),
-      ('single_model_multi_output_batched_examples_batched_inputs', False, True,
-       True, True),
-      ('single_model_multi_output_batched_examples_not_batched_inputs', False,
-       True, True, False),
-      ('single_model_multi_output_single_examples_batched_inputs', False, True,
-       False, True),
-      ('single_model_multi_output_single_examples_not_batched_inputs', False,
-       True, False, False),
-      ('multi_model_single_output_batched_examples_batched_inputs', True, False,
-       True, True),
-      ('multi_model_single_output_batched_examples_not_batched_inputs', True,
-       False, True, False),
-      ('multi_model_single_output_single_examples_batched_inputs', True, False,
-       False, True),
-      ('multi_model_single_output_single_examples_not_batched_inputs', True,
-       False, False, False),
-      ('multi_model_multi_output_batched_examples_batched_inputs', True, True,
-       True, True),
-      ('multi_model_multi_output_batched_examples_not_batched_inputs', True,
-       True, True, False),
-      ('multi_model_multi_output_single_examples_batched_inputs', True, True,
-       False, True),
-      ('mult_model_multi_output_single_examples_not_batched_inputs', True, True,
-       False, False))
-  def testTFJSPredictExtractorWithSingleOutputModel(self, multi_model,
-                                                    multi_output,
-                                                    batch_examples,
-                                                    batch_inputs):
+      ('single_model_single_output', False, False),
+      ('single_model_multi_output', False, True),
+      ('multi_model_single_output', True, False),
+      ('multi_model_multi_output_batched_examples_batched_inputs', True, True))
+  def testTFJSPredictExtractorWithKerasModel(self, multi_model, multi_output):
     input1 = tf.keras.layers.Input(shape=(1,), name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), name='input2')
     inputs = [input1, input2]
@@ -134,60 +108,63 @@ class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
               eval_saved_model_path=dst_model_path,
               model_type='tf_js'))
 
-    desired_batch_size = 2 if batch_examples else None
-    predictor = tfjs_predict_extractor.TFJSPredictExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_models,
-        desired_batch_size=desired_batch_size)
-
-    predict_features = [
-        {
-            'input1': np.array([0.0], dtype=np.float32),
-            'input2': np.array([1.0], dtype=np.float32),
-            'non_model_feature': np.array([0]),  # should be ignored by model
-        },
-        {
-            'input1': np.array([1.0], dtype=np.float32),
-            'input2': np.array([0.0], dtype=np.float32),
-            'non_model_feature': np.array([1]),  # should be ignored by model
+    schema = text_format.Parse(
+        """
+        feature {
+          name: "input1"
+          type: FLOAT
         }
-    ]
+        feature {
+          name: "input2"
+          type: FLOAT
+        }
+        feature {
+          name: "non_model_feature"
+          type: INT
+        }
+        """, schema_pb2.Schema())
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    predictor = tfjs_predict_extractor.TFJSPredictExtractor(
+        eval_config=eval_config, eval_shared_model=eval_shared_models)
 
-    if batch_inputs:
-      predict_features = [{k: np.expand_dims(v, 0)
-                           for k, v in p.items()}
-                          for p in predict_features]
+    examples = [
+        self._makeExample(input1=0.0, input2=1.0, non_model_feature=0),
+        self._makeExample(input1=1.0, input2=0.0, non_model_feature=1),
+    ]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create(predict_features)
-          | 'FeaturesToExtracts' >>
-          beam.Map(lambda x: {constants.FEATURES_KEY: x})
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | feature_extractor.stage_name >> feature_extractor.ptransform
           | predictor.stage_name >> predictor.ptransform)
 
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
         try:
-          self.assertLen(got, 2)
-          # We can't verify the actual predictions, but we can verify the keys.
-          for item in got:
-            self.assertIn(constants.PREDICTIONS_KEY, item)
+          self.assertLen(got, 1)
+          got = got[0]
+          self.assertIn(constants.PREDICTIONS_KEY, got)
+          self.assertLen(got[constants.PREDICTIONS_KEY], 2)
 
+          for item in got[constants.PREDICTIONS_KEY]:
             if multi_model:
-              self.assertIn('model1', item[constants.PREDICTIONS_KEY])
-              self.assertIn('model2', item[constants.PREDICTIONS_KEY])
+              self.assertIn('model1', item)
+              self.assertIn('model2', item)
               if multi_output:
-                self.assertIn('Identity',
-                              item[constants.PREDICTIONS_KEY]['model1'])
-                self.assertIn('Identity_1',
-                              item[constants.PREDICTIONS_KEY]['model1'])
+                self.assertIn('Identity', item['model1'])
+                self.assertIn('Identity_1', item['model1'])
 
             elif multi_output:
-              self.assertIn('Identity', item[constants.PREDICTIONS_KEY])
-              self.assertIn('Identity_1', item[constants.PREDICTIONS_KEY])
+              self.assertIn('Identity', item)
+              self.assertIn('Identity_1', item)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import collections
 import copy
-from typing import Dict, List, Optional, Union, Sequence, Text
+from typing import Dict, Union, Sequence, Text
 
 import apache_beam as beam
 import numpy as np
@@ -36,9 +36,9 @@ _TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
 
 
 # TODO(b/149981535) Determine if we should merge with RunInference.
-@beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
+@beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
+class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   """A DoFn that loads tflite models and predicts."""
 
   def __init__(self, eval_config: config.EvalConfig,
@@ -74,16 +74,14 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
     return input_name
 
   def _batch_reducible_process(
-      self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
+      self, element: types.Extracts) -> Sequence[types.Extracts]:
     """Invokes the tflite model on the provided inputs and stores the result."""
-    # This will be same size as elements, but we rebuild results dynamically
-    # to avoid a deepcopy.
-    result = []
-
+    result = copy.copy(element)
+    result[constants.PREDICTIONS_KEY] = []
     batched_features = collections.defaultdict(list)
-    for e in elements:
-      features = e[constants.FEATURES_KEY]
-      for key, value in features.items():
+    feature_rows = element[constants.FEATURES_KEY]
+    for r in feature_rows:
+      for key, value in r.items():
         batched_features[key].append(value)
 
     for spec in self._eval_config.model_specs:
@@ -103,7 +101,9 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
         if input_name not in batched_features:
           raise ValueError(
               'feature "{}" not found in input data'.format(input_name))
-        input_shape = [d if d is not None else -1 for d in i['shape']]
+        # The batch dimension is the specific batch size of the last time the
+        # model was invoked. Set it to 1 to "reset".
+        input_shape = [1] + list(i['shape'])[1:]
         feature_shape = np.shape(batched_features[input_name][0])
         if len(feature_shape) == len(input_shape):
           input_features[input_name] = batched_features[input_name]
@@ -131,24 +131,22 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
       }
 
       for v in outputs.values():
-        if len(v) != len(elements):
+        if len(v) != len(feature_rows):
           raise ValueError('Did not get the expected number of results.')
 
-      for i in range(len(elements)):
+      for i in range(len(feature_rows)):
         output = {k: v[i] for k, v in outputs.items()}
 
         if len(output) == 1:
           output = list(output.values())[0]
 
-        if i >= len(result):
-          result.append(copy.copy(elements[i]))
-
         if len(self._eval_config.model_specs) == 1:
-          result[i][constants.PREDICTIONS_KEY] = output
+          result[constants.PREDICTIONS_KEY].append(output)
         else:
-          result[i].setdefault(constants.PREDICTIONS_KEY, {})[spec.name] = (
-              output)
-    return result
+          if i >= len(result[constants.PREDICTIONS_KEY]):
+            result[constants.PREDICTIONS_KEY].append({})
+          result[constants.PREDICTIONS_KEY][i].update({spec.name: output})
+    return [result]
 
 
 @beam.ptransform_fn
@@ -156,8 +154,8 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleDoFnWithModels):
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection, eval_config: config.EvalConfig,
-    eval_shared_models: Dict[Text, types.EvalSharedModel],
-    desired_batch_size: Optional[int]) -> beam.pvalue.PCollection:
+    eval_shared_models: Dict[Text,
+                             types.EvalSharedModel]) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
   Args:
@@ -165,25 +163,12 @@ def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
       tfma.FEATURES_KEY.
     eval_config: Eval config.
     eval_shared_models: Shared model parameters keyed by model name.
-    desired_batch_size: Optional batch size.
 
   Returns:
     PCollection of Extracts updated with the predictions.
   """
-  batch_args = {}
-  # TODO(b/143484017): Consider removing this option if autotuning is better
-  # able to handle batch size selection.
-  if desired_batch_size is not None:
-    batch_args = dict(
-        min_batch_size=desired_batch_size, max_batch_size=desired_batch_size)
-  else:
-    # TODO(b/155887292): Remove the following and allow dynamic batch sizing
-    # once the bug is addressed. Also add unit tests to exercise.
-    batch_args = dict(min_batch_size=1, max_batch_size=1)
-
   return (
       extracts
-      | 'Batch' >> beam.BatchElements(**batch_args)
       | 'Predict' >> beam.ParDo(
           _TFLitePredictionDoFn(
               eval_config=eval_config, eval_shared_models=eval_shared_models)))
@@ -191,9 +176,9 @@ def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
 
 def TFLitePredictExtractor(
     eval_config: config.EvalConfig,
-    eval_shared_model: Union[types.EvalSharedModel,
-                             Dict[Text, types.EvalSharedModel]],
-    desired_batch_size: Optional[int] = None) -> extractor.Extractor:
+    eval_shared_model: Union[types.EvalSharedModel, Dict[Text,
+                                                         types.EvalSharedModel]]
+) -> extractor.Extractor:
   """Creates an extractor for performing predictions on tflite models.
 
   The extractor's PTransform loads and interprets the tflite flatbuffer against
@@ -206,7 +191,6 @@ def TFLitePredictExtractor(
     eval_config: Eval config.
     eval_shared_model: Shared model (single-model evaluation) or dict of shared
       models keyed by model name (multi-model evaluation).
-    desired_batch_size: Optional batch size.
 
   Returns:
     Extractor for extracting predictions.
@@ -219,5 +203,4 @@ def TFLitePredictExtractor(
       stage_name=_TFLITE_PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractTFLitePredictions(
           eval_config=eval_config,
-          eval_shared_models={m.model_name: m for m in eval_shared_models},
-          desired_batch_size=desired_batch_size))
+          eval_shared_models={m.model_name: m for m in eval_shared_models}))

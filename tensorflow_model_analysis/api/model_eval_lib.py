@@ -23,8 +23,7 @@ from __future__ import print_function
 
 import os
 import tempfile
-
-from typing import Any, Dict, Iterator, Iterable, List, Optional, Set, Text, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Text, Union
 
 from absl import logging
 import apache_beam as beam
@@ -43,12 +42,11 @@ from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import labels_extractor
-from tensorflow_model_analysis.extractors import legacy_input_extractor
 from tensorflow_model_analysis.extractors import legacy_predict_extractor
-from tensorflow_model_analysis.extractors import legacy_tfjs_predict_extractor
-from tensorflow_model_analysis.extractors import legacy_tflite_predict_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.extractors import tfjs_predict_extractor
+from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.extractors import transformed_features_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
@@ -65,6 +63,7 @@ from tfx_bsl.arrow import table_util
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import tf_example_record
+
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
@@ -512,10 +511,14 @@ def default_extractors(  # pylint: disable=invalid-name
       # TODO(b/163889779): Convert TFLite extractor to operate on batched
       # extracts. Then we can remove the input extractor.
       return [
-          legacy_input_extractor.InputExtractor(eval_config=eval_config),
+          features_extractor.FeaturesExtractor(eval_config=eval_config),
+          labels_extractor.LabelsExtractor(eval_config=eval_config),
+          example_weights_extractor.ExampleWeightsExtractor(
+              eval_config=eval_config),
           (custom_predict_extractor or
-           legacy_tflite_predict_extractor.TFLitePredictExtractor(
+           tflite_predict_extractor.TFLitePredictExtractor(
                eval_config=eval_config, eval_shared_model=eval_shared_model)),
+          unbatch_extractor.UnbatchExtractor(),
           slice_key_extractor.SliceKeyExtractor(
               eval_config=eval_config, materialize=materialize)
       ]
@@ -526,10 +529,14 @@ def default_extractors(  # pylint: disable=invalid-name
 
     if model_types == set([constants.TF_JS]):
       return [
-          legacy_input_extractor.InputExtractor(eval_config=eval_config),
+          features_extractor.FeaturesExtractor(eval_config=eval_config),
+          labels_extractor.LabelsExtractor(eval_config=eval_config),
+          example_weights_extractor.ExampleWeightsExtractor(
+              eval_config=eval_config),
           (custom_predict_extractor or
-           legacy_tfjs_predict_extractor.TFJSPredictExtractor(
+           tfjs_predict_extractor.TFJSPredictExtractor(
                eval_config=eval_config, eval_shared_model=eval_shared_model)),
+          unbatch_extractor.UnbatchExtractor(),
           slice_key_extractor.SliceKeyExtractor(
               eval_config=eval_config, materialize=materialize)
       ]
@@ -962,14 +969,7 @@ def is_batched_input(eval_shared_model: Optional[
   Returns:
     A boolean indicating if batched extractors should be used.
   """
-  if _is_legacy_eval(config_version, eval_shared_model, eval_config):
-    return False
-  elif eval_shared_model:
-    model_types = _model_types(eval_shared_model)
-    if (model_types == set([constants.TF_LITE]) or
-        model_types == set([constants.TF_JS])):
-      return False
-  return True
+  return not _is_legacy_eval(config_version, eval_shared_model, eval_config)
 
 
 @beam.ptransform_fn
