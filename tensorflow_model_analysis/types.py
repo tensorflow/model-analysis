@@ -23,10 +23,10 @@ import datetime
 
 from typing import Any, Callable, Dict, List, MutableMapping, Optional, Text, Tuple, Union, NamedTuple
 
+from apache_beam.utils import shared
 import numpy as np
 import six
 import tensorflow as tf
-from tfx_bsl.beam import shared
 
 # pylint: disable=invalid-name
 

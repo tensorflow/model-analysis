@@ -20,18 +20,18 @@ from __future__ import print_function
 
 import copy
 import datetime
+from typing import Generator, List, Optional
 
 # Standard Imports
 
 import apache_beam as beam
+from apache_beam.utils import shared
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict as agnostic_predict
-from tfx_bsl.beam import shared
-from typing import Generator, List, Optional
 
 
 def ModelAgnosticGetFPLFeedConfig(
