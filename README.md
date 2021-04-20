@@ -6,8 +6,8 @@
 [![PyPI](https://badge.fury.io/py/tensorflow-model-analysis.svg)](https://badge.fury.io/py/tensorflow-model-analysis)
 [![Documentation](https://img.shields.io/badge/api-reference-blue.svg)](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma)
 
-*TensorFlow Model Analysis* (TFMA) is a library for evaluating TensorFlow models.
-It allows users to evaluate their models on large amounts of data in a
+*TensorFlow Model Analysis* (TFMA) is a library for evaluating TensorFlow
+models.  It allows users to evaluate their models on large amounts of data in a
 distributed manner, using the same metrics defined in their trainer. These
 metrics can be computed over different slices of data and visualized in Jupyter
 notebooks.
@@ -57,7 +57,8 @@ for see the latest install instructions.
 
 Currently, TFMA requires that TensorFlow is installed but does not have an
 explicit dependency on the TensorFlow PyPI package. See the
-[TensorFlow install guides](https://www.tensorflow.org/install/) for instructions.
+[TensorFlow install guides](https://www.tensorflow.org/install/) for
+instructions.
 
 ### Build TFMA from source
 
@@ -105,7 +106,8 @@ Using a JupyterLab extension requires installing dependencies on the command
 line. You can do this within the console in the JupyterLab UI or on the command
 line. This includes separately installing any pip package dependencies and
 JupyterLab labextension plugin dependencies, and the version numbers must be
-compatible.
+compatible.  JupyterLab labextension packages refer to npm packages
+(eg, [tensorflow_model_analysis](https://www.npmjs.com/package/tensorflow_model_analysis).
 
 The examples below use 0.27.0. Check available [versions](#compatible-versions)
 below to use the latest.
@@ -139,6 +141,22 @@ Check extensions:
 ```Shell
 jupyter labextension list
 ```
+
+### Standalone HTML page with `embed_minimal_html`
+
+TFMA notebook extension can be built into a standalone HTML file that also
+bundles data into the HTML file.  See the Jupyter Widgets docs on
+[embed_minimal_html](https://ipywidgets.readthedocs.io/en/latest/embedding.html#python-interface).
+
+
+### Kubeflow Pipelines
+
+[Kubeflow Pipelines](https://www.kubeflow.org/docs/components/pipelines/sdk/output-viewer/)
+includes integrations that embed the TFMA notebook extension ([code](https://github.com/kubeflow/pipelines/blob/1.5.0-rc.2/backend/src/apiserver/visualization/types/tfma.py#L17)).
+This integration relies on network access at runtime to load a variant of the
+JavaScript build published on unpkg.com (see [config](https://github.com/tensorflow/model-analysis/blob/v0.29.0/tensorflow_model_analysis/notebook/jupyter/js/webpack.config.js#L78)
+and [loader code](https://github.com/tensorflow/model-analysis/blob/v0.29.0/tensorflow_model_analysis/notebook/jupyter/js/lib/widget.js#L23)).
+
 
 ### Notable Dependencies
 
