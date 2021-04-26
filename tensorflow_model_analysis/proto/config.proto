@@ -52,15 +52,13 @@ message ModelSpec {
   // If no names are provided, the names "transformed_features" and
   // "transformed_labels" will be searched for.
   //
-  // Note that the output of a preprocessing function will be merged with the
-  // raw input features. If any of the output names used by the preprocessing
-  // function have the same name as the raw input features, then the associated
-  // feature values will be overridden. If a preprocessing function outputs a
-  // non-dict value, then it will be stored as a feature under the preprocessing
-  // function name itself. For example, if a function called
-  // "transformed_labels" outputs a single array value then it will associated
-  // with the feature name "transformed_labels". This name can be used when
-  // setting the "label_key" or in slicing configs.
+  // The output of a preprocessing function will override the feature with the
+  // same name for label or example weight extraction purposes. If a
+  // preprocessing function outputs a non-dict value, then it will be stored as
+  // a feature under the preprocessing function name itself. For example, if a
+  // function called "transformed_labels" outputs a single array value then it
+  // will associated with the feature name "transformed_labels". This name can
+  // be used when setting the "label_key" or in slicing configs.
   repeated string preprocessing_function_names = 13;
   // Label key (single-output model). The key can identify either a transformed
   // feature (see preprocessing_function_names) or a raw input feature. Use one
