@@ -20,6 +20,8 @@ module.exports = {
   id: 'tensorflow_model_analysis',
   requires: [base.IJupyterWidgetRegistry],
   activate: function(app, widgets) {
+    // Set a global variable to mark plugin as being run within Jupyter Lab.
+    window['isJupyterLab'] = true;
     widgets.registerWidget({
       name: 'tensorflow_model_analysis',
       version: plugin.version,
