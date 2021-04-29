@@ -635,12 +635,13 @@ def to_computations(
                                       aggregation_type.weighted_macro_average)):
               class_weights = _class_weights(spec) or {}
               for output_name in output_names:
-                sub_keys = _macro_average_sub_keys(sub_key, class_weights)
+                macro_average_sub_keys = _macro_average_sub_keys(
+                    sub_key, class_weights)
                 if aggregation_type.macro_average:
                   computations.extend(
                       aggregation.macro_average(
                           metric.get_config()['name'],
-                          sub_keys=sub_keys,
+                          sub_keys=macro_average_sub_keys,
                           eval_config=eval_config,
                           model_name=model_name,
                           output_name=output_name,
@@ -650,7 +651,7 @@ def to_computations(
                   computations.extend(
                       aggregation.weighted_macro_average(
                           metric.get_config()['name'],
-                          sub_keys=sub_keys,
+                          sub_keys=macro_average_sub_keys,
                           eval_config=eval_config,
                           model_name=model_name,
                           output_name=output_name,
