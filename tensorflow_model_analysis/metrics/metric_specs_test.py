@@ -507,10 +507,14 @@ class MetricSpecsTest(tf.test.TestCase):
               model_name='model_name',
               output_name=output_name,
               sub_key=metric_types.SubKey(class_id=1)), keys)
+      aggregation_type = metric_types.AggregationType(
+          macro_average=True) if output_name else None
       self.assertIn(
           metric_types.MetricKey(
-              name='mse', model_name='model_name', output_name=output_name),
-          keys)
+              name='mse',
+              model_name='model_name',
+              output_name=output_name,
+              aggregation_type=aggregation_type), keys)
       self.assertIn(
           metric_types.MetricKey(
               name='loss',
@@ -523,10 +527,14 @@ class MetricSpecsTest(tf.test.TestCase):
               model_name='model_name',
               output_name=output_name,
               sub_key=metric_types.SubKey(class_id=1)), keys)
+      aggregation_type = metric_types.AggregationType(
+          macro_average=True) if output_name else None
       self.assertIn(
           metric_types.MetricKey(
-              name='loss', model_name='model_name', output_name=output_name),
-          keys)
+              name='loss',
+              model_name='model_name',
+              output_name=output_name,
+              aggregation_type=aggregation_type), keys)
       self.assertIn(
           metric_types.MetricKey(
               name='mean_label',
@@ -539,11 +547,14 @@ class MetricSpecsTest(tf.test.TestCase):
               model_name='model_name',
               output_name=output_name,
               sub_key=metric_types.SubKey(class_id=1)), keys)
+      aggregation_type = metric_types.AggregationType(
+          macro_average=True) if output_name else None
       self.assertIn(
           metric_types.MetricKey(
               name='mean_label',
               model_name='model_name',
-              output_name=output_name), keys)
+              output_name=output_name,
+              aggregation_type=aggregation_type), keys)
 
   # This tests b/155810786
   def testToComputationsWithMixedAggregationAndNonAggregationMetrics(self):

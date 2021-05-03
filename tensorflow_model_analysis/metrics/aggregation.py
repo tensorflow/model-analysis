@@ -105,7 +105,8 @@ def macro_average(
       name=metric_name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      aggregation_type=metric_types.AggregationType(macro_average=True))
 
   def result(
       metrics: Dict[metric_types.MetricKey, float]
@@ -178,7 +179,8 @@ def weighted_macro_average(
       name=metric_name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      aggregation_type=metric_types.AggregationType(macro_average=True))
 
   class_ids = [k.class_id for k in sub_keys if k.class_id is not None]
 

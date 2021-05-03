@@ -125,7 +125,7 @@ def tf_metric_computations(
   if non_confusion_matrix_metrics:
     custom_objects = _custom_objects(non_confusion_matrix_metrics)
     metric_keys, metric_configs, loss_configs = _metric_keys_and_configs(
-        non_confusion_matrix_metrics, model_name, sub_key)
+        non_confusion_matrix_metrics, model_name, sub_key, aggregation_type)
     for sub_key, keys in metric_keys.items():
       computations.append(
           metric_types.MetricComputation(
@@ -242,8 +242,10 @@ _ConfigsBySubKey = Dict[Optional[metric_types.SubKey],
 
 
 def _metric_keys_and_configs(
-    metrics: Dict[Text, List[_TFMetricOrLoss]], model_name: Text,
-    sub_key: Optional[metric_types.SubKey]
+    metrics: Dict[Text, List[_TFMetricOrLoss]],
+    model_name: Text,
+    sub_key: Optional[metric_types.SubKey],
+    aggregation_type: Optional[metric_types.AggregationType],
 ) -> Tuple[_KeysBySubKey, _ConfigsBySubKey, _ConfigsBySubKey]:
   """Returns metric keys, metric configs, and loss configs by sub key."""
   metric_keys = collections.defaultdict(list)
@@ -262,7 +264,8 @@ def _metric_keys_and_configs(
               name=metric.name,
               model_name=model_name,
               output_name=output_name,
-              sub_key=updated_sub_key))
+              sub_key=updated_sub_key,
+              aggregation_type=aggregation_type))
       if isinstance(metric, tf.keras.metrics.Metric):
         metric_configs[updated_sub_key][output_name].append(
             metric_util.serialize_metric(metric))
@@ -344,6 +347,7 @@ def _wrap_confusion_matrix_metric(
       name=metric.name,
       model_name=model_name,
       output_name=output_name,
+      aggregation_type=aggregation_type,
       sub_key=sub_key)
 
   metric_config = tf.keras.metrics.serialize(metric)

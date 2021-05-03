@@ -18,8 +18,11 @@
 
 ## Bug fixes and other Changes
 
-*  Fix bug that `FeaturesExtractor` incorrectly handles RecordBatches that
-   have only the raw input column but no other feature columns.
+*   Fix bug that `FeaturesExtractor` incorrectly handles RecordBatches that have
+    only the raw input column but no other feature columns.
+
+*   Fix an issue that micro_average can get lost in MetricKey, which can cause
+    threshold mismatch the metrics during validation.
 
 ## Breaking Changes
 

@@ -823,7 +823,7 @@ def _process_tfma_metrics_specs(
                 updated_sub_keys.append(key)
           if not updated_sub_keys:
             continue
-          aggregation_type = None
+          aggregation_type = aggregation_type if not is_macro else None
           class_weights = None
           sub_keys = updated_sub_keys
           instance = _private_tfma_metric(metric)
