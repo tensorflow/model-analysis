@@ -113,7 +113,10 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
           ]
         else:
           raise ValueError(
-              'incompatible shape and data for feature: {}'.format(input_name))
+              'incompatible shape and data for feature: {}, got: {}, expected {}'.format(
+                  input_name, feature_shape, input_shape
+              )
+          )
         input_features[input_name] = tf.concat(
             input_features[input_name], axis=0)
         if np.shape(input_features[input_name]) != tuple(i['shape']):
