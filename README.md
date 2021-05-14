@@ -190,6 +190,7 @@ combinations may also work.
 |[0.29.0](https://github.com/tensorflow/model-analysis/blob/v0.29.0/RELEASE.md)       | 2.28.0         | 2.0.0    | 1.15 / 2.4        | 0.29.0             | 0.29.0   |
 |[0.28.0](https://github.com/tensorflow/model-analysis/blob/v0.28.0/RELEASE.md)       | 2.28.0         | 2.0.0    | 1.15 / 2.4        | 0.28.0             | 0.28.0   |
 |[0.27.0](https://github.com/tensorflow/model-analysis/blob/v0.27.0/RELEASE.md)       | 2.27.0         | 2.0.0    | 1.15 / 2.4        | 0.27.0             | 0.27.0   |
+|[0.26.1](https://github.com/tensorflow/model-analysis/blob/v0.26.1/RELEASE.md)       | 2.28.0         | 0.17.0   | 1.15 / 2.3        | 0.26.0             | 0.26.0   |
 |[0.26.0](https://github.com/tensorflow/model-analysis/blob/v0.26.0/RELEASE.md)       | 2.25.0         | 0.17.0   | 1.15 / 2.3        | 0.26.0             | 0.26.0   |
 |[0.25.0](https://github.com/tensorflow/model-analysis/blob/v0.25.0/RELEASE.md)       | 2.25.0         | 0.17.0   | 1.15 / 2.3        | 0.25.0             | 0.25.0   |
 |[0.24.3](https://github.com/tensorflow/model-analysis/blob/v0.24.3/RELEASE.md)       | 2.24.0         | 0.17.0   | 1.15 / 2.3        | 0.24.0             | 0.24.1   |
