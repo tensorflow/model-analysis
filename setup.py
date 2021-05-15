@@ -300,7 +300,7 @@ setup_args = {
         'pyarrow>=1,<3',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
-        'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*!=2.3.*,<3',
+        'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3',
         'tensorflow-metadata' + select_constraint(
             default='>=0.30,<0.31',
             nightly='>=0.31.0.dev',
