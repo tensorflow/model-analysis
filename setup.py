@@ -302,12 +302,12 @@ setup_args = {
         'six>=1.12,<2',
         'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*!=2.3.*,!=2.4.*,<3',
         'tensorflow-metadata' + select_constraint(
-            default='>=0.30,<0.31',
-            nightly='>=0.31.0.dev',
+            default='>=1.0.0,<1.1.0',
+            nightly='>=1.1.0.dev',
             git_master='@git+https://github.com/tensorflow/metadata@master'),
         'tfx-bsl' + select_constraint(
-            default='>=0.30,<0.31',
-            nightly='>=0.31.0.dev',
+            default='>=1.0.0,<1.1.0',
+            nightly='>=1.1.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
     ],
     'extras_require': {
