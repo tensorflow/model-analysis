@@ -22,9 +22,12 @@
           {'doubleValue': Math.floor(Math.random() * 200 + 1000)},
     };
     const metrics = [
-      'lift@2',  // for binary ground truth labels
-      'lift@23', // for continuous ground truth labels
+      'lift@2',   // for binary ground truth labels
+      'lift@23',  // for continuous ground truth labels
       'accuracy',
+      'flip_rate/overall',
+      'flip_rate/positive_to_negative',
+      'flip_rate/negative_to_positive',
       'post_export_metrics/false_positive_rate@0.30',
       'post_export_metrics/false_negative_rate@0.30',
       'post_export_metrics/false_positive_rate@0.50',

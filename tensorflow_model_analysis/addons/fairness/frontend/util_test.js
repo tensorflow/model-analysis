@@ -52,6 +52,8 @@ testSuite({
     assertEquals(
         'post_export_metrics_foo/bar',
         Util.removeMetricNamePrefix('post_export_metrics_foo/bar'));
+    assertEquals(
+        'flip_rate/overall', Util.removeMetricNamePrefix('flip_rate/overall'));
   },
 
   testGetMetricsValues() {
@@ -88,5 +90,10 @@ testSuite({
     const fairness_metric5 = Util.extractFairnessMetric('accuracy@0.5');
     assertEquals('accuracy', fairness_metric5.name);
     assertEquals('0.5', fairness_metric5.threshold);
+
+    const fairness_metric6 =
+    Util.extractFairnessMetric('flip_count/positive_to_negative@0.5');
+    assertEquals('flip_count/positive_to_negative', fairness_metric6.name);
+    assertEquals('0.5', fairness_metric6.threshold);
   }
 });

@@ -36,7 +36,21 @@ const FAIRNESS_METRIC_PREFIX_ = 'fairness_indicators_metrics/';
 const LIFT_METRICS_ = 'lift';
 
 /**
- * The list of fainress metrics. The order is used to determine which
+ * The list of counterfactual fairness metrics. The order is used to determine
+ * which metrics is displayed by default.
+ * @const
+ * @private
+ */
+const COUNTERFACTUAL_FAIRNESS_METRICS_ = [
+  'flip_count/positive_to_negative',
+  'flip_count/negative_to_positive',
+  'flip_rate/overall',
+  'flip_rate/positive_to_negative',
+  'flip_rate/negative_to_positive',
+];
+
+/**
+ * The list of fairness metrics. The order is used to determine which
  * metrics is displayed by default.
  * @const
  * @private
@@ -98,13 +112,14 @@ exports.extractFairnessMetric = function(metricName) {
     return null;
   }
 
-  for (let i = 0; i < FAIRNESS_METRICS_.length; i++) {
-    const parts = metricName.split(FAIRNESS_METRICS_[i] + '@');
+  const metrics = FAIRNESS_METRICS_.concat(COUNTERFACTUAL_FAIRNESS_METRICS_);
+  for (let i = 0; i < metrics.length; i++) {
+    const parts = metricName.split(metrics[i] + '@');
     const prefix = parts[0];
     if (parts.length == 2 &&
         (prefix == '' || prefix.indexOf(MULTIHEAD_METRIC_PREFIX_) == 0 ||
          prefix.indexOf(FAIRNESS_METRIC_PREFIX_) == 0)) {
-      return {name: prefix + FAIRNESS_METRICS_[i], threshold: parts[1]};
+      return {name: prefix + metrics[i], threshold: parts[1]};
     }
   }
   return null;

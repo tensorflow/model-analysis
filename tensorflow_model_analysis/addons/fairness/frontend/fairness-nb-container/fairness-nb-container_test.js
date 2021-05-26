@@ -28,6 +28,9 @@ suite('fairness-nb-container tests', () => {
         'slice': slice,
         'sliceValue': slice.split(':')[1] || 'Overall',
         'metrics': {
+          'flip_rate/overall@0.2': {
+            'doubleValue': Math.random(),
+          },
           'lift@2': {
             'doubleValue': Math.random(),
           },
@@ -81,10 +84,14 @@ suite('fairness-nb-container tests', () => {
       let metricsList = fairnessContainer.shadowRoot.querySelector(
           'fairness-metric-and-slice-selector');
       assert.deepEqual(metricsList.availableMetrics, [
+        'flip_rate/overall',
         'post_export_metrics/false_positive_rate',
         'post_export_metrics/positive_rate',
-        'post_export_metrics/true_positive_rate', 'accuracy',
-        'lift@2', 'lift@23', 'totalWeightedExamples'
+        'post_export_metrics/true_positive_rate',
+        'accuracy',
+        'lift@2',
+        'lift@23',
+        'totalWeightedExamples',
       ]);
       assert.deepEqual(
           metricsList.selectedMetrics,
