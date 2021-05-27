@@ -33,7 +33,7 @@ def render_slicing_metrics(
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[Union[slicer.SingleSliceSpec,
                                  config.SlicingSpec]] = None,
-    weighted_example_column: Text = None,
+    weighted_example_column: Optional[Text] = None,
     event_handlers: Optional[Callable[[Dict[Text, Union[Text, float]]],
                                       None]] = None,
 ) -> Optional[visualization.SlicingMetricsViewer]:  # pytype: disable=invalid-annotation
@@ -129,7 +129,7 @@ def render_slicing_attributions(
     slicing_spec: Optional[Union[slicer.SingleSliceSpec,
                                  config.SlicingSpec]] = None,
     metric_name: Optional[Text] = None,
-    weighted_example_column: Text = None,
+    weighted_example_column: Optional[Text] = None,
     event_handlers: Optional[Callable[[Dict[Text, Union[Text, float]]],
                                       None]] = None,
 ) -> Optional[visualization.SlicingMetricsViewer]:  # pytype: disable=invalid-annotation

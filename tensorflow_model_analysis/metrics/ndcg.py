@@ -73,8 +73,8 @@ def _ndcg(gain_key: Text,
           top_k_list: Optional[List[int]] = None,
           name: Text = NDCG_NAME,
           eval_config: Optional[config.EvalConfig] = None,
-          model_names: List[Text] = None,
-          output_names: List[Text] = None,
+          model_names: Optional[List[Text]] = None,
+          output_names: Optional[List[Text]] = None,
           sub_keys: Optional[List[metric_types.SubKey]] = None,
           query_key: Text = '') -> metric_types.MetricComputations:
   """Returns metric computations for NDCG."""

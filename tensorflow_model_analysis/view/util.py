@@ -362,7 +362,7 @@ def get_plot_data_and_config(
 # TODO(paulyang): Add support for multi-model / multi-output selection.
 def get_slicing_config(
     eval_config: config.EvalConfig,
-    weighted_example_column_to_use: Text = None) -> Dict[Text, Text]:
+    weighted_example_column_to_use: Optional[Text] = None) -> Dict[Text, Text]:
   """Util function that generates config for visualization.
 
   Args:

@@ -410,7 +410,7 @@ class StandardExtracts(MutableMapping):
   whether or not multi-model and/or multi-output evalutions were performed.
   """
 
-  def __init__(self, extracts: types.Extracts = None, **kwargs):
+  def __init__(self, extracts: Optional[types.Extracts] = None, **kwargs):
     """Initializes StandardExtracts.
 
     Args:

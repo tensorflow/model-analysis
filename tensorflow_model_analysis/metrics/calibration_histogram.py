@@ -46,7 +46,7 @@ def calibration_histogram(
     num_buckets: Optional[int] = None,
     left: Optional[float] = None,
     right: Optional[float] = None,
-    name: Text = None,
+    name: Optional[Text] = None,
     eval_config: Optional[config.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',

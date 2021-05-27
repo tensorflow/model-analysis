@@ -444,7 +444,7 @@ def default_eval_shared_model(
 
 def default_extractors(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    eval_config: config.EvalConfig = None,
+    eval_config: Optional[config.EvalConfig] = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     materialize: Optional[bool] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
@@ -602,7 +602,7 @@ def default_extractors(  # pylint: disable=invalid-name
 
 def default_evaluators(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    eval_config: config.EvalConfig = None,
+    eval_config: Optional[config.EvalConfig] = None,
     schema: Optional[schema_pb2.Schema] = None,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
@@ -695,7 +695,7 @@ def default_writers(
     display_only_data_location: Optional[Text] = None,
     display_only_data_file_format: Optional[Text] = None,
     output_file_format: Text = '',
-    add_metric_callbacks: List[types.AddMetricsCallbackType] = None
+    add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None
 ) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
 
@@ -947,7 +947,7 @@ def is_legacy_estimator(
 
 def is_batched_input(eval_shared_model: Optional[
     types.MaybeMultipleEvalSharedModels] = None,
-                     eval_config: config.EvalConfig = None,
+                     eval_config: Optional[config.EvalConfig] = None,
                      config_version: Optional[int] = None) -> bool:
   """Returns true if batched input should be used.
 
@@ -978,7 +978,7 @@ def is_batched_input(eval_shared_model: Optional[
 def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     examples: beam.pvalue.PCollection,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    eval_config: config.EvalConfig = None,
+    eval_config: Optional[config.EvalConfig] = None,
     extractors: Optional[List[extractor.Extractor]] = None,
     evaluators: Optional[List[evaluator.Evaluator]] = None,
     writers: Optional[List[writer.Writer]] = None,
@@ -1138,7 +1138,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
 
 def run_model_analysis(
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    eval_config: config.EvalConfig = None,
+    eval_config: Optional[config.EvalConfig] = None,
     data_location: Text = '',
     file_format: Text = 'tfrecords',
     output_path: Optional[Text] = None,
@@ -1284,7 +1284,7 @@ def run_model_analysis(
 def single_model_analysis(
     model_location: Text,
     data_location: Text,
-    output_path: Text = None,
+    output_path: Optional[Text] = None,
     eval_config: Optional[config.EvalConfig] = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None
 ) -> view_types.EvalResult:
@@ -1367,9 +1367,9 @@ def multiple_data_analysis(model_location: Text, data_locations: List[Text],
 
 def analyze_raw_data(
     data: pd.DataFrame,
-    eval_config: config.EvalConfig = None,
+    eval_config: Optional[config.EvalConfig] = None,
     output_path: Optional[Text] = None,
-    add_metric_callbacks: List[types.AddMetricsCallbackType] = None
+    add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None
 ) -> view_types.EvalResult:
   """Runs TensorFlow model analysis on a pandas.DataFrame.
 
@@ -1450,7 +1450,7 @@ def analyze_raw_data(
     KeyError: If the prediction or label columns are not found within the
       DataFrame.
   """
-  for model_spec in eval_config.model_specs:
+  for model_spec in eval_config.model_specs:  # pytype: disable=attribute-error
     model_spec.prediction_key = model_spec.prediction_key or 'prediction'
     model_spec.label_key = model_spec.label_key or 'label'
     if model_spec.prediction_key not in data.columns:
@@ -1463,7 +1463,7 @@ def analyze_raw_data(
           (model_spec.label_key, list(data.columns)))
 
   # TODO(b/153570803): Validity check / assertions for dataframe structure
-  if eval_config.slicing_specs is None:
+  if eval_config.slicing_specs is None:  # pytype: disable=attribute-error
     eval_config.slicing_specs = [config.SlicingSpec(feature_keys=[''])]
   if output_path is None:
     output_path = tempfile.mkdtemp()

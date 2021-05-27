@@ -93,7 +93,7 @@ class SingleSliceSpec(object):
   def __init__(self,
                columns: Iterable[Text] = (),
                features: Iterable[Tuple[Text, FeatureValueType]] = (),
-               spec: config.SlicingSpec = None):
+               spec: Optional[config.SlicingSpec] = None):
     """Initialises a SingleSliceSpec.
 
     Args:

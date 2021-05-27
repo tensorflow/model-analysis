@@ -524,7 +524,7 @@ def legacy_export_strategy(
     serving_input_receiver_fn: Optional[Callable[
         [], tf.estimator.export.ServingInputReceiver]] = None,
     exports_to_keep: Optional[int] = 5,
-    export_eval_savedmodel_fn: Callable[..., Any] = None) -> Any:
+    export_eval_savedmodel_fn: Optional[Callable[..., Any]] = None) -> Any:
   """Creates legacy export strategy using the given export_fn."""
   del eval_input_receiver_fn
   del serving_input_receiver_fn

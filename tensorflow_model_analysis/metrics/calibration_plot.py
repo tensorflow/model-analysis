@@ -40,8 +40,8 @@ class CalibrationPlot(metric_types.Metric):
 
   def __init__(self,
                num_buckets: int = DEFAULT_NUM_BUCKETS,
-               left: float = None,
-               right: float = None,
+               left: Optional[float] = None,
+               right: Optional[float] = None,
                name: Text = CALIBRATION_PLOT_NAME):
     """Initializes calibration plot.
 
