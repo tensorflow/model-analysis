@@ -43,6 +43,7 @@ from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import attributions
+from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import confusion_matrix_plot
@@ -2540,6 +2541,32 @@ class MetricsPlotsAndValidationsEvaluatorTest(
 
       util.assert_that(evaluations[constants.VALIDATIONS_KEY],
                        check_validations)
+
+  @parameterized.named_parameters(
+      ('IntIsDiffable', 1, True),
+      ('FloatIsDiffable', 1.0, True),
+      ('NumpyFloatDtypeIsDiffable', np.array([1.0], dtype=np.float64), True),
+      ('NumpyIntDtypeIsDiffable', np.array([1], dtype=np.int64), True),
+      ('MessageNotDiffable', validation_result_pb2.ValidationResult(), False),
+      ('TupleNotDiffable',
+       binary_confusion_matrices.Matrices(
+           thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+           tp=[2.0, 1.0, 0.0],
+           fp=[2.0, 0.0, 0.0],
+           tn=[0.0, 2.0, 2.0],
+           fn=[0.0, 1.0, 2.0],
+           tp_examples=[],
+           tn_examples=[],
+           fp_examples=[],
+           fn_examples=[]), False),
+      ('BytesNotDiffable', b'some bytes', False),
+      ('NumpyObjectDtypeIsDiffable', np.array(['obj'], dtype=np.object), False),
+  )
+  def testIsMetricDiffable(self, metric_value, expected_is_diffable):
+    self.assertEqual(
+        expected_is_diffable,
+        metrics_plots_and_validations_evaluator._is_metric_diffable(
+            metric_value))
 
 
 if __name__ == '__main__':

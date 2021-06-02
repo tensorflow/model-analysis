@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import copy
 import datetime
+import numbers
 from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set, Text, Tuple, Type, Union
 import apache_beam as beam
 import numpy as np
@@ -44,7 +45,6 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tfx_bsl.tfxio import tensor_adapter
-from google.protobuf import message
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 _COMBINER_INPUTS_KEY = '_combiner_inputs'
@@ -498,10 +498,10 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
 
 
 def _is_metric_diffable(metric_value: Any):
-  return (not isinstance(metric_value, message.Message) and
-          not (isinstance(metric_value, np.ndarray) and
-               not issubclass(metric_value.dtype.type, np.integer) and
-               not issubclass(metric_value.dtype.type, np.floating)))
+  """Check whether a metric value is a number or an ndarray of numbers."""
+  return (isinstance(metric_value, numbers.Number) or
+          (isinstance(metric_value, np.ndarray) and
+           np.issubdtype(metric_value.dtype, np.number)))
 
 
 @beam.ptransform_fn
