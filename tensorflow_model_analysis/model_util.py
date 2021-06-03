@@ -590,8 +590,6 @@ def model_construct_fn(  # pylint: disable=invalid-name
         model.register_add_metric_callbacks(add_metrics_callbacks)
       model.graph_finalize()
     elif model_type == constants.TF_KERAS:
-      # TODO(b/141524386, b/141566408): TPU Inference is not supported
-      # for Keras saved_model yet.
       model = tf.keras.models.load_model(eval_saved_model_path)
     elif model_type == constants.TF_LITE:
       # The tf.lite.Interpreter is not thread-safe so we only load the model
