@@ -65,6 +65,15 @@ def SliceKeyExtractor(
     slice_spec = [
         slicer.SingleSliceSpec(spec=spec) for spec in eval_config.slicing_specs
     ]
+    for cross_slice_spec in eval_config.cross_slicing_specs:
+      baseline_slice_spec = slicer.SingleSliceSpec(
+          spec=cross_slice_spec.baseline_spec)
+      if baseline_slice_spec not in slice_spec:
+        slice_spec.append(baseline_slice_spec)
+      for spec in cross_slice_spec.slicing_specs:
+        comparison_slice_spec = slicer.SingleSliceSpec(spec=spec)
+        if comparison_slice_spec not in slice_spec:
+          slice_spec.append(comparison_slice_spec)
   if not slice_spec:
     slice_spec = [slicer.SingleSliceSpec()]
   return extractor.Extractor(

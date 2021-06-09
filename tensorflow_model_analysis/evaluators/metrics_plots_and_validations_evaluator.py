@@ -453,7 +453,10 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
       for (comparison_metric_key,
            comparison_metric_value) in comparison_metrics.items():
         if (comparison_metric_key not in baseline_metrics or
-            _is_private_metrics(comparison_metric_key)):
+            _is_private_metrics(comparison_metric_key) or
+            not isinstance(comparison_metric_key, metric_types.MetricKey) or
+            isinstance(comparison_metric_key, metric_types.PlotKey) or
+            isinstance(comparison_metric_key, metric_types.AttributionsKey)):
           continue
         result[comparison_metric_key] = (
             baseline_metrics[comparison_metric_key] - comparison_metric_value)
