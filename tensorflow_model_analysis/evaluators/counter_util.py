@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import List, Text, Iterable
+from typing import List, Text, Set
 
 import apache_beam as beam
 
@@ -28,9 +28,10 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 
 
-def _IncrementMetricsCounters(metric_name: Text, version: Text):
+def _IncrementMetricsCounters(metric_name: Text, version: Text,
+                              model_type: Text):
   # LINT.IfChange
-  metric_name = 'metric_computed_%s_%s' % (metric_name, version)
+  metric_name = 'metric_computed_%s_%s_%s' % (metric_name, version, model_type)
   # LINT.ThenChange(../../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
   metrics_counter = beam.metrics.Metrics.counter(constants.METRICS_NAMESPACE,
                                                  metric_name)
@@ -43,13 +44,13 @@ def _IncrementMetricsCounters(metric_name: Text, version: Text):
 # @beam.typehints.with_output_types(beam.pvalue.PDone)
 def IncrementMetricsCallbacksCounters(
     pipeline: beam.Pipeline,
-    metrics_callbacks: List[types.AddMetricsCallbackType]):
+    metrics_callbacks: List[types.AddMetricsCallbackType], model_type: Text):
   """To track count of all the metrics being computed using TFMA."""
 
   def _MakeAndIncrementCounters(_):
     for callback in metrics_callbacks:
       if hasattr(callback, 'name'):
-        _IncrementMetricsCounters(callback.name, 'v1')
+        _IncrementMetricsCounters(callback.name, 'v1', model_type)
 
   return (pipeline
           | 'CreateSole' >> beam.Create([None])
@@ -82,13 +83,15 @@ def IncrementSliceSpecCounters(pipeline: beam.Pipeline):
 # @beam.typehints.with_input_types(beam.Pipeline)
 # @beam.typehints.with_output_types(beam.pvalue.PDone)
 def IncrementMetricsSpecsCounters(pipeline: beam.Pipeline,
-                                  metrics_specs: Iterable[config.MetricsSpec]):
+                                  metrics_specs: List[config.MetricsSpec],
+                                  model_types: Set[Text]):
   """To track count of all metrics specs in TFMA."""
 
   def _MakeAndIncrementCounters(_):
-    for metrics_spec in metrics_specs:
-      for metric in metrics_spec.metrics:
-        _IncrementMetricsCounters(metric.class_name, 'v2')
+    for model_type in model_types:
+      for metrics_spec in metrics_specs:
+        for metric in metrics_spec.metrics:
+          _IncrementMetricsCounters(metric.class_name, 'v2', model_type)
 
   return (pipeline
           | 'CreateSole' >> beam.Create([None])

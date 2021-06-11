@@ -38,6 +38,9 @@ TF_LITE = 'tf_lite'
 TF_JS = 'tf_js'
 VALID_TF_MODEL_TYPES = (TF_GENERIC, TF_ESTIMATOR, TF_KERAS, TF_LITE, TF_JS)
 
+# This constant is only used for telemetry
+MODEL_AGNOSTIC = 'model_agnostic'
+
 # LINT.IfChange
 METRICS_NAMESPACE = util.MakeTfxNamespace(['ModelAnalysis'])
 # LINT.ThenChange(../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)

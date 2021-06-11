@@ -791,10 +791,13 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       | 'ExtractSliceKeys' >> beam.Keys()
       | 'CountPerSliceKey' >> beam.combiners.Count.PerElement())
 
+  model_types = _get_model_types_for_logging(eval_shared_models)
+
   _ = (
       extracts.pipeline
       | 'IncrementMetricsSpecsCounters' >>
-      counter_util.IncrementMetricsSpecsCounters(metrics_specs), slices_count
+      counter_util.IncrementMetricsSpecsCounters(metrics_specs, model_types),
+      slices_count
       |
       'IncrementSliceSpecCounters' >> counter_util.IncrementSliceSpecCounters())
 
@@ -959,3 +962,12 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
                                       eval_config))
   evaluation_results[validations_key] = validations
   return evaluation_results
+
+
+def _get_model_types_for_logging(
+    eval_shared_models: Dict[Text, types.EvalSharedModel]):
+  if eval_shared_models:
+    return set(
+        [model.model_type for (name, model) in eval_shared_models.items()])
+  else:
+    return set([constants.MODEL_AGNOSTIC])

@@ -32,11 +32,12 @@ class CounterUtilTest(tf.test.TestCase):
   def testMetricComputedBeamCounter(self):
     with beam.Pipeline() as pipeline:
       auc = post_export_metrics.auc()
-      _ = pipeline | counter_util.IncrementMetricsCallbacksCounters([auc])
+      _ = pipeline | counter_util.IncrementMetricsCallbacksCounters([auc],
+                                                                    'tf_js')
 
     result = pipeline.run()
     metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
-        constants.METRICS_NAMESPACE).with_name('metric_computed_auc_v1')
+        constants.METRICS_NAMESPACE).with_name('metric_computed_auc_v1_tf_js')
     actual_metrics_count = result.metrics().query(
         filter=metric_filter)['counters'][0].committed
 
@@ -62,16 +63,20 @@ class CounterUtilTest(tf.test.TestCase):
     with beam.Pipeline() as pipeline:
       metrics_spec = config.MetricsSpec(
           metrics=[config.MetricConfig(class_name='FairnessIndicators')])
-      _ = pipeline | counter_util.IncrementMetricsSpecsCounters([metrics_spec])
+      model_types = set(['tf_js', 'tf_keras'])
+      _ = pipeline | counter_util.IncrementMetricsSpecsCounters([metrics_spec],
+                                                                model_types)
 
     result = pipeline.run()
-    metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
-        constants.METRICS_NAMESPACE).with_name(
-            'metric_computed_FairnessIndicators_v2')
-    actual_metrics_count = result.metrics().query(
-        filter=metric_filter)['counters'][0].committed
 
-    self.assertEqual(actual_metrics_count, 1)
+    for model_type in model_types:
+      metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
+          constants.METRICS_NAMESPACE).with_name(
+              'metric_computed_FairnessIndicators_v2_' + model_type)
+      actual_metrics_count = result.metrics().query(
+          filter=metric_filter)['counters'][0].committed
+
+      self.assertEqual(actual_metrics_count, 1)
 
 
 if __name__ == '__main__':

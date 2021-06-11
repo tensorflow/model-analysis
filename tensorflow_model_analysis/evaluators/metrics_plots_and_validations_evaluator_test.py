@@ -405,7 +405,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                        check_validations)
 
     metric_filter = beam.metrics.metric.MetricsFilter().with_name(
-        'metric_computed_ExampleCount_v2')
+        'metric_computed_ExampleCount_v2_' + constants.TF_KERAS)
     actual_metrics_count = pipeline.run().metrics().query(
         filter=metric_filter)['counters'][0].committed
     self.assertEqual(actual_metrics_count, 1)
@@ -2567,6 +2567,65 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         expected_is_diffable,
         metrics_plots_and_validations_evaluator._is_metric_diffable(
             metric_value))
+
+  def testMetricsSpecsCountersInModelAgnosticMode(self):
+    schema = text_format.Parse(
+        """
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        feature {
+          name: "prediction"
+          type: FLOAT
+        }
+        """, schema_pb2.Schema())
+
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+
+    examples = [
+        self._makeExample(label=1.0, prediction=0.7),
+        self._makeExample(label=0.0, prediction=0.3),
+    ]
+
+    eval_config = config.EvalConfig(
+        model_specs=[
+            config.ModelSpec(prediction_key='prediction', label_key='label')
+        ],
+        metrics_specs=[
+            config.MetricsSpec(
+                metrics=[config.MetricConfig(class_name='ExampleCount')])
+        ],
+        slicing_specs=[config.SlicingSpec()])
+
+    extractors = [
+        features_extractor.FeaturesExtractor(eval_config),
+        labels_extractor.LabelsExtractor(eval_config),
+        example_weights_extractor.ExampleWeightsExtractor(eval_config),
+        predictions_extractor.PredictionsExtractor(eval_config),
+        unbatch_extractor.UnbatchExtractor(),
+        slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
+    ]
+    evaluators = [
+        metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(eval_config)
+    ]
+
+    with beam.Pipeline() as pipeline:
+      _ = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | 'ExtractEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+    metric_filter = beam.metrics.metric.MetricsFilter().with_name(
+        'metric_computed_ExampleCount_v2_' + constants.MODEL_AGNOSTIC)
+    actual_metrics_count = pipeline.run().metrics().query(
+        filter=metric_filter)['counters'][0].committed
+    self.assertEqual(actual_metrics_count, 1)
 
 
 if __name__ == '__main__':
