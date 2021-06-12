@@ -512,6 +512,10 @@ def default_extractors(  # pylint: disable=invalid-name
       # extracts. Then we can remove the input extractor.
       return [
           features_extractor.FeaturesExtractor(eval_config=eval_config),
+          transformed_features_extractor.TransformedFeaturesExtractor(
+              eval_config=eval_config,
+              eval_shared_model=eval_shared_model,
+              tensor_adapter_config=tensor_adapter_config),
           labels_extractor.LabelsExtractor(eval_config=eval_config),
           example_weights_extractor.ExampleWeightsExtractor(
               eval_config=eval_config),

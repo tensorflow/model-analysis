@@ -597,7 +597,23 @@ def model_construct_fn(  # pylint: disable=invalid-name
       # PTransform using it.
       model_filename = os.path.join(eval_saved_model_path, _TFLITE_FILE_NAME)
       with tf.io.gfile.GFile(model_filename, 'rb') as model_file:
-        model = ModelContents(model_file.read())
+        model_bytes = model_file.read()
+
+      # If a SavedModel is present in the same directory, load it as well.
+      # This allows the SavedModel to be used for computing the
+      # Transformed Features and Labels.
+      if (tf.io.gfile.exists(
+          os.path.join(eval_saved_model_path,
+                       tf.saved_model.SAVED_MODEL_FILENAME_PB)) or
+          tf.io.gfile.exists(
+              os.path.join(eval_saved_model_path,
+                           tf.saved_model.SAVED_MODEL_FILENAME_PBTXT))):
+        model = tf.compat.v1.saved_model.load_v2(
+            eval_saved_model_path, tags=tags)
+        model.contents = model_bytes
+      else:
+        model = ModelContents(model_bytes)
+
     elif model_type == constants.TF_JS:
       # We invoke TFJS models via a subprocess call. So this call is no-op.
       return None
