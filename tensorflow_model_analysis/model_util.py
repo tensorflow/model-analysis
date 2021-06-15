@@ -736,7 +736,7 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
       self._num_instances.inc(batch_size)
       return result
     except (ValueError, tf.errors.InvalidArgumentError,
-            tf.errors.ResourceExhaustedError) as e:
+            tf.errors.ResourceExhaustedError, RuntimeError) as e:
       logging.warning(
           'Large batch_size %s failed with error %s. '
           'Attempting to run batch through serially. Note that this will '
