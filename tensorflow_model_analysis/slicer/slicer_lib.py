@@ -98,7 +98,7 @@ class SingleSliceSpec(object):
 
     Args:
       columns: an iterable of column names to slice on.
-      features: a iterable of features to slice on. Each feature is a (key,
+      features: an iterable of features to slice on. Each feature is a (key,
         value) tuple. Note that strings representing ints and floats will be
         automatically converted to ints and floats respectively and will be
         compared against both the string versions and int or float versions of
