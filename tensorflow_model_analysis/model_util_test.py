@@ -172,6 +172,39 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
       tf.saved_model.save(model, export_path, signatures=signatures)
     return export_path
 
+  def createModelWithInvalidOutputShape(self):
+    input1 = tf.keras.layers.Input(shape=(1,), name='input_1')
+    input2 = tf.keras.layers.Input(shape=(1,), name='input_2')
+    inputs = [input1, input2]
+    input_layer = tf.keras.layers.concatenate(inputs)
+    output_layer = tf.keras.layers.Dense(
+        2, activation=tf.nn.sigmoid, name='output')(
+            input_layer)
+    # Flatten the layer such that the first dimension no longer corresponds
+    # with the batch size.
+    reshape_layer = tf.keras.layers.Lambda(
+        lambda x: tf.reshape(x, [-1]), name='reshape')(
+            output_layer)
+    model = tf.keras.models.Model(inputs, reshape_layer)
+
+    @tf.function
+    def serving_default(serialized_tf_examples):
+      parsed_features = tf.io.parse_example(
+          serialized_tf_examples, {
+              'input_1': tf.io.FixedLenFeature([1], dtype=tf.float32),
+              'input_2': tf.io.FixedLenFeature([1], dtype=tf.float32)
+          })
+      return model(parsed_features)
+
+    input_spec = tf.TensorSpec(shape=(None,), dtype=tf.string, name='examples')
+    signatures = {
+        'serving_default': serving_default.get_concrete_function(input_spec),
+    }
+
+    export_path = tempfile.mkdtemp()
+    model.save(export_path, save_format='tf', signatures=signatures)
+    return export_path
+
   def createModelWithMultipleMixedInputs(self, save_as_keras):
     dense_input = tf.keras.layers.Input(
         shape=(2,), name='input_1', dtype=tf.int64)
@@ -820,6 +853,50 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
+  def testModelSignaturesDoFnError(self):
+    export_path = self.createModelWithInvalidOutputShape()
+    signature_names = {constants.PREDICTIONS_KEY: {'': [None]}}
+    eval_shared_models = {
+        '':
+            self.createTestEvalSharedModel(
+                eval_saved_model_path=export_path,
+                tags=[tf.saved_model.SERVING])
+    }
+    model_specs = [config.ModelSpec()]
+    eval_config = config.EvalConfig(model_specs=model_specs)
+    schema = self.createDenseInputsSchema()
+    tfx_io = tf_example_record.TFExampleBeamRecord(
+        physical_format='text',
+        schema=schema,
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
+
+    examples = [
+        self._makeExample(input_1=1.0, input_2=2.0),
+        self._makeExample(input_1=3.0, input_2=4.0),
+        self._makeExample(input_1=5.0, input_2=6.0),
+    ]
+
+    with self.assertRaisesRegex(
+        ValueError, 'First dimension does not correspond with batch size.'):
+      with beam.Pipeline() as pipeline:
+        # pylint: disable=no-value-for-parameter
+        _ = (
+            pipeline
+            | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
+            | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
+            | 'ToExtracts' >> beam.Map(_record_batch_to_extracts)
+            | 'ModelSignatures' >> beam.ParDo(
+                model_util.ModelSignaturesDoFn(
+                    eval_config=eval_config,
+                    eval_shared_models=eval_shared_models,
+                    signature_names=signature_names,
+                    default_signature_names=None,
+                    prefer_dict_outputs=False,
+                    tensor_adapter_config=tensor_adapter_config)))
 
   def testHasRubberStamp(self):
     # Model agnostic.

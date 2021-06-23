@@ -857,6 +857,12 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
     def to_dense(t):
       return tf.sparse.to_dense(t) if isinstance(t, tf.SparseTensor) else t
 
+    def check_shape(t, batch_size, key=None):
+      if t.shape[0] != batch_size:
+        raise ValueError(
+            'First dimension does not correspond with batch size. '
+            f'Batch size: {batch_size}, Dimensions: {t.shape}, Key: {key}.')
+
     result = copy.copy(batched_extract)
     record_batch = batched_extract[constants.ARROW_RECORD_BATCH_KEY]
     serialized_examples = batched_extract[constants.INPUT_KEY]
@@ -895,16 +901,26 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
               outputs = signature(inputs)
           else:
             outputs = signature(tf.constant(inputs, dtype=tf.string))
+
+          dense_outputs = {}
+          if isinstance(outputs, dict):
+            for k, v in outputs.items():
+              dense_outputs[k] = to_dense(v)
+              check_shape(dense_outputs[k], record_batch.num_rows, key=k)
+          else:
+            dense_outputs = to_dense(outputs)
+            check_shape(dense_outputs, record_batch.num_rows)
+
           for i in range(record_batch.num_rows):
-            if isinstance(outputs, dict):
+            if isinstance(dense_outputs, dict):
               output = {
-                  k: maybe_expand_dims(to_dense(v)[i].numpy())
-                  for k, v in outputs.items()
+                  k: maybe_expand_dims(v[i].numpy())
+                  for k, v in dense_outputs.items()
               }
             else:
               output = {
                   signature_name:
-                      maybe_expand_dims(np.asarray(to_dense(outputs))[i])
+                      maybe_expand_dims(np.asarray(dense_outputs)[i])
               }
             if result[extracts_key][i] is None:
               result[extracts_key][i] = collections.defaultdict(dict)
