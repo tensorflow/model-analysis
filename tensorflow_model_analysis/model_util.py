@@ -320,13 +320,26 @@ def get_default_signature_name(model: Any) -> Text:
   return tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
 
 
+# TODO(b/175357313): Remove _get_save_spec check when the save_spec changes
+# have been released.
+def _get_model_input_spec(model: Any) -> Optional[Any]:
+  """Returns the model input `TensorSpec`s."""
+  if hasattr(model, 'save_spec'):
+    if model.save_spec() is None:
+      return None
+    # The inputs TensorSpec is the first element of the (args, kwargs) tuple.
+    return model.save_spec()[0][0]
+  elif hasattr(model, '_get_save_spec'):
+    # In versions of TF released before `save_spec`, `_get_save_spec` returns
+    # the input save spec.
+    return model._get_save_spec()  # pylint: disable=protected-access
+  return None
+
+
 def is_callable_fn(fn: Any) -> bool:
   """Returns true if function is callable."""
   if _TF_MAJOR_VERSION >= 2:
-    # TODO(b/175357313): Temporary until input_spec fully supported on all
-    #  models.
-    if (hasattr(fn, '_get_save_spec') and
-        isinstance(fn._get_save_spec(), dict)):  # pylint: disable=protected-access
+    if isinstance(_get_model_input_spec(fn), dict):
       return True
     if (hasattr(fn, 'input_names') and fn.input_names and
         hasattr(fn, 'inputs') and fn.inputs):
@@ -408,9 +421,8 @@ def get_input_specs(model: Any,
     return None
 
   def get_callable_input_specs(fn):
-    # TODO(b/170241499): Update after TF adds support for specs to model.
-    if hasattr(fn, '_get_save_spec') and isinstance(fn._get_save_spec(), dict):  # pylint: disable=protected-access
-      return fn._get_save_spec()  # pylint: disable=protected-access
+    if isinstance(_get_model_input_spec(fn), dict):
+      return _get_model_input_spec(fn)
     else:
       input_specs = {}
       for input_name, input_tensor in zip(fn.input_names, fn.inputs):
