@@ -4,6 +4,9 @@
 
 ## Major Features and Improvements
 
+*   Provided functionality for `slice_keys_sql` config. It's not available under
+    Windows.
+
 ## Bug fixes and other Changes
 
 ## Breaking Changes

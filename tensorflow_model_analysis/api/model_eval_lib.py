@@ -45,6 +45,7 @@ from tensorflow_model_analysis.extractors import labels_extractor
 from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.extractors import sql_slice_key_extractor
 from tensorflow_model_analysis.extractors import tfjs_predict_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.extractors import transformed_features_extractor
@@ -598,6 +599,7 @@ def default_extractors(  # pylint: disable=invalid-name
         example_weights_extractor.ExampleWeightsExtractor(
             eval_config=eval_config),
         predictions_extractor.PredictionsExtractor(eval_config=eval_config),
+        sql_slice_key_extractor.SqlSliceKeyExtractor(eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(
             eval_config=eval_config, materialize=materialize)
