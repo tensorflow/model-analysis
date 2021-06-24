@@ -359,7 +359,8 @@ def _wrap_confusion_matrix_metric(
   # special threshold ourselves otherwise the default threshold of 0.5 is used.
   if (sub_key and sub_key.top_k is not None and
       _get_config_value(_TOP_K_KEY, metric_config) is None and
-      _get_config_value(_THRESHOLDS_KEY, metric_config) is None):
+      _get_config_value(_THRESHOLDS_KEY, metric_config) is None and
+      _get_config_value(_NUM_THRESHOLDS_KEY, metric_config) is None):
     thresholds = [float('-inf')]
   elif hasattr(metric, _THRESHOLDS_KEY):
     thresholds = metric.thresholds
