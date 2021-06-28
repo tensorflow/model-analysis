@@ -9,6 +9,8 @@
 
 ## Bug fixes and other Changes
 
+*   Update README for JupyterLab 3
+
 ## Breaking Changes
 
 ## Deprecations

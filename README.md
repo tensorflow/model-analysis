@@ -85,17 +85,6 @@ cd dist
 pip3 install tensorflow_model_analysis-<version>-py3-none-any.whl
 ```
 
-To enable TFMA visualization in Jupyter Notebook:
-
-<pre class="prettyprint">
-  <code class="devsite-terminal">jupyter nbextension enable --py widgetsnbextension</code>
-  <code class="devsite-terminal">jupyter nbextension enable --py tensorflow_model_analysis</code>
-</pre>
-
-Note: If Jupyter notebook is already installed in your home directory, add
-`--user` to these commands. If Jupyter is installed as root, or using a virtual
-environment, the parameter `--sys-prefix` might be required.
-
 ### Jupyter Lab
 
 As of writing, because of https://github.com/pypa/pip/issues/9187, `pip install`
@@ -109,24 +98,58 @@ JupyterLab labextension plugin dependencies, and the version numbers must be
 compatible.  JupyterLab labextension packages refer to npm packages
 (eg, [tensorflow_model_analysis](https://www.npmjs.com/package/tensorflow_model_analysis).
 
-The examples below use 0.27.0. Check available [versions](#compatible-versions)
+The examples below use 0.32.0. Check available [versions](#compatible-versions)
 below to use the latest.
+
+
+#### Jupyter Lab 3.0.x
+
+```Shell
+pip install tensorflow_model_analysis==0.32.0
+jupyter labextension install tensorflow_model_analysis@0.32.0
+pip install jupyterlab_widgets==1.0.0
+```
+
+
+#### Jupyter Lab 2.2.x
+
+```Shell
+pip install tensorflow_model_analysis==0.32.0
+jupyter labextension install tensorflow_model_analysis@0.32.0
+jupyter labextension install @jupyter-widgets/jupyterlab-manager@2
+```
 
 #### Jupyter Lab 1.2.x
 
 ```Shell
-pip install tensorflow_model_analysis==0.27.0
-jupyter labextension install tensorflow_model_analysis@0.27.0
+pip install tensorflow_model_analysis==0.32.0
+jupyter labextension install tensorflow_model_analysis@0.32.0
 jupyter labextension install @jupyter-widgets/jupyterlab-manager@1.1
 ```
 
-#### Jupyter Lab 2
+#### Classic Jupyter Notebook
 
-```Shell
-pip install tensorflow_model_analysis==0.27.0
-jupyter labextension install tensorflow_model_analysis@0.27.0
-jupyter labextension install @jupyter-widgets/jupyterlab-manager@2
+To enable TFMA visualization in the classic Jupyter Notebook (either through
+`jupyter notebook` or
+[through the JupyterLab UI](https://jupyterlab.readthedocs.io/en/stable/getting_started/starting.html)),
+you'll also need to run:
+
+```shell
+jupyter nbextension enable --py widgetsnbextension
+jupyter nbextension enable --py tensorflow_model_analysis
 ```
+
+Note: If Jupyter notebook is already installed in your home directory, add
+`--user` to these commands. If Jupyter is installed as root, or using a virtual
+environment, the parameter `--sys-prefix` might be required.
+
+#### Building TFMA from source
+
+If you want to build TFMA from source and use the UI in JupyterLab, you'll need
+to make sure that the source contains valid version numbers.  Check that the
+Python package version number and npm package version number are exactly the
+same, and that both valid version numbers (eg, remove the `-dev` suffix).
+
 
 #### Troubleshooting
 
@@ -136,10 +159,11 @@ Check pip packages:
 pip list
 ```
 
-Check extensions:
+Check JupyterLab extensions:
 
 ```Shell
-jupyter labextension list
+jupyter labextension list  # for JupyterLab
+jupyter nbextension list  # for classic Jupyter Notebook
 ```
 
 ### Standalone HTML page with `embed_minimal_html`
