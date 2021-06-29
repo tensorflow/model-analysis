@@ -120,11 +120,13 @@ def _flip_rate(
           'negative_examples_count']
       output[metric_key_by_name_by_threshold[threshold]
              ['overall']] = (metrics[ntp] + metrics[ptn]) / (
-                 metrics[pos] + metrics[neg])
+                 (metrics[pos] + metrics[neg]) or float('NaN'))
       output[metric_key_by_name_by_threshold[threshold]
-             ['positive_to_negative']] = metrics[ptn] / metrics[pos]
+             ['positive_to_negative']] = metrics[ptn] / (
+                 metrics[pos] or float('NaN'))
       output[metric_key_by_name_by_threshold[threshold]
-             ['negative_to_positive']] = metrics[ntp] / metrics[neg]
+             ['negative_to_positive']] = metrics[ntp] / (
+                 metrics[neg] or float('NaN'))
       output[metric_key_by_name_by_threshold[threshold]
              ['positive_to_negative_examples_ids']] = metrics[pos_examples]
       output[metric_key_by_name_by_threshold[threshold]
