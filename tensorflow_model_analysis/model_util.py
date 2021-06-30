@@ -906,13 +906,21 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
               continue
             raise ValueError('Unable to find %s function needed to update %s' %
                              (signature_name, extracts_key))
-          if isinstance(inputs, dict):
-            if hasattr(signature, 'structured_input_signature'):
-              outputs = signature(**inputs)
+          try:
+            if isinstance(inputs, dict):
+              if hasattr(signature, 'structured_input_signature'):
+                outputs = signature(**inputs)
+              else:
+                outputs = signature(inputs)
             else:
-              outputs = signature(inputs)
-          else:
-            outputs = signature(tf.constant(inputs, dtype=tf.string))
+              outputs = signature(tf.constant(inputs, dtype=tf.string))
+          except (TypeError, tf.errors.InvalidArgumentError) as e:
+            raise ValueError(
+                """Fail to call signature func with signature_name: {}.
+                the inputs are:\n {}.
+                The input_specs are:\n {}.
+                The original exception is {}.""".format(signature_name, inputs,
+                                                        input_specs, e))
 
           dense_outputs = {}
           if isinstance(outputs, dict):
