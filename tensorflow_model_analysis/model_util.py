@@ -918,9 +918,8 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
             raise ValueError(
                 """Fail to call signature func with signature_name: {}.
                 the inputs are:\n {}.
-                The input_specs are:\n {}.
-                The original exception is {}.""".format(signature_name, inputs,
-                                                        input_specs, e))
+                The input_specs are:\n {}.""".format(signature_name, inputs,
+                                                     input_specs)) from e
 
           dense_outputs = {}
           if isinstance(outputs, dict):
