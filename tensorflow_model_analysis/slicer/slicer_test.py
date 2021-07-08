@@ -638,6 +638,12 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
           'expected_result': True
       },
       {
+          'testcase_name': 'matching_single_spec_with_float',
+          'slice_key': (('f1', '1.0'),),
+          'slice_specs': [slicer.SingleSliceSpec(features=[('f1', '1.0')])],
+          'expected_result': True
+      },
+      {
           'testcase_name': 'non_matching_single_spec',
           'slice_key': (('f1', 1),),
           'slice_specs': [slicer.SingleSliceSpec(columns=['f2'])],

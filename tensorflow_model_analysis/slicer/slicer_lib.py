@@ -136,9 +136,6 @@ class SingleSliceSpec(object):
     self._value_matches = []
 
     for (key, value) in self._features:
-      if not isinstance(value, six.string_types) and not isinstance(value, int):
-        raise NotImplementedError('Only string and int values are supported '
-                                  'as the slice value.')
       if key in self._columns:
         raise ValueError('Columns specified in columns and in features should '
                          'not overlap, but %s was specified in both.' % key)
