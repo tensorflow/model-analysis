@@ -21,8 +21,9 @@ from __future__ import print_function
 
 import collections
 import copy
-from typing import Dict, Union, Sequence, Text
+from typing import Dict, Sequence, Text, Union
 
+from absl import logging
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
@@ -80,6 +81,7 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
     result[constants.PREDICTIONS_KEY] = []
     batched_features = collections.defaultdict(list)
     feature_rows = element[constants.FEATURES_KEY]
+    batch_size = len(feature_rows)
     for r in feature_rows:
       for key, value in r.items():
         batched_features[key].append(value)
@@ -98,12 +100,19 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
       input_features = {}
       for i in input_details:
         input_name = self._get_input_name_from_input_detail(i)
-        if input_name not in batched_features:
-          raise ValueError(
-              'feature "{}" not found in input data'.format(input_name))
         # The batch dimension is the specific batch size of the last time the
         # model was invoked. Set it to 1 to "reset".
         input_shape = [1] + list(i['shape'])[1:]
+        input_type = i['dtype']
+        if input_name not in batched_features:
+          default = -1 if input_type in [np.float32, np.int64] else ''
+          value = np.empty(input_shape)
+          value.fill(default)
+          value = value.astype(input_type)
+          batched_features[input_name] = [value for _ in range(batch_size)]
+          logging.log_every_n(logging.WARNING,
+                              'Feature %s not found. Setting default value.',
+                              100, input_name)
         feature_shape = np.shape(batched_features[input_name][0])
         if len(feature_shape) == len(input_shape):
           input_features[input_name] = batched_features[input_name]

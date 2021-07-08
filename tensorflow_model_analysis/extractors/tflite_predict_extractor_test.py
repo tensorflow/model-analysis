@@ -109,10 +109,6 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
           type: FLOAT
         }
         feature {
-          name: "input2"
-          type: FLOAT
-        }
-        feature {
           name: "non_model_feature"
           type: INT
         }
@@ -124,8 +120,8 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
         eval_config=eval_config, eval_shared_model=eval_shared_models)
 
     examples = [
-        self._makeExample(input1=0.0, input2=1.0, non_model_feature=0),
-        self._makeExample(input1=1.0, input2=0.0, non_model_feature=1),
+        self._makeExample(input1=0.0, non_model_feature=0),
+        self._makeExample(input1=1.0, non_model_feature=1),
     ]
 
     with beam.Pipeline() as pipeline:
