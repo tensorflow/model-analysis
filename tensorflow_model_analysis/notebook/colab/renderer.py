@@ -11,12 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Colab renderer API."""
+"""TFMA API for OSS Colab renderer."""
 
 # Standard __future__ imports
-
-from tensorflow_model_analysis.notebook.colab import util
 from typing import Any, Callable, Dict, List, Optional, Text, Union
+from tensorflow_model_analysis.notebook.colab import util
+
+
+# See also `loadVulcanizedTemplate` in JS, which adjusts the script path
+# further at runtime, depending on the environment.
+def get_trusted_html_for_vulcanized_js():
+  """Returns a trusted string of HTML that will load vulcanized_tfma.js."""
+  return """
+  <script src="/nbextensions/tensorflow_model_analysis/vulcanized_tfma.js"></script>
+  """
 
 
 def render_slicing_metrics(
@@ -31,8 +39,12 @@ def render_slicing_metrics(
     config: A dictionary of the configuration.
     event_handlers: event handlers
   """
-  util.render_component(
-      'tfma-nb-slicing-metrics', data, config, event_handlers=event_handlers)
+  util.render_tfma_component(
+      'tfma-nb-slicing-metrics',
+      data,
+      config,
+      event_handlers=event_handlers,
+      trusted_html_for_vulcanized_tfma_js=get_trusted_html_for_vulcanized_js())
 
 
 def render_time_series(
@@ -44,16 +56,24 @@ def render_time_series(
     data: A list of dictionary containing metrics for different evaluation runs.
     config: A dictionary of the configuration.
   """
-  util.render_component('tfma-nb-time-series', data, config)
+  util.render_tfma_component(
+      'tfma-nb-time-series',
+      data,
+      config,
+      trusted_html_for_vulcanized_tfma_js=get_trusted_html_for_vulcanized_js())
 
 
-def render_plot(data: Dict[Text, List[Union[Text, float, List[float]]]],
-                config: Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text]]
-               ) -> None:
+def render_plot(
+    data: Dict[Text, List[Union[Text, float, List[float]]]],
+    config: Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text]]) -> None:
   """Renders the plot view in Colab.
 
   Args:
     data: A dictionary containing plot data.
     config: A dictionary of the configuration.
   """
-  util.render_component('tfma-nb-plot', data, config)
+  util.render_tfma_component(
+      'tfma-nb-plot',
+      data,
+      config,
+      trusted_html_for_vulcanized_tfma_js=get_trusted_html_for_vulcanized_js())

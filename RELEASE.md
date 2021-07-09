@@ -9,6 +9,7 @@
 
 ## Bug fixes and other Changes
 
+*   Improve rendering of HTML stubs for TFMA and Fairness Indicators UI.
 *   Update README for JupyterLab 3
 
 ## Breaking Changes
