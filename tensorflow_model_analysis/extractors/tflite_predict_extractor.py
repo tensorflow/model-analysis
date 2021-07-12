@@ -79,12 +79,7 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
     """Invokes the tflite model on the provided inputs and stores the result."""
     result = copy.copy(element)
     result[constants.PREDICTIONS_KEY] = []
-    batched_features = collections.defaultdict(list)
     feature_rows = element[constants.FEATURES_KEY]
-    batch_size = len(feature_rows)
-    for r in feature_rows:
-      for key, value in r.items():
-        batched_features[key].append(value)
 
     for spec in self._eval_config.model_specs:
       model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
@@ -97,32 +92,26 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
       input_details = interpreter.get_input_details()
       output_details = interpreter.get_output_details()
 
-      input_features = {}
+      input_features = collections.defaultdict(list)
       for i in input_details:
         input_name = self._get_input_name_from_input_detail(i)
         # The batch dimension is the specific batch size of the last time the
         # model was invoked. Set it to 1 to "reset".
         input_shape = [1] + list(i['shape'])[1:]
         input_type = i['dtype']
-        if input_name not in batched_features:
-          default = -1 if input_type in [np.float32, np.int64] else ''
-          value = np.empty(input_shape)
-          value.fill(default)
-          value = value.astype(input_type)
-          batched_features[input_name] = [value for _ in range(batch_size)]
-          logging.log_every_n(logging.WARNING,
-                              'Feature %s not found. Setting default value.',
-                              100, input_name)
-        feature_shape = np.shape(batched_features[input_name][0])
-        if len(feature_shape) == len(input_shape):
-          input_features[input_name] = batched_features[input_name]
-        elif len(feature_shape) < len(input_shape):
-          input_features[input_name] = [
-              np.reshape(b, input_shape) for b in batched_features[input_name]
-          ]
-        else:
-          raise ValueError(
-              'incompatible shape and data for feature: {}'.format(input_name))
+        for r in feature_rows:
+          value = r.get(input_name)
+          if value is None or np.any(np.equal(value, None)):
+            default = -1 if input_type in [np.float32, np.int64] else ''
+            value = np.empty(input_shape)
+            value.fill(default)
+            value = value.astype(input_type)
+            logging.log_every_n(logging.WARNING,
+                                'Feature %s not found. Setting default value.',
+                                100, input_name)
+          else:
+            value = np.reshape(value, input_shape)
+          input_features[input_name].append(value)
         input_features[input_name] = tf.concat(
             input_features[input_name], axis=0)
         if np.shape(input_features[input_name]) != tuple(i['shape']):
