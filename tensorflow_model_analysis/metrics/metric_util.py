@@ -518,10 +518,10 @@ def to_label_prediction_example_weight(
       else:
         yield label, prediction, example_weight
     elif label.size == 0:
-      for p, w in (prediction.flatten(), example_weight.flatten()):
+      for p, w in zip(prediction.flatten(), example_weight.flatten()):
         yield label, np.array([p]), np.array([w])
     elif prediction.size == 0:
-      for l, w in (label.flatten(), example_weight.flatten()):
+      for l, w in zip(label.flatten(), example_weight.flatten()):
         yield np.array([l]), prediction, np.array([w])
     elif label.size == prediction.size:
       for l, p, w in zip(label.flatten(), prediction.flatten(),
