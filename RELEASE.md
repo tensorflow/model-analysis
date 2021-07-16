@@ -1,4 +1,4 @@
-# Version 0.32.0
+# Version 0.32.1
 
 ## Major Features and Improvements
 
@@ -6,9 +6,8 @@
 
 ## Bug fixes and other Changes
 
-*   Depends on `protobuf>=3.13,<4`.
-*   Depends on `tensorflow-metadata>=1.1.0,<1.2.0`.
-*   Depends on `tfx-bsl>=1.1.0,<1.2.0`.
+*   Depends on `google-cloud-bigquery>=1.28.0,<2.21`.
+*   Depends on `tfx-bsl>=1.1.1,<1.2.0`.
 
 ## Breaking Changes
 
