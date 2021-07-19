@@ -14,6 +14,14 @@
 
 ## Breaking Changes
 
+*   The binary_confusion_matrices metric formerly returned confusion matrix
+    counts (i.e number of {true,false} {positives,negatives}) and optionally a
+    set of representative examples in a single object. Now, this metric class
+    generates two separate metrics values when examples are configured: one
+    containing just the counts, and the other just examples. This should only
+    affect users who created a custom derived metric that used
+    binary_confusion_matrices metric as an input.
+
 ## Deprecations
 
 # Version 0.32.0

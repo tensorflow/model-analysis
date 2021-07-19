@@ -42,25 +42,13 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
            tp=[2.0, 1.0, 0.0],
            fp=[2.0, 0.0, 0.0],
            tn=[0.0, 2.0, 2.0],
-           fn=[0.0, 1.0, 2.0],
-           tp_examples=[],
-           tn_examples=[],
-           fp_examples=[],
-           fn_examples=[])),
+           fn=[0.0, 1.0, 2.0])),
       ('single_threshold', {
           'thresholds': [0.5],
           'use_histogram': True,
       },
        binary_confusion_matrices.Matrices(
-           thresholds=[0.5],
-           tp=[1.0],
-           fp=[0.0],
-           tn=[2.0],
-           fn=[1.0],
-           tp_examples=[],
-           tn_examples=[],
-           fp_examples=[],
-           fn_examples=[])),
+           thresholds=[0.5], tp=[1.0], fp=[0.0], tn=[2.0], fn=[1.0])),
       ('inner_thresholds', {
           'thresholds': [0.25, 0.75],
           'use_histogram': True,
@@ -70,11 +58,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
            tp=[2.0, 1.0],
            fp=[1.0, 0.0],
            tn=[1.0, 2.0],
-           fn=[0.0, 1.0],
-           tp_examples=[],
-           tn_examples=[],
-           fp_examples=[],
-           fn_examples=[])),
+           fn=[0.0, 1.0])),
       ('boundary_thresholds', {
           'thresholds': [0.0, 1.0],
           'use_histogram': True,
@@ -84,11 +68,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
            tp=[2.0, 0.0],
            fp=[2.0, 0.0],
            tn=[0.0, 2.0],
-           fn=[0.0, 2.0],
-           tp_examples=[],
-           tn_examples=[],
-           fp_examples=[],
-           fn_examples=[])),
+           fn=[0.0, 2.0])),
       ('left_boundary', {
           'thresholds': [0.0, 0.5],
           'use_histogram': True,
@@ -98,11 +78,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
            tp=[2.0, 1.0],
            fp=[2.0, 0.0],
            tn=[0.0, 2.0],
-           fn=[0.0, 1.0],
-           tp_examples=[],
-           tn_examples=[],
-           fp_examples=[],
-           fn_examples=[])),
+           fn=[0.0, 1.0])),
       ('right_boundary', {
           'thresholds': [0.5, 1.0],
           'use_histogram': True,
@@ -112,11 +88,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
            tp=[1.0, 0.0],
            fp=[0.0, 0.0],
            tn=[2.0, 2.0],
-           fn=[1.0, 2.0],
-           tp_examples=[],
-           tn_examples=[],
-           fp_examples=[],
-           fn_examples=[])),
+           fn=[1.0, 2.0])),
   )
   def testBinaryConfusionMatrices(self, kwargs, expected_matrices):
     computations = binary_confusion_matrices.binary_confusion_matrices(**kwargs)
@@ -164,12 +136,13 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 1)
-          name = '_binary_confusion_matrices_{}'.format(
-              kwargs['num_thresholds'] if 'num_thresholds' in
-              kwargs else kwargs['thresholds'])
-          key = metric_types.MetricKey(name=name)
-          self.assertIn(key, got_metrics)
-          got_matrices = got_metrics[key]
+          name = '{}_{}'.format(
+              binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME,
+              kwargs['num_thresholds']
+              if 'num_thresholds' in kwargs else kwargs['thresholds'])
+          matrices_key = metric_types.MetricKey(name=name)
+          self.assertIn(matrices_key, got_metrics)
+          got_matrices = got_metrics[matrices_key]
           self.assertEqual(got_matrices, expected_matrices)
 
         except AssertionError as err:
@@ -177,62 +150,67 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
-  @parameterized.named_parameters(('using_num_thresholds', {
-      'num_thresholds': 3,
-      'use_histogram': False,
-  },
-                                   binary_confusion_matrices.Matrices(
-                                       thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
-                                       tp=[2.0, 1.0, 0.0],
-                                       fp=[2.0, 0.0, 0.0],
-                                       tn=[0.0, 2.0, 2.0],
-                                       fn=[0.0, 1.0, 2.0],
-                                       tp_examples=[[], [], []],
-                                       tn_examples=[[], [], []],
-                                       fp_examples=[[], [], []],
-                                       fn_examples=[[], [], []])),
-                                  ('single_threshold', {
-                                      'thresholds': [0.5],
-                                  },
-                                   binary_confusion_matrices.Matrices(
-                                       thresholds=[0.5],
-                                       tp=[1.0],
-                                       fp=[0.0],
-                                       tn=[2.0],
-                                       fn=[1.0],
-                                       tp_examples=[[]],
-                                       tn_examples=[[]],
-                                       fp_examples=[[]],
-                                       fn_examples=[[]])),
-                                  ('multiple_thresholds', {
-                                      'thresholds': [0.25, 0.75],
-                                  },
-                                   binary_confusion_matrices.Matrices(
-                                       thresholds=[0.25, 0.75],
-                                       tp=[2.0, 1.0],
-                                       fp=[1.0, 0.0],
-                                       tn=[1.0, 2.0],
-                                       fn=[0.0, 1.0],
-                                       tp_examples=[[], []],
-                                       tn_examples=[[], []],
-                                       fp_examples=[[], []],
-                                       fn_examples=[[], []])),
-                                  ('with_example_ids', {
-                                      'thresholds': [0.1, 0.9],
-                                      'example_id_key': 'example_id_key',
-                                      'example_ids_count': 2,
-                                  },
-                                   binary_confusion_matrices.Matrices(
-                                       thresholds=[0.1, 0.9],
-                                       tp=[2.0, 0.0],
-                                       fp=[1.0, 0.0],
-                                       tn=[1.0, 2.0],
-                                       fn=[0.0, 2.0],
-                                       tp_examples=[['id_3', 'id_4'], []],
-                                       tn_examples=[['id_1'], ['id_1', 'id_2']],
-                                       fp_examples=[['id_2'], []],
-                                       fn_examples=[[], ['id_3', 'id_4']])))
-  def testBinaryConfusionMatrices_noHistograms(self, kwargs, expected_matrices):
+  @parameterized.named_parameters(
+      ('using_num_thresholds', {
+          'num_thresholds': 3,
+          'use_histogram': False,
+      },
+       binary_confusion_matrices.Matrices(
+           thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+           tp=[2.0, 1.0, 0.0],
+           fp=[2.0, 0.0, 0.0],
+           tn=[0.0, 2.0, 2.0],
+           fn=[0.0, 1.0, 2.0]),
+       binary_confusion_matrices.Examples(
+           thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+           tp_examples=[[], [], []],
+           tn_examples=[[], [], []],
+           fp_examples=[[], [], []],
+           fn_examples=[[], [], []])),
+      ('single_threshold', {
+          'thresholds': [0.5],
+      },
+       binary_confusion_matrices.Matrices(
+           thresholds=[0.5], tp=[1.0], fp=[0.0], tn=[2.0], fn=[1.0]),
+       binary_confusion_matrices.Examples(
+           thresholds=[0.5],
+           tp_examples=[[]],
+           tn_examples=[[]],
+           fp_examples=[[]],
+           fn_examples=[[]])), ('multiple_thresholds', {
+               'thresholds': [0.25, 0.75],
+           },
+                                binary_confusion_matrices.Matrices(
+                                    thresholds=[0.25, 0.75],
+                                    tp=[2.0, 1.0],
+                                    fp=[1.0, 0.0],
+                                    tn=[1.0, 2.0],
+                                    fn=[0.0, 1.0]),
+                                binary_confusion_matrices.Examples(
+                                    thresholds=[0.25, 0.75],
+                                    tp_examples=[[], []],
+                                    tn_examples=[[], []],
+                                    fp_examples=[[], []],
+                                    fn_examples=[[], []])),
+      ('with_example_ids', {
+          'thresholds': [0.1, 0.9],
+          'example_id_key': 'example_id_key',
+          'example_ids_count': 2,
+      },
+       binary_confusion_matrices.Matrices(
+           thresholds=[0.1, 0.9],
+           tp=[2.0, 0.0],
+           fp=[1.0, 0.0],
+           tn=[1.0, 2.0],
+           fn=[0.0, 2.0]),
+       binary_confusion_matrices.Examples(
+           thresholds=[0.1, 0.9],
+           tp_examples=[['id_3', 'id_4'], []],
+           tn_examples=[['id_1'], ['id_1', 'id_2']],
+           fp_examples=[['id_2'], []],
+           fn_examples=[[], ['id_3', 'id_4']])))
+  def testBinaryConfusionMatrices_noHistograms(self, kwargs, expected_matrices,
+                                               expected_examples):
     computations = binary_confusion_matrices.binary_confusion_matrices(**kwargs)
     histogram = computations[0]
     matrices = computations[1]
@@ -289,14 +267,24 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-          self.assertLen(got_metrics, 1)
-          name = '_binary_confusion_matrices_{}'.format(
-              kwargs['num_thresholds'] if 'num_thresholds' in
-              kwargs else kwargs['thresholds'])
-          key = metric_types.MetricKey(name=name)
-          self.assertIn(key, got_metrics)
-          got_matrices = got_metrics[key]
+          self.assertLen(got_metrics, 2)
+          thresholds_name_part = (
+              kwargs['num_thresholds']
+              if 'num_thresholds' in kwargs else kwargs['thresholds'])
+          name = '{}_{}'.format(
+              binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME,
+              thresholds_name_part)
+          matrices_key = metric_types.MetricKey(name=name)
+          self.assertIn(matrices_key, got_metrics)
+          got_matrices = got_metrics[matrices_key]
           self.assertEqual(got_matrices, expected_matrices)
+          examples_name = '{}_{}'.format(
+              binary_confusion_matrices.BINARY_CONFUSION_EXAMPLES_NAME,
+              thresholds_name_part)
+          examples_key = metric_types.MetricKey(name=examples_name)
+          self.assertIn(examples_key, got_metrics)
+          got_examples = got_metrics[examples_key]
+          self.assertEqual(got_examples, expected_examples)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -353,7 +341,8 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 1)
           key = metric_types.MetricKey(
-              name='_binary_confusion_matrices_[-inf]',
+              name='{}_[-inf]'.format(
+                  binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME),
               sub_key=metric_types.SubKey(top_k=3))
           self.assertIn(key, got_metrics)
           got_matrices = got_metrics[key]
@@ -364,11 +353,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
                   tp=[2.0],
                   fp=[10.0],
                   tn=[6.0],
-                  fn=[2.0],
-                  tp_examples=[],
-                  tn_examples=[],
-                  fp_examples=[],
-                  fn_examples=[]))
+                  fn=[2.0]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

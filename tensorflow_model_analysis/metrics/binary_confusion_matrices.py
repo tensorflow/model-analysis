@@ -19,7 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Text, Callable
+from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Text, Tuple, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import config
@@ -32,10 +32,13 @@ DEFAULT_NUM_THRESHOLDS = calibration_histogram.DEFAULT_NUM_BUCKETS
 DEFAULT_NUM_EXAMPLE_IDS = 100
 
 BINARY_CONFUSION_MATRICES_NAME = '_binary_confusion_matrices'
+BINARY_CONFUSION_EXAMPLES_NAME = '_binary_confusion_examples'
 
 Matrices = NamedTuple('Matrices', [('thresholds', List[float]),
                                    ('tp', List[float]), ('tn', List[float]),
-                                   ('fp', List[float]), ('fn', List[float]),
+                                   ('fp', List[float]), ('fn', List[float])])
+
+Examples = NamedTuple('Examples', [('thresholds', List[float]),
                                    ('tp_examples', List[List[Text]]),
                                    ('tn_examples', List[List[Text]]),
                                    ('fp_examples', List[List[Text]]),
@@ -67,6 +70,7 @@ def binary_confusion_matrices(
     extract_label_prediction_and_weight: Optional[Callable[
         ..., Any]] = metric_util.to_label_prediction_example_weight,
     preprocessor: Optional[Callable[..., Any]] = None,
+    examples_name: Optional[Text] = None,
     example_id_key: Optional[Text] = None,
     example_ids_count: Optional[int] = None,
     fractional_labels: float = True) -> metric_types.MetricComputations:
@@ -82,7 +86,7 @@ def binary_confusion_matrices(
       for marking the boundaries with +/-epsilon if desired. Only one of
       num_thresholds or thresholds should be used. For metrics computed at top k
       this may be a single negative threshold value (i.e. -inf).
-    name: Metric name.
+    name: Metric name containing binary_confusion_matrices.Matrices.
     eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
@@ -98,6 +102,9 @@ def binary_confusion_matrices(
     preprocessor: User-provided preprocessor for including additional extracts
       in StandardMetricInputs (relevant only when use_histogram flag is not
       true).
+    examples_name: Metric name containing binary_confusion_matrices.Examples.
+      (relevant only when use_histogram flag is not true and example_id_key is
+      set).
     example_id_key: Feature key containing example id (relevant only when
       use_histogram flag is not true).
     example_ids_count: Max number of example ids to be extracted for false
@@ -133,25 +140,49 @@ def binary_confusion_matrices(
       raise ValueError('num_thresholds must be > 1')
     # The interpolation strategy used here matches that used by keras for AUC.
     thresholds = _interpolated_thresholds(num_thresholds)
-    if name is None:
-      name = '{}_{}'.format(BINARY_CONFUSION_MATRICES_NAME, num_thresholds)
-  elif name is None:
-    name = '{}_{}'.format(BINARY_CONFUSION_MATRICES_NAME, list(thresholds))
-
-  key = metric_types.MetricKey(
-      name=name,
-      model_name=model_name,
-      output_name=output_name,
-      sub_key=sub_key)
-
-  computations = []
-  metric_key = None
+    thresholds_name_part = str(num_thresholds)
+  else:
+    thresholds_name_part = str(list(thresholds))
 
   if use_histogram is None:
     use_histogram = (
         num_thresholds is not None or
         (len(thresholds) == 1 and thresholds[0] < 0))
 
+  if use_histogram and (examples_name or example_id_key or example_ids_count):
+    raise ValueError('Example sampling is only performed when not using the '
+                     'histogram computation. However, use_histogram is true '
+                     f'and one of examples_name ("{examples_name}"), '
+                     f'examples_id_key ("{example_id_key}"), '
+                     f'or example_ids_count ({example_ids_count}) was '
+                     'provided, which will have no effect.')
+
+  if examples_name and not (example_id_key and example_ids_count):
+    raise ValueError('examples_name provided but either example_id_key or '
+                     'example_ids_count was not. Examples will only be '
+                     'returned when both example_id_key and '
+                     'example_ids_count are provided, and when the '
+                     'non-histogram computation is used. '
+                     f'example_id_key: "{example_id_key}" '
+                     f'example_ids_count: {example_ids_count}')
+
+  if name is None:
+    name = '{}_{}'.format(BINARY_CONFUSION_MATRICES_NAME, thresholds_name_part)
+  if examples_name is None:
+    examples_name = '{}_{}'.format(BINARY_CONFUSION_EXAMPLES_NAME,
+                                   thresholds_name_part)
+  matrices_key = metric_types.MetricKey(
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key)
+  examples_key = metric_types.MetricKey(
+      name=examples_name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key)
+
+  computations = []
   if use_histogram:
     # Use calibration histogram to calculate matrices. For efficiency (unless
     # all predictions are matched - i.e. thresholds <= 0) we will assume that
@@ -175,8 +206,13 @@ def binary_confusion_matrices(
         sub_key=sub_key,
         aggregation_type=aggregation_type,
         class_weights=class_weights)
-    metric_key = computations[-1].keys[-1]
+    input_metric_key = computations[-1].keys[-1]
+    output_metric_keys = [matrices_key]
   else:
+    if bool(example_ids_count) != bool(example_id_key):
+      raise ValueError('Both of example_ids_count and example_id_key must be '
+                       f'set, but got example_id_key: "{example_id_key}" and '
+                       f'example_ids_count: {example_ids_count}.')
     computations = _binary_confusion_matrix_computation(
         eval_config=eval_config,
         thresholds=thresholds,
@@ -190,11 +226,16 @@ def binary_confusion_matrices(
         aggregation_type=aggregation_type,
         class_weights=class_weights,
         fractional_labels=fractional_labels)
-    metric_key = computations[-1].keys[-1]
+    input_metric_key = computations[-1].keys[-1]
+    # matrices_key is last for backwards compatibility with code that:
+    #   1) used this computation as an input for a derived computation
+    #   2) only accessed the matrix counts
+    #   3) used computations[-1].keys[-1] to access the input key
+    output_metric_keys = [examples_key, matrices_key]
 
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
-  ) -> Dict[metric_types.MetricKey, Matrices]:
+  ) -> Dict[metric_types.MetricKey, Union[Matrices, Examples]]:
     """Returns binary confusion matrices."""
     matrices = None
     if use_histogram:
@@ -202,7 +243,7 @@ def binary_confusion_matrices(
         # This case is used when all positive prediction values are relevant
         # matches (e.g. when calculating top_k for precision/recall where the
         # non-top_k values are expected to have been set to float('-inf')).
-        histogram = metrics[metric_key]
+        histogram = metrics[input_metric_key]
       else:
         # Calibration histogram uses intervals of the form [start, end) where
         # the prediction >= start. The confusion matrices want intervals of the
@@ -221,20 +262,21 @@ def binary_confusion_matrices(
           # othewise true negatives and true positives will be overcounted.
           rebin_thresholds = rebin_thresholds + [1.0 + _EPSILON]
         histogram = calibration_histogram.rebin(rebin_thresholds,
-                                                metrics[metric_key])
-      matrices = _historgram_to_binary_confusion_matrices(thresholds, histogram)
+                                                metrics[input_metric_key])
+      matrices = _histogram_to_binary_confusion_matrices(thresholds, histogram)
+      return {matrices_key: matrices}
     else:
-      matrices = _matrix_to_binary_confusion_matrices(thresholds,
-                                                      metrics[metric_key])
-    return {key: matrices}
+      matrices, examples = _accumulator_to_matrices_and_examples(
+          thresholds, metrics[input_metric_key])
+      return {matrices_key: matrices, examples_key: examples}
 
   derived_computation = metric_types.DerivedMetricComputation(
-      keys=[key], result=result)
+      keys=output_metric_keys, result=result)
   computations.append(derived_computation)
   return computations
 
 
-def _historgram_to_binary_confusion_matrices(
+def _histogram_to_binary_confusion_matrices(
     thresholds: List[float],
     histogram: calibration_histogram.Histogram) -> Matrices:
   """Converts histogram to binary confusion matrices."""
@@ -278,18 +320,21 @@ def _historgram_to_binary_confusion_matrices(
       fp[i] = 0.0
       fn[i] = tp[0]
       tn[i] = fp[0]
-  return Matrices(thresholds, tp, tn, fp, fn, [], [], [], [])
+  return Matrices(thresholds, tp, tn, fp, fn)
 
 
 _BINARY_CONFUSION_MATRIX_NAME = '_binary_confusion_matrix'
 
 Matrix = NamedTuple('Matrix', [('tp', float), ('tn', float), ('fp', float),
-                               ('fn', float), ('tp_examples', List[Text]),
-                               ('tn_examples', List[Text]),
-                               ('fp_examples', List[Text]),
-                               ('fn_examples', List[Text])])
+                               ('fn', float)])
 
-MatrixAccumulator = Dict[float, Matrix]
+_ThresholdEntry = NamedTuple('_ThresholdEntry', [('matrix', Matrix),
+                                                 ('tp_examples', List[Text]),
+                                                 ('tn_examples', List[Text]),
+                                                 ('fp_examples', List[Text]),
+                                                 ('fn_examples', List[Text])])
+
+MatrixAccumulator = Dict[float, _ThresholdEntry]
 
 
 def _binary_confusion_matrix_computation(
@@ -366,24 +411,25 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
     result.extend(list_2[:self._example_ids_count - len(result)])
     return result
 
-  def _merge_matrix(self, result: MatrixAccumulator, threshold: float,
-                    matrix: Matrix):
+  def _merge_entry(self, result: MatrixAccumulator, threshold: float,
+                   entry: _ThresholdEntry):
     if threshold not in result:
-      return matrix
+      return entry
 
-    return Matrix(
-        tp=result[threshold].tp + matrix.tp,
-        tn=result[threshold].tn + matrix.tn,
-        fp=result[threshold].fp + matrix.fp,
-        fn=result[threshold].fn + matrix.fn,
+    return _ThresholdEntry(
+        matrix=Matrix(
+            tp=result[threshold].matrix.tp + entry.matrix.tp,
+            tn=result[threshold].matrix.tn + entry.matrix.tn,
+            fp=result[threshold].matrix.fp + entry.matrix.fp,
+            fn=result[threshold].matrix.fn + entry.matrix.fn),
         tp_examples=self._merge_example_ids(result[threshold].tp_examples,
-                                            matrix.tp_examples),
+                                            entry.tp_examples),
         tn_examples=self._merge_example_ids(result[threshold].tn_examples,
-                                            matrix.tn_examples),
+                                            entry.tn_examples),
         fp_examples=self._merge_example_ids(result[threshold].fp_examples,
-                                            matrix.fp_examples),
+                                            entry.fp_examples),
         fn_examples=self._merge_example_ids(result[threshold].fn_examples,
-                                            matrix.fn_examples))
+                                            entry.fn_examples))
 
   def create_accumulator(self) -> MatrixAccumulator:
     return {}
@@ -439,13 +485,10 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
             tn += example_weights[i]
             tn_example = example_id
 
-      result[threshold] = self._merge_matrix(
+      result[threshold] = self._merge_entry(
           result, threshold,
-          Matrix(
-              tp=tp,
-              tn=tn,
-              fp=fp,
-              fn=fn,
+          _ThresholdEntry(
+              Matrix(tp=tp, tn=tn, fp=fp, fn=fn),
               tp_examples=[tp_example] if tp_example else [],
               tn_examples=[tn_example] if tn_example else [],
               fp_examples=[fp_example] if fp_example else [],
@@ -461,8 +504,8 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
       for threshold in self._thresholds:
         if threshold not in accumulator:
           continue
-        result[threshold] = self._merge_matrix(result, threshold,
-                                               accumulator[threshold])
+        result[threshold] = self._merge_entry(result, threshold,
+                                              accumulator[threshold])
     return result
 
   def extract_output(
@@ -470,11 +513,8 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
   ) -> Dict[metric_types.MetricKey, MatrixAccumulator]:
     for threshold in self._thresholds:
       if threshold not in accumulator:
-        accumulator[threshold] = Matrix(
-            tp=0.0,
-            tn=0.0,
-            fp=0.0,
-            fn=0.0,
+        accumulator[threshold] = _ThresholdEntry(
+            Matrix(tp=0.0, tn=0.0, fp=0.0, fn=0.0),
             tp_examples=[],
             tn_examples=[],
             fp_examples=[],
@@ -482,28 +522,27 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
     return {self._key: accumulator}
 
 
-def _matrix_to_binary_confusion_matrices(
-    thresholds: List[float], matrices: MatrixAccumulator) -> Matrices:
+def _accumulator_to_matrices_and_examples(
+    thresholds: List[float],
+    acc: MatrixAccumulator) -> Tuple[Matrices, Examples]:
   """Converts MatrixAccumulator to binary confusion matrices."""
-  result = Matrices(
+  matrices = Matrices(thresholds=[], tp=[], tn=[], fp=[], fn=[])
+  examples = Examples(
       thresholds=[],
-      tp=[],
-      tn=[],
-      fp=[],
-      fn=[],
       tp_examples=[],
       tn_examples=[],
       fp_examples=[],
       fn_examples=[])
   for threshold in thresholds:
-    result.thresholds.append(threshold)
-    result.tp.append(matrices[threshold].tp)
-    result.tn.append(matrices[threshold].tn)
-    result.fp.append(matrices[threshold].fp)
-    result.fn.append(matrices[threshold].fn)
-    result.tp_examples.append(matrices[threshold].tp_examples)
-    result.tn_examples.append(matrices[threshold].tn_examples)
-    result.fp_examples.append(matrices[threshold].fp_examples)
-    result.fn_examples.append(matrices[threshold].fn_examples)
+    matrices.thresholds.append(threshold)
+    matrices.tp.append(acc[threshold].matrix.tp)
+    matrices.tn.append(acc[threshold].matrix.tn)
+    matrices.fp.append(acc[threshold].matrix.fp)
+    matrices.fn.append(acc[threshold].matrix.fn)
 
-  return result
+    examples.thresholds.append(threshold)
+    examples.tp_examples.append(acc[threshold].tp_examples)
+    examples.tn_examples.append(acc[threshold].tn_examples)
+    examples.fp_examples.append(acc[threshold].fp_examples)
+    examples.fn_examples.append(acc[threshold].fn_examples)
+  return matrices, examples

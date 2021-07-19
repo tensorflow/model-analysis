@@ -2554,13 +2554,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
            tp=[2.0, 1.0, 0.0],
            fp=[2.0, 0.0, 0.0],
            tn=[0.0, 2.0, 2.0],
-           fn=[0.0, 1.0, 2.0],
-           tp_examples=[],
-           tn_examples=[],
-           fp_examples=[],
-           fn_examples=[]), False),
+           fn=[0.0, 1.0, 2.0]), False),
       ('BytesNotDiffable', b'some bytes', False),
-      ('NumpyObjectDtypeIsDiffable', np.array(['obj'], dtype=np.object), False),
+      ('NumpyObjectDtypeNotDiffable', np.array(['obj'],
+                                               dtype=np.object), False),
   )
   def testIsMetricDiffable(self, metric_value, expected_is_diffable):
     self.assertEqual(

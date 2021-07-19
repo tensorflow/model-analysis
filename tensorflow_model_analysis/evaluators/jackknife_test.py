@@ -97,15 +97,7 @@ class JackknifePTransformTest(absltest.TestCase):
     y_key = metric_types.MetricKey(u'y')
     cm_key = metric_types.MetricKey(u'confusion_matrix')
     cm_metric = binary_confusion_matrices.Matrices(
-        thresholds=[0.5],
-        tp=[0],
-        fp=[1],
-        tn=[2],
-        fn=[3],
-        tp_examples=[],
-        tn_examples=[],
-        fp_examples=[],
-        fn_examples=[])
+        thresholds=[0.5], tp=[0], fp=[1], tn=[2], fn=[3])
     example_count_key = metric_types.MetricKey(example_count.EXAMPLE_COUNT_NAME)
     slice_key1 = (u'slice_feature', 1)
     slice_key2 = (u'slice_feature', 2)

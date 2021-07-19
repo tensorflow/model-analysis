@@ -260,13 +260,14 @@ def flip_count(
       example_id_key=example_id_key,
       example_ids_count=example_ids_count,
       fractional_labels=False)
-  metric_key = computations[-1].keys[-1]
+  examples_metric_key, matrices_metric_key = computations[-1].keys
 
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
   ) -> Dict[metric_types.MetricKey, Any]:
     """Returns flip count metrics values."""
-    matrix = metrics[metric_key]
+    matrix = metrics[matrices_metric_key]
+    examples = metrics[examples_metric_key]
 
     output = {}
     for i, threshold in enumerate(matrix.thresholds):
@@ -276,10 +277,10 @@ def flip_count(
              ['negative_to_positive']] = matrix.fp[i]
       output[metric_key_by_name_by_threshold[threshold]
              ['positive_to_negative_examples_ids']] = np.array(
-                 matrix.fn_examples[i])
+                 examples.fn_examples[i])
       output[metric_key_by_name_by_threshold[threshold]
              ['negative_to_positive_examples_ids']] = np.array(
-                 matrix.fp_examples[i])
+                 examples.fp_examples[i])
       output[metric_key_by_name_by_threshold[threshold]
              ['positive_examples_count']] = matrix.fn[i] + matrix.tp[i]
       output[metric_key_by_name_by_threshold[threshold]
