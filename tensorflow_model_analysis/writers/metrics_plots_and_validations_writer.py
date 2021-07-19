@@ -89,7 +89,7 @@ def _parquet_column_iterator(paths: Iterable[str],
 
 def _raw_value_iterator(
     paths: Iterable[Text],
-    output_file_format: Text) -> Iterator[Union[pa.Buffer, bytes]]:
+    output_file_format: Text) -> Iterator[Union[pa.Buffer, tf.Tensor]]:
   """Returns an iterator of raw per-record values from supported file formats.
 
   When reading parquet format files, values from the column with name
@@ -109,8 +109,7 @@ def _raw_value_iterator(
     return _parquet_column_iterator(paths,
                                     _SERIALIZED_VALUE_PARQUET_COLUMN_NAME)
   elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
-    return itertools.chain(*(tf.compat.v1.python_io.tf_record_iterator(path)
-                             for path in paths))
+    return itertools.chain(*(tf.data.TFRecordDataset(path) for path in paths))
   raise ValueError('Formats "{}" are currently supported but got '
                    'output_file_format={}'.format(_SUPPORTED_FORMATS,
                                                   output_file_format))
@@ -141,6 +140,7 @@ def load_and_deserialize_metrics(
     pattern = pattern + '.' + output_file_format
   paths = tf.io.gfile.glob(pattern)
   for value in _raw_value_iterator(paths, output_file_format):
+    value = value.numpy() if hasattr(value, 'numpy') else value
     metrics = metrics_for_slice_pb2.MetricsForSlice.FromString(value)
     if slice_specs and not slicer.slice_key_matches_slice_specs(
         slicer.deserialize_slice_key(metrics.slice_key), slice_specs):
@@ -173,6 +173,7 @@ def load_and_deserialize_plots(
     pattern = pattern + '.' + output_file_format
   paths = tf.io.gfile.glob(pattern)
   for value in _raw_value_iterator(paths, output_file_format):
+    value = value.numpy() if hasattr(value, 'numpy') else value
     plots = metrics_for_slice_pb2.PlotsForSlice.FromString(value)
     if slice_specs and not slicer.slice_key_matches_slice_specs(
         slicer.deserialize_slice_key(plots.slice_key), slice_specs):
@@ -205,6 +206,7 @@ def load_and_deserialize_attributions(
     pattern = pattern + '.' + output_file_format
   paths = tf.io.gfile.glob(pattern)
   for value in _raw_value_iterator(paths, output_file_format):
+    value = value.numpy() if hasattr(value, 'numpy') else value
     attributions = metrics_for_slice_pb2.AttributionsForSlice.FromString(value)
     if slice_specs and not slicer.slice_key_matches_slice_specs(
         slicer.deserialize_slice_key(attributions.slice_key), slice_specs):
@@ -233,6 +235,7 @@ def load_and_deserialize_validation_result(
   validation_records = []
   paths = tf.io.gfile.glob(pattern)
   for value in _raw_value_iterator(paths, output_file_format):
+    value = value.numpy() if hasattr(value, 'numpy') else value
     validation_records.append(
         validation_result_pb2.ValidationResult.FromString(value))
   assert len(validation_records) == 1
