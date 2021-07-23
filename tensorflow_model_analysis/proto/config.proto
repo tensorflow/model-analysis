@@ -325,13 +325,43 @@ message PaddingOptions {
 }
 
 // Determines how to compute the deltas.
-// This might be used in the following ways:
-// - For metrics where a higher value is better (e.g. AUC),
-//   set the direction to HIGHER_IS_BETTER, and set the threshold to be
-//   the "slack", so we fail if say auc_new - auc_old  < slack.
-// - For metrics where a lower value is better (e.g. loss),
-//   set the direction to LOWER_IS_BETTER, and set the threshold to be the
-//   "slack", so we fail if say loss_new - loss_old > slack.
+// Definitions of the directions are as follows:
+// - For direction HIGHER_NEW_IS_BETTER, using example of auc: model only
+// passes when auc_new - auc_old >= slack, slack being the absolute or relative
+// threshold.
+// - For direction LOWER_NEW_IS_BETTER, using example of loss: model only
+// passes when loss_new - loss_old <= slack, slack being the absolute or
+// relative threshold.
+
+// Change thresholds can be used to accomplish several different goals. For
+// each goal, the configuration depends on whether the higher values for a
+// metric are better (e.g. AUC) or lower values for the metric are better
+// (e.g. loss).
+//
+// Limit Regression:
+// - Metrics where a higher value is better (e.g. AUC) use
+//   HIGHER_NEW_IS_BETTER and set `absolute` or `relative` to a negative
+//   number representing the max allowed regression.
+// - Metrics where a lower value is better (e.g. loss) use LOWER_NEW_IS_BETTER
+//   and set `absolute` or `relative` to a positive number representing the
+//   max allowed regression.
+//
+// Require Improvement:
+// - Metrics where a higher value is better (e.g. AUC) use
+//   HIGHER_NEW_IS_BETTER and set `absolute` or `relative` to a positive
+//   number representing the required improvement.
+// - Metrics where a lower value is better (e.g. loss) use LOWER_NEW_IS_BETTER
+//   and set `absolute` or `relative` to a negative number representing the
+//   required improvement.
+//
+// Limit (suspicious) Improvement:
+// - Metrics where a higher value is better (e.g. AUC) use
+//   LOWER_NEW_IS_BETTER and set `absolute` or `relative` to a positive number
+//   representing the max allowed improvement.
+// - Metrics where a lower value is better (e.g. loss) use
+//   HIGHER_NEW_IS_BETTER and set `absolute` or `relative` to a positive
+//   number representing the max allowed improvement.
+
 enum MetricDirection {
   UNKNOWN = 0;
   LOWER_IS_BETTER = 1;
