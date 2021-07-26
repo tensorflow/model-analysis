@@ -613,6 +613,8 @@
     Results in ~40% reduction in CPU seconds over existing TFMA v2
     (InputExtractor + PredictExtractorV2). Modify TFMA public API to take an
     optional tensor adapter config as input.
+*   Adding experimental support for pre-defined preprocessing functions that can
+    be used as preprocessing functions for feature and label transformations.
 
 ## Bug fixes and other changes
 

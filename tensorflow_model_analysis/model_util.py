@@ -19,8 +19,7 @@
 import collections
 import copy
 import os
-
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Text
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Text, Tuple
 
 from absl import logging
 import apache_beam as beam
@@ -32,6 +31,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
+from tensorflow_model_analysis.experimental import preprocessing_functions
 from tfx_bsl.tfxio import tensor_adapter
 
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -69,6 +69,18 @@ class ModelContents(object):
 
   def __init__(self, contents: bytes):
     self.contents = contents
+
+
+def get_preprocessing_signature(
+    signature_name: Text) -> Tuple[Text, List[Text]]:
+  """Returns the preprocessing function name and its feature name."""
+  signature_name, *input_names = signature_name.split('@')
+  if len(input_names) > 1:
+    raise NotImplementedError(
+        'Transforming on multiple features is not '
+        f'supported. signature {signature_name} has input names: '
+        f'{input_names}.')
+  return signature_name, input_names
 
 
 def get_baseline_model_spec(
@@ -867,7 +879,12 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
         return arr
 
     def to_dense(t):
-      return tf.sparse.to_dense(t) if isinstance(t, tf.SparseTensor) else t
+      if isinstance(t, tf.SparseTensor):
+        return tf.sparse.to_dense(t)
+      elif isinstance(t, tf.RaggedTensor):
+        return t.to_tensor()
+      else:
+        return t
 
     def check_shape(t, batch_size, key=None):
       if t.shape[0] != batch_size:
@@ -885,13 +902,35 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
       for extracts_key, signature_names in self._signature_names.items():
         for signature_name in (signature_names[model_name] or
                                self._default_signature_names):
-          required = bool(signature_names[model_name])
-          input_specs = get_input_specs(model, signature_name, required) or {}
+          signature = None
+          input_specs = None
           inputs = None
-          # If input_specs exist then try to filter the inputs by the input
-          # names (unlike estimators, keras does not accept unknown inputs).
-          if input_specs:
-            inputs = get_inputs(record_batch, input_specs, self._tensor_adapter)
+          positional_inputs = False
+          required = bool(signature_names[model_name])
+          if signature_name and '@' in signature_name:
+            try:
+              signature_name, input_names = get_preprocessing_signature(
+                  signature_name)
+              signature = getattr(preprocessing_functions, signature_name)
+              input_specs = {
+                  input_name: type_spec for input_name, type_spec in zip(
+                      input_names, signature.input_signature)
+              }
+              inputs = get_inputs(record_batch, input_specs)
+              positional_inputs = True
+            except AttributeError as e:
+              logging.warning(
+                  """Failed to get signature of %s or as TFMA
+                  preprocessing function. Trying in-graph preprocessing
+                  function.""", signature_name)
+
+          if not input_specs:
+            input_specs = get_input_specs(model, signature_name, required) or {}
+            # If input_specs exist then try to filter the inputs by the input
+            # names (unlike estimators, keras does not accept unknown inputs).
+            if input_specs:
+              inputs = get_inputs(record_batch, input_specs,
+                                  self._tensor_adapter)
           if not inputs:
             # Assume serialized examples
             assert serialized_examples is not None, 'Raw examples not found.'
@@ -900,7 +939,8 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
             # signature since parsing normally will be done outside model.
             if not signature_name:
               signature_name = get_default_signature_name(model)
-          signature = get_callable(model, signature_name, required)
+
+          signature = signature or get_callable(model, signature_name, required)
           if signature is None:
             if not required:
               continue
@@ -910,6 +950,8 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
             if isinstance(inputs, dict):
               if hasattr(signature, 'structured_input_signature'):
                 outputs = signature(**inputs)
+              elif positional_inputs:
+                outputs = signature(*inputs.values())
               else:
                 outputs = signature(inputs)
             else:

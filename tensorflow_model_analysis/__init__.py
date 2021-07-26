@@ -142,6 +142,7 @@ try:
   # DataFlow work. We need to look into why the import orders matters for the
   # DataFlow benchmark.
   from tensorflow_model_analysis import addons
+  from tensorflow_model_analysis import experimental
   from tensorflow_model_analysis import extractors
   from tensorflow_model_analysis import slicer
   from tensorflow_model_analysis import validators

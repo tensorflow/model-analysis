@@ -786,6 +786,11 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
               '': [None]
           }
       }, None, False, False, 1),
+      ('preprocessing_function', True, {
+          constants.TRANSFORMED_FEATURES_KEY: {
+              '': ['_plus_one@input_1']
+          }
+      }, None, False, False, 1),
   )
   @unittest.skipIf(_TF_MAJOR_VERSION < 2,
                    'not all signatures supported for TF1')
