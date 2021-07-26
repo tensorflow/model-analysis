@@ -1,0 +1,123 @@
+# Lint as: python3
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Exact match metric."""
+from typing import Dict, Iterable, Optional, Text
+import apache_beam as beam
+import numpy as np
+
+from tensorflow_model_analysis import config
+from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.metrics import metric_util
+
+EXACT_MATCH_NAME = 'exact_match'
+
+
+class ExactMatch(metric_types.Metric):
+  """Exact Match Metric."""
+
+  def __init__(self, name: Text = EXACT_MATCH_NAME):
+    """Initializes exact match metric."""
+
+    super(ExactMatch, self).__init__(
+        metric_util.merge_per_key_computations(_exact_match), name=name)
+
+
+metric_types.register_metric(ExactMatch)
+
+
+def _exact_match(
+    name: Text,
+    eval_config: Optional[config.EvalConfig] = None,
+    model_name: Text = '',
+    output_name: Text = '',
+    sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
+    class_weights: Optional[Dict[int, float]] = None
+) -> metric_types.MetricComputations:
+  """Returns metric computations for computing the exact match score."""
+  key = metric_types.MetricKey(
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key)
+  return [
+      metric_types.MetricComputation(
+          keys=[key],
+          preprocessor=None,
+          combiner=_ExactMatchCombiner(key, eval_config, aggregation_type,
+                                       class_weights))
+  ]
+
+
+class _ExactMatchAccumulator(object):
+  """Exact match accumulator."""
+  __slots__ = ['total_weighted_exact_match_scores', 'total_weighted_examples']
+
+  def __init__(self):
+    self.total_weighted_exact_match_scores = 0.0
+    self.total_weighted_examples = 0.0
+
+  def __iadd__(self, other):
+    self.total_weighted_exact_match_scores += other.total_weighted_exact_match_scores
+    self.total_weighted_examples += other.total_weighted_examples
+    return self
+
+
+class _ExactMatchCombiner(beam.CombineFn):
+  """Combines Exact Match scores."""
+
+  def __init__(self, key: metric_types.MetricKey,
+               eval_config: Optional[config.EvalConfig],
+               aggregation_type: Optional[metric_types.AggregationType],
+               class_weights: Optional[Dict[int, float]]):
+    self._key = key
+    self._eval_config = eval_config
+    self._aggregation_type = aggregation_type
+    self._class_weights = class_weights
+
+  def create_accumulator(self) -> _ExactMatchAccumulator:
+    return _ExactMatchAccumulator()
+
+  def add_input(
+      self, accumulator: _ExactMatchAccumulator,
+      element: metric_types.StandardMetricInputs) -> _ExactMatchAccumulator:
+    for label, prediction, example_weight in (
+        metric_util.to_label_prediction_example_weight(
+            element,
+            eval_config=self._eval_config,
+            model_name=self._key.model_name,
+            output_name=self._key.output_name,
+            aggregation_type=self._aggregation_type,
+            class_weights=self._class_weights)):
+      score = np.all(label == prediction)
+      example_weight = example_weight.item()
+      accumulator.total_weighted_exact_match_scores += score * example_weight
+      accumulator.total_weighted_examples += example_weight
+    return accumulator
+
+  def merge_accumulators(
+      self,
+      accumulators: Iterable[_ExactMatchAccumulator]) -> _ExactMatchAccumulator:
+    accumulators = iter(accumulators)
+    result = next(accumulators)
+    for accumulator in accumulators:
+      result += accumulator
+    return result
+
+  def extract_output(
+      self, accumulator: _ExactMatchAccumulator
+  ) -> Dict[metric_types.MetricKey, float]:
+    score = accumulator.total_weighted_exact_match_scores / accumulator.total_weighted_examples
+    return {self._key: score}
