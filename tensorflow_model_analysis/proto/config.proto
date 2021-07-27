@@ -436,9 +436,11 @@ message MetricConfig {
   string module = 2;
   // Optional JSON encoded config settings associated with the class.
   //
-  // The config settings will be passed as **kwarg values to the __init__ method
-  // for the class. For ease of use the leading and trailing '{' and '}'
-  // brackets may be omitted.
+  // The config settings are used to initialize the metric based on its
+  // associated from_config method. Typically the values that are used will be
+  // the same as the **kwarg values passed to the __init__ method for the class.
+  // For ease of use the leading and trailing '{' and '}' brackets may be
+  // omitted.
   //
   // Example: '"name": "my_metric", "thresholds": [0.5]'
   string config = 3;
