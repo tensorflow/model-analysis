@@ -4,6 +4,16 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other Changes
+
+## Breaking Changes
+
+## Deprecations
+
+# Version 0.33.0
+
+## Major Features and Improvements
+
 *   Provided functionality for `slice_keys_sql` config. It's not available under
     Windows.
 
@@ -13,6 +23,9 @@
 *   Update README for JupyterLab 3
 *   Provide implementation of ExactMatch metric.
 *   Jackknife CI method now works with cross-slice metrics.
+*   Depends on `apache-beam[gcp]>=2.31,<3`.
+*   Depends on `tensorflow-metadata>=1.2.0,<1.3.0`.
+*   Depends on `tfx-bsl>=1.2.0,<1.3.0`.
 
 ## Breaking Changes
 
@@ -25,6 +38,8 @@
     binary_confusion_matrices metric as an input.
 
 ## Deprecations
+
+*   N/A
 
 # Version 0.32.1
 

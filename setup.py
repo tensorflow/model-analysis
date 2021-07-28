@@ -291,7 +291,7 @@ setup_args = {
     'install_requires': [
         # Sort alphabetically
         'absl-py>=0.9,<0.13',
-        'apache-beam[gcp]>=2.29,<3',
+        'apache-beam[gcp]>=2.31,<3',
         # TODO(b/193746372): Remove bigquery dependency after TF 2.6 becomes
         # available.
         'google-cloud-bigquery>=1.28.0,<2.21',
@@ -305,12 +305,12 @@ setup_args = {
         'six>=1.12,<2',
         'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
         'tensorflow-metadata' + select_constraint(
-            default='>=1.1.0,<1.2.0',
-            nightly='>=1.2.0.dev',
+            default='>=1.2.0,<1.3.0',
+            nightly='>=1.3.0.dev',
             git_master='@git+https://github.com/tensorflow/metadata@master'),
         'tfx-bsl' + select_constraint(
-            default='>=1.1.0,<1.2.0',
-            nightly='>=1.2.0.dev',
+            default='>=1.2.0,<1.3.0',
+            nightly='>=1.3.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
     ],
     'extras_require': {
