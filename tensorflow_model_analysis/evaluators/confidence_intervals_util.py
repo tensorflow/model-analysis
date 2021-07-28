@@ -171,7 +171,7 @@ class SampleCombineFn(beam.CombineFn):
         accumulator.num_samples < self._num_samples):
       self._missing_samples_counter.inc(1)
       missing_samples = True
-      error_metric_key = metric_types.MetricKey(metric_keys.ERROR_METRIC),
+      error_metric_key = metric_types.MetricKey(metric_keys.ERROR_METRIC)
       result[error_metric_key] = (
           f'CI not computed because only {accumulator.num_samples} samples '
           f'were non-empty. Expected {self._num_samples}.')
@@ -203,5 +203,4 @@ class SampleCombineFn(beam.CombineFn):
             sample_standard_deviation=standard_error,
             sample_degrees_of_freedom=dof,
             unsampled_value=unsampled_value)
-    # TODO(b/194750790): remove this once the typing issue is resolved.
-    return result  # pytype: disable=bad-return-type
+    return result

@@ -233,7 +233,7 @@ class ConfidenceIntervalsUtilTest(absltest.TestCase):
     ]
 
     with beam.Pipeline() as pipeline:
-      _ = (
+      result = (
           pipeline
           | 'Create' >> beam.Create(samples, reshuffle=False)
           | 'CombineSamplesPerKey' >> beam.CombinePerKey(
@@ -242,19 +242,31 @@ class ConfidenceIntervalsUtilTest(absltest.TestCase):
                   full_sample_id=_FULL_SAMPLE_ID,
                   skip_ci_metric_keys=[example_count_key])))
 
-      result = pipeline.run()
+      def check_result(got_pcoll):
+        self.assertLen(got_pcoll, 2)
+        slice2_metrics = None
+        for slice_key, metrics in got_pcoll:
+          if slice_key == slice_key2:
+            slice2_metrics = metrics
+            break
+        self.assertIsNotNone(slice2_metrics)
+        self.assertIn(metric_types.MetricKey('__ERROR__'), slice2_metrics)
+
+      util.assert_that(result, check_result)
+
+      runner_result = pipeline.run()
       # we expect one missing samples counter increment for slice2, since we
       # expected 2 samples, but only saw 1.
       metric_filter = beam.metrics.metric.MetricsFilter().with_name(
           'num_slices_missing_samples')
-      counters = result.metrics().query(filter=metric_filter)['counters']
+      counters = runner_result.metrics().query(filter=metric_filter)['counters']
       self.assertLen(counters, 1)
       self.assertEqual(1, counters[0].committed)
 
       # verify total slice counter
       metric_filter = beam.metrics.metric.MetricsFilter().with_name(
           'num_slices')
-      counters = result.metrics().query(filter=metric_filter)['counters']
+      counters = runner_result.metrics().query(filter=metric_filter)['counters']
       self.assertLen(counters, 1)
       self.assertEqual(2, counters[0].committed)
 
