@@ -26,7 +26,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.evaluators import legacy_aggregate as aggregate
-from tensorflow_model_analysis.evaluators import poisson_bootstrap
+from tensorflow_model_analysis.evaluators import legacy_poisson_bootstrap as poisson_bootstrap
 
 
 def create_test_input(predict_list, slice_list):

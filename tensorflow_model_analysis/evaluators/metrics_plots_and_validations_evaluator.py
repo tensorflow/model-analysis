@@ -22,7 +22,7 @@ from __future__ import print_function
 import copy
 import datetime
 import numbers
-from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set, Text, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Text, Tuple, Type, Union
 import apache_beam as beam
 import numpy as np
 
@@ -334,49 +334,19 @@ class _PreprocessorDoFn(beam.DoFn):
 class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
   """Combine function that computes metric using initial state from extracts."""
 
-  def __init__(self,
-               computations: List[metric_types.MetricComputation],
-               compute_with_sampling: Optional[bool] = False,
-               random_seed_for_testing: Optional[int] = None):
+  def __init__(self, computations: List[metric_types.MetricComputation]):
     """Init.
 
-    If compute_with_sampling is true a bootstrap resample of the data will be
-    performed where each input will be represented in the resample one or more
-    times as drawn from Poisson(1). This technically works with small or empty
-    batches, but as the technique is an approximation the approximation gets
-    better as the number of examples gets larger. If the results themselves are
-    empty TFMA will reject the sample. For any samples of a reasonable size, the
-    chances of this are exponentially tiny. See "The mathematical fine print"
-    section of the blog post linked below.
-
-    See:
-    http://www.unofficialgoogledatascience.com/2015/08/an-introduction-to-poisson-bootstrap26.html
 
     Args:
       computations: List of MetricComputations.
-      compute_with_sampling: True to compute with sampling.
-      random_seed_for_testing: Seed to use for unit testing.
     """
     super(_ComputationsCombineFn,
           self).__init__(*[c.combiner for c in computations])
-    self._compute_with_sampling = compute_with_sampling
-    self._random_state = np.random.RandomState(random_seed_for_testing)
     self._num_compacts = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_compacts')
-    # This keeps track of the number of times the poisson bootstrap encounters
-    # an empty set of elements for a slice sample. Should be extremely rare in
-    # practice, keeping this counter will help us understand if something is
-    # misbehaving.
-    self._num_bootstrap_empties = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_bootstrap_empties')
 
   def add_input(self, accumulator: Any, element: types.Extracts):
-    elements = [element]
-    if self._compute_with_sampling:
-      elements = [element] * int(self._random_state.poisson(1, 1))
-    if not elements:
-      return accumulator
-
     def get_combiner_input(element, i):
       item = element[_COMBINER_INPUTS_KEY][i]
       if item is None:
@@ -385,9 +355,7 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
 
     results = []
     for i, (c, a) in enumerate(zip(self._combiners, accumulator)):
-      result = c.add_input(a, get_combiner_input(elements[0], i))
-      for e in elements[1:]:
-        result = c.add_input(result, get_combiner_input(e, i))
+      result = c.add_input(a, get_combiner_input(element, i))
       results.append(result)
     return tuple(results)
 
@@ -395,18 +363,11 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
     self._num_compacts.inc(1)
     return super(_ComputationsCombineFn, self).compact(accumulator)
 
-  def extract_output(self, accumulator: Any) -> Tuple[metric_types.MetricsDict]:
-    result = []
+  def extract_output(self, accumulator: Any) -> metric_types.MetricsDict:
+    result = {}
     for c, a in zip(self._combiners, accumulator):
-      output = c.extract_output(a)
-      if not output:
-        # Increase a counter for empty bootstrap samples. When sampling is not
-        # enabled, this should never be exected. This should only occur when the
-        # slice sizes are incredibly small, and seeing large values of this
-        # counter is a sign that something has gone wrong.
-        self._num_bootstrap_empties.inc(1)
-      result.append(output)
-    return tuple(result)
+      result.update(c.extract_output(a))
+    return result
 
 
 def _is_private_metrics(metric_key: metric_types.MetricKey):
@@ -508,57 +469,45 @@ def _is_metric_diffable(metric_value: Any):
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
-@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType,
-                                        Dict[metric_types.MetricKey, Any]])
-def _ComputePerSlice(  # pylint: disable=invalid-name
-    sliced_extracts: beam.pvalue.PCollection,
-    computations: List[metric_types.MetricComputation],
+def _AddDerivedCrossSliceAndDiffMetrics(  # pylint: disable=invalid-name
+    sliced_base_metrics: beam.PCollection[Tuple[slicer.SliceKeyType,
+                                                metric_types.MetricsDict]],
     derived_computations: List[metric_types.DerivedMetricComputation],
     cross_slice_computations: List[metric_types.CrossSliceMetricComputation],
     cross_slice_specs: Optional[Iterable[config.CrossSlicingSpec]] = None,
-    compute_with_sampling: Optional[bool] = False,
-    num_jackknife_samples: int = 0,
-    skip_ci_metric_keys: Set[metric_types.MetricKey] = frozenset(),
-    random_seed_for_testing: Optional[int] = None,
-    baseline_model_name: Optional[Text] = None) -> beam.pvalue.PCollection:  # pytype: disable=annotation-type-mismatch
-  """PTransform for computing, aggregating and combining metrics and plots.
+    baseline_model_name: Optional[Text] = None
+) -> beam.PCollection[Tuple[slicer.SliceKeyType, metric_types.MetricsDict]]:
+  """A PTransform for adding cross slice and derived metrics.
+
+  This PTransform uses the input PCollection of sliced metrics to compute
+  derived metrics, cross-slice diff metrics, and cross-model diff metrics, in
+  that order. This means that cross-slice metrics are computed for base and
+  derived metrics, and that cross-model diffs are computed for base and derived
+  metrics corresponding to both single slices and cross-slice pairs.
 
   Args:
-    sliced_extracts: Incoming PCollection consisting of slice key and extracts.
-    computations: List of MetricComputations.
+    sliced_base_metrics: A PCollection of per-slice MetricsDicts containing the
+      metrics to be used as inputs for derived, cross-slice, and diff metrics.
     derived_computations: List of DerivedMetricComputations.
     cross_slice_computations: List of CrossSliceMetricComputation.
     cross_slice_specs: List of CrossSlicingSpec.
-    compute_with_sampling: True to compute with bootstrap sampling. This allows
-      _ComputePerSlice to be used to generate unsampled values from the whole
-      data set, as well as bootstrap resamples, in which each element is treated
-      as if it showed up p ~ poission(1) times.
-    num_jackknife_samples: number of delete-d jackknife estimates to use in
-      computing standard errors on metrics.
-    skip_ci_metric_keys: List of metric keys for which to skip confidence
-      interval computation.
-    random_seed_for_testing: Seed to use for unit testing.
     baseline_model_name: Name for baseline model.
 
   Returns:
-    PCollection of (slice key, dict of metrics).
+    PCollection of sliced dict of metrics, containing all base metrics (that are
+    non-private), derived metrics, cross-slice metrics, and diff metrics.
   """
-  # TODO(b/123516222): Remove this workaround per discussions in CL/227944001
-  sliced_extracts.element_type = beam.typehints.Any
 
-  def convert_and_add_derived_values(
-      sliced_results: Tuple[slicer.SliceKeyType, Tuple[metric_types.MetricsDict,
-                                                       ...]],
+  def add_derived_metrics(
+      sliced_metrics: Tuple[slicer.SliceKeyType, metric_types.MetricsDict],
       derived_computations: List[metric_types.DerivedMetricComputation],
   ) -> Tuple[slicer.SliceKeyType, metric_types.MetricsDict]:
-    """Converts per slice tuple of dicts into single dict and adds derived."""
-    result = {}
-    for v in sliced_results[1]:
-      result.update(v)
+    """Merges per-metric dicts into single dict and adds derived metrics."""
+    slice_key, metrics = sliced_metrics
+    result = copy.copy(metrics)
     for c in derived_computations:
       result.update(c.result(result))
-    return sliced_results[0], result
+    return slice_key, result
 
   def add_diff_metrics(
       sliced_metrics: Tuple[Union[slicer.SliceKeyType,
@@ -568,7 +517,8 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
   ) -> Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]:
     """Add diff metrics if there is a baseline model."""
 
-    result = copy.copy(sliced_metrics[1])
+    slice_key, metrics = sliced_metrics
+    result = copy.copy(metrics)
 
     if baseline_model_name:
       diff_result = {}
@@ -582,43 +532,16 @@ def _ComputePerSlice(  # pylint: disable=invalid-name
             diff_result[k.make_diff_key(
             )] = v - result[k.make_baseline_key(baseline_model_name)]
       result.update(diff_result)
-
-    # Remove private metrics
     _remove_private_metrics(result)
+    return slice_key, result
 
-    return (sliced_metrics[0], result)
-
-  combiner = _ComputationsCombineFn(
-      computations=computations,
-      compute_with_sampling=compute_with_sampling,
-      random_seed_for_testing=random_seed_for_testing)
-  if num_jackknife_samples:
-    # We do not use the hotkey fanout hint used by the non-jacknife path because
-    # the random jackknife partitioning naturally mitigates hot keys.
-    sliced_combiner_outputs = (
-        sliced_extracts
-        | 'JackknifeCombinePerSliceKey' >> jackknife.JackknifeCombinePerKey(
-            combiner, num_jackknife_samples))
-  else:
-    sliced_combiner_outputs = (
-        sliced_extracts
-        | 'CombinePerSliceKey' >> beam.CombinePerKey(combiner)
-        .with_hot_key_fanout(_COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT))
-
-  sliced_derived_values_and_diffs = (
-      sliced_combiner_outputs
-      | 'ConvertAndAddDerivedValues' >> beam.Map(convert_and_add_derived_values,
-                                                 derived_computations)
+  return (
+      sliced_base_metrics
+      |
+      'AddDerivedMetrics' >> beam.Map(add_derived_metrics, derived_computations)
       | 'AddCrossSliceMetrics' >> _AddCrossSliceMetrics(  # pylint: disable=no-value-for-parameter
           cross_slice_specs, cross_slice_computations)
       | 'AddDiffMetrics' >> beam.Map(add_diff_metrics, baseline_model_name))
-
-  if num_jackknife_samples:
-    return (sliced_derived_values_and_diffs
-            | 'MergeJackknifeSamples' >> jackknife.MergeJackknifeSamples(
-                num_jackknife_samples, skip_ci_metric_keys))
-  else:
-    return sliced_derived_values_and_diffs
 
 
 def _filter_by_key_type(
@@ -672,7 +595,7 @@ def _get_confidence_interval_params(
   skip_ci_metric_keys = (
       metric_specs.metric_keys_to_skip_for_confidence_intervals(metrics_specs))
   num_jackknife_samples = 0
-  num_bootstrap_samples = 1
+  num_bootstrap_samples = 0
   ci_method = eval_config.options.confidence_intervals.method
   if eval_config.options.compute_confidence_intervals.value:
     if ci_method == config.ConfidenceIntervalOptions.JACKKNIFE:
@@ -807,8 +730,10 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   if eval_config.cross_slicing_specs:
     cross_slice_specs = eval_config.cross_slicing_specs
 
-  # TODO(b/151482616): Make bootstrap and jackknife confidence interval
-  # implementations more parallel.
+  computations_combine_fn = _ComputationsCombineFn(computations=computations)
+  derived_metrics_ptransform = _AddDerivedCrossSliceAndDiffMetrics(
+      derived_computations, cross_slice_computations, cross_slice_specs,
+      baseline_model_name)
 
   # Input: Tuple of (slice key, combiner input extracts).
   # Output: Tuple of (slice key, dict of computed metrics/plots/attributions).
@@ -816,19 +741,33 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   #         values will be the result of the associated computations. A given
   #         MetricComputation can perform computations for multiple keys, but
   #         the keys should be unique across computations.
-  sliced_metrics_plots_and_attributions = (
-      slices
-      | 'ComputePerSlice' >> poisson_bootstrap.ComputeWithConfidenceIntervals(
-          _ComputePerSlice,
-          computations=computations,
-          derived_computations=derived_computations,
-          cross_slice_computations=cross_slice_computations,
-          baseline_model_name=baseline_model_name,
-          cross_slice_specs=cross_slice_specs,
-          num_jackknife_samples=ci_params.num_jackknife_samples,
-          num_bootstrap_samples=ci_params.num_bootstrap_samples,
-          skip_ci_metric_keys=ci_params.skip_ci_metric_keys,
-          random_seed_for_testing=random_seed_for_testing))
+  if ci_params.num_bootstrap_samples:
+    sliced_metrics_plots_and_attributions = (
+        slices | 'PoissonBootstrapConfidenceIntervals' >>
+        poisson_bootstrap.ComputeWithConfidenceIntervals(
+            computations_combine_fn=computations_combine_fn,
+            derived_metrics_ptransform=derived_metrics_ptransform,
+            num_bootstrap_samples=ci_params.num_bootstrap_samples,
+            hot_key_fanout=_COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT,
+            skip_ci_metric_keys=ci_params.skip_ci_metric_keys,
+            random_seed_for_testing=random_seed_for_testing))
+  elif ci_params.num_jackknife_samples:
+    sliced_metrics_plots_and_attributions = (
+        slices
+        | 'JackknifeConfidenceIntervals' >>
+        jackknife.ComputeWithConfidenceIntervals(
+            computations_combine_fn=computations_combine_fn,
+            derived_metrics_ptransform=derived_metrics_ptransform,
+            num_jackknife_samples=ci_params.num_jackknife_samples,
+            skip_ci_metric_keys=ci_params.skip_ci_metric_keys,
+            random_seed_for_testing=random_seed_for_testing))
+  else:
+    sliced_metrics_plots_and_attributions = (
+        slices
+        |
+        'CombineMetricsPerSlice' >> beam.CombinePerKey(computations_combine_fn)
+        .with_hot_key_fanout(_COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT)
+        | 'AddDerivedCrossSliceAndDiffMetrics' >> derived_metrics_ptransform)
 
   if eval_config.options.min_slice_size.value > 1:
     sliced_metrics_plots_and_attributions = (

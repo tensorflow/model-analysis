@@ -12,6 +12,7 @@
 *   Improve rendering of HTML stubs for TFMA and Fairness Indicators UI.
 *   Update README for JupyterLab 3
 *   Provide implementation of ExactMatch metric.
+*   Jackknife CI method now works with cross-slice metrics.
 
 ## Breaking Changes
 

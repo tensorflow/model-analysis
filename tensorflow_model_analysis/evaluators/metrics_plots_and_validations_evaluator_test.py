@@ -828,23 +828,29 @@ class MetricsPlotsAndValidationsEvaluatorTest(
               name='weighted_example_count')
           label_key = metric_types.MetricKey(name='mean_label')
           pred_key = metric_types.MetricKey(name='mean_prediction')
+          self.assertDictElementsAlmostEqual(slices[overall_slice], {
+              example_count_key: 3,
+          })
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[overall_slice], {
-                  example_count_key: 3,
                   weighted_example_count_key: 4.0,
                   label_key: (1.0 + 0.0 + 2 * 0.0) / (1.0 + 1.0 + 2.0),
                   pred_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0),
               })
+          self.assertDictElementsAlmostEqual(slices[fixed_string1_slice], {
+              example_count_key: 2,
+          })
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[fixed_string1_slice], {
-                  example_count_key: 2,
                   weighted_example_count_key: 2.0,
                   label_key: (1.0 + 0.0) / (1.0 + 1.0),
                   pred_key: (0.2 + 0.8) / (1.0 + 1.0),
               })
+          self.assertDictElementsAlmostEqual(slices[fixed_string2_slice], {
+              example_count_key: 1,
+          })
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[fixed_string2_slice], {
-                  example_count_key: 1,
                   weighted_example_count_key: 2.0,
                   label_key: (2 * 0.0) / 2.0,
                   pred_key: (2 * 0.5) / 2.0,

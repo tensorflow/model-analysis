@@ -27,7 +27,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import legacy_aggregate
-from tensorflow_model_analysis.evaluators import poisson_bootstrap
+from tensorflow_model_analysis.evaluators import legacy_poisson_bootstrap as poisson_bootstrap
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
