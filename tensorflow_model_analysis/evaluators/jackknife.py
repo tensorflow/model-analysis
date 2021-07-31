@@ -25,7 +25,6 @@ from typing import Optional, Set, Tuple
 import apache_beam as beam
 import numpy as np
 
-from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import confidence_intervals_util
 from tensorflow_model_analysis.metrics import metric_types
@@ -88,10 +87,10 @@ class _JackknifeSampleCombineFn(confidence_intervals_util.SampleCombineFn):
       self,
       num_jackknife_samples: int,
       skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None):
-    """Initializes a _MergeJackknifeSamples CombineFn.
+    """Initializes a _JackknifeSampleCombineFn.
 
     Args:
-      num_jackknife_samples: The number of samples computed per slice.
+      num_jackknife_samples: The expected number of samples computed per slice.
       skip_ci_metric_keys: Set of metric keys for which to skip confidence
         interval computation. For metric keys in this set, just the unsampled
         value will be returned.
@@ -100,50 +99,32 @@ class _JackknifeSampleCombineFn(confidence_intervals_util.SampleCombineFn):
         num_samples=num_jackknife_samples,
         full_sample_id=_FULL_SAMPLE_ID,
         skip_ci_metric_keys=skip_ci_metric_keys)
-    self._num_jackknife_samples = num_jackknife_samples
-    self._num_slices_counter = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_slices')
-    self._small_samples_counter = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_slices_with_small_jackknife_samples')
 
   def extract_output(
       self,
       accumulator: confidence_intervals_util.SampleCombineFn._SampleAccumulator
   ) -> metric_types.MetricsDict:
-    unsampled_values = accumulator.unsampled_values
-    assert _JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY in unsampled_values, (
-        'Expected unsampled jackknife values to contain the example count key '
-        f'"{_JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY}". '
-        f'Instead, found keys: {unsampled_values.keys()}')
-    n = unsampled_values[_JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY]
-
-    # Compute the jackknife standard error for each metric.
-    # See delete-d bootstrap method described in:
-    # https://www.stat.berkeley.edu/~hhuang/STAT152/Jackknife-Bootstrap.pdf
-    # Rather than normalize by all possible n-choose-d samples, we normalize by
-    # the actual number of samples.
-
-    # set d to expected size of a sample holdout
-    d = n / float(accumulator.num_samples)
-    if d < n**0.5:
-      # if d < sqrt(n) the jackknife standard error will behave poorly for some
-      # metrics (including the median).
-      self._small_samples_counter.inc(1)
-
-    jackknife_scaling_factor = (n - d) / d
-
+    accumulator = self._validate_accumulator(accumulator)
     result = {}
-    metrics_with_t_dists = super().extract_output(accumulator)
-    for metric_key, metric_value in metrics_with_t_dists.items():
-      if isinstance(metric_value, types.ValueWithTDistribution):
-        standard_error = metric_value.sample_standard_deviation
-        variance = standard_error**2
-        scaled_variance = variance * jackknife_scaling_factor
-        scaled_standard_error = scaled_variance**0.5
-        result[metric_key] = metric_value._replace(
-            sample_standard_deviation=scaled_standard_error)
+    dof = self._num_samples - 1
+    for key, unsampled_value in accumulator.unsampled_values.items():
+      if key not in accumulator.metric_samples:
+        result[key] = unsampled_value
       else:
-        result[metric_key] = metric_value
+        # See jackknife cookie bucket method described in:
+        # go/rasta-confidence-intervals
+        pseudo_values = []
+        raw_values = accumulator.metric_samples[key]
+        for sample_value in raw_values:
+          pseudo_values.append(self._num_samples * unsampled_value -
+                               (self._num_samples - 1) * sample_value)
+        mean = np.mean(raw_values)
+        std_error = np.std(pseudo_values, ddof=1)
+        result[key] = types.ValueWithTDistribution(
+            sample_mean=mean,
+            sample_standard_deviation=std_error,
+            unsampled_value=unsampled_value,
+            sample_degrees_of_freedom=dof)
     return result
 
 
@@ -156,7 +137,7 @@ def _add_sample_id(slice_key,
 
 
 @beam.ptransform_fn
-def ComputeJackknifeSample(  # pylint: disable=invalid-name
+def _ComputeJackknifeSample(  # pylint: disable=invalid-name
     sample_accumulators: beam.PCollection[
         confidence_intervals_util.AccumulatorType], sample_id: int,
     computations_combine_fn: beam.CombineFn,
@@ -276,14 +257,14 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
   # List[PCollection[Tuple[slicer.SliceKeyType, SampleMetrics]]]
   delete_d_samples = []
   for sample_id in range(num_jackknife_samples):
-    # TODO(b/194732335): push filter and Flatten into ComputeJackknifeSample
+    # TODO(b/194732335): push filter and Flatten into _ComputeJackknifeSample
     sample_accumulators = [
         acc for i, acc in enumerate(partition_accumulators) if i != sample_id
     ]
     delete_d_samples.append(
         sample_accumulators
         | f'FlattenPartitions[{sample_id}]' >> beam.Flatten()
-        | f'ComputeJackknifeSample[{sample_id}]' >> ComputeJackknifeSample(  # pylint: disable=no-value-for-parameter
+        | f'ComputeJackknifeSample[{sample_id}]' >> _ComputeJackknifeSample(  # pylint: disable=no-value-for-parameter
             sample_id=sample_id,
             computations_combine_fn=combine_fn,
             derived_metrics_ptransform=derived_metrics_ptransform))

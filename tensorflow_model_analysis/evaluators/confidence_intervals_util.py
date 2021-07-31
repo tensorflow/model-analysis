@@ -21,7 +21,6 @@ from typing import Any, Iterable, NamedTuple, Optional, Set, Sequence, TypeVar
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 
@@ -82,20 +81,18 @@ class SampleCombineFn(beam.CombineFn):
 
   class _SampleAccumulator(object):
 
-    __slots__ = ['sums', 'sums_of_squares', 'num_samples', 'unsampled_values']
+    __slots__ = ['unsampled_values', 'num_samples', 'metric_samples']
 
     def __init__(self):
-      self.sums = collections.defaultdict(float)
-      self.sums_of_squares = collections.defaultdict(float)
-      self.num_samples = 0
       self.unsampled_values = None
+      self.num_samples = 0
+      self.metric_samples = collections.defaultdict(list)
 
   def __init__(
       self,
       num_samples: int,
       full_sample_id: int,
-      skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None,
-      allow_missing_samples: bool = False):
+      skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None):
     """Initializes a _MergeJackknifeSamples CombineFn.
 
     Args:
@@ -104,23 +101,16 @@ class SampleCombineFn(beam.CombineFn):
       skip_ci_metric_keys: Set of metric keys for which to skip confidence
         interval computation. For metric keys in this set, just the unsampled
         value will be returned.
-      allow_missing_samples: Whether to return standard error estimates in cases
-        where fewer than the expected number of samples are present. This can
-        happen when operating on a small slice and the sampling method generates
-        an empty sample.
     """
     self._num_samples = num_samples
     self._full_sample_id = full_sample_id
     self._skip_ci_metric_keys = skip_ci_metric_keys
-    self._allow_missing_samples = allow_missing_samples
     self._num_slices_counter = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_slices')
     self._missing_samples_counter = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_slices_missing_samples')
-    self._negative_variance_counter = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_negative_variance_metric_slices')
-    self._zero_variance_counter = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_zero_variance_metric_slices')
+    self._missing_metric_samples_counter = beam.metrics.Metrics.counter(
+        constants.METRICS_NAMESPACE, 'num_slices_missing_metric_samples')
 
   def create_accumulator(self) -> 'SampleCombineFn._SampleAccumulator':
     return SampleCombineFn._SampleAccumulator()
@@ -137,11 +127,13 @@ class SampleCombineFn(beam.CombineFn):
         if not isinstance(value, numbers.Number):
           # skip non-numeric values
           continue
+        if (self._skip_ci_metric_keys and
+            metric_key in self._skip_ci_metric_keys):
+          continue
         # Numpy int64 and int32 types can overflow without warning. To prevent
         # this we always cast to python floats prior to doing any operations.
         value = float(value)
-        accumulator.sums[metric_key] += value
-        accumulator.sums_of_squares[metric_key] += value * value
+        accumulator.metric_samples[metric_key].append(value)
     return accumulator
 
   def merge_accumulators(
@@ -154,53 +146,39 @@ class SampleCombineFn(beam.CombineFn):
       if accumulator.unsampled_values:
         result.unsampled_values = accumulator.unsampled_values
       result.num_samples += accumulator.num_samples
-      for metric_key, sum_value in accumulator.sums.items():
-        result.sums[metric_key] += sum_value
-        result.sums_of_squares[metric_key] += (
-            accumulator.sums_of_squares[metric_key])
+      for metric_key, sample_values in accumulator.metric_samples.items():
+        result.metric_samples[metric_key].extend(sample_values)
     return result
 
+  def _validate_accumulator(
+      self, accumulator: 'SampleCombineFn._SampleAccumulator'
+  ) -> 'SampleCombineFn._SampleAccumulator':
+    self._num_slices_counter.inc(1)
+    error_metric_key = metric_types.MetricKey(metric_keys.ERROR_METRIC)
+    if accumulator.num_samples < self._num_samples:
+      self._missing_samples_counter.inc(1)
+      accumulator.unsampled_values[error_metric_key] = (
+          f'CI not computed because only {accumulator.num_samples} samples '
+          f'were non-empty. Expected {self._num_samples}.')
+      # If we are missing samples, clear samples for all metrics as they are all
+      # unusable.
+      accumulator.metric_samples = {}
+    # Check that all metrics were present in all samples
+    metric_incorrect_sample_counts = {}
+    for metric_key in accumulator.unsampled_values:
+      if metric_key in accumulator.metric_samples:
+        actual_num_samples = len(accumulator.metric_samples[metric_key])
+        if actual_num_samples != self._num_samples:
+          metric_incorrect_sample_counts[metric_key] = actual_num_samples
+    if metric_incorrect_sample_counts:
+      accumulator.unsampled_values[error_metric_key] = (
+          'CI not computed for the following metrics due to incorrect number '
+          f'of samples: "{metric_incorrect_sample_counts}".'
+          f'Expected {self._num_samples}.')
+    return accumulator
+
+  # TODO(b/195132951): replace with @abc.abstractmethod
   def extract_output(
       self, accumulator: 'SampleCombineFn._SampleAccumulator'
   ) -> metric_types.MetricsDict:
-    self._num_slices_counter.inc(1)
-    result = {}
-    missing_samples = False
-    # If we don't get at least one example in each sample, don't compute CI.
-    if (not self._allow_missing_samples and
-        accumulator.num_samples < self._num_samples):
-      self._missing_samples_counter.inc(1)
-      missing_samples = True
-      error_metric_key = metric_types.MetricKey(metric_keys.ERROR_METRIC)
-      result[error_metric_key] = (
-          f'CI not computed because only {accumulator.num_samples} samples '
-          f'were non-empty. Expected {self._num_samples}.')
-
-    dof = accumulator.num_samples - 1
-
-    assert accumulator.unsampled_values is not None, (
-        'Expected unsampled value to be present in final accumulator')
-    for metric_key, unsampled_value in accumulator.unsampled_values.items():
-      if (missing_samples or metric_key not in accumulator.sums or
-          (self._skip_ci_metric_keys and
-           metric_key in self._skip_ci_metric_keys)):
-        result[metric_key] = unsampled_value
-      else:
-        mean = accumulator.sums[metric_key] / accumulator.num_samples
-        sum_of_squares = accumulator.sums_of_squares[metric_key]
-        # one-pass variance formula with num_samples degrees of freedom
-        sample_variance = (
-            sum_of_squares / float(accumulator.num_samples) - mean * mean)
-        # we want to use num_samples - 1 degrees of freedom, so we rescale
-        sample_variance = sample_variance * accumulator.num_samples / dof
-        standard_error = sample_variance**0.5
-        if standard_error == 0:
-          self._zero_variance_counter.inc()
-        elif standard_error < 0:
-          self._negative_variance_counter.inc()
-        result[metric_key] = types.ValueWithTDistribution(
-            sample_mean=mean,
-            sample_standard_deviation=standard_error,
-            sample_degrees_of_freedom=dof,
-            unsampled_value=unsampled_value)
-    return result
+    raise NotImplementedError('Must be implemented in subclasses.')

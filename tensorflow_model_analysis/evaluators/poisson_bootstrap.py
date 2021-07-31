@@ -63,7 +63,7 @@ def _add_sample_id(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-def _ComputeBootstrapSample(
+def _ComputeBootstrapSample(  # pylint disable=invalid-name
     sliced_extracts: beam.pvalue.PCollection[Tuple[slicer.SliceKeyType,
                                                    types.Extracts]],
     sample_id: int, computations_combine_fn: beam.CombineFn,
@@ -106,6 +106,48 @@ def _ComputeBootstrapSample(
           _add_sample_id, sample_id=sample_id))
 
 
+class _BootstrapSampleCombineFn(confidence_intervals_util.SampleCombineFn):
+  """Computes the bootstrap standard error for each metric from samples."""
+
+  def __init__(
+      self,
+      num_bootstrap_samples: int,
+      skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None):
+    """Initializes a _BootstrapSampleCombineFn.
+
+    Args:
+      num_bootstrap_samples: The expected number of samples computed per slice.
+      skip_ci_metric_keys: Set of metric keys for which to skip confidence
+        interval computation. For metric keys in this set, just the unsampled
+        value will be returned.
+    """
+    super().__init__(
+        num_samples=num_bootstrap_samples,
+        full_sample_id=_FULL_SAMPLE_ID,
+        skip_ci_metric_keys=skip_ci_metric_keys)
+
+  def extract_output(
+      self,
+      accumulator: confidence_intervals_util.SampleCombineFn._SampleAccumulator
+  ) -> metric_types.MetricsDict:
+    accumulator = self._validate_accumulator(accumulator)
+    result = {}
+    dof = self._num_samples - 1
+    for key, unsampled_value in accumulator.unsampled_values.items():
+      if key not in accumulator.metric_samples:
+        result[key] = unsampled_value
+      else:
+        sample_values = accumulator.metric_samples[key]
+        mean = np.mean(sample_values)
+        std_error = np.std(sample_values, ddof=1)
+        result[key] = types.ValueWithTDistribution(
+            sample_mean=mean,
+            sample_standard_deviation=std_error,
+            unsampled_value=unsampled_value,
+            sample_degrees_of_freedom=dof)
+    return result
+
+
 @beam.ptransform_fn
 def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
     sliced_extracts: beam.pvalue.PCollection[Tuple[slicer.SliceKeyType,
@@ -115,7 +157,6 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
     num_bootstrap_samples: int,
     hot_key_fanout: Optional[int] = None,
     skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None,
-    allow_missing_samples: bool = False,
     random_seed_for_testing: Optional[int] = None) -> beam.pvalue.PCollection[
         Tuple[slicer.SliceKeyOrCrossSliceKeyType, metric_types.MetricsDict]]:
   """PTransform for computing metrics using T-Distribution values.
@@ -138,10 +179,6 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
     skip_ci_metric_keys: Set of metric keys for which to skip confidence
       interval computation. For metric keys in this set, just the unsampled
       value will be returned.
-    allow_missing_samples: Whether to compute CIs when any of the samples is
-      empty. By default this is false, in which case only point estimates will
-      be returned and an additional error metric will be included under the
-      __ERROR__ metric_key.
     random_seed_for_testing: Seed to use for unit testing, because
       nondeterministic tests stink. Each partition will use this value + i.
 
@@ -176,9 +213,6 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
   return (sampled_metrics + [unsampled_metrics]
           | 'FlattenBootstrapPartitions' >> beam.Flatten()
           | 'CombineSamplesPerSlice' >> beam.CombinePerKey(
-              confidence_intervals_util.SampleCombineFn(
-                  num_bootstrap_samples,
-                  full_sample_id=_FULL_SAMPLE_ID,
-                  skip_ci_metric_keys=skip_ci_metric_keys,
-                  # Allow missing samples for legacy compatibility
-                  allow_missing_samples=allow_missing_samples)))
+              _BootstrapSampleCombineFn(
+                  num_bootstrap_samples=num_bootstrap_samples,
+                  skip_ci_metric_keys=skip_ci_metric_keys)))
