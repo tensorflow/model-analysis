@@ -2548,6 +2548,42 @@ class MetricsPlotsAndValidationsEvaluatorTest(
       util.assert_that(evaluations[constants.VALIDATIONS_KEY],
                        check_validations)
 
+  def testAddCrossSliceMetricsMatchAll(self):
+    overall_slice_key = ()
+    slice_key1 = (('feature', 1),)
+    slice_key2 = (('feature', 2),)
+    slice_key3 = (('feature', 3),)
+    metrics_dict = {}
+    sliced_metrics = [(overall_slice_key, metrics_dict),
+                      (slice_key1, metrics_dict), (slice_key2, metrics_dict),
+                      (slice_key3, metrics_dict)]
+    with beam.Pipeline() as pipeline:
+      cross_sliced_metrics = (
+          pipeline | 'CreateSlicedMetrics' >> beam.Create(sliced_metrics)
+          | 'AddCrossSliceMetrics' >>
+          metrics_plots_and_validations_evaluator._AddCrossSliceMetrics(
+              cross_slice_specs=[
+                  config.CrossSlicingSpec(baseline_spec={}, slicing_specs=[])
+              ],
+              cross_slice_computations=[]))
+
+      def check_result(got_sliced_metrics):
+        actual_slice_keys = [k for k, _ in got_sliced_metrics]
+        expected_slice_keys = [
+            # cross slice keys
+            (overall_slice_key, slice_key1),
+            (overall_slice_key, slice_key2),
+            (overall_slice_key, slice_key3),
+            # single slice keys
+            overall_slice_key,
+            slice_key1,
+            slice_key2,
+            slice_key3
+        ]
+        self.assertCountEqual(expected_slice_keys, actual_slice_keys)
+
+      util.assert_that(cross_sliced_metrics, check_result)
+
   @parameterized.named_parameters(
       ('IntIsDiffable', 1, True),
       ('FloatIsDiffable', 1.0, True),

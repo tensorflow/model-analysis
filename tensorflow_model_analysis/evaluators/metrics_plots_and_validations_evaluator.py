@@ -402,6 +402,13 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
         return True
     return False
 
+  def is_not_slice_applicable(
+      sliced_combiner_output: Tuple[slicer.SliceKeyType,
+                                    metric_types.MetricsDict],
+      slicing_specs: Union[config.SlicingSpec, Iterable[config.SlicingSpec]]
+  ) -> bool:
+    return not is_slice_applicable(sliced_combiner_output, slicing_specs)
+
   def compute_cross_slices(
       baseline_slice: Tuple[slicer.SliceKeyType, metric_types.MetricsDict],
       comparison_slices: Iterable[Tuple[slicer.SliceKeyType,
@@ -439,11 +446,19 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
         | 'FilterBaselineSlices(%d)' % cross_slice_ind >> beam.Filter(
             is_slice_applicable, [cross_slice_spec.baseline_spec]))
 
-    slicing_specs = list(cross_slice_spec.slicing_specs)
-    comparison_slices = (
-        sliced_combiner_outputs
-        | 'FilterComparisonSlices(%d)' % cross_slice_ind >> beam.Filter(
-            is_slice_applicable, slicing_specs))
+    if cross_slice_spec.slicing_specs:
+      slicing_specs = list(cross_slice_spec.slicing_specs)
+      comparison_slices = (
+          sliced_combiner_outputs
+          | 'FilterToComparisonSlices(%d)' % cross_slice_ind >> beam.Filter(
+              is_slice_applicable, slicing_specs))
+    else:
+      # When slicing_specs is not set, consider all available slices except the
+      # baseline as candidates.
+      comparison_slices = (
+          sliced_combiner_outputs
+          | 'FilterOutBaselineSlices(%d)' % cross_slice_ind >> beam.Filter(
+              is_not_slice_applicable, [cross_slice_spec.baseline_spec]))
 
     cross_slice_outputs.append(
         baseline_slices
