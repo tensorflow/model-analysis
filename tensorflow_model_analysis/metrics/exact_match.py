@@ -13,25 +13,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Exact match metric."""
+import json
 from typing import Dict, Iterable, Optional, Text
-import apache_beam as beam
-import numpy as np
 
+import apache_beam as beam
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 
 EXACT_MATCH_NAME = 'exact_match'
+_JSON = 'json'
+_CONVERT_TO_VALUES = frozenset([_JSON])
 
 
 class ExactMatch(metric_types.Metric):
   """Exact Match Metric."""
 
-  def __init__(self, name: Text = EXACT_MATCH_NAME):
-    """Initializes exact match metric."""
+  def __init__(self,
+               name: Text = EXACT_MATCH_NAME,
+               convert_to: Optional[Text] = None):
+    """Initializes exact match metric.
+
+    Args:
+      name: The name of the metric to use.
+      convert_to: The conversion to perform before checking equality.
+    """
 
     super(ExactMatch, self).__init__(
-        metric_util.merge_per_key_computations(_exact_match), name=name)
+        metric_util.merge_per_key_computations(_exact_match),
+        name=name,
+        convert_to=convert_to)
+    if convert_to and convert_to not in _CONVERT_TO_VALUES:
+      raise ValueError('convert_to can only be one of the following: %s' %
+                       str(convert_to))
 
 
 metric_types.register_metric(ExactMatch)
@@ -44,8 +58,8 @@ def _exact_match(
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    convert_to: Optional[Text] = None) -> metric_types.MetricComputations:
   """Returns metric computations for computing the exact match score."""
   key = metric_types.MetricKey(
       name=name,
@@ -57,7 +71,7 @@ def _exact_match(
           keys=[key],
           preprocessor=None,
           combiner=_ExactMatchCombiner(key, eval_config, aggregation_type,
-                                       class_weights))
+                                       class_weights, convert_to))
   ]
 
 
@@ -81,11 +95,13 @@ class _ExactMatchCombiner(beam.CombineFn):
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
-               class_weights: Optional[Dict[int, float]]):
+               class_weights: Optional[Dict[int, float]],
+               convert_to: Optional[Text]):
     self._key = key
     self._eval_config = eval_config
     self._aggregation_type = aggregation_type
     self._class_weights = class_weights
+    self._convert_to = convert_to
 
   def create_accumulator(self) -> _ExactMatchAccumulator:
     return _ExactMatchAccumulator()
@@ -101,7 +117,13 @@ class _ExactMatchCombiner(beam.CombineFn):
             output_name=self._key.output_name,
             aggregation_type=self._aggregation_type,
             class_weights=self._class_weights)):
-      score = np.all(label == prediction)
+      label = label.tolist()
+      prediction = prediction.tolist()
+      if self._convert_to == _JSON:
+        label = [json.loads(l) for l in label]
+        prediction = [json.loads(p) for p in prediction]
+      match = [p == l for p, l in zip(prediction, label)]
+      score = int(all(match))
       example_weight = example_weight.item()
       accumulator.total_weighted_exact_match_scores += score * example_weight
       accumulator.total_weighted_examples += example_weight

@@ -17,6 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
+
+import json
+
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -26,26 +30,38 @@ from tensorflow_model_analysis.metrics import exact_match
 from tensorflow_model_analysis.metrics import metric_util
 
 
-class ExactMatchTest(testutil.TensorflowModelAnalysisTest):
+class ExactMatchTest(testutil.TensorflowModelAnalysisTest,
+                     parameterized.TestCase):
 
-  def testExactMatchWithoutWeights(self):
-    computations = exact_match.ExactMatch().computations()
+  @parameterized.named_parameters(('text', False), ('json', True))
+  def testExactMatchWithoutWeights(self, test_json):
+    convert_to = 'json' if test_json else None
+    computations = exact_match.ExactMatch(convert_to=convert_to).computations()
     metric = computations[0]
+
+    def _maybe_convert_feature(f):
+      return json.dumps(f) if test_json else f
+
     example1 = {
-        'labels': np.array(['Test 1 two 3']),
-        'predictions': np.array(['Test 1 two 3']),
+        'labels': np.array([_maybe_convert_feature('Test 1 two 3')]),
+        'predictions': np.array([_maybe_convert_feature('Test 1 two 3')]),
         'example_weights': np.array([1.0]),
     }
     example2 = {
-        'labels': np.array(['Testing']),
-        'predictions': np.array(['Dog']),
+        'labels': np.array([_maybe_convert_feature('Testing')]),
+        'predictions': np.array([_maybe_convert_feature('Dog')]),
+        'example_weights': np.array([1.0]),
+    }
+    example3 = {
+        'labels': np.array([_maybe_convert_feature('Test 1 two 3') + ' ']),
+        'predictions': np.array([_maybe_convert_feature('Test 1 two 3')]),
         'example_weights': np.array([1.0]),
     }
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([example1, example2])
+          | 'Create' >> beam.Create([example1, example2, example3])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeMetric' >> beam.CombinePerKey(metric.combiner))
@@ -59,8 +75,11 @@ class ExactMatchTest(testutil.TensorflowModelAnalysisTest):
           key = metric.keys[0]
           # example1 is a perfect match (score 100)
           # example2 is a complete miss (score 0)
-          # average score: 0.50
-          self.assertDictElementsAlmostEqual(got_metrics, {key: 0.50}, places=5)
+          # example3 is a perfect match for json but a miss for text.
+          # average score: 0.6666.. for json, 0.3333... for text.
+          score = 2.0 / 3 if test_json else 1.0 / 3
+          self.assertDictElementsAlmostEqual(
+              got_metrics, {key: score}, places=5)
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
