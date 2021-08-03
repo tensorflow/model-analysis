@@ -66,7 +66,10 @@ def metric_computations_using_keras_saved_model(
         hasattr(model, 'compiled_loss') and model.compiled_loss and
         len(model.compiled_metrics.metrics) + len(model.compiled_loss.metrics)
         == len(model.metrics)):
-    output_names = model.output_names if hasattr(model, 'output_names') else []
+    if hasattr(model, 'output_names') and model.output_names:
+      output_names = model.output_names
+    else:
+      output_names = []
     keys = _metric_keys(
         chain(model.compiled_metrics.metrics, model.compiled_loss.metrics),
         model_name, output_names)
@@ -79,7 +82,10 @@ def metric_computations_using_keras_saved_model(
                                                    batch_size))
     ]
   else:
-    output_names = model.output_names if hasattr(model, 'output_names') else []
+    if hasattr(model, 'output_names') and model.output_names:
+      output_names = model.output_names
+    else:
+      output_names = []
     keys = _metric_keys(model.metrics, model_name, output_names)
     return [
         metric_types.MetricComputation(
