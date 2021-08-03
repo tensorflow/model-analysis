@@ -71,7 +71,7 @@ message ModelSpec {
   // Optional prediction key (single_output model). The prediction key is used
   // to distinguish between different values when the output from the predict
   // call is a dict instead of a single tensor as is the case with
-  // tf.Estimators. If not set and the prediction is a dict, the keys
+  // tf.Estimators. If not set and the prediction is a dict, the keys 'scores',
   // 'logistic', 'predictions', or 'probabilities' are tried (in that order).
   // The prediction key is also used in cases where the predictions are
   // pre-calculated and stored along side the features. In this case the
