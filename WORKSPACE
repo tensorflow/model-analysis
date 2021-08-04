@@ -16,22 +16,6 @@ http_archive(
     strip_prefix = "tensorflow-%s" % _TENSORFLOW_GIT_COMMIT,
 )
 
-# We have to import zlib directly ourselves, because protobuf_deps.bzl isn't
-# part of the protobuf release yet
-# (https://github.com/protocolbuffers/protobuf/issues/5918).
-http_archive(
-    name = "net_zlib",
-    build_file = "@com_google_protobuf//:third_party/zlib.BUILD",
-    sha256 = "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1",
-    strip_prefix = "zlib-1.2.11",
-    urls = ["https://zlib.net/zlib-1.2.11.tar.gz"],
-)
-
-bind(
-    name = "zlib",
-    actual = "@net_zlib//:zlib",
-)
-
 http_archive(
     name = "io_bazel_rules_webtesting",
     sha256 = "5ed12bcfa923c94fb0d0654cf7ca3939491fd1513b1bdbe39eaed566e478e3a3",
@@ -48,17 +32,17 @@ web_test_repositories()
 
 http_archive(
     name = "io_bazel_rules_closure",
-    sha256 = "e0a111000aeed2051f29fcc7a3f83be3ad8c6c93c186e64beb1ad313f0c7f9f9",
-    strip_prefix = "rules_closure-cf1e44edb908e9616030cc83d085989b8e6cd6df",
+    sha256 = "7d206c2383811f378a5ef03f4aacbcf5f47fd8650f6abbc3fa89f3a27dd8b176",
+    strip_prefix = "rules_closure-0.10.0",
     urls = [
-        "http://mirror.tensorflow.org/github.com/bazelbuild/rules_closure/archive/cf1e44edb908e9616030cc83d085989b8e6cd6df.tar.gz",
-        "https://github.com/bazelbuild/rules_closure/archive/cf1e44edb908e9616030cc83d085989b8e6cd6df.tar.gz",  # 2019-04-04
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_closure/archive/0.10.0.tar.gz",
+        "https://github.com/bazelbuild/rules_closure/archive/0.10.0.tar.gz",
     ],
 )
 
-load("@io_bazel_rules_closure//closure:defs.bzl", "closure_repositories")
-
-closure_repositories()
+load("@io_bazel_rules_closure//closure:repositories.bzl", "rules_closure_dependencies", "rules_closure_toolchains")
+rules_closure_dependencies()
+rules_closure_toolchains()
 
 http_archive(
     name = "org_tensorflow_tensorboard",
@@ -79,4 +63,4 @@ tensorflow_model_analysis_workspace()
 # Specify the minimum required bazel version.
 load("@org_tensorflow//tensorflow:version_check.bzl", "check_bazel_version_at_least")
 
-check_bazel_version_at_least("0.24.1")
+check_bazel_version_at_least("3.7.2")
