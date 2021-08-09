@@ -89,7 +89,7 @@ export class FairnessNbContainer extends SelectEventMixin
        * The name of the evaluation result.
        * @type {string}
        */
-      evalName: {type: String},
+      evalName: {type: String, value: 'base'},
 
       /**
        * The slicing metrics of the second evaluation result. Optional.
@@ -110,20 +110,7 @@ export class FairnessNbContainer extends SelectEventMixin
        * The name of the second evaluation result. Optional
        * @type {string}
        */
-      evalNameCompare: {type: String},
-
-      /**
-       * The list of run numbers that's available to select.
-       * Used by TensorBoard. Empty otherwise.
-       * @type {!Array<string>}
-       */
-      availableEvaluationRuns: {type: Array, value: []},
-
-      /**
-       * Whether to show "Select evaluation run" drop down or not.
-       * @private {string}
-       */
-      hideSelectEvalRunDropDown: {type: Boolean, value: false},
+      evalNameCompare: {type: String, value: 'compare'},
 
       /**
        * The full names of metrics available. eg: auc, negative_rate@0.25 or
@@ -148,16 +135,6 @@ export class FairnessNbContainer extends SelectEventMixin
 
       /** @type {string} */
       weightColumn: {type: String, value: 'totalWeightedExamples'},
-
-      /** @type {string} */
-      selectedEvaluationRun: {type: String, notify: true},
-
-      /** @type {string} */
-      selectedEvaluationRunToCompare: {type: String, notify: true},
-
-      /** @type {boolean} */
-      modelComparisonEnabled_:
-          {type: Boolean, notify: true, observer: 'onModelComparisonEnabled_'}
     };
   }
 
@@ -257,31 +234,6 @@ export class FairnessNbContainer extends SelectEventMixin
       ...setToArray(thresholdedMetrics).sort((a, b) => a.localeCompare(b)),
       ...setToArray(otherMetrics).sort((a, b) => a.localeCompare(b))
     ];
-  }
-
-  /**
-   * Returns true, if run-selector should be hidden from the users.
-   * @param {boolean} hideSelectEvalRunDropDown
-   * @param {!Array<string>|undefined} availableEvaluationRuns
-   * @return {boolean}
-   * @private
-   */
-  hideRunSelector_(hideSelectEvalRunDropDown, availableEvaluationRuns) {
-    return hideSelectEvalRunDropDown || !availableEvaluationRuns.length;
-  }
-
-  /**
-   * Handler listening to any changes in model comparison check box.
-   * @param {boolean} modelComparisonEnabled
-   * @private
-   */
-  onModelComparisonEnabled_(modelComparisonEnabled) {
-    // If model comparison is turned off, set slicing metric to empty array.
-    if (!modelComparisonEnabled) {
-      this.slicingMetricsCompare = [];
-      this.flattenSlicingMetricsCompare_ = [];
-      this.selectedEvaluationRunToCompare = '';
-    }
   }
 };
 

@@ -66,40 +66,6 @@ template.innerHTML = `
 
 <div class="flex-row">
   <div class="flex-column">
-    <paper-card id="run-selector"
-                hidden$="[[hideRunSelector_(hideSelectEvalRunDropDown, availableEvaluationRuns)]]">
-        <paper-dropdown-menu label="Select evaluation run:" title$="[[selectedEvaluationRun]]">
-          <paper-listbox selected="{{selectedEvaluationRun}}" attr-for-selected="run"
-                         class="dropdown-content" slot="dropdown-content" title$="">
-            <template is="dom-repeat" items="[[availableEvaluationRuns]]">
-              <paper-item run="[[item]]">
-                <span class="evaluation-run" title$="[[item]]">[[item]]</span>
-              </paper-item>
-            </template>
-          </paper-listbox>
-        </paper-dropdown-menu>
-        <paper-item>
-          <paper-checkbox id="model-comparison" checked="{{modelComparisonEnabled_}}">
-             <span class="model-comparison" title$="Enable Model Comparison">
-               Enable Model Comparison
-            </span>
-          </paper-checkbox>
-        </paper-item>
-        <div id="div-to-compare" hidden$="[[!modelComparisonEnabled_]]">
-          <paper-dropdown-menu id="drop-down-to-compare"
-                               label="Select evaluation run to compare:"
-                               title$="[[selectedEvaluationRunToCompare]]">
-            <paper-listbox selected="{{selectedEvaluationRunToCompare}}" attr-for-selected="run"
-                           class="dropdown-content" slot="dropdown-content" title$="">
-              <template is="dom-repeat" items="[[availableEvaluationRuns]]">
-                <paper-item run="[[item]]">
-                  <span class="evaluation-run" title$="[[item]]">[[item]]</span>
-                </paper-item>
-              </template>
-            </paper-listbox>
-          </paper-dropdown-menu>
-        </div>
-    </paper-card>
     <paper-card id="metrics-and-slice-selector">
       <fairness-metric-and-slice-selector available-metrics="[[selectableMetrics_]]"
                                    selected-metrics='{{selectedMetrics_}}'>

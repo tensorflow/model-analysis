@@ -80,6 +80,7 @@
   const element =
       document.getElementsByTagName('fairness-tensorboard-container')[0];
   element.selectedEvaluationRun_ = '1';
+  element.modelComparisonEnabled_ = true;
   element.selectedEvaluationRunCompare_ = '2';
   element.evaluationRuns_ = ['1', '2', '3'];
   element.hideSelectEvalRunDropDown_ = false;
@@ -88,7 +89,6 @@
   element.slicingMetricsCompare_ = input2;
 
   let container = element.shadowRoot.querySelector('fairness-nb-container');
-  container.shadowRoot.querySelector('#model-comparison').checked = true;
   container.evalName = 'base';
   container.evalNameCompare = 'compare';
 })();

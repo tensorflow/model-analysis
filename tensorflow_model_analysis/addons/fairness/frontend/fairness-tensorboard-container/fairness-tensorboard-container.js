@@ -150,6 +150,10 @@ export class FairnessTensorboardContainer extends SelectEventMixin
        * @private {!Array<!Object>}
        */
       slicingMetricsCompare_: {type: Array, notify: true, value: []},
+
+      /** @type {boolean} */
+      modelComparisonEnabled_:
+          {type: Boolean, notify: true, observer: 'onModelComparisonEnabled_'}
     };
   }
 
@@ -168,16 +172,7 @@ export class FairnessTensorboardContainer extends SelectEventMixin
         .then(res => res.json())
         .then(slicingMetricsCompare => {
           this.slicingMetricsCompare_ = slicingMetricsCompare;
-          let nbContainer = this.shadowRoot.querySelector('fairness-nb-container');
-          nbContainer.evalName = 'base';
-          if (this.slicingMetricsCompare_) {
-            nbContainer.evalNameCompare = 'compare';
-          } else {
-            nbContainer.evalNameCompare = '';
-          }
         });
-
-
   }
 
   evaluationOutputPathChanged_(path) {
@@ -215,6 +210,31 @@ export class FairnessTensorboardContainer extends SelectEventMixin
     }
 
     return false;
+  }
+
+
+  /**
+   * Returns true, if run-selector should be hidden from the users.
+   * @param {boolean} hideSelectEvalRunDropDown
+   * @param {!Array<string>|undefined} availableEvaluationRuns
+   * @return {boolean}
+   * @private
+   */
+  hideRunSelector_(hideSelectEvalRunDropDown, availableEvaluationRuns) {
+    return hideSelectEvalRunDropDown || !availableEvaluationRuns.length;
+  }
+
+  /**
+   * Handler listening to any changes in model comparison check box.
+   * @param {boolean} modelComparisonEnabled
+   * @private
+   */
+  onModelComparisonEnabled_(modelComparisonEnabled) {
+    // If model comparison is turned off, set slicing metric to empty array.
+    if (!modelComparisonEnabled) {
+      this.slicingMetricsCompare_ = [];
+      this.selectedEvaluationRunCompare_ = '';
+    }
   }
 };
 

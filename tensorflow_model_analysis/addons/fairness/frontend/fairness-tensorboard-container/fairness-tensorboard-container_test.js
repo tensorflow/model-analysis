@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Google LLC
+ * Copyright 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-suite('fairness-nb-container tests', () => {
+suite('fairness-tensorboard-container tests', () => {
   const SLICES_NAMES = [
     'Overall', 'Slice:1', 'Slice:2', 'Slice:3', 'Slice:4', 'Slice:5', 'Slice:6',
     'Slice:7', 'Slice:8', 'Slice:9', 'Slice:10', 'Slice:11', 'Slice:12',
@@ -68,76 +68,50 @@ suite('fairness-nb-container tests', () => {
     fairnessContainer = fixture('test-fixture');
   });
 
-  test('testMetricsAndSliceList', done => {
-    fairnessContainer = fixture('test-fixture');
-
+  test('testRunSelectorHidden', done => {
     const fillData = () => {
-      let slicingMetrics = generateSlicingMetrics();
-      // Available metrics should include all the metrics from all the slices
-      // even if any of the slice doesn't have some of the metrics.
-      delete slicingMetrics[0]['metrics']['lift@2'];
-      delete slicingMetrics[0]['metrics']['lift@23'];
-      fairnessContainer.slicingMetrics = slicingMetrics;
-      setTimeout(checkValue, 0);
+      fairnessContainer.slicingMetrics_ = generateSlicingMetrics();
+      setTimeout(checkRunSelectorIsInvisible, 0);
     };
-    const checkValue = () => {
-      let metricsList = fairnessContainer.shadowRoot.querySelector(
-          'fairness-metric-and-slice-selector');
-      assert.deepEqual(metricsList.availableMetrics, [
-        'flip_rate/overall',
-        'post_export_metrics/false_positive_rate',
-        'post_export_metrics/positive_rate',
-        'post_export_metrics/true_positive_rate',
-        'accuracy',
-        'lift@2',
-        'lift@23',
-        'totalWeightedExamples',
-      ]);
-      assert.deepEqual(
-          metricsList.selectedMetrics,
-          ['accuracy']);
-      done();
-    };
-
-    setTimeout(fillData, 0);
-  });
-
-  test('testFairnessBoard', done => {
-    fairnessContainer = fixture('test-fixture');
-
-    const fillData = () => {
-      fairnessContainer.slicingMetrics = generateSlicingMetrics();
-      setTimeout(checkValue, 0);
-    };
-    const checkValue = () => {
-      let fairnessElement =
-          fairnessContainer.shadowRoot.querySelector('fairness-metrics-board');
-      assert.deepEqual(
-          fairnessElement.metrics, ['accuracy']);
+    const checkRunSelectorIsInvisible = () => {
+      let runSelector =
+          fairnessContainer.shadowRoot.querySelector('#run-selector');
+      assert.equal(runSelector.hidden, true);
       done();
     };
     setTimeout(fillData, 0);
   });
 
-  test('testFairnessBoard_EvalCompare', done => {
-    fairnessContainer = fixture('test-fixture');
-
+  test('testRunSelectorVisibleWhenEvalRunsAvailable', done => {
     const fillData = () => {
-      fairnessContainer.slicingMetrics = generateSlicingMetrics();
-      fairnessContainer.slicingMetricsCompare = generateSlicingMetrics();
-      fairnessContainer.evalName = 'EvalA';
-      fairnessContainer.evalNameCompare = 'EvalB';
-      setTimeout(checkValue, 0);
+      fairnessContainer.slicingMetrics_ = generateSlicingMetrics();
+      fairnessContainer.evaluationRuns_ = ['1', '2', '3'];
+      setTimeout(checkRunSelectorIsVisible, 0);
     };
-    const checkValue = () => {
-      let fairnessElement =
-          fairnessContainer.shadowRoot.querySelector('fairness-metrics-board');
-      assert.deepEqual(
-          fairnessElement.metrics, ['accuracy']);
-      assert.deepEqual(fairnessElement.evalName, 'EvalA');
-      assert.deepEqual(fairnessElement.evalNameCompare, 'EvalB');
+    const checkRunSelectorIsVisible = () => {
+      let runSelector =
+          fairnessContainer.shadowRoot.querySelector('#run-selector');
+      assert.equal(runSelector.hidden, false);
       done();
     };
     setTimeout(fillData, 0);
+  });
+
+  test('testModelComparisonFlow', done => {
+    const checkCheckbox = () => {
+      let checkbox =
+          fairnessContainer.shadowRoot.querySelector('#model-comparison');
+      assert.equal(checkbox.checked, false);
+
+      let runSelector =
+          fairnessContainer.shadowRoot.querySelector('#div-to-compare');
+      assert.equal(runSelector.hidden, true);
+
+      checkbox.checked = true;
+      assert.equal(runSelector.hidden, false);
+      done();
+    };
+
+    setTimeout(checkCheckbox, 0);
   });
 });

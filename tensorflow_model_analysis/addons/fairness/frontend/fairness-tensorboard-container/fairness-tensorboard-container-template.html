@@ -38,12 +38,44 @@ template.innerHTML = `
 </style>
 
 <div class="container">
-  <fairness-nb-container available-evaluation-runs="[[evaluationRuns_]]"
-                         selected-evaluation-run="{{selectedEvaluationRun_}}"
-                         selected-evaluation-run-to-compare="{{selectedEvaluationRunCompare_}}"
-                         slicing-metrics="[[slicingMetrics_]]"
+  <paper-card id="run-selector"
+            hidden$="[[hideRunSelector_(hideSelectEvalRunDropDown_, evaluationRuns_)]]">
+    <paper-dropdown-menu label="Select evaluation run:" title$="[[selectedEvaluationRun_]]">
+      <paper-listbox selected="{{selectedEvaluationRun_}}" attr-for-selected="run"
+                     class="dropdown-content" slot="dropdown-content" title$="">
+        <template is="dom-repeat" items="[[evaluationRuns_]]">
+          <paper-item run="[[item]]">
+            <span class="evaluation-run" title$="[[item]]">[[item]]</span>
+          </paper-item>
+        </template>
+      </paper-listbox>
+    </paper-dropdown-menu>
+    <paper-item>
+      <paper-checkbox id="model-comparison" checked="{{modelComparisonEnabled_}}">
+         <span class="model-comparison" title$="Enable Model Comparison">
+           Enable Model Comparison
+        </span>
+      </paper-checkbox>
+    </paper-item>
+    <div id="div-to-compare" hidden$="[[!modelComparisonEnabled_]]">
+      <paper-dropdown-menu id="drop-down-to-compare"
+                           label="Select evaluation run to compare:"
+                           title$="[[selectedEvaluationRunCompare_]]">
+        <paper-listbox selected="{{selectedEvaluationRunCompare_}}" attr-for-selected="run"
+                       class="dropdown-content" slot="dropdown-content" title$="">
+          <template is="dom-repeat" items="[[evaluationRuns_]]">
+            <paper-item run="[[item]]">
+              <span class="evaluation-run" title$="[[item]]">[[item]]</span>
+            </paper-item>
+          </template>
+        </paper-listbox>
+      </paper-dropdown-menu>
+    </div>
+  </paper-card>
+  <fairness-nb-container slicing-metrics="[[slicingMetrics_]]"
                          slicing-metrics-compare="[[slicingMetricsCompare_]]"
-                         hide-select-eval-run-drop-down="[[hideSelectEvalRunDropDown_]]">
+                         eval-name="base"
+                         eval-name-compare="compare">
   </fairness-nb-container>
 
   <template is="dom-if" if="[[!slicingMetrics_.length]]">
