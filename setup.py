@@ -292,9 +292,6 @@ setup_args = {
         # Sort alphabetically
         'absl-py>=0.9,<0.13',
         'apache-beam[gcp]>=2.31,<3',
-        # TODO(b/193746372): Remove bigquery dependency after TF 2.6 becomes
-        # available.
-        'google-cloud-bigquery>=1.28.0,<2.21',
         'ipython>=7,<8',
         'ipywidgets>=7,<8',
         'numpy>=1.16,<1.20',
@@ -303,7 +300,7 @@ setup_args = {
         'pyarrow>=1,<3',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
-        'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
+        'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3',
         'tensorflow-metadata' + select_constraint(
             default='>=1.2.0,<1.3.0',
             nightly='>=1.3.0.dev',

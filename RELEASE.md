@@ -6,6 +6,9 @@
 
 ## Bug fixes and other Changes
 
+*   Depends on
+    `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3`.
+
 ## Breaking Changes
 
 ## Deprecations
