@@ -461,7 +461,7 @@ message MetricsSpec {
   // the model_specs will be assumed else these metrics will only be
   // computed for the model names provided.
   repeated string model_names = 2;
-  // Optional names of outputs the metrics should be calculated for (for
+  // Names of outputs the metrics should be calculated for (required for
   // multi-output models). See comment under the ModelSpec.prediction_key on the
   // difference between output_name and prediction_key.
   repeated string output_names = 3;
