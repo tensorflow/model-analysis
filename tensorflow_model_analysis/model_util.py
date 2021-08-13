@@ -18,6 +18,7 @@
 
 import collections
 import copy
+import importlib
 import os
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Text, Tuple
 
@@ -38,6 +39,8 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 
 # TODO(b/162075791): Need to load tensorflow_ranking, tensorflow_text,
 # tensorflow_decision_forests, and struct2tensor for models that use those ops.
+# The tensorflow_ranking and tensorflow_text imports should also be changed to
+# dynamic imports so that user's that use them must explicitly add deps.
 # pylint: disable=g-import-not-at-top
 try:
   import tensorflow_ranking as _
@@ -52,12 +55,12 @@ try:
 except (ImportError, tf.errors.NotFoundError) as e:
   logging.info('tensorflow_text is not available: %s', e)
 try:
-  import tensorflow_decision_forests as _
+  importlib.import_module('tensorflow_decision_forests')
   logging.info('imported tensorflow_decision_forests')
 except Exception as e:  # pylint: disable=broad-except
   logging.info('tensorflow_decision_forests is not available: %s', e)
 try:
-  import struct2tensor as _
+  importlib.import_module('struct2tensor')
   logging.info('imported struct2tensor')
 except Exception as e:  # pylint: disable=broad-except
   logging.info('struct2tensor is not available: %s', e)
