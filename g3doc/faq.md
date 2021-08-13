@@ -420,6 +420,30 @@ implies FN must be `(N - TP)` or `N = TP + FN`. The end result is
 `precision@1 = TP / N = recall@1`. Note that this only applies when there is a
 single label per example, not for multi-label.
 
+### Why are my mean_label and mean_prediction metrics always 0.5?
+
+This is most likely caused because the metrics are configured for a binary
+classification problem, but the model is outputing probabilities for both of the
+classes instead of just one. This is common when
+[tensorflow's classification API](https://www.tensorflow.org/tfx/serving/signature_defs#classification_signaturedef)
+is used. The solution is to choose the class that you would like the predictions
+to be based on and then binarize on that class. For example:
+
+```python
+eval_config = text_format.Parse("""
+  ...
+  metrics_specs {
+    binarize { class_ids: { values: [0] } }
+    metrics { class_name: "MeanLabel" }
+    metrics { class_name: "MeanPrediction" }
+    ...
+  }
+  ...
+""", config.EvalConfig())
+```
+
+Note: This applies to all metrics not just `mean_label` and `mean_prediction`.
+
 ### How to interpret the MultiLabelConfusionMatrixPlot?
 
 Given a particular label, the `MultiLabelConfusionMatrixPlot` (and associated
