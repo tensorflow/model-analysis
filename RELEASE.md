@@ -4,6 +4,11 @@
 
 ## Major Features and Improvements
 
+*   Added SparseTensorValue and RaggedTensorValue types for storing in-memory
+    versions of sparse and ragged tensor values used in extracts. Tensor values
+    used for features, etc should now be based on either np.ndarray,
+    SparseTensorValue, or RaggedTensorValue and not tf.compat.v1 value types.
+
 ## Bug fixes and other Changes
 
 *   Depends on

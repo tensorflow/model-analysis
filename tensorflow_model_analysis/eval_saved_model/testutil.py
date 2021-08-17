@@ -139,8 +139,11 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
           self.assertAlmostEqual(a, b, msg=msg, places=places)
 
   def assertSparseTensorValueEqual(
-      self, expected_sparse_tensor_value: tf.compat.v1.SparseTensorValue,
-      got_sparse_tensor_value: tf.compat.v1.SparseTensorValue) -> None:
+      self, expected_sparse_tensor_value: Union[types.SparseTensorValue,
+                                                tf.compat.v1.SparseTensorValue],
+      got_sparse_tensor_value: Union[types.SparseTensorValue,
+                                     tf.compat.v1.SparseTensorValue]
+  ) -> None:
     self.assertAllEqual(expected_sparse_tensor_value.indices,
                         got_sparse_tensor_value.indices)
     self.assertAllEqual(expected_sparse_tensor_value.values,

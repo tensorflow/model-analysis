@@ -42,6 +42,142 @@ KEYS_SUFFIX = 'keys'
 VALUES_SUFFIX = 'values'
 
 
+def is_sparse_or_ragged_tensor_value(tensor: Any) -> bool:
+  """Returns true if sparse or ragged tensor."""
+  return (isinstance(tensor, types.SparseTensorValue) or
+          isinstance(tensor, types.RaggedTensorValue) or
+          isinstance(tensor, tf.compat.v1.SparseTensorValue))
+
+
+def to_numpy(tensor: Any) -> np.ndarray:
+  """Converts tensor type (list, etc) to np.ndarray if not already."""
+  if isinstance(tensor, np.ndarray):
+    return tensor
+  elif hasattr(tensor, 'numpy') and callable(tensor.numpy):
+    return tensor.numpy()
+  else:
+    return np.array(tensor)
+
+
+def to_sparse_tensor_value(
+    sparse_tensor: Union[tf.SparseTensor, tf.compat.v1.SparseTensorValue]
+) -> types.SparseTensorValue:
+  """Converts sparse tensor to SparseTensorValue."""
+  return types.SparseTensorValue(
+      to_numpy(sparse_tensor.values), to_numpy(sparse_tensor.indices),
+      to_numpy(sparse_tensor.dense_shape))
+
+
+def to_ragged_tensor_value(
+    ragged_tensor: tf.RaggedTensor) -> types.RaggedTensorValue:
+  """Converts ragged tensor to RaggedTensorValue."""
+  nested_row_splits = []
+  for splits in ragged_tensor.nested_row_splits:
+    nested_row_splits.append(to_numpy(splits))
+  return types.RaggedTensorValue(
+      to_numpy(ragged_tensor.flat_values), nested_row_splits)
+
+
+def to_tensor_value(tensor: Any) -> types.TensorValue:
+  """Converts tensor to a tensor value."""
+  if isinstance(tensor, tf.SparseTensor):
+    return to_sparse_tensor_value(tensor)
+  elif isinstance(tensor, tf.compat.v1.SparseTensorValue):
+    return to_sparse_tensor_value(tensor)
+  elif isinstance(tensor, tf.RaggedTensor):
+    return to_ragged_tensor_value(tensor)
+  elif isinstance(tensor, tf.compat.v1.ragged.RaggedTensorValue):
+    return to_ragged_tensor_value(tensor)
+  else:
+    return to_numpy(tensor)
+
+
+def to_tensor_values(tensors: Any) -> types.TensorValueMaybeMultiLevelDict:
+  """Converts multi-level dict of tensors to tensor values."""
+  if isinstance(tensors, Mapping):
+    result = {}
+    for k, v in tensors.items():
+      result[k] = to_tensor_values(v)
+    return result
+  else:
+    return to_tensor_value(tensors)
+
+
+def is_tensorflow_tensor(obj):
+  return (isinstance(obj, tf.Tensor) or isinstance(obj, tf.SparseTensor) or
+          isinstance(obj, tf.RaggedTensor))
+
+
+def to_tensorflow_tensor(tensor_value: types.TensorValue) -> types.TensorType:
+  """Converts a tensor value to a tensorflow tensor."""
+  if isinstance(tensor_value, types.RaggedTensorValue):
+    return tf.RaggedTensor.from_nested_row_splits(
+        tensor_value.values, tensor_value.nested_row_splits)
+  elif (isinstance(tensor_value, types.SparseTensorValue) or
+        isinstance(tensor_value, tf.compat.v1.SparseTensorValue)):
+    return tf.SparseTensor(
+        values=tensor_value.values,
+        indices=tensor_value.indices,
+        dense_shape=tensor_value.dense_shape)
+  else:
+    return tf.convert_to_tensor(tensor_value)
+
+
+def to_tensorflow_tensors(
+    values: types.TensorValueMaybeMultiLevelDict,
+    specs: Optional[types.TypeSpecMaybeMultiLevelDict] = None
+) -> types.TensorTypeMaybeMultiLevelDict:
+  """Converts multi-level dict of tensor values to tensorflow tensors.
+
+  Args:
+    values: Tensor values (np.ndarray, etc) to convert to tensorflow tensors.
+    specs: If provided, filters output to include only tensors that are also in
+      specs. Returned tensors will also be validated against their associated
+      spec.
+
+  Returns:
+    Tensorflow tensors optionally filtered by specs.
+
+  Raises:
+    ValueError: If specs is provided and a tensor value does not match a
+      provided spec.
+  """
+  # Wrap in inner function so we can hold onto contextual info for logging
+  all_values = values
+  all_specs = specs
+
+  def to_tensors(values: types.TensorValueMaybeMultiLevelDict,
+                 specs: Optional[types.TypeSpecMaybeMultiLevelDict],
+                 keys: List[Text]) -> types.TensorTypeMaybeMultiLevelDict:
+    if (specs is not None and
+        ((isinstance(specs, Mapping) and not isinstance(values, Mapping)) or
+         (not isinstance(specs, Mapping) and isinstance(values, Mapping)))):
+      raise ValueError(
+          f'incompatible types: values = {values} and specs = {specs} \n\n'
+          f'Failed at key {keys} in {all_values} and specs {all_specs}')
+
+    if isinstance(values, Mapping):
+      result = {}
+      for key in specs.keys() if specs else values.keys():
+        if key not in values:
+          raise ValueError(
+              f'Tensor value for {key} not found in {values}: \n\n'
+              f'Failed at key {keys} in {all_values} and specs {all_specs}')
+        result[key] = to_tensors(values[key], specs[key] if specs else None,
+                                 keys + [key])
+      return result
+    else:
+      tensor = to_tensorflow_tensor(values)
+      if (isinstance(specs, tf.TypeSpec) and
+          not specs.is_compatible_with(tensor)):
+        raise ValueError(
+            f'Tensor {tensor} is not compatible with {specs} \n\n'
+            f'Failed at key {keys} in {all_values} and specs {all_specs}')
+      return tensor
+
+  return to_tensors(values, specs, [])
+
+
 def unique_key(key: Text,
                current_keys: List[Text],
                update_keys: Optional[bool] = False) -> Text:
@@ -353,7 +489,8 @@ def get_features_from_extracts(
 def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
   """Merges list of extracts into single extract with multi-dimentional data."""
 
-  def merge_with_lists(target, key, value):
+  def merge_with_lists(target: types.Extracts, key: Text, value: Any):
+    """Merges key and value into the target extracts as a list of values."""
     if isinstance(value, Mapping):
       if key not in target:
         target[key] = {}
@@ -367,29 +504,35 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
         value = value.tolist()
       target[key].append(value)
 
-  def to_numpy(target):
+  def merge_lists(target: types.Extracts) -> types.Extracts:
+    """Converts target's leaves which are lists to batched np.array's, etc."""
     if isinstance(target, Mapping):
       result = {}
       for key, value in target.items():
         try:
-          result[key] = to_numpy(value)
+          result[key] = merge_lists(value)
         except Exception as e:
           raise RuntimeError(
               'Failed to convert value for key "{}"'.format(key)) from e
-      return {k: to_numpy(v) for k, v in target.items()}
-    elif target and isinstance(target[0], tf.compat.v1.SparseTensorValue):
-      t = tf.sparse.concat(0, target)
-      return tf.compat.v1.SparseTensorValue(
-          indices=t.indices.numpy(),
-          values=t.values.numpy(),
-          dense_shape=t.dense_shape.numpy())
+      return {k: merge_lists(v) for k, v in target.items()}
+    elif target and (isinstance(target[0], tf.compat.v1.SparseTensorValue) or
+                     isinstance(target[0], types.SparseTensorValue)):
+      t = tf.sparse.concat(
+          0,
+          [tf.sparse.expand_dims(to_tensorflow_tensor(t), 0) for t in target])
+      return to_tensor_value(t)
+    elif target and isinstance(target[0], types.RaggedTensorValue):
+      t = tf.concat(
+          [tf.expand_dims(to_tensorflow_tensor(t), 0) for t in target], 0)
+      return to_tensor_value(t)
     else:
       arr = np.array(target)
       # Flatten values that were originally single item lists into a single list
       # e.g. [[1], [2], [3]] -> [1, 2, 3]
       if len(arr.shape) == 2 and arr.shape[1] == 1:
         return arr.squeeze(axis=1)
-      # Special case for empty slice arrays
+      # Special case for empty slice arrays since numpy treats empty tuples as
+      # arrays with dimension 0.
       # e.g. [[()], [()], [()]] -> [(), (), ()]
       elif len(arr.shape) == 3 and arr.shape[1] == 1 and arr.shape[2] == 0:
         return arr.squeeze(axis=1)
@@ -400,7 +543,52 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
   for x in extracts:
     for k, v in x.items():
       merge_with_lists(result, k, v)
-  return to_numpy(result)
+  return merge_lists(result)
+
+
+def split_extracts(extracts: types.Extracts) -> List[types.Extracts]:
+  """Splits extracts into a list of extracts along the batch dimension."""
+  results = []
+
+  def add_to_results(keys: List[Text], values: Any):
+    # Use TF to split SparseTensor and RaggedTensorValue
+    if isinstance(values, types.SparseTensorValue):
+      values = to_tensorflow_tensor(values)
+      values = tf.sparse.split(
+          sp_input=values, num_split=values.dense_shape[0], axis=0)
+      # Drop the batch dimension
+      values = [tf.sparse.reshape(v, v.dense_shape[1:]) for v in values]
+    elif isinstance(values, types.RaggedTensorValue):
+      values = to_tensorflow_tensor(values)
+    size = len(values) if hasattr(values, '__len__') else values.shape[0]
+    for i in range(size):
+      if len(results) <= i:
+        results.append({})
+      parent = results[i]
+      # Values are stored in the leaves of a multi-level dict. Navigate to the
+      # parent dict storing the final leaf value that is to be updated.
+      for key in keys[:-1]:
+        if key not in parent:
+          parent[key] = {}
+        parent = parent[key]
+      value = to_tensor_value(values[i])
+      # Scalars should be in array form (e.g. np.array([0.0]) vs np.array(0.0)).
+      # The overall slice '()' also needs special handling since numpy encodes
+      # it as dimension of 0 size (e.g. compare np.array([()]) vs np.array([0]))
+      if (isinstance(value, np.ndarray) and
+          (not value.shape or value.shape == (0,))):
+        value = np.expand_dims(value, 0)
+      parent[keys[-1]] = value
+
+  def visit(subtree: types.Extracts, keys: List[Text]):
+    for key, value in subtree.items():
+      if isinstance(value, Mapping):
+        visit(value, keys + [key])
+      else:
+        add_to_results(keys + [key], value)
+
+  visit(extracts, [])
+  return results
 
 
 class StandardExtracts(MutableMapping):

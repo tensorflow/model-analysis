@@ -28,15 +28,50 @@ import numpy as np
 import six
 import tensorflow as tf
 
+
+class RaggedTensorValue(
+    NamedTuple('RaggedTensorValue', [('values', np.ndarray),
+                                     ('nested_row_splits', List[np.ndarray])])):
+  """RaggedTensorValue encapsulates a batch of ragged tensor values.
+
+  Attributes:
+    values: A np.ndarray of values.
+    nested_row_splits: A list of np.ndarray values representing the row splits
+      (one per dimension including the batch dimension).
+  """
+
+
+class SparseTensorValue(
+    NamedTuple('SparseTensorValue', [('values', np.ndarray),
+                                     ('indices', np.ndarray),
+                                     ('dense_shape', np.ndarray)])):
+  """SparseTensorValue encapsulates a batch of sparse tensor values.
+
+  Attributes:
+    values: A np.ndarray of values.
+    indices: A np.ndarray of indices.
+    dense_shape: A np.ndarray representing the dense shape.
+  """
+
+
 # pylint: disable=invalid-name
 
-TensorType = Union[tf.Tensor, tf.SparseTensor]
+TensorType = Union[tf.Tensor, tf.SparseTensor, tf.RaggedTensor]
 TensorOrOperationType = Union[TensorType, tf.Operation]
 DictOfTensorType = Dict[Text, TensorType]
 TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
+DictOfTensorTypeMaybeDict = Dict[Text, TensorTypeMaybeDict]
+TensorTypeMaybeMultiLevelDict = Union[TensorTypeMaybeDict,
+                                      DictOfTensorTypeMaybeDict]
 
-SparseTensorValue = tf.compat.v1.SparseTensorValue
-TensorValue = Union[SparseTensorValue, np.ndarray]
+DictOfTypeSpec = Dict[Text, tf.TypeSpec]
+TypeSpecMaybeDict = Union[tf.TypeSpec, DictOfTypeSpec]
+DictOfTypeSpecMaybeDict = Dict[Text, TypeSpecMaybeDict]
+TypeSpecMaybeMultiLevelDict = Union[TypeSpecMaybeDict, DictOfTypeSpecMaybeDict]
+
+# TODO(b/171992041): Remove tf.compat.v1.SparseTensorValue.
+TensorValue = Union[np.ndarray, SparseTensorValue, RaggedTensorValue,
+                    tf.compat.v1.SparseTensorValue]
 DictOfTensorValue = Dict[Text, TensorValue]
 TensorValueMaybeDict = Union[TensorValue, DictOfTensorValue]
 DictOfTensorValueMaybeDict = Dict[Text, TensorValueMaybeDict]
@@ -118,15 +153,11 @@ MaterializedColumn = NamedTuple(
 # Extracts represent data extracted during pipeline processing. In order to
 # provide a flexible API, these types are just dicts where the keys are defined
 # (reserved for use) by different extractor implementations. For example, the
-# PredictExtractor stores the data for the features, labels, and predictions
-# under the keys "features", "labels", and "predictions".
+# FeaturesExtractor stores the data for the features under the key "features",
+# LabelsExtractor stores the data for the labels under the key "labels", etc.
 Extracts = MutableMapping[Text, Any]
 
 # pylint: enable=invalid-name
-
-
-def is_tensor(obj):
-  return isinstance(obj, tf.Tensor) or isinstance(obj, tf.SparseTensor)
 
 
 class ModelLoader(object):

@@ -31,6 +31,7 @@ import tensorflow as tf
 from tensorflow import math
 from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis import util
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
@@ -127,7 +128,7 @@ def _get_target_tensor(
     Predictions tensor, or None if none of the expected keys are found in
     the predictions_dict.
   """
-  if types.is_tensor(maybe_dict):
+  if util.is_tensorflow_tensor(maybe_dict):
     return cast(types.TensorType, maybe_dict)
 
   for key in key_precedence:
@@ -607,7 +608,7 @@ class _ExampleCount(_PostExportMetric):
         tf.compat.v1.logging.info(
             'Using the first key from predictions_dict: %s', first_key)
       elif labels_dict is not None:
-        if types.is_tensor(labels_dict):
+        if util.is_tensorflow_tensor(labels_dict):
           ref_tensor = labels_dict
           tf.compat.v1.logging.info('Using the labels Tensor')
         elif labels_dict.keys():
@@ -1582,7 +1583,7 @@ class _PrecisionRecallAtK(_PostExportMetric):
     if self._labels_key:
       labels_dict = labels_dict[self._labels_key]
 
-    if not types.is_tensor(labels_dict):
+    if not util.is_tensorflow_tensor(labels_dict):
       raise TypeError('labels_dict should be a tensor. labels_dict was: %s' %
                       labels_dict)
     _check_feature_present(features_dict, self._example_weight_key)

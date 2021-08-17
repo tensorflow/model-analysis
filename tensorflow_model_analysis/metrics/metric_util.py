@@ -83,23 +83,13 @@ def _camel_case(txt: Text) -> Text:
   return ''.join(s.capitalize() for s in txt.split('_'))
 
 
-def to_numpy(tensor: Any) -> np.ndarray:
-  """Converts tensor type (list, etc) to np.ndarray if not already."""
-  if isinstance(tensor, np.ndarray):
-    return tensor
-  elif hasattr(tensor, 'numpy'):
-    return tensor.numpy()
-  else:
-    return np.array(tensor)
-
-
 def to_scalar(
-    tensor: Optional[Union[np.ndarray, tf.compat.v1.SparseTensorValue]],
+    tensor: Optional[Union[types.TensorValue, tf.compat.v1.SparseTensorValue]],
     tensor_name: Text = 'unknown') -> Optional[Union[float, int, Text]]:
   """Returns value as a scalar or raises ValueError."""
   if tensor is None:
     return None
-  if isinstance(tensor, tf.compat.v1.SparseTensorValue):
+  if util.is_sparse_or_ragged_tensor_value(tensor):
     tensor = tensor.values
   if tensor.size != 1:
     raise ValueError('"{}" should have exactly 1 value, but found {} instead: '
@@ -184,7 +174,7 @@ def top_k_indices(
   Raises:
     ValueError: If top_k doesn't match scores or input has more than 2 dims.
   """
-  scores = to_numpy(scores)
+  scores = util.to_numpy(scores)
   if scores.shape[-1] < top_k:
     raise ValueError(
         'not enough values were provided to perform the requested '
@@ -437,7 +427,7 @@ def to_label_prediction_example_weight(
             'error in the pipeline.'.format(txt, model_name, output_name,
                                             sub_key, aggregation_type, inputs))
 
-  example_weight = to_numpy(example_weight)
+  example_weight = util.to_numpy(example_weight)
 
   # Query based metrics group by a query_id which will result in the
   # example_weight being replicated once for each matching example in the group.
@@ -627,14 +617,14 @@ def prepare_labels_and_predictions(
         # Check for use of estimator label vocab under ALL_CLASSES. This was
         # added in 06/2019 for eval signatures because the CLASSES only contains
         # the label for the chosen class.
-        label_vocabulary = to_numpy(predictions[_ALL_CLASSES])
+        label_vocabulary = util.to_numpy(predictions[_ALL_CLASSES])
       elif (tf.saved_model.CLASSIFY_OUTPUT_SCORES in predictions and
             tf.saved_model.CLASSIFY_OUTPUT_CLASSES in predictions):
         # For classification model using the default serving signature, the
         # CLASSES contains the full vocabulary. The check for scores is needed
         # here to avoid matching CLASSES in the eval case (scores are not used
         # in eval).
-        label_vocabulary = to_numpy(
+        label_vocabulary = util.to_numpy(
             predictions[tf.saved_model.CLASSIFY_OUTPUT_CLASSES])
       if label_vocabulary is not None:
         while len(label_vocabulary.shape) > 1:
@@ -662,10 +652,11 @@ def prepare_labels_and_predictions(
                          labels, predictions, prediction_key))
 
   if predictions is not None:
-    predictions = to_numpy(predictions)
+    predictions = util.to_numpy(predictions)
 
   if labels is not None:
-    if isinstance(labels, tf.compat.v1.SparseTensorValue):
+    if (isinstance(labels, types.SparseTensorValue) or
+        isinstance(labels, tf.compat.v1.SparseTensorValue)):
       if predictions is None or predictions.size == 0:
         raise ValueError('predictions must also be used if labels are of type '
                          'SparseTensorValue: labels={}'.format(labels))
@@ -683,7 +674,7 @@ def prepare_labels_and_predictions(
       else:
         labels = _to_dense_tensor(values, indices, predictions.shape)
     else:
-      labels = to_numpy(labels)
+      labels = util.to_numpy(labels)
       if label_vocabulary is not None and labels.dtype.kind in ('U', 'S', 'O'):
         labels = _string_labels_to_class_ids(label_vocabulary, labels)
 
@@ -739,8 +730,8 @@ def select_class_id(
   Raises:
     ValueError: If the labels or predictions cannot be formatted properly.
   """
-  labels = to_numpy(labels)
-  predictions = to_numpy(predictions)
+  labels = util.to_numpy(labels)
+  predictions = util.to_numpy(predictions)
   if labels.size == 0 or predictions.size == 0:
     return (labels, predictions)
 

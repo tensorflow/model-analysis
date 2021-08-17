@@ -22,6 +22,7 @@ from absl.testing import parameterized
 import numpy as np
 import pyarrow as pa
 import tensorflow as tf
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.slicer import slice_accessor
 
@@ -35,13 +36,13 @@ class SliceAccessorTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('sparse_tensor_value',
-       tf.compat.v1.SparseTensorValue(
+       types.SparseTensorValue(
            indices=np.array([[0, 0], [1, 1]]),
            values=np.array(['apple', 'banana']),
            dense_shape=np.array([2, 2])), ['apple', 'banana']),
       ('ragged_tensor_value',
-       tf.compat.v1.ragged.RaggedTensorValue(
-           values=np.array([1, 2, 3]), row_splits=np.array([0, 0, 1])),
+       types.RaggedTensorValue(
+           values=np.array([1, 2, 3]), nested_row_splits=[np.array([0, 0, 1])]),
        [1, 2, 3]), ('dense', np.array([1.0, 2.0]), [1.0, 2.0]),
       ('dense_single', np.array([7.0]), [7.0]),
       ('dense_multidim', np.array([[1.0, 2.0], [3.0, 4.0]]),

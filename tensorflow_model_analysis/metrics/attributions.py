@@ -298,7 +298,7 @@ class _TotalAttributionsCombiner(beam.CombineFn):
     if self._key.output_name:
       attributions = util.get_by_keys(attributions, [self._key.output_name])
     for k, v in attributions.items():
-      v = metric_util.to_numpy(v)
+      v = util.to_numpy(v)
       if self._key.sub_key is not None:
         if self._key.sub_key.class_id is not None:
           v = _scores_by_class_id(self._key.sub_key.class_id, v)

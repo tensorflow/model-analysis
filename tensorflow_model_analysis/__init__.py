@@ -125,8 +125,11 @@ try:
   from tensorflow_model_analysis.types import MaterializedColumn
   from tensorflow_model_analysis.types import MaybeMultipleEvalSharedModels
   from tensorflow_model_analysis.types import ModelLoader
+  from tensorflow_model_analysis.types import RaggedTensorValue
+  from tensorflow_model_analysis.types import SparseTensorValue
   from tensorflow_model_analysis.types import TensorType
   from tensorflow_model_analysis.types import TensorTypeMaybeDict
+  from tensorflow_model_analysis.types import TensorValue
 
   from tensorflow_model_analysis.util import create_keys_key
   from tensorflow_model_analysis.util import create_values_key

@@ -73,7 +73,8 @@ class SliceAccessor(object):
         # Backwards compatibility for features that were stored as FPL types
         # instead of native dicts.
         value = value['node']
-      if isinstance(value, (tf.compat.v1.SparseTensorValue,
+      if isinstance(value, (types.SparseTensorValue, types.RaggedTensorValue,
+                            tf.compat.v1.SparseTensorValue,
                             tf.compat.v1.ragged.RaggedTensorValue)):
         value = value.values
       if not isinstance(value, (np.ndarray, pa.Array, list)):

@@ -800,13 +800,14 @@ def InputsToExtracts(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Union[bytes, pa.RecordBatch])
+@beam.typehints.with_input_types(Union[bytes, pa.RecordBatch, types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
 def BatchedInputsToExtracts(  # pylint: disable=invalid-name
     batched_inputs: beam.pvalue.PCollection) -> beam.pvalue.PCollection:
   """Converts Arrow RecordBatch inputs to Extracts."""
 
-  def to_extracts(x: Union[bytes, pa.RecordBatch]) -> types.Extracts:
+  def to_extracts(
+      x: Union[bytes, types.Extracts, pa.RecordBatch]) -> types.Extracts:
     result = {}
     if isinstance(x, dict):
       result.update(x)
