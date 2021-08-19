@@ -27,6 +27,7 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -263,34 +264,13 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           key = metric_types.MetricKey(name='confusion_matrix_at_thresholds')
           self.assertIn(key, got_metrics)
           got_metric = got_metrics[key]
-          self.assertProtoEquals(
-              """
-              matrices {
-                threshold: 0.3
-                false_negatives: 1.0
-                true_negatives: 1.0
-                false_positives: 1.0
-                true_positives: 1.0
-                precision: 0.5
-                recall: 0.5
-              }
-              matrices {
-                threshold: 0.5
-                false_negatives: 1.0
-                true_negatives: 2.0
-                true_positives: 1.0
-                precision: 1.0
-                recall: 0.5
-              }
-              matrices {
-                threshold: 0.8
-                false_negatives: 1.0
-                true_negatives: 2.0
-                true_positives: 1.0
-                precision: 1.0
-                recall: 0.5
-              }
-          """, got_metric)
+          self.assertEqual(
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.3, 0.5, 0.8],
+                  tp=[1.0, 1.0, 1.0],
+                  tn=[1.0, 2.0, 2.0],
+                  fp=[1.0, 0.0, 0.0],
+                  fn=[1.0, 1.0, 1.0]), got_metric)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

@@ -243,20 +243,7 @@ message MetricValue {
     string debug_message = 10;
   }
 
-  message ConfidenceInterval {
-    // The lower bound of the range.
-    google.protobuf.DoubleValue lower_bound = 11;
-    // The upper bound of the range.
-    google.protobuf.DoubleValue upper_bound = 12;
-    // The T distribution value used to compute the confidence interval.
-    TDistributionValue t_distribution_value = 13;
-  }
-
-  // Going forward, TFMA will populate this when confidence intervals is
-  // enabled.
-  ConfidenceInterval confidence_interval = 14;
-
-  reserved 8;
+  reserved 8, 14;
   // Next tag = 16;
 }
 
@@ -290,10 +277,28 @@ message CrossSliceKey {
   SliceKey comparison_slice_key = 2;
 }
 
+message ConfidenceInterval {
+  // Each MetricValue field within this message will be populated with the same
+  // value type as in MetricKeyAndValue.value. This has the effect of creating
+  // a set of parallel data structures which provide elementwise confidence
+  // intervals. For example, if the MetricKeyAndValue.value contains an
+  // ArrayValue, then each of these fields will also contain an ArrayValue in
+  // which the array element at a given index will represent the lower bound,
+  // upper bound, and standard error for the MetricKeyAndValue.value element at
+  // that same index.
+  MetricValue upper_bound = 1;
+  MetricValue lower_bound = 2;
+  MetricValue standard_error = 3;
+  google.protobuf.Int64Value degrees_of_freedom = 4;
+}
+
 message MetricsForSlice {
   message MetricKeyAndValue {
     MetricKey key = 1;
     MetricValue value = 2;
+    // When the `confidence_interval` field is populated, the `value` field will
+    // contain the point estimate.
+    ConfidenceInterval confidence_interval = 3;
   }
 
   oneof slicing_spec_oneof {

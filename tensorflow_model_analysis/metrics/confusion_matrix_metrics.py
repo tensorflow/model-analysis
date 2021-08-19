@@ -30,7 +30,6 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 SPECIFICITY_NAME = 'specificity'
 FALL_OUT_NAME = 'fall_out'
@@ -669,43 +668,10 @@ def _confusion_matrix_at_thresholds(
   def result(
       metrics: Dict[metric_types.MetricKey, binary_confusion_matrices.Matrices]
   ) -> Dict[metric_types.MetricKey, Any]:
-    return {key: to_proto(thresholds, metrics[matrices_key])}
+    return {key: metrics[matrices_key]}
 
   derived_computation = metric_types.DerivedMetricComputation(
       keys=[key], result=result)
   computations = matrices_computations
   computations.append(derived_computation)
   return computations
-
-
-def to_proto(
-    thresholds: List[float], matrices: binary_confusion_matrices.Matrices
-) -> metrics_for_slice_pb2.ConfusionMatrixAtThresholds:
-  """Converts matrices into ConfusionMatrixAtThresholds proto.
-
-  If precision or recall are undefined then 1.0 and 0.0 will be used.
-
-  Args:
-    thresholds: Thresholds.
-    matrices: Confusion matrices.
-
-  Returns:
-    Matrices in ConfusionMatrixAtThresholds proto format.
-  """
-  pb = metrics_for_slice_pb2.ConfusionMatrixAtThresholds()
-  for i, threshold in enumerate(thresholds):
-    precision = 1.0
-    if matrices.tp[i] + matrices.fp[i] > 0:
-      precision = matrices.tp[i] / (matrices.tp[i] + matrices.fp[i])
-    recall = 0.0
-    if matrices.tp[i] + matrices.fn[i] > 0:
-      recall = matrices.tp[i] / (matrices.tp[i] + matrices.fn[i])
-    pb.matrices.add(
-        threshold=round(threshold, 6),
-        true_positives=matrices.tp[i],
-        false_positives=matrices.fp[i],
-        true_negatives=matrices.tn[i],
-        false_negatives=matrices.fn[i],
-        precision=precision,
-        recall=recall)
-  return pb

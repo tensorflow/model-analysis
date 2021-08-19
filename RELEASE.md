@@ -24,6 +24,9 @@
 
 *   Provided functionality for `slice_keys_sql` config. It's not available under
     Windows.
+*   The `confidence_interval` field within `metrics_for_slice_pb2.MetricValue`
+    has been removed and the tag number reserved. This information now lives in
+    `metrics_for_slice_pb2.MetricKeyAndValue.confidence_interval`.
 
 ## Bug fixes and other Changes
 

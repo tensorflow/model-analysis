@@ -19,11 +19,12 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Dict, Iterable, List, Optional, Text, NamedTuple
+from typing import Callable, Dict, Iterable, List, Optional, Text, NamedTuple
 
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import config
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -158,10 +159,62 @@ def multi_class_confusion_matrices(
   ]
 
 
-_MatrixEntryKey = NamedTuple('_MatrixEntryKey', [('actual_class_id', int),
-                                                 ('predicted_class_id', int)])
-# Thresholds -> entry -> example_weights
-_Matrices = Dict[float, Dict[_MatrixEntryKey, float]]
+MatrixEntryKey = NamedTuple('MatrixEntryKey', [('actual_class_id', int),
+                                               ('predicted_class_id', int)])
+
+
+class Matrices(types.StructuredMetricValue, dict):
+  """A Matrices object wraps a Dict[float, Dict[MatrixEntryKey, float]].
+
+  A specific confusion matrix entry can be accessed for a threshold,
+  actual_class and predicted_class with
+
+      instance[threshold][MatrixEntryKey(actual_class_id, predicted_class_id)]
+  """
+
+  def _apply_binary_op_elementwise(
+      self, other: 'Matrices', op: Callable[[float, float],
+                                            float]) -> 'Matrices':
+    assert self.keys() == other.keys()
+    result = Matrices()
+    for threshold, self_entries in self.items():
+      other_entries = other[threshold]
+      result[threshold] = {}
+      assert self_entries.keys == other_entries.keys()
+      for entry_key, self_count in self_entries.items():
+        other_count = other_entries[entry_key]
+        result[threshold][entry_key] = op(self_count, other_count)
+    return result
+
+  def _apply_binary_op_broadcast(
+      self, other: float, op: Callable[[float, float], float]) -> 'Matrices':
+    result = Matrices()
+    for threshold, self_entries in self.items():
+      result[threshold] = {}
+      for entry_key, self_count in self_entries.items():
+        result[threshold][entry_key] = op(self_count, other)
+    return result
+
+  def to_proto(self) -> metrics_for_slice_pb2.MetricValue:
+    result = metrics_for_slice_pb2.MetricValue()
+    multi_class_confusion_matrices_at_thresholds_proto = (
+        result.multi_class_confusion_matrix_at_thresholds)
+    for threshold in sorted(self.keys()):
+      # Convert -epsilon and 1.0+epsilon back to 0.0 and 1.0.
+      if threshold == -_EPSILON:
+        t = 0.0
+      elif threshold == 1.0 + _EPSILON:
+        t = 1.0
+      else:
+        t = threshold
+      matrix = multi_class_confusion_matrices_at_thresholds_proto.matrices.add(
+          threshold=t)
+      for k in sorted(self[threshold].keys()):
+        matrix.entries.add(
+            actual_class_id=k.actual_class_id,
+            predicted_class_id=k.predicted_class_id,
+            num_weighted_examples=self[threshold][k])
+    return result
 
 
 class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
@@ -174,11 +227,11 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
     self._eval_config = eval_config
     self._thresholds = thresholds if thresholds else [0.0]
 
-  def create_accumulator(self) -> _Matrices:
-    return {}
+  def create_accumulator(self) -> Matrices:
+    return Matrices()
 
-  def add_input(self, accumulator: _Matrices,
-                element: metric_types.StandardMetricInputs) -> _Matrices:
+  def add_input(self, accumulator: Matrices,
+                element: metric_types.StandardMetricInputs) -> Matrices:
     label, predictions, example_weight = next(
         metric_util.to_label_prediction_example_weight(
             element,
@@ -205,14 +258,14 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
         accumulator[threshold] = {}
       if predictions[predicted_class_id] <= threshold:
         predicted_class_id = NO_PREDICTED_CLASS_ID
-      matrix_key = _MatrixEntryKey(actual_class_id, predicted_class_id)
+      matrix_key = MatrixEntryKey(actual_class_id, predicted_class_id)
       if matrix_key in accumulator[threshold]:
         accumulator[threshold][matrix_key] += example_weight
       else:
         accumulator[threshold][matrix_key] = example_weight
     return accumulator
 
-  def merge_accumulators(self, accumulators: Iterable[_Matrices]) -> _Matrices:
+  def merge_accumulators(self, accumulators: Iterable[Matrices]) -> Matrices:
     accumulators = iter(accumulators)
     result = next(accumulators)
     for accumulator in accumulators:
@@ -227,22 +280,5 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
     return result
 
   def extract_output(
-      self, accumulator: _Matrices
-  ) -> Dict[metric_types.MetricKey,
-            metrics_for_slice_pb2.MultiClassConfusionMatrixAtThresholds]:
-    pb = metrics_for_slice_pb2.MultiClassConfusionMatrixAtThresholds()
-    for threshold in sorted(accumulator.keys()):
-      # Convert -epsilon and 1.0+epsilon back to 0.0 and 1.0.
-      if threshold == -_EPSILON:
-        t = 0.0
-      elif threshold == 1.0 + _EPSILON:
-        t = 1.0
-      else:
-        t = threshold
-      matrix = pb.matrices.add(threshold=t)
-      for k in sorted(accumulator[threshold].keys()):
-        matrix.entries.add(
-            actual_class_id=k.actual_class_id,
-            predicted_class_id=k.predicted_class_id,
-            num_weighted_examples=accumulator[threshold][k])
-    return {self._key: pb}
+      self, accumulator: Matrices) -> Dict[metric_types.MetricKey, Matrices]:
+    return {self._key: accumulator}

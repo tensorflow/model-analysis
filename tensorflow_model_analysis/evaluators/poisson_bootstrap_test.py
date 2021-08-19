@@ -176,7 +176,11 @@ class PoissonBootstrapTest(absltest.TestCase):
                             sample_degrees_of_freedom=1,
                             unsampled_value=16),
                     cm_key:
-                        cm_metric,
+                        types.ValueWithTDistribution(
+                            sample_mean=cm_metric,
+                            sample_standard_deviation=cm_metric * 0,
+                            sample_degrees_of_freedom=1,
+                            unsampled_value=cm_metric),
                     skipped_metric_key:
                         100,
                 }),
@@ -198,7 +202,11 @@ class PoissonBootstrapTest(absltest.TestCase):
                             sample_degrees_of_freedom=1,
                             unsampled_value=33),
                     cm_key:
-                        cm_metric,
+                        types.ValueWithTDistribution(
+                            sample_mean=cm_metric,
+                            sample_standard_deviation=cm_metric * 0,
+                            sample_degrees_of_freedom=1,
+                            unsampled_value=cm_metric),
                     skipped_metric_key:
                         1000,
                 }),

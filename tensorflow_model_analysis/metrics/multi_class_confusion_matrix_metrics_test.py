@@ -98,38 +98,26 @@ class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           key = metric_types.MetricKey(
               name='multi_class_confusion_matrix_at_thresholds')
           got_matrix = got_metrics[key]
-          self.assertProtoEquals(
-              """
-              matrices {
-                threshold: 0.5
-                entries {
-                  actual_class_id: 0
-                  predicted_class_id: 2
-                  num_weighted_examples: 1.0
-                }
-                entries {
-                  actual_class_id: 1
-                  predicted_class_id: 1
-                  num_weighted_examples: 2.0
-                }
-                entries {
-                  actual_class_id: 1
-                  predicted_class_id: 2
-                  num_weighted_examples: 0.25
-                }
-                entries {
-                  actual_class_id: 2
-                  predicted_class_id: -1
-                  num_weighted_examples: 0.5
-                }
-                entries {
-                  actual_class_id: 2
-                  predicted_class_id: 2
-                  num_weighted_examples: 1.0
-                }
-              }
-          """, got_matrix)
-
+          self.assertEqual(
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=2):
+                          1.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=1):
+                          2.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=2):
+                          0.25,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=2, predicted_class_id=-1):
+                          0.5,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=2, predicted_class_id=2):
+                          1.0
+                  }
+              }), got_matrix)
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
@@ -185,23 +173,17 @@ class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           key = metric_types.MetricKey(
               name='multi_class_confusion_matrix_at_thresholds')
           got_matrix = got_metrics[key]
-          self.assertProtoEquals(
-              """
-              matrices {
-                threshold: 0.5
-                entries {
-                  actual_class_id: 0
-                  predicted_class_id: 0
-                  num_weighted_examples: 0.5
-                }
-                entries {
-                  actual_class_id: 2
-                  predicted_class_id: -1
-                  num_weighted_examples: 1.0
-                }
-              }
-          """, got_matrix)
-
+          self.assertEqual(
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          0.5,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=2, predicted_class_id=-1):
+                          1.0
+                  }
+              }), got_matrix)
         except AssertionError as err:
           raise util.BeamAssertException(err)
 

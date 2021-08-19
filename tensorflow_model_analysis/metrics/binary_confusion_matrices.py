@@ -23,9 +23,11 @@ from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Te
 
 import apache_beam as beam
 from tensorflow_model_analysis import config
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 DEFAULT_NUM_THRESHOLDS = calibration_histogram.DEFAULT_NUM_BUCKETS
 
@@ -34,15 +36,74 @@ DEFAULT_NUM_EXAMPLE_IDS = 100
 BINARY_CONFUSION_MATRICES_NAME = '_binary_confusion_matrices'
 BINARY_CONFUSION_EXAMPLES_NAME = '_binary_confusion_examples'
 
-Matrices = NamedTuple('Matrices', [('thresholds', List[float]),
-                                   ('tp', List[float]), ('tn', List[float]),
-                                   ('fp', List[float]), ('fn', List[float])])
 
-Examples = NamedTuple('Examples', [('thresholds', List[float]),
-                                   ('tp_examples', List[List[Text]]),
-                                   ('tn_examples', List[List[Text]]),
-                                   ('fp_examples', List[List[Text]]),
-                                   ('fn_examples', List[List[Text]])])
+class Examples(
+    NamedTuple('Examples', [('thresholds', List[float]),
+                            ('tp_examples', List[List[Text]]),
+                            ('tn_examples', List[List[Text]]),
+                            ('fp_examples', List[List[Text]]),
+                            ('fn_examples', List[List[Text]])])):
+  """A set of examples for each binary confusion case at each threshold."""
+
+
+class Matrices(types.StructuredMetricValue,
+               NamedTuple('Matrices', [('thresholds', List[float]),
+                                       ('tp', List[float]), ('tn', List[float]),
+                                       ('fp', List[float]),
+                                       ('fn', List[float])])):
+  """A class representing a set of binary confusion matrices at thresholds.
+
+  For each threshold, in addition to the count of examples per prediction and
+  label, this class also contains a sample of raw examples.
+  """
+
+  def _apply_binary_op_elementwise(self, other: 'Matrices',
+                                   op: Callable[[float, float], float]):
+    """Applies an operator elementwise on another Matrices, or broadcasts."""
+    assert self.thresholds == other.thresholds
+    return Matrices(
+        thresholds=self.thresholds,
+        tp=[op(tp, tp_other) for (tp, tp_other) in zip(self.tp, other.tp)],
+        tn=[op(tn, tn_other) for (tn, tn_other) in zip(self.tn, other.tn)],
+        fp=[op(fp, fp_other) for (fp, fp_other) in zip(self.fp, other.fp)],
+        fn=[op(fn, fn_other) for (fn, fn_other) in zip(self.fn, other.fn)])
+
+  def _apply_binary_op_broadcast(self, other: float,
+                                 op: Callable[[float, float], float]):
+    return Matrices(
+        thresholds=self.thresholds,
+        tp=[op(tp, other) for tp in self.tp],
+        tn=[op(tn, other) for tn in self.tn],
+        fp=[op(fp, other) for fp in self.fp],
+        fn=[op(fn, other) for fn in self.fn])
+
+  def to_proto(self) -> metrics_for_slice_pb2.MetricValue:
+    """Converts matrices into ConfusionMatrixAtThresholds proto.
+
+    If precision or recall are undefined then 1.0 and 0.0 will be used.
+
+    Returns:
+      A MetricValue proto containing a ConfusionMatrixAtThresholds proto.
+    """
+    result = metrics_for_slice_pb2.MetricValue()
+    confusion_matrix_at_thresholds_proto = result.confusion_matrix_at_thresholds
+    for i, threshold in enumerate(self.thresholds):
+      precision = 1.0
+      if self.tp[i] + self.fp[i] > 0:
+        precision = self.tp[i] / (self.tp[i] + self.fp[i])
+      recall = 0.0
+      if self.tp[i] + self.fn[i] > 0:
+        recall = self.tp[i] / (self.tp[i] + self.fn[i])
+      confusion_matrix_at_thresholds_proto.matrices.add(
+          threshold=round(threshold, 6),
+          true_positives=self.tp[i],
+          false_positives=self.fp[i],
+          true_negatives=self.tn[i],
+          false_negatives=self.fn[i],
+          precision=precision,
+          recall=recall)
+    return result
+
 
 _EPSILON = 1e-7
 

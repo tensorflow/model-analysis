@@ -126,7 +126,7 @@ class JackknifeTest(absltest.TestCase):
              sample_id=0, metrics={
                  x_key: 1,
                  y_key: 10,
-                 cm_key: cm_metric,
+                 cm_key: cm_metric - 1,
              })),
         # sample values 2 of 2 for slice 1
         (slice_key1,
@@ -134,7 +134,7 @@ class JackknifeTest(absltest.TestCase):
              sample_id=1, metrics={
                  x_key: 2,
                  y_key: 20,
-                 cm_key: cm_metric,
+                 cm_key: cm_metric + 1,
              })),
         # unsampled value for slice 2
         (slice_key2,
@@ -149,18 +149,20 @@ class JackknifeTest(absltest.TestCase):
         # sample values 1 of 2 for slice 2
         (slice_key2,
          confidence_intervals_util.SampleMetrics(
-             sample_id=0, metrics={
+             sample_id=0,
+             metrics={
                  x_key: 2,
                  y_key: 20,
-                 cm_key: cm_metric,
+                 cm_key: cm_metric - 10,
              })),
         # sample values 2 of 2 for slice 2
         (slice_key2,
          confidence_intervals_util.SampleMetrics(
-             sample_id=1, metrics={
+             sample_id=1,
+             metrics={
                  x_key: 4,
                  y_key: 40,
-                 cm_key: cm_metric,
+                 cm_key: cm_metric + 10,
              })),
     ]
 
@@ -176,6 +178,8 @@ class JackknifeTest(absltest.TestCase):
       # Rather than normalize by all possible n-choose-d samples, we normalize
       # by the actual number of samples (2).
       def check_result(got_pcoll):
+        slice1_jackknife_factor = (100 - 100 / 2) / (100 / 2)
+        slice2_jackknife_factor = (1000 - 1000 / 2) / (1000 / 2)
         expected_pcoll = [
             (
                 slice_key1,
@@ -185,8 +189,8 @@ class JackknifeTest(absltest.TestCase):
                             sample_mean=1.5,
                             # sample_standard_deviation=0.5
                             sample_standard_deviation=(
-                                ((100 - 100 / 2) /
-                                 (100 / 2)) * np.var([1, 2], ddof=1))**0.5,
+                                slice1_jackknife_factor *
+                                np.var([1, 2], ddof=1))**0.5,
                             sample_degrees_of_freedom=1,
                             unsampled_value=1.6),
                     y_key:
@@ -194,12 +198,18 @@ class JackknifeTest(absltest.TestCase):
                             sample_mean=15.,
                             # sample_standard_deviation=5,
                             sample_standard_deviation=(
-                                ((100 - 100 / 2) /
-                                 (100 / 2)) * np.var([10, 20], ddof=1))**0.5,
+                                slice1_jackknife_factor *
+                                np.var([10, 20], ddof=1))**0.5,
                             sample_degrees_of_freedom=1,
                             unsampled_value=16),
                     cm_key:
-                        cm_metric,
+                        types.ValueWithTDistribution(
+                            sample_mean=cm_metric,
+                            sample_standard_deviation=(
+                                cm_metric * 0 + slice1_jackknife_factor *
+                                np.var([-1, 1], ddof=1))**0.5,
+                            sample_degrees_of_freedom=1,
+                            unsampled_value=cm_metric),
                     jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY:
                         100,
                 }),
@@ -211,8 +221,8 @@ class JackknifeTest(absltest.TestCase):
                             sample_mean=3.,
                             # sample_standard_deviation=1,
                             sample_standard_deviation=(
-                                ((1000 - 1000 / 2) /
-                                 (1000 / 2)) * np.var([2, 4], ddof=1))**0.5,
+                                slice2_jackknife_factor *
+                                np.var([2, 4], ddof=1))**0.5,
                             sample_degrees_of_freedom=1,
                             unsampled_value=3.3),
                     y_key:
@@ -220,12 +230,18 @@ class JackknifeTest(absltest.TestCase):
                             sample_mean=30.,
                             # sample_standard_deviation=10,
                             sample_standard_deviation=(
-                                ((1000 - 1000 / 2) /
-                                 (1000 / 2)) * np.var([20, 40], ddof=1))**0.5,
+                                slice2_jackknife_factor *
+                                np.var([20, 40], ddof=1))**0.5,
                             sample_degrees_of_freedom=1,
                             unsampled_value=33),
                     cm_key:
-                        cm_metric,
+                        types.ValueWithTDistribution(
+                            sample_mean=cm_metric,
+                            sample_standard_deviation=(
+                                cm_metric * 0 + slice2_jackknife_factor *
+                                np.var([-10, 10], ddof=1))**0.5,
+                            sample_degrees_of_freedom=1,
+                            unsampled_value=cm_metric),
                     jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY:
                         1000,
                 }),

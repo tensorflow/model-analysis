@@ -43,6 +43,7 @@ from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import attributions
+from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
@@ -302,6 +303,60 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     self.assertProtoEquals(expected_metrics_for_slice, got)
 
   def testConvertSliceMetricsToProtoConfusionMatrices(self):
+    slice_key = _make_slice_key()
+    slice_metrics = {
+        metric_types.MetricKey(name='confusion_matrix_at_thresholds'):
+            binary_confusion_matrices.Matrices(
+                thresholds=[0.25, 0.75, 1.00],
+                fn=[0.0, 1.0, 2.0],
+                tn=[1.0, 1.0, 1.0],
+                fp=[0.0, 0.0, 0.0],
+                tp=[2.0, 1.0, 0.0])
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {}
+        metric_keys_and_values {
+          key: { name: "confusion_matrix_at_thresholds" }
+          value {
+            confusion_matrix_at_thresholds {
+              matrices {
+                threshold: 0.25
+                false_negatives: 0.0
+                true_negatives: 1.0
+                false_positives: 0.0
+                true_positives: 2.0
+                precision: 1.0
+                recall: 1.0
+              }
+              matrices {
+                threshold: 0.75
+                false_negatives: 1.0
+                true_negatives: 1.0
+                false_positives: 0.0
+                true_positives: 1.0
+                precision: 1.0
+                recall: 0.5
+              }
+              matrices {
+                threshold: 1.00
+                false_negatives: 2.0
+                true_negatives: 1.0
+                false_positives: 0.0
+                true_positives: 0.0
+                precision: 1.0
+                recall: 0.0
+              }
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics), add_metrics_callbacks=[])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
+  def testConvertSliceMetricsToProtoConfusionMatricesPostExport(self):
     slice_key = _make_slice_key()
 
     thresholds = [0.25, 0.75, 1.00]
@@ -570,35 +625,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
               value {
                 value: 0.8
               }
-              lower_bound {
-                value: 0.5737843
-              }
-              upper_bound {
-                value: 1.0262157
-              }
+              lower_bound { value: 0.5737843 }
+              upper_bound { value: 1.0262157 }
               methodology: POISSON_BOOTSTRAP
-            }
-            confidence_interval {
-              lower_bound {
-                value: 0.5737843
-              }
-              upper_bound {
-                value: 1.0262157
-              }
-              t_distribution_value {
-                sample_mean {
-                  value: 0.8
-                }
-                sample_standard_deviation {
-                  value: 0.1
-                }
-                sample_degrees_of_freedom {
-                  value: 9
-                }
-                unsampled_value {
-                  value: 0.8
-                }
-              }
             }
           }
         }
@@ -1043,28 +1072,6 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
               }
               methodology: POISSON_BOOTSTRAP
             }
-            confidence_interval {
-              lower_bound {
-                value: -1.1824463
-              }
-              upper_bound {
-                value: 5.1824463
-              }
-              t_distribution_value {
-                sample_mean {
-                  value: 2.0
-                }
-                sample_standard_deviation {
-                  value: 1.0
-                }
-                sample_degrees_of_freedom {
-                  value: 3
-                }
-                unsampled_value {
-                  value: 2.0
-                }
-              }
-            }
           }
         }
         metrics {
@@ -1081,28 +1088,6 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 value: nan
               }
               methodology: POISSON_BOOTSTRAP
-            }
-            confidence_interval {
-              lower_bound {
-                value: nan
-              }
-              upper_bound {
-                value: nan
-              }
-              t_distribution_value {
-                sample_mean {
-                  value: nan
-                }
-                sample_standard_deviation {
-                  value: nan
-                }
-                sample_degrees_of_freedom {
-                  value: -1
-                }
-                unsampled_value {
-                  value: nan
-                }
-              }
             }
           }
         }

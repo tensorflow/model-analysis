@@ -19,14 +19,18 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import abc
 import datetime
+import numbers
+import operator
 
-from typing import Any, Callable, Dict, List, MutableMapping, Optional, Text, Tuple, Union, NamedTuple
+from typing import Any, Callable, Dict, List, MutableMapping, Optional, Text, TypeVar, Tuple, Union, NamedTuple
 
 from apache_beam.utils import shared
 import numpy as np
 import six
 import tensorflow as tf
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 
 class RaggedTensorValue(
@@ -80,13 +84,127 @@ TensorValueMaybeMultiLevelDict = Union[TensorValueMaybeDict,
 
 MetricVariablesType = List[Any]
 
+PrimitiveMetricValueType = Union[float, int, np.number]
+
+ConcreteStructuredMetricValue = TypeVar(
+    'ConcreteStructuredMetricValue', bound='StructuredMetricValue')
+
+
+class StructuredMetricValue(abc.ABC):
+  """The base class for all structured metrics used within TFMA.
+
+  This class allows custom metrics to control how proto serialization happens,
+  and how to handle basic algebraic operations used in computing confidence
+  intervals and model diffs. By implementing the _apply_binary_op methods,
+  subclasses can then be treated like primitive numeric types.
+  """
+
+  @abc.abstractmethod
+  def to_proto(self) -> metrics_for_slice_pb2.MetricValue:
+    ...
+
+  @abc.abstractmethod
+  def _apply_binary_op_elementwise(
+      self: ConcreteStructuredMetricValue, other: ConcreteStructuredMetricValue,
+      op: Callable[[float, float], float]) -> ConcreteStructuredMetricValue:
+    """Applies the binary operator elementwise on self and `other`.
+
+    Given two structures of the same type, this function's job is to find
+    corresponding pairs of elements within both structures, invoke `op` on each
+    pair, and store the result in a corresponding location within a new
+    structure. For example, to implement for a list, this function could be
+    implemented as:
+
+        return [op(elem, other_elem) for elem, other_elem in zip(self, other)]
+
+    Args:
+      other: A structure containing elements which should be the second operand
+        when applying `op`. `Other` must be a structured metric of the same type
+        as self.
+      op: A binary operator which should be applied elementwise to corresponding
+        primitive values in self and `other`.
+
+    Returns:
+      A new structured metric that is the result of elementwise applying `op`
+      on corresponding elements within self and `other`.
+    """
+    ...
+
+  @abc.abstractmethod
+  def _apply_binary_op_broadcast(
+      self: ConcreteStructuredMetricValue, other: float,
+      op: Callable[[float, float], float]) -> ConcreteStructuredMetricValue:
+    """Applies the binary operator on each element in self and a single float.
+
+    This function supports broadcasting operations on the structured metric by
+    applying `op` on each element in self, paired with the primitive value
+    `other`. This makes it possible do things like add a fixed quantity to every
+    element in a structure. For example, to implement for a list, this function
+    could be implemented as:
+
+        return [op(elem, other) for elem in self]
+
+    Args:
+      other: The value to be used as the second operand when applying `op`.
+      op: A binary operator which should be applied elementwise to each element
+        in self and `other`.
+
+    Returns:
+      A new structured metric that is the result of applying `op` on each
+      element within self and a single value, `other`.
+    """
+    ...
+
+  def _apply_binary_op(
+      self: ConcreteStructuredMetricValue,
+      other: Union[PrimitiveMetricValueType, ConcreteStructuredMetricValue],
+      op: Callable[[float, float], float]) -> ConcreteStructuredMetricValue:
+    if type(other) is type(self):  # pylint: disable=unidiomatic-typecheck
+      return self._apply_binary_op_elementwise(other, op)
+    elif isinstance(other, (float, int, np.number)):
+      return self._apply_binary_op_broadcast(float(other), op)
+    else:
+      raise ValueError(
+          'Binary ops can only be applied elementwise on two instances of the '
+          'same StructuredMetricValue subclass or using broadcasting with one '
+          'StructuredMetricValue and a primitive numeric type (int, float, '
+          'np.number). Cannot apply binary op on objects of type '
+          '{} and {}'.format(type(self), type(other)))
+
+  def __add__(self: ConcreteStructuredMetricValue,
+              other: Union[ConcreteStructuredMetricValue, float]):
+    return self._apply_binary_op(other, operator.add)
+
+  def __sub__(self: ConcreteStructuredMetricValue,
+              other: Union[ConcreteStructuredMetricValue, float]):
+    return self._apply_binary_op(other, operator.sub)
+
+  def __mul__(self: ConcreteStructuredMetricValue,
+              other: Union[ConcreteStructuredMetricValue, float]):
+    return self._apply_binary_op(other, operator.mul)
+
+  def __truediv__(self: ConcreteStructuredMetricValue,
+                  other: Union[ConcreteStructuredMetricValue, float]):
+    return self._apply_binary_op(other, operator.truediv)
+
+  def __pow__(self: ConcreteStructuredMetricValue,
+              other: Union[ConcreteStructuredMetricValue, float]):
+    return self._apply_binary_op(other, operator.pow)
+
+
+MetricValueType = Union[PrimitiveMetricValueType, np.ndarray,
+                        StructuredMetricValue]
+
+# isinstance(metric_value, NumericMetricTypes) determines whether to compute CIs
+NumericMetricValueTypes = (numbers.Number, np.ndarray, StructuredMetricValue)
+
 
 class ValueWithTDistribution(
     NamedTuple('ValueWithTDistribution', [
-        ('sample_mean', float),
-        ('sample_standard_deviation', float),
+        ('sample_mean', MetricValueType),
+        ('sample_standard_deviation', MetricValueType),
         ('sample_degrees_of_freedom', int),
-        ('unsampled_value', float),
+        ('unsampled_value', MetricValueType),
     ])):
   r"""Represents the t-distribution value.
 

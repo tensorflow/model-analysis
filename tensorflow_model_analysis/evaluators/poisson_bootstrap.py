@@ -137,9 +137,8 @@ class _BootstrapSampleCombineFn(confidence_intervals_util.SampleCombineFn):
       if key not in accumulator.metric_samples:
         result[key] = unsampled_value
       else:
-        sample_values = accumulator.metric_samples[key]
-        mean = np.mean(sample_values)
-        std_error = np.std(sample_values, ddof=1)
+        mean, std_error = confidence_intervals_util.mean_and_std(
+            accumulator.metric_samples[key], ddof=1)
         result[key] = types.ValueWithTDistribution(
             sample_mean=mean,
             sample_standard_deviation=std_error,

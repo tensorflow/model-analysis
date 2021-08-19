@@ -23,10 +23,8 @@ from typing import Any, Dict, Optional, Text
 
 from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
-from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 DEFAULT_NUM_THRESHOLDS = 1000
 
@@ -96,11 +94,9 @@ def _confusion_matrix_plot(
 
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
-  ) -> Dict[metric_types.MetricKey,
-            metrics_for_slice_pb2.ConfusionMatrixAtThresholds]:
+  ) -> Dict[metric_types.MetricKey, binary_confusion_matrices.Matrices]:
     return {
-        key:
-            confusion_matrix_metrics.to_proto(thresholds, metrics[matrices_key])
+        key: metrics[matrices_key].to_proto().confusion_matrix_at_thresholds
     }
 
   derived_computation = metric_types.DerivedMetricComputation(

@@ -99,10 +99,14 @@ def _multi_class_confusion_matrix_plot(
 
   def result(
       metrics: Dict[metric_types.MetricKey,
-                    metrics_for_slice_pb2.MultiClassConfusionMatrixAtThresholds]
+                    multi_class_confusion_matrix_metrics.Matrices]
   ) -> Dict[metric_types.PlotKey,
             metrics_for_slice_pb2.MultiClassConfusionMatrixAtThresholds]:
-    return {key: metrics[matrices_key]}
+    return {
+        key:
+            metrics[matrices_key].to_proto()
+            .multi_class_confusion_matrix_at_thresholds
+    }
 
   derived_computation = metric_types.DerivedMetricComputation(
       keys=[key], result=result)

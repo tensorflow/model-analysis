@@ -265,6 +265,32 @@ def _convert_to_array_value(
   return result
 
 
+def convert_metric_value_to_proto(
+    value: types.MetricValueType) -> metrics_for_slice_pb2.MetricValue:
+  """Converts a MetricValueType into its proto format."""
+  if isinstance(value, types.StructuredMetricValue):
+    return value.to_proto()
+
+  result = metrics_for_slice_pb2.MetricValue()
+  if isinstance(value, six.binary_type):
+    # Convert textual types to string metrics.
+    result.bytes_value = value
+  elif isinstance(value, six.text_type):
+    # Convert textual types to string metrics.
+    result.bytes_value = value.encode('utf8')
+  elif isinstance(value, np.ndarray):
+    # Convert NumPy arrays to ArrayValue.
+    result.array_value.CopyFrom(_convert_to_array_value(value))
+  else:
+    # We try to convert to float values.
+    try:
+      result.double_value.value = float(value)
+    except (TypeError, ValueError) as e:
+      result.unknown_type.value = str(value)
+      result.unknown_type.error = e.message  # pytype: disable=attribute-error
+  return result
+
+
 def convert_slice_metrics_to_proto(
     metrics: Tuple[slicer.SliceKeyOrCrossSliceKeyType, Dict[Any, Any]],
     add_metrics_callbacks: List[types.AddMetricsCallbackType]
@@ -310,58 +336,37 @@ def convert_slice_metrics_to_proto(
                                                     result.metrics)
   for key in sorted(slice_metrics.keys()):
     value = slice_metrics[key]
-    metric_value = metrics_for_slice_pb2.MetricValue()
-    if isinstance(value, metrics_for_slice_pb2.ConfusionMatrixAtThresholds):
-      metric_value.confusion_matrix_at_thresholds.CopyFrom(value)
-    elif isinstance(
-        value, metrics_for_slice_pb2.MultiClassConfusionMatrixAtThresholds):
-      metric_value.multi_class_confusion_matrix_at_thresholds.CopyFrom(value)
-    elif isinstance(value, types.ValueWithTDistribution):
-      # Currently we populate both bounded_value and confidence_interval.
-      # Avoid populating bounded_value once the UI handles confidence_interval.
-      # Convert to a bounded value. 95% confidence level is computed here.
+    if isinstance(value, types.ValueWithTDistribution):
+      unsampled_value = value.unsampled_value
       _, lower_bound, upper_bound = (
           math_util.calculate_confidence_interval(value))
-      metric_value.bounded_value.value.value = value.unsampled_value
-      metric_value.bounded_value.lower_bound.value = lower_bound
-      metric_value.bounded_value.upper_bound.value = upper_bound
-      metric_value.bounded_value.methodology = (
-          metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
-      # Populate confidence_interval
-      metric_value.confidence_interval.lower_bound.value = lower_bound
-      metric_value.confidence_interval.upper_bound.value = upper_bound
-      t_dist_value = metrics_for_slice_pb2.TDistributionValue()
-      t_dist_value.sample_mean.value = value.sample_mean
-      t_dist_value.sample_standard_deviation.value = (
-          value.sample_standard_deviation)
-      t_dist_value.sample_degrees_of_freedom.value = (
-          value.sample_degrees_of_freedom)
-      # Once the UI handles confidence interval, we will avoid setting this and
-      # instead use the double_value.
-      t_dist_value.unsampled_value.value = value.unsampled_value
-      metric_value.confidence_interval.t_distribution_value.CopyFrom(
-          t_dist_value)
-    elif isinstance(value, six.binary_type):
-      # Convert textual types to string metrics.
-      metric_value.bytes_value = value
-    elif isinstance(value, six.text_type):
-      # Convert textual types to string metrics.
-      metric_value.bytes_value = value.encode('utf8')
-    elif isinstance(value, np.ndarray):
-      # Convert NumPy arrays to ArrayValue.
-      metric_value.array_value.CopyFrom(_convert_to_array_value(value))
+      confidence_interval = metrics_for_slice_pb2.ConfidenceInterval(
+          lower_bound=convert_metric_value_to_proto(lower_bound),
+          upper_bound=convert_metric_value_to_proto(upper_bound),
+          standard_error=convert_metric_value_to_proto(
+              value.sample_standard_deviation),
+          degrees_of_freedom={'value': value.sample_degrees_of_freedom})
+      metric_value = convert_metric_value_to_proto(unsampled_value)
+
+      # If metric can be stored to double_value metrics, replace it with a
+      # bounded_value for backwards compatibility.
+      # TODO(b/188575688): remove this logic to stop populating bounded_value
+      if metric_value.WhichOneof('type') == 'double_value':
+        # setting bounded_value clears double_value in the same oneof scope.
+        metric_value.bounded_value.value.value = unsampled_value
+        metric_value.bounded_value.lower_bound.value = lower_bound
+        metric_value.bounded_value.upper_bound.value = upper_bound
+        metric_value.bounded_value.methodology = (
+            metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
     else:
-      # We try to convert to float values.
-      try:
-        metric_value.double_value.value = float(value)
-      except (TypeError, ValueError) as e:
-        metric_value.unknown_type.value = str(value)
-        metric_value.unknown_type.error = e.message  # pytype: disable=attribute-error
+      metric_value = convert_metric_value_to_proto(value)
+      confidence_interval = None
 
     if isinstance(key, metric_types.MetricKey):
-      key_and_value = result.metric_keys_and_values.add()
-      key_and_value.key.CopyFrom(key.to_proto())
-      key_and_value.value.CopyFrom(metric_value)
+      result.metric_keys_and_values.add(
+          key=key.to_proto(),
+          value=metric_value,
+          confidence_interval=confidence_interval)
     else:
       result.metrics[key].CopyFrom(metric_value)
 

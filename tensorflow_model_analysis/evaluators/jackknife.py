@@ -114,12 +114,17 @@ class _JackknifeSampleCombineFn(confidence_intervals_util.SampleCombineFn):
         # See jackknife cookie bucket method described in:
         # go/rasta-confidence-intervals
         pseudo_values = []
-        raw_values = accumulator.metric_samples[key]
-        for sample_value in raw_values:
-          pseudo_values.append(self._num_samples * unsampled_value -
-                               (self._num_samples - 1) * sample_value)
-        mean = np.mean(raw_values)
-        std_error = np.std(pseudo_values, ddof=1)
+        total = None
+        for sample_value in accumulator.metric_samples[key]:
+          if total is None:
+            total = sample_value
+          else:
+            total = total + sample_value
+          pseudo_values.append(unsampled_value * self._num_samples -
+                               sample_value * (self._num_samples - 1))
+        _, std_error = confidence_intervals_util.mean_and_std(
+            pseudo_values, ddof=1)
+        mean = total / self._num_samples
         result[key] = types.ValueWithTDistribution(
             sample_mean=mean,
             sample_standard_deviation=std_error,

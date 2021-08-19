@@ -299,7 +299,7 @@ class MetricKey(
 
 
 # The output type of a MetricComputation combiner.
-MetricsDict = Dict[MetricKey, Any]
+MetricsDict = Dict[MetricKey, types.MetricValueType]
 
 
 # A separate version from proto is used here because protos are not hashable and

@@ -16,11 +16,11 @@
 
 
 import collections
-import numbers
-from typing import Any, Iterable, NamedTuple, Optional, Set, Sequence, TypeVar
+from typing import Any, Iterable, NamedTuple, Optional, Set, Sequence, Tuple, TypeVar
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 
@@ -76,6 +76,42 @@ class CombineFnWrapper(beam.CombineFn):
     return self._combine_fn.teardown(*args, **kwargs)
 
 
+def mean_and_std(
+    values: Sequence[types.MetricValueType],
+    ddof: int) -> Tuple[types.MetricValueType, types.MetricValueType]:
+  """Computes mean and standard deviation for (structued) metric values.
+
+  Args:
+    values: An iterable of values for which to compute the mean and standard
+      deviation
+    ddof: The difference in degrees of freedom to use for the standard deviation
+      computation, relative to the length of values. For example, if len(values)
+      == 10, and ddof is 1, the standard deviation will be computed with 9
+      degreees of freedom
+
+  Returns:
+     A 2-tuple in which the first element is the mean and the second element is
+     the standard deviation. The types of the mean and standard deviation will
+     be the same as the type of each element in values.
+  """
+  total = None
+  for value in values:
+    if total is None:
+      total = value
+    else:
+      total = total + value
+  mean = total / len(values)
+  squared_residual_total = None
+  for value in values:
+    squared_residual = (value - mean)**2
+    if squared_residual_total is None:
+      squared_residual_total = squared_residual
+    else:
+      squared_residual_total = squared_residual_total + squared_residual
+  std = (squared_residual_total / (len(values) - ddof))**0.5
+  return mean, std
+
+
 class SampleCombineFn(beam.CombineFn):
   """Computes the jackknife standard error for each metric from samples."""
 
@@ -124,15 +160,12 @@ class SampleCombineFn(beam.CombineFn):
     else:
       accumulator.num_samples += 1
       for metric_key, value in sample.items():
-        if not isinstance(value, numbers.Number):
+        if not isinstance(value, types.NumericMetricValueTypes):
           # skip non-numeric values
           continue
         if (self._skip_ci_metric_keys and
             metric_key in self._skip_ci_metric_keys):
           continue
-        # Numpy int64 and int32 types can overflow without warning. To prevent
-        # this we always cast to python floats prior to doing any operations.
-        value = float(value)
         accumulator.metric_samples[metric_key].append(value)
     return accumulator
 
