@@ -377,7 +377,7 @@ class UtilTest(tf.test.TestCase):
       iterator = metric_util.to_label_prediction_example_weight(
           example, output_name=output, flatten=False, allow_none=True)
       got_label, got_pred, got_example_weight = next(iterator)
-      self.assertAllEqual(got_label, np.array(None))
+      self.assertAllEqual(got_label, np.array([]))
       self.assertAllEqual(got_pred, example.prediction[output])
       self.assertAllEqual(got_example_weight, np.array([1.0]))
 

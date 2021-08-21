@@ -520,8 +520,8 @@ def to_label_prediction_example_weight(
           for i in range(prediction.shape[-1] or label.shape[-1])
       ])
 
-    label = label if label is not None else np.array(None)
-    prediction = prediction if prediction is not None else np.array(None)
+    label = label if label is not None else np.array([])
+    prediction = prediction if prediction is not None else np.array([])
 
     def yield_results(label, prediction, example_weight):
       if (not flatten or (label.size == 0 and prediction.size == 0) or
