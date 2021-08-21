@@ -19,6 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+import collections
 import inspect
 import sys
 import traceback
@@ -591,7 +592,7 @@ def split_extracts(extracts: types.Extracts) -> List[types.Extracts]:
   return results
 
 
-class StandardExtracts(MutableMapping):
+class StandardExtracts(collections.abc.MutableMapping):
   """Standard extracts wrap extracts with helpers for accessing common keys.
 
   Note that the extract values returned may be multi-level dicts depending on
@@ -612,6 +613,12 @@ class StandardExtracts(MutableMapping):
       self.extracts = extracts
     else:
       self.extracts = kwargs
+
+  def __repr__(self) -> str:
+    return repr(self.extracts)
+
+  def __str__(self) -> str:
+    return str(self.extracts)
 
   def __getitem__(self, key):
     return self.extracts[key]

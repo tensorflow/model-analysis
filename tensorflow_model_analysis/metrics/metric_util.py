@@ -22,7 +22,7 @@ from __future__ import print_function
 import inspect
 import math
 
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Text, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -92,8 +92,8 @@ def to_scalar(
   if util.is_sparse_or_ragged_tensor_value(tensor):
     tensor = tensor.values
   if tensor.size != 1:
-    raise ValueError('"{}" should have exactly 1 value, but found {} instead: '
-                     'values={}'.format(tensor_name, tensor.size(), tensor))
+    raise ValueError(f'"{tensor_name}" should have exactly 1 value, but found '
+                     f'{tensor.size()} instead: values={tensor}')
   return tensor.item()
 
 
@@ -116,30 +116,29 @@ def to_standard_metric_inputs(
     include_attributions: bool = False) -> metric_types.StandardMetricInputs:
   """Verifies extract keys and converts extracts to StandardMetricInputs."""
   if constants.LABELS_KEY not in extracts:
-    raise ValueError('"{}" key not found in extracts. Check that the '
-                     'configuration is setup properly to specify the name of '
-                     'label input and that the proper extractor has been '
-                     'configured to extract the labels from the inputs.'.format(
-                         constants.LABELS_KEY))
+    raise ValueError(f'"{constants.LABELS_KEY}" key not found in extracts. '
+                     'Check that the configuration is setup properly to '
+                     'specify the name of label input and that the proper '
+                     'extractor has been configured to extract the labels from '
+                     'the inputs.')
   if constants.PREDICTIONS_KEY not in extracts:
-    raise ValueError('"{}" key not found in extracts. Check that the proper '
-                     'extractor has been configured to perform model '
-                     'inference.'.format(constants.PREDICTIONS_KEY))
+    raise ValueError(f'"{constants.PREDICTIONS_KEY}" key not found in '
+                     'extracts. Check that the proper extractor has been '
+                     'configured to perform model inference.')
   if include_features and constants.FEATURES_KEY not in extracts:
-    raise ValueError('"{}" key not found in extracts. Check that the proper '
-                     'extractor has been configured to extract the features '
-                     'from the inputs.'.format(constants.FEATURES_KEY))
+    raise ValueError(f'"{constants.FEATURES_KEY}" key not found in extracts. '
+                     'Check that the proper extractor has been configured to '
+                     'extract the features from the inputs.')
   if (include_transformed_features and
       constants.TRANSFORMED_FEATURES_KEY not in extracts):
-    raise ValueError('"{}" key not found in extracts. Check that the proper '
-                     'extractor has been configured to extract the transformed '
-                     'features from the inputs.'.format(
-                         constants.TRANSFORMED_FEATURES_KEY))
+    raise ValueError(f'"{constants.TRANSFORMED_FEATURES_KEY}" key not found in '
+                     'extracts. Check that the proper extractor has been '
+                     'configured to extract the transformed features from the '
+                     'inputs.')
   if (include_attributions and constants.ATTRIBUTIONS_KEY not in extracts):
-    raise ValueError('"{}" key not found in extracts. Check that the proper '
-                     'extractor has been configured to extract the '
-                     'attributions from the inputs.'.format(
-                         constants.ATTRIBUTIONS_KEY))
+    raise ValueError(f'"{constants.ATTRIBUTIONS_KEY}" key not found in '
+                     'extracts. Check that the proper extractor has been '
+                     'configured to extract the attributions from the inputs.')
   return metric_types.StandardMetricInputs(extracts)
 
 
@@ -178,9 +177,9 @@ def top_k_indices(
   if scores.shape[-1] < top_k:
     raise ValueError(
         'not enough values were provided to perform the requested '
-        'calcuations for top k. The requested value for k is {}, but the '
-        'values are {}\n\nThis may be caused by a metric configuration error '
-        'or an error in the pipeline.'.format(top_k, scores))
+        f'calcuations for top k. The requested value for k is {top_k}, but the '
+        f'values are {scores}\n\nThis may be caused by a metric configuration '
+        'error or an error in the pipeline.')
 
   if len(scores.shape) == 1:
     # 1D data
@@ -375,167 +374,193 @@ def to_label_prediction_example_weight(
     Tuple of (label, prediction, example_weight).
   """
 
+  def fn_call_str():
+    return (f'to_label_prediction_example_weight(inputs={inputs}, '
+            f'eval_config={eval_config}, model_name={model_name}, '
+            f'output_name={output_name}, sub_key={sub_key}, '
+            f'aggregation_type={aggregation_type}, '
+            f'class_weights={class_weights}, '
+            f'fractional_labels={fractional_labels}, flatten={flatten}, '
+            f'squeeze={squeeze}, allow_none={allow_none})')
+
   def optionally_get_by_keys(value: Any, keys: List[Text]) -> Any:
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
       new_value = util.get_by_keys(value, keys, optional=True)
       if new_value is not None:
         return new_value
     return value
 
-  prediction_key = ''
-  label_key = ''
-  if eval_config and eval_config.model_specs:
-    for spec in eval_config.model_specs:
-      # To maintain consistency between settings where single models are used,
-      # always use '' as the model name regardless of whether a name is passed.
-      spec_name = spec.name if len(eval_config.model_specs) > 1 else ''
-      if spec_name == model_name:
-        prediction_key = spec.prediction_key
-        label_key = spec.label_key
-        break
+  try:
+    prediction_key = ''
+    label_key = ''
+    if eval_config and eval_config.model_specs:
+      for spec in eval_config.model_specs:
+        # To maintain consistency between settings where single models are used,
+        # always use '' as the model name regardless of whether a name is passed
+        spec_name = spec.name if len(eval_config.model_specs) > 1 else ''
+        if spec_name == model_name:
+          prediction_key = spec.prediction_key
+          label_key = spec.label_key
+          break
 
-  label = inputs.label
-  if label_key:
-    # This is to support a custom EvalSavedModel where the labels are a dict
-    # but the keys are not output_names.
-    label = optionally_get_by_keys(label, [label_key])
-  prediction = inputs.prediction
-  example_weight = inputs.example_weight
-  if example_weight is None:
-    example_weight = np.array(1.0, dtype=np.float32)  # tf-ranking needs float32
-  if model_name:
-    prediction = util.get_by_keys(prediction, [model_name])
-    # Labels and weights can optionally be keyed by model name.
-    label = optionally_get_by_keys(label, [model_name])
-    example_weight = optionally_get_by_keys(example_weight, [model_name])
-  if output_name:
-    prediction = util.get_by_keys(prediction, [output_name])
-    # Labels and example weights can optionally be keyed by output name.
-    label = optionally_get_by_keys(label, [output_name])
-    example_weight = optionally_get_by_keys(example_weight, [output_name])
-  label, prediction = prepare_labels_and_predictions(label, prediction,
-                                                     prediction_key)
+    label = inputs.label
+    if label_key:
+      # This is to support a custom EvalSavedModel where the labels are a dict
+      # but the keys are not output_names.
+      label = optionally_get_by_keys(label, [label_key])
+    prediction = inputs.prediction
+    example_weight = inputs.example_weight
+    if example_weight is None:
+      example_weight = np.array(
+          1.0, dtype=np.float32)  # tf-ranking needs float32
+    if model_name:
+      prediction = util.get_by_keys(prediction, [model_name])
+      # Labels and weights can optionally be keyed by model name.
+      label = optionally_get_by_keys(label, [model_name])
+      example_weight = optionally_get_by_keys(example_weight, [model_name])
+    if output_name:
+      prediction = util.get_by_keys(prediction, [output_name])
+      # Labels and example weights can optionally be keyed by output name.
+      label = optionally_get_by_keys(label, [output_name])
+      example_weight = optionally_get_by_keys(example_weight, [output_name])
 
-  if not allow_none:
-    for txt, value in zip(('label', 'prediction'), (label, prediction)):
-      if value is None:
-        raise ValueError(
-            'no value provided for {}: model_name={}, output_name={}, '
-            'sub_key={}, aggregation_type={}, StandardMetricInputs={}\n\n'
-            'This may be caused by a configuration error (i.e. label, '
-            'and/or prediction keys were not specified) or an '
-            'error in the pipeline.'.format(txt, model_name, output_name,
-                                            sub_key, aggregation_type, inputs))
-
-  example_weight = util.to_numpy(example_weight)
-
-  # Query based metrics group by a query_id which will result in the
-  # example_weight being replicated once for each matching example in the group.
-  # When this happens convert the example_weight back to a single value.
-  if example_weight.size > 1:
-    example_weight = example_weight.flatten()
-    if not np.all(example_weight == example_weight[0]):
+    if isinstance(label, Mapping):
       raise ValueError(
-          'if example_weight size > 0, the values must all be the same: '
-          'example_weight={} model_name={}, output_name={}, '
-          'sub_key={}, aggregation_type={}, StandardMetricInputs={}'
-          '\n\nThis is most likely a configuration error.'.format(
-              example_weight, model_name, output_name, sub_key,
-              aggregation_type, inputs))
-    example_weight = np.array(example_weight[0])
+          'unable to prepare label for metric computation because the label is '
+          'a dict with unrecognized keys. If a multi-output model was used '
+          f'check that an output name was provided in all the relevant '
+          'settings (ModelSpec.label_keys, MetricsSpec.output_names, etc): '
+          f'label={label}, output_name={output_name}')
+    if isinstance(example_weight, Mapping):
+      raise ValueError(
+          'unable to prepare example_weight for metric computation because the '
+          'example_weight is a dict with unrecognized keys. If a multi-output '
+          'model was used check that an output name was provided in all the '
+          'relevant settings (ModelSpec.example_weight_keys, '
+          f'MetricsSpec.output_names, etc): example_weight={example_weight}, '
+          f'output_name={output_name}')
 
-  if sub_key is not None:
-    if sub_key.class_id is not None:
-      label, prediction = select_class_id(sub_key.class_id, label, prediction)
-    elif sub_key.k is not None:
-      indices = top_k_indices(sub_key.k, prediction)
-      if len(prediction.shape) == 1:
-        indices = indices[0]  # 1D
-      else:
-        # 2D, take kth values
-        indices = (indices[0][0::sub_key.k], indices[1][0::sub_key.k])
-      if label.shape != prediction.shape:
-        label = one_hot(label, prediction)
-      label = select_indices(label, indices)
-      prediction = select_indices(prediction, indices)
-    elif sub_key.top_k is not None:
-      # Set all non-top-k predictions to -inf. Note that we do not sort.
-      indices = top_k_indices(sub_key.top_k, prediction)
-      if aggregation_type is None:
-        top_k_predictions = np.full(prediction.shape, float('-inf'))
-        top_k_predictions[indices] = prediction[indices]
-        prediction = top_k_predictions
-      else:
+    label, prediction = prepare_labels_and_predictions(label, prediction,
+                                                       prediction_key)
+
+    if not allow_none:
+      for txt, value in zip(('label', 'prediction'), (label, prediction)):
+        if value is None:
+          raise ValueError(
+              f'no value provided for {txt}\n\n'
+              'This may be caused by a configuration error (i.e. label, '
+              'and/or prediction keys were not specified) or an '
+              'error in the pipeline.')
+
+    example_weight = util.to_numpy(example_weight)
+
+    # Query based metrics group by a query_id which will result in the
+    # example_weight being replicated once for each matching example in the
+    # group. When this happens convert the example_weight back to a single value
+    if example_weight.size > 1:
+      example_weight = example_weight.flatten()
+      if not np.all(example_weight == example_weight[0]):
+        raise ValueError(
+            'if example_weight size > 0, the values must all be the same: '
+            f'example_weight={example_weight}\n\n'
+            'This is most likely a configuration error.')
+      example_weight = np.array(example_weight[0])
+
+    if sub_key is not None:
+      if sub_key.class_id is not None:
+        label, prediction = select_class_id(sub_key.class_id, label, prediction)
+      elif sub_key.k is not None:
+        indices = top_k_indices(sub_key.k, prediction)
+        if len(prediction.shape) == 1:
+          indices = indices[0]  # 1D
+        else:
+          # 2D, take kth values
+          indices = (indices[0][0::sub_key.k], indices[1][0::sub_key.k])
         if label.shape != prediction.shape:
           label = one_hot(label, prediction)
         label = select_indices(label, indices)
         prediction = select_indices(prediction, indices)
+      elif sub_key.top_k is not None:
+        # Set all non-top-k predictions to -inf. Note that we do not sort.
+        indices = top_k_indices(sub_key.top_k, prediction)
+        if aggregation_type is None:
+          top_k_predictions = np.full(prediction.shape, float('-inf'))
+          top_k_predictions[indices] = prediction[indices]
+          prediction = top_k_predictions
+        else:
+          if label.shape != prediction.shape:
+            label = one_hot(label, prediction)
+          label = select_indices(label, indices)
+          prediction = select_indices(prediction, indices)
 
-  # For consistency, make sure all outputs are arrays (i.e. convert scalars)
-  if label is not None and not label.shape:
-    label = label.reshape((1,))
-  if prediction is not None and not prediction.shape:
-    prediction = prediction.reshape((1,))
-  if example_weight is not None and not example_weight.shape:
-    example_weight = example_weight.reshape((1,))
+    # For consistency, make sure all outputs are arrays (i.e. convert scalars)
+    if label is not None and not label.shape:
+      label = label.reshape((1,))
+    if prediction is not None and not prediction.shape:
+      prediction = prediction.reshape((1,))
+    if example_weight is not None and not example_weight.shape:
+      example_weight = example_weight.reshape((1,))
 
-  if class_weights:
-    if not flatten:
-      raise ValueError(
-          'class_weights can only be used when flatten is also used. This is '
-          'likely caused by a configuration error (i.e. micro averaging being '
-          "applied to metrics that don't support micro averaging): "
-          'class_weights={}, flatten={}, StandardMetricInputs={}'.format(
-              class_weights, flatten, inputs))
-    example_weight = np.array([
-        float(example_weight) * class_weights[i] if i in class_weights else 0.0
-        for i in range(prediction.shape[-1] or label.shape[-1])
-    ])
-  elif flatten:
-    example_weight = np.array([
-        float(example_weight)
-        for i in range(prediction.shape[-1] or label.shape[-1])
-    ])
+    if class_weights:
+      if not flatten:
+        raise ValueError(
+            'class_weights can only be used when flatten is also used: '
+            f'class_weights={class_weights}, flatten={flatten}\n\n'
+            'This is likely caused by a configuration error (i.e. micro '
+            "averaging being applied to metrics that don't support micro "
+            'averaging')
+      example_weight = np.array([
+          float(example_weight) *
+          class_weights[i] if i in class_weights else 0.0
+          for i in range(prediction.shape[-1] or label.shape[-1])
+      ])
+    elif flatten:
+      example_weight = np.array([
+          float(example_weight)
+          for i in range(prediction.shape[-1] or label.shape[-1])
+      ])
 
-  label = label if label is not None else np.array([])
-  prediction = prediction if prediction is not None else np.array([])
+    label = label if label is not None else np.array(None)
+    prediction = prediction if prediction is not None else np.array(None)
 
-  def yield_results(label, prediction, example_weight):
-    if (not flatten or (label.size == 0 and prediction.size == 0) or
-        (label.size == 1 and prediction.size == 1)):
-      if squeeze:
-        yield _squeeze(label), _squeeze(prediction), _squeeze(example_weight)
+    def yield_results(label, prediction, example_weight):
+      if (not flatten or (label.size == 0 and prediction.size == 0) or
+          (label.size == 1 and prediction.size == 1)):
+        if squeeze:
+          yield _squeeze(label), _squeeze(prediction), _squeeze(example_weight)
+        else:
+          yield label, prediction, example_weight
+      elif label.size == 0:
+        for p, w in zip(prediction.flatten(), example_weight.flatten()):
+          yield label, np.array([p]), np.array([w])
+      elif prediction.size == 0:
+        for l, w in zip(label.flatten(), example_weight.flatten()):
+          yield np.array([l]), prediction, np.array([w])
+      elif label.size == prediction.size:
+        for l, p, w in zip(label.flatten(), prediction.flatten(),
+                           example_weight.flatten()):
+          yield np.array([l]), np.array([p]), np.array([w])
+      elif label.shape[-1] == 1:
+        label = one_hot(label, prediction)
+        for l, p, w in zip(label.flatten(), prediction.flatten(),
+                           example_weight.flatten()):
+          yield np.array([l]), np.array([p]), np.array([w])
       else:
-        yield label, prediction, example_weight
-    elif label.size == 0:
-      for p, w in zip(prediction.flatten(), example_weight.flatten()):
-        yield label, np.array([p]), np.array([w])
-    elif prediction.size == 0:
-      for l, w in zip(label.flatten(), example_weight.flatten()):
-        yield np.array([l]), prediction, np.array([w])
-    elif label.size == prediction.size:
-      for l, p, w in zip(label.flatten(), prediction.flatten(),
-                         example_weight.flatten()):
-        yield np.array([l]), np.array([p]), np.array([w])
-    elif label.shape[-1] == 1:
-      label = one_hot(label, prediction)
-      for l, p, w in zip(label.flatten(), prediction.flatten(),
-                         example_weight.flatten()):
-        yield np.array([l]), np.array([p]), np.array([w])
-    else:
-      raise ValueError(
-          'unable to pair labels with predictions: labels={}, predictions={}, '
-          'model_name={}, output_name={}, sub_key={}, aggregation_type={}, '
-          'StandardMetricInputs={}\n\nThis is most likely a configuration '
-          'error.'.format(label, prediction, model_name, output_name, sub_key,
-                          aggregation_type, inputs))
+        raise ValueError(
+            f'unable to pair labels with predictions: label={label}, '
+            f'prediction={prediction}\n\n'
+            'This is most likely a configuration error.')
 
-  for result in yield_results(label, prediction, example_weight):
-    if fractional_labels and label.size:
-      for new_result in _yield_fractional_labels(*result):
-        yield new_result
-    else:
-      yield result
+    for result in yield_results(label, prediction, example_weight):
+      if fractional_labels and label.size:
+        for new_result in _yield_fractional_labels(*result):
+          yield new_result
+      else:
+        yield result
+  except Exception as e:
+    import sys  # pylint: disable=g-import-not-at-top
+    raise type(e)(str(e) + f'\n\n{fn_call_str()}').with_traceback(
+        sys.exc_info()[2])
 
 
 def _yield_fractional_labels(
@@ -558,9 +583,9 @@ def _yield_fractional_labels(
   """
   # Verify that labels are also within [0, 1]
   if not within_interval(float(label), 0.0, 1.0):
-    raise ValueError('label must be within [0, 1]: '
-                     'label={}, prediction={}, example_weight={}'.format(
-                         label, prediction, example_weight))
+    raise ValueError(
+        f'label must be within [0, 1]: label={label}, prediction={prediction}, '
+        f'example_weight={example_weight}')
   for l, w in ((np.array([0], dtype=label.dtype), example_weight * (1 - label)),
                (np.array([1], dtype=label.dtype), example_weight * label)):
     if not math.isclose(w, 0.0):
@@ -611,7 +636,7 @@ def prepare_labels_and_predictions(
   Raises:
     ValueError: If the labels or predictions are in an invalid format.
   """
-  if isinstance(predictions, dict):
+  if isinstance(predictions, Mapping):
     if label_vocabulary is None:
       if _ALL_CLASSES in predictions:
         # Check for use of estimator label vocab under ALL_CLASSES. This was
@@ -641,15 +666,17 @@ def prepare_labels_and_predictions(
     elif prediction_key in predictions:
       predictions = predictions[prediction_key]
 
-  if isinstance(labels, dict) or isinstance(predictions, dict):
-    raise ValueError('unable to prepare labels and predictions because the '
-                     'labels and/or predictions are dicts with unrecognized '
-                     'keys. If a multi-output keras model (or estimator) was '
-                     'used check that an output_name was provided. If an '
-                     'estimator was used check that common prediction keys '
-                     'were provided (e.g. logistic, probabilities, etc): '
-                     'labels={}, predictions={}, prediction_key={}'.format(
-                         labels, predictions, prediction_key))
+  if isinstance(predictions, Mapping):
+    raise ValueError(
+        'unable to prepare prediction for metric computation because the '
+        'prediction is a dict with unrecognized keys. If a multi-output model '
+        'was used check that an output name was provided in all the relevant '
+        'settings (MetricsSpec.output_names, etc). If the model returns a dict '
+        'for its output and the output does not contain one of the common '
+        'prediction keys (e.g. logistic, probabilities, etc), then '
+        'ModelSpec.prediction_key can be used to specify which key to use for '
+        f'the predicted value: prediction={predictions}, '
+        f'prediction_key={prediction_key}')
 
   if predictions is not None:
     predictions = util.to_numpy(predictions)
@@ -659,7 +686,7 @@ def prepare_labels_and_predictions(
         isinstance(labels, tf.compat.v1.SparseTensorValue)):
       if predictions is None or predictions.size == 0:
         raise ValueError('predictions must also be used if labels are of type '
-                         'SparseTensorValue: labels={}'.format(labels))
+                         f'SparseTensorValue: labels={labels}')
       values = labels.values if labels.values is not None else np.array([])
       indices = labels.indices if labels.indices is not None else np.array([])
       if label_vocabulary is not None and values.dtype.kind in ('U', 'S', 'O'):
@@ -737,8 +764,7 @@ def select_class_id(
 
   def lookup(arr, target):
     if class_id < 0 or class_id >= len(arr):
-      raise ValueError('class_id "{}" out of range of {}: {}'.format(
-          class_id, target, arr))
+      raise ValueError(f'class_id "{class_id}" out of range of {target}: {arr}')
     return arr[class_id]
 
   # Convert scalars to arrays
@@ -818,8 +844,8 @@ def _verify_sparse_labels(labels: np.ndarray,
           'The number of labels = 1, but sparse labels are not being used\n\n'
           'This is likley caused by a metric configuration error. Change to '
           'use a non-sparse versions of the metrics or ensure that sparse '
-          'labels are passed as input: labels={}, predictions={}'.format(
-              labels, predictions))
+          f'labels are passed as input: labels={labels}, '
+          f'predictions={predictions}')
     return True
   else:
     # Labels are of the form [0, 0, 1, ...] (i.e. one-hot). This includes
@@ -834,8 +860,7 @@ def _verify_sparse_labels(labels: np.ndarray,
           'The number of labels > 1, but sparse labels are being used\n\n'
           'This is likley caused by a metric configuration error. Change to '
           'use sparse versions of the metrics or ensure that non-sparse labels '
-          'are passed as input: labels={}, predictions={}'.format(
-              labels, predictions))
+          f'are passed as input: labels={labels}, predictions={predictions}')
     return False
 
 
@@ -861,8 +886,8 @@ def one_hot(tensor: np.ndarray, target: np.ndarray) -> np.ndarray:
     return tensor.reshape(target.shape)
   except IndexError as e:
     raise ValueError(
-        'invalid inputs to one_hot: tensor={}, target={}, error={}'.format(
-            tensor, target, e))
+        f'invalid inputs to one_hot: tensor={tensor}, target={target}, '
+        f'error={e}')
 
 
 def merge_per_key_computations(
