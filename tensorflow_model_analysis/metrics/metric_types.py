@@ -529,11 +529,27 @@ class CrossSliceMetricComputation(
     return hash(self._computation_id())
 
 
+class CIDerivedMetricComputation(DerivedMetricComputation):
+  """CIDerivedMetricComputation runs after Confidence Interval is computed.
+
+  A CIDerivedMetricComputation is uniquely identified by the combination of
+  result function's name and the keys. Duplicate computations will be removed
+  automatically.
+
+  Attributes:
+    keys: List of metric keys associated with derived computation. If the keys
+      are defined as part of the computation then this may be empty in which
+      case only the result function name will be used for identifying
+      computation uniqueness.
+    result: Function called to perform compute the metrics.
+  """
+
 # MetricComputations is a list of derived and non-derived computations used to
 # calculate one or more metric values. Derived metrics should come after the
 # computations they depend on in the list.
 MetricComputations = List[Union[MetricComputation, DerivedMetricComputation,
-                                CrossSliceMetricComputation]]
+                                CrossSliceMetricComputation,
+                                CIDerivedMetricComputation]]
 
 
 def update_create_computations_fn_kwargs(

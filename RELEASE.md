@@ -8,6 +8,7 @@
     versions of sparse and ragged tensor values used in extracts. Tensor values
     used for features, etc should now be based on either np.ndarray,
     SparseTensorValue, or RaggedTensorValue and not tf.compat.v1 value types.
+*   Add CIDerivedMetricComputation metric type.
 
 ## Bug fixes and other Changes
 

@@ -116,11 +116,17 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
           tensor_adapter_config=tensor_adapter_config))
 
 
+MetricComputations = NamedTuple('MetricComputations', [
+    ('non_derived_computations', List[metric_types.MetricComputation]),
+    ('derived_computations', List[metric_types.DerivedMetricComputation]),
+    ('cross_slice_computations',
+     List[metric_types.CrossSliceMetricComputation]),
+    ('ci_derived_computations', List[metric_types.CIDerivedMetricComputation])
+])
+
+
 def _filter_and_separate_computations(
-    computations: metric_types.MetricComputations
-) -> Tuple[List[metric_types.MetricComputation],
-           List[metric_types.DerivedMetricComputation],
-           List[metric_types.CrossSliceMetricComputation]]:
+    computations: metric_types.MetricComputations) -> MetricComputations:
   """Filters duplicate computations and separates non-derived and derived.
 
   All metrics are based on either direct computations using combiners or are
@@ -140,7 +146,7 @@ def _filter_and_separate_computations(
 
   Returns:
     Tuple of (metric computations, derived metric computations, cross slice
-    metric computations).
+    metric computations, CI derived metric computations).
   """
   non_derived_computations = []
   processed_non_derived_computations = {}
@@ -148,6 +154,8 @@ def _filter_and_separate_computations(
   processed_derived_computations = {}
   cross_slice_computations = []
   processed_cross_slice_computations = {}
+  ci_derived_computations = []
+  processed_ci_derived_computations = {}
   # The order of the computations matters (i.e. one computation may depend on
   # another). While there shouldn't be any differences in matching computations
   # the implemented hash is only based on combiner/result names and the keys, so
@@ -160,6 +168,14 @@ def _filter_and_separate_computations(
       else:
         processed_non_derived_computations[c] = len(non_derived_computations)
         non_derived_computations.append(c)
+    # CIDerivedMetricComputation is inherited from DerivedMetricComputation, so
+    # order of elif's matter here.
+    elif isinstance(c, metric_types.CIDerivedMetricComputation):
+      if c in processed_ci_derived_computations:
+        ci_derived_computations[processed_ci_derived_computations[c]] = c
+      else:
+        processed_ci_derived_computations[c] = len(ci_derived_computations)
+        ci_derived_computations.append(c)
     elif isinstance(c, metric_types.DerivedMetricComputation):
       if c in processed_derived_computations:
         derived_computations[processed_derived_computations[c]] = c
@@ -174,8 +190,11 @@ def _filter_and_separate_computations(
         cross_slice_computations.append(c)
     else:
       raise TypeError('Unsupported metric computation type: {}'.format(c))
-  return (non_derived_computations, derived_computations,
-          cross_slice_computations)
+  return MetricComputations(
+      non_derived_computations=non_derived_computations,
+      derived_computations=derived_computations,
+      cross_slice_computations=cross_slice_computations,
+      ci_derived_computations=ci_derived_computations)
 
 
 @beam.ptransform_fn
@@ -316,12 +335,12 @@ class _PreprocessorDoFn(beam.DoFn):
       preprocessor.process(extracts)
       default_combiner_input = metric_util.to_standard_metric_inputs(
           extracts,
-          include_features=(
-              constants.FEATURES_KEY in preprocessor.include_filter),
-          include_transformed_features=(constants.TRANSFORMED_FEATURES_KEY in
-                                        preprocessor.include_filter),
-          include_attributions=(
-              constants.ATTRIBUTIONS_KEY in preprocessor.include_filter))
+          include_features=(constants.FEATURES_KEY
+                            in preprocessor.include_filter),
+          include_transformed_features=(constants.TRANSFORMED_FEATURES_KEY
+                                        in preprocessor.include_filter),
+          include_attributions=(constants.ATTRIBUTIONS_KEY
+                                in preprocessor.include_filter))
       output[_DEFAULT_COMBINER_INPUT_KEY] = default_combiner_input
     yield output
 
@@ -347,6 +366,7 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
         constants.METRICS_NAMESPACE, 'num_compacts')
 
   def add_input(self, accumulator: Any, element: types.Extracts):
+
     def get_combiner_input(element, i):
       item = element[_COMBINER_INPUTS_KEY][i]
       if item is None:
@@ -621,6 +641,27 @@ def _get_confidence_interval_params(
                                    skip_ci_metric_keys)
 
 
+def _add_ci_derived_metrics(
+    sliced_metrics: Tuple[slicer.SliceKeyType, metric_types.MetricsDict],
+    computations: List[metric_types.CIDerivedMetricComputation],
+) -> Tuple[slicer.SliceKeyType, metric_types.MetricsDict]:
+  """PTransform to compute CI derived metrics.
+
+  Args:
+    sliced_metrics: A PCollection of per-slice MetricsDicts containing the
+      metrics to be used as inputs for ci-derived metrics.
+    computations: List of CIDerivedMetricComputation.
+
+  Returns:
+    PCollection of sliced dict of metrics updated with ci-derived metrics.
+  """
+  slice_key, metrics = sliced_metrics
+  result = copy.copy(metrics)
+  for c in computations:
+    result.update(c.result(result))
+  return slice_key, result
+
+
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Any)
@@ -687,11 +728,10 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
             eval_saved_model_util.metric_computations_using_eval_saved_model(
                 model_name, eval_shared_model.model_loader))
   # Add metric computations from specs
-  computations_from_specs, derived_computations, cross_slice_computations = (
-      _filter_and_separate_computations(
-          metric_specs.to_computations(
-              metrics_specs, eval_config=eval_config, schema=schema)))
-  computations.extend(computations_from_specs)
+  metric_computations = _filter_and_separate_computations(
+      metric_specs.to_computations(
+          metrics_specs, eval_config=eval_config, schema=schema))
+  computations.extend(metric_computations.non_derived_computations)
 
   # Find out which model is baseline.
   baseline_spec = model_util.get_baseline_model_spec(eval_config)
@@ -747,7 +787,8 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 
   computations_combine_fn = _ComputationsCombineFn(computations=computations)
   derived_metrics_ptransform = _AddDerivedCrossSliceAndDiffMetrics(
-      derived_computations, cross_slice_computations, cross_slice_specs,
+      metric_computations.derived_computations,
+      metric_computations.cross_slice_computations, cross_slice_specs,
       baseline_model_name)
 
   # Input: Tuple of (slice key, combiner input extracts).
@@ -783,6 +824,11 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
         'CombineMetricsPerSlice' >> beam.CombinePerKey(computations_combine_fn)
         .with_hot_key_fanout(_COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT)
         | 'AddDerivedCrossSliceAndDiffMetrics' >> derived_metrics_ptransform)
+
+  sliced_metrics_plots_and_attributions = (
+      sliced_metrics_plots_and_attributions
+      | 'AddCIDerivedMetrics' >> beam.Map(
+          _add_ci_derived_metrics, metric_computations.ci_derived_computations))
 
   if eval_config.options.min_slice_size.value > 1:
     sliced_metrics_plots_and_attributions = (

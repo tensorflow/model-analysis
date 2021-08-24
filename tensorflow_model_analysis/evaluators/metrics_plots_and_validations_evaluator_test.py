@@ -123,7 +123,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         binarize=config.BinarizationOptions(class_ids={'values': [0, 5]}))
     computations = metric_specs.to_computations(
         metrics_specs, eval_config=eval_config)
-    non_derived, derived, cross_slice = metrics_plots_and_validations_evaluator._filter_and_separate_computations(
+    non_derived, derived, cross_slice, ci_derived = metrics_plots_and_validations_evaluator._filter_and_separate_computations(
         computations)
     # 2 models x 2 classes x _binary_confusion_matrix_[0.5]_100,
     # 2 models x 2 classes x _CalibrationHistogramCombiner
@@ -148,6 +148,30 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     self.assertLen(derived, 48)
     # 2 models x 2 classes x lift
     self.assertLen(cross_slice, 4)
+    # None of the metric has CIDerivedMetricComputation.
+    self.assertEmpty(ci_derived)
+
+  def testFilterAndSeparateComputationsWithCIDerivedMetrics(self):
+
+    def derived_metric_fn():
+      pass
+
+    def ci_derived_fn():
+      pass
+
+    computations = [
+        metric_types.DerivedMetricComputation([metric_types.MetricKey('key1')],
+                                              derived_metric_fn),
+        metric_types.CIDerivedMetricComputation(
+            [metric_types.MetricKey('key1')], ci_derived_fn),
+        metric_types.CIDerivedMetricComputation(
+            [metric_types.MetricKey('key1')], ci_derived_fn)
+    ]
+    _, derived, _, ci_derived = metrics_plots_and_validations_evaluator._filter_and_separate_computations(
+        computations)
+
+    self.assertLen(derived, 1)
+    self.assertLen(ci_derived, 1)
 
   def testEvaluateWithKerasAndValidateMetrics(self):
     model_dir, baseline_dir = self._getExportDir(), self._getBaselineDir()
