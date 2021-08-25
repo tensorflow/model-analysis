@@ -467,7 +467,7 @@ eval_config = text_format.Parse("""
 eval_shared_models = [
   tfma.default_eval_shared_model(
       model_name=tfma.CANDIDATE_KEY,
-      eval_saved_model_path='/path/to/saved/candiate/model',
+      eval_saved_model_path='/path/to/saved/candidate/model',
       eval_config=eval_config),
   tfma.default_eval_shared_model(
       model_name=tfma.BASELINE_KEY,
