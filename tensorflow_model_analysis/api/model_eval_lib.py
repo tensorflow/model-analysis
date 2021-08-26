@@ -402,19 +402,21 @@ def default_eval_shared_model(
     # pytype: disable=module-attr
     if not add_metrics_callbacks:
       add_metrics_callbacks = []
-    # Always compute example weight and example count.
-    example_count_callback = post_export_metrics.example_count()
-    add_metrics_callbacks.append(example_count_callback)
-    if example_weight_key:
-      if isinstance(example_weight_key, dict):
-        for output_name, key in example_weight_key.items():
+    if include_default_metrics:
+      # Always compute example weight and example count if default metrics are
+      # enabled.
+      example_count_callback = post_export_metrics.example_count()
+      add_metrics_callbacks.append(example_count_callback)
+      if example_weight_key:
+        if isinstance(example_weight_key, dict):
+          for output_name, key in example_weight_key.items():
+            example_weight_callback = post_export_metrics.example_weight(
+                key, metric_tag=output_name)
+            add_metrics_callbacks.append(example_weight_callback)
+        else:
           example_weight_callback = post_export_metrics.example_weight(
-              key, metric_tag=output_name)
+              example_weight_key)
           add_metrics_callbacks.append(example_weight_callback)
-      else:
-        example_weight_callback = post_export_metrics.example_weight(
-            example_weight_key)
-        add_metrics_callbacks.append(example_weight_callback)
     # pytype: enable=module-attr
 
   model_loader = custom_model_loader

@@ -17,6 +17,8 @@
 *   Fixes bug when computing confidence intervals for
     `binary_confusion_metrics.ConfusionMatrixAtThresholds` (or any other
     structured metric).
+*   Fixed bug where example_count post_export_metric is added even if
+    include_default_metrics is False.
 
 ## Breaking Changes
 
