@@ -12,13 +12,14 @@
 
 ## Bug fixes and other Changes
 
-*   Depends on
-    `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3`.
 *   Fixes bug when computing confidence intervals for
     `binary_confusion_metrics.ConfusionMatrixAtThresholds` (or any other
     structured metric).
 *   Fixed bug where example_count post_export_metric is added even if
     include_default_metrics is False.
+*   Depends on `apache-beam[gcp]>=2.31,<2.32`.
+*   Depends on
+    `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3`.
 
 ## Breaking Changes
 
