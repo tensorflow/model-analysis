@@ -118,8 +118,8 @@ class _BootstrapSampleCombineFn(confidence_intervals_util.SampleCombineFn):
     Args:
       num_bootstrap_samples: The expected number of samples computed per slice.
       skip_ci_metric_keys: Set of metric keys for which to skip confidence
-        interval computation. For metric keys in this set, just the unsampled
-        value will be returned.
+        interval computation. For metric keys in this set, just the point
+        estimate will be returned.
     """
     super().__init__(
         num_samples=num_bootstrap_samples,
@@ -133,16 +133,16 @@ class _BootstrapSampleCombineFn(confidence_intervals_util.SampleCombineFn):
     accumulator = self._validate_accumulator(accumulator)
     result = {}
     dof = self._num_samples - 1
-    for key, unsampled_value in accumulator.unsampled_values.items():
+    for key, point_estimate in accumulator.point_estimates.items():
       if key not in accumulator.metric_samples:
-        result[key] = unsampled_value
+        result[key] = point_estimate
       else:
         mean, std_error = confidence_intervals_util.mean_and_std(
             accumulator.metric_samples[key], ddof=1)
         result[key] = types.ValueWithTDistribution(
             sample_mean=mean,
             sample_standard_deviation=std_error,
-            unsampled_value=unsampled_value,
+            unsampled_value=point_estimate,
             sample_degrees_of_freedom=dof)
     return result
 

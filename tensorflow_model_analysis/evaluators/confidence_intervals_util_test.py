@@ -163,20 +163,20 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
         self.assertIn(slice_key1, accumulators_by_slice)
         slice1_accumulator = accumulators_by_slice[slice_key1]
         # check unsampled value
-        self.assertIn(metric_key, slice1_accumulator.unsampled_values)
-        self.assertEqual(2.1, slice1_accumulator.unsampled_values[metric_key])
+        self.assertIn(metric_key, slice1_accumulator.point_estimates)
+        self.assertEqual(2.1, slice1_accumulator.point_estimates[metric_key])
         # check numeric case sample_values
         self.assertIn(metric_key, slice1_accumulator.metric_samples)
         self.assertEqual([1, 2], slice1_accumulator.metric_samples[metric_key])
         # check that non-numeric metric sample_values are not present
         self.assertIn(non_numeric_metric_key,
-                      slice1_accumulator.unsampled_values)
+                      slice1_accumulator.point_estimates)
         self.assertNotIn(non_numeric_metric_key,
                          slice1_accumulator.metric_samples)
         # check that single metric missing samples generates error
         error_key = metric_types.MetricKey('__ERROR__')
-        self.assertIn(error_key, slice1_accumulator.unsampled_values)
-        self.assertRegex(slice1_accumulator.unsampled_values[error_key],
+        self.assertIn(error_key, slice1_accumulator.point_estimates)
+        self.assertRegex(slice1_accumulator.point_estimates[error_key],
                          'CI not computed for.*missing_metric.*')
         # check that skipped metrics have no samples
         self.assertNotIn(skipped_metric_key, slice1_accumulator.metric_samples)
@@ -184,13 +184,13 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
         self.assertIn(slice_key2, accumulators_by_slice)
         slice2_accumulator = accumulators_by_slice[slice_key2]
         # check unsampled value
-        self.assertIn(metric_key, slice2_accumulator.unsampled_values)
-        self.assertEqual(6.3, slice2_accumulator.unsampled_values[metric_key])
+        self.assertIn(metric_key, slice2_accumulator.point_estimates)
+        self.assertEqual(6.3, slice2_accumulator.point_estimates[metric_key])
         # check that entirely missing sample generates error
         self.assertIn(
             metric_types.MetricKey('__ERROR__'),
-            slice2_accumulator.unsampled_values)
-        self.assertRegex(slice2_accumulator.unsampled_values[error_key],
+            slice2_accumulator.point_estimates)
+        self.assertRegex(slice2_accumulator.point_estimates[error_key],
                          'CI not computed because only 1.*Expected 2.*')
 
       util.assert_that(result, check_result)

@@ -106,10 +106,10 @@ class _JackknifeSampleCombineFn(confidence_intervals_util.SampleCombineFn):
   ) -> metric_types.MetricsDict:
     accumulator = self._validate_accumulator(accumulator)
     result = {}
-    dof = self._num_samples - 1
-    for key, unsampled_value in accumulator.unsampled_values.items():
+    num_buckets = self._num_samples
+    for key, point_estimate in accumulator.point_estimates.items():
       if key not in accumulator.metric_samples:
-        result[key] = unsampled_value
+        result[key] = point_estimate
       else:
         # See jackknife cookie bucket method described in:
         # go/rasta-confidence-intervals
@@ -120,16 +120,21 @@ class _JackknifeSampleCombineFn(confidence_intervals_util.SampleCombineFn):
             total = sample_value
           else:
             total = total + sample_value
-          pseudo_values.append(unsampled_value * self._num_samples -
-                               sample_value * (self._num_samples - 1))
-        _, std_error = confidence_intervals_util.mean_and_std(
+          pseudo_values.append(point_estimate * num_buckets - sample_value *
+                               (num_buckets - 1))
+        _, std_dev = confidence_intervals_util.mean_and_std(
             pseudo_values, ddof=1)
-        mean = total / self._num_samples
+        # Here we use Student's t-distribution to estimate the standard
+        # error with n - 1 degrees of freedom as S.E. = S.D. / sqrt(n)a
+        # In the case of the delete-d jackknife, the standard error is inversely
+        # proprotional to the square root of the number of data partitions.
+        std_error = std_dev / (num_buckets**0.5)
+        mean = total / num_buckets
         result[key] = types.ValueWithTDistribution(
             sample_mean=mean,
             sample_standard_deviation=std_error,
-            unsampled_value=unsampled_value,
-            sample_degrees_of_freedom=dof)
+            unsampled_value=point_estimate,
+            sample_degrees_of_freedom=num_buckets - 1)
     return result
 
 

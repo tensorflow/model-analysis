@@ -32,6 +32,8 @@
 *   Depends on
     `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3`.
 *   Depends on `tfx-bsl>=1.3.1,<1.4.0`.
+*   Fixes issue with jackknife confidence interval method that resulted in
+    erroneously large intervals.
 
 ## Breaking Changes
 

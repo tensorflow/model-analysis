@@ -113,14 +113,14 @@ def mean_and_std(
 
 
 class SampleCombineFn(beam.CombineFn):
-  """Computes the jackknife standard error for each metric from samples."""
+  """Computes the standard deviation for each metric from samples."""
 
   class _SampleAccumulator(object):
 
-    __slots__ = ['unsampled_values', 'num_samples', 'metric_samples']
+    __slots__ = ['point_estimates', 'num_samples', 'metric_samples']
 
     def __init__(self):
-      self.unsampled_values = None
+      self.point_estimates = None
       self.num_samples = 0
       self.metric_samples = collections.defaultdict(list)
 
@@ -129,7 +129,7 @@ class SampleCombineFn(beam.CombineFn):
       num_samples: int,
       full_sample_id: int,
       skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None):
-    """Initializes a _MergeJackknifeSamples CombineFn.
+    """Initializes a SampleCombineFn.
 
     Args:
       num_samples: The number of samples computed per slice.
@@ -156,7 +156,7 @@ class SampleCombineFn(beam.CombineFn):
     sample_id = sample.sample_id
     sample = sample.metrics
     if sample_id == self._full_sample_id:
-      accumulator.unsampled_values = sample
+      accumulator.point_estimates = sample
     else:
       accumulator.num_samples += 1
       for metric_key, value in sample.items():
@@ -176,8 +176,8 @@ class SampleCombineFn(beam.CombineFn):
     accumulators = iter(accumulators)
     result = next(accumulators)
     for accumulator in accumulators:
-      if accumulator.unsampled_values:
-        result.unsampled_values = accumulator.unsampled_values
+      if accumulator.point_estimates:
+        result.point_estimates = accumulator.point_estimates
       result.num_samples += accumulator.num_samples
       for metric_key, sample_values in accumulator.metric_samples.items():
         result.metric_samples[metric_key].extend(sample_values)
@@ -190,7 +190,7 @@ class SampleCombineFn(beam.CombineFn):
     error_metric_key = metric_types.MetricKey(metric_keys.ERROR_METRIC)
     if accumulator.num_samples < self._num_samples:
       self._missing_samples_counter.inc(1)
-      accumulator.unsampled_values[error_metric_key] = (
+      accumulator.point_estimates[error_metric_key] = (
           f'CI not computed because only {accumulator.num_samples} samples '
           f'were non-empty. Expected {self._num_samples}.')
       # If we are missing samples, clear samples for all metrics as they are all
@@ -198,13 +198,13 @@ class SampleCombineFn(beam.CombineFn):
       accumulator.metric_samples = {}
     # Check that all metrics were present in all samples
     metric_incorrect_sample_counts = {}
-    for metric_key in accumulator.unsampled_values:
+    for metric_key in accumulator.point_estimates:
       if metric_key in accumulator.metric_samples:
         actual_num_samples = len(accumulator.metric_samples[metric_key])
         if actual_num_samples != self._num_samples:
           metric_incorrect_sample_counts[metric_key] = actual_num_samples
     if metric_incorrect_sample_counts:
-      accumulator.unsampled_values[error_metric_key] = (
+      accumulator.point_estimates[error_metric_key] = (
           'CI not computed for the following metrics due to incorrect number '
           f'of samples: "{metric_incorrect_sample_counts}".'
           f'Expected {self._num_samples}.')

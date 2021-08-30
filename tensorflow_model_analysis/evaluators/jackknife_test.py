@@ -19,7 +19,6 @@ import functools
 from absl.testing import absltest
 import apache_beam as beam
 from apache_beam.testing import util
-import numpy as np
 
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import confidence_intervals_util
@@ -110,7 +109,7 @@ class JackknifeTest(absltest.TestCase):
     slice_key1 = (('slice_feature', 1),)
     slice_key2 = (('slice_feature', 2),)
     samples = [
-        # unsampled value for slice 1
+        # point estimate for slice 1
         (slice_key1,
          confidence_intervals_util.SampleMetrics(
              sample_id=jackknife._FULL_SAMPLE_ID,
@@ -136,7 +135,7 @@ class JackknifeTest(absltest.TestCase):
                  y_key: 20,
                  cm_key: cm_metric + 1,
              })),
-        # unsampled value for slice 2
+        # point estimate for slice 2
         (slice_key2,
          confidence_intervals_util.SampleMetrics(
              sample_id=jackknife._FULL_SAMPLE_ID,
@@ -173,78 +172,68 @@ class JackknifeTest(absltest.TestCase):
           | 'CombineJackknifeSamplesPerKey' >> beam.CombinePerKey(
               jackknife._JackknifeSampleCombineFn(num_jackknife_samples=2)))
 
-      # For standard error calculations, see delete-d jackknife formula in:
-      # https://www.stat.berkeley.edu/~hhuang/STAT152/Jackknife-Bootstrap.pdf
-      # Rather than normalize by all possible n-choose-d samples, we normalize
-      # by the actual number of samples (2).
+      # WARNING: Do not change this test without carefully considering the
+      # impact on clients due to changed CI bounds. The current implementation
+      # follows jackknife cookie bucket method described in:
+      # go/rasta-confidence-intervals
       def check_result(got_pcoll):
-        slice1_jackknife_factor = (100 - 100 / 2) / (100 / 2)
-        slice2_jackknife_factor = (1000 - 1000 / 2) / (1000 / 2)
         expected_pcoll = [
-            (
-                slice_key1,
-                {
-                    x_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=1.5,
-                            # sample_standard_deviation=0.5
-                            sample_standard_deviation=(
-                                slice1_jackknife_factor *
-                                np.var([1, 2], ddof=1))**0.5,
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=1.6),
-                    y_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=15.,
-                            # sample_standard_deviation=5,
-                            sample_standard_deviation=(
-                                slice1_jackknife_factor *
-                                np.var([10, 20], ddof=1))**0.5,
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=16),
-                    cm_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=cm_metric,
-                            sample_standard_deviation=(
-                                cm_metric * 0 + slice1_jackknife_factor *
-                                np.var([-1, 1], ddof=1))**0.5,
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=cm_metric),
-                    jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY:
-                        100,
-                }),
-            (
-                slice_key2,
-                {
-                    x_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=3.,
-                            # sample_standard_deviation=1,
-                            sample_standard_deviation=(
-                                slice2_jackknife_factor *
-                                np.var([2, 4], ddof=1))**0.5,
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=3.3),
-                    y_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=30.,
-                            # sample_standard_deviation=10,
-                            sample_standard_deviation=(
-                                slice2_jackknife_factor *
-                                np.var([20, 40], ddof=1))**0.5,
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=33),
-                    cm_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=cm_metric,
-                            sample_standard_deviation=(
-                                cm_metric * 0 + slice2_jackknife_factor *
-                                np.var([-10, 10], ddof=1))**0.5,
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=cm_metric),
-                    jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY:
-                        1000,
-                }),
+            (slice_key1, {
+                x_key:
+                    types.ValueWithTDistribution(
+                        sample_mean=1.5,
+                        sample_standard_deviation=0.5,
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=1.6),
+                y_key:
+                    types.ValueWithTDistribution(
+                        sample_mean=15.,
+                        sample_standard_deviation=5,
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=16),
+                cm_key:
+                    types.ValueWithTDistribution(
+                        sample_mean=cm_metric,
+                        sample_standard_deviation=(
+                            binary_confusion_matrices.Matrices(
+                                thresholds=[0.5],
+                                tp=[1],
+                                fp=[1],
+                                tn=[1],
+                                fn=[1])),
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=cm_metric),
+                jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY:
+                    100,
+            }),
+            (slice_key2, {
+                x_key:
+                    types.ValueWithTDistribution(
+                        sample_mean=3.,
+                        sample_standard_deviation=1,
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=3.3),
+                y_key:
+                    types.ValueWithTDistribution(
+                        sample_mean=30.,
+                        sample_standard_deviation=10,
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=33),
+                cm_key:
+                    types.ValueWithTDistribution(
+                        sample_mean=cm_metric,
+                        sample_standard_deviation=(
+                            binary_confusion_matrices.Matrices(
+                                thresholds=[0.5],
+                                tp=[10],
+                                fp=[10],
+                                tn=[10],
+                                fn=[10])),
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=cm_metric),
+                jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY:
+                    1000,
+            }),
         ]
         self.assertCountEqual(expected_pcoll, got_pcoll)
 
