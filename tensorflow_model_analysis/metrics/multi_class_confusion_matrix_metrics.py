@@ -175,14 +175,16 @@ class Matrices(types.StructuredMetricValue, dict):
   def _apply_binary_op_elementwise(
       self, other: 'Matrices', op: Callable[[float, float],
                                             float]) -> 'Matrices':
-    assert self.keys() == other.keys()
     result = Matrices()
-    for threshold, self_entries in self.items():
-      other_entries = other[threshold]
+    all_thresholds = set(self.keys()).union(other.keys())
+    for threshold in all_thresholds:
+      self_entries = self.get(threshold, {})
+      other_entries = other.get(threshold, {})
       result[threshold] = {}
-      assert self_entries.keys == other_entries.keys()
-      for entry_key, self_count in self_entries.items():
-        other_count = other_entries[entry_key]
+      all_entry_keys = set(self_entries.keys()).union(set(other_entries.keys()))
+      for entry_key in all_entry_keys:
+        self_count = self_entries.get(entry_key, 0)
+        other_count = other_entries.get(entry_key, 0)
         result[threshold][entry_key] = op(self_count, other_count)
     return result
 

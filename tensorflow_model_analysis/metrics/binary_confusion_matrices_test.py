@@ -34,6 +34,115 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
                                   parameterized.TestCase):
 
   @parameterized.named_parameters(
+      {
+          'testcase_name':
+              '_empty',
+          'left':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[], tp=[], tn=[], fp=[], fn=[]),
+          'right':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[], tp=[], tn=[], fp=[], fn=[]),
+          'expected':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[], tp=[], tn=[], fp=[], fn=[])
+      },
+      {
+          'testcase_name':
+              '_different_thresholds_left_lower',
+          'left':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.5, 0.6],
+                  tp=[5, 6],
+                  tn=[5, 6],
+                  fp=[5, 6],
+                  fn=[5, 6]),
+          'right':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.6, 0.7],
+                  tp=[6, 7],
+                  tn=[6, 7],
+                  fp=[6, 7],
+                  fn=[6, 7]),
+          'expected':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.5, 0.6, 0.7],
+                  tp=[5, 12, 7],
+                  tn=[5, 12, 7],
+                  fp=[5, 12, 7],
+                  fn=[5, 12, 7])
+      },
+      {
+          'testcase_name':
+              '_different_thresholds_right_lower',
+          'left':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.6, 0.7],
+                  tp=[6, 7],
+                  tn=[6, 7],
+                  fp=[6, 7],
+                  fn=[6, 7]),
+          'right':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.5, 0.6],
+                  tp=[5, 6],
+                  tn=[5, 6],
+                  fp=[5, 6],
+                  fn=[5, 6]),
+          'expected':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.5, 0.6, 0.7],
+                  tp=[5, 12, 7],
+                  tn=[5, 12, 7],
+                  fp=[5, 12, 7],
+                  fn=[5, 12, 7])
+      },
+      {
+          'testcase_name':
+              '_different_thresholds_one_empty',
+          'left':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.5, 0.6],
+                  tp=[5, 6],
+                  tn=[5, 6],
+                  fp=[5, 6],
+                  fn=[5, 6]),
+          'right':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[], tp=[], tn=[], fp=[], fn=[]),
+          'expected':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.5, 0.6],
+                  tp=[5, 6],
+                  tn=[5, 6],
+                  fp=[5, 6],
+                  fn=[5, 6]),
+      },
+      {
+          'testcase_name':
+              '_broadcast',
+          'left':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.5, 0.6],
+                  tp=[5, 6],
+                  tn=[5, 6],
+                  fp=[5, 6],
+                  fn=[5, 6]),
+          'right':
+              1,
+          'expected':
+              binary_confusion_matrices.Matrices(
+                  thresholds=[0.5, 0.6],
+                  tp=[6, 7],
+                  tn=[6, 7],
+                  fp=[6, 7],
+                  fn=[6, 7]),
+      },
+  )
+  def testAddBinaryConfusionMatrices(self, left, right, expected):
+    self.assertEqual(expected, left + right)
+
+  @parameterized.named_parameters(
       ('using_num_thresholds', {
           'num_thresholds': 3,
       },

@@ -54,22 +54,60 @@ class Matrices(types.StructuredMetricValue,
   """A class representing a set of binary confusion matrices at thresholds.
 
   For each threshold, in addition to the count of examples per prediction and
-  label, this class also contains a sample of raw examples.
+  label, this class also contains a sample of raw examples. Threshold values are
+  sorted, and the entries within  tp[i], tn[i], fp[i], and fn[i] correspond to
+  thresholds[i].
   """
 
   def _apply_binary_op_elementwise(self, other: 'Matrices',
                                    op: Callable[[float, float], float]):
-    """Applies an operator elementwise on another Matrices, or broadcasts."""
-    assert self.thresholds == other.thresholds
-    return Matrices(
-        thresholds=self.thresholds,
-        tp=[op(tp, tp_other) for (tp, tp_other) in zip(self.tp, other.tp)],
-        tn=[op(tn, tn_other) for (tn, tn_other) in zip(self.tn, other.tn)],
-        fp=[op(fp, fp_other) for (fp, fp_other) in zip(self.fp, other.fp)],
-        fn=[op(fn, fn_other) for (fn, fn_other) in zip(self.fn, other.fn)])
+    """Applies an operator elementwise on self and `other` matrices."""
+    tp, tn, fp, fn = [], [], [], []
+    self_idx, other_idx = 0, 0
+    merged_thresholds = []
+    while True:
+      if (self_idx < len(self.thresholds) and
+          other_idx < len(other.thresholds) and
+          self.thresholds[self_idx] == other.thresholds[other_idx]):
+        # threshold present in both, advance both indices
+        merged_thresholds.append(self.thresholds[self_idx])
+        tp.append(op(self.tp[self_idx], other.tp[other_idx]))
+        tn.append(op(self.tn[self_idx], other.tn[other_idx]))
+        fp.append(op(self.fp[self_idx], other.fp[other_idx]))
+        fn.append(op(self.fn[self_idx], other.fn[other_idx]))
+        self_idx += 1
+        other_idx += 1
+      elif (self_idx < len(self.thresholds) and
+            (other_idx >= len(other.thresholds) or
+             self.thresholds[self_idx] < other.thresholds[other_idx])):
+        # threshold present in self but missing from other, use default values
+        # for other and advance self_idx
+        merged_thresholds.append(self.thresholds[self_idx])
+        tp.append(op(self.tp[self_idx], 0))
+        tn.append(op(self.tn[self_idx], 0))
+        fp.append(op(self.fp[self_idx], 0))
+        fn.append(op(self.fn[self_idx], 0))
+        self_idx += 1
+      elif (other_idx < len(other.thresholds) and
+            (self_idx >= len(self.thresholds) or
+             other.thresholds[self_idx] < self.thresholds[other_idx])):
+        # threshold present in other but missing from self, use default values
+        # for self and advance other_idx
+        merged_thresholds.append(other.thresholds[other_idx])
+        tp.append(op(0, other.tp[other_idx]))
+        tn.append(op(0, other.tn[other_idx]))
+        fp.append(op(0, other.fp[other_idx]))
+        fn.append(op(0, other.fn[other_idx]))
+        other_idx += 1
+      else:
+        assert (self_idx >= len(self.thresholds) and
+                other_idx >= len(other.thresholds))
+        break
+    return Matrices(thresholds=merged_thresholds, tp=tp, tn=tn, fp=fp, fn=fn)
 
   def _apply_binary_op_broadcast(self, other: float,
                                  op: Callable[[float, float], float]):
+    """Applies an operator on each element and the provided float."""
     return Matrices(
         thresholds=self.thresholds,
         tp=[op(tp, other) for tp in self.tp],

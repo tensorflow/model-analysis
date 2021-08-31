@@ -34,6 +34,9 @@
 *   Depends on `tfx-bsl>=1.3.1,<1.4.0`.
 *   Fixes issue with jackknife confidence interval method that resulted in
     erroneously large intervals.
+*   Fixes bug where calls to `_apply_binary_op_elementwise` could fail on
+    objects of types `binary_confusion_matrices.Matrices` and
+    `multi_class_confusion_matrix_metrics.Matrices` due to differing thresholds.
 
 ## Breaking Changes
 

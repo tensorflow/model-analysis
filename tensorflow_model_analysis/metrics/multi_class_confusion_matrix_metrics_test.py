@@ -33,6 +33,216 @@ from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_metri
 class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
                                            parameterized.TestCase):
 
+  @parameterized.named_parameters(
+      {
+          'testcase_name': '_empty_thresholds',
+          'left': multi_class_confusion_matrix_metrics.Matrices({}),
+          'right': multi_class_confusion_matrix_metrics.Matrices({}),
+          'expected': multi_class_confusion_matrix_metrics.Matrices({})
+      }, {
+          'testcase_name': '_empty_entries',
+          'left': multi_class_confusion_matrix_metrics.Matrices({0.5: {}}),
+          'right': multi_class_confusion_matrix_metrics.Matrices({0.5: {}}),
+          'expected': multi_class_confusion_matrix_metrics.Matrices({0.5: {}})
+      }, {
+          'testcase_name':
+              '_different_thresholds',
+          'left':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          1.0
+                  }
+              }),
+          'right':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.75: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          2.0
+                  }
+              }),
+          'expected':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          1.0
+                  },
+                  0.75: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          2.0
+                  }
+              }),
+      }, {
+          'testcase_name':
+              '_different_entries',
+          'left':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          1.0
+                  }
+              }),
+          'right':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          2.0
+                  }
+              }),
+          'expected':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          1.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          2.0
+                  }
+              }),
+      }, {
+          'testcase_name':
+              '_same_thresholds_and_entries',
+          'left':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          1.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          2.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=0):
+                          3.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=1):
+                          4.0,
+                  },
+                  0.75: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          2.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          4.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=0):
+                          6.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=1):
+                          8.0,
+                  }
+              }),
+          'right':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          1.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          3.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=0):
+                          5.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=1):
+                          7.0,
+                  },
+                  0.75: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          2.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          6.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=0):
+                          10.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=1):
+                          14.0,
+                  }
+              }),
+          'expected':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          2.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          5.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=0):
+                          8.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=1):
+                          11.0,
+                  },
+                  0.75: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          4.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          10.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=0):
+                          16.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=1, predicted_class_id=1):
+                          22.0,
+                  }
+              }),
+      }, {
+          'testcase_name': '_empty_thresholds_broadcast',
+          'left': multi_class_confusion_matrix_metrics.Matrices({}),
+          'right': 1.0,
+          'expected': multi_class_confusion_matrix_metrics.Matrices({})
+      }, {
+          'testcase_name': '_empty_entries_broadcast',
+          'left': multi_class_confusion_matrix_metrics.Matrices({0.5: {}}),
+          'right': 1.0,
+          'expected': multi_class_confusion_matrix_metrics.Matrices({0.5: {}})
+      }, {
+          'testcase_name':
+              '_nonempty_thresholds_and_entries_broadcast',
+          'left':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          1.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          2.0,
+                  },
+              }),
+          'right':
+              3.0,
+          'expected':
+              multi_class_confusion_matrix_metrics.Matrices({
+                  0.5: {
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=0):
+                          4.0,
+                      multi_class_confusion_matrix_metrics.MatrixEntryKey(
+                          actual_class_id=0, predicted_class_id=1):
+                          5.0,
+                  },
+              }),
+      })
+  def testAddMatrices(self, left, right, expected):
+    self.assertEqual(expected, left + right)
+
   @parameterized.named_parameters(('using_default_thresholds', {}),
                                   ('setting_thresholds', {
                                       'thresholds': [0.5]
