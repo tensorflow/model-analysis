@@ -93,7 +93,7 @@ def to_scalar(
     tensor = tensor.values
   if tensor.size != 1:
     raise ValueError(f'"{tensor_name}" should have exactly 1 value, but found '
-                     f'{tensor.size()} instead: values={tensor}')
+                     f'{tensor.size} instead: values={tensor}')
   return tensor.item()
 
 
