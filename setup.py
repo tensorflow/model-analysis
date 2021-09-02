@@ -291,7 +291,7 @@ setup_args = {
     'install_requires': [
         # Sort alphabetically
         'absl-py>=0.9,<0.13',
-        'apache-beam[gcp]>=2.31,<2.32',
+        'apache-beam[gcp]>=2.32,<3',
         'ipython>=7,<8',
         'ipywidgets>=7,<8',
         'numpy>=1.16,<1.20',
@@ -306,7 +306,7 @@ setup_args = {
             nightly='>=1.3.0.dev',
             git_master='@git+https://github.com/tensorflow/metadata@master'),
         'tfx-bsl' + select_constraint(
-            default='>=1.3.1,<1.4.0',
+            default='>=1.3.0,<1.4.0',
             nightly='>=1.4.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
     ],
