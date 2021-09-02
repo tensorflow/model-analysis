@@ -7,7 +7,7 @@
 ## Bug fixes and other Changes
 
 *   Depends on `apache-beam[gcp]>=2.32,<3`.
-*   Depends on `tfx-bsl>=1.3.1,<1.4.0`.
+*   Depends on `tfx-bsl>=1.3.0,<1.4.0`.
 
 ## Breaking Changes
 
