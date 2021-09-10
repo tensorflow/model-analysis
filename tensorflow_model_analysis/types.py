@@ -21,7 +21,6 @@ from __future__ import print_function
 
 import abc
 import datetime
-import numbers
 import operator
 
 from typing import Any, Callable, Dict, List, MutableMapping, Optional, Text, TypeVar, Tuple, Union, NamedTuple
@@ -194,9 +193,6 @@ class StructuredMetricValue(abc.ABC):
 
 MetricValueType = Union[PrimitiveMetricValueType, np.ndarray,
                         StructuredMetricValue]
-
-# isinstance(metric_value, NumericMetricTypes) determines whether to compute CIs
-NumericMetricValueTypes = (numbers.Number, np.ndarray, StructuredMetricValue)
 
 
 class ValueWithTDistribution(

@@ -6,6 +6,9 @@
 
 ## Bug fixes and other Changes
 
+*   Correctly skips non-numeric numpy array type metrics for confidence interval
+    computations.
+
 ## Breaking Changes
 
 ## Deprecations

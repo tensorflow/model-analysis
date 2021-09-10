@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
+from numpy import testing
 
 from tensorflow_model_analysis.evaluators import confidence_intervals_util
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
@@ -88,8 +89,10 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
 
   def test_sample_combine_fn(self):
     metric_key = metric_types.MetricKey('metric')
+    array_metric_key = metric_types.MetricKey('array_metric')
     missing_sample_metric_key = metric_types.MetricKey('missing_metric')
     non_numeric_metric_key = metric_types.MetricKey('non_numeric_metric')
+    non_numeric_array_metric_key = metric_types.MetricKey('non_numeric_array')
     skipped_metric_key = metric_types.MetricKey('skipped_metric')
     slice_key1 = (('slice_feature', 1),)
     slice_key2 = (('slice_feature', 2),)
@@ -101,8 +104,10 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
              sample_id=_FULL_SAMPLE_ID,
              metrics={
                  metric_key: 2.1,
+                 array_metric_key: np.array([1, 2]),
                  missing_sample_metric_key: 3,
                  non_numeric_metric_key: 'a',
+                 non_numeric_array_metric_key: np.array(['a', 'aaa']),
                  skipped_metric_key: 16
              })),
         # sample values for slice 1
@@ -111,8 +116,10 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
              sample_id=0,
              metrics={
                  metric_key: 1,
+                 array_metric_key: np.array([2, 3]),
                  missing_sample_metric_key: 2,
                  non_numeric_metric_key: 'b',
+                 non_numeric_array_metric_key: np.array(['a', 'aaa']),
                  skipped_metric_key: 7
              })),
         # sample values for slice 1 missing missing_sample_metric_key
@@ -121,7 +128,9 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
              sample_id=1,
              metrics={
                  metric_key: 2,
+                 array_metric_key: np.array([0, 1]),
                  non_numeric_metric_key: 'c',
+                 non_numeric_array_metric_key: np.array(['a', 'aaa']),
                  skipped_metric_key: 8
              })),
         # unsampled value for slice 2
@@ -130,8 +139,10 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
              sample_id=_FULL_SAMPLE_ID,
              metrics={
                  metric_key: 6.3,
+                 array_metric_key: np.array([10, 20]),
                  missing_sample_metric_key: 6,
                  non_numeric_metric_key: 'd',
+                 non_numeric_array_metric_key: np.array(['a', 'aaa']),
                  skipped_metric_key: 10000
              })),
         # Only 1 sample value (missing sample ID 1) for slice 2
@@ -140,8 +151,10 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
              sample_id=0,
              metrics={
                  metric_key: 3,
+                 array_metric_key: np.array([20, 30]),
                  missing_sample_metric_key: 12,
                  non_numeric_metric_key: 'd',
+                 non_numeric_array_metric_key: np.array(['a', 'aaa']),
                  skipped_metric_key: 5000
              })),
     ]
@@ -168,10 +181,21 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
         # check numeric case sample_values
         self.assertIn(metric_key, slice1_accumulator.metric_samples)
         self.assertEqual([1, 2], slice1_accumulator.metric_samples[metric_key])
+        # check numeric array in sample_values
+        self.assertIn(array_metric_key, slice1_accumulator.metric_samples)
+        array_metric_samples = (
+            slice1_accumulator.metric_samples[array_metric_key])
+        self.assertLen(array_metric_samples, 2)
+        testing.assert_array_equal(np.array([2, 3]), array_metric_samples[0])
+        testing.assert_array_equal(np.array([0, 1]), array_metric_samples[1])
         # check that non-numeric metric sample_values are not present
         self.assertIn(non_numeric_metric_key,
                       slice1_accumulator.point_estimates)
         self.assertNotIn(non_numeric_metric_key,
+                         slice1_accumulator.metric_samples)
+        self.assertIn(non_numeric_array_metric_key,
+                      slice1_accumulator.point_estimates)
+        self.assertNotIn(non_numeric_array_metric_key,
                          slice1_accumulator.metric_samples)
         # check that single metric missing samples generates error
         error_key = metric_types.MetricKey('__ERROR__')

@@ -16,9 +16,11 @@
 
 
 import collections
+import numbers
 from typing import Any, Iterable, NamedTuple, Optional, Set, Sequence, Tuple, TypeVar
 
 import apache_beam as beam
+import numpy as np
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
@@ -160,7 +162,10 @@ class SampleCombineFn(beam.CombineFn):
     else:
       accumulator.num_samples += 1
       for metric_key, value in sample.items():
-        if not isinstance(value, types.NumericMetricValueTypes):
+        if (not (isinstance(value,
+                            (numbers.Number, types.StructuredMetricValue)) or
+                 (isinstance(value, np.ndarray) and
+                  np.issubdtype(value.dtype, np.number)))):
           # skip non-numeric values
           continue
         if (self._skip_ci_metric_keys and
