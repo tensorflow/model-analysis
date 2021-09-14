@@ -473,6 +473,42 @@ def _convert_proto_map_to_dict(proto_map: Any) -> Dict[Text, Dict[Text, Any]]:
   return {k: json_format.MessageToDict(proto_map[k]) for k in proto_map}
 
 
+def _get_metric_value_with_ci(
+    metric_value: metrics_for_slice_pb2.MetricValue,
+    confidence_interval: metrics_for_slice_pb2.ConfidenceInterval
+) -> metrics_for_slice_pb2.MetricValue:
+  """Converts a double_value metric to bounded_value if CIs are present.
+
+  In order to display CIs in the UI, the confidence intervals when the lower and
+  upper bound must be expressed in BoundedValues. Because the TFMa pipeline
+  stores CIs in a separate message outside of the MetricValue, and stores the
+  point estimates in the MetricValue.double_value, this function adapts the
+  pipeline output protos to a format that will render CIs in the UI.
+
+  Args:
+    metric_value: The metric_value containing the point estimate
+    confidence_interval: The confidence interval message containing the
+      confidence intervals if any
+
+  Returns:
+    If the input metric_value contains a double_value and confidence_interval is
+    non-empty, a MetricValue proto with a bounded_value field containing the CI
+    lower and upper bounds. Otherwise, the input metric_value is return
+    unchanged
+  """
+  if (confidence_interval.HasField('lower_bound') and
+      confidence_interval.HasField('upper_bound') and
+      metric_value.HasField('double_value')):
+    # If we have CI and double_value, convert to BoudedValue for display
+    bounded_value = metrics_for_slice_pb2.BoundedValue(
+        lower_bound=confidence_interval.lower_bound.double_value,
+        upper_bound=confidence_interval.upper_bound.double_value,
+        value=metric_value.double_value)
+    # setting bounded_value clears double_value in the sampe oneof scope
+    metric_value.bounded_value.CopyFrom(bounded_value)
+  return metric_value
+
+
 def convert_metrics_proto_to_dict(
     metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice,
     model_name: Optional[Text] = None
@@ -514,7 +550,7 @@ def convert_metrics_proto_to_dict(
       else:
         metric_name = kv.key.name
       sub_key_metrics_map[sub_key_id][metric_name] = json_format.MessageToDict(
-          kv.value)
+          _get_metric_value_with_ci(kv.value, kv.confidence_interval))
 
   metrics_map = None
   keys = list(model_metrics_map.keys())

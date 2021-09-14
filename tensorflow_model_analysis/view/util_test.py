@@ -509,6 +509,39 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         }
     }))
 
+  def testConvertMetricsProto(self):
+    metrics_for_slice = text_format.Parse(
+        """
+      slice_key {}
+      metric_keys_and_values {
+        key {
+          name: "metric_name"
+        }
+        value: {
+          double_value { value: 1.0 }
+        }
+        confidence_interval {
+          lower_bound: { double_value: { value: 0.5 } }
+          upper_bound: { double_value: { value: 1.5 } }
+        }
+      }""", metrics_for_slice_pb2.MetricsForSlice())
+
+    got = util.convert_metrics_proto_to_dict(metrics_for_slice)
+    expected = ((), {
+        '': {
+            '': {
+                'metric_name': {
+                    'boundedValue': {
+                        'lowerBound': 0.5,
+                        'upperBound': 1.5,
+                        'value': 1.0
+                    }
+                }
+            }
+        }
+    })
+    self.assertEqual(got, expected)
+
 
 if __name__ == '__main__':
   tf.test.main()

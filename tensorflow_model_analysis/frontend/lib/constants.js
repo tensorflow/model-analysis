@@ -71,6 +71,9 @@ const METRIC_KEYS_AND_VALUES = 'metricKeysAndValues';
 /** @type {string} */
 const VALUE = 'value';
 
+/** @type {string} */
+const CONFIDENCE_INTERVAL = 'confidenceInterval';
+
 /** @enum {string}*/
 const PlotTypes = {
   ACCURACY_CHARTS: 'accuracyPrecisionRecallF1Charts',
@@ -257,10 +260,12 @@ goog.exportSymbol('tfma.PlotDataDisplay.EXAMPLES_MAX_STEP',
 
 goog.exportSymbol('tfma.PLOT_KEYS_AND_VALUES', PLOT_KEYS_AND_VALUES);
 
+goog.exportSymbol('tfma.CONFIDENCE_INTERVAL', CONFIDENCE_INTERVAL);
 goog.exportSymbol('tfma.VALUE', VALUE);
 
 exports = {
   Column,
+  CONFIDENCE_INTERVAL,
   Event,
   FLOATING_POINT_PRECISION,
   KEY,
