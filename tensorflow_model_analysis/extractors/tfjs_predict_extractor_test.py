@@ -30,11 +30,16 @@ from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import tfjs_predict_extractor
-from tensorflowjs.converters import converter
 from tfx_bsl.tfxio import test_util
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
+
+try:
+  from tensorflowjs.converters import converter  # pylint: disable=g-import-not-at-top
+  _TFJS_IMPORTED = True
+except ModuleNotFoundError:
+  _TFJS_IMPORTED = False
 
 
 class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
@@ -46,6 +51,9 @@ class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
       ('multi_model_single_output', True, False),
       ('multi_model_multi_output_batched_examples_batched_inputs', True, True))
   def testTFJSPredictExtractorWithKerasModel(self, multi_model, multi_output):
+    if not _TFJS_IMPORTED:
+      self.skipTest('This test requires TensorFlow JS.')
+
     input1 = tf.keras.layers.Input(shape=(1,), name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), name='input2')
     inputs = [input1, input2]

@@ -51,7 +51,6 @@ from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflow_model_analysis.view import view_types
-from tensorflowjs.converters import converter as tfjs_converter
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -61,6 +60,12 @@ try:
   _TFR_IMPORTED = True
 except (ImportError, tf.errors.NotFoundError):
   _TFR_IMPORTED = False
+
+try:
+  from tensorflowjs.converters import converter as tfjs_converter  # pylint: disable=g-import-not-at-top
+  _TFJS_IMPORTED = True
+except ModuleNotFoundError:
+  _TFJS_IMPORTED = False
 
 _TEST_SEED = 982735
 
@@ -626,6 +631,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                                          remove_baseline=False,
                                          rubber_stamp=False,
                                          add_custom_metrics=False):
+    if model_type == constants.TF_JS and not _TFJS_IMPORTED:
+      self.skipTest('This test requires TensorFlow JS.')
+
     # Custom metrics not supported in TFv1
     if _TF_MAJOR_VERSION < 2:
       add_custom_metrics = False
