@@ -8,6 +8,7 @@
 
 *   Correctly skips non-numeric numpy array type metrics for confidence interval
     computations.
+*   Depends on `apache-beam[gcp]>=2.31,<3`.
 
 ## Breaking Changes
 
