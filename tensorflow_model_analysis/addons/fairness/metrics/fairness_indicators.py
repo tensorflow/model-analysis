@@ -22,10 +22,10 @@ from __future__ import print_function
 import collections
 from typing import Any, Dict, List, Optional, Sequence, Text
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 FAIRNESS_INDICATORS_METRICS_NAME = 'fairness_indicators_metrics'
 FAIRNESS_INDICATORS_SUB_METRICS = ('false_positive_rate', 'false_negative_rate',
@@ -64,7 +64,7 @@ def calculate_digits(thresholds):
 def _fairness_indicators_metrics_at_thresholds(
     thresholds: List[float],
     name: Text = FAIRNESS_INDICATORS_METRICS_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     aggregation_type: Optional[metric_types.AggregationType] = None,

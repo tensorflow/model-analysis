@@ -20,9 +20,9 @@ from __future__ import print_function
 
 from typing import Callable, Dict, Optional, Text, Union
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 import tensorflow_model_analysis.notebook.visualization as visualization
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.view import util
 from tensorflow_model_analysis.view import view_types
@@ -32,7 +32,7 @@ def render_slicing_metrics(
     result: view_types.EvalResult,
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[Union[slicer.SingleSliceSpec,
-                                 config.SlicingSpec]] = None,
+                                 config_pb2.SlicingSpec]] = None,
     weighted_example_column: Optional[Text] = None,
     event_handlers: Optional[Callable[[Dict[Text, Union[Text, float]]],
                                       None]] = None,
@@ -52,7 +52,7 @@ def render_slicing_metrics(
   Returns:
     A SlicingMetricsViewer object if in Jupyter notebook; None if in Colab.
   """
-  if slicing_spec and isinstance(slicing_spec, config.SlicingSpec):
+  if slicing_spec and isinstance(slicing_spec, config_pb2.SlicingSpec):
     slicing_spec = slicer.SingleSliceSpec(spec=slicing_spec)
   data = util.get_slicing_metrics(result.slicing_metrics, slicing_column,
                                   slicing_spec)
@@ -65,7 +65,7 @@ def render_slicing_metrics(
 def render_time_series(
     results: view_types.EvalResults,
     slicing_spec: Optional[Union[slicer.SingleSliceSpec,
-                                 config.SlicingSpec]] = None,
+                                 config_pb2.SlicingSpec]] = None,
     display_full_path: bool = False
 ) -> Optional[visualization.TimeSeriesViewer]:  # pytype: disable=invalid-annotation
   """Renders the time series view as widget.
@@ -80,7 +80,7 @@ def render_time_series(
   Returns:
     A TimeSeriesViewer object if in Jupyter notebook; None if in Colab.
   """
-  if slicing_spec and isinstance(slicing_spec, config.SlicingSpec):
+  if slicing_spec and isinstance(slicing_spec, config_pb2.SlicingSpec):
     slicing_spec = slicer.SingleSliceSpec(spec=slicing_spec)
   slice_spec_to_use = slicing_spec if slicing_spec else slicer.SingleSliceSpec()
   data = util.get_time_series(results, slice_spec_to_use, display_full_path)
@@ -92,7 +92,7 @@ def render_time_series(
 def render_plot(
     result: view_types.EvalResult,
     slicing_spec: Optional[Union[slicer.SingleSliceSpec,
-                                 config.SlicingSpec]] = None,
+                                 config_pb2.SlicingSpec]] = None,
     output_name: Optional[Text] = None,
     class_id: Optional[int] = None,
     top_k: Optional[int] = None,
@@ -114,7 +114,7 @@ def render_plot(
   Returns:
     A PlotViewer object if in Jupyter notebook; None if in Colab.
   """
-  if slicing_spec and isinstance(slicing_spec, config.SlicingSpec):
+  if slicing_spec and isinstance(slicing_spec, config_pb2.SlicingSpec):
     slicing_spec = slicer.SingleSliceSpec(spec=slicing_spec)
   slice_spec_to_use = slicing_spec if slicing_spec else slicer.SingleSliceSpec()
   data, cfg = util.get_plot_data_and_config(result.plots, slice_spec_to_use,
@@ -127,7 +127,7 @@ def render_slicing_attributions(
     result: view_types.EvalResult,
     slicing_column: Optional[Text] = None,
     slicing_spec: Optional[Union[slicer.SingleSliceSpec,
-                                 config.SlicingSpec]] = None,
+                                 config_pb2.SlicingSpec]] = None,
     metric_name: Optional[Text] = None,
     weighted_example_column: Optional[Text] = None,
     event_handlers: Optional[Callable[[Dict[Text, Union[Text, float]]],
@@ -150,7 +150,7 @@ def render_slicing_attributions(
   Returns:
     A SlicingMetricsViewer object if in Jupyter notebook; None if in Colab.
   """
-  if slicing_spec and isinstance(slicing_spec, config.SlicingSpec):
+  if slicing_spec and isinstance(slicing_spec, config_pb2.SlicingSpec):
     slicing_spec = slicer.SingleSliceSpec(spec=slicing_spec)
   data = util.get_slicing_metrics(result.attributions, slicing_column,
                                   slicing_spec)

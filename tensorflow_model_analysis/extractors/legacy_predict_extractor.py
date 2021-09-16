@@ -28,13 +28,13 @@ import apache_beam as beam
 import numpy as np
 import pyarrow as pa
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import legacy_feature_extractor
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 
 _PREDICT_EXTRACTOR_STAGE_NAME = 'Predict'
 
@@ -49,7 +49,7 @@ def PredictExtractor(  # pylint: disable=invalid-name
     eval_shared_model: types.MaybeMultipleEvalSharedModels,
     desired_batch_size: Optional[int] = None,
     materialize: Optional[bool] = True,
-    eval_config: Optional[config.EvalConfig] = None) -> extractor.Extractor:
+    eval_config: Optional[config_pb2.EvalConfig] = None) -> extractor.Extractor:
   """Creates an Extractor for TFMAPredict.
 
   The extractor's PTransform loads and runs the eval_saved_model against every
@@ -208,7 +208,8 @@ def _TFMAPredict(  # pylint: disable=invalid-name
     eval_shared_models: Dict[Text, types.EvalSharedModel],
     desired_batch_size: Optional[int] = None,
     materialize: Optional[bool] = True,
-    eval_config: Optional[config.EvalConfig] = None) -> beam.pvalue.PCollection:
+    eval_config: Optional[
+        config_pb2.EvalConfig] = None) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions to Extracts.
 
   Args:

@@ -25,14 +25,14 @@ from typing import Any, Dict, Iterable, List, Optional, Text, Union
 
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import weighted_example_count
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import util
 
 TOTAL_ATTRIBUTIONS_NAME = 'total_attributions'
 TOTAL_ABSOLUTE_ATTRIBUTIONS_NAME = 'total_absolute_attributions'
@@ -45,7 +45,7 @@ class AttributionsMetric(metric_types.Metric):
 
 
 def has_attributions_metrics(
-    metrics_specs: Iterable[config.MetricsSpec]) -> bool:
+    metrics_specs: Iterable[config_pb2.MetricsSpec]) -> bool:
   """Returns true if any of the metrics_specs have attributions metrics."""
   tfma_metric_classes = metric_types.registered_metrics()
   for metrics_spec in metrics_specs:

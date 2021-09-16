@@ -26,17 +26,18 @@ from typing import List
 import apache_beam as beam
 import pyarrow as pa
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.proto import config_pb2
 
 from tfx_bsl.arrow import sql_util
 
 _SQL_SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSqlSliceKeys'
 
 
-def SqlSliceKeyExtractor(eval_config: config.EvalConfig) -> extractor.Extractor:
+def SqlSliceKeyExtractor(
+    eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
   """Creates an extractor for sql slice keys.
 
   This extractor extracts slices keys in a batch based on the SQL statement in
@@ -60,7 +61,7 @@ def SqlSliceKeyExtractor(eval_config: config.EvalConfig) -> extractor.Extractor:
 class ExtractSqlSliceKeyFn(beam.DoFn):
   """A DoFn that extracts slice keys in batch."""
 
-  def __init__(self, eval_config: config.EvalConfig):
+  def __init__(self, eval_config: config_pb2.EvalConfig):
     self._sqls = [
         """
         SELECT
@@ -117,5 +118,5 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractSqlSliceKey(
     extracts: beam.pvalue.PCollection,
-    eval_config: config.EvalConfig) -> beam.pvalue.PCollection:
+    eval_config: config_pb2.EvalConfig) -> beam.pvalue.PCollection:
   return extracts | beam.ParDo(ExtractSqlSliceKeyFn(eval_config))

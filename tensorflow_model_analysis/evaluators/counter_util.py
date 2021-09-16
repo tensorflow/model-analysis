@@ -23,9 +23,9 @@ from typing import List, Text, Set
 
 import apache_beam as beam
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.proto import config_pb2
 
 
 def _IncrementMetricsCounters(metric_name: Text, version: Text,
@@ -83,7 +83,7 @@ def IncrementSliceSpecCounters(pipeline: beam.Pipeline):
 # @beam.typehints.with_input_types(beam.Pipeline)
 # @beam.typehints.with_output_types(beam.pvalue.PDone)
 def IncrementMetricsSpecsCounters(pipeline: beam.Pipeline,
-                                  metrics_specs: List[config.MetricsSpec],
+                                  metrics_specs: List[config_pb2.MetricsSpec],
                                   model_types: Set[Text]):
   """To track count of all metrics specs in TFMA."""
 

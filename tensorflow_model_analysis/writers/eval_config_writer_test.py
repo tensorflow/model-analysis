@@ -20,9 +20,9 @@ import pickle
 from typing import Dict, List, NamedTuple, Optional, Text, Union
 
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import version as tfma_version
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.writers import eval_config_writer
 
@@ -59,19 +59,19 @@ class EvalConfigWriterTest(testutil.TensorflowModelAnalysisTest):
       w.write(pickle.dumps(final_dict))
     got_eval_config, got_data_location, _, got_model_locations = (
         eval_config_writer.load_eval_run(output_path))
-    options = config.Options()
+    options = config_pb2.Options()
     options.compute_confidence_intervals.value = (
         old_config.compute_confidence_intervals)
     options.min_slice_size.value = old_config.k_anonymization_count
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         slicing_specs=[
-            config.SlicingSpec(
+            config_pb2.SlicingSpec(
                 feature_keys=['country'],
                 feature_values={
                     'age': '5',
                     'gender': 'f'
                 }),
-            config.SlicingSpec(
+            config_pb2.SlicingSpec(
                 feature_keys=['interest'],
                 feature_values={
                     'age': '6',
@@ -87,18 +87,18 @@ class EvalConfigWriterTest(testutil.TensorflowModelAnalysisTest):
 
   def testSerializeDeserializeEvalConfig(self):
     output_path = self._getTempDir()
-    options = config.Options()
+    options = config_pb2.Options()
     options.compute_confidence_intervals.value = False
     options.min_slice_size.value = 1
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         slicing_specs=[
-            config.SlicingSpec(
+            config_pb2.SlicingSpec(
                 feature_keys=['country'],
                 feature_values={
                     'age': '5',
                     'gender': 'f'
                 }),
-            config.SlicingSpec(
+            config_pb2.SlicingSpec(
                 feature_keys=['interest'],
                 feature_values={
                     'age': '6',

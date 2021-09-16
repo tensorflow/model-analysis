@@ -23,11 +23,11 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import slice_key_extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 
@@ -214,8 +214,8 @@ class SliceTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       ]]),
   )
   def testSliceKeys(self, model_names, extracts, slice_specs, expected_slices):
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(name=name) for name in model_names])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(name=name) for name in model_names])
     with beam.Pipeline() as pipeline:
       slice_keys_extracts = (
           pipeline

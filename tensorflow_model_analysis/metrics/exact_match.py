@@ -17,9 +17,9 @@ import json
 from typing import Dict, Iterable, Optional, Text
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 EXACT_MATCH_NAME = 'exact_match'
 _JSON = 'json'
@@ -53,7 +53,7 @@ metric_types.register_metric(ExactMatch)
 
 def _exact_match(
     name: Text,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -93,7 +93,7 @@ class _ExactMatchCombiner(beam.CombineFn):
   """Combines Exact Match scores."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]],
                convert_to: Optional[Text]):

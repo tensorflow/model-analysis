@@ -23,10 +23,10 @@ from typing import Dict, Iterable, List, Optional, Text, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis import config
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import util
 
 NDCG_NAME = 'ndcg'
 
@@ -72,7 +72,7 @@ metric_types.register_metric(NDCG)
 def _ndcg(gain_key: Text,
           top_k_list: Optional[List[int]] = None,
           name: Text = NDCG_NAME,
-          eval_config: Optional[config.EvalConfig] = None,
+          eval_config: Optional[config_pb2.EvalConfig] = None,
           model_names: Optional[List[Text]] = None,
           output_names: Optional[List[Text]] = None,
           sub_keys: Optional[List[metric_types.SubKey]] = None,
@@ -129,7 +129,7 @@ class _NDCGCombiner(beam.CombineFn):
   """Computes NDCG (normalized discounted cumulative gain)."""
 
   def __init__(self, metric_keys: List[metric_types.MetricKey],
-               eval_config: Optional[config.EvalConfig], model_name: Text,
+               eval_config: Optional[config_pb2.EvalConfig], model_name: Text,
                output_name: Text, query_key: Text, gain_key: Text):
     """Initialize.
 

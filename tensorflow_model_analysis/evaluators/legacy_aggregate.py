@@ -25,11 +25,11 @@ import apache_beam as beam
 import numpy as np
 
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
-from tensorflow_model_analysis import size_estimator
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import model_util
+from tensorflow_model_analysis.utils import size_estimator
 
 
 @beam.ptransform_fn

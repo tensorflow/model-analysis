@@ -21,10 +21,10 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 
 class UtilTest(tf.test.TestCase):
@@ -301,8 +301,8 @@ class UtilTest(tf.test.TestCase):
         },
         predictions={'custom_prediction': np.array([0, 0.5, 0.3, 0.9])},
         example_weights=np.array([1.0]))
-    eval_config = config.EvalConfig(model_specs=[
-        config.ModelSpec(
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(
             label_key='custom_label', prediction_key='custom_prediction')
     ])
     iterator = metric_util.to_label_prediction_example_weight(

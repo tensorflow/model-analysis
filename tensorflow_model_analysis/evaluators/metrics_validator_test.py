@@ -21,81 +21,81 @@ from __future__ import print_function
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_validator
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from google.protobuf import text_format
 
 # Tests involiving slices: (<test_name>, <slice_config> , <slice_key>)
 _NO_SLICE_TEST = ('no_slice', None, (()))
-_GLOBAL_SLICE_TEST = ('global_slice', [config.SlicingSpec()], (()))
+_GLOBAL_SLICE_TEST = ('global_slice', [config_pb2.SlicingSpec()], (()))
 _FEATURE_SLICE_TEST = ('feature_slice',
-                       [config.SlicingSpec(feature_keys=['feature1'])
+                       [config_pb2.SlicingSpec(feature_keys=['feature1'])
                        ], (('feature1', 'value1'),))
 _FEATURE_VALUE_SLICE_TEST = ('feature_value_slice', [
-    config.SlicingSpec(feature_values={'feature1': 'value1'})
+    config_pb2.SlicingSpec(feature_values={'feature1': 'value1'})
 ], (('feature1', 'value1'),))
 _MULTIPLE_SLICES_TEST = ('multiple_slices', [
-    config.SlicingSpec(feature_values={'feature1': 'value1'}),
-    config.SlicingSpec(feature_values={'feature2': 'value2'})
+    config_pb2.SlicingSpec(feature_values={'feature1': 'value1'}),
+    config_pb2.SlicingSpec(feature_values={'feature2': 'value2'})
 ], (('feature1', 'value1'),))
-_UNMATCHED_SINGLE_SLICE_TEST = ('single_slice',
-                                [config.SlicingSpec(feature_keys='feature1')
-                                ], (('unmatched_feature', 'unmatched_value'),))
+_UNMATCHED_SINGLE_SLICE_TEST = ('single_slice', [
+    config_pb2.SlicingSpec(feature_keys='feature1')
+], (('unmatched_feature', 'unmatched_value'),))
 _UNMATCHED_MULTIPLE_SLICES_TEST = ('multiple_slices', [
-    config.SlicingSpec(feature_values={'feature1': 'value1'}),
-    config.SlicingSpec(feature_values={'feature2': 'value2'})
+    config_pb2.SlicingSpec(feature_values={'feature1': 'value1'}),
+    config_pb2.SlicingSpec(feature_values={'feature2': 'value2'})
 ], (('unmatched_feature', 'unmatched_value'),))
 
 # Cross slice tests: (<test_name>, <cross_slice_config>, <cross_slice_key>)
 _CROSS_SLICE_GLOBAL_TEST = ('global_slice', [
-    config.CrossSlicingSpec(
-        baseline_spec=config.SlicingSpec(),
+    config_pb2.CrossSlicingSpec(
+        baseline_spec=config_pb2.SlicingSpec(),
         slicing_specs=[
-            config.SlicingSpec(feature_values={'feature2': 'value2'})
+            config_pb2.SlicingSpec(feature_values={'feature2': 'value2'})
         ])
 ], ((()), (('feature2', 'value2'),)))
 _SINGLE_CROSS_SLICE_TEST = ('single_slice', [
-    config.CrossSlicingSpec(
-        baseline_spec=config.SlicingSpec(feature_keys=['feature1']),
+    config_pb2.CrossSlicingSpec(
+        baseline_spec=config_pb2.SlicingSpec(feature_keys=['feature1']),
         slicing_specs=[
-            config.SlicingSpec(feature_values={'feature2': 'value2'})
+            config_pb2.SlicingSpec(feature_values={'feature2': 'value2'})
         ])
 ], ((('feature1', 'value1'),), (('feature2', 'value2'),)))
 _MULTIPLE_CROSS_SLICE_TEST = ('multiple_slice', [
-    config.CrossSlicingSpec(
-        baseline_spec=config.SlicingSpec(feature_keys=['feature1']),
+    config_pb2.CrossSlicingSpec(
+        baseline_spec=config_pb2.SlicingSpec(feature_keys=['feature1']),
         slicing_specs=[
-            config.SlicingSpec(feature_values={'feature2': 'value2'})
+            config_pb2.SlicingSpec(feature_values={'feature2': 'value2'})
         ]),
-    config.CrossSlicingSpec(
-        baseline_spec=config.SlicingSpec(feature_keys=['feature2']),
+    config_pb2.CrossSlicingSpec(
+        baseline_spec=config_pb2.SlicingSpec(feature_keys=['feature2']),
         slicing_specs=[
-            config.SlicingSpec(feature_values={'feature3': 'value3'})
+            config_pb2.SlicingSpec(feature_values={'feature3': 'value3'})
         ])
 ], ((('feature2', 'value2'),), (('feature3', 'value3'),)))
 _CROSS_SLICE_MULTIPLE_SLICING_SPEC_TEST = ('multiple_slicing_spec', [
-    config.CrossSlicingSpec(
-        baseline_spec=config.SlicingSpec(feature_keys=['feature1']),
+    config_pb2.CrossSlicingSpec(
+        baseline_spec=config_pb2.SlicingSpec(feature_keys=['feature1']),
         slicing_specs=[
-            config.SlicingSpec(feature_values={'feature2': 'value2'}),
-            config.SlicingSpec(feature_keys=['feature3'])
+            config_pb2.SlicingSpec(feature_values={'feature2': 'value2'}),
+            config_pb2.SlicingSpec(feature_keys=['feature3'])
         ])
 ], ((('feature1', 'value1'),), (('feature3', 'value3'),)))
 _UNMATCHED_CROSS_SLICE_TEST = ('unmatched_cross_slice', [
-    config.CrossSlicingSpec(
-        baseline_spec=config.SlicingSpec(feature_keys=['feature1']),
+    config_pb2.CrossSlicingSpec(
+        baseline_spec=config_pb2.SlicingSpec(feature_keys=['feature1']),
         slicing_specs=[
-            config.SlicingSpec(feature_values={'feature2': 'value2'})
+            config_pb2.SlicingSpec(feature_values={'feature2': 'value2'})
         ]),
-    config.CrossSlicingSpec(
-        baseline_spec=config.SlicingSpec(feature_keys=['feature2']),
+    config_pb2.CrossSlicingSpec(
+        baseline_spec=config_pb2.SlicingSpec(feature_keys=['feature2']),
         slicing_specs=[
-            config.SlicingSpec(feature_values={'feature3': 'value3'})
+            config_pb2.SlicingSpec(feature_values={'feature3': 'value3'})
         ])
 ], ((('feature1', 'value1'),), (('feature3', 'value3'),)))
 
@@ -104,17 +104,17 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                            parameterized.TestCase):
 
   def testValidateMetricsInvalidThreshold(self):
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 thresholds={
                     'invalid_threshold':
-                        config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
+                        config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
                                 lower_bound={'value': 0.2}))
                 })
         ],
@@ -151,22 +151,22 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsMetricTDistributionValueAndThreshold(
       self, slicing_specs, slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
             lower_bound={'value': 0.9}))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='AUC',
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -205,7 +205,7 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
         if spec is not None:
           slicing_details.slicing_spec.CopyFrom(spec)
         else:
-          slicing_details.slicing_spec.CopyFrom(config.SlicingSpec())
+          slicing_details.slicing_spec.CopyFrom(config_pb2.SlicingSpec())
         slicing_details.num_matching_slices = 1
     self.assertEqual(result, expected)
 
@@ -215,24 +215,24 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsMetricTDistributionChangeAndThreshold(
       self, slicing_specs, slice_key):
-    threshold = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.LOWER_IS_BETTER,
+    threshold = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.LOWER_IS_BETTER,
             absolute={'value': -1}))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='AUC',
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -279,7 +279,7 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
         if spec is not None:
           slicing_details.slicing_spec.CopyFrom(spec)
         else:
-          slicing_details.slicing_spec.CopyFrom(config.SlicingSpec())
+          slicing_details.slicing_spec.CopyFrom(config_pb2.SlicingSpec())
         slicing_details.num_matching_slices = 1
     self.assertAlmostEqual(result, expected)
 
@@ -289,22 +289,23 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsMetricValueAndThreshold(self, slicing_specs,
                                                  slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            upper_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1.5 < 1, NOT OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -342,7 +343,7 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
         if spec is not None:
           slicing_details.slicing_spec.CopyFrom(spec)
         else:
-          slicing_details.slicing_spec.CopyFrom(config.SlicingSpec())
+          slicing_details.slicing_spec.CopyFrom(config_pb2.SlicingSpec())
         slicing_details.num_matching_slices = 1
     self.assertEqual(result, expected)
 
@@ -350,21 +351,22 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _UNMATCHED_MULTIPLE_SLICES_TEST)
   def testValidateMetricsMetricValueAndThresholdIgnoreUnmatchedSlice(
       self, slicing_specs, slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            upper_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1.5 < 1, NOT OK.
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -384,22 +386,23 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsValueThresholdUpperBoundFail(self, slicing_specs,
                                                       slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            upper_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1.5 < 1, NOT OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -419,22 +422,23 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsValueThresholdLowerBoundFail(self, slicing_specs,
                                                       slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(lower_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            lower_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 0 > 1, NOT OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -454,22 +458,23 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsValueThresholdUpperBoundPass(self, slicing_specs,
                                                       slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            upper_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 0 < 1, OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -489,22 +494,23 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsValueThresholdLowerBoundPass(self, slicing_specs,
                                                       slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(lower_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            lower_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 2 > 1, OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -524,25 +530,25 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsChangeThresholdAbsoluteFail(self, slicing_specs,
                                                      slice_key):
-    threshold = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.LOWER_IS_BETTER,
+    threshold = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.LOWER_IS_BETTER,
             absolute={'value': -1}))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanPrediction',
                         # Diff = 0 - .333 = -.333 < -1, NOT OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ])
@@ -565,26 +571,26 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsChangeThresholdRelativeFail(self, slicing_specs,
                                                      slice_key):
-    threshold = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.LOWER_IS_BETTER,
+    threshold = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.LOWER_IS_BETTER,
             relative={'value': -2}))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanPrediction',
                         # Diff = -.333
                         # Diff% = -.333/.333 = -100% < -200%, NOT OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ])
@@ -607,25 +613,25 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsChangeThresholdAbsolutePass(self, slicing_specs,
                                                      slice_key):
-    threshold = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.LOWER_IS_BETTER,
+    threshold = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.LOWER_IS_BETTER,
             absolute={'value': 0}))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanPrediction',
                         # Diff = 0 - .333 = -.333 < 0, OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ])
@@ -648,26 +654,26 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsChangeThresholdRelativePass(self, slicing_specs,
                                                      slice_key):
-    threshold = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.LOWER_IS_BETTER,
+    threshold = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.LOWER_IS_BETTER,
             relative={'value': 0}))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanPrediction',
                         # Diff = -.333
                         # Diff% = -.333/.333 = -100% < 0%, OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ])
@@ -690,25 +696,25 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsChangeThresholdHigherIsBetterPass(
       self, slicing_specs, slice_key):
-    threshold = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.HIGHER_IS_BETTER,
+    threshold = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.HIGHER_IS_BETTER,
             absolute={'value': -1}))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanPrediction',
                         # Diff = -.333 > -1, OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ])
@@ -732,63 +738,65 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
   def testValidateMetricsChangeThresholdEqualPass(self, slicing_specs,
                                                   slice_key):
     # Change thresholds.
-    threshold1 = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.HIGHER_IS_BETTER,
+    threshold1 = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.HIGHER_IS_BETTER,
             absolute={'value': -.333},
             relative={'value': -.333}))
-    threshold2 = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.LOWER_IS_BETTER,
+    threshold2 = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.LOWER_IS_BETTER,
             absolute={'value': -.333},
             relative={'value': -.333}))
     # Value thresholds.
-    threshold3 = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(lower_bound={'value': 1}))
-    threshold4 = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold3 = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            lower_bound={'value': 1}))
+    threshold4 = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            upper_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(name='candidate'),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(name='candidate'),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanPrediction',
                         # Diff = -.333 == -.333, OK.
                         threshold=threshold1 if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold1)
                         ]),
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanLabel',
                         # Diff = -.333 == -.333, OK.
                         threshold=threshold2 if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold2)
                         ]),
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='ExampleCount',
                         # 1 == 1, OK.
                         threshold=threshold3 if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold3)
                         ]),
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1 == 1, OK.
                         threshold=threshold4 if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold4)
                         ]),
@@ -826,25 +834,25 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _MULTIPLE_SLICES_TEST)
   def testValidateMetricsChangeThresholdHigherIsBetterFail(
       self, slicing_specs, slice_key):
-    threshold = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.HIGHER_IS_BETTER,
+    threshold = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.HIGHER_IS_BETTER,
             absolute={'value': 0}))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanPrediction',
                         # Diff = -.333 > 0, NOT OK.
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ])
@@ -920,25 +928,26 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
 
   def testGetMissingSlices(self):
     slicing_specs = [
-        config.SlicingSpec(),
-        config.SlicingSpec(feature_values={'feature1': 'value1'}),
-        config.SlicingSpec(feature_values={'feature2': 'value2'})
+        config_pb2.SlicingSpec(),
+        config_pb2.SlicingSpec(feature_values={'feature1': 'value1'}),
+        config_pb2.SlicingSpec(feature_values={'feature2': 'value2'})
     ]
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            upper_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1.5 < 1, NOT OK.
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -980,23 +989,24 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _CROSS_SLICE_MULTIPLE_SLICING_SPEC_TEST)
   def testValidateMetricsCrossSliceThresholdPass(self, cross_slicing_specs,
                                                  slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            upper_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         cross_slicing_specs=cross_slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1.5 < 1, NOT OK.
                         threshold=(threshold
                                    if cross_slicing_specs is None else None),
                         cross_slice_thresholds=[
-                            config.CrossSliceMetricThreshold(
+                            config_pb2.CrossSliceMetricThreshold(
                                 cross_slicing_specs=cross_slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -1016,23 +1026,24 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                   _CROSS_SLICE_MULTIPLE_SLICING_SPEC_TEST)
   def testValidateMetricsCrossSliceThresholdFail(self, cross_slicing_specs,
                                                  slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            upper_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         cross_slicing_specs=cross_slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1.5 < 1, NOT OK.
                         threshold=(threshold
                                    if cross_slicing_specs is None else None),
                         cross_slice_thresholds=[
-                            config.CrossSliceMetricThreshold(
+                            config_pb2.CrossSliceMetricThreshold(
                                 cross_slicing_specs=cross_slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -1049,23 +1060,24 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(_UNMATCHED_CROSS_SLICE_TEST)
   def testValidateMetricsCrossSliceThresholdUnmacthed(self, cross_slicing_specs,
                                                       slice_key):
-    threshold = config.MetricThreshold(
-        value_threshold=config.GenericValueThreshold(upper_bound={'value': 1}))
-    eval_config = config.EvalConfig(
+    threshold = config_pb2.MetricThreshold(
+        value_threshold=config_pb2.GenericValueThreshold(
+            upper_bound={'value': 1}))
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(),
+            config_pb2.ModelSpec(),
         ],
         cross_slicing_specs=cross_slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1.5 < 1, NOT OK.
                         threshold=(threshold
                                    if cross_slicing_specs is None else None),
                         cross_slice_thresholds=[
-                            config.CrossSliceMetricThreshold(
+                            config_pb2.CrossSliceMetricThreshold(
                                 cross_slicing_specs=cross_slicing_specs,
                                 threshold=threshold)
                         ]),
@@ -1080,25 +1092,25 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
     self.assertTrue(result.validation_ok)
 
   def testValidateMetricsDivByZero(self):
-    threshold = config.MetricThreshold(
-        change_threshold=config.GenericChangeThreshold(
-            direction=config.MetricDirection.HIGHER_IS_BETTER,
+    threshold = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.HIGHER_IS_BETTER,
             relative={'value': 0.1}))
-    slicing_specs = [config.SlicingSpec()]
-    eval_config = config.EvalConfig(
+    slicing_specs = [config_pb2.SlicingSpec()]
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(name='candidate'),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(name='candidate'),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanPrediction',
                         threshold=threshold if slicing_specs is None else None,
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold)
                         ])

@@ -21,9 +21,9 @@ from __future__ import print_function
 import os
 
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer.slicer_lib import OVERALL_SLICE_NAME
 from tensorflow_model_analysis.slicer.slicer_lib import SingleSliceSpec
@@ -199,7 +199,7 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         slicing_metrics=self._makeTestData(),
         plots=None,
         attributions=None,
-        config=config.EvalConfig(),
+        config=config_pb2.EvalConfig(),
         data_location=self.data_location_1,
         file_format='tfrecords',
         model_location=self.model_location_1)
@@ -207,7 +207,7 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
         slicing_metrics=[self.result_c2],
         plots=None,
         attributions=None,
-        config=config.EvalConfig(),
+        config=config_pb2.EvalConfig(),
         data_location=self.full_data_location_2,
         file_format='tfrecords',
         model_location=self.full_model_location_2)
@@ -215,8 +215,8 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
                                   constants.MODEL_CENTRIC_MODE)
 
   def _makeEvalConfig(self):
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(example_weight_key='testing_key')])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(example_weight_key='testing_key')])
     return eval_config
 
   def testGetSlicingMetrics(self):

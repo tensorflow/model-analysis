@@ -24,7 +24,6 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -34,6 +33,7 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_pr
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 
@@ -52,7 +52,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(temp_export_dir, None))
 
-    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -141,7 +141,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
         temp_export_dir, None, n_classes=2)
 
-    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -209,7 +209,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
         temp_export_dir, None, n_classes=3)
 
-    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -277,7 +277,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     temp_export_dir = self._getExportDir()
     export_dir, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
-    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -375,9 +375,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir1, _ = multi_head.simple_multi_head(temp_export_dir, None)
     export_dir2, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
-    eval_config = config.EvalConfig(model_specs=[
-        config.ModelSpec(name='model1'),
-        config.ModelSpec(name='model2')
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(name='model1'),
+        config_pb2.ModelSpec(name='model2')
     ])
     eval_shared_model1 = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir1, tags=[tf.saved_model.SERVING])
@@ -508,7 +508,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
 
-    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -616,7 +616,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
 
-    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -710,7 +710,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
 
-    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -791,7 +791,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         None, temp_export_dir)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     schema = text_format.Parse(
         """
         feature {
@@ -846,14 +846,15 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(predict_extracts, check_result, label='result')
 
   def testPredictionsExtractorWithoutEvalSharedModel(self):
-    model_spec1 = config.ModelSpec(name='model1', prediction_key='prediction')
-    model_spec2 = config.ModelSpec(
+    model_spec1 = config_pb2.ModelSpec(
+        name='model1', prediction_key='prediction')
+    model_spec2 = config_pb2.ModelSpec(
         name='model2',
         prediction_keys={
             'output1': 'prediction1',
             'output2': 'prediction2'
         })
-    eval_config = config.EvalConfig(model_specs=[model_spec1, model_spec2])
+    eval_config = config_pb2.EvalConfig(model_specs=[model_spec1, model_spec2])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config)

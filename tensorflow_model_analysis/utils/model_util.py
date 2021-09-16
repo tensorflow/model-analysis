@@ -14,8 +14,6 @@
 # limitations under the License.
 """Utils for working with models."""
 
-# Standard __future__ imports
-
 import collections
 import copy
 import importlib
@@ -27,12 +25,12 @@ import apache_beam as beam
 import numpy as np
 import pyarrow as pa
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.experimental import preprocessing_functions
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tensor_adapter
 
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -97,7 +95,7 @@ def get_preprocessing_signature(
 
 
 def get_baseline_model_spec(
-    eval_config: config.EvalConfig) -> Optional[config.ModelSpec]:
+    eval_config: config_pb2.EvalConfig) -> Optional[config_pb2.ModelSpec]:
   """Returns baseline model spec."""
   for spec in eval_config.model_specs:
     if spec.is_baseline:
@@ -106,13 +104,13 @@ def get_baseline_model_spec(
 
 
 def get_non_baseline_model_specs(
-    eval_config: config.EvalConfig) -> Iterable[config.ModelSpec]:
+    eval_config: config_pb2.EvalConfig) -> Iterable[config_pb2.ModelSpec]:
   """Returns non-baseline model specs."""
   return [spec for spec in eval_config.model_specs if not spec.is_baseline]
 
 
-def get_model_spec(eval_config: config.EvalConfig,
-                   model_name: Text) -> Optional[config.ModelSpec]:
+def get_model_spec(eval_config: config_pb2.EvalConfig,
+                   model_name: Text) -> Optional[config_pb2.ModelSpec]:
   """Returns model spec with given model name."""
   if len(eval_config.model_specs) == 1 and not model_name:
     return eval_config.model_specs[0]
@@ -122,7 +120,7 @@ def get_model_spec(eval_config: config.EvalConfig,
   return None
 
 
-def get_label_key(model_spec: config.ModelSpec,
+def get_label_key(model_spec: config_pb2.ModelSpec,
                   output_name: Text) -> Optional[Text]:
   """Returns the label_key corresponding to a given output name."""
   if output_name:
@@ -142,7 +140,7 @@ def get_label_key(model_spec: config.ModelSpec,
       return None
 
 
-def get_model_type(model_spec: Optional[config.ModelSpec],
+def get_model_type(model_spec: Optional[config_pb2.ModelSpec],
                    model_path: Optional[Text] = '',
                    tags: Optional[List[Text]] = None) -> Text:
   """Returns model type for given model spec taking into account defaults.
@@ -239,7 +237,7 @@ def verify_and_update_eval_shared_models(
 
 
 def get_feature_values_for_model_spec_field(
-    model_specs: List[config.ModelSpec],
+    model_specs: List[config_pb2.ModelSpec],
     field: Text,
     multi_output_field: Optional[Text],
     batched_extracts: types.Extracts,
@@ -800,7 +798,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
   """Updates extracts by calling specified model signature functions."""
 
   def __init__(self,
-               eval_config: config.EvalConfig,
+               eval_config: config_pb2.EvalConfig,
                eval_shared_models: Dict[Text, types.EvalSharedModel],
                signature_names: Dict[Text, Dict[Text, List[Text]]],
                default_signature_names: Optional[List[Text]] = None,

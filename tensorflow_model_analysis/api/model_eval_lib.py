@@ -30,9 +30,7 @@ import apache_beam as beam
 import pandas as pd
 import pyarrow as pa
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.evaluators import evaluator
@@ -51,9 +49,12 @@ from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.extractors import transformed_features_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import config_util
+from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.validators import validator
 from tensorflow_model_analysis.view import util as view_util
 from tensorflow_model_analysis.view import view_types
@@ -86,7 +87,7 @@ def _assert_tensorflow_version():
 def _is_legacy_eval(
     config_version: Optional[int],
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels],
-    eval_config: Optional[config.EvalConfig]):
+    eval_config: Optional[config_pb2.EvalConfig]):
   """Returns True if legacy evaluation is being used.
 
   A legacy evaluation is an evalution that uses only a single EvalSharedModel,
@@ -131,19 +132,19 @@ def _default_eval_config(eval_shared_models: List[types.EvalSharedModel],
       example_weight_keys = example_weight_key
       example_weight_key = ''
     model_specs.append(
-        config.ModelSpec(
+        config_pb2.ModelSpec(
             name=shared_model.model_name,
             example_weight_key=example_weight_key,
             example_weight_keys=example_weight_keys))
   slicing_specs = None
   if slice_spec:
     slicing_specs = [s.to_proto() for s in slice_spec]
-  options = config.Options()
+  options = config_pb2.Options()
   options.compute_confidence_intervals.value = compute_confidence_intervals
   options.min_slice_size.value = min_slice_size
   if not write_config:
     options.disabled_outputs.values.append(eval_config_writer.EVAL_CONFIG_FILE)
-  return config.EvalConfig(
+  return config_pb2.EvalConfig(
       model_specs=model_specs, slicing_specs=slicing_specs, options=options)
 
 
@@ -160,14 +161,14 @@ def _model_types(
 
 
 def _update_eval_config_with_defaults(
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels]
-) -> config.EvalConfig:
+) -> config_pb2.EvalConfig:
   """Returns updated eval config with default values."""
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model)
   has_baseline = eval_shared_models and len(eval_shared_models) == 2
-  return config.update_eval_config_with_defaults(
+  return config_util.update_eval_config_with_defaults(
       eval_config=eval_config,
       has_baseline=has_baseline,
       rubber_stamp=model_util.has_rubber_stamp(eval_shared_models))
@@ -334,7 +335,7 @@ def default_eval_shared_model(
     blacklist_feature_fetches: Optional[List[Text]] = None,
     tags: Optional[List[Text]] = None,
     model_name: Text = '',
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     custom_model_loader: Optional[types.ModelLoader] = None,
     rubber_stamp: Optional[bool] = False) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
@@ -447,7 +448,7 @@ def default_eval_shared_model(
 
 def default_extractors(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     materialize: Optional[bool] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
@@ -491,7 +492,7 @@ def default_extractors(  # pylint: disable=invalid-name
   if _is_legacy_eval(config_version, eval_shared_model, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     if not eval_config and slice_spec:
-      eval_config = config.EvalConfig(
+      eval_config = config_pb2.EvalConfig(
           slicing_specs=[s.to_proto() for s in slice_spec])
     return [
         custom_predict_extractor or legacy_predict_extractor.PredictExtractor(
@@ -610,7 +611,7 @@ def default_extractors(  # pylint: disable=invalid-name
 
 def default_evaluators(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     schema: Optional[schema_pb2.Schema] = None,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
@@ -699,7 +700,7 @@ def default_evaluators(  # pylint: disable=invalid-name
 def default_writers(
     output_path: Optional[Text],
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     display_only_data_location: Optional[Text] = None,
     display_only_data_file_format: Optional[Text] = None,
     output_file_format: Text = '',
@@ -774,7 +775,7 @@ def default_writers(
       metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
           output_paths=output_paths,
           # Empty EvalConfig supported for backwards compatibility.
-          eval_config=eval_config or config.EvalConfig(),
+          eval_config=eval_config or config_pb2.EvalConfig(),
           add_metrics_callbacks=add_metric_callbacks,
           output_file_format=output_file_format,
           rubber_stamp=model_util.has_rubber_stamp(eval_shared_models)))
@@ -956,7 +957,7 @@ def is_legacy_estimator(
 
 def is_batched_input(eval_shared_model: Optional[
     types.MaybeMultipleEvalSharedModels] = None,
-                     eval_config: Optional[config.EvalConfig] = None,
+                     eval_config: Optional[config_pb2.EvalConfig] = None,
                      config_version: Optional[int] = None) -> bool:
   """Returns true if batched input should be used.
 
@@ -987,7 +988,7 @@ def is_batched_input(eval_shared_model: Optional[
 def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     examples: beam.pvalue.PCollection,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     extractors: Optional[List[extractor.Extractor]] = None,
     evaluators: Optional[List[evaluator.Evaluator]] = None,
     writers: Optional[List[writer.Writer]] = None,
@@ -1099,7 +1100,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     config_version = 2 if config_version is None else config_version
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
-  config.verify_eval_config(eval_config)
+  config_util.verify_eval_config(eval_config)
 
   if not extractors:
     extractors = default_extractors(
@@ -1147,7 +1148,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
 
 def run_model_analysis(
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     data_location: Text = '',
     file_format: Text = 'tfrecords',
     output_path: Optional[Text] = None,
@@ -1294,7 +1295,7 @@ def single_model_analysis(
     model_location: Text,
     data_location: Text,
     output_path: Optional[Text] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None
 ) -> view_types.EvalResult:
   """Run model analysis for a single model on a single data set.
@@ -1323,7 +1324,7 @@ def single_model_analysis(
   if slice_spec and eval_config:
     raise ValueError('slice_spec is deprecated, only use eval_config')
   if slice_spec:
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         slicing_specs=[s.to_proto() for s in slice_spec])
 
   return run_model_analysis(
@@ -1376,7 +1377,7 @@ def multiple_data_analysis(model_location: Text, data_locations: List[Text],
 
 def analyze_raw_data(
     data: pd.DataFrame,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     output_path: Optional[Text] = None,
     add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None
 ) -> view_types.EvalResult:
@@ -1405,26 +1406,25 @@ def analyze_raw_data(
 
   ```python
   model_specs = [
-    config.ModelSpec(
+    tfma.ModelSpec(
         prediction_key='prediction',
         label_key='label')
   ]
-  config.options.compute_confidence_intervals.value
   metrics_specs = [
-      config.MetricsSpec(metrics=[
-        config.MetricConfig(class_name='Accuracy'),
-        config.MetricConfig(class_name='ExampleCount')
+      tfma.MetricsSpec(metrics=[
+        tfma.MetricConfig(class_name='Accuracy'),
+        tfma.MetricConfig(class_name='ExampleCount')
       ])
   ]
   slicing_specs = [
-      config.SlicingSpec(),  # the empty slice represents the overall dataset
-      config.SlicingSpec(feature_keys=['language'])
+      tfma.SlicingSpec(),  # the empty slice represents overall dataset
+      tfma.SlicingSpec(feature_keys=['language'])
   ]
-  eval_config = config.EvalConfig(
+  eval_config = tfma.EvalConfig(
       model_specs=model_specs,
       metrics_specs=metrics_specs,
       slicing_specs=slicing_specs)
-  result = model_eval_lib.analyze_raw_data(df, eval_config)
+  result = tfma.analyze_raw_data(df, eval_config)
   tfma.view.render_slicing_metrics(result)
 
   # Example with Fairness Indicators
@@ -1434,7 +1434,7 @@ def analyze_raw_data(
   add_metrics_callbacks = [
       tfma.post_export_metrics.fairness_indicators(thresholds=[0.25, 0.5, 0.75])
   ]
-  result = model_eval_lib.analyze_raw_data(
+  result = tfma.analyze_raw_data(
       data=df,
       metrics_specs=metrics_specs,
       slicing_specs=slicing_specs,
@@ -1473,7 +1473,7 @@ def analyze_raw_data(
 
   # TODO(b/153570803): Validity check / assertions for dataframe structure
   if eval_config.slicing_specs is None:  # pytype: disable=attribute-error
-    eval_config.slicing_specs = [config.SlicingSpec(feature_keys=[''])]
+    eval_config.slicing_specs = [config_pb2.SlicingSpec(feature_keys=[''])]
   if output_path is None:
     output_path = tempfile.mkdtemp()
 

@@ -24,11 +24,11 @@ import os
 from typing import Any, Dict, List, Optional, Text, Tuple, Union
 from absl import logging
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import weighted_example_count
 from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.view import view_types
@@ -361,7 +361,7 @@ def get_plot_data_and_config(
 
 # TODO(paulyang): Add support for multi-model / multi-output selection.
 def get_slicing_config(
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     weighted_example_column_to_use: Optional[Text] = None) -> Dict[Text, Text]:
   """Util function that generates config for visualization.
 

@@ -23,12 +23,12 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import labels_extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import test_util
 
 from google.protobuf import text_format
@@ -41,8 +41,8 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(('with_label', 'label'),
                                   ('without_label', None))
   def testLabelsExtractor(self, label):
-    model_spec = config.ModelSpec(label_key=label)
-    eval_config = config.EvalConfig(model_specs=[model_spec])
+    model_spec = config_pb2.ModelSpec(label_key=label)
+    eval_config = config_pb2.EvalConfig(model_specs=[model_spec])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     label_extractor = labels_extractor.LabelsExtractor(eval_config)
 
@@ -114,12 +114,12 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   def testLabelsExtractorMultiOutput(self):
-    model_spec = config.ModelSpec(label_keys={
+    model_spec = config_pb2.ModelSpec(label_keys={
         'output1': 'label1',
         'output2': 'label2',
         'output3': 'label3',
     })
-    eval_config = config.EvalConfig(model_specs=[model_spec])
+    eval_config = config_pb2.EvalConfig(model_specs=[model_spec])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     label_extractor = labels_extractor.LabelsExtractor(eval_config)
 
@@ -181,13 +181,13 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   def testLabelsExtractorMultiModel(self):
-    model_spec1 = config.ModelSpec(name='model1', label_key='label')
-    model_spec2 = config.ModelSpec(
+    model_spec1 = config_pb2.ModelSpec(name='model1', label_key='label')
+    model_spec2 = config_pb2.ModelSpec(
         name='model2', label_keys={
             'output1': 'label1',
             'output2': 'label2'
         })
-    eval_config = config.EvalConfig(model_specs=[model_spec1, model_spec2])
+    eval_config = config_pb2.EvalConfig(model_specs=[model_spec1, model_spec2])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     label_extractor = labels_extractor.LabelsExtractor(eval_config)
 

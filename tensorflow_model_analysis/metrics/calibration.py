@@ -23,9 +23,9 @@ from typing import Any, Dict, Iterable, Optional, Text
 
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 CALIBRATION_NAME = 'calibration'
 MEAN_LABEL_NAME = 'mean_label'
@@ -52,7 +52,7 @@ metric_types.register_metric(MeanLabel)
 
 def _mean_label(
     name: Text = MEAN_LABEL_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -112,7 +112,7 @@ metric_types.register_metric(MeanPrediction)
 
 def _mean_prediction(
     name: Text = MEAN_PREDICTION_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -175,7 +175,7 @@ metric_types.register_metric(Calibration)
 
 def _calibration(
     name: Text = CALIBRATION_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -219,7 +219,7 @@ def _calibration(
 
 def _weighted_labels_predictions_examples(
     name: Text = _WEIGHTED_LABELS_PREDICTIONS_EXAMPLES_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -273,7 +273,7 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
   """Computes weighted labels, predictions, and examples."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]]):
     self._key = key

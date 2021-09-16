@@ -24,18 +24,18 @@ import copy
 from typing import Dict, Optional, Text
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 from tfx_bsl.tfxio import tensor_adapter
 
 _PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
 
 def PredictionsExtractor(
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
 ) -> extractor.Extractor:
@@ -97,7 +97,7 @@ def PredictionsExtractor(
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractPredictions(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]],
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
 ) -> beam.pvalue.PCollection:

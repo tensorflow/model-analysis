@@ -24,12 +24,12 @@ from apache_beam.testing import util
 import numpy as np
 import six
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
@@ -349,47 +349,47 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
   def testIsCrossSliceApplicable(self):
     test_cases = [
-        (True, 'overall pass', ((), (('b', 2),)), config.CrossSlicingSpec(
-            baseline_spec=config.SlicingSpec(),
-            slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+        (True, 'overall pass', ((), (('b', 2),)), config_pb2.CrossSlicingSpec(
+            baseline_spec=config_pb2.SlicingSpec(),
+            slicing_specs=[config_pb2.SlicingSpec(feature_values={'b': '2'})])),
         (True, 'value pass', ((('a', 1),), (('b', 2),)),
-         config.CrossSlicingSpec(
-             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
-             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+         config_pb2.CrossSlicingSpec(
+             baseline_spec=config_pb2.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config_pb2.SlicingSpec(feature_values={'b': '2'})])),
         (True, 'baseline key pass', ((('a', 1),), (('b', 2),)),
-         config.CrossSlicingSpec(
-             baseline_spec=config.SlicingSpec(feature_keys=['a']),
-             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+         config_pb2.CrossSlicingSpec(
+             baseline_spec=config_pb2.SlicingSpec(feature_keys=['a']),
+             slicing_specs=[config_pb2.SlicingSpec(feature_values={'b': '2'})])),
         (True, 'comparison key pass', ((('a', 1),), (('b', 2),)),
-         config.CrossSlicingSpec(
-             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
-             slicing_specs=[config.SlicingSpec(feature_keys=['b'])])),
+         config_pb2.CrossSlicingSpec(
+             baseline_spec=config_pb2.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config_pb2.SlicingSpec(feature_keys=['b'])])),
         (True, 'comparison multiple key pass', ((('a', 1),), (('c', 3),)),
-         config.CrossSlicingSpec(
-             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
-             slicing_specs=[config.SlicingSpec(feature_keys=['b']),
-                            config.SlicingSpec(feature_keys=['c'])])),
+         config_pb2.CrossSlicingSpec(
+             baseline_spec=config_pb2.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config_pb2.SlicingSpec(feature_keys=['b']),
+                            config_pb2.SlicingSpec(feature_keys=['c'])])),
         (False, 'overall fail', ((('a', 1),), (('b', 2),)),
-         config.CrossSlicingSpec(
-             baseline_spec=config.SlicingSpec(),
-             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+         config_pb2.CrossSlicingSpec(
+             baseline_spec=config_pb2.SlicingSpec(),
+             slicing_specs=[config_pb2.SlicingSpec(feature_values={'b': '2'})])),
         (False, 'value fail', ((('a', 1),), (('b', 3),)),
-         config.CrossSlicingSpec(
-             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
-             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+         config_pb2.CrossSlicingSpec(
+             baseline_spec=config_pb2.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config_pb2.SlicingSpec(feature_values={'b': '2'})])),
         (False, 'baseline key fail', ((('c', 1),), (('b', 2),)),
-         config.CrossSlicingSpec(
-             baseline_spec=config.SlicingSpec(feature_keys=['a']),
-             slicing_specs=[config.SlicingSpec(feature_values={'b': '2'})])),
+         config_pb2.CrossSlicingSpec(
+             baseline_spec=config_pb2.SlicingSpec(feature_keys=['a']),
+             slicing_specs=[config_pb2.SlicingSpec(feature_values={'b': '2'})])),
         (False, 'comparison key fail', ((('a', 1),), (('c', 3),)),
-         config.CrossSlicingSpec(
-             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
-             slicing_specs=[config.SlicingSpec(feature_keys=['b'])])),
+         config_pb2.CrossSlicingSpec(
+             baseline_spec=config_pb2.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config_pb2.SlicingSpec(feature_keys=['b'])])),
         (False, 'comparison multiple key fail', ((('a', 1),), (('d', 3),)),
-         config.CrossSlicingSpec(
-             baseline_spec=config.SlicingSpec(feature_values={'a': '1'}),
-             slicing_specs=[config.SlicingSpec(feature_keys=['b']),
-                            config.SlicingSpec(feature_keys=['c'])])),
+         config_pb2.CrossSlicingSpec(
+             baseline_spec=config_pb2.SlicingSpec(feature_values={'a': '1'}),
+             slicing_specs=[config_pb2.SlicingSpec(feature_keys=['b']),
+                            config_pb2.SlicingSpec(feature_keys=['c'])])),
     ]  # pyformat: disable
     for (expected_result, name, sliced_key, slicing_spec) in test_cases:
       self.assertEqual(

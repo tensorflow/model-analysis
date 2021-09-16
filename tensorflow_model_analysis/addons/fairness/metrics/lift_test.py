@@ -18,11 +18,11 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.addons.fairness.metrics import lift
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 
 class LiftTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
@@ -33,8 +33,8 @@ class LiftTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
                    comparison_examples,
                    lift_metric_value,
                    ignore_out_of_bound_examples=False):
-    eval_config = config.EvalConfig(
-        cross_slicing_specs=[config.CrossSlicingSpec()])
+    eval_config = config_pb2.EvalConfig(
+        cross_slicing_specs=[config_pb2.CrossSlicingSpec()])
     computations = lift.Lift(
         num_buckets=num_buckets,
         ignore_out_of_bound_examples=ignore_out_of_bound_examples).computations(
@@ -332,7 +332,8 @@ class LiftTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
   def testLift_raisesExceptionWhenCrossSlicingSpecIsAbsent(self):
     with self.assertRaises(ValueError):
-      _ = lift.Lift(num_buckets=3).computations(eval_config=config.EvalConfig())
+      _ = lift.Lift(num_buckets=3).computations(
+          eval_config=config_pb2.EvalConfig())
 
 
 if __name__ == '__main__':

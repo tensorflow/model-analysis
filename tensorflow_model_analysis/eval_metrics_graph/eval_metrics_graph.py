@@ -40,9 +40,9 @@ import tensorflow as tf
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util as general_util
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import util
+from tensorflow_model_analysis.utils import util as general_util
 from typing import Any, Dict, List, NamedTuple, Text, Tuple
 
 # Config for defining the input tensor feed into the EvalMetricsGraph. This

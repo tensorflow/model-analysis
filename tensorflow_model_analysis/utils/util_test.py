@@ -14,15 +14,11 @@
 # limitations under the License.
 """Simple tests for util."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
+from tensorflow_model_analysis.utils import util
 
 
 class UtilTest(tf.test.TestCase):

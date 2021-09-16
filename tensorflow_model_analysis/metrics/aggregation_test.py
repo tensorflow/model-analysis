@@ -24,11 +24,11 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import aggregation
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 
 class AggregationMetricsTest(testutil.TensorflowModelAnalysisTest):
@@ -81,7 +81,7 @@ class AggregationMetricsTest(testutil.TensorflowModelAnalysisTest):
     computations = aggregation.macro_average(
         metric_name,
         sub_keys,
-        eval_config=config.EvalConfig(),
+        eval_config=config_pb2.EvalConfig(),
         class_weights={
             0: 1.0,
             1: 1.0,
@@ -127,7 +127,7 @@ class AggregationMetricsTest(testutil.TensorflowModelAnalysisTest):
     computations = aggregation.macro_average(
         metric_name,
         sub_keys,
-        eval_config=config.EvalConfig(),
+        eval_config=config_pb2.EvalConfig(),
         class_weights=class_weights)
     metric = computations[0]
 
@@ -183,7 +183,7 @@ class AggregationMetricsTest(testutil.TensorflowModelAnalysisTest):
     sub_keys = [metric_types.SubKey(class_id=i) for i in class_ids]
     sub_key_values = [0.1, 0.2, 0.3]
     computations = aggregation.weighted_macro_average(
-        metric_name, sub_keys, eval_config=config.EvalConfig())
+        metric_name, sub_keys, eval_config=config_pb2.EvalConfig())
     class_weights = computations[0]
     metric = computations[1]
 

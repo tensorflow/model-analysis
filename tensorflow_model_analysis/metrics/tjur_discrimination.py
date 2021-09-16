@@ -26,9 +26,9 @@ from __future__ import print_function
 from typing import Any, Dict, Iterable, Optional, Text
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 COEFFICIENT_OF_DISCRIMINATION_NAME = 'coefficient_of_discimination'
 RELATIVE_COEFFICIENT_OF_DISCRIMINATION_NAME = (
@@ -64,7 +64,7 @@ metric_types.register_metric(CoefficientOfDiscrimination)
 
 def _coefficient_of_discrimination(
     name: Text = COEFFICIENT_OF_DISCRIMINATION_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -139,7 +139,7 @@ metric_types.register_metric(RelativeCoefficientOfDiscrimination)
 
 def _relative_coefficient_of_discrimination(
     name: Text = RELATIVE_COEFFICIENT_OF_DISCRIMINATION_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     aggregation_type: Optional[metric_types.AggregationType] = None,
@@ -186,7 +186,7 @@ def _relative_coefficient_of_discrimination(
 
 def _tjur_discrimination(
     name=_TJUR_DISCRIMINATION_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     aggregation_type: Optional[metric_types.AggregationType] = None,
@@ -222,7 +222,7 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
   """Computes min label position metric."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]]):
     self._key = key

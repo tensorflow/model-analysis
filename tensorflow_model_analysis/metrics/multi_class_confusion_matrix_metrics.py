@@ -23,10 +23,10 @@ from typing import Callable, Dict, Iterable, List, Optional, Text, NamedTuple
 
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 MULTI_CLASS_CONFUSION_MATRIX_AT_THRESHOLDS_NAME = (
@@ -69,7 +69,7 @@ metric_types.register_metric(MultiClassConfusionMatrixAtThresholds)
 def _multi_class_confusion_matrix_at_thresholds(
     thresholds: Optional[List[float]] = None,
     name: Text = MULTI_CLASS_CONFUSION_MATRIX_AT_THRESHOLDS_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
 ) -> metric_types.MetricComputations:
@@ -115,7 +115,7 @@ def multi_class_confusion_matrices(
     thresholds: Optional[List[float]] = None,
     num_thresholds: Optional[int] = None,
     name: Text = MULTI_CLASS_CONFUSION_MATRICES,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
 ) -> metric_types.MetricComputations:
@@ -223,7 +223,7 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
   """Creates multi-class confusion matrix at thresholds from standard inputs."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                thresholds: List[float]):
     self._key = key
     self._eval_config = eval_config

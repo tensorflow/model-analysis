@@ -30,18 +30,18 @@ import numpy as np
 import pyarrow as pa
 import six
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import metrics_validator
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import math_util
 from tensorflow_model_analysis.writers import writer
 
 
@@ -507,7 +507,7 @@ def convert_slice_attributions_to_proto(
 
 def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     output_paths: Dict[Text, Text],
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
@@ -566,7 +566,7 @@ class CombineValidations(beam.CombineFn):
   """
 
   def __init__(self,
-               eval_config: config.EvalConfig,
+               eval_config: config_pb2.EvalConfig,
                rubber_stamp: bool = False):
     self._eval_config = eval_config
     self._rubber_stamp = rubber_stamp
@@ -622,9 +622,9 @@ class CombineValidations(beam.CombineFn):
       missing_slices = []
       missing_cross_slices = []
       for m in missing:
-        if isinstance(m, config.SlicingSpec):
+        if isinstance(m, config_pb2.SlicingSpec):
           missing_slices.append(m)
-        elif isinstance(m, config.CrossSlicingSpec):
+        elif isinstance(m, config_pb2.CrossSlicingSpec):
           missing_cross_slices.append(m)
       accumulator.validation_ok = False
       if missing_slices:
@@ -642,7 +642,7 @@ class CombineValidations(beam.CombineFn):
 def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation,
     output_paths: Dict[Text, Text],
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     add_metrics_callbacks: List[types.AddMetricsCallbackType],
     metrics_key: Text,
     plots_key: Text,

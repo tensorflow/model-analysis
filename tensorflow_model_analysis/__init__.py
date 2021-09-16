@@ -14,18 +14,23 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis."""
 
+################################################################################
+# This file acts as the public API for root-level interfaces. It should only
+# include imports that are either in the root directory itself or under the api/
+# or proto/ subdirectories. All other directories should have a single import
+# for the entire directory in this file and have their own __init__.py for
+# exposing their own public interfaces.
+################################################################################
+
 # pylint: disable=unused-import
 # pylint: disable=g-bad-import-order
-
-# TODO(b/77140537) For API docs
-# We want to document the view module, but it doesn't work with
-# the current tools, so we have a temporary stub.
 # pylint: disable=g-import-not-at-top
 # pylint: disable=g-statement-before-imports
 # See b/148667210 for why the ImportError is ignored.
 try:
+  # Allow api module types to be imported at the top-level since they are the
+  # main public interface to using TFMA.
   from tensorflow_model_analysis.api import tfma_unit as test
-
   from tensorflow_model_analysis.api.model_eval_lib import AttributionsForSlice
   from tensorflow_model_analysis.api.model_eval_lib import analyze_raw_data
   from tensorflow_model_analysis.api.model_eval_lib import BatchedInputsToExtracts
@@ -52,28 +57,33 @@ try:
   from tensorflow_model_analysis.api.model_eval_lib import run_model_analysis
   from tensorflow_model_analysis.api.model_eval_lib import WriteResults
   from tensorflow_model_analysis.api.model_eval_lib import ValidationResult
-
   from tensorflow_model_analysis.api.verifier_lib import Validate
 
-  from tensorflow_model_analysis.config import AggregationOptions
-  from tensorflow_model_analysis.config import BinarizationOptions
-  from tensorflow_model_analysis.config import ConfidenceIntervalOptions
-  from tensorflow_model_analysis.config import EvalConfig
-  from tensorflow_model_analysis.config import GenericChangeThreshold
-  from tensorflow_model_analysis.config import GenericValueThreshold
-  from tensorflow_model_analysis.config import has_change_threshold
-  from tensorflow_model_analysis.config import MetricConfig
-  from tensorflow_model_analysis.config import MetricDirection
-  from tensorflow_model_analysis.config import MetricsSpec
-  from tensorflow_model_analysis.config import MetricThreshold
-  from tensorflow_model_analysis.config import ModelSpec
-  from tensorflow_model_analysis.config import Options
-  from tensorflow_model_analysis.config import PerSliceMetricThreshold
-  from tensorflow_model_analysis.config import PerSliceMetricThresholds
-  from tensorflow_model_analysis.config import SlicingSpec
-  from tensorflow_model_analysis.config import update_eval_config_with_defaults
-  from tensorflow_model_analysis.config import verify_eval_config
+  # Allow proto types to be imported at the top-level since proto's live in
+  # the tensorflow_model_analysis namespace.
+  # pylint: disable=g-importing-member
+  from tensorflow_model_analysis.proto.config_pb2 import AggregationOptions
+  from tensorflow_model_analysis.proto.config_pb2 import BinarizationOptions
+  from tensorflow_model_analysis.proto.config_pb2 import ConfidenceIntervalOptions
+  from tensorflow_model_analysis.proto.config_pb2 import CrossSliceMetricThreshold
+  from tensorflow_model_analysis.proto.config_pb2 import CrossSliceMetricThresholds
+  from tensorflow_model_analysis.proto.config_pb2 import CrossSlicingSpec
+  from tensorflow_model_analysis.proto.config_pb2 import EvalConfig
+  from tensorflow_model_analysis.proto.config_pb2 import GenericChangeThreshold
+  from tensorflow_model_analysis.proto.config_pb2 import GenericValueThreshold
+  from tensorflow_model_analysis.proto.config_pb2 import MetricConfig
+  from tensorflow_model_analysis.proto.config_pb2 import MetricDirection
+  from tensorflow_model_analysis.proto.config_pb2 import MetricsSpec
+  from tensorflow_model_analysis.proto.config_pb2 import MetricThreshold
+  from tensorflow_model_analysis.proto.config_pb2 import ModelSpec
+  from tensorflow_model_analysis.proto.config_pb2 import Options
+  from tensorflow_model_analysis.proto.config_pb2 import PaddingOptions
+  from tensorflow_model_analysis.proto.config_pb2 import PerSliceMetricThreshold
+  from tensorflow_model_analysis.proto.config_pb2 import PerSliceMetricThresholds
+  from tensorflow_model_analysis.proto.config_pb2 import SlicingSpec
+  # pylint: enable=g-importing-member
 
+  # Allow constants to be imported at the top-level since they live in root dir.
   from tensorflow_model_analysis.constants import ANALYSIS_KEY
   from tensorflow_model_analysis.constants import ARROW_INPUT_COLUMN
   from tensorflow_model_analysis.constants import ARROW_RECORD_BATCH_KEY
@@ -101,21 +111,15 @@ try:
   from tensorflow_model_analysis.constants import TF_KERAS
   from tensorflow_model_analysis.constants import VALIDATIONS_KEY
 
+  # TODO(b/171992041): Remove these imports in the future.
+  # For backwards compatibility allow eval_metrics_graph and exporter to be
+  # accessed from top-level model. These will be deprecated in the future.
   from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
   from tensorflow_model_analysis.eval_saved_model import export
   from tensorflow_model_analysis.eval_saved_model import exporter
-
   from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 
-  from tensorflow_model_analysis.model_util import CombineFnWithModels
-  from tensorflow_model_analysis.model_util import DoFnWithModels
-  from tensorflow_model_analysis.model_util import get_baseline_model_spec
-  from tensorflow_model_analysis.model_util import get_model_type
-  from tensorflow_model_analysis.model_util import get_model_spec
-  from tensorflow_model_analysis.model_util import get_non_baseline_model_specs
-  from tensorflow_model_analysis.model_util import model_construct_fn
-  from tensorflow_model_analysis.model_util import verify_and_update_eval_shared_models
-
+  # Allow types to be imported at the top-level since they live in root dir.
   from tensorflow_model_analysis.types import AddMetricsCallbackType
   from tensorflow_model_analysis.types import EvalSharedModel
   from tensorflow_model_analysis.types import Extracts
@@ -130,11 +134,6 @@ try:
   from tensorflow_model_analysis.types import TensorType
   from tensorflow_model_analysis.types import TensorTypeMaybeDict
   from tensorflow_model_analysis.types import TensorValue
-
-  from tensorflow_model_analysis.util import create_keys_key
-  from tensorflow_model_analysis.util import create_values_key
-  from tensorflow_model_analysis.util import compound_key
-  from tensorflow_model_analysis.util import unique_key
 
   # Import VERSION as __version__ for compatibility with other TFX components.
   from tensorflow_model_analysis.version import VERSION as __version__
@@ -151,10 +150,12 @@ try:
   from tensorflow_model_analysis import validators
   from tensorflow_model_analysis import evaluators
   from tensorflow_model_analysis import metrics
+  from tensorflow_model_analysis import utils
   from tensorflow_model_analysis import writers
   from tensorflow_model_analysis import view
   from tensorflow_model_analysis import model_agnostic_eval
 
+  # TODO(b/171992041): Deprecate use of EvalResult in the future.
   from tensorflow_model_analysis.view.view_types import EvalResult
 
 except ImportError as err:

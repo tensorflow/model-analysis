@@ -23,11 +23,11 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tf_example_record
 
 from google.protobuf import text_format
@@ -38,8 +38,8 @@ class FeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
                             parameterized.TestCase):
 
   def test_features_extractor_no_features(self):
-    model_spec = config.ModelSpec()
-    eval_config = config.EvalConfig(model_specs=[model_spec])
+    model_spec = config_pb2.ModelSpec()
+    eval_config = config_pb2.EvalConfig(model_specs=[model_spec])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     tfx_io = tf_example_record.TFExampleBeamRecord(
         raw_record_column_name=constants.ARROW_INPUT_COLUMN,
@@ -62,8 +62,8 @@ class FeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='CheckResult')
 
   def test_features_extractor(self):
-    model_spec = config.ModelSpec()
-    eval_config = config.EvalConfig(model_specs=[model_spec])
+    model_spec = config_pb2.ModelSpec()
+    eval_config = config_pb2.EvalConfig(model_specs=[model_spec])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
 
     schema = text_format.Parse(

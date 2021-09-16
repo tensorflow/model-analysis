@@ -27,10 +27,10 @@ from apache_beam.testing import util
 import numpy as np
 import pyarrow as pa
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import tf_example_record
 
@@ -276,19 +276,19 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                name: "baseline"
                is_baseline: true
              }
-           """, config.EvalConfig()),
+           """, config_pb2.EvalConfig()),
        text_format.Parse(
            """
              name: "baseline"
              is_baseline: true
-           """, config.ModelSpec())),
+           """, config_pb2.ModelSpec())),
       ('no_baseline',
        text_format.Parse(
            """
              model_specs {
                name: "candidate"
              }
-           """, config.EvalConfig()), None),
+           """, config_pb2.EvalConfig()), None),
   )
   def test_get_baseline_model(self, eval_config, expected_baseline_model_spec):
     self.assertEqual(expected_baseline_model_spec,
@@ -305,11 +305,11 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                name: "baseline"
                is_baseline: true
              }
-           """, config.EvalConfig()), [
+           """, config_pb2.EvalConfig()), [
                text_format.Parse(
                    """
              name: "candidate"
-           """, config.ModelSpec())
+           """, config_pb2.ModelSpec())
            ]),
       ('no_non_baseline',
        text_format.Parse(
@@ -318,7 +318,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                name: "baseline"
                is_baseline: true
              }
-           """, config.EvalConfig()), []),
+           """, config_pb2.EvalConfig()), []),
   )
   def test_get_non_baseline_model(self, eval_config,
                                   expected_non_baseline_model_specs):
@@ -344,14 +344,14 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
         filtered_tensors['f3' + model_util.KERAS_INPUT_SUFFIX])
 
   @parameterized.named_parameters(
-      ('output_name_and_label_key', config.ModelSpec(label_key='label'),
+      ('output_name_and_label_key', config_pb2.ModelSpec(label_key='label'),
        'output', 'label'),
       ('output_name_and_label_keys',
-       config.ModelSpec(label_keys={'output': 'label'}), 'output', 'label'),
-      ('output_name_and_no_label_keys', config.ModelSpec(), 'output', None),
-      ('no_output_name_and_label_key', config.ModelSpec(label_key='label'), '',
-       'label'),
-      ('no_output_name_and_no_label_keys', config.ModelSpec(), '', None))
+       config_pb2.ModelSpec(label_keys={'output': 'label'}), 'output', 'label'),
+      ('output_name_and_no_label_keys', config_pb2.ModelSpec(), 'output', None),
+      ('no_output_name_and_label_key', config_pb2.ModelSpec(label_key='label'),
+       '', 'label'),
+      ('no_output_name_and_no_label_keys', config_pb2.ModelSpec(), '', None))
   def testGetLabelKey(self, model_spec, output_name, expected_label_key):
     self.assertEqual(expected_label_key,
                      model_util.get_label_key(model_spec, output_name))
@@ -359,12 +359,12 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
   def testGetLabelKeyNoOutputAndLabelKeys(self):
     with self.assertRaises(ValueError):
       model_util.get_label_key(
-          config.ModelSpec(label_keys={'output1': 'label'}), '')
+          config_pb2.ModelSpec(label_keys={'output1': 'label'}), '')
 
   @parameterized.named_parameters(
       {
           'testcase_name': 'single_model_single_key',
-          'model_specs': [config.ModelSpec(label_key='feature1')],
+          'model_specs': [config_pb2.ModelSpec(label_key='feature1')],
           'field': 'label_key',
           'multi_output_field': 'label_keys',
           'expected_values': [[1.0, 1.1, 1.2],]
@@ -373,7 +373,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'single_model_multi_key',
           'model_specs': [
-              config.ModelSpec(label_keys={
+              config_pb2.ModelSpec(label_keys={
                   'output1': 'feature1',
                   'output2': 'feature2'
               })
@@ -391,8 +391,10 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'multi_model_single_key',
           'model_specs': [
-              config.ModelSpec(name='model1', example_weight_key='feature2'),
-              config.ModelSpec(name='model2', example_weight_key='feature3')
+              config_pb2.ModelSpec(
+                  name='model1', example_weight_key='feature2'),
+              config_pb2.ModelSpec(
+                  name='model2', example_weight_key='feature3')
           ],
           'field':
               'example_weight_key',
@@ -407,13 +409,13 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'multi_model_multi_key',
           'model_specs': [
-              config.ModelSpec(
+              config_pb2.ModelSpec(
                   name='model1',
                   prediction_keys={
                       'output1': 'feature1',
                       'output2': 'feature2'
                   }),
-              config.ModelSpec(
+              config_pb2.ModelSpec(
                   name='model2',
                   prediction_keys={
                       'output1': 'feature1',
@@ -457,7 +459,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(
       {
           'testcase_name': 'single_model_single_key',
-          'model_specs': [config.ModelSpec(label_key='feature2')],
+          'model_specs': [config_pb2.ModelSpec(label_key='feature2')],
           'field': 'label_key',
           'multi_output_field': 'label_keys',
           'expected_values': [[4.0, 4.1, 4.2],]
@@ -466,7 +468,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'single_model_multi_key',
           'model_specs': [
-              config.ModelSpec(label_keys={
+              config_pb2.ModelSpec(label_keys={
                   'output1': 'feature1',
                   'output2': 'feature2'
               })
@@ -505,8 +507,10 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'multi_model_single_key',
           'model_specs': [
-              config.ModelSpec(name='model1', example_weight_key='feature2'),
-              config.ModelSpec(name='model2', example_weight_key='feature3')
+              config_pb2.ModelSpec(
+                  name='model1', example_weight_key='feature2'),
+              config_pb2.ModelSpec(
+                  name='model2', example_weight_key='feature3')
           ],
           'field':
               'example_weight_key',
@@ -521,13 +525,13 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'multi_model_multi_key',
           'model_specs': [
-              config.ModelSpec(
+              config_pb2.ModelSpec(
                   name='model1',
                   example_weight_keys={
                       'output1': 'feature1',
                       'output2': 'feature2'
                   }),
-              config.ModelSpec(
+              config_pb2.ModelSpec(
                   name='model2',
                   example_weight_keys={
                       'output1': 'feature1',
@@ -577,7 +581,8 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
     self.assertAlmostEqual(expected_values, got)
 
   def testGetFeatureValuesForModelSpecFieldNoValues(self):
-    model_spec = config.ModelSpec(name='model1', example_weight_key='feature2')
+    model_spec = config_pb2.ModelSpec(
+        name='model1', example_weight_key='feature2')
     extracts = {
         constants.ARROW_RECORD_BATCH_KEY:
             pa.RecordBatch.from_arrays([pa.array([1])], ['dummy']),
@@ -807,8 +812,8 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
               eval_saved_model_path=export_path,
               model_name=model_name,
               tags=[tf.saved_model.SERVING])
-          model_specs.append(config.ModelSpec(name=model_name))
-    eval_config = config.EvalConfig(model_specs=model_specs)
+          model_specs.append(config_pb2.ModelSpec(name=model_name))
+    eval_config = config_pb2.EvalConfig(model_specs=model_specs)
     schema = self.createDenseInputsSchema() if use_schema else None
     tfx_io = tf_example_record.TFExampleBeamRecord(
         physical_format='text',
@@ -868,8 +873,8 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 eval_saved_model_path=export_path,
                 tags=[tf.saved_model.SERVING])
     }
-    model_specs = [config.ModelSpec()]
-    eval_config = config.EvalConfig(model_specs=model_specs)
+    model_specs = [config_pb2.ModelSpec()]
+    eval_config = config_pb2.EvalConfig(model_specs=model_specs)
     schema = self.createDenseInputsSchema()
     tfx_io = tf_example_record.TFExampleBeamRecord(
         physical_format='text',

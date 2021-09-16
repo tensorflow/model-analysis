@@ -23,7 +23,7 @@ from typing import Any, Dict, Iterable, NamedTuple, Optional, Text, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
+from tensorflow_model_analysis.utils import util
 
 # Tag for the last extractor in list of extractors.
 LAST_EXTRACTOR_STAGE_NAME = '<last-extractor>'

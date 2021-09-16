@@ -23,10 +23,10 @@ from typing import Dict, Iterable, List, Optional, Text
 
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis import config
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import util
 
 MIN_LABEL_POSITION_NAME = 'min_label_position'
 
@@ -63,7 +63,7 @@ metric_types.register_metric(MinLabelPosition)
 def _min_label_position(
     name=MIN_LABEL_POSITION_NAME,
     label_key: Optional[Text] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
     query_key: Text = '') -> metric_types.MetricComputations:
@@ -105,7 +105,7 @@ class _MinLabelPositionCombiner(beam.CombineFn):
   """Computes min label position metric."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                label_key: Optional[Text]):
     self._key = key
     self._eval_config = eval_config

@@ -26,7 +26,6 @@ from absl.testing import parameterized
 
 import pandas as pd
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
@@ -48,6 +47,7 @@ from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflow_model_analysis.view import view_types
@@ -155,7 +155,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         linear_classifier.simple_linear_classifier)
     examples = [self._makeExample(age=3.0, language='english', label=1.0)]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig()
+    eval_config = config_pb2.EvalConfig()
     # No construct_fn should fail when Beam attempts to call the construct_fn.
     eval_shared_model = types.EvalSharedModel(model_path=model_location)
     with self.assertRaisesRegex(AttributeError,
@@ -178,9 +178,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
   def testMixedEvalAndNonEvalSignatures(self):
     examples = [self._makeExample(age=3.0, language='english', label=1.0)]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig(model_specs=[
-        config.ModelSpec(name='model1'),
-        config.ModelSpec(name='model2', signature_name='eval')
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(name='model1'),
+        config_pb2.ModelSpec(name='model2', signature_name='eval')
     ])
     eval_shared_models = [
         model_eval_lib.default_eval_shared_model(
@@ -207,9 +207,9 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
   def testMixedModelTypes(self, model_type):
     examples = [self._makeExample(age=3.0, language='english', label=1.0)]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig(model_specs=[
-        config.ModelSpec(name='model1'),
-        config.ModelSpec(name='model2', model_type=model_type)
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(name='model1'),
+        config_pb2.ModelSpec(name='model2', model_type=model_type)
     ])
     eval_shared_models = [
         model_eval_lib.default_eval_shared_model(
@@ -308,7 +308,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertEqual(eval_result.model_location, model_location.decode())
     self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
-                     config.SlicingSpec(feature_keys=['my_slice']))
+                     config_pb2.SlicingSpec(feature_keys=['my_slice']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
@@ -374,7 +374,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertEqual(eval_result.model_location, model_location.decode())
     self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
-                     config.SlicingSpec(feature_keys=['language']))
+                     config_pb2.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
@@ -389,11 +389,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
-    options = config.Options()
+    slicing_specs = [config_pb2.SlicingSpec(feature_keys=['language'])]
+    options = config_pb2.Options()
     options.min_slice_size.value = 2
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(model_type='my_model_type')],
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(model_type='my_model_type')],
         slicing_specs=slicing_specs,
         options=options)
     # Use default model_loader for testing passing custom_model_loader
@@ -457,7 +457,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertEqual(eval_result.model_location, model_location.decode())
     self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
-                     config.SlicingSpec(feature_keys=['language']))
+                     config_pb2.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
   def testRunModelAnalysisMultipleModels(self):
@@ -469,22 +469,24 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     model_specs = [
-        config.ModelSpec(
+        config_pb2.ModelSpec(
             name='model1', signature_name='eval', example_weight_key='age'),
-        config.ModelSpec(
+        config_pb2.ModelSpec(
             name='model2', signature_name='eval', example_weight_key='age')
     ]
     metrics_specs = [
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(class_name='ExampleCount'),
-                config.MetricConfig(class_name='WeightedExampleCount')
+                config_pb2.MetricConfig(class_name='ExampleCount'),
+                config_pb2.MetricConfig(class_name='WeightedExampleCount')
             ],
             model_names=['model1', 'model2'])
     ]
-    slicing_specs = [config.SlicingSpec(feature_values={'language': 'english'})]
-    options = config.Options()
-    eval_config = config.EvalConfig(
+    slicing_specs = [
+        config_pb2.SlicingSpec(feature_values={'language': 'english'})
+    ]
+    options = config_pb2.Options()
+    eval_config = config_pb2.EvalConfig(
         model_specs=model_specs,
         metrics_specs=metrics_specs,
         slicing_specs=slicing_specs,
@@ -548,10 +550,12 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertEqual(eval_result_2.model_location, model_location2.decode())
     self.assertEqual(eval_result_1.data_location, data_location)
     self.assertEqual(eval_result_2.data_location, data_location)
-    self.assertEqual(eval_result_1.config.slicing_specs[0],
-                     config.SlicingSpec(feature_values={'language': 'english'}))
-    self.assertEqual(eval_result_2.config.slicing_specs[0],
-                     config.SlicingSpec(feature_values={'language': 'english'}))
+    self.assertEqual(
+        eval_result_1.config.slicing_specs[0],
+        config_pb2.SlicingSpec(feature_values={'language': 'english'}))
+    self.assertEqual(
+        eval_result_2.config.slicing_specs[0],
+        config_pb2.SlicingSpec(feature_values={'language': 'english'}))
     self.assertMetricsAlmostEqual(eval_result_1.slicing_metrics,
                                   expected_result_1)
     self.assertMetricsAlmostEqual(eval_result_2.slicing_metrics,
@@ -570,20 +574,20 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     model_specs = [
-        config.ModelSpec(
+        config_pb2.ModelSpec(
             prediction_key='prediction',
             label_key='label',
             example_weight_key='age')
     ]
     metrics = [
-        config.MetricConfig(class_name='ExampleCount'),
-        config.MetricConfig(class_name='WeightedExampleCount'),
-        config.MetricConfig(class_name='BinaryAccuracy')
+        config_pb2.MetricConfig(class_name='ExampleCount'),
+        config_pb2.MetricConfig(class_name='WeightedExampleCount'),
+        config_pb2.MetricConfig(class_name='BinaryAccuracy')
     ]
-    slicing_specs = [config.SlicingSpec(feature_keys=['language'])]
-    eval_config = config.EvalConfig(
+    slicing_specs = [config_pb2.SlicingSpec(feature_keys=['language'])]
+    eval_config = config_pb2.EvalConfig(
         model_specs=model_specs,
-        metrics_specs=[config.MetricsSpec(metrics=metrics)],
+        metrics_specs=[config_pb2.MetricsSpec(metrics=metrics)],
         slicing_specs=slicing_specs)
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
@@ -615,7 +619,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     }
     self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
-                     config.SlicingSpec(feature_keys=['language']))
+                     config_pb2.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
   @parameterized.named_parameters(
@@ -716,38 +720,39 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         }
         """, schema_pb2.Schema())
 
-    metrics_spec = config.MetricsSpec()
+    metrics_spec = config_pb2.MetricsSpec()
     for metric in (tf.keras.metrics.AUC(),):
       cfg = tf.keras.utils.serialize_keras_object(metric)
       metrics_spec.metrics.append(
-          config.MetricConfig(
+          config_pb2.MetricConfig(
               class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
     tf.keras.backend.clear_session()
     slicing_specs = [
-        config.SlicingSpec(),
-        config.SlicingSpec(feature_keys=['non_existent_slice'])
+        config_pb2.SlicingSpec(),
+        config_pb2.SlicingSpec(feature_keys=['non_existent_slice'])
     ]
     metrics_spec.metrics.append(
-        config.MetricConfig(
+        config_pb2.MetricConfig(
             class_name='WeightedExampleCount',
             per_slice_thresholds=[
-                config.PerSliceMetricThreshold(
+                config_pb2.PerSliceMetricThreshold(
                     slicing_specs=slicing_specs,
-                    threshold=config.MetricThreshold(
-                        value_threshold=config.GenericValueThreshold(
+                    threshold=config_pb2.MetricThreshold(
+                        value_threshold=config_pb2.GenericValueThreshold(
                             lower_bound={'value': 1}))),
                 # Change thresholds would be ignored when rubber stamp is true.
-                config.PerSliceMetricThreshold(
+                config_pb2.PerSliceMetricThreshold(
                     slicing_specs=slicing_specs,
-                    threshold=config.MetricThreshold(
-                        change_threshold=config.GenericChangeThreshold(
-                            direction=config.MetricDirection.HIGHER_IS_BETTER,
+                    threshold=config_pb2.MetricThreshold(
+                        change_threshold=config_pb2.GenericChangeThreshold(
+                            direction=config_pb2.MetricDirection
+                            .HIGHER_IS_BETTER,
                             absolute={'value': 1})))
             ]))
     for class_id in (0, 5):
       metrics_spec.binarize.class_ids.values.append(class_id)
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(label_key='label')],
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(label_key='label')],
         metrics_specs=[metrics_spec])
     if model_type != constants.TF_KERAS:
       for s in eval_config.model_specs:
@@ -893,7 +898,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
 
-    metrics_spec = config.MetricsSpec(
+    metrics_spec = config_pb2.MetricsSpec(
         output_names=['output_1', 'output_2'],
         output_weights={
             'output_1': 1.0,
@@ -902,32 +907,33 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     for metric in (tf.keras.metrics.AUC(),):
       cfg = tf.keras.utils.serialize_keras_object(metric)
       metrics_spec.metrics.append(
-          config.MetricConfig(
+          config_pb2.MetricConfig(
               class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
     slicing_specs = [
-        config.SlicingSpec(),
-        config.SlicingSpec(feature_keys=['non_existent_slice'])
+        config_pb2.SlicingSpec(),
+        config_pb2.SlicingSpec(feature_keys=['non_existent_slice'])
     ]
     metrics_spec.metrics.append(
-        config.MetricConfig(
+        config_pb2.MetricConfig(
             class_name='WeightedExampleCount',
             per_slice_thresholds=[
-                config.PerSliceMetricThreshold(
+                config_pb2.PerSliceMetricThreshold(
                     slicing_specs=slicing_specs,
-                    threshold=config.MetricThreshold(
-                        value_threshold=config.GenericValueThreshold(
+                    threshold=config_pb2.MetricThreshold(
+                        value_threshold=config_pb2.GenericValueThreshold(
                             lower_bound={'value': 1}))),
                 # Change thresholds would be ignored when rubber stamp is true.
-                config.PerSliceMetricThreshold(
+                config_pb2.PerSliceMetricThreshold(
                     slicing_specs=slicing_specs,
-                    threshold=config.MetricThreshold(
-                        change_threshold=config.GenericChangeThreshold(
-                            direction=config.MetricDirection.HIGHER_IS_BETTER,
+                    threshold=config_pb2.MetricThreshold(
+                        change_threshold=config_pb2.GenericChangeThreshold(
+                            direction=config_pb2.MetricDirection
+                            .HIGHER_IS_BETTER,
                             absolute={'value': 1})))
             ]))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(label_keys={
+            config_pb2.ModelSpec(label_keys={
                 'output_1': 'label_1',
                 'output_2': 'label_2'
             })
@@ -1085,7 +1091,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='chinese', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [config.SlicingSpec()]
+    slicing_specs = [config_pb2.SlicingSpec()]
     # Test with both a TFMA metric (NDCG), a keras metric (Recall).
     metrics = [
         ndcg.NDCG(gain_key='age', name='ndcg', top_k_list=[1, 2]),
@@ -1097,15 +1103,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     metrics_specs = metric_specs.specs_from_metrics(
         metrics, query_key='language', include_weighted_example_count=True)
     metrics_specs.append(
-        config.MetricsSpec(metrics=[
-            config.MetricConfig(
+        config_pb2.MetricsSpec(metrics=[
+            config_pb2.MetricConfig(
                 class_name='WeightedExampleCount',
-                threshold=config.MetricThreshold(
-                    value_threshold=config.GenericValueThreshold(
+                threshold=config_pb2.MetricThreshold(
+                    value_threshold=config_pb2.GenericValueThreshold(
                         lower_bound={'value': 0})))
         ]))
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(label_key='label')],
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(label_key='label')],
         slicing_specs=slicing_specs,
         metrics_specs=metrics_specs)
     eval_shared_model = model_eval_lib.default_eval_shared_model(
@@ -1219,7 +1225,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     }
     self.assertEqual(eval_result.model_location, model_location.decode())
     self.assertEqual(eval_result.data_location, data_location)
-    self.assertEqual(eval_result.config.slicing_specs[0], config.SlicingSpec())
+    self.assertEqual(eval_result.config.slicing_specs[0],
+                     config_pb2.SlicingSpec())
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
@@ -1290,7 +1297,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertEqual(eval_result.model_location, model_location.decode())
     self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
-                     config.SlicingSpec(feature_keys=['language']))
+                     config_pb2.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
 
@@ -1362,7 +1369,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertEqual(eval_result.model_location, model_location.decode())
     self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
-                     config.SlicingSpec(feature_keys=['language']))
+                     config_pb2.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
     for key, value in eval_result.slicing_metrics:
@@ -1388,8 +1395,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='hindi', label=2.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(label_key='label')],
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(label_key='label')],
         metrics_specs=metric_specs.specs_from_metrics(
             [calibration_plot.CalibrationPlot(num_buckets=4)]))
     schema = text_format.Parse(
@@ -1510,7 +1517,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         '5.0,chinese,1.0'
     ]
     data_location = self._writeCSVToTextFile(examples)
-    eval_config = config.EvalConfig()
+    eval_config = config_pb2.EvalConfig()
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
         eval_shared_model=model_eval_lib.default_eval_shared_model(
@@ -1544,8 +1551,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='chinese', label=1.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config.EvalConfig(slicing_specs=[
-        config.SlicingSpec(feature_values={'language': 'english'})
+    eval_config = config_pb2.EvalConfig(slicing_specs=[
+        config_pb2.SlicingSpec(feature_values={'language': 'english'})
     ])
     eval_results = model_eval_lib.multiple_model_analysis(
         [model_location_1, model_location_2],
@@ -1589,8 +1596,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ])
     data_location_2 = self._writeTFExamplesToTFRecords(
         [self._makeExample(age=4.0, language='english', label=1.0)])
-    eval_config = config.EvalConfig(slicing_specs=[
-        config.SlicingSpec(feature_values={'language': 'english'})
+    eval_config = config_pb2.EvalConfig(slicing_specs=[
+        config_pb2.SlicingSpec(feature_values={'language': 'english'})
     ])
     eval_results = model_eval_lib.multiple_data_analysis(
         model_location, [data_location_1, data_location_2],
@@ -1716,7 +1723,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       slicing_specs {
         feature_keys: 'language'
       }
-    """, config.EvalConfig())
+    """, config_pb2.EvalConfig())
     eval_result = model_eval_lib.analyze_raw_data(df_data, eval_config)
 
     # Compare Actual and Expected
@@ -1729,12 +1736,13 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
 
   def testAnalyzeRawDataWithoutPrediction(self):
     model_specs = [
-        config.ModelSpec(prediction_key='nonexistent_prediction_key')
+        config_pb2.ModelSpec(prediction_key='nonexistent_prediction_key')
     ]
     metrics_specs = [
-        config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
+        config_pb2.MetricsSpec(
+            metrics=[config_pb2.MetricConfig(class_name='Accuracy')])
     ]
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=model_specs, metrics_specs=metrics_specs)
     df_data = pd.DataFrame([{
         'prediction': 0,
@@ -1744,11 +1752,12 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       model_eval_lib.analyze_raw_data(df_data, eval_config)
 
   def testAnalyzeRawDataWithoutLabel(self):
-    model_specs = [config.ModelSpec(prediction_key='nonexistent_label_key')]
+    model_specs = [config_pb2.ModelSpec(prediction_key='nonexistent_label_key')]
     metrics_specs = [
-        config.MetricsSpec(metrics=[config.MetricConfig(class_name='Accuracy')])
+        config_pb2.MetricsSpec(
+            metrics=[config_pb2.MetricConfig(class_name='Accuracy')])
     ]
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=model_specs, metrics_specs=metrics_specs)
     df_data = pd.DataFrame([{
         'prediction': 0,

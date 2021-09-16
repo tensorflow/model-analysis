@@ -26,11 +26,11 @@ from typing import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
 
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import util
+from tensorflow_model_analysis.utils import model_util
 
 
 class TensorflowModelAnalysisTest(tf.test.TestCase):

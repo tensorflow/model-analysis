@@ -29,13 +29,13 @@ import numpy as np
 import six
 import tensorflow as tf
 from tensorflow import math
-from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import math_util
+from tensorflow_model_analysis.utils import util
 
 from tensorflow.python.estimator.canned import prediction_keys  # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.ops import metrics_impl  # pylint: disable=g-direct-tensorflow-import

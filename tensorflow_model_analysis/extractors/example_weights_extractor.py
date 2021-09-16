@@ -22,17 +22,17 @@ from __future__ import print_function
 import copy
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 
 _EXAMPLE_WEIGHTS_EXTRACTOR_STAGE_NAME = 'ExtractExampleWeights'
 
 
 def ExampleWeightsExtractor(
-    eval_config: config.EvalConfig) -> extractor.Extractor:
+    eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
   """Creates an extractor for extracting example weights.
 
   The extractor's PTransform uses the config's ModelSpec.example_weight_key(s)
@@ -58,7 +58,7 @@ def ExampleWeightsExtractor(
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractExampleWeights(
     extracts: beam.pvalue.PCollection,
-    eval_config: config.EvalConfig) -> beam.pvalue.PCollection:
+    eval_config: config_pb2.EvalConfig) -> beam.pvalue.PCollection:
   """Extracts example weights from features extracts.
 
   Args:

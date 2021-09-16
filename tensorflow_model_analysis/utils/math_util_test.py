@@ -14,16 +14,12 @@
 # limitations under the License.
 """Tests for math_util."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import math
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import math_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
+from tensorflow_model_analysis.utils import math_util
 
 
 class MathUtilTest(tf.test.TestCase):

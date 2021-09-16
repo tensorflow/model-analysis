@@ -27,9 +27,9 @@ import operator
 from typing import Dict, Iterable, List, Optional, NamedTuple, Text
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 CALIBRATION_HISTOGRAM_NAME = '_calibration_histogram'
 
@@ -47,7 +47,7 @@ def calibration_histogram(
     left: Optional[float] = None,
     right: Optional[float] = None,
     name: Optional[Text] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -122,7 +122,7 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
   """Creates histogram from labels, predictions, and example weights."""
 
   def __init__(self, key: metric_types.PlotKey,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]], num_buckets: int,
                left: float, right: float, prediction_based_bucketing: bool,

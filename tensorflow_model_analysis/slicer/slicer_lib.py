@@ -31,9 +31,9 @@ import apache_beam as beam
 import numpy as np
 import six
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slice_accessor
 
@@ -93,7 +93,7 @@ class SingleSliceSpec(object):
   def __init__(self,
                columns: Iterable[Text] = (),
                features: Iterable[Tuple[Text, FeatureValueType]] = (),
-               spec: Optional[config.SlicingSpec] = None):
+               spec: Optional[config_pb2.SlicingSpec] = None):
     """Initialises a SingleSliceSpec.
 
     Args:
@@ -146,9 +146,9 @@ class SingleSliceSpec(object):
     return 'SingleSliceSpec(columns=%s, features=%s)' % (self._columns,
                                                          self._features)
 
-  def to_proto(self) -> config.SlicingSpec:
+  def to_proto(self) -> config_pb2.SlicingSpec:
     feature_values = {k: str(v) for (k, v) in self._features}
-    return config.SlicingSpec(
+    return config_pb2.SlicingSpec(
         feature_keys=self._columns, feature_values=feature_values)
 
   def is_overall(self):
@@ -435,7 +435,7 @@ def stringify_slice_key(slice_key: SliceKeyType) -> Text:
 
 def is_cross_slice_applicable(
     cross_slice_key: CrossSliceKeyType,
-    cross_slicing_spec: config.CrossSlicingSpec) -> bool:
+    cross_slicing_spec: config_pb2.CrossSlicingSpec) -> bool:
   """Checks if CrossSlicingSpec is applicable to the CrossSliceKeyType."""
   baseline_slice_key, comparison_slice_key = cross_slice_key
 

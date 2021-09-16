@@ -19,11 +19,11 @@ import collections
 from typing import Dict, Optional, Any, Iterator, Sequence, Tuple, List
 
 import numpy as np
-from tensorflow_model_analysis import config
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import util
 
 FLIP_COUNT_NAME = 'flip_count'
 
@@ -132,7 +132,7 @@ def flip_count(
     thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
     model_name: str = '',
     output_name: str = '',
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
 ) -> metric_types.MetricComputations:
   """Returns metric computations for computing flip counts."""
   keys, metric_key_by_name_by_threshold = create_metric_keys(
@@ -144,7 +144,7 @@ def flip_count(
 
   def extract_label_prediction_and_weight(
       inputs: metric_types.StandardMetricInputs,
-      eval_config: Optional[config.EvalConfig] = None,
+      eval_config: Optional[config_pb2.EvalConfig] = None,
       model_name: str = '',
       output_name: str = '',
       sub_key: Optional[metric_types.SubKey] = None,

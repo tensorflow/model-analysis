@@ -22,9 +22,9 @@ from __future__ import print_function
 from typing import Dict, Iterable, List, Optional, NamedTuple, Text
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME = ('multi_label_confusion_matrix_plot')
@@ -108,7 +108,7 @@ def _multi_label_confusion_matrix_plot(
     thresholds: Optional[List[float]] = None,
     num_thresholds: Optional[int] = None,
     name: Text = MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
 ) -> metric_types.MetricComputations:
@@ -160,7 +160,7 @@ class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
   """Creates multi-label confusion matrix at thresholds from standard inputs."""
 
   def __init__(self, key: metric_types.PlotKey,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                thresholds: List[float]):
     self._key = key
     self._eval_config = eval_config

@@ -25,7 +25,6 @@ import os
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.addons.fairness.post_export_metrics import fairness_indicators  # pylint: disable=unused-import
 from tensorflow_model_analysis.api import model_eval_lib
@@ -36,6 +35,7 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_he
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tfx_bsl.tfxio import raw_tf_record
@@ -68,7 +68,7 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
     slicing_specs = None
     if slice_spec:
       slicing_specs = [s.to_proto() for s in slice_spec]
-    eval_config = config.EvalConfig(slicing_specs=slicing_specs)
+    eval_config = config_pb2.EvalConfig(slicing_specs=slicing_specs)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=metrics_callbacks)

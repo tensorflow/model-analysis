@@ -21,10 +21,10 @@ from __future__ import print_function
 import apache_beam as beam
 import tensorflow as tf
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.proto import config_pb2
 
 
 class CounterUtilTest(tf.test.TestCase):
@@ -61,8 +61,8 @@ class CounterUtilTest(tf.test.TestCase):
 
   def testMetricsSpecBeamCounter(self):
     with beam.Pipeline() as pipeline:
-      metrics_spec = config.MetricsSpec(
-          metrics=[config.MetricConfig(class_name='FairnessIndicators')])
+      metrics_spec = config_pb2.MetricsSpec(
+          metrics=[config_pb2.MetricConfig(class_name='FairnessIndicators')])
       model_types = set(['tf_js', 'tf_keras'])
       _ = pipeline | counter_util.IncrementMetricsSpecsCounters([metrics_spec],
                                                                 model_types)

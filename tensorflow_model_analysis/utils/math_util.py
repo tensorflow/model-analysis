@@ -14,10 +14,6 @@
 # limitations under the License.
 """Math utilities."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-
 from scipy import stats
 from tensorflow_model_analysis import types
 

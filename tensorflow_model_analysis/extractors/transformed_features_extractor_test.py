@@ -25,12 +25,12 @@ from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import transformed_features_extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 
@@ -226,8 +226,8 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
                                         expected_extract_keys):
     export_path = self.createModelWithMultipleDenseInputs(save_as_keras)
 
-    eval_config = config.EvalConfig(model_specs=[
-        config.ModelSpec(
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(
             preprocessing_function_names=preprocessing_function_names)
     ])
     eval_shared_model = self.createTestEvalSharedModel(

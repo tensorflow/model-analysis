@@ -14,40 +14,14 @@
 # limitations under the License.
 """Configuration types."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 from typing import Optional
 
 from absl import logging
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.proto import config_pb2
 
-# Define types here to avoid type errors between OSS and internal code.
-ModelSpec = config_pb2.ModelSpec
-SlicingSpec = config_pb2.SlicingSpec
-CrossSlicingSpec = config_pb2.CrossSlicingSpec
-BinarizationOptions = config_pb2.BinarizationOptions
-ConfidenceIntervalOptions = config_pb2.ConfidenceIntervalOptions
-AggregationOptions = config_pb2.AggregationOptions
-MetricConfig = config_pb2.MetricConfig
-MetricsSpec = config_pb2.MetricsSpec
-MetricDirection = config_pb2.MetricDirection
-GenericChangeThreshold = config_pb2.GenericChangeThreshold
-GenericValueThreshold = config_pb2.GenericValueThreshold
-MetricThreshold = config_pb2.MetricThreshold
-Options = config_pb2.Options
-PerSliceMetricThreshold = config_pb2.PerSliceMetricThreshold
-PerSliceMetricThresholds = config_pb2.PerSliceMetricThresholds
-CrossSliceMetricThreshold = config_pb2.CrossSliceMetricThreshold
-CrossSliceMetricThresholds = config_pb2.CrossSliceMetricThresholds
-EvalConfig = config_pb2.EvalConfig
-PaddingOptions = config_pb2.PaddingOptions
 
-
-def verify_eval_config(eval_config: EvalConfig,
+def verify_eval_config(eval_config: config_pb2.EvalConfig,
                        baseline_required: Optional[bool] = None):
   """Verifies eval config."""
   if not eval_config.model_specs:
@@ -91,11 +65,11 @@ def verify_eval_config(eval_config: EvalConfig,
 
 
 def update_eval_config_with_defaults(
-    eval_config: EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     maybe_add_baseline: Optional[bool] = None,
     maybe_remove_baseline: Optional[bool] = None,
     has_baseline: Optional[bool] = False,
-    rubber_stamp: Optional[bool] = False) -> EvalConfig:
+    rubber_stamp: Optional[bool] = False) -> config_pb2.EvalConfig:
   """Returns a new config with default settings applied.
 
   a) Add or remove a model_spec according to "has_baseline".
@@ -134,12 +108,12 @@ def update_eval_config_with_defaults(
     logging.error('There are change thresholds, but the baseline is missing. '
                   'This is allowed only when rubber stamping (first run).')
 
-  updated_config = EvalConfig()
+  updated_config = config_pb2.EvalConfig()
   updated_config.CopyFrom(eval_config)
   # if user requests CIs but doesn't set method, use JACKKNIFE
   if (eval_config.options.compute_confidence_intervals.value and
       eval_config.options.confidence_intervals.method ==
-      ConfidenceIntervalOptions.UNKNOWN_CONFIDENCE_INTERVAL_METHOD):
+      config_pb2.ConfidenceIntervalOptions.UNKNOWN_CONFIDENCE_INTERVAL_METHOD):
     updated_config.options.confidence_intervals.method = (
         config_pb2.ConfidenceIntervalOptions.JACKKNIFE)
   if maybe_add_baseline and maybe_remove_baseline:
@@ -230,7 +204,7 @@ def update_eval_config_with_defaults(
   return updated_config
 
 
-def has_change_threshold(eval_config: EvalConfig) -> bool:
+def has_change_threshold(eval_config: config_pb2.EvalConfig) -> bool:
   """Checks whether the eval_config has any change thresholds.
 
   Args:

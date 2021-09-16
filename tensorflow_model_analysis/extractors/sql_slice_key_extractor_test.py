@@ -22,11 +22,11 @@ import apache_beam as beam
 from apache_beam.testing import util
 import pyarrow as pa
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import sql_slice_key_extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tf_example_record
 
 from google.protobuf import text_format
@@ -52,8 +52,8 @@ _SCHEMA = text_format.Parse(
 class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testSqlSliceKeyExtractor(self):
-    eval_config = config.EvalConfig(slicing_specs=[
-        config.SlicingSpec(slice_keys_sql="""
+    eval_config = config_pb2.EvalConfig(slicing_specs=[
+        config_pb2.SlicingSpec(slice_keys_sql="""
         SELECT
           STRUCT(fixed_string)
         FROM
@@ -104,8 +104,8 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result)
 
   def testSqlSliceKeyExtractorWithCrossSlices(self):
-    eval_config = config.EvalConfig(slicing_specs=[
-        config.SlicingSpec(slice_keys_sql="""
+    eval_config = config_pb2.EvalConfig(slicing_specs=[
+        config_pb2.SlicingSpec(slice_keys_sql="""
         SELECT
           STRUCT(fixed_string, fixed_int)
         FROM
@@ -156,7 +156,7 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result)
 
   def testSqlSliceKeyExtractorWithEmptySqlConfig(self):
-    eval_config = config.EvalConfig()
+    eval_config = config_pb2.EvalConfig()
     slice_key_extractor = sql_slice_key_extractor.SqlSliceKeyExtractor(
         eval_config)
 
@@ -197,8 +197,8 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result)
 
   def testSqlSliceKeyExtractorWithMultipleSchema(self):
-    eval_config = config.EvalConfig(slicing_specs=[
-        config.SlicingSpec(slice_keys_sql="""
+    eval_config = config_pb2.EvalConfig(slicing_specs=[
+        config_pb2.SlicingSpec(slice_keys_sql="""
         SELECT
           STRUCT(fixed_string)
         FROM

@@ -14,12 +14,9 @@
 # limitations under the License.
 """Tests for config."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
-from tensorflow_model_analysis import config
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import config_util
 
 from google.protobuf import text_format
 
@@ -32,7 +29,7 @@ class ConfigTest(tf.test.TestCase):
         metrics { class_name: "ExampleCount" }
       }
     """
-    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
 
     expected_eval_config_pbtxt = """
       model_specs { name: "" }
@@ -42,9 +39,9 @@ class ConfigTest(tf.test.TestCase):
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
-                                             config.EvalConfig())
+                                             config_pb2.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(eval_config)
+    got_eval_config = config_util.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsEmtpyModelName(self):
@@ -54,7 +51,7 @@ class ConfigTest(tf.test.TestCase):
         metrics { class_name: "WeightedExampleCount" }
       }
     """
-    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
 
     expected_eval_config_pbtxt = """
       model_specs { name: "" }
@@ -64,9 +61,9 @@ class ConfigTest(tf.test.TestCase):
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
-                                             config.EvalConfig())
+                                             config_pb2.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(eval_config)
+    got_eval_config = config_util.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsSingleModel(self):
@@ -80,7 +77,7 @@ class ConfigTest(tf.test.TestCase):
         model_names: ["model1"]
       }
     """
-    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
 
     expected_eval_config_pbtxt = """
       model_specs { name: "" }
@@ -94,9 +91,9 @@ class ConfigTest(tf.test.TestCase):
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
-                                             config.EvalConfig())
+                                             config_pb2.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(eval_config)
+    got_eval_config = config_util.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsMultiModel(self):
@@ -111,7 +108,7 @@ class ConfigTest(tf.test.TestCase):
         model_names: ["model1"]
       }
     """
-    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
 
     expected_eval_config_pbtxt = """
       model_specs { name: "model1" }
@@ -126,9 +123,9 @@ class ConfigTest(tf.test.TestCase):
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
-                                             config.EvalConfig())
+                                             config_pb2.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(eval_config)
+    got_eval_config = config_util.update_eval_config_with_defaults(eval_config)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
   def testUpdateConfigWithDefaultsBaselineModel(self):
@@ -139,7 +136,7 @@ class ConfigTest(tf.test.TestCase):
         metrics { class_name: "WeightedExampleCount" }
       }
     """
-    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
 
     expected_eval_config_pbtxt = """
       model_specs { name: "candidate" }
@@ -150,9 +147,9 @@ class ConfigTest(tf.test.TestCase):
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
-                                             config.EvalConfig())
+                                             config_pb2.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(
+    got_eval_config = config_util.update_eval_config_with_defaults(
         eval_config, has_baseline=True)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
@@ -165,7 +162,7 @@ class ConfigTest(tf.test.TestCase):
         model_names: "candidate"
       }
     """
-    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
 
     expected_eval_config_pbtxt = """
       model_specs { name: "candidate" }
@@ -176,9 +173,9 @@ class ConfigTest(tf.test.TestCase):
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
-                                             config.EvalConfig())
+                                             config_pb2.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(
+    got_eval_config = config_util.update_eval_config_with_defaults(
         eval_config, has_baseline=True)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
@@ -189,7 +186,7 @@ class ConfigTest(tf.test.TestCase):
         metrics { class_name: "WeightedExampleCount" }
       }
     """
-    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
 
     expected_eval_config_pbtxt = """
       model_specs { name: "candidate" label_key: "my_label" }
@@ -200,9 +197,9 @@ class ConfigTest(tf.test.TestCase):
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
-                                             config.EvalConfig())
+                                             config_pb2.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(
+    got_eval_config = config_util.update_eval_config_with_defaults(
         eval_config, has_baseline=True)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
@@ -214,7 +211,7 @@ class ConfigTest(tf.test.TestCase):
         metrics { class_name: "WeightedExampleCount" }
       }
     """
-    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
 
     expected_eval_config_pbtxt = """
       model_specs { name: "model1" }
@@ -225,9 +222,9 @@ class ConfigTest(tf.test.TestCase):
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
-                                             config.EvalConfig())
+                                             config_pb2.EvalConfig())
 
-    got_eval_config = config.update_eval_config_with_defaults(
+    got_eval_config = config_util.update_eval_config_with_defaults(
         eval_config, has_baseline=True)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
@@ -316,7 +313,7 @@ class ConfigTest(tf.test.TestCase):
         }
       }
     """
-    eval_config = text_format.Parse(eval_config_pbtxt, config.EvalConfig())
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
 
     expected_eval_config_pbtxt = """
       model_specs {}
@@ -379,10 +376,10 @@ class ConfigTest(tf.test.TestCase):
       }
     """
     expected_eval_config = text_format.Parse(expected_eval_config_pbtxt,
-                                             config.EvalConfig())
+                                             config_pb2.EvalConfig())
 
     # Only valid when rubber stamping.
-    got_eval_config = config.update_eval_config_with_defaults(
+    got_eval_config = config_util.update_eval_config_with_defaults(
         eval_config, has_baseline=False, rubber_stamp=True)
     self.assertProtoEquals(got_eval_config, expected_eval_config)
 
@@ -400,9 +397,9 @@ class ConfigTest(tf.test.TestCase):
           }
         }
       }
-    """, config.EvalConfig())
+    """, config_pb2.EvalConfig())
 
-    self.assertTrue(config.has_change_threshold(eval_config))
+    self.assertTrue(config_util.has_change_threshold(eval_config))
 
     eval_config = text_format.Parse(
         """
@@ -417,9 +414,9 @@ class ConfigTest(tf.test.TestCase):
           }
         }
       }
-    """, config.EvalConfig())
+    """, config_pb2.EvalConfig())
 
-    self.assertTrue(config.has_change_threshold(eval_config))
+    self.assertTrue(config_util.has_change_threshold(eval_config))
 
     eval_config = text_format.Parse(
         """
@@ -433,9 +430,9 @@ class ConfigTest(tf.test.TestCase):
           }
         }
       }
-    """, config.EvalConfig())
+    """, config_pb2.EvalConfig())
 
-    self.assertFalse(config.has_change_threshold(eval_config))
+    self.assertFalse(config_util.has_change_threshold(eval_config))
 
 
 if __name__ == '__main__':

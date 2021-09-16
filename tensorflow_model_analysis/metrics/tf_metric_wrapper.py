@@ -28,13 +28,13 @@ from typing import Any, Dict, Iterable, List, Optional, Text, Type, Tuple, Union
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_accumulators
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 
 _CONFIG_KEY = 'config'
 _NUM_THRESHOLDS_KEY = 'num_thresholds'
@@ -48,7 +48,7 @@ _TFMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]
 
 def tf_metric_computations(
     metrics: Union[List[_TFMetricOrLoss], Dict[Text, List[_TFMetricOrLoss]]],
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
@@ -318,7 +318,7 @@ def _get_config_value(key: Text, metric_config: Dict[Text,
 
 
 def _wrap_confusion_matrix_metric(
-    metric: tf.keras.metrics.Metric, eval_config: config.EvalConfig,
+    metric: tf.keras.metrics.Metric, eval_config: config_pb2.EvalConfig,
     model_name: Text, output_name: Text, sub_key: Optional[metric_types.SubKey],
     aggregation_type: Optional[metric_types.AggregationType],
     class_weights: Optional[Dict[int,
@@ -440,7 +440,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
                metric_configs: Dict[Text, List[Dict[Text, Any]]],
                loss_configs: Dict[Text, List[Dict[Text, Any]]],
                custom_objects: List[Tuple[Text, Text]],
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                model_name: Optional[Text],
                sub_key: Optional[metric_types.SubKey],
                aggregation_type: Optional[metric_types.AggregationType],

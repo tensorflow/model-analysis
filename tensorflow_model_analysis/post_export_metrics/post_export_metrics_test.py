@@ -26,7 +26,6 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
@@ -45,6 +44,7 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_he
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 from tfx_bsl.tfxio import raw_tf_record
@@ -75,7 +75,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=metrics_callbacks)
-    eval_config = config.EvalConfig()
+    eval_config = config_pb2.EvalConfig()
     extractors = model_eval_lib.default_extractors(
         eval_config=eval_config, eval_shared_model=eval_shared_model)
     tfx_io = raw_tf_record.RawBeamRecordTFXIO(

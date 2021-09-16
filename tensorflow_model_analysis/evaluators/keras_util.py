@@ -27,13 +27,13 @@ from typing import Dict, Iterable, List, Optional, Text
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_accumulators
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 from tfx_bsl.coders import example_coder
 from tfx_bsl.tfxio import tensor_adapter
 
@@ -41,7 +41,7 @@ from tfx_bsl.tfxio import tensor_adapter
 def metric_computations_using_keras_saved_model(
     model_name: Text,
     model_loader: types.ModelLoader,
-    eval_config: Optional[config.EvalConfig],
+    eval_config: Optional[config_pb2.EvalConfig],
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
     batch_size: Optional[int] = None) -> metric_types.MetricComputations:
   """Returns computations for computing metrics natively using keras.
@@ -145,7 +145,7 @@ class _KerasCombiner(model_util.CombineFnWithModels):
                keys: List[metric_types.MetricKey],
                model_name: Text,
                model_loader: types.ModelLoader,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                desired_batch_size: Optional[int] = None,
                beam_metrics_prefix: Text = ''):
     super(_KerasCombiner, self).__init__({model_name: model_loader})
@@ -294,7 +294,7 @@ class _KerasCompiledMetricsCombiner(_KerasCombiner):
                keys: List[metric_types.MetricKey],
                model_name: Text,
                model_loader: types.ModelLoader,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                desired_batch_size: Optional[int] = None):
     super(_KerasCompiledMetricsCombiner,
           self).__init__(keys, model_name, model_loader, eval_config,
@@ -372,7 +372,7 @@ class _KerasEvaluateCombiner(_KerasCombiner):
                keys: List[metric_types.MetricKey],
                model_name: Text,
                model_loader: types.ModelLoader,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                tensor_adapter_config: Optional[
                    tensor_adapter.TensorAdapterConfig] = None,
                desired_batch_size: Optional[int] = None):

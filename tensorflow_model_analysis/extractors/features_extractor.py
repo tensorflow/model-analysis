@@ -25,15 +25,16 @@ from typing import Optional, Tuple
 import apache_beam as beam
 import numpy as np
 import pyarrow as pa
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.proto import config_pb2
 
 _FEATURES_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
 
 
-def FeaturesExtractor(eval_config: config.EvalConfig) -> extractor.Extractor:
+def FeaturesExtractor(
+    eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
   """Creates an extractor for extracting features.
 
   The extractor's PTransform extracts features from an Arrow RecordBatch stored

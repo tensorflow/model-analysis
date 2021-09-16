@@ -22,9 +22,9 @@ from __future__ import print_function
 from typing import Any, Callable, List, Optional, Text, Tuple, Union
 
 import numpy as np
-from tensorflow_model_analysis import config
-from tensorflow_model_analysis import size_estimator
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import size_estimator
 
 
 class TFMetricsAccumulator(object):
@@ -165,7 +165,7 @@ class TFCompilableMetricsAccumulator(TFMetricsAccumulator):
   ]
 
   def __init__(self,
-               padding_options: Optional[config.PaddingOptions],
+               padding_options: Optional[config_pb2.PaddingOptions],
                metric_counts: List[int],
                desired_batch_size: Optional[int] = None):
     """Initializes accumulator using a list of metric counts per output."""

@@ -30,7 +30,6 @@ from apache_beam.testing import util
 
 import tensorflow as tf
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -38,6 +37,7 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import batch_si
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fake_multi_examples_per_input_estimator
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
 from tensorflow_model_analysis.extractors import legacy_predict_extractor as predict_extractor
+from tensorflow_model_analysis.proto import config_pb2
 
 from tfx_bsl.tfxio import raw_tf_record
 
@@ -110,9 +110,9 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
     model2 = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=model2_dir)
     eval_shared_model = {'model1': model1, 'model2': model2}
-    eval_config = config.EvalConfig(model_specs=[
-        config.ModelSpec(name='model1', example_weight_key='age'),
-        config.ModelSpec(name='model2', example_weight_key='age')
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(name='model1', example_weight_key='age'),
+        config_pb2.ModelSpec(name='model2', example_weight_key='age')
     ])
 
     tfx_io = raw_tf_record.RawBeamRecordTFXIO(
@@ -238,7 +238,7 @@ class PredictExtractorTest(testutil.TensorflowModelAnalysisTest,
         None, temp_eval_export_dir)
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=eval_export_dir)
-    eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     with beam.Pipeline() as pipeline:
       examples = [
           self._makeExample(age=3.0, language='english', label=1.0),

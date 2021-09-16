@@ -21,12 +21,12 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Tuple, Union
 
-from tensorflow_model_analysis import config
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
+from tensorflow_model_analysis.utils import model_util
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -66,8 +66,8 @@ metric_types.register_metric(CalibrationPlot)
 
 
 def _find_label_domain(
-    eval_config: config.EvalConfig, schema: schema_pb2.Schema, model_name: Text,
-    output_name: Text
+    eval_config: config_pb2.EvalConfig, schema: schema_pb2.Schema,
+    model_name: Text, output_name: Text
 ) -> Tuple[Optional[Union[int, float]], Optional[Union[int, float]]]:
   """Find the min and max value for the label_key for this model / output."""
   model_spec = model_util.get_model_spec(eval_config, model_name)
@@ -105,7 +105,7 @@ def _calibration_plot(
     left: Optional[float] = None,
     right: Optional[float] = None,
     name: Text = CALIBRATION_PLOT_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     schema: Optional[schema_pb2.Schema] = None,
     model_name: Text = '',
     output_name: Text = '',

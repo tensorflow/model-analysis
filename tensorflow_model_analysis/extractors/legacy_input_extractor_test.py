@@ -21,20 +21,20 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import legacy_input_extractor as input_extractor
+from tensorflow_model_analysis.proto import config_pb2
 
 
 class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testInputExtractor(self):
-    model_spec = config.ModelSpec(
+    model_spec = config_pb2.ModelSpec(
         label_key='label', example_weight_key='example_weight')
     extractor = input_extractor.InputExtractor(
-        eval_config=config.EvalConfig(model_specs=[model_spec]))
+        eval_config=config_pb2.EvalConfig(model_specs=[model_spec]))
 
     examples = [
         self._makeExample(
@@ -114,7 +114,7 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result, label='result')
 
   def testInputExtractorMultiOutput(self):
-    model_spec = config.ModelSpec(
+    model_spec = config_pb2.ModelSpec(
         label_keys={
             'output1': 'label1',
             'output2': 'label2'
@@ -124,7 +124,7 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
             'output2': 'example_weight2'
         })
     extractor = input_extractor.InputExtractor(
-        eval_config=config.EvalConfig(model_specs=[model_spec]))
+        eval_config=config_pb2.EvalConfig(model_specs=[model_spec]))
 
     examples = [
         self._makeExample(
@@ -206,12 +206,12 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result, label='result')
 
   def testInputExtractorMultiModel(self):
-    model_spec1 = config.ModelSpec(
+    model_spec1 = config_pb2.ModelSpec(
         name='model1',
         label_key='label',
         example_weight_key='example_weight',
         prediction_key='fixed_float')
-    model_spec2 = config.ModelSpec(
+    model_spec2 = config_pb2.ModelSpec(
         name='model2',
         label_keys={
             'output1': 'label1',
@@ -226,7 +226,8 @@ class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
             'output2': 'fixed_float'
         })
     extractor = input_extractor.InputExtractor(
-        eval_config=config.EvalConfig(model_specs=[model_spec1, model_spec2]))
+        eval_config=config_pb2.EvalConfig(
+            model_specs=[model_spec1, model_spec2]))
 
     examples = [
         self._makeExample(

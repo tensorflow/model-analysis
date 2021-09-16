@@ -14,11 +14,6 @@
 # limitations under the License.
 """Size estimator."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import sys
 
 from typing import Any, Callable

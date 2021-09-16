@@ -22,9 +22,9 @@ from __future__ import print_function
 from typing import Any, Dict, Iterable, List, Optional, Text
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 _CLASS_WEIGHTS_FROM_LABELS_NAME = '_class_weights_from_labels'
 
@@ -32,7 +32,7 @@ _CLASS_WEIGHTS_FROM_LABELS_NAME = '_class_weights_from_labels'
 def output_average(
     metric_name: Text,
     output_weights: Dict[Text, float],
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
 ) -> metric_types.MetricComputations:
@@ -76,7 +76,7 @@ def output_average(
 def macro_average(
     metric_name: Text,
     sub_keys: Iterable[metric_types.SubKey],
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -147,7 +147,7 @@ def macro_average(
 def weighted_macro_average(
     metric_name: Text,
     sub_keys: Iterable[metric_types.SubKey],
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -250,7 +250,7 @@ def _to_float(value: Any) -> float:
 def _class_weights_from_labels(
     class_ids: List[int],
     name: Text = _CLASS_WEIGHTS_FROM_LABELS_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '') -> metric_types.MetricComputations:
   """Returns metric computations for class weights based on labels.
@@ -277,7 +277,8 @@ class _ClassWeightsFromLabelsCombiner(beam.CombineFn):
   """Computes class weights from labels."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig], class_ids: List[int]):
+               eval_config: Optional[config_pb2.EvalConfig],
+               class_ids: List[int]):
     self._key = key
     self._eval_config = eval_config
     self._class_ids = class_ids

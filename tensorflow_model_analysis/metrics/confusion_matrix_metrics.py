@@ -26,10 +26,10 @@ from typing import Any, Dict, List, Optional, Text, Union
 
 import numpy as np
 import six
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 SPECIFICITY_NAME = 'specificity'
 FALL_OUT_NAME = 'fall_out'
@@ -77,7 +77,7 @@ class ConfusionMatrixMetric(
       self,
       thresholds: Optional[List[float]] = None,
       name: Text = '',
-      eval_config: Optional[config.EvalConfig] = None,
+      eval_config: Optional[config_pb2.EvalConfig] = None,
       model_name: Text = '',
       output_name: Text = '',
       sub_key: Optional[metric_types.SubKey] = None,
@@ -640,7 +640,7 @@ metric_types.register_metric(ConfusionMatrixAtThresholds)
 def _confusion_matrix_at_thresholds(
     thresholds: List[float],
     name: Text = CONFUSION_MATRIX_AT_THRESHOLDS_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,

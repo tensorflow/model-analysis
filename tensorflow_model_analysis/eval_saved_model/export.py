@@ -24,11 +24,11 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util as tfma_util
 from tensorflow_model_analysis import version
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
+from tensorflow_model_analysis.utils import util as tfma_util
 from typing import Any, Callable, Dict, Optional, Text, Union
 
 from tensorflow.python.estimator.export import export as export_lib

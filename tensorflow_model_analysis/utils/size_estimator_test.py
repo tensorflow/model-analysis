@@ -17,7 +17,7 @@
 import sys
 
 import tensorflow as tf
-from tensorflow_model_analysis import size_estimator
+from tensorflow_model_analysis.utils import size_estimator
 
 
 class SizeEstimatorTest(tf.test.TestCase):

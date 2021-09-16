@@ -22,7 +22,7 @@ import numpy as np
 import six
 import tensorflow as tf
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
+from tensorflow_model_analysis.utils import util
 from typing import Any, List, Callable, Optional, Text, Tuple
 
 from tensorflow.core.example import example_pb2

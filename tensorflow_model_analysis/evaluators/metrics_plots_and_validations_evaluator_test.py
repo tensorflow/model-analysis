@@ -25,7 +25,6 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.addons.fairness.metrics import lift
 from tensorflow_model_analysis.api import model_eval_lib
@@ -51,6 +50,7 @@ from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metrics as metric_fns
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tensor_adapter
@@ -96,13 +96,13 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         model_name=model_name, eval_saved_model_path=model_dir)
 
   def testFilterAndSeparateComputations(self):
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(name='candidate', label_key='tips'),
-            config.ModelSpec(
+            config_pb2.ModelSpec(name='candidate', label_key='tips'),
+            config_pb2.ModelSpec(
                 name='baseline', label_key='tips', is_baseline=True)
         ],
-        cross_slicing_specs=[config.CrossSlicingSpec()])
+        cross_slicing_specs=[config_pb2.CrossSlicingSpec()])
     metrics_specs = metric_specs.specs_from_metrics(
         [
             tf.keras.metrics.BinaryAccuracy(name='accuracy'),
@@ -120,7 +120,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             lift.Lift(name='lift'),
         ],
         model_names=['candidate', 'baseline'],
-        binarize=config.BinarizationOptions(class_ids={'values': [0, 5]}))
+        binarize=config_pb2.BinarizationOptions(class_ids={'values': [0, 5]}))
     computations = metric_specs.to_computations(
         metrics_specs, eval_config=eval_config)
     non_derived, derived, cross_slice, ci_derived = metrics_plots_and_validations_evaluator._filter_and_separate_computations(
@@ -231,63 +231,63 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             extra_feature='non_model_feature'),
     ]
 
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='candidate',
                 label_key='label',
                 example_weight_key='example_weight'),
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='baseline',
                 label_key='label',
                 example_weight_key='example_weight',
                 is_baseline=True)
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1.5 < 1, NOT OK.
-                        threshold=config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
+                        threshold=config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
                                 upper_bound={'value': 1}))),
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='ExampleCount',
                         # 2 > 10, NOT OK.
-                        threshold=config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
+                        threshold=config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
                                 lower_bound={'value': 10}))),
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanLabel',
                         # 0 > 1 and 0 > 1?: NOT OK.
-                        threshold=config.MetricThreshold(
-                            change_threshold=config.GenericChangeThreshold(
-                                direction=config.MetricDirection
+                        threshold=config_pb2.MetricThreshold(
+                            change_threshold=config_pb2.GenericChangeThreshold(
+                                direction=config_pb2.MetricDirection
                                 .HIGHER_IS_BETTER,
                                 relative={'value': 1},
                                 absolute={'value': 1}))),
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         # MeanPrediction = (0+0)/(1+0.5) = 0
                         class_name='MeanPrediction',
                         # -.01 < 0 < .01, OK.
                         # Diff% = -.333/.333 = -100% < -99%, OK.
                         # Diff = 0 - .333 = -.333 < 0, OK.
-                        threshold=config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
+                        threshold=config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
                                 upper_bound={'value': .01},
                                 lower_bound={'value': -.01}),
-                            change_threshold=config.GenericChangeThreshold(
-                                direction=config.MetricDirection
+                            change_threshold=config_pb2.GenericChangeThreshold(
+                                direction=config_pb2.MetricDirection
                                 .LOWER_IS_BETTER,
                                 relative={'value': -.99},
                                 absolute={'value': 0})))
                 ],
                 thresholds={
                     'loss':
-                        config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
+                        config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
                                 upper_bound={'value': 0}))
                 },
                 model_names=['candidate', 'baseline']),
@@ -492,19 +492,19 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             extra_feature='non_model_feature'),
     ]
 
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='candidate',
                 label_key='label',
                 example_weight_key='example_weight'),
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='baseline',
                 label_key='label',
                 example_weight_key='example_weight',
                 is_baseline=True)
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics(
             [
                 calibration.MeanLabel('mean_label'),
@@ -574,14 +574,14 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     _, export_dir = (
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 label_key='label', example_weight_key='fixed_float')
         ],
         slicing_specs=[
-            config.SlicingSpec(),
-            config.SlicingSpec(feature_keys=['fixed_string']),
+            config_pb2.SlicingSpec(),
+            config_pb2.SlicingSpec(feature_keys=['fixed_string']),
         ],
         metrics_specs=metric_specs.specs_from_metrics([
             calibration.MeanLabel('mean_label'),
@@ -685,16 +685,16 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             metrics[constants.METRICS_KEY], check_metrics, label='metrics')
 
   def testEvaluateWithAttributions(self):
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec()],
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec()],
         metrics_specs=[
-            config.MetricsSpec(metrics=[
-                config.MetricConfig(class_name=attributions.TotalAttributions()
-                                    .__class__.__name__)
+            config_pb2.MetricsSpec(metrics=[
+                config_pb2.MetricConfig(class_name=attributions
+                                        .TotalAttributions().__class__.__name__)
             ])
         ],
-        options=config.Options(
-            disabled_outputs={'values': ['eval_config.json']}))
+        options=config_pb2.Options(
+            disabled_outputs={'values': ['eval_config_pb2.json']}))
     extractors = [slice_key_extractor.SliceKeyExtractor()]
     evaluators = [
         metrics_plots_and_validations_evaluator
@@ -764,18 +764,18 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     _, export_dir = (
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
-    options = config.Options()
+    options = config_pb2.Options()
     options.compute_confidence_intervals.value = True
     options.confidence_intervals.method = (
-        config.ConfidenceIntervalOptions.POISSON_BOOTSTRAP)
-    eval_config = config.EvalConfig(
+        config_pb2.ConfidenceIntervalOptions.POISSON_BOOTSTRAP)
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 label_key='label', example_weight_key='fixed_float')
         ],
         slicing_specs=[
-            config.SlicingSpec(),
-            config.SlicingSpec(feature_keys=['fixed_string']),
+            config_pb2.SlicingSpec(),
+            config_pb2.SlicingSpec(feature_keys=['fixed_string']),
         ],
         metrics_specs=metric_specs.specs_from_metrics([
             calibration.MeanLabel('mean_label'),
@@ -891,19 +891,19 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     _, export_dir = (
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
-    options = config.Options()
+    options = config_pb2.Options()
     options.include_default_metrics.value = False
     options.compute_confidence_intervals.value = True
     options.confidence_intervals.method = (
-        config.ConfidenceIntervalOptions.JACKKNIFE)
-    eval_config = config.EvalConfig(
+        config_pb2.ConfidenceIntervalOptions.JACKKNIFE)
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 label_key='label', example_weight_key='fixed_float')
         ],
         slicing_specs=[
-            config.SlicingSpec(),
-            config.SlicingSpec(feature_keys=['fixed_string']),
+            config_pb2.SlicingSpec(),
+            config_pb2.SlicingSpec(feature_keys=['fixed_string']),
         ],
         metrics_specs=metric_specs.specs_from_metrics([
             calibration.MeanLabel('mean_label'),
@@ -1018,24 +1018,24 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     baseline_eval_shared_model = self._build_keras_model(
         'baseline', baseline_dir, mul=1)
 
-    options = config.Options()
+    options = config_pb2.Options()
     options.compute_confidence_intervals.value = True
     options.confidence_intervals.method = (
-        config.ConfidenceIntervalOptions.JACKKNIFE)
+        config_pb2.ConfidenceIntervalOptions.JACKKNIFE)
 
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='candidate',
                 label_key='label',
                 example_weight_key='example_weight'),
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='baseline',
                 label_key='label',
                 example_weight_key='example_weight',
                 is_baseline=True)
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics(
             [
                 calibration.MeanLabel('mean_label'),
@@ -1162,12 +1162,12 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     _, export_dir = (
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 label_key='label', example_weight_key='fixed_float')
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics([
             calibration.MeanLabel('mean_label'),
             calibration.MeanPrediction('mean_prediction')
@@ -1254,22 +1254,23 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     _, export_dir = (
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 label_key='label', example_weight_key='fixed_float')
         ],
         slicing_specs=[
-            config.SlicingSpec(
+            config_pb2.SlicingSpec(
                 feature_values={'fixed_string': 'fixed_string1'}),
-            config.SlicingSpec(feature_values={'fixed_string': 'fixed_string2'})
+            config_pb2.SlicingSpec(
+                feature_values={'fixed_string': 'fixed_string2'})
         ],
         cross_slicing_specs=[
-            config.CrossSlicingSpec(
-                baseline_spec=config.SlicingSpec(
+            config_pb2.CrossSlicingSpec(
+                baseline_spec=config_pb2.SlicingSpec(
                     feature_values={'fixed_string': 'fixed_string1'}),
                 slicing_specs=[
-                    config.SlicingSpec(
+                    config_pb2.SlicingSpec(
                         feature_values={'fixed_string': 'fixed_string2'})
                 ]),
         ],
@@ -1409,11 +1410,11 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         None, temp_export_dir, n_classes=n_classes)
 
     # Add mean_label, example_count, weighted_example_count, calibration_plot
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(label_key='label', example_weight_key='age')
+            config_pb2.ModelSpec(label_key='label', example_weight_key='age')
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics([
             calibration.MeanLabel('mean_label'),
             calibration_plot.CalibrationPlot(
@@ -1502,14 +1503,14 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         None, temp_export_dir, n_classes=n_classes)
 
     # Add example_count and weighted_example_count
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(label_key='label', example_weight_key='age')
+            config_pb2.ModelSpec(label_key='label', example_weight_key='age')
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics(
             [calibration.MeanLabel('mean_label')],
-            binarize=config.BinarizationOptions(
+            binarize=config_pb2.BinarizationOptions(
                 class_ids={'values': range(n_classes)})))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
@@ -1586,9 +1587,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     temp_export_dir = self._getExportDir()
     _, export_dir = multi_head.simple_multi_head(None, temp_export_dir)
 
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 label_keys={
                     'chinese_head': 'chinese_label',
                     'english_head': 'english_label',
@@ -1600,7 +1601,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                     'other_head': 'age'
                 })
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics({
             'chinese_head': [calibration.MeanLabel('mean_label')],
             'english_head': [calibration.MeanLabel('mean_label')],
@@ -1732,12 +1733,12 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
 
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 label_key='label', example_weight_key='example_weight')
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics(
             [calibration.MeanLabel('mean_label')]))
     eval_shared_model = self.createTestEvalSharedModel(
@@ -1874,17 +1875,19 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     _, export_dir = (
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir))
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(label_key='label', example_weight_key='fixed_int')
+            config_pb2.ModelSpec(
+                label_key='label', example_weight_key='fixed_int')
         ],
         slicing_specs=[
-            config.SlicingSpec(),
-            config.SlicingSpec(feature_keys=['fixed_string']),
+            config_pb2.SlicingSpec(),
+            config_pb2.SlicingSpec(feature_keys=['fixed_string']),
         ],
         metrics_specs=metric_specs.specs_from_metrics(
             [ndcg.NDCG(gain_key='fixed_float', name='ndcg')],
-            binarize=config.BinarizationOptions(top_k_list={'values': [1, 2]}),
+            binarize=config_pb2.BinarizationOptions(
+                top_k_list={'values': [1, 2]}),
             query_key='fixed_string'))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
@@ -2033,11 +2036,11 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     temp_export_dir = self._getExportDir()
     _, export_dir = linear_classifier.simple_linear_classifier(
         None, temp_export_dir)
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(signature_name='eval')],
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(signature_name='eval')],
         slicing_specs=[
-            config.SlicingSpec(),
-            config.SlicingSpec(feature_keys=['slice_key']),
+            config_pb2.SlicingSpec(),
+            config_pb2.SlicingSpec(feature_keys=['slice_key']),
         ])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir,
@@ -2134,23 +2137,23 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     temp_export_dir = self._getExportDir()
     _, export_dir = linear_classifier.simple_linear_classifier(
         None, temp_export_dir)
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec(signature_name='eval')],
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(signature_name='eval')],
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 thresholds={
                     'accuracy':
-                        config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
+                        config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
                                 lower_bound={'value': 0.9})),
                     'nonexistent_metrics':
-                        config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
+                        config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
                                 lower_bound={'value': 0.1}))
                 })
         ],
         slicing_specs=[
-            config.SlicingSpec(),
+            config_pb2.SlicingSpec(),
         ])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir,
@@ -2254,97 +2257,98 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     _, export_dir2 = (
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(None, temp_export_dir2))
-    example_count_metric = config.MetricConfig(
+    example_count_metric = config_pb2.MetricConfig(
         class_name='ExampleCount',
         # 5 >= 3, OK for overall slice
         # 3 >= 3, OK for ('fixed_string', 'fixed_string1')
         # 2 < 3, NOT OK for ('fixed_string', 'fixed_string2')
         # Keep this for verifying cross slice thresholds and single slice
         # thresholds are working together.
-        threshold=config.MetricThreshold(
-            value_threshold=config.GenericValueThreshold(
+        threshold=config_pb2.MetricThreshold(
+            value_threshold=config_pb2.GenericValueThreshold(
                 lower_bound={'value': 3})),
         cross_slice_thresholds=[
-            config.CrossSliceMetricThreshold(
+            config_pb2.CrossSliceMetricThreshold(
                 # 5-2 >= 2, OK for ((), (('fixed_string', 'fixed_string1'),))
                 # 5-3 < 3, NOT OK for ((), (('fixed_string', 'fixed_string2'),))
-                threshold=config.MetricThreshold(
-                    value_threshold=config.GenericValueThreshold(
+                threshold=config_pb2.MetricThreshold(
+                    value_threshold=config_pb2.GenericValueThreshold(
                         lower_bound={'value': 3})),
                 cross_slicing_specs=[
-                    config.CrossSlicingSpec(
-                        baseline_spec=config.SlicingSpec(),
+                    config_pb2.CrossSlicingSpec(
+                        baseline_spec=config_pb2.SlicingSpec(),
                         slicing_specs=[
-                            config.SlicingSpec(feature_keys=['fixed_string'])
+                            config_pb2.SlicingSpec(
+                                feature_keys=['fixed_string'])
                         ])
                 ])
         ])
-    mean_prediction_metric = config.MetricConfig(
+    mean_prediction_metric = config_pb2.MetricConfig(
         class_name='MeanPrediction',
         cross_slice_thresholds=[
-            config.CrossSliceMetricThreshold(
+            config_pb2.CrossSliceMetricThreshold(
                 # MeanPrediction values for slices:
                 # (0.2*2+0.9*2)/(2+2)=0.55
                 #     for (('fixed_string', 'fixed_string1'),)
                 # (0.5*2+0.5*2+0.5*2)/(2+2+2)=0.5
                 #     for (('fixed_string', 'fixed_string2'),)
-                threshold=config.MetricThreshold(
-                    value_threshold=config.GenericValueThreshold(
+                threshold=config_pb2.MetricThreshold(
+                    value_threshold=config_pb2.GenericValueThreshold(
                         # This config should give value threshold error because
                         # (0.55-0.5)=0.05 not inside the bound [0.1, 0.5].
                         upper_bound={'value': .5},
                         lower_bound={'value': .1}),
-                    change_threshold=config.GenericChangeThreshold(
+                    change_threshold=config_pb2.GenericChangeThreshold(
                         # This config should give change threshold error because
                         # baseline model and candidate model have same
                         # difference as 0.05 between cross slices. Cross slice
                         # difference value is not changed.
-                        direction=config.MetricDirection.LOWER_IS_BETTER,
+                        direction=config_pb2.MetricDirection.LOWER_IS_BETTER,
                         relative={'value': -.99},
                         absolute={'value': 0})),
                 cross_slicing_specs=[
-                    config.CrossSlicingSpec(
-                        baseline_spec=config.SlicingSpec(
+                    config_pb2.CrossSlicingSpec(
+                        baseline_spec=config_pb2.SlicingSpec(
                             feature_values={'fixed_string': 'fixed_string1'}),
                         slicing_specs=[
-                            config.SlicingSpec(feature_values={
+                            config_pb2.SlicingSpec(feature_values={
                                 'fixed_string': 'fixed_string2'
                             })
                         ])
                 ])
         ])
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='candidate',
                 label_key='label',
                 example_weight_key='fixed_float'),
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='baseline',
                 label_key='label',
                 example_weight_key='fixed_float',
                 is_baseline=True)
         ],
         slicing_specs=[
-            config.SlicingSpec(),
-            config.SlicingSpec(feature_keys=['fixed_string']),
+            config_pb2.SlicingSpec(),
+            config_pb2.SlicingSpec(feature_keys=['fixed_string']),
         ],
         cross_slicing_specs=[
-            config.CrossSlicingSpec(
-                baseline_spec=config.SlicingSpec(),
+            config_pb2.CrossSlicingSpec(
+                baseline_spec=config_pb2.SlicingSpec(),
                 slicing_specs=[
-                    config.SlicingSpec(feature_keys=['fixed_string'])
+                    config_pb2.SlicingSpec(feature_keys=['fixed_string'])
                 ]),
-            config.CrossSlicingSpec(
-                baseline_spec=config.SlicingSpec(
+            config_pb2.CrossSlicingSpec(
+                baseline_spec=config_pb2.SlicingSpec(
                     feature_values={'fixed_string': 'fixed_string1'}),
                 slicing_specs=[
-                    config.SlicingSpec(
+                    config_pb2.SlicingSpec(
                         feature_values={'fixed_string': 'fixed_string2'})
                 ])
         ],
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[example_count_metric, mean_prediction_metric],
                 model_names=['candidate', 'baseline']),
         ])
@@ -2587,7 +2591,8 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           | 'AddCrossSliceMetrics' >>
           metrics_plots_and_validations_evaluator._AddCrossSliceMetrics(
               cross_slice_specs=[
-                  config.CrossSlicingSpec(baseline_spec={}, slicing_specs=[])
+                  config_pb2.CrossSlicingSpec(
+                      baseline_spec={}, slicing_specs=[])
               ],
               cross_slice_computations=[]))
 
@@ -2652,15 +2657,16 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         self._makeExample(label=0.0, prediction=0.3),
     ]
 
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(prediction_key='prediction', label_key='label')
+            config_pb2.ModelSpec(
+                prediction_key='prediction', label_key='label')
         ],
         metrics_specs=[
-            config.MetricsSpec(
-                metrics=[config.MetricConfig(class_name='ExampleCount')])
+            config_pb2.MetricsSpec(
+                metrics=[config_pb2.MetricConfig(class_name='ExampleCount')])
         ],
-        slicing_specs=[config.SlicingSpec()])
+        slicing_specs=[config_pb2.SlicingSpec()])
 
     extractors = [
         features_extractor.FeaturesExtractor(eval_config),

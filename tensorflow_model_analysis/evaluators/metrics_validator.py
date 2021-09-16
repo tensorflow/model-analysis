@@ -24,15 +24,15 @@ import math
 from typing import Any, Dict, Iterable, List, Tuple, Union
 import numpy as np
 
-from tensorflow_model_analysis import config
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import model_util
 
-_ThresholdType = Union[config.GenericValueThreshold,
-                       config.GenericChangeThreshold]
+_ThresholdType = Union[config_pb2.GenericValueThreshold,
+                       config_pb2.GenericChangeThreshold]
 
 
 # TODO(b/142683826): Beam type check error in
@@ -41,8 +41,9 @@ _ThresholdType = Union[config.GenericValueThreshold,
 # around metric_types.MetricKey below when fixed.
 def validate_metrics(
     sliced_metrics: Tuple[Union[slicer.SliceKeyType, slicer.CrossSliceKeyType],
-                          Dict['metric_types.MetricKey', Any]],
-    eval_config: config.EvalConfig) -> validation_result_pb2.ValidationResult:
+                          Dict['metric_types.MetricKey',
+                               Any]], eval_config: config_pb2.EvalConfig
+) -> validation_result_pb2.ValidationResult:
   """Check the metrics and check whether they should be validated."""
   # Find out which model is baseline.
   baseline_spec = model_util.get_baseline_model_spec(eval_config)
@@ -57,14 +58,14 @@ def validate_metrics(
                        metric: Any) -> bool:
     """Verify a metric given its metric key and metric value."""
     metric = float(metric)
-    if isinstance(threshold, config.GenericValueThreshold):
+    if isinstance(threshold, config_pb2.GenericValueThreshold):
       lower_bound, upper_bound = -np.inf, np.inf
       if threshold.HasField('lower_bound'):
         lower_bound = threshold.lower_bound.value
       if threshold.HasField('upper_bound'):
         upper_bound = threshold.upper_bound.value
       return metric >= lower_bound and metric <= upper_bound
-    elif isinstance(threshold, config.GenericChangeThreshold):
+    elif isinstance(threshold, config_pb2.GenericChangeThreshold):
       diff = metric
       metric_baseline = float(
           metrics[key.make_baseline_key(baseline_model_name)])
@@ -72,9 +73,9 @@ def validate_metrics(
         ratio = float('nan')
       else:
         ratio = diff / metric_baseline
-      if threshold.direction == config.MetricDirection.LOWER_IS_BETTER:
+      if threshold.direction == config_pb2.MetricDirection.LOWER_IS_BETTER:
         absolute, relative = np.inf, np.inf
-      elif threshold.direction == config.MetricDirection.HIGHER_IS_BETTER:
+      elif threshold.direction == config_pb2.MetricDirection.HIGHER_IS_BETTER:
         absolute, relative = -np.inf, -np.inf
       else:
         raise ValueError(
@@ -83,9 +84,9 @@ def validate_metrics(
         absolute = threshold.absolute.value
       if threshold.HasField('relative'):
         relative = threshold.relative.value
-      if threshold.direction == config.MetricDirection.LOWER_IS_BETTER:
+      if threshold.direction == config_pb2.MetricDirection.LOWER_IS_BETTER:
         return diff <= absolute and ratio <= relative
-      elif threshold.direction == config.MetricDirection.HIGHER_IS_BETTER:
+      elif threshold.direction == config_pb2.MetricDirection.HIGHER_IS_BETTER:
         return diff >= absolute and ratio >= relative
     else:
       raise ValueError('Unknown threshold: {}'.format(threshold))
@@ -95,9 +96,9 @@ def validate_metrics(
     to.double_value.value = float(metric)
 
   def _copy_threshold(threshold, to):
-    if isinstance(threshold, config.GenericValueThreshold):
+    if isinstance(threshold, config_pb2.GenericValueThreshold):
       to.value_threshold.CopyFrom(threshold)
-    if isinstance(threshold, config.GenericChangeThreshold):
+    if isinstance(threshold, config_pb2.GenericChangeThreshold):
       to.change_threshold.CopyFrom(threshold)
 
   def _add_to_set(s, v):
@@ -125,11 +126,11 @@ def validate_metrics(
     existing_failures = set()
     for slice_spec, threshold in thresholds[metric_key]:
       if slice_spec is not None:
-        if (isinstance(slice_spec, config.SlicingSpec) and
+        if (isinstance(slice_spec, config_pb2.SlicingSpec) and
             (is_cross_slice or not slicer.SingleSliceSpec(
                 spec=slice_spec).is_slice_applicable(sliced_key))):
           continue
-        if (isinstance(slice_spec, config.CrossSlicingSpec) and
+        if (isinstance(slice_spec, config_pb2.CrossSlicingSpec) and
             (not is_cross_slice or not slicer.is_cross_slice_applicable(
                 cross_slice_key=sliced_key, cross_slicing_spec=slice_spec))):
           continue
@@ -161,12 +162,12 @@ def validate_metrics(
       # Track we have completed a validation check for slice spec and metric
       slicing_details = result.validation_details.slicing_details.add()
       if slice_spec is not None:
-        if isinstance(slice_spec, config.SlicingSpec):
+        if isinstance(slice_spec, config_pb2.SlicingSpec):
           slicing_details.slicing_spec.CopyFrom(slice_spec)
         else:
           slicing_details.cross_slicing_spec.CopyFrom(slice_spec)
       else:
-        slicing_details.slicing_spec.CopyFrom(config.SlicingSpec())
+        slicing_details.slicing_spec.CopyFrom(config_pb2.SlicingSpec())
       slicing_details.num_matching_slices = 1
   # All unchecked thresholds are considered failures.
   for metric_key, thresholds in unchecked_thresholds.items():
@@ -175,7 +176,8 @@ def validate_metrics(
     existing_failures = set()
     for slice_spec, threshold in thresholds:
       if slice_spec is not None:
-        if is_cross_slice != isinstance(slice_spec, config.CrossSlicingSpec):
+        if is_cross_slice != isinstance(slice_spec,
+                                        config_pb2.CrossSlicingSpec):
           continue
         if (is_cross_slice and not slicer.is_cross_slice_applicable(
             cross_slice_key=sliced_key, cross_slicing_spec=slice_spec)):
@@ -239,8 +241,8 @@ def merge_details(a: validation_result_pb2.ValidationResult,
 
 def get_missing_slices(
     slicing_details: Iterable[validation_result_pb2.SlicingDetails],
-    eval_config: config.EvalConfig
-) -> List[Union[config.SlicingSpec, config.CrossSlicingSpec]]:
+    eval_config: config_pb2.EvalConfig
+) -> List[Union[config_pb2.SlicingSpec, config_pb2.CrossSlicingSpec]]:
   """Returns specs that are defined in the EvalConfig but not found in details.
 
   Args:
@@ -262,7 +264,7 @@ def get_missing_slices(
       continue
     for slice_spec, _ in sliced_thresholds:
       if not slice_spec:
-        slice_spec = config.SlicingSpec()
+        slice_spec = config_pb2.SlicingSpec()
       slice_hash = slice_spec.SerializeToString()
       if slice_hash not in hashed_details:
         missing_slices.append(slice_spec)

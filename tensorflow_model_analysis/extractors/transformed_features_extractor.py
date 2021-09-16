@@ -22,11 +22,11 @@ from __future__ import print_function
 from typing import Dict, Optional, Text
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 from tfx_bsl.tfxio import tensor_adapter
 
 _TRANSFORMED_FEATURES_EXTRACTOR_STAGE_NAME = 'ExtractTransformedFeatures'
@@ -36,7 +36,7 @@ _DEFAULT_SIGNATURE_NAMES = ('transformed_features', 'transformed_labels')
 
 
 def TransformedFeaturesExtractor(
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     eval_shared_model: types.MaybeMultipleEvalSharedModels,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
 ) -> extractor.Extractor:
@@ -75,7 +75,7 @@ def TransformedFeaturesExtractor(
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractTransformedFeatures(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     eval_shared_models: Dict[Text, types.EvalSharedModel],
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
 ) -> beam.pvalue.PCollection:

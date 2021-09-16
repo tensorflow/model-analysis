@@ -23,12 +23,12 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import features_extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import test_util
 
 from google.protobuf import text_format
@@ -41,8 +41,8 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(('with_example_weight', 'example_weight'),
                                   ('without_example_weight', None))
   def testExampleWeightsExtractor(self, example_weight):
-    model_spec = config.ModelSpec(example_weight_key=example_weight)
-    eval_config = config.EvalConfig(model_specs=[model_spec])
+    model_spec = config_pb2.ModelSpec(example_weight_key=example_weight)
+    eval_config = config_pb2.EvalConfig(model_specs=[model_spec])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     example_weight_extractor = (
         example_weights_extractor.ExampleWeightsExtractor(eval_config))
@@ -118,13 +118,13 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   def testExampleWeightsExtractorMultiOutput(self):
-    model_spec = config.ModelSpec(
+    model_spec = config_pb2.ModelSpec(
         example_weight_keys={
             'output1': 'example_weight1',
             'output2': 'example_weight2',
             'output3': 'example_weight3',
         })
-    eval_config = config.EvalConfig(model_specs=[model_spec])
+    eval_config = config_pb2.EvalConfig(model_specs=[model_spec])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     example_weight_extractor = example_weights_extractor.ExampleWeightsExtractor(
         eval_config)
@@ -188,15 +188,15 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   def testExampleWeightsExtractorMultiModel(self):
-    model_spec1 = config.ModelSpec(
+    model_spec1 = config_pb2.ModelSpec(
         name='model1', example_weight_key='example_weight')
-    model_spec2 = config.ModelSpec(
+    model_spec2 = config_pb2.ModelSpec(
         name='model2',
         example_weight_keys={
             'output1': 'example_weight1',
             'output2': 'example_weight2'
         })
-    eval_config = config.EvalConfig(model_specs=[model_spec1, model_spec2])
+    eval_config = config_pb2.EvalConfig(model_specs=[model_spec1, model_spec2])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     example_weight_extractor = example_weights_extractor.ExampleWeightsExtractor(
         eval_config)

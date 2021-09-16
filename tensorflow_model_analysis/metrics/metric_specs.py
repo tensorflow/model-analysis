@@ -28,7 +28,6 @@ import re
 from typing import Any, Dict, FrozenSet, Iterator, Iterable, List, NamedTuple, Optional, Text, Type, Union, Tuple
 
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import aggregation
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import calibration
@@ -40,6 +39,7 @@ from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_plot
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.metrics import weighted_example_count
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 _TF_LOSSES_MODULE = tf.keras.losses.Loss().__class__.__module__
@@ -73,12 +73,12 @@ def specs_from_metrics(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
     output_weights: Optional[Dict[Text, float]] = None,
-    binarize: Optional[config.BinarizationOptions] = None,
-    aggregate: Optional[config.AggregationOptions] = None,
+    binarize: Optional[config_pb2.BinarizationOptions] = None,
+    aggregate: Optional[config_pb2.AggregationOptions] = None,
     query_key: Optional[Text] = None,
     include_example_count: Optional[bool] = None,
     include_weighted_example_count: Optional[bool] = None
-) -> List[config.MetricsSpec]:
+) -> List[config_pb2.MetricsSpec]:
   """Returns specs for tf.keras.metrics/losses or tfma.metrics classes.
 
   Examples:
@@ -171,7 +171,7 @@ def specs_from_metrics(
       raise NotImplementedError('unknown metric type {}: metric={}'.format(
           type(metric), metric))
   specs.append(
-      config.MetricsSpec(
+      config_pb2.MetricsSpec(
           metrics=metric_configs,
           model_names=model_names,
           output_names=output_names,
@@ -188,7 +188,8 @@ def example_count_specs(
     output_names: Optional[List[Text]] = None,
     output_weights: Optional[Dict[Text, float]] = None,
     include_example_count: bool = True,
-    include_weighted_example_count: bool = True) -> List[config.MetricsSpec]:
+    include_weighted_example_count: bool = True
+) -> List[config_pb2.MetricsSpec]:
   """Returns metric specs for example count and weighted example counts.
 
   Args:
@@ -205,12 +206,13 @@ def example_count_specs(
   if include_example_count:
     metric_config = _serialize_tfma_metric(example_count.ExampleCount())
     specs.append(
-        config.MetricsSpec(metrics=[metric_config], model_names=model_names))
+        config_pb2.MetricsSpec(
+            metrics=[metric_config], model_names=model_names))
   if include_weighted_example_count:
     metric_config = _serialize_tfma_metric(
         weighted_example_count.WeightedExampleCount())
     specs.append(
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[metric_config],
             model_names=model_names,
             output_names=output_names,
@@ -225,7 +227,7 @@ def default_regression_specs(
     loss_functions: Optional[List[Union[tf.keras.metrics.Metric,
                                         tf.keras.losses.Loss]]] = None,
     min_value: Optional[float] = None,
-    max_value: Optional[float] = None) -> List[config.MetricsSpec]:
+    max_value: Optional[float] = None) -> List[config_pb2.MetricsSpec]:
   """Returns default metric specs for for regression problems.
 
   Args:
@@ -266,9 +268,9 @@ def default_binary_classification_specs(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
     output_weights: Optional[Dict[Text, float]] = None,
-    binarize: Optional[config.BinarizationOptions] = None,
-    aggregate: Optional[config.AggregationOptions] = None,
-    include_loss: bool = True) -> List[config.MetricsSpec]:
+    binarize: Optional[config_pb2.BinarizationOptions] = None,
+    aggregate: Optional[config_pb2.AggregationOptions] = None,
+    include_loss: bool = True) -> List[config_pb2.MetricsSpec]:
   """Returns default metric specs for binary classification problems.
 
   Args:
@@ -316,9 +318,9 @@ def default_multi_class_classification_specs(
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
     output_weights: Optional[Dict[Text, float]] = None,
-    binarize: Optional[config.BinarizationOptions] = None,
-    aggregate: Optional[config.AggregationOptions] = None,
-    sparse: bool = True) -> List[config.MetricsSpec]:
+    binarize: Optional[config_pb2.BinarizationOptions] = None,
+    aggregate: Optional[config_pb2.AggregationOptions] = None,
+    sparse: bool = True) -> List[config_pb2.MetricsSpec]:
   """Returns default metric specs for multi-class classification problems.
 
   Args:
@@ -351,7 +353,7 @@ def default_multi_class_classification_specs(
           tf.keras.metrics.Precision(name='precision', top_k=top_k),
           tf.keras.metrics.Recall(name='recall', top_k=top_k)
       ])
-    binarize_without_top_k = config.BinarizationOptions()
+    binarize_without_top_k = config_pb2.BinarizationOptions()
     binarize_without_top_k.CopyFrom(binarize)
     binarize_without_top_k.ClearField('top_k_list')
     binarize = binarize_without_top_k
@@ -361,7 +363,7 @@ def default_multi_class_classification_specs(
       output_names=output_names,
       output_weights=output_weights)
   if aggregate is None:
-    aggregate = config.AggregationOptions(micro_average=True)
+    aggregate = config_pb2.AggregationOptions(micro_average=True)
   multi_class_metrics.extend(
       default_binary_classification_specs(
           model_names=model_names,
@@ -373,7 +375,7 @@ def default_multi_class_classification_specs(
 
 
 def metric_instance(
-    metric_config: config.MetricConfig,
+    metric_config: config_pb2.MetricConfig,
     tfma_metric_classes: Optional[Dict[Text, Type[metric_types.Metric]]] = None
 ) -> metric_types.Metric:
   """Creates instance of metric associated with config."""
@@ -401,7 +403,7 @@ def metric_instance(
 
 
 def _keys_for_metric(
-    metric_name: Text, spec: config.MetricsSpec,
+    metric_name: Text, spec: config_pb2.MetricsSpec,
     aggregation_type: Optional[metric_types.AggregationType],
     sub_keys: List[Optional[metric_types.SubKey]]
 ) -> Iterator[metric_types.MetricKey]:
@@ -419,8 +421,8 @@ def _keys_for_metric(
 
 
 def _keys_and_metrics_from_specs(
-    metrics_specs: Iterable[config.MetricsSpec]
-) -> Iterator[Tuple[metric_types.MetricKey, config.MetricConfig,
+    metrics_specs: Iterable[config_pb2.MetricsSpec]
+) -> Iterator[Tuple[metric_types.MetricKey, config_pb2.MetricConfig,
                     metric_types.Metric]]:
   """Yields key, config, instance tuples for each non-diff metric in specs."""
   tfma_metric_classes = metric_types.registered_metrics()
@@ -434,7 +436,7 @@ def _keys_and_metrics_from_specs(
 
 
 def metric_keys_to_skip_for_confidence_intervals(
-    metrics_specs: Iterable[config.MetricsSpec]
+    metrics_specs: Iterable[config_pb2.MetricsSpec]
 ) -> FrozenSet[metric_types.MetricKey]:
   """Returns metric keys not to be displayed with confidence intervals."""
   skipped_keys = []
@@ -447,24 +449,25 @@ def metric_keys_to_skip_for_confidence_intervals(
 
 # Optional slice and associated threshold setting. If slice is not set it
 # matches all slices.
-_SliceAndThreshold = Tuple[Optional[Union[config.SlicingSpec,
-                                          config.CrossSlicingSpec]],
-                           Union[config.GenericChangeThreshold,
-                                 config.GenericValueThreshold]]
+_SliceAndThreshold = Tuple[Optional[Union[config_pb2.SlicingSpec,
+                                          config_pb2.CrossSlicingSpec]],
+                           Union[config_pb2.GenericChangeThreshold,
+                                 config_pb2.GenericValueThreshold]]
 
 
 def metric_thresholds_from_metrics_specs(
-    metrics_specs: Iterable[config.MetricsSpec]
+    metrics_specs: Iterable[config_pb2.MetricsSpec]
 ) -> Dict[metric_types.MetricKey, Iterable[_SliceAndThreshold]]:
   """Returns thresholds associated with given metrics specs."""
   result = collections.defaultdict(list)
   existing = collections.defaultdict(dict)
 
-  def add_if_not_exists(key: metric_types.MetricKey,
-                        slice_spec: Optional[Union[config.SlicingSpec,
-                                                   config.CrossSlicingSpec]],
-                        threshold: Union[config.GenericChangeThreshold,
-                                         config.GenericValueThreshold]):
+  def add_if_not_exists(
+      key: metric_types.MetricKey,
+      slice_spec: Optional[Union[config_pb2.SlicingSpec,
+                                 config_pb2.CrossSlicingSpec]],
+      threshold: Union[config_pb2.GenericChangeThreshold,
+                       config_pb2.GenericValueThreshold]):
     """Adds value to results if it doesn't already exist."""
     # Note that hashing by SerializeToString() is only safe if used within the
     # same process.
@@ -478,9 +481,9 @@ def metric_thresholds_from_metrics_specs(
       result[key].append((slice_spec, threshold))
 
   def add_threshold(key: metric_types.MetricKey,
-                    slice_spec: Union[Optional[config.SlicingSpec],
-                                      Optional[config.CrossSlicingSpec]],
-                    threshold: config.MetricThreshold):
+                    slice_spec: Union[Optional[config_pb2.SlicingSpec],
+                                      Optional[config_pb2.CrossSlicingSpec]],
+                    threshold: config_pb2.MetricThreshold):
     """Adds thresholds to results."""
     if threshold.HasField('value_threshold'):
       add_if_not_exists(key, slice_spec, threshold.value_threshold)
@@ -526,8 +529,8 @@ def metric_thresholds_from_metrics_specs(
 
 
 def to_computations(
-    metrics_specs: List[config.MetricsSpec],
-    eval_config: Optional[config.EvalConfig] = None,
+    metrics_specs: List[config_pb2.MetricsSpec],
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     schema: Optional[schema_pb2.Schema] = None
 ) -> metric_types.MetricComputations:
   """Returns computations associated with given metrics specs."""
@@ -558,10 +561,10 @@ def to_computations(
   # List[List[metric_types.Metric]]] (offsets align with tfma_metrics_specs).
   per_tfma_spec_metric_instances = []
   for spec in metrics_specs:
-    tf_spec = config.MetricsSpec()
+    tf_spec = config_pb2.MetricsSpec()
     tf_spec.CopyFrom(spec)
     del tf_spec.metrics[:]
-    tfma_spec = config.MetricsSpec()
+    tfma_spec = config_pb2.MetricsSpec()
     tfma_spec.CopyFrom(spec)
     del tfma_spec.metrics[:]
     for metric in spec.metrics:
@@ -670,9 +673,9 @@ def to_computations(
 
 
 def _process_tf_metrics_specs(
-    tf_metrics_specs: List[config.MetricsSpec],
+    tf_metrics_specs: List[config_pb2.MetricsSpec],
     per_tf_spec_metric_instances: List[List[_TFMetricOrLoss]],
-    eval_config: config.EvalConfig) -> metric_types.MetricComputations:
+    eval_config: config_pb2.EvalConfig) -> metric_types.MetricComputations:
   """Processes list of TF MetricsSpecs to create computations."""
 
   # Wrap args into structure that is hashable so we can track unique arg sets.
@@ -764,9 +767,9 @@ def _process_tf_metrics_specs(
 
 
 def _process_tfma_metrics_specs(
-    tfma_metrics_specs: List[config.MetricsSpec],
+    tfma_metrics_specs: List[config_pb2.MetricsSpec],
     per_tfma_spec_metric_instances: List[List[metric_types.Metric]],
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     schema: Optional[schema_pb2.Schema]) -> metric_types.MetricComputations:
   """Processes list of TFMA MetricsSpecs to create computations."""
 
@@ -775,9 +778,9 @@ def _process_tfma_metrics_specs(
   # with them.
   #
 
-  # Dict[bytes, List[config.MetricSpec]] (hash(MetricConfig) -> [MetricSpec])
+  # Dict[bytes,List[config_pb2.MetricSpec]] (hash(MetricConfig)->[MetricSpec])
   tfma_specs_by_metric_config = {}
-  # Dict[bytes, metric_types.Metric] (hash(MetricConfig) -> Metric)
+  # Dict[bytes,metric_types.Metric] (hash(MetricConfig)->Metric)
   hashed_metrics = {}
   for i, spec in enumerate(tfma_metrics_specs):
     for metric_config, metric in zip(spec.metrics,
@@ -843,7 +846,7 @@ def _process_tfma_metrics_specs(
 
 
 def _create_sub_keys(
-    spec: config.MetricsSpec
+    spec: config_pb2.MetricsSpec
 ) -> Dict[Optional[metric_types.AggregationType],
           List[Optional[metric_types.SubKey]]]:
   """Creates sub keys per aggregation type."""
@@ -899,7 +902,7 @@ def _macro_average_sub_keys(
 
 
 def _aggregation_type(
-    spec: config.MetricsSpec) -> Optional[metric_types.AggregationType]:
+    spec: config_pb2.MetricsSpec) -> Optional[metric_types.AggregationType]:
   """Returns AggregationType associated with AggregationOptions at offset."""
   if spec.aggregate.micro_average:
     return metric_types.AggregationType(micro_average=True)
@@ -910,7 +913,7 @@ def _aggregation_type(
   return None
 
 
-def _class_weights(spec: config.MetricsSpec) -> Optional[Dict[int, float]]:
+def _class_weights(spec: config_pb2.MetricsSpec) -> Optional[Dict[int, float]]:
   """Returns class weights associated with AggregationOptions at offset."""
   if spec.aggregate.HasField('top_k_list'):
     if spec.aggregate.class_weights:
@@ -942,7 +945,7 @@ def _maybe_add_name_to_config(cfg: Dict[Text, Any],
 
 
 def _tf_class_and_config(
-    metric_config: config.MetricConfig) -> Tuple[Text, Dict[Text, Any]]:
+    metric_config: config_pb2.MetricConfig) -> Tuple[Text, Dict[Text, Any]]:
   """Returns the tensorflow class and config associated with metric_config."""
   cls_name = metric_config.class_name
   cfg = _metric_config(metric_config.config)
@@ -965,16 +968,16 @@ def _tf_class_and_config(
 
 
 def _serialize_tf_metric(
-    metric: tf.keras.metrics.Metric) -> config.MetricConfig:
+    metric: tf.keras.metrics.Metric) -> config_pb2.MetricConfig:
   """Serializes TF metric."""
   cfg = metric_util.serialize_metric(metric)
-  return config.MetricConfig(
+  return config_pb2.MetricConfig(
       class_name=cfg['class_name'],
       config=json.dumps(cfg['config'], sort_keys=True))
 
 
 def _deserialize_tf_metric(
-    metric_config: config.MetricConfig,
+    metric_config: config_pb2.MetricConfig,
     custom_objects: Dict[Text, Type[tf.keras.metrics.Metric]]
 ) -> tf.keras.metrics.Metric:
   """Deserializes a tf.keras.metrics metric."""
@@ -994,17 +997,17 @@ def _private_tf_metric(
     return tf.keras.metrics.deserialize(cfg)
 
 
-def _serialize_tf_loss(loss: tf.keras.losses.Loss) -> config.MetricConfig:
+def _serialize_tf_loss(loss: tf.keras.losses.Loss) -> config_pb2.MetricConfig:
   """Serializes TF loss."""
   cfg = metric_util.serialize_loss(loss)
-  return config.MetricConfig(
+  return config_pb2.MetricConfig(
       class_name=cfg['class_name'],
       module=loss.__class__.__module__,
       config=json.dumps(cfg['config'], sort_keys=True))
 
 
 def _deserialize_tf_loss(
-    metric_config: config.MetricConfig,
+    metric_config: config_pb2.MetricConfig,
     custom_objects: Dict[Text,
                          Type[tf.keras.losses.Loss]]) -> tf.keras.losses.Loss:
   """Deserializes a tf.keras.loss metric."""
@@ -1023,19 +1026,20 @@ def _private_tf_loss(loss: tf.keras.losses.Loss) -> tf.keras.losses.Loss:
     return tf.keras.losses.deserialize(cfg)
 
 
-def _serialize_tfma_metric(metric: metric_types.Metric) -> config.MetricConfig:
+def _serialize_tfma_metric(
+    metric: metric_types.Metric) -> config_pb2.MetricConfig:
   """Serializes TFMA metric."""
   # This implementation is identical to _serialize_tf_metric, but keeping two
   # implementations for symmetry with deserialize where separate implementations
   # are required (and to be consistent with the keras implementation).
   cfg = tf.keras.utils.serialize_keras_object(metric)
-  return config.MetricConfig(
+  return config_pb2.MetricConfig(
       class_name=cfg['class_name'],
       config=json.dumps(cfg['config'], sort_keys=True))
 
 
 def _deserialize_tfma_metric(
-    metric_config: config.MetricConfig,
+    metric_config: config_pb2.MetricConfig,
     custom_objects: Dict[Text,
                          Type[metric_types.Metric]]) -> metric_types.Metric:
   """Deserializes a tfma.metrics metric."""

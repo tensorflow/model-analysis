@@ -22,11 +22,11 @@ from __future__ import print_function
 from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Text, Tuple, Union
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 DEFAULT_NUM_THRESHOLDS = calibration_histogram.DEFAULT_NUM_BUCKETS
@@ -159,7 +159,7 @@ def binary_confusion_matrices(
     num_thresholds: Optional[int] = None,
     thresholds: Optional[List[float]] = None,
     name: Optional[Text] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -439,7 +439,7 @@ MatrixAccumulator = Dict[float, _ThresholdEntry]
 def _binary_confusion_matrix_computation(
     thresholds: List[float],
     name: Optional[Text] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -487,7 +487,7 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
   """Computes binary confusion matrix."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                thresholds: List[float],
                extract_label_prediction_and_weight: Callable[..., Any],
                example_id_key: Optional[Text], example_ids_count: float,

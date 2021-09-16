@@ -27,7 +27,6 @@ from typing import Any, Dict, Optional, Text, Tuple
 import apache_beam as beam
 import six
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import version as tfma_version
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.proto import config_pb2
@@ -48,7 +47,7 @@ def _check_version(version: Text, path: Text):
   # compatibility issues.
 
 
-def _serialize_eval_run(eval_config: config.EvalConfig, data_location: Text,
+def _serialize_eval_run(eval_config: config_pb2.EvalConfig, data_location: Text,
                         file_format: Text, model_locations: Dict[Text,
                                                                  Text]) -> Text:
   return json_format.MessageToJson(
@@ -64,7 +63,7 @@ def load_eval_run(
     output_path: Text,
     output_file_format: Text = EVAL_CONFIG_FILE_FORMAT,
     filename: Optional[Text] = None
-) -> Tuple[Optional[config.EvalConfig], Text, Text, Dict[Text, Text]]:
+) -> Tuple[Optional[config_pb2.EvalConfig], Text, Text, Dict[Text, Text]]:
   """Returns eval config, data location, file format, and model locations.
 
   Args:
@@ -99,14 +98,14 @@ def load_eval_run(
     slicing_specs = None
     if old_config.slice_spec:
       slicing_specs = [s.to_proto() for s in old_config.slice_spec]
-    options = config.Options()
+    options = config_pb2.Options()
     options.compute_confidence_intervals.value = (
         old_config.compute_confidence_intervals)
     options.min_slice_size.value = old_config.k_anonymization_count
-    return (config.EvalConfig(slicing_specs=slicing_specs,
-                              options=options), old_config.data_location, '', {
-                                  '': old_config.model_location
-                              })
+    return (config_pb2.EvalConfig(slicing_specs=slicing_specs, options=options),
+            old_config.data_location, '', {
+                '': old_config.model_location
+            })
 
   # No config found
   return (None, '', '', {})
@@ -114,7 +113,7 @@ def load_eval_run(
 
 def EvalConfigWriter(  # pylint: disable=invalid-name
     output_path: Text,
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     output_file_format: Text = EVAL_CONFIG_FILE_FORMAT,
     data_location: Optional[Text] = None,
     data_file_format: Optional[Text] = None,
@@ -159,7 +158,7 @@ def EvalConfigWriter(  # pylint: disable=invalid-name
 @beam.typehints.with_input_types(Any)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteEvalConfig(  # pylint: disable=invalid-name
-    evaluation: evaluator.Evaluation, eval_config: config.EvalConfig,
+    evaluation: evaluator.Evaluation, eval_config: config_pb2.EvalConfig,
     output_path: Text, output_file_format: Text, data_location: Text,
     data_file_format: Text, model_locations: Dict[Text, Text],
     filename: Text) -> beam.pvalue.PDone:

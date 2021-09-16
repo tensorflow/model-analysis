@@ -27,8 +27,8 @@ from typing import Callable, Dict, List, Optional, Text, Union
 
 import tensorflow as tf
 
-from tensorflow_model_analysis import util as tfma_util
 from tensorflow_model_analysis.eval_saved_model import export
+from tensorflow_model_analysis.utils import util as tfma_util
 from tensorflow.python.estimator import gc
 from tensorflow.python.framework import errors_impl
 from tensorflow.python.platform import gfile

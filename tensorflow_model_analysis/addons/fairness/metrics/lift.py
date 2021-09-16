@@ -16,10 +16,10 @@
 
 from typing import Any, Dict, Optional, Text
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 LIFT_METRICS_NAME = 'lift'
 
@@ -37,10 +37,10 @@ class Lift(metric_types.Metric):
   to see whether the predictions on a given slice of items are, on average,
   higher/lower than the background.
 
-  Use config.CrossSlicingSpec to define background (baseline) and in-slice items
+  Use tfma.CrossSlicingSpec to define background (baseline) and in-slice items
   (comparison).
 
-  Raises an exception when config.CrossSlicingSpec is not provided.
+  Raises an exception when tfma.CrossSlicingSpec is not provided.
   """
 
   def __init__(self,
@@ -74,7 +74,7 @@ def _lift_metrics(
     left: Optional[float] = None,
     right: Optional[float] = None,
     name: Optional[Text] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     aggregation_type: Optional[metric_types.AggregationType] = None,
@@ -85,7 +85,7 @@ def _lift_metrics(
   """Returns computations for lift metrics."""
   if eval_config is None or not eval_config.cross_slicing_specs:
     raise ValueError(
-        'config.CrossSlicingSpec with a baseline and at least one comparison '
+        'tfma.CrossSlicingSpec with a baseline and at least one comparison '
         'slicing spec must be provided for Lift metrics')
 
   if num_buckets is None:

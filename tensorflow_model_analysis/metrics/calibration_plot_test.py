@@ -24,11 +24,11 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -256,8 +256,8 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'int_single_model',
           'eval_config':
-              config.EvalConfig(model_specs=[
-                  config.ModelSpec(name='model1', label_key='label'),
+              config_pb2.EvalConfig(model_specs=[
+                  config_pb2.ModelSpec(name='model1', label_key='label'),
               ]),
           'schema':
               text_format.Parse(
@@ -281,8 +281,8 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'int_single_model_right_only',
           'eval_config':
-              config.EvalConfig(model_specs=[
-                  config.ModelSpec(name='model1', label_key='label'),
+              config_pb2.EvalConfig(model_specs=[
+                  config_pb2.ModelSpec(name='model1', label_key='label'),
               ]),
           'schema':
               text_format.Parse(
@@ -305,8 +305,8 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'int_single_model_schema_missing_domain',
           'eval_config':
-              config.EvalConfig(model_specs=[
-                  config.ModelSpec(name='model1', label_key='label'),
+              config_pb2.EvalConfig(model_specs=[
+                  config_pb2.ModelSpec(name='model1', label_key='label'),
               ]),
           'schema':
               text_format.Parse(
@@ -326,8 +326,8 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'int_single_model_schema_missing_label',
           'eval_config':
-              config.EvalConfig(model_specs=[
-                  config.ModelSpec(name='model1', label_key='label'),
+              config_pb2.EvalConfig(model_specs=[
+                  config_pb2.ModelSpec(name='model1', label_key='label'),
               ]),
           'schema':
               text_format.Parse(
@@ -347,8 +347,8 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'float_single_model',
           'eval_config':
-              config.EvalConfig(model_specs=[
-                  config.ModelSpec(name='model1', label_key='label'),
+              config_pb2.EvalConfig(model_specs=[
+                  config_pb2.ModelSpec(name='model1', label_key='label'),
               ]),
           'schema':
               text_format.Parse(
@@ -372,8 +372,8 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'float_single_model_multiple_outputs',
           'eval_config':
-              config.EvalConfig(model_specs=[
-                  config.ModelSpec(
+              config_pb2.EvalConfig(model_specs=[
+                  config_pb2.ModelSpec(
                       name='model1',
                       label_keys={
                           'output1': 'label1',
@@ -403,9 +403,9 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
           'testcase_name':
               'float_multiple_models',
           'eval_config':
-              config.EvalConfig(model_specs=[
-                  config.ModelSpec(name='model1', label_key='label1'),
-                  config.ModelSpec(name='model2', label_key='label2')
+              config_pb2.EvalConfig(model_specs=[
+                  config_pb2.ModelSpec(name='model1', label_key='label1'),
+                  config_pb2.ModelSpec(name='model2', label_key='label2')
               ]),
           'schema':
               text_format.Parse(

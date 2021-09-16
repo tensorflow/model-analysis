@@ -24,11 +24,11 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
+from tensorflow_model_analysis.proto import config_pb2
 
 
 class _CustomMetric(tf.keras.metrics.Mean):
@@ -692,9 +692,9 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
             _CustomMetric(name='custom_label', update_y_pred=False),
             _CustomMetric(name='custom_pred', update_y_pred=True),
         ],
-        eval_config=config.EvalConfig(model_specs=[
-            config.ModelSpec(
-                padding_options=config.PaddingOptions(
+        eval_config=config_pb2.EvalConfig(model_specs=[
+            config_pb2.ModelSpec(
+                padding_options=config_pb2.PaddingOptions(
                     label_int_padding=-1,
                     prediction_float_padding=-1.0,
                 ))

@@ -16,10 +16,10 @@
 
 from typing import Dict, Optional, Sequence
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.addons.fairness.metrics.counterfactual_fairness import flip_count
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 FLIP_RATE_NAME = 'flip_rate'
 
@@ -81,7 +81,7 @@ def _flip_rate(
     thresholds: Sequence[float] = flip_count.DEFAULT_THRESHOLDS,
     model_name: str = '',
     output_name: str = '',
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
 ) -> metric_types.MetricComputations:
   """Returns computations for flip rate."""
   keys, metric_key_by_name_by_threshold = flip_count.create_metric_keys(

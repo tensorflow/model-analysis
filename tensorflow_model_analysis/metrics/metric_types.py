@@ -26,11 +26,11 @@ import inspect
 from typing import Any, Callable, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Text, Type, Union
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
+from tensorflow_model_analysis.utils import util
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 from google.protobuf import text_format
@@ -555,7 +555,7 @@ MetricComputations = List[Union[MetricComputation, DerivedMetricComputation,
 def update_create_computations_fn_kwargs(
     arg_names: Iterable[Text],
     kwargs: Dict[Text, Any],
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     schema: Optional[schema_pb2.Schema] = None,
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
@@ -663,7 +663,7 @@ class Metric(object):
     return True
 
   def computations(self,
-                   eval_config: Optional[config.EvalConfig] = None,
+                   eval_config: Optional[config_pb2.EvalConfig] = None,
                    schema: Optional[schema_pb2.Schema] = None,
                    model_names: Optional[List[Text]] = None,
                    output_names: Optional[List[Text]] = None,

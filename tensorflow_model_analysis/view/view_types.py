@@ -19,9 +19,9 @@
 import copy
 
 from typing import Any, Dict, List, Sequence, Text, NamedTuple, Optional, Union
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
@@ -155,7 +155,7 @@ class EvalResult(
     NamedTuple('EvalResult', [('slicing_metrics', List[SlicedMetrics]),
                               ('plots', List[SlicedPlots]),
                               ('attributions', List[SlicedAttributions]),
-                              ('config', config.EvalConfig),
+                              ('config', config_pb2.EvalConfig),
                               ('data_location', Text), ('file_format', Text),
                               ('model_location', Text)])):
   """The result of a single model analysis run.

@@ -26,11 +26,11 @@ from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optio
 
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import util
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -244,7 +244,7 @@ def select_indices(
 
 def to_label_prediction_example_weight(
     inputs: metric_types.StandardMetricInputs,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -896,7 +896,7 @@ def merge_per_key_computations(
   """Wraps create_computations_fn to be called separately for each key."""
 
   def merge_computations_fn(
-      eval_config: Optional[config.EvalConfig] = None,
+      eval_config: Optional[config_pb2.EvalConfig] = None,
       schema: Optional[schema_pb2.Schema] = None,
       model_names: Optional[List[Text]] = None,
       output_names: Optional[List[Text]] = None,

@@ -32,12 +32,12 @@ import uuid
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors.tfjs_predict_extractor_util import get_tfjs_binary
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 
 _TFJS_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFJSPredictions'
 
@@ -58,7 +58,7 @@ _TF_INPUT_NAME_JSON = 'tf_input_name.json'
 class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   """A DoFn that loads tfjs models and predicts."""
 
-  def __init__(self, eval_config: config.EvalConfig,
+  def __init__(self, eval_config: config_pb2.EvalConfig,
                eval_shared_models: Dict[Text, types.EvalSharedModel]) -> None:
     super(_TFJSPredictionDoFn, self).__init__(
         {k: v.model_loader for k, v in eval_shared_models.items()})
@@ -231,7 +231,7 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractTFJSPredictions(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection, eval_config: config.EvalConfig,
+    extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig,
     eval_shared_models: Dict[Text,
                              types.EvalSharedModel]) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
@@ -253,7 +253,7 @@ def _ExtractTFJSPredictions(  # pylint: disable=invalid-name
 
 
 def TFJSPredictExtractor(  # pylint: disable=invalid-name
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     eval_shared_model: Union[types.EvalSharedModel, Dict[Text,
                                                          types.EvalSharedModel]]
 ) -> extractor.Extractor:

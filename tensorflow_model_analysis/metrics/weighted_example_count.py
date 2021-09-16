@@ -23,8 +23,8 @@ from typing import Dict, Iterable, List, Optional, Text
 
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.utils import util
 
 WEIGHTED_EXAMPLE_COUNT_NAME = 'weighted_example_count'
 

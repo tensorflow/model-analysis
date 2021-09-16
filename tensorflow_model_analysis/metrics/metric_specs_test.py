@@ -21,10 +21,10 @@ from __future__ import print_function
 
 import json
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.proto import config_pb2
 
 
 class MetricSpecsTest(tf.test.TestCase):
@@ -44,24 +44,24 @@ class MetricSpecsTest(tf.test.TestCase):
             ]
         },
         model_names=['model_name1', 'model_name2'],
-        binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
-        aggregate=config.AggregationOptions(macro_average=True))
+        binarize=config_pb2.BinarizationOptions(class_ids={'values': [0, 1]}),
+        aggregate=config_pb2.AggregationOptions(macro_average=True))
 
     self.assertLen(metrics_specs, 5)
     self.assertProtoEquals(
         metrics_specs[0],
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='ExampleCount',
                     config=json.dumps({'name': 'example_count'})),
             ],
             model_names=['model_name1', 'model_name2']))
     self.assertProtoEquals(
         metrics_specs[1],
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='WeightedExampleCount',
                     config=json.dumps({'name': 'weighted_example_count'})),
             ],
@@ -69,16 +69,16 @@ class MetricSpecsTest(tf.test.TestCase):
             output_names=['output_name1']))
     self.assertProtoEquals(
         metrics_specs[2],
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='MeanSquaredError',
                     config=json.dumps({
                         'name': 'mse',
                         'dtype': 'float32'
                     },
                                       sort_keys=True)),
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='MeanAbsoluteError',
                     module=metric_specs._TF_LOSSES_MODULE,
                     config=json.dumps({
@@ -86,19 +86,20 @@ class MetricSpecsTest(tf.test.TestCase):
                         'name': 'mae'
                     },
                                       sort_keys=True)),
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='MeanLabel',
                     config=json.dumps({'name': 'mean_label'}))
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1'],
-            binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
-            aggregate=config.AggregationOptions(macro_average=True)))
+            binarize=config_pb2.BinarizationOptions(
+                class_ids={'values': [0, 1]}),
+            aggregate=config_pb2.AggregationOptions(macro_average=True)))
     self.assertProtoEquals(
         metrics_specs[3],
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='WeightedExampleCount',
                     config=json.dumps({'name': 'weighted_example_count'})),
             ],
@@ -106,16 +107,16 @@ class MetricSpecsTest(tf.test.TestCase):
             output_names=['output_name2']))
     self.assertProtoEquals(
         metrics_specs[4],
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='RootMeanSquaredError',
                     config=json.dumps({
                         'name': 'rmse',
                         'dtype': 'float32'
                     },
                                       sort_keys=True)),
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='MeanAbsolutePercentageError',
                     module=metric_specs._TF_LOSSES_MODULE,
                     config=json.dumps({
@@ -123,34 +124,35 @@ class MetricSpecsTest(tf.test.TestCase):
                         'name': 'mape'
                     },
                                       sort_keys=True)),
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='MeanPrediction',
                     config=json.dumps({'name': 'mean_prediction'}))
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name2'],
-            binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
-            aggregate=config.AggregationOptions(macro_average=True)))
+            binarize=config_pb2.BinarizationOptions(
+                class_ids={'values': [0, 1]}),
+            aggregate=config_pb2.AggregationOptions(macro_average=True)))
 
   def testMetricKeysToSkipForConfidenceIntervals(self):
     metrics_specs = [
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='ExampleCount',
                     config=json.dumps({'name': 'example_count'}),
-                    threshold=config.MetricThreshold(
-                        value_threshold=config.GenericValueThreshold())),
-                config.MetricConfig(
+                    threshold=config_pb2.MetricThreshold(
+                        value_threshold=config_pb2.GenericValueThreshold())),
+                config_pb2.MetricConfig(
                     class_name='MeanLabel',
                     config=json.dumps({'name': 'mean_label'}),
-                    threshold=config.MetricThreshold(
-                        change_threshold=config.GenericChangeThreshold())),
-                config.MetricConfig(
+                    threshold=config_pb2.MetricThreshold(
+                        change_threshold=config_pb2.GenericChangeThreshold())),
+                config_pb2.MetricConfig(
                     class_name='MeanSquaredError',
                     config=json.dumps({'name': 'mse'}),
-                    threshold=config.MetricThreshold(
-                        change_threshold=config.GenericChangeThreshold()))
+                    threshold=config_pb2.MetricThreshold(
+                        change_threshold=config_pb2.GenericChangeThreshold()))
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1', 'output_name2']),
@@ -190,138 +192,143 @@ class MetricSpecsTest(tf.test.TestCase):
 
   def testMetricThresholdsFromMetricsSpecs(self):
     slice_specs = [
-        config.SlicingSpec(feature_keys=['feature1']),
-        config.SlicingSpec(feature_values={'feature2': 'value1'})
+        config_pb2.SlicingSpec(feature_keys=['feature1']),
+        config_pb2.SlicingSpec(feature_values={'feature2': 'value1'})
     ]
 
     # For cross slice tests.
-    baseline_slice_spec = config.SlicingSpec(feature_keys=['feature3'])
+    baseline_slice_spec = config_pb2.SlicingSpec(feature_keys=['feature3'])
 
     metrics_specs = [
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             thresholds={
                 'auc':
-                    config.MetricThreshold(
-                        value_threshold=config.GenericValueThreshold()),
+                    config_pb2.MetricThreshold(
+                        value_threshold=config_pb2.GenericValueThreshold()),
                 'mean/label':
-                    config.MetricThreshold(
-                        value_threshold=config.GenericValueThreshold(),
-                        change_threshold=config.GenericChangeThreshold()),
+                    config_pb2.MetricThreshold(
+                        value_threshold=config_pb2.GenericValueThreshold(),
+                        change_threshold=config_pb2.GenericChangeThreshold()),
                 'mse':
-                    config.MetricThreshold(
-                        change_threshold=config.GenericChangeThreshold())
+                    config_pb2.MetricThreshold(
+                        change_threshold=config_pb2.GenericChangeThreshold())
             },
             per_slice_thresholds={
                 'auc':
-                    config.PerSliceMetricThresholds(thresholds=[
-                        config.PerSliceMetricThreshold(
+                    config_pb2.PerSliceMetricThresholds(thresholds=[
+                        config_pb2.PerSliceMetricThreshold(
                             slicing_specs=slice_specs,
-                            threshold=config.MetricThreshold(
-                                value_threshold=config.GenericValueThreshold()))
+                            threshold=config_pb2.MetricThreshold(
+                                value_threshold=config_pb2
+                                .GenericValueThreshold()))
                     ]),
                 'mean/label':
-                    config.PerSliceMetricThresholds(thresholds=[
-                        config.PerSliceMetricThreshold(
+                    config_pb2.PerSliceMetricThresholds(thresholds=[
+                        config_pb2.PerSliceMetricThreshold(
                             slicing_specs=slice_specs,
-                            threshold=config.MetricThreshold(
-                                value_threshold=config.GenericValueThreshold(),
-                                change_threshold=config.GenericChangeThreshold(
-                                )))
+                            threshold=config_pb2.MetricThreshold(
+                                value_threshold=config_pb2
+                                .GenericValueThreshold(),
+                                change_threshold=config_pb2
+                                .GenericChangeThreshold()))
                     ])
             },
             cross_slice_thresholds={
                 'auc':
-                    config.CrossSliceMetricThresholds(thresholds=[
-                        config.CrossSliceMetricThreshold(
+                    config_pb2.CrossSliceMetricThresholds(thresholds=[
+                        config_pb2.CrossSliceMetricThreshold(
                             cross_slicing_specs=[
-                                config.CrossSlicingSpec(
+                                config_pb2.CrossSlicingSpec(
                                     baseline_spec=baseline_slice_spec,
                                     slicing_specs=slice_specs)
                             ],
-                            threshold=config.MetricThreshold(
-                                value_threshold=config.GenericValueThreshold(),
-                                change_threshold=config.GenericChangeThreshold(
-                                )))
+                            threshold=config_pb2.MetricThreshold(
+                                value_threshold=config_pb2
+                                .GenericValueThreshold(),
+                                change_threshold=config_pb2
+                                .GenericChangeThreshold()))
                     ]),
                 'mse':
-                    config.CrossSliceMetricThresholds(thresholds=[
-                        config.CrossSliceMetricThreshold(
+                    config_pb2.CrossSliceMetricThresholds(thresholds=[
+                        config_pb2.CrossSliceMetricThreshold(
                             cross_slicing_specs=[
-                                config.CrossSlicingSpec(
+                                config_pb2.CrossSlicingSpec(
                                     baseline_spec=baseline_slice_spec,
                                     slicing_specs=slice_specs)
                             ],
-                            threshold=config.MetricThreshold(
-                                change_threshold=config.GenericChangeThreshold(
-                                ))),
+                            threshold=config_pb2.MetricThreshold(
+                                change_threshold=config_pb2
+                                .GenericChangeThreshold())),
                         # Test for duplicate cross_slicing_spec.
-                        config.CrossSliceMetricThreshold(
+                        config_pb2.CrossSliceMetricThreshold(
                             cross_slicing_specs=[
-                                config.CrossSlicingSpec(
+                                config_pb2.CrossSlicingSpec(
                                     baseline_spec=baseline_slice_spec,
                                     slicing_specs=slice_specs)
                             ],
-                            threshold=config.MetricThreshold(
-                                value_threshold=config.GenericValueThreshold()))
+                            threshold=config_pb2.MetricThreshold(
+                                value_threshold=config_pb2
+                                .GenericValueThreshold()))
                     ])
             },
             model_names=['model_name'],
             output_names=['output_name']),
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='ExampleCount',
                     config=json.dumps({'name': 'example_count'}),
-                    threshold=config.MetricThreshold(
-                        value_threshold=config.GenericValueThreshold()))
+                    threshold=config_pb2.MetricThreshold(
+                        value_threshold=config_pb2.GenericValueThreshold()))
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1', 'output_name2']),
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='WeightedExampleCount',
                     config=json.dumps({'name': 'weighted_example_count'}),
-                    threshold=config.MetricThreshold(
-                        value_threshold=config.GenericValueThreshold()))
+                    threshold=config_pb2.MetricThreshold(
+                        value_threshold=config_pb2.GenericValueThreshold()))
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1', 'output_name2']),
-        config.MetricsSpec(
+        config_pb2.MetricsSpec(
             metrics=[
-                config.MetricConfig(
+                config_pb2.MetricConfig(
                     class_name='MeanSquaredError',
                     config=json.dumps({'name': 'mse'}),
-                    threshold=config.MetricThreshold(
-                        change_threshold=config.GenericChangeThreshold())),
-                config.MetricConfig(
+                    threshold=config_pb2.MetricThreshold(
+                        change_threshold=config_pb2.GenericChangeThreshold())),
+                config_pb2.MetricConfig(
                     class_name='MeanLabel',
                     config=json.dumps({'name': 'mean_label'}),
-                    threshold=config.MetricThreshold(
-                        change_threshold=config.GenericChangeThreshold()),
+                    threshold=config_pb2.MetricThreshold(
+                        change_threshold=config_pb2.GenericChangeThreshold()),
                     per_slice_thresholds=[
-                        config.PerSliceMetricThreshold(
+                        config_pb2.PerSliceMetricThreshold(
                             slicing_specs=slice_specs,
-                            threshold=config.MetricThreshold(
-                                change_threshold=config.GenericChangeThreshold(
-                                ))),
+                            threshold=config_pb2.MetricThreshold(
+                                change_threshold=config_pb2
+                                .GenericChangeThreshold())),
                     ],
                     cross_slice_thresholds=[
-                        config.CrossSliceMetricThreshold(
+                        config_pb2.CrossSliceMetricThreshold(
                             cross_slicing_specs=[
-                                config.CrossSlicingSpec(
+                                config_pb2.CrossSlicingSpec(
                                     baseline_spec=baseline_slice_spec,
                                     slicing_specs=slice_specs)
                             ],
-                            threshold=config.MetricThreshold(
-                                change_threshold=config.GenericChangeThreshold(
-                                )))
+                            threshold=config_pb2.MetricThreshold(
+                                change_threshold=config_pb2
+                                .GenericChangeThreshold()))
                     ]),
             ],
             model_names=['model_name'],
             output_names=['output_name'],
-            binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
-            aggregate=config.AggregationOptions(
+            binarize=config_pb2.BinarizationOptions(
+                class_ids={'values': [0, 1]}),
+            aggregate=config_pb2.AggregationOptions(
                 macro_average=True, class_weights={
                     0: 1.0,
                     1: 1.0
@@ -472,13 +479,14 @@ class MetricSpecsTest(tf.test.TestCase):
                 'output_1': 1.0,
                 'output_2': 1.0
             },
-            binarize=config.BinarizationOptions(class_ids={'values': [0, 1]}),
-            aggregate=config.AggregationOptions(
+            binarize=config_pb2.BinarizationOptions(
+                class_ids={'values': [0, 1]}),
+            aggregate=config_pb2.AggregationOptions(
                 macro_average=True, class_weights={
                     0: 1.0,
                     1: 1.0
                 })),
-        config.EvalConfig())
+        config_pb2.EvalConfig())
 
     keys = []
     for m in computations:
@@ -559,13 +567,14 @@ class MetricSpecsTest(tf.test.TestCase):
   # This tests b/155810786
   def testToComputationsWithMixedAggregationAndNonAggregationMetrics(self):
     computations = metric_specs.to_computations([
-        config.MetricsSpec(
-            metrics=[config.MetricConfig(class_name='CategoricalAccuracy')]),
-        config.MetricsSpec(
-            metrics=[config.MetricConfig(class_name='BinaryCrossentropy')],
-            binarize=config.BinarizationOptions(class_ids={'values': [1]}),
-            aggregate=config.AggregationOptions(micro_average=True))
-    ], config.EvalConfig())
+        config_pb2.MetricsSpec(
+            metrics=[config_pb2.MetricConfig(
+                class_name='CategoricalAccuracy')]),
+        config_pb2.MetricsSpec(
+            metrics=[config_pb2.MetricConfig(class_name='BinaryCrossentropy')],
+            binarize=config_pb2.BinarizationOptions(class_ids={'values': [1]}),
+            aggregate=config_pb2.AggregationOptions(micro_average=True))
+    ], config_pb2.EvalConfig())
 
     # 3 separate computations should be used (one for aggregated metrics, one
     # for non-aggregated metrics, and one for metrics associated with class 1)

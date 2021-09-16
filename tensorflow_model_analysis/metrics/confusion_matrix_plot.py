@@ -21,10 +21,10 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 DEFAULT_NUM_THRESHOLDS = 1000
 
@@ -56,7 +56,7 @@ metric_types.register_metric(ConfusionMatrixPlot)
 def _confusion_matrix_plot(
     num_thresholds: int = DEFAULT_NUM_THRESHOLDS,
     name: Text = CONFUSION_MATRIX_PLOT_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,

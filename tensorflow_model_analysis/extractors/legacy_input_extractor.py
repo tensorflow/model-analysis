@@ -24,16 +24,16 @@ from typing import Any, Dict, List, Optional, Text, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.coders import example_coder
 
 _INPUT_EXTRACTOR_STAGE_NAME = 'ExtractInputs'
 
 
-def InputExtractor(eval_config: config.EvalConfig) -> extractor.Extractor:
+def InputExtractor(eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
   """Creates an extractor for extracting features, labels, and example weights.
 
   The extractor's PTransform parses tf.train.Example protos stored under the
@@ -90,7 +90,7 @@ def _keys_and_values(  # pylint: disable=invalid-name
     return ([], None)
 
 
-def _ParseExample(extracts: types.Extracts, eval_config: config.EvalConfig):
+def _ParseExample(extracts: types.Extracts, eval_config: config_pb2.EvalConfig):
   """Parses serialized tf.train.Example to create additional extracts.
 
   Args:
@@ -136,8 +136,9 @@ def _ParseExample(extracts: types.Extracts, eval_config: config.EvalConfig):
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-def _ExtractInputs(extracts: beam.pvalue.PCollection,
-                   eval_config: config.EvalConfig) -> beam.pvalue.PCollection:
+def _ExtractInputs(
+    extracts: beam.pvalue.PCollection,
+    eval_config: config_pb2.EvalConfig) -> beam.pvalue.PCollection:
   """Extracts inputs from serialized tf.train.Example protos.
 
   Args:

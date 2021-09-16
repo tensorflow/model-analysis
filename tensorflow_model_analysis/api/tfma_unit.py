@@ -66,7 +66,6 @@ from typing import Any, List, Dict, Text, Optional
 import apache_beam as beam
 from apache_beam.testing import util as beam_util
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
@@ -74,6 +73,7 @@ from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tfx_bsl.tfxio import raw_tf_record
 
@@ -275,7 +275,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
-    eval_config = config.EvalConfig()
+    eval_config = config_pb2.EvalConfig()
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks)
@@ -374,7 +374,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     slicing_specs = None
     if slice_spec:
       slicing_specs = [s.to_proto() for s in slice_spec]
-    eval_config = config.EvalConfig(slicing_specs=slicing_specs)
+    eval_config = config_pb2.EvalConfig(slicing_specs=slicing_specs)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_saved_model_path,
         add_metrics_callbacks=add_metrics_callbacks)

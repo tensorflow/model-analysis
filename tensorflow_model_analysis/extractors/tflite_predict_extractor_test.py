@@ -25,12 +25,12 @@ from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import test_util
 
 from google.protobuf import text_format
@@ -84,11 +84,12 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
     with tf.io.gfile.GFile(os.path.join(tflite_model_dir, 'tflite'), 'wb') as f:
       f.write(tflite_model)
 
-    model_specs = [config.ModelSpec(name='model1', model_type='tf_lite')]
+    model_specs = [config_pb2.ModelSpec(name='model1', model_type='tf_lite')]
     if multi_model:
-      model_specs.append(config.ModelSpec(name='model2', model_type='tf_lite'))
+      model_specs.append(
+          config_pb2.ModelSpec(name='model2', model_type='tf_lite'))
 
-    eval_config = config.EvalConfig(model_specs=model_specs)
+    eval_config = config_pb2.EvalConfig(model_specs=model_specs)
     eval_shared_models = [
         self.createTestEvalSharedModel(
             model_name='model1',

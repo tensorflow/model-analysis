@@ -24,12 +24,12 @@ from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import tfjs_predict_extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import test_util
 
 from google.protobuf import text_format
@@ -98,11 +98,12 @@ class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
         dst_model_path,
     ])
 
-    model_specs = [config.ModelSpec(name='model1', model_type='tf_js')]
+    model_specs = [config_pb2.ModelSpec(name='model1', model_type='tf_js')]
     if multi_model:
-      model_specs.append(config.ModelSpec(name='model2', model_type='tf_js'))
+      model_specs.append(
+          config_pb2.ModelSpec(name='model2', model_type='tf_js'))
 
-    eval_config = config.EvalConfig(model_specs=model_specs)
+    eval_config = config_pb2.EvalConfig(model_specs=model_specs)
     eval_shared_models = [
         self.createTestEvalSharedModel(
             model_name='model1',

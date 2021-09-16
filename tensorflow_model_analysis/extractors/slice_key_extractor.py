@@ -25,19 +25,19 @@ from typing import List, Optional
 
 import apache_beam as beam
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import util
 
 SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSliceKeys'
 
 
 def SliceKeyExtractor(
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     materialize: Optional[bool] = True) -> extractor.Extractor:
   """Creates an extractor for extracting slice keys.
 
@@ -86,7 +86,7 @@ def SliceKeyExtractor(
 class ExtractSliceKeysFn(beam.DoFn):
   """A DoFn that extracts slice keys that apply per example."""
 
-  def __init__(self, eval_config: Optional[config.EvalConfig],
+  def __init__(self, eval_config: Optional[config_pb2.EvalConfig],
                materialize: bool):
     self._eval_config = eval_config
     self._materialize = materialize
@@ -145,7 +145,7 @@ class ExtractSliceKeysFn(beam.DoFn):
 @beam.typehints.with_output_types(types.Extracts)
 def ExtractSliceKeys(extracts: beam.pvalue.PCollection,
                      slice_spec: List[slicer.SingleSliceSpec],
-                     eval_config: Optional[config.EvalConfig] = None,
+                     eval_config: Optional[config_pb2.EvalConfig] = None,
                      materialize: bool = True) -> beam.pvalue.PCollection:
   return extracts | beam.ParDo(
       ExtractSliceKeysFn(eval_config, materialize), slice_spec=slice_spec)

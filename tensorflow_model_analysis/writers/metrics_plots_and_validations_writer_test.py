@@ -27,7 +27,6 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
@@ -47,6 +46,7 @@ from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
@@ -830,22 +830,22 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             }""", validation_result_pb2.ValidationResult())
     ]
 
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(name='candidate'),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(name='candidate'),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
-        slicing_specs=[config.SlicingSpec()],
+        slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='AUC',
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
-                                slicing_specs=[config.SlicingSpec()],
-                                threshold=config.MetricThreshold(
-                                    value_threshold=config
+                            config_pb2.PerSliceMetricThreshold(
+                                slicing_specs=[config_pb2.SlicingSpec()],
+                                threshold=config_pb2.MetricThreshold(
+                                    value_threshold=config_pb2
                                     .GenericValueThreshold(
                                         lower_bound={'value': 0.7})))
                         ]),
@@ -956,27 +956,27 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     ]
 
     slicing_specs = [
-        config.SlicingSpec(),
-        config.SlicingSpec(feature_keys=['x']),
-        config.SlicingSpec(feature_keys=['x', 'y']),
-        config.SlicingSpec(feature_keys=['z']),
+        config_pb2.SlicingSpec(),
+        config_pb2.SlicingSpec(feature_keys=['x']),
+        config_pb2.SlicingSpec(feature_keys=['x', 'y']),
+        config_pb2.SlicingSpec(feature_keys=['z']),
     ]
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(name='candidate'),
-            config.ModelSpec(name='baseline', is_baseline=True)
+            config_pb2.ModelSpec(name='candidate'),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True)
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='AUC',
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
-                                threshold=config.MetricThreshold(
-                                    value_threshold=config
+                                threshold=config_pb2.MetricThreshold(
+                                    value_threshold=config_pb2
                                     .GenericValueThreshold(
                                         lower_bound={'value': 0.7})))
                         ]),
@@ -1263,24 +1263,24 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     ]
 
     slicing_specs = [
-        config.SlicingSpec(),
-        config.SlicingSpec(feature_keys=['slice_does_not_exist'])
+        config_pb2.SlicingSpec(),
+        config_pb2.SlicingSpec(feature_keys=['slice_does_not_exist'])
     ]
     cross_slicing_specs = [
-        config.CrossSlicingSpec(
-            baseline_spec=config.SlicingSpec(
+        config_pb2.CrossSlicingSpec(
+            baseline_spec=config_pb2.SlicingSpec(
                 feature_keys=['slice_does_not_exist']),
             slicing_specs=[
-                config.SlicingSpec(feature_keys=['slice_does_not_exist'])
+                config_pb2.SlicingSpec(feature_keys=['slice_does_not_exist'])
             ])
     ]
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='candidate',
                 label_key='label',
                 example_weight_key='example_weight'),
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='baseline',
                 label_key='label',
                 example_weight_key='example_weight',
@@ -1289,63 +1289,63 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         slicing_specs=slicing_specs,
         cross_slicing_specs=cross_slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         per_slice_thresholds=[
-                            config.PerSliceMetricThreshold(
+                            config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 # 1.5 < 1, NOT OK.
-                                threshold=config.MetricThreshold(
-                                    value_threshold=config
+                                threshold=config_pb2.MetricThreshold(
+                                    value_threshold=config_pb2
                                     .GenericValueThreshold(
                                         upper_bound={'value': 1})))
                         ],
                         # missing cross slice
                         cross_slice_thresholds=[
-                            config.CrossSliceMetricThreshold(
+                            config_pb2.CrossSliceMetricThreshold(
                                 cross_slicing_specs=cross_slicing_specs,
-                                threshold=config.MetricThreshold(
-                                    value_threshold=config
+                                threshold=config_pb2.MetricThreshold(
+                                    value_threshold=config_pb2
                                     .GenericValueThreshold(
                                         upper_bound={'value': 1})))
                         ]),
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='ExampleCount',
                         # 2 > 10, NOT OK.
-                        threshold=config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
+                        threshold=config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
                                 lower_bound={'value': 10}))),
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         class_name='MeanLabel',
                         # 0.5 > 1 and 0.5 > 1?: NOT OK.
-                        threshold=config.MetricThreshold(
-                            change_threshold=config.GenericChangeThreshold(
-                                direction=config.MetricDirection
+                        threshold=config_pb2.MetricThreshold(
+                            change_threshold=config_pb2.GenericChangeThreshold(
+                                direction=config_pb2.MetricDirection
                                 .HIGHER_IS_BETTER,
                                 relative={'value': 1},
                                 absolute={'value': 1}))),
-                    config.MetricConfig(
+                    config_pb2.MetricConfig(
                         # MeanPrediction = (0+0)/(1+0.5) = 0
                         class_name='MeanPrediction',
                         # -.01 < 0 < .01, OK.
                         # Diff% = -.333/.333 = -100% < -99%, OK.
                         # Diff = 0 - .333 = -.333 < 0, OK.
-                        threshold=config.MetricThreshold(
-                            value_threshold=config.GenericValueThreshold(
+                        threshold=config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
                                 upper_bound={'value': .01},
                                 lower_bound={'value': -.01}),
-                            change_threshold=config.GenericChangeThreshold(
-                                direction=config.MetricDirection
+                            change_threshold=config_pb2.GenericChangeThreshold(
+                                direction=config_pb2.MetricDirection
                                 .LOWER_IS_BETTER,
                                 relative={'value': -.99},
                                 absolute={'value': 0})))
                 ],
                 model_names=['candidate', 'baseline']),
         ],
-        options=config.Options(
-            disabled_outputs={'values': ['eval_config.json']}),
+        options=config_pb2.Options(
+            disabled_outputs={'values': ['eval_config_pb2.json']}),
     )
     slice_spec = [
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
@@ -1470,17 +1470,17 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         validation_result.metric_validations_per_slice[0].failures)
 
     expected_missing_slices = [
-        config.SlicingSpec(feature_keys=['slice_does_not_exist'])
+        config_pb2.SlicingSpec(feature_keys=['slice_does_not_exist'])
     ]
     self.assertLen(validation_result.missing_slices, 1)
     self.assertCountEqual(expected_missing_slices,
                           validation_result.missing_slices)
     expected_missing_cross_slices = [
-        config.CrossSlicingSpec(
-            baseline_spec=config.SlicingSpec(
+        config_pb2.CrossSlicingSpec(
+            baseline_spec=config_pb2.SlicingSpec(
                 feature_keys=['slice_does_not_exist']),
             slicing_specs=[
-                config.SlicingSpec(feature_keys=['slice_does_not_exist'])
+                config_pb2.SlicingSpec(feature_keys=['slice_does_not_exist'])
             ])
     ]
     self.assertLen(validation_result.missing_cross_slices, 1)
@@ -1558,15 +1558,15 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     ]
 
     slicing_specs = [
-        config.SlicingSpec(),
+        config_pb2.SlicingSpec(),
     ]
-    eval_config = config.EvalConfig(
+    eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='candidate',
                 label_key='label',
                 example_weight_key='example_weight'),
-            config.ModelSpec(
+            config_pb2.ModelSpec(
                 name='baseline',
                 label_key='label',
                 example_weight_key='example_weight',
@@ -1574,16 +1574,16 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         ],
         slicing_specs=slicing_specs,
         metrics_specs=[
-            config.MetricsSpec(
+            config_pb2.MetricsSpec(
                 metrics=[
-                    config.MetricConfig(class_name='WeightedExampleCount'),
-                    config.MetricConfig(class_name='ExampleCount'),
-                    config.MetricConfig(class_name='MeanLabel')
+                    config_pb2.MetricConfig(class_name='WeightedExampleCount'),
+                    config_pb2.MetricConfig(class_name='ExampleCount'),
+                    config_pb2.MetricConfig(class_name='MeanLabel')
                 ],
                 model_names=['candidate', 'baseline']),
         ],
-        options=config.Options(
-            disabled_outputs={'values': ['eval_config.json']}),
+        options=config_pb2.Options(
+            disabled_outputs={'values': ['eval_config_pb2.json']}),
     )
     slice_spec = [
         slicer.SingleSliceSpec(spec=s) for s in eval_config.slicing_specs
@@ -1681,10 +1681,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
             None, temp_eval_export_dir))
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec()],
-        options=config.Options(
-            disabled_outputs={'values': ['eval_config.json']}))
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec()],
+        options=config_pb2.Options(
+            disabled_outputs={'values': ['eval_config_pb2.json']}))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=[
@@ -1830,14 +1830,14 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
             None, temp_eval_export_dir))
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec()],
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec()],
         slicing_specs=[
-            config.SlicingSpec(),
-            config.SlicingSpec(feature_keys=['prediction'])
+            config_pb2.SlicingSpec(),
+            config_pb2.SlicingSpec(feature_keys=['prediction'])
         ],
-        options=config.Options(
-            disabled_outputs={'values': ['eval_config.json']}))
+        options=config_pb2.Options(
+            disabled_outputs={'values': ['eval_config_pb2.json']}))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
         add_metrics_callbacks=[
@@ -1991,15 +1991,15 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
   def testWriteAttributions(self, output_file_format):
     attributions_file = os.path.join(self._getTempDir(), 'attributions')
-    eval_config = config.EvalConfig(
-        model_specs=[config.ModelSpec()],
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec()],
         metrics_specs=[
-            config.MetricsSpec(metrics=[
-                config.MetricConfig(class_name=attributions.TotalAttributions()
-                                    .__class__.__name__)
+            config_pb2.MetricsSpec(metrics=[
+                config_pb2.MetricConfig(class_name=attributions
+                                        .TotalAttributions().__class__.__name__)
             ])
         ],
-        options=config.Options(
+        options=config_pb2.Options(
             disabled_outputs={'values': ['eval_config.json']}))
     extractors = [slice_key_extractor.SliceKeyExtractor()]
     evaluators = [

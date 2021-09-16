@@ -29,9 +29,9 @@ import tensorflow as tf
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.utils import util
 
 _FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
 

@@ -26,11 +26,8 @@ from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Te
 import apache_beam as beam
 import numpy as np
 
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.evaluators import eval_saved_model_util
@@ -43,7 +40,10 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import model_util
+from tensorflow_model_analysis.utils import util
 from tfx_bsl.tfxio import tensor_adapter
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -62,7 +62,7 @@ _COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT = 8
 
 
 def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
@@ -405,7 +405,7 @@ def _remove_private_metrics(result: Dict[metric_types.MetricKey, Any]):
 @beam.ptransform_fn
 def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
     sliced_combiner_outputs: beam.pvalue.PCollection,
-    cross_slice_specs: Optional[Iterable[config.CrossSlicingSpec]],
+    cross_slice_specs: Optional[Iterable[config_pb2.CrossSlicingSpec]],
     cross_slice_computations: List[metric_types.CrossSliceMetricComputation],
 ) -> Tuple[slicer.SliceKeyOrCrossSliceKeyType, metric_types.MetricsDict]:
   """Generates CrossSlice metrics from SingleSlices."""
@@ -413,7 +413,8 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
   def is_slice_applicable(
       sliced_combiner_output: Tuple[slicer.SliceKeyType,
                                     metric_types.MetricsDict],
-      slicing_specs: Union[config.SlicingSpec, Iterable[config.SlicingSpec]]
+      slicing_specs: Union[config_pb2.SlicingSpec,
+                           Iterable[config_pb2.SlicingSpec]]
   ) -> bool:
     slice_key, _ = sliced_combiner_output
     for slicing_spec in slicing_specs:
@@ -425,7 +426,8 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
   def is_not_slice_applicable(
       sliced_combiner_output: Tuple[slicer.SliceKeyType,
                                     metric_types.MetricsDict],
-      slicing_specs: Union[config.SlicingSpec, Iterable[config.SlicingSpec]]
+      slicing_specs: Union[config_pb2.SlicingSpec,
+                           Iterable[config_pb2.SlicingSpec]]
   ) -> bool:
     return not is_slice_applicable(sliced_combiner_output, slicing_specs)
 
@@ -509,7 +511,7 @@ def _AddDerivedCrossSliceAndDiffMetrics(  # pylint: disable=invalid-name
                                                 metric_types.MetricsDict]],
     derived_computations: List[metric_types.DerivedMetricComputation],
     cross_slice_computations: List[metric_types.CrossSliceMetricComputation],
-    cross_slice_specs: Optional[Iterable[config.CrossSlicingSpec]] = None,
+    cross_slice_specs: Optional[Iterable[config_pb2.CrossSlicingSpec]] = None,
     baseline_model_name: Optional[Text] = None
 ) -> beam.PCollection[Tuple[slicer.SliceKeyType, metric_types.MetricsDict]]:
   """A PTransform for adding cross slice and derived metrics.
@@ -611,8 +613,9 @@ _ConfidenceIntervalParams = NamedTuple(
 
 
 def _get_confidence_interval_params(
-    eval_config: config.EvalConfig,
-    metrics_specs: Iterable[config.MetricsSpec]) -> _ConfidenceIntervalParams:
+    eval_config: config_pb2.EvalConfig,
+    metrics_specs: Iterable[config_pb2.MetricsSpec]
+) -> _ConfidenceIntervalParams:
   """Helper method for extracting confidence interval info from configs.
 
   Args:
@@ -633,9 +636,9 @@ def _get_confidence_interval_params(
   num_bootstrap_samples = 0
   ci_method = eval_config.options.confidence_intervals.method
   if eval_config.options.compute_confidence_intervals.value:
-    if ci_method == config.ConfidenceIntervalOptions.JACKKNIFE:
+    if ci_method == config_pb2.ConfidenceIntervalOptions.JACKKNIFE:
       num_jackknife_samples = _DEFAULT_NUM_JACKKNIFE_BUCKETS
-    elif ci_method == config.ConfidenceIntervalOptions.POISSON_BOOTSTRAP:
+    elif ci_method == config_pb2.ConfidenceIntervalOptions.POISSON_BOOTSTRAP:
       num_bootstrap_samples = _DEFAULT_NUM_BOOTSTRAP_SAMPLES
   return _ConfidenceIntervalParams(num_jackknife_samples, num_bootstrap_samples,
                                    skip_ci_metric_keys)
@@ -667,8 +670,8 @@ def _add_ci_derived_metrics(
 @beam.typehints.with_output_types(Any)
 def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    eval_config: config.EvalConfig,
-    metrics_specs: List[config.MetricsSpec],
+    eval_config: config_pb2.EvalConfig,
+    metrics_specs: List[config_pb2.MetricsSpec],
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
@@ -863,7 +866,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(Any)
 def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    eval_config: config.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
     metrics_key: Text = constants.METRICS_KEY,
     plots_key: Text = constants.PLOTS_KEY,
@@ -916,7 +919,7 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
   # If there are no metrics specs then add an empty one (this is required for
   # cases where only the default metrics from the model are used).
   if not metrics_specs_by_query_key:
-    metrics_specs_by_query_key[''] = [config.MetricsSpec()]
+    metrics_specs_by_query_key[''] = [config_pb2.MetricsSpec()]
 
   # pylint: disable=no-value-for-parameter
 

@@ -27,7 +27,7 @@ import six
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import types
-from tensorflow_model_analysis import util as tfma_util
+from tensorflow_model_analysis.utils import util as tfma_util
 
 from typing import Any, Callable, Dict, Optional, Text
 

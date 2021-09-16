@@ -22,9 +22,9 @@ from __future__ import print_function
 from typing import Dict, Iterable, Optional, Text
 
 import apache_beam as beam
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 SQUARED_PEARSON_CORRELATION_NAME = 'squared_pearson_correlation'
 
@@ -48,7 +48,7 @@ metric_types.register_metric(SquaredPearsonCorrelation)
 
 def _squared_pearson_correlation(
     name: Text = SQUARED_PEARSON_CORRELATION_NAME,
-    eval_config: Optional[config.EvalConfig] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
@@ -92,7 +92,7 @@ class _SquaredPearsonCorrelationCombiner(beam.CombineFn):
   """Computes squared pearson correlation (r^2) metric."""
 
   def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config.EvalConfig],
+               eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]]):
     self._key = key
