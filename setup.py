@@ -306,7 +306,7 @@ setup_args = {
             nightly='>=1.3.0.dev',
             git_master='@git+https://github.com/tensorflow/metadata@master'),
         'tfx-bsl' + select_constraint(
-            default='>=1.3.1,<1.4.0',
+            default='>=1.3.0,<1.4.0',
             nightly='>=1.4.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
     ],

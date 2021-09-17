@@ -9,6 +9,7 @@
 *   Correctly skips non-numeric numpy array type metrics for confidence interval
     computations.
 *   Depends on `apache-beam[gcp]>=2.31,<3`.
+*   Depends on `tfx-bsl>=1.3.0,<1.4.0`.
 
 ## Breaking Changes
 
