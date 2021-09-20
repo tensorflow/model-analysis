@@ -6,9 +6,21 @@
 
 ## Bug fixes and other Changes
 
+## Breaking Changes
+
+## Deprecations
+
+# Version 0.34.1
+
+## Major Features and Improvements
+
+*   N/A
+
+## Bug fixes and other Changes
+
 *   Correctly skips non-numeric numpy array type metrics for confidence interval
     computations.
-*   Depends on `apache-beam[gcp]>=2.31,<3`.
+*   Depends on `apache-beam[gcp]>=2.32,<3`.
 *   Depends on `tfx-bsl>=1.3.0,<1.4.0`.
 
 ## Breaking Changes
@@ -34,6 +46,8 @@
     *   `tfma.unique_key` -> `tfma.utils.unique_key`
 
 ## Deprecations
+
+*   N/A
 
 # Version 0.34.0
 
