@@ -1,6 +1,6 @@
 {
   "name": "tensorflow_model_analysis",
-  "version": "0.35.0.dev",
+  "version": "0.34.1",
   "homepage": "https://github.com/tensorflow/model-analysis",
   "bugs": "https://github.com/tensorflow/model-analysis/issues",
   "license": "Apache-2.0",
