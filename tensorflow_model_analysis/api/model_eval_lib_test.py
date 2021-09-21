@@ -765,12 +765,24 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     else:
       eval_shared_model = {'candidate': model, 'baseline': baseline}
     output_path = self._getTempDir()
-    eval_results = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        data_location=data_location,
-        output_path=output_path,
-        schema=schema)
+    # Raise RuntimeError for missing baseline with change thresholds.
+    if not rubber_stamp and remove_baseline:
+      with self.assertRaises(RuntimeError):
+        model_eval_lib.run_model_analysis(
+            eval_config=eval_config,
+            eval_shared_model=eval_shared_model,
+            data_location=data_location,
+            output_path=output_path,
+            schema=schema)
+      # Will not have any result since the pipeline didn't run.
+      return
+    else:
+      eval_results = model_eval_lib.run_model_analysis(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          data_location=data_location,
+          output_path=output_path,
+          schema=schema)
 
     # Directly check validaton file since it is not in EvalResult.
     validations_file = os.path.join(output_path, constants.VALIDATIONS_KEY)

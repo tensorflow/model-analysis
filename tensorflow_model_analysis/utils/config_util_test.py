@@ -23,6 +23,34 @@ from google.protobuf import text_format
 
 class ConfigTest(tf.test.TestCase):
 
+  def testUpdateConfigWithDefaultsNoBaselineModelNonRubberstamp(self):
+    eval_config_pbtxt = """
+      model_specs { name: "" }
+      metrics_specs {
+        metrics {
+          class_name: "MeanLabel"
+          per_slice_thresholds {
+            slicing_specs: {}
+            threshold {
+              value_threshold {
+                lower_bound { value: 0.9 }
+              }
+              change_threshold {
+                direction: HIGHER_IS_BETTER
+                absolute { value: -1e-10 }
+              }
+            }
+          }
+        }
+      }
+    """
+
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
+
+    with self.assertRaises(RuntimeError):
+      config_util.update_eval_config_with_defaults(
+          eval_config, has_baseline=False, rubber_stamp=False)
+
   def testUpdateConfigWithDefaultsNoModel(self):
     eval_config_pbtxt = """
       metrics_specs {

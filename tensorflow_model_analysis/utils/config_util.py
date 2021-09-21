@@ -101,12 +101,16 @@ def update_eval_config_with_defaults(
     rubber_stamp: True if this model is being rubber stamped. When a model is
       rubber stamped diff thresholds will be ignored if an associated baseline
       model is not passed.
+
+  Raises:
+    RuntimeError: on missing baseline model for non-rubberstamp cases.
   """
   if (not has_baseline and has_change_threshold(eval_config) and
       not rubber_stamp):
     # TODO(b/173657964): Raise an error instead of logging an error.
-    logging.error('There are change thresholds, but the baseline is missing. '
-                  'This is allowed only when rubber stamping (first run).')
+    raise RuntimeError(
+        'There are change thresholds, but the baseline is missing. '
+        'This is allowed only when rubber stamping (first run).')
 
   updated_config = config_pb2.EvalConfig()
   updated_config.CopyFrom(eval_config)

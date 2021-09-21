@@ -79,7 +79,8 @@
 
 ## Breaking Changes
 
-*   N/A
+*   Missing baseline model when change thresholds are present is not allowed
+    anymore, an exception will be raised unless the rubber_stamp flag is True.
 
 ## Deprecations
 
