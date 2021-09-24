@@ -210,7 +210,7 @@ def _separate_confusion_matrix_metrics(
         if output_name not in non_confusion_matrix_metrics:
           non_confusion_matrix_metrics[output_name] = []
         non_confusion_matrix_metrics[output_name].append(metric)
-  return confusion_matrix_metrics, non_confusion_matrix_metrics
+  return confusion_matrix_metrics, non_confusion_matrix_metrics  # pytype: disable=bad-return-type  # typed-keras
 
 
 def _verify_and_update_sub_key(model_name: Text, output_name: Text,

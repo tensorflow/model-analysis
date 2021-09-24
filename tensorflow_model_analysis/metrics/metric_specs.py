@@ -384,16 +384,16 @@ def metric_instance(
   if metric_config.class_name in tfma_metric_classes:
     return _deserialize_tfma_metric(metric_config, tfma_metric_classes)
   elif not metric_config.module:
-    return _deserialize_tf_metric(metric_config, {})
+    return _deserialize_tf_metric(metric_config, {})  # pytype: disable=bad-return-type  # typed-keras
   else:
     cls = getattr(
         importlib.import_module(metric_config.module), metric_config.class_name)
     if issubclass(cls, tf.keras.metrics.Metric):
       return _deserialize_tf_metric(metric_config,
-                                    {metric_config.class_name: cls})
+                                    {metric_config.class_name: cls})  # pytype: disable=bad-return-type  # typed-keras
     elif issubclass(cls, tf.keras.losses.Loss):
       return _deserialize_tf_loss(metric_config,
-                                  {metric_config.class_name: cls})
+                                  {metric_config.class_name: cls})  # pytype: disable=bad-return-type  # typed-keras
     elif issubclass(cls, metric_types.Metric):
       return _deserialize_tfma_metric(metric_config,
                                       {metric_config.class_name: cls})
