@@ -10,6 +10,8 @@
 
 ## Deprecations
 
+*   Deprecated python3.6 support.
+
 # Version 0.34.1
 
 ## Major Features and Improvements
