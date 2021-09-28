@@ -21,9 +21,9 @@ Caution: TFMA may introduce backwards incompatible changes before version 1.0.
 The recommended way to install TFMA is using the
 [PyPI package](https://pypi.org/project/tensorflow-model-analysis/):
 
-<pre class="devsite-terminal devsite-click-to-copy">
+```Shell
 pip install tensorflow-model-analysis
-</pre>
+```
 
 pip install from https://pypi-nightly.tensorflow.org
 
