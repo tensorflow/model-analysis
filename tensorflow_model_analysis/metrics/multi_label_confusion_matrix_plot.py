@@ -77,7 +77,7 @@ class MultiLabelConfusionMatrixPlot(metric_types.Metric):
   """
 
   def __init__(self,
-               thresholds: Optional[float] = None,
+               thresholds: Optional[List[float]] = None,
                num_thresholds: Optional[int] = None,
                name: Text = MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME):
     """Initializes multi-label confusion matrix.
