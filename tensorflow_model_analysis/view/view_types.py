@@ -46,7 +46,7 @@ class SlicedPlots(
   """
 
 
-MetricsByTextKey = Dict[Text, metrics_for_slice_pb2.MetricValue]
+MetricsByTextKey = Dict[Text, Dict[Text, Any]]
 MetricsBySubKey = Dict[Text, MetricsByTextKey]
 MetricsByOutputName = Dict[Text, MetricsBySubKey]
 
