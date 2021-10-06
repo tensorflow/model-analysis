@@ -177,7 +177,8 @@ class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
-            flatten=False))
+            flatten=False,
+            require_single_example_weight=True))
     if not labels.shape:
       raise ValueError(
           'Labels missing from example: StandardMetricInputs={}'.format(

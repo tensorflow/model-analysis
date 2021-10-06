@@ -356,7 +356,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     example4 = {
         'labels': np.array([1]),
         'predictions': np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
-        'example_weights': np.array([0.3]),
+        # This tests that multi-dimensional weights are allowed.
+        'example_weights': np.array([0.3, 0.3, 0.3, 0.3, 0.3]),
     }
 
     with beam.Pipeline() as pipeline:

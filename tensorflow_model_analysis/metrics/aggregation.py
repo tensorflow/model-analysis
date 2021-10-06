@@ -295,7 +295,8 @@ class _ClassWeightsFromLabelsCombiner(beam.CombineFn):
             model_name=self._key.model_name,
             output_name=self._key.output_name,
             flatten=False,
-            allow_none=True)):
+            allow_none=True,
+            require_single_example_weight=True)):
       if example_weight is None:
         example_weight = 1.0
       else:

@@ -432,6 +432,53 @@ class UtilTest(tf.test.TestCase):
           metric_util.to_label_prediction_example_weight(
               example, output_name='output1'))
 
+  def testStandardMetricInputsWithNonScalarWeights(self):
+    example = metric_types.StandardMetricInputs(
+        label={'output_name': np.array([2])},
+        prediction={'output_name': np.array([0, 0.5, 0.3, 0.9])},
+        example_weight={'output_name': np.array([1.0, 0.0, 1.0, 1.0])})
+    iterable = metric_util.to_label_prediction_example_weight(
+        example, output_name='output_name', require_single_example_weight=False)
+
+    for expected_label, expected_prediction, expected_weight in zip(
+        (0.0, 0.0, 1.0, 0.0), (0.0, 0.5, 0.3, 0.9), (1.0, 0.0, 1.0, 1.0)):
+      got_label, got_pred, got_example_weight = next(iterable)
+      self.assertAllClose(got_label, np.array([expected_label]))
+      self.assertAllEqual(got_pred, np.array([expected_prediction]))
+      self.assertAllClose(got_example_weight, np.array([expected_weight]))
+
+  def testStandardMetricInputsWithNonScalarWeightsNoFlatten(self):
+    example = metric_types.StandardMetricInputs(
+        label=np.array([2]),
+        prediction=np.array([0, 0.5, 0.3, 0.9]),
+        example_weight=np.array([1.0, 0.0, 1.0, 1.0]))
+    got_label, got_pred, got_example_weight = next(
+        metric_util.to_label_prediction_example_weight(
+            example, flatten=False, require_single_example_weight=False))
+    self.assertAllClose(got_label, np.array([2]))
+    self.assertAllEqual(got_pred, np.array([0, 0.5, 0.3, 0.9]))
+    self.assertAllClose(got_example_weight, np.array([1.0, 0.0, 1.0, 1.0]))
+
+  def testStandardMetricInputsWithMismatchedExampleWeightsRaisesError(self):
+    with self.assertRaises(ValueError):
+      example = metric_types.StandardMetricInputs(
+          labels=np.array([2]),
+          predictions=np.array([0, 0.5, 0.3, 0.9]),
+          example_weights=np.array([1.0, 0.0]))
+      next(
+          metric_util.to_label_prediction_example_weight(
+              example, flatten=True, require_single_example_weight=False))
+
+  def testStandardMetricInputsRequiringSingleExampleWeightRaisesError(self):
+    with self.assertRaises(ValueError):
+      example = metric_types.StandardMetricInputs(
+          labels=np.array([2]),
+          predictions=np.array([0, 0.5, 0.3, 0.9]),
+          example_weights=np.array([1.0, 0.0]))
+      next(
+          metric_util.to_label_prediction_example_weight(
+              example, require_single_example_weight=True))
+
   def testPrepareLabelsAndPredictions(self):
     labels = [0]
     preds = {

@@ -169,7 +169,8 @@ class _NDCGCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._model_name,
             output_name=self._output_name,
-            flatten=False))  # pytype: disable=wrong-arg-types
+            flatten=False,
+            require_single_example_weight=True))  # pytype: disable=wrong-arg-types
     gains = util.get_by_keys(element.features, [self._gain_key])
     if gains.size != predictions.size:
       raise ValueError('expected {} to be same size as predictions {} != {}: '

@@ -240,7 +240,8 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
-            flatten=False))  # pytype: disable=wrong-arg-types
+            flatten=False,
+            require_single_example_weight=True))  # pytype: disable=wrong-arg-types
     if not label.shape:
       raise ValueError(
           'Label missing from example: StandardMetricInputs={}'.format(element))

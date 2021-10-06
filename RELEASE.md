@@ -6,6 +6,8 @@
 
 ## Bug fixes and other Changes
 
+*   Added support for example_weights that are arrays.
+
 ## Breaking Changes
 
 ## Deprecations

@@ -254,6 +254,7 @@ def to_label_prediction_example_weight(
     flatten: bool = True,
     squeeze: bool = True,
     allow_none: bool = False,
+    require_single_example_weight: bool = False
 ) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
   """Yields label, prediction, and example weights for use in calculations.
 
@@ -363,12 +364,16 @@ def to_label_prediction_example_weight(
       yielded values are always arrays of size 1. For example, multi-class /
       multi-label outputs would be converted into label and prediction pairs
       that could then be processed by a binary classification metric in order to
-      compute a micro average over all classes.
+      compute a micro average over all classes. If the example weight is not a
+      scalar, then they will be flattened as well, otherwise the same example
+      weight value will be output for each pair of labels and predictions.
     squeeze: True to squeeze any outputs that have rank > 1. This transforms
       outputs such as np.array([[1]]) to np.array([1]).
     allow_none: True to allow labels or predictions with None values to be
       returned. When used, the values will be returned as empty np.ndarrays. The
       example weight will always be non-empty.
+    require_single_example_weight: True to require that the example_weight be a
+      single value.
 
   Yields:
     Tuple of (label, prediction, example_weight).
@@ -453,11 +458,7 @@ def to_label_prediction_example_weight(
               'error in the pipeline.')
 
     example_weight = util.to_numpy(example_weight)
-
-    # Query based metrics group by a query_id which will result in the
-    # example_weight being replicated once for each matching example in the
-    # group. When this happens convert the example_weight back to a single value
-    if example_weight.size > 1:
+    if require_single_example_weight and example_weight.size > 1:
       example_weight = example_weight.flatten()
       if not np.all(example_weight == example_weight[0]):
         raise ValueError(
@@ -498,8 +499,22 @@ def to_label_prediction_example_weight(
       label = label.reshape((1,))
     if prediction is not None and not prediction.shape:
       prediction = prediction.reshape((1,))
-    if example_weight is not None and not example_weight.shape:
+    if not example_weight.shape:
       example_weight = example_weight.reshape((1,))
+
+    label = label if label is not None else np.array([])
+    prediction = prediction if prediction is not None else np.array([])
+
+    flatten_size = prediction.size or label.size
+    if flatten:
+      if example_weight.size == 1:
+        example_weight = np.array(
+            [float(example_weight) for i in range(flatten_size)])
+      elif example_weight.size != flatten_size:
+        raise ValueError(
+            'example_weight size does not match the size of labels and '
+            'predictions: label={}, prediction={}, example_weight={}'.format(
+                label, prediction, example_weight))
 
     if class_weights:
       if not flatten:
@@ -510,22 +525,14 @@ def to_label_prediction_example_weight(
             "averaging being applied to metrics that don't support micro "
             'averaging')
       example_weight = np.array([
-          float(example_weight) *
-          class_weights[i] if i in class_weights else 0.0
-          for i in range(prediction.shape[-1] or label.shape[-1])
+          example_weight[i] * class_weights[i] if i in class_weights else 0.0
+          for i in range(flatten_size)
       ])
-    elif flatten:
-      example_weight = np.array([
-          float(example_weight)
-          for i in range(prediction.shape[-1] or label.shape[-1])
-      ])
-
-    label = label if label is not None else np.array([])
-    prediction = prediction if prediction is not None else np.array([])
 
     def yield_results(label, prediction, example_weight):
       if (not flatten or (label.size == 0 and prediction.size == 0) or
-          (label.size == 1 and prediction.size == 1)):
+          (label.size == 1 and prediction.size == 1 and
+           example_weight.size == 1)):
         if squeeze:
           yield _squeeze(label), _squeeze(prediction), _squeeze(example_weight)
         else:
@@ -536,19 +543,20 @@ def to_label_prediction_example_weight(
       elif prediction.size == 0:
         for l, w in zip(label.flatten(), example_weight.flatten()):
           yield np.array([l]), prediction, np.array([w])
-      elif label.size == prediction.size:
+      elif label.size == prediction.size and label.size == example_weight.size:
         for l, p, w in zip(label.flatten(), prediction.flatten(),
                            example_weight.flatten()):
           yield np.array([l]), np.array([p]), np.array([w])
-      elif label.shape[-1] == 1:
+      elif label.shape[-1] == 1 and prediction.size == example_weight.size:
         label = one_hot(label, prediction)
         for l, p, w in zip(label.flatten(), prediction.flatten(),
                            example_weight.flatten()):
           yield np.array([l]), np.array([p]), np.array([w])
       else:
         raise ValueError(
-            f'unable to pair labels with predictions: label={label}, '
-            f'prediction={prediction}\n\n'
+            'unable to pair labels, predictions, and example weights: '
+            f'label={label}, prediction={prediction}, '
+            f'example_weight={example_weight}\n\n'
             'This is most likely a configuration error.')
 
     for result in yield_results(label, prediction, example_weight):

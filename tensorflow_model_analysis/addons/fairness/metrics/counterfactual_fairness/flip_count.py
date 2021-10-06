@@ -230,7 +230,8 @@ def flip_count(
             output_name=output_name,
             fractional_labels=False,  # Labels are ignored for flip counts.
             flatten=False,  # Flattened below
-            allow_none=True))  # Allow None labels
+            allow_none=True,  # Allow None labels
+            require_single_example_weight=True))
 
     if prediction.size != counterfactual_prediction.size:
       raise ValueError(

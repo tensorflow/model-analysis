@@ -125,7 +125,8 @@ class _MinLabelPositionCombiner(beam.CombineFn):
             model_name=self._key.model_name,
             output_name=self._key.output_name,
             flatten=False,
-            allow_none=True))  # pytype: disable=wrong-arg-types
+            allow_none=True,
+            require_single_example_weight=True))  # pytype: disable=wrong-arg-types
     if self._label_key:
       labels = util.get_by_keys(element.features, [self._label_key])
     if labels is not None:
