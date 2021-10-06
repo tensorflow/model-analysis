@@ -30,7 +30,16 @@ function loadVulcanizedTemplate() {
   }
   // Jupyter Lab
   else if (window['isJupyterLab']) {
-    templatePath = '/nbextensions/tensorflow_model_analysis/';
+    let baseUrl = '/';
+    const jupyterConfigData = document.getElementById('jupyter-config-data');
+    if (jupyterConfigData) {
+      const configData = JSON.parse(jupyterConfigData.textContent || '');
+      if (configData) {
+        baseUrl = configMap['baseUrl'] || '/';
+      }
+    }
+
+    templatePath = baseUrl + 'nbextensions/tensorflow_model_analysis/';
   }
   // Kubeflow
   else {

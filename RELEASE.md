@@ -8,6 +8,9 @@
 
 *   Added support for example_weights that are arrays.
 
+*   Reads baseUrl in JupyterLab to support TFMA rendering:
+    https://github.com/tensorflow/model-analysis/issues/112
+
 ## Breaking Changes
 
 ## Deprecations
