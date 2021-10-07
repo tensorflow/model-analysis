@@ -67,7 +67,7 @@ define(["@jupyter-widgets/base"], function(__WEBPACK_EXTERNAL_MODULE_3__) { retu
 /* 0 */
 /***/ (function(module, exports) {
 
-module.exports = {"name":"tensorflow_model_analysis","version":"0.30.0","homepage":"https://github.com/tensorflow/model-analysis","bugs":"https://github.com/tensorflow/model-analysis/issues","license":"Apache-2.0","repository":{"type":"git","url":"https://github.com/tensorflow/model-analysis.git"},"main":"lib/index.js","files":["lib/**/*.js","dist/*.js","README.md","LICENSE"],"scripts":{"clean":"rimraf dist/","prepare":"webpack && ./collect-files-before-publish.sh","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"webpack":"^3.5.5","rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.1 || ^2 || ^3 || ^4","lodash":"^4.17.4"},"jupyterlab":{"extension":"lib/labplugin","sharedPackages":{"@jupyter-widgets/base":{"bundled":false,"singleton":true}}},"publishConfig":{"registry":"https://wombat-dressing-room.appspot.com"}}
+module.exports = {"name":"tensorflow_model_analysis","version":"0.34.1","homepage":"https://github.com/tensorflow/model-analysis","bugs":"https://github.com/tensorflow/model-analysis/issues","license":"Apache-2.0","repository":{"type":"git","url":"https://github.com/tensorflow/model-analysis.git"},"main":"lib/index.js","files":["lib/**/*.js","dist/*.js","README.md","LICENSE"],"scripts":{"clean":"rimraf dist/","prepare":"webpack && ./collect-files-before-publish.sh","test":"echo \"Error: no test specified\" && exit 1"},"devDependencies":{"webpack":"^3.5.5","rimraf":"^2.6.1"},"dependencies":{"@jupyter-widgets/base":"^1.1 || ^2 || ^3 || ^4","lodash":"^4.17.4"},"jupyterlab":{"extension":"lib/labplugin","sharedPackages":{"@jupyter-widgets/base":{"bundled":false,"singleton":true}}},"publishConfig":{"registry":"https://wombat-dressing-room.appspot.com"}}
 
 /***/ }),
 /* 1 */
@@ -130,7 +130,16 @@ function loadVulcanizedTemplate() {
   }
   // Jupyter Lab
   else if (window['isJupyterLab']) {
-    templatePath = '/nbextensions/tensorflow_model_analysis/';
+    let baseUrl = '/';
+    const jupyterConfigData = document.getElementById('jupyter-config-data');
+    if (jupyterConfigData) {
+      const configData = JSON.parse(jupyterConfigData.textContent || '');
+      if (configData) {
+        baseUrl = configMap['baseUrl'] || '/';
+      }
+    }
+
+    templatePath = baseUrl + 'nbextensions/tensorflow_model_analysis/';
   }
   // Kubeflow
   else {
