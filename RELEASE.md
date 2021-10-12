@@ -69,6 +69,7 @@
 
 ## Bug fixes and other Changes
 
+*   Depends on `pyarrow>=1,<6`.
 *   Fixes bug when computing confidence intervals for
     `binary_confusion_metrics.ConfusionMatrixAtThresholds` (or any other
     structured metric).
