@@ -71,7 +71,6 @@ suppress_docs_for = [
     tfma.proto,
     tfma.slicer,
     tfma.test,
-    tfma.util,
 ]
 
 if getattr(tfma, 'internal', None):
