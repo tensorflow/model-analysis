@@ -13,6 +13,10 @@
 
 ## Breaking Changes
 
+*   Confidence intervals for scalar metrics are no longer stored in the
+    `MetricValue.bounded_value`. Instead, the confidence interval for a metric
+    can be found under `MetricKeysAndValues.confidence_interval`.
+
 ## Deprecations
 
 *   Deprecated python3.6 support.

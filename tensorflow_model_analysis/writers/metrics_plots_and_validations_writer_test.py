@@ -786,6 +786,66 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         (slice_key, slice_metrics), [])
     self.assertProtoEquals(expected_metrics_for_slice, got)
 
+  def testConvertSliceMetricsToProtoMetricKeyWithConfidenceIntervals(self):
+    slice_key = _make_slice_key()
+    slice_metrics = {
+        metric_types.MetricKey('metric_with_ci'):
+            types.ValueWithTDistribution(
+                unsampled_value=10,
+                sample_mean=11,
+                sample_standard_deviation=1,
+                sample_degrees_of_freedom=20)
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {}
+        metric_keys_and_values {
+          key { name: "metric_with_ci" }
+          value {
+            double_value { value: 10 }
+          }
+          confidence_interval {
+            lower_bound: { double_value { value: 8.9140366 } }
+            upper_bound: { double_value { value: 13.0859634 } }
+            standard_error { double_value { value: 1.0 } }
+            degrees_of_freedom { value: 20 }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics), [])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
+  def testConvertSliceMetricsToProtoDeprecatedMetricsMapWithConfidenceIntervals(
+      self):
+    slice_key = _make_slice_key()
+    slice_metrics = {
+        'metric_with_ci':
+            types.ValueWithTDistribution(
+                unsampled_value=10,
+                sample_mean=11,
+                sample_standard_deviation=1,
+                sample_degrees_of_freedom=20)
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {}
+        metrics {
+          key: "metric_with_ci"
+          value {
+            bounded_value {
+              value: { value: 10 }
+              lower_bound: { value: 8.9140366 }
+              upper_bound: { value: 13.0859634 }
+              methodology: POISSON_BOOTSTRAP
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics), [])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
   def testCombineValidationsValidationOk(self):
     input_validations = [
         text_format.Parse(
