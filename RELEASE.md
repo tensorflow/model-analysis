@@ -11,6 +11,12 @@
 *   Reads baseUrl in JupyterLab to support TFMA rendering:
     https://github.com/tensorflow/model-analysis/issues/112
 
+*   Fixing couple of issues with CIDerivedMetricComputation:
+    *   no CI derived metric, deriving from private metrics such as
+        binary_confusion_matrices, was being computed
+    *   convert_slice_metrics_to_proto method didn't have support for bounded
+        values metrics.
+
 ## Breaking Changes
 
 *   Confidence intervals for scalar metrics are no longer stored in the

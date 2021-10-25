@@ -44,6 +44,7 @@ from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.utils import math_util
 from tensorflow_model_analysis.writers import writer
 
+from google.protobuf import wrappers_pb2
 
 _PARQUET_FORMAT = 'parquet'
 _TFRECORD_FORMAT = 'tfrecord'
@@ -109,8 +110,8 @@ def _raw_value_iterator(
     return _parquet_column_iterator(paths,
                                     _SERIALIZED_VALUE_PARQUET_COLUMN_NAME)
   elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
-    return itertools.chain(*(tf.compat.v1.python_io.tf_record_iterator(path)
-                             for path in paths))
+    return itertools.chain(
+        *(tf.compat.v1.python_io.tf_record_iterator(path) for path in paths))
   raise ValueError('Formats "{}" are currently supported but got '
                    'output_file_format={}'.format(_SUPPORTED_FORMATS,
                                                   output_file_format))
@@ -366,6 +367,20 @@ def convert_slice_metrics_to_proto(
           metric_value.bounded_value.methodology = (
               metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
         result.metrics[key].CopyFrom(metric_value)
+    elif isinstance(value, metrics_for_slice_pb2.BoundedValue):
+      metric_value = metrics_for_slice_pb2.MetricValue(
+          double_value=wrappers_pb2.DoubleValue(value=value.value.value))
+      confidence_interval = metrics_for_slice_pb2.ConfidenceInterval(
+          lower_bound=metrics_for_slice_pb2.MetricValue(
+              double_value=wrappers_pb2.DoubleValue(
+                  value=value.lower_bound.value)),
+          upper_bound=metrics_for_slice_pb2.MetricValue(
+              double_value=wrappers_pb2.DoubleValue(
+                  value=value.upper_bound.value)))
+      result.metric_keys_and_values.add(
+          key=key.to_proto(),
+          value=metric_value,
+          confidence_interval=confidence_interval)
     else:
       metric_value = convert_metric_value_to_proto(value)
       if isinstance(key, metric_types.MetricKey):
@@ -538,12 +553,12 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     output_file_format: File format to use when saving files. Currently
       'tfrecord' and 'parquet' are supported. If using parquet, the output
       metrics and plots files will contain two columns: 'slice_key' and
-      'serialized_value'. The 'slice_key' column will be a structured column
-      matching the metrics_for_slice_pb2.SliceKey proto. the 'serialized_value'
-      column will contain a serialized MetricsForSlice or PlotsForSlice
-      proto. The validation result file will contain a single column
-      'serialized_value' which will contain a single serialized ValidationResult
-      proto.
+        'serialized_value'. The 'slice_key' column will be a structured column
+        matching the metrics_for_slice_pb2.SliceKey proto. the
+        'serialized_value' column will contain a serialized MetricsForSlice or
+        PlotsForSlice proto. The validation result file will contain a single
+        column 'serialized_value' which will contain a single serialized
+        ValidationResult proto.
     rubber_stamp: True if this model is being rubber stamped. When a model is
       rubber stamped diff thresholds will be ignored if an associated baseline
       model is not passed.

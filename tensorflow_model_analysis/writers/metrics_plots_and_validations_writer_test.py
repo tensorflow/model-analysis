@@ -356,6 +356,52 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         (slice_key, slice_metrics), add_metrics_callbacks=[])
     self.assertProtoEquals(expected_metrics_for_slice, got)
 
+  def testConvertSliceMetricsToProtoBoundedValue(self):
+    slice_key = _make_slice_key()
+    slice_metrics = {
+        metric_types.MetricKey(name='bounded_metrics'):
+            text_format.Parse(
+                """
+                lower_bound {
+                  value: 0.123
+                }
+                upper_bound {
+                  value: 0.456
+                }
+                value {
+                  value: 0.234
+                }
+                """, metrics_for_slice_pb2.BoundedValue())
+    }
+    expected_metrics_for_slice = text_format.Parse(
+        """
+        slice_key {}
+        metric_keys_and_values {
+          key { name: "bounded_metrics" }
+          value {
+            double_value {
+              value: 0.234
+            }
+          }
+          confidence_interval {
+            upper_bound {
+              double_value {
+                value: 0.456
+              }
+            }
+            lower_bound {
+              double_value {
+                value: 0.123
+              }
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+
+    got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+        (slice_key, slice_metrics), add_metrics_callbacks=[])
+    self.assertProtoEquals(expected_metrics_for_slice, got)
+
   def testConvertSliceMetricsToProtoConfusionMatricesPostExport(self):
     slice_key = _make_slice_key()
 

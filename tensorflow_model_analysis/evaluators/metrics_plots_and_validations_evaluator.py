@@ -456,9 +456,6 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
         result.update(
             c.cross_slice_comparison(baseline_metrics, comparison_metrics))
 
-      # Remove private metrics
-      _remove_private_metrics(result)
-
       yield ((baseline_slice_key, comparison_slice_key), result)
 
   cross_slice_outputs = []
@@ -569,7 +566,6 @@ def _AddDerivedCrossSliceAndDiffMetrics(  # pylint: disable=invalid-name
             diff_result[k.make_diff_key(
             )] = v - result[k.make_baseline_key(baseline_model_name)]
       result.update(diff_result)
-    _remove_private_metrics(result)
     return slice_key, result
 
   return (
@@ -662,6 +658,9 @@ def _add_ci_derived_metrics(
   result = copy.copy(metrics)
   for c in computations:
     result.update(c.result(result))
+
+  _remove_private_metrics(result)
+
   return slice_key, result
 
 
