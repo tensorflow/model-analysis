@@ -276,7 +276,8 @@ class _TotalAttributionsCombiner(beam.CombineFn):
 
   def _sum(self, a: List[float], b: Union[np.ndarray, List[float]]):
     """Adds values in b to a at matching offsets."""
-    if isinstance(b, float) or (isinstance(b, np.ndarray) and b.size == 1):
+    if (isinstance(b, (float, np.floating)) or
+        (isinstance(b, np.ndarray) and b.size == 1)):
       if len(a) != 1:
         raise ValueError(
             'Attributions have different array sizes {} != {}'.format(a, b))
