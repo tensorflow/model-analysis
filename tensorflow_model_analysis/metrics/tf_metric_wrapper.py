@@ -53,6 +53,7 @@ def tf_metric_computations(
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False,
     desired_batch_size: Optional[int] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for the given TF metrics.
@@ -72,6 +73,7 @@ def tf_metric_computations(
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions. This should only be used when the aggregation_type
       is set.
+    example_weighted: True if example weights should be applied.
     desired_batch_size: Batch size to use when calling TF metrics
       (testing only).
 
@@ -120,12 +122,13 @@ def tf_metric_computations(
       computations.extend(
           _wrap_confusion_matrix_metric(metric, eval_config, model_name,
                                         output_name, sub_key, aggregation_type,
-                                        class_weights))
+                                        class_weights, example_weighted))
 
   if non_confusion_matrix_metrics:
     custom_objects = _custom_objects(non_confusion_matrix_metrics)
     metric_keys, metric_configs, loss_configs = _metric_keys_and_configs(
-        non_confusion_matrix_metrics, model_name, sub_key, aggregation_type)
+        non_confusion_matrix_metrics, model_name, sub_key, aggregation_type,
+        example_weighted)
     for sub_key, keys in metric_keys.items():
       computations.append(
           metric_types.MetricComputation(
@@ -140,6 +143,7 @@ def tf_metric_computations(
                   sub_key,
                   aggregation_type,
                   class_weights,
+                  example_weighted,
                   desired_batch_size,
               )))
 
@@ -242,10 +246,10 @@ _ConfigsBySubKey = Dict[Optional[metric_types.SubKey],
 
 
 def _metric_keys_and_configs(
-    metrics: Dict[Text, List[_TFMetricOrLoss]],
-    model_name: Text,
+    metrics: Dict[Text, List[_TFMetricOrLoss]], model_name: Text,
     sub_key: Optional[metric_types.SubKey],
     aggregation_type: Optional[metric_types.AggregationType],
+    example_weighted: bool
 ) -> Tuple[_KeysBySubKey, _ConfigsBySubKey, _ConfigsBySubKey]:
   """Returns metric keys, metric configs, and loss configs by sub key."""
   metric_keys = collections.defaultdict(list)
@@ -265,7 +269,8 @@ def _metric_keys_and_configs(
               model_name=model_name,
               output_name=output_name,
               sub_key=updated_sub_key,
-              aggregation_type=aggregation_type))
+              aggregation_type=aggregation_type,
+              example_weighted=example_weighted))
       if isinstance(metric, tf.keras.metrics.Metric):
         metric_configs[updated_sub_key][output_name].append(
             metric_util.serialize_metric(metric))
@@ -321,8 +326,8 @@ def _wrap_confusion_matrix_metric(
     metric: tf.keras.metrics.Metric, eval_config: config_pb2.EvalConfig,
     model_name: Text, output_name: Text, sub_key: Optional[metric_types.SubKey],
     aggregation_type: Optional[metric_types.AggregationType],
-    class_weights: Optional[Dict[int,
-                                 float]]) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]],
+    example_weighted: bool) -> metric_types.MetricComputations:
   """Returns confusion matrix metric wrapped in a more efficient computation."""
 
   # Special handling for AUC metric which supports aggregation inherently via
@@ -348,7 +353,8 @@ def _wrap_confusion_matrix_metric(
       model_name=model_name,
       output_name=output_name,
       aggregation_type=aggregation_type,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   metric_config = tf.keras.metrics.serialize(metric)
 
@@ -378,7 +384,8 @@ def _wrap_confusion_matrix_metric(
       output_name=output_name,
       sub_key=sub_key,
       aggregation_type=aggregation_type,
-      class_weights=class_weights)
+      class_weights=class_weights,
+      example_weighted=example_weighted)
   matrices_key = computations[-1].keys[-1]
 
   def result(
@@ -445,6 +452,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
                sub_key: Optional[metric_types.SubKey],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Dict[int, float],
+               example_weighted: bool,
                desired_batch_size: Optional[int] = None):
     # Use parallel lists to store output_names and configs to guarantee
     # consistent ordering and for natural alignment with the accumulator where
@@ -458,6 +466,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     self._sub_key = sub_key
     self._aggregation_type = aggregation_type
     self._class_weights = class_weights
+    self._example_weighted = example_weighted
     # True if the sub_key is part of the metric config already (i.e. top_k).
     self._sub_key_in_config = sub_key and sub_key.top_k is not None
     for cfg in itertools.chain.from_iterable(metric_configs.values()):
@@ -536,6 +545,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
               sub_key=self._sub_key if not self._sub_key_in_config else None,
               aggregation_type=self._aggregation_type,
               class_weights=self._class_weights,
+              example_weighted=self._example_weighted,
               flatten=micro_average)):
         # Keras requires non-sparse keys for its calcuations.
         if self._sub_key_in_config and label.shape != prediction.shape:
@@ -585,7 +595,8 @@ class _CompilableMetricsCombiner(beam.CombineFn):
             name=metric.name,
             model_name=self._model_name,
             output_name=output_name,
-            sub_key=self._sub_key)
+            sub_key=self._sub_key,
+            example_weighted=self._example_weighted)
         weights = accumulator.get_weights(output_index, metric_index)
         if weights is not None:
           metric.set_weights(weights)

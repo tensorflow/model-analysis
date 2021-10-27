@@ -100,7 +100,7 @@ class TjurDisriminationTest(testutil.TensorflowModelAnalysisTest,
        tjur_discrimination.RelativeCoefficientOfDiscrimination(),
        (3.3 / 5.0) / (1.6 / 5.0)))
   def testTjuDicriminationMetricsWithWeights(self, metric, expected_value):
-    computations = metric.computations()
+    computations = metric.computations(example_weighted=True)
     shared_metrics = computations[0]
     metric = computations[1]
 

@@ -250,6 +250,7 @@ def to_label_prediction_example_weight(
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False,
     fractional_labels: bool = False,
     flatten: bool = True,
     squeeze: bool = True,
@@ -351,6 +352,7 @@ def to_label_prediction_example_weight(
     aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions. If used, flatten must also be True.
+    example_weighted: True if example weights should be applied.
     fractional_labels: If true, each incoming tuple of (label, prediction, and
       example weight) will be split into two tuples as follows (where l, p, w
       represent the resulting label, prediction, and example weight values):
@@ -415,16 +417,18 @@ def to_label_prediction_example_weight(
       label = optionally_get_by_keys(label, [label_key])
     prediction = inputs.prediction
     example_weight = inputs.example_weight
-    if example_weight is None:
+    if not example_weighted or example_weight is None:
       example_weight = np.array(
           1.0, dtype=np.float32)  # tf-ranking needs float32
     if model_name:
-      prediction = util.get_by_keys(prediction, [model_name])
+      if prediction is not None:
+        prediction = util.get_by_keys(prediction, [model_name])
       # Labels and weights can optionally be keyed by model name.
       label = optionally_get_by_keys(label, [model_name])
       example_weight = optionally_get_by_keys(example_weight, [model_name])
     if output_name:
-      prediction = util.get_by_keys(prediction, [output_name])
+      if prediction is not None:
+        prediction = util.get_by_keys(prediction, [output_name])
       # Labels and example weights can optionally be keyed by output name.
       label = optionally_get_by_keys(label, [output_name])
       example_weight = optionally_get_by_keys(example_weight, [output_name])
@@ -467,7 +471,7 @@ def to_label_prediction_example_weight(
             'This is most likely a configuration error.')
       example_weight = np.array(example_weight[0])
 
-    if sub_key is not None:
+    if sub_key is not None and label is not None and prediction is not None:
       if sub_key.class_id is not None:
         label, prediction = select_class_id(sub_key.class_id, label, prediction)
       elif sub_key.k is not None:
@@ -911,6 +915,7 @@ def merge_per_key_computations(
       sub_keys: Optional[List[Optional[metric_types.SubKey]]] = None,
       aggregation_type: Optional[metric_types.AggregationType] = None,
       class_weights: Optional[Dict[int, float]] = None,
+      example_weighted: bool = False,
       query_key: Optional[Text] = None,
       **kwargs) -> metric_types.MetricComputations:
     """Merge computations function."""
@@ -928,9 +933,10 @@ def merge_per_key_computations(
             args = inspect.getfullargspec(create_computations_fn).args
           else:
             args = inspect.getargspec(create_computations_fn).args  # pylint: disable=deprecated-method
-          updated_kwargs = metric_types.update_create_computations_fn_kwargs(
-              args, kwargs.copy(), eval_config, schema, model_names, sub_keys,
-              aggregation_type, class_weights, query_key)
+          updated_kwargs = metric_types.validate_and_update_create_computations_fn_kwargs(
+              args, kwargs.copy(), eval_config, schema, model_names,
+              output_names, sub_keys, aggregation_type, class_weights,
+              example_weighted, query_key)
           if 'model_name' in args:
             updated_kwargs['model_name'] = model_name
           if 'output_name' in args:

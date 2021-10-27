@@ -69,6 +69,7 @@ try:
   from tensorflow_model_analysis.proto.config_pb2 import CrossSliceMetricThresholds
   from tensorflow_model_analysis.proto.config_pb2 import CrossSlicingSpec
   from tensorflow_model_analysis.proto.config_pb2 import EvalConfig
+  from tensorflow_model_analysis.proto.config_pb2 import ExampleWeightOptions
   from tensorflow_model_analysis.proto.config_pb2 import GenericChangeThreshold
   from tensorflow_model_analysis.proto.config_pb2 import GenericValueThreshold
   from tensorflow_model_analysis.proto.config_pb2 import MetricConfig

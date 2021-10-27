@@ -26,11 +26,10 @@ from typing import Any, Dict, Iterable, List, Optional, Text, Union
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.metrics import weighted_example_count
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import util
 
@@ -96,46 +95,50 @@ metric_types.register_metric(MeanAbsoluteAttributions)
 def _mean_attributions(
     absolute: bool = True,
     name: Text = MEAN_ATTRIBUTIONS_NAME,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
+    example_weighted: bool = False,
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean attributions."""
-
   key = metric_types.AttributionsKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   # Make sure total_attributions is calculated.
   computations = _total_attributions_computations(
       absolute=absolute,
+      eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
-  )
+      example_weighted=example_weighted)
   total_attributions_key = computations[-1].keys[-1]
-  # Make sure weighted_example_count is calculated
+  # Make sure example_count is calculated
   computations.extend(
-      weighted_example_count.weighted_example_count(
+      example_count.example_count(
           model_names=[model_name],
           output_names=[output_name],
-          sub_keys=[sub_key]))
-  weighted_example_count_key = computations[-1].keys[-1]
+          sub_keys=[sub_key],
+          example_weighted=example_weighted))
+  example_count_key = computations[-1].keys[-1]
 
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
   ) -> Dict[metric_types.AttributionsKey, Dict[Text, Union[float, np.ndarray]]]:
     """Returns mean attributions."""
     total_attributions = metrics[total_attributions_key]
-    weighted_count = metrics[weighted_example_count_key]
+    count = metrics[example_count_key]
     attributions = {}
     for k, v in total_attributions.items():
-      if np.isclose(weighted_count, 0.0):
+      if np.isclose(count, 0.0):
         attributions[k] = float('nan')
       else:
-        attributions[k] = v / weighted_count
+        attributions[k] = v / count
     return {key: attributions}
 
   derived_computation = metric_types.DerivedMetricComputation(
@@ -183,25 +186,27 @@ metric_types.register_metric(TotalAbsoluteAttributions)
 def _total_attributions(
     absolute: bool = True,
     name: Text = '',
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
-) -> metric_types.MetricComputations:
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for total attributions."""
-
   key = metric_types.AttributionsKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   # Make sure total_attributions is calculated.
   computations = _total_attributions_computations(
       absolute=absolute,
+      eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
-  )
+      example_weighted=example_weighted)
   private_key = computations[-1].keys[-1]
 
   def result(
@@ -219,18 +224,21 @@ def _total_attributions(
 def _total_attributions_computations(
     absolute: bool = True,
     name: Text = '',
+    eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-    sub_key: Optional[metric_types.SubKey] = None
-) -> metric_types.MetricComputations:
+    sub_key: Optional[metric_types.SubKey] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for total attributions.
 
   Args:
     absolute: True to use absolute value when summing.
     name: Metric name.
+    eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
+    example_weighted: True if example weights should be applied.
   """
   if not name:
     if absolute:
@@ -241,37 +249,26 @@ def _total_attributions_computations(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=_AttributionsPreprocessor(),
-          combiner=_TotalAttributionsCombiner(key, absolute))
+          preprocessor=metric_types.AttributionPreprocessor(feature_keys={}),
+          combiner=_TotalAttributionsCombiner(key, eval_config, absolute))
   ]
 
 
-@beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(Dict[Text, Any])
-class _AttributionsPreprocessor(beam.DoFn):
-  """Attributions preprocessor."""
-
-  def process(self, extracts: types.Extracts) -> Iterable[Dict[Text, Any]]:
-    if constants.ATTRIBUTIONS_KEY not in extracts:
-      raise ValueError(
-          '{} missing from extracts {}\n\n. An attribution extractor is '
-          'required to use attribution metrics'.format(
-              constants.ATTRIBUTIONS_KEY, extracts))
-    yield extracts[constants.ATTRIBUTIONS_KEY]
-
-
-@beam.typehints.with_input_types(Dict[Text, Any])
+@beam.typehints.with_input_types(metric_types.StandardMetricInputs)
 @beam.typehints.with_output_types(Dict[metric_types.AttributionsKey,
                                        Dict[Text, Union[float, np.ndarray]]])
 class _TotalAttributionsCombiner(beam.CombineFn):
   """Computes total attributions."""
 
-  def __init__(self, key: metric_types.AttributionsKey, absolute: bool):
+  def __init__(self, key: metric_types.AttributionsKey,
+               eval_config: Optional[config_pb2.EvalConfig], absolute: bool):
     self._key = key
+    self._eval_config = eval_config
     self._absolute = absolute
 
   def _sum(self, a: List[float], b: Union[np.ndarray, List[float]]):
@@ -292,12 +289,30 @@ class _TotalAttributionsCombiner(beam.CombineFn):
   def create_accumulator(self) -> Dict[Text, List[float]]:
     return {}
 
-  def add_input(self, accumulator: Dict[Text, List[float]],
-                attributions: Dict[Text, Any]) -> Dict[Text, List[float]]:
+  def add_input(
+      self, accumulator: Dict[Text, List[float]],
+      extracts: metric_types.StandardMetricInputs) -> Dict[Text, List[float]]:
+    if constants.ATTRIBUTIONS_KEY not in extracts:
+      raise ValueError(
+          '{} missing from extracts {}\n\n. An attribution extractor is '
+          'required to use attribution metrics'.format(
+              constants.ATTRIBUTIONS_KEY, extracts))
+    attributions = extracts[constants.ATTRIBUTIONS_KEY]
     if self._key.model_name:
       attributions = util.get_by_keys(attributions, [self._key.model_name])
     if self._key.output_name:
       attributions = util.get_by_keys(attributions, [self._key.output_name])
+    _, _, example_weight = next(
+        metric_util.to_label_prediction_example_weight(
+            extracts,
+            eval_config=self._eval_config,
+            model_name=self._key.model_name,
+            output_name=self._key.output_name,
+            sub_key=self._key.sub_key,
+            example_weighted=self._key.example_weighted,
+            allow_none=True,
+            flatten=False))
+    example_weight = float(example_weight)
     for k, v in attributions.items():
       v = util.to_numpy(v)
       if self._key.sub_key is not None:
@@ -310,7 +325,7 @@ class _TotalAttributionsCombiner(beam.CombineFn):
           v = _scores_by_top_k(self._key.sub_key.top_k, v)
       if k not in accumulator:
         accumulator[k] = [0.0] * v.size
-      self._sum(accumulator[k], v)
+      self._sum(accumulator[k], v * example_weight)
     return accumulator
 
   def merge_accumulators(

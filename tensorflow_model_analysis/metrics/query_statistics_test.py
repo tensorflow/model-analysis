@@ -34,7 +34,7 @@ class QueryStatisticsTest(testutil.TensorflowModelAnalysisTest):
 
   def testQueryStatistics(self):
     metrics = query_statistics.QueryStatistics().computations(
-        query_key='query')[0]
+        query_key='query', example_weighted=False)[0]
 
     query1_example1 = {
         'labels': np.array([1.0]),

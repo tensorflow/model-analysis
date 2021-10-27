@@ -74,4 +74,5 @@ from tensorflow_model_analysis.metrics.query_statistics import QueryStatistics
 from tensorflow_model_analysis.metrics.squared_pearson_correlation import SquaredPearsonCorrelation
 from tensorflow_model_analysis.metrics.tjur_discrimination import CoefficientOfDiscrimination
 from tensorflow_model_analysis.metrics.tjur_discrimination import RelativeCoefficientOfDiscrimination
+# TODO(b/143180976): Remove WeightedExampleCount.
 from tensorflow_model_analysis.metrics.weighted_example_count import WeightedExampleCount

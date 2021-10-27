@@ -69,7 +69,12 @@ message MetricKey {
   SubKey sub_key = 3;
   // Optional type of aggregation (if AggregationOptions used).
   AggregationType aggregation_type = 6;
-  // If True, this metric is a diff metric based on a comparison with the
+  // If true, the metric is weighted by examples. If false, then the metric is
+  // not weighted by examples. If unset then it is unknown as to whether the
+  // metric was weighted by examples or not (i.e. the metrics were defined
+  // inside of a model). See MetricsSpecs.example_weighted for more information.
+  google.protobuf.BoolValue example_weighted = 7;
+  // If true, this metric is a diff metric based on a comparison with the
   // baseline.
   bool is_diff = 5;
 }
@@ -403,12 +408,17 @@ message PlotData {
 //
 // A plot key uniquely identifies a set of PlotData.
 message PlotKey {
-  // Optional model name associated with metric (if multi-model evaluation).
+  // Optional model name associated with plot (if multi-model evaluation).
   string model_name = 4;
   // Optional output name associated with plot (for multi-output models).
   string output_name = 2;
   // Optional sub key associated with plot.
   SubKey sub_key = 3;
+  // If true, the plot is weighted by examples. If false, then the plot is
+  // not weighted by examples. If unset then it is unknown as to whether the
+  // plot was weighted by examples or not. See MetricsSpecs.example_weighted for
+  // more information.
+  google.protobuf.BoolValue example_weighted = 5;
 }
 // LINT.ThenChange(
 //   ../metrics/metric_types.py,
@@ -458,7 +468,12 @@ message AttributionsKey {
   string output_name = 3;
   // Optional sub key associated with attribution (class_id, etc).
   SubKey sub_key = 4;
-  // If True, this is a diff of attributions based on comparison with baseline.
+  // If true, the metric is weighted by examples. If false, then the metric is
+  // not weighted by examples. If unset then it is unknown as to whether the
+  // metric was weighted by examples or not (i.e. the metrics were defined
+  // inside of a model). See MetricsSpecs.example_weighted for more information.
+  google.protobuf.BoolValue example_weighted = 6;
+  // If true, this is a diff of attributions based on comparison with baseline.
   bool is_diff = 5;
 }
 // LINT.ThenChange(../metrics/metric_types.py)

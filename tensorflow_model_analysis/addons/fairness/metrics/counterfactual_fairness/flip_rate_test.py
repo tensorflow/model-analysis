@@ -30,7 +30,7 @@ class FlipRateTest(testutil.TensorflowModelAnalysisTest):
     computations = flip_rate.FlipRate(
         thresholds=[0.3],
         counterfactual_prediction_key='counterfactual_pred_key',
-        example_id_key='example_id_key').computations()
+        example_id_key='example_id_key').computations(example_weighted=True)
     binary_confusion_matrix = computations[0]
     matrices = computations[1]
     flip_count_metrics = computations[2]
@@ -96,23 +96,26 @@ class FlipRateTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got_metrics, 5)
           self.assertDictElementsAlmostEqual(
               got_metrics, {
-                  metric_types.MetricKey(name='flip_rate/overall@0.3'):
+                  metric_types.MetricKey(
+                      name='flip_rate/overall@0.3', example_weighted=True):
                       0.85714286,
                   metric_types.MetricKey(
-                      name='flip_rate/positive_to_negative@0.3'):
+                      name='flip_rate/positive_to_negative@0.3',
+                      example_weighted=True):
                       0.66666667,
                   metric_types.MetricKey(
-                      name='flip_rate/negative_to_positive@0.3'):
+                      name='flip_rate/negative_to_positive@0.3',
+                      example_weighted=True):
                       1.0,
               })
           self.assertAllEqual(
               got_metrics[metric_types.MetricKey(
-                  name='flip_rate/positive_to_negative_examples_ids@0.3')],
-              np.array([['id_3']]))
+                  name='flip_rate/positive_to_negative_examples_ids@0.3',
+                  example_weighted=True)], np.array([['id_3']]))
           self.assertAllEqual(
               got_metrics[metric_types.MetricKey(
-                  name='flip_rate/negative_to_positive_examples_ids@0.3')],
-              np.array([['id_2'], ['id_4']]))
+                  name='flip_rate/negative_to_positive_examples_ids@0.3',
+                  example_weighted=True)], np.array([['id_2'], ['id_4']]))
         except AssertionError as err:
           raise util.BeamAssertException(err)
 

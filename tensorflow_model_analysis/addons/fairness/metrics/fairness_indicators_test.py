@@ -198,13 +198,15 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
       ('_default_threshold', {}, 72, ()),
       ('_thresholds_with_different_digits', {
           'thresholds': [0.1, 0.22, 0.333]
-      }, 24,
-       (metric_types.MetricKey(
-           name='fairness_indicators_metrics/false_positive_rate@0.100'),
-        metric_types.MetricKey(
-            name='fairness_indicators_metrics/false_positive_rate@0.220'),
-        metric_types.MetricKey(
-            name='fairness_indicators_metrics/false_positive_rate@0.333'))))
+      }, 24, (metric_types.MetricKey(
+          name='fairness_indicators_metrics/false_positive_rate@0.100',
+          example_weighted=True),
+              metric_types.MetricKey(
+                  name='fairness_indicators_metrics/false_positive_rate@0.220',
+                  example_weighted=True),
+              metric_types.MetricKey(
+                  name='fairness_indicators_metrics/false_positive_rate@0.333',
+                  example_weighted=True))))
   def testFairessIndicatorsMetricsWithThresholds(self, kwargs,
                                                  expected_metrics_nums,
                                                  expected_metrics_keys):
@@ -214,7 +216,7 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
     #   - expected list of metrics keys
 
     computations = fairness_indicators.FairnessIndicators(
-        **kwargs).computations()
+        **kwargs).computations(example_weighted=True)
     histogram = computations[0]
     matrices = computations[1]
     metrics = computations[2]
@@ -264,28 +266,35 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
       'labels': np.array([0.0]),
       'predictions': np.array([0.7]),
       'example_weights': np.array([3.0]),
-  }], {}, {
+  }], {
+      'example_weighted': True
+  }, {
       metric_types.MetricKey(
-          name='fairness_indicators_metrics/negative_rate@0.5'):
+          name='fairness_indicators_metrics/negative_rate@0.5',
+          example_weighted=True):
           0.25,
       metric_types.MetricKey(
-          name='fairness_indicators_metrics/positive_rate@0.5'):
+          name='fairness_indicators_metrics/positive_rate@0.5',
+          example_weighted=True):
           0.75,
       metric_types.MetricKey(
-          name='fairness_indicators_metrics/true_negative_rate@0.5'):
+          name='fairness_indicators_metrics/true_negative_rate@0.5',
+          example_weighted=True):
           0.25,
       metric_types.MetricKey(
-          name='fairness_indicators_metrics/false_positive_rate@0.5'):
+          name='fairness_indicators_metrics/false_positive_rate@0.5',
+          example_weighted=True):
           0.75,
       metric_types.MetricKey(
-          name='fairness_indicators_metrics/false_discovery_rate@0.5'):
+          name='fairness_indicators_metrics/false_discovery_rate@0.5',
+          example_weighted=True):
           1.0,
   }), ('_has_model_name', [{
       'labels': np.array([0.0]),
       'predictions': {
           'model1': np.array([0.1]),
       },
-      'example_weights': np.array([1.0]),
+      'example_weights': np.array([1.0])
   }, {
       'labels': np.array([0.0]),
       'predictions': {
@@ -293,27 +302,33 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
       },
       'example_weights': np.array([3.0]),
   }], {
-      'model_names': ['model1']
+      'model_names': ['model1'],
+      'example_weighted': True
   }, {
       metric_types.MetricKey(
           name='fairness_indicators_metrics/negative_rate@0.5',
-          model_name='model1'):
+          model_name='model1',
+          example_weighted=True):
           0.25,
       metric_types.MetricKey(
           name='fairness_indicators_metrics/positive_rate@0.5',
-          model_name='model1'):
+          model_name='model1',
+          example_weighted=True):
           0.75,
       metric_types.MetricKey(
           name='fairness_indicators_metrics/true_negative_rate@0.5',
-          model_name='model1'):
+          model_name='model1',
+          example_weighted=True):
           0.25,
       metric_types.MetricKey(
           name='fairness_indicators_metrics/false_positive_rate@0.5',
-          model_name='model1'):
+          model_name='model1',
+          example_weighted=True):
           0.75,
       metric_types.MetricKey(
           name='fairness_indicators_metrics/false_discovery_rate@0.5',
-          model_name='model1'):
+          model_name='model1',
+          example_weighted=True):
           1.0,
   }))
   def testFairessIndicatorsMetricsWithInput(self, input_examples,

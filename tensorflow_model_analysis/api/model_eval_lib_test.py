@@ -476,11 +476,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     metrics_specs = [
         config_pb2.MetricsSpec(
+            metrics=[config_pb2.MetricConfig(class_name='ExampleCount')],
+            model_names=['model1', 'model2'],
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)),
+        config_pb2.MetricsSpec(
             metrics=[
-                config_pb2.MetricConfig(class_name='ExampleCount'),
                 config_pb2.MetricConfig(class_name='WeightedExampleCount')
             ],
-            model_names=['model1', 'model2'])
+            model_names=['model1', 'model2'],
+            example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
     ]
     slicing_specs = [
         config_pb2.SlicingSpec(feature_values={'language': 'english'})
@@ -579,15 +583,23 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             label_key='label',
             example_weight_key='age')
     ]
-    metrics = [
-        config_pb2.MetricConfig(class_name='ExampleCount'),
-        config_pb2.MetricConfig(class_name='WeightedExampleCount'),
-        config_pb2.MetricConfig(class_name='BinaryAccuracy')
+    metrics_specs = [
+        config_pb2.MetricsSpec(
+            metrics=[config_pb2.MetricConfig(class_name='ExampleCount')],
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)),
+        config_pb2.MetricsSpec(
+            metrics=[
+                config_pb2.MetricConfig(class_name='WeightedExampleCount')
+            ],
+            example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
+        config_pb2.MetricsSpec(
+            metrics=[config_pb2.MetricConfig(class_name='BinaryAccuracy')],
+            example_weights=config_pb2.ExampleWeightOptions(weighted=True))
     ]
     slicing_specs = [config_pb2.SlicingSpec(feature_keys=['language'])]
     eval_config = config_pb2.EvalConfig(
         model_specs=model_specs,
-        metrics_specs=[config_pb2.MetricsSpec(metrics=metrics)],
+        metrics_specs=metrics_specs,
         slicing_specs=slicing_specs)
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
@@ -733,7 +745,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     metrics_spec.metrics.append(
         config_pb2.MetricConfig(
-            class_name='WeightedExampleCount',
+            class_name='ExampleCount',
             per_slice_thresholds=[
                 config_pb2.PerSliceMetricThreshold(
                     slicing_specs=slicing_specs,
@@ -815,10 +827,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             slice_key {}
             failures {
              metric_key {
-               name: "weighted_example_count"
+               name: "example_count"
                sub_key { class_id {} }
                model_name: "candidate"
                is_diff: true
+               example_weighted { }
              }
              metric_threshold {
                change_threshold {
@@ -830,7 +843,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             }
             failures {
              metric_key {
-               name: "weighted_example_count"
+               name: "example_count"
                sub_key {
                  class_id {
                    value: 5
@@ -838,6 +851,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                }
                model_name: "candidate"
                is_diff: true
+               example_weighted { }
              }
              metric_threshold {
                change_threshold {
@@ -927,7 +941,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     metrics_spec.metrics.append(
         config_pb2.MetricConfig(
-            class_name='WeightedExampleCount',
+            class_name='ExampleCount',
             per_slice_thresholds=[
                 config_pb2.PerSliceMetricThreshold(
                     slicing_specs=slicing_specs,
@@ -976,10 +990,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             slice_key {}
             failures {
               metric_key {
-                name: "weighted_example_count"
+                name: "example_count"
                 model_name: "candidate"
                 output_name: "output_1"
                 is_diff: true
+                example_weighted { }
               }
               metric_threshold {
                 change_threshold {
@@ -991,10 +1006,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             }
             failures {
               metric_key {
-                name: "weighted_example_count"
+                name: "example_count"
                 model_name: "candidate"
                 output_name: "output_2"
                 is_diff: true
+                example_weighted { }
               }
               metric_threshold {
                 change_threshold {
@@ -1117,7 +1133,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     metrics_specs.append(
         config_pb2.MetricsSpec(metrics=[
             config_pb2.MetricConfig(
-                class_name='WeightedExampleCount',
+                class_name='ExampleCount',
                 threshold=config_pb2.MetricThreshold(
                     value_threshold=config_pb2.GenericValueThreshold(
                         lower_bound={'value': 0})))

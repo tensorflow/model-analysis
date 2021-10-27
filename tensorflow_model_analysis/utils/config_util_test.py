@@ -76,7 +76,7 @@ class ConfigTest(tf.test.TestCase):
     eval_config_pbtxt = """
       model_specs { name: "" }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
       }
     """
     eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
@@ -84,7 +84,7 @@ class ConfigTest(tf.test.TestCase):
     expected_eval_config_pbtxt = """
       model_specs { name: "" }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
         model_names: [""]
       }
     """
@@ -98,7 +98,7 @@ class ConfigTest(tf.test.TestCase):
     eval_config_pbtxt = """
       model_specs { name: "model1" }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
       }
       metrics_specs {
         metrics { class_name: "MeanLabel" }
@@ -110,7 +110,7 @@ class ConfigTest(tf.test.TestCase):
     expected_eval_config_pbtxt = """
       model_specs { name: "" }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
         model_names: [""]
       }
       metrics_specs {
@@ -129,7 +129,7 @@ class ConfigTest(tf.test.TestCase):
       model_specs { name: "model1" }
       model_specs { name: "model2" }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
       }
       metrics_specs {
         metrics { class_name: "MeanLabel" }
@@ -142,7 +142,7 @@ class ConfigTest(tf.test.TestCase):
       model_specs { name: "model1" }
       model_specs { name: "model2" }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
         model_names: ["model1", "model2"]
       }
       metrics_specs {
@@ -161,7 +161,7 @@ class ConfigTest(tf.test.TestCase):
       model_specs { name: "candidate" }
       model_specs { name: "baseline" is_baseline: true }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
       }
     """
     eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
@@ -170,7 +170,7 @@ class ConfigTest(tf.test.TestCase):
       model_specs { name: "candidate" }
       model_specs { name: "baseline" is_baseline: true }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
         model_names: ["candidate", "baseline"]
       }
     """
@@ -186,7 +186,7 @@ class ConfigTest(tf.test.TestCase):
       model_specs { name: "candidate" }
       model_specs { name: "baseline" is_baseline: true }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
         model_names: "candidate"
       }
     """
@@ -196,7 +196,7 @@ class ConfigTest(tf.test.TestCase):
       model_specs { name: "candidate" }
       model_specs { name: "baseline" is_baseline: true }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
         model_names: ["candidate"]
       }
     """
@@ -211,7 +211,7 @@ class ConfigTest(tf.test.TestCase):
     eval_config_pbtxt = """
       model_specs { label_key: "my_label" }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
       }
     """
     eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
@@ -220,7 +220,7 @@ class ConfigTest(tf.test.TestCase):
       model_specs { name: "candidate" label_key: "my_label" }
       model_specs { name: "baseline" label_key: "my_label" is_baseline: true }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
         model_names: ["candidate", "baseline"]
       }
     """
@@ -236,7 +236,7 @@ class ConfigTest(tf.test.TestCase):
       model_specs { name: "model1" }
       model_specs { name: "model2" is_baseline: true }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
       }
     """
     eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
@@ -245,7 +245,7 @@ class ConfigTest(tf.test.TestCase):
       model_specs { name: "model1" }
       model_specs { name: "model2" is_baseline: true }
       metrics_specs {
-        metrics { class_name: "WeightedExampleCount" }
+        metrics { class_name: "ExampleCount" }
         model_names: ["model1", "model2"]
       }
     """

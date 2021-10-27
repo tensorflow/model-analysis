@@ -59,19 +59,22 @@ def _exact_match(
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False,
     convert_to: Optional[Text] = None) -> metric_types.MetricComputations:
   """Returns metric computations for computing the exact match score."""
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
   return [
       metric_types.MetricComputation(
           keys=[key],
           preprocessor=None,
           combiner=_ExactMatchCombiner(key, eval_config, aggregation_type,
-                                       class_weights, convert_to))
+                                       class_weights, example_weighted,
+                                       convert_to))
   ]
 
 
@@ -96,11 +99,12 @@ class _ExactMatchCombiner(beam.CombineFn):
                eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]],
-               convert_to: Optional[Text]):
+               exampled_weighted: bool, convert_to: Optional[Text]):
     self._key = key
     self._eval_config = eval_config
     self._aggregation_type = aggregation_type
     self._class_weights = class_weights
+    self._example_weighted = exampled_weighted
     self._convert_to = convert_to
 
   def create_accumulator(self) -> _ExactMatchAccumulator:
@@ -116,7 +120,8 @@ class _ExactMatchCombiner(beam.CombineFn):
             model_name=self._key.model_name,
             output_name=self._key.output_name,
             aggregation_type=self._aggregation_type,
-            class_weights=self._class_weights)):
+            class_weights=self._class_weights,
+            example_weighted=self._example_weighted)):
       label = label.tolist()
       prediction = prediction.tolist()
       if self._convert_to == _JSON:

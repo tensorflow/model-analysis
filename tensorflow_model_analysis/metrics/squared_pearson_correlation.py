@@ -32,7 +32,7 @@ SQUARED_PEARSON_CORRELATION_NAME = 'squared_pearson_correlation'
 class SquaredPearsonCorrelation(metric_types.Metric):
   """Squared pearson correlation (r^2) metric."""
 
-  def __init__(self, name=SQUARED_PEARSON_CORRELATION_NAME):
+  def __init__(self, name: Text = SQUARED_PEARSON_CORRELATION_NAME):
     """Initializes squared pearson correlation (r^2) metric.
 
     Args:
@@ -53,21 +53,23 @@ def _squared_pearson_correlation(
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for squared pearson correlation (r^2)."""
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
   return [
       metric_types.MetricComputation(
           keys=[key],
           preprocessor=None,
           combiner=_SquaredPearsonCorrelationCombiner(key, eval_config,
                                                       aggregation_type,
-                                                      class_weights))
+                                                      class_weights,
+                                                      example_weighted))
   ]
 
 
@@ -94,11 +96,13 @@ class _SquaredPearsonCorrelationCombiner(beam.CombineFn):
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
-               class_weights: Optional[Dict[int, float]]):
+               class_weights: Optional[Dict[int,
+                                            float]], example_weighted: bool):
     self._key = key
     self._eval_config = eval_config
     self._aggregation_type = aggregation_type
     self._class_weights = class_weights
+    self._example_weighted = example_weighted
 
   def create_accumulator(self) -> _SquaredPearsonCorrelationAccumulator:
     return _SquaredPearsonCorrelationAccumulator()
@@ -114,7 +118,8 @@ class _SquaredPearsonCorrelationCombiner(beam.CombineFn):
             model_name=self._key.model_name,
             output_name=self._key.output_name,
             aggregation_type=self._aggregation_type,
-            class_weights=self._class_weights)):
+            class_weights=self._class_weights,
+            example_weighted=self._example_weighted)):
       example_weight = float(example_weight)
       label = float(label)
       prediction = float(prediction)

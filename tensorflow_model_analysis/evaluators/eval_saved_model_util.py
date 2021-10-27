@@ -277,6 +277,9 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
       for output_name, metrics in grouped_metrics.items():
         for name, value in metrics.items():
           key = metric_types.MetricKey(
-              name=name, model_name=self._model_name, output_name=output_name)
+              name=name,
+              model_name=self._model_name,
+              output_name=output_name,
+              example_weighted=None)
           result[key] = value
     return result

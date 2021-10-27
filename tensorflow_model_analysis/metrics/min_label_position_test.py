@@ -43,7 +43,7 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
   def testRaisesErrorWhenExampleWeightsDiffer(self):
     with self.assertRaises(ValueError):
       metric = min_label_position.MinLabelPosition().computations(
-          query_key='query')[0]
+          query_key='query', example_weighted=True)[0]
 
       query1_example1 = {
           'labels': np.array([0.0]),
@@ -76,7 +76,8 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
                                   ('custom_label', 'custom_label'))
   def testMinLabelPosition(self, label_key):
     metric = min_label_position.MinLabelPosition(
-        label_key=label_key).computations(query_key='query')[0]
+        label_key=label_key).computations(
+            query_key='query', example_weighted=True)[0]
 
     query1_example1 = {
         'labels': np.array([1.0]),
@@ -159,7 +160,8 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-          key = metric_types.MetricKey(name='min_label_position')
+          key = metric_types.MetricKey(
+              name='min_label_position', example_weighted=True)
           self.assertIn(key, got_metrics)
           if label_key == 'custom_label':
             # (1*1.0 + 3*2.0) / (1.0 + 2.0) = 2.333333
@@ -175,7 +177,7 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
 
   def testMinLabelPositionWithNoWeightedExamples(self):
     metric = min_label_position.MinLabelPosition().computations(
-        query_key='query')[0]
+        query_key='query', example_weighted=True)[0]
 
     query1_example1 = {
         'labels': np.array([1.0]),
@@ -203,7 +205,8 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-          key = metric_types.MetricKey(name='min_label_position')
+          key = metric_types.MetricKey(
+              name='min_label_position', example_weighted=True)
           self.assertIn(key, got_metrics)
           self.assertTrue(math.isnan(got_metrics[key]))
 

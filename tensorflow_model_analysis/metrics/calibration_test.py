@@ -91,7 +91,7 @@ class CalibrationMetricsTest(testutil.TensorflowModelAnalysisTest,
       ('calibration', calibration.Calibration(),
        (1.0 * 0.5 + 0.7 * 0.7 + 0.5 * 0.9) / (1.0 * 0.7)))
   def testCalibrationMetricsWithWeights(self, metric, expected_value):
-    computations = metric.computations()
+    computations = metric.computations(example_weighted=True)
     weighted_totals = computations[0]
     metric = computations[1]
 

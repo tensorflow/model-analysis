@@ -51,7 +51,7 @@ def validate_metrics(
 
   sliced_key, metrics = sliced_metrics
   thresholds = metric_specs.metric_thresholds_from_metrics_specs(
-      eval_config.metrics_specs)
+      eval_config.metrics_specs, eval_config=eval_config)
   is_cross_slice = slicer.is_cross_slice_key(sliced_key)
 
   def _check_threshold(key: metric_types.MetricKey, threshold: _ThresholdType,
@@ -254,7 +254,7 @@ def get_missing_slices(
   """
   hashed_details = _hashed_slicing_details(slicing_details)
   thresholds = metric_specs.metric_thresholds_from_metrics_specs(
-      eval_config.metrics_specs)
+      eval_config.metrics_specs, eval_config=eval_config)
   baseline_spec = model_util.get_baseline_model_spec(eval_config)
   baseline_model_name = baseline_spec.name if baseline_spec else None
   missing_slices = []

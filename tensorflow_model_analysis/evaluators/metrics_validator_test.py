@@ -120,7 +120,9 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
         ],
     )
     sliced_metrics = ((()), {
-        metric_types.MetricKey(name='weighted_example_count'): 1.5,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            1.5,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertFalse(result.validation_ok)
@@ -186,6 +188,7 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
           failures {
             metric_key {
               name: "auc"
+              example_weighted { }
             }
             metric_value {
               double_value {
@@ -260,6 +263,7 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
             metric_key {
               name: "auc"
               is_diff: true
+              example_weighted { }
             }
             metric_value {
               double_value {
@@ -310,11 +314,14 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
-        metric_types.MetricKey(name='weighted_example_count'): 1.5,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            1.5,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertFalse(result.validation_ok)
@@ -324,6 +331,7 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
           failures {
             metric_key {
               name: "weighted_example_count"
+              example_weighted { value: true }
             }
             metric_value {
               double_value {
@@ -371,11 +379,14 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
-        metric_types.MetricKey(name='weighted_example_count'): 1.5,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            1.5,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertTrue(result.validation_ok)
@@ -407,7 +418,8 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
@@ -443,11 +455,14 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
-        metric_types.MetricKey(name='weighted_example_count'): 0,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            0,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertFalse(result.validation_ok)
@@ -479,11 +494,14 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
-        metric_types.MetricKey(name='weighted_example_count'): 0,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            0,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertTrue(result.validation_ok)
@@ -515,11 +533,14 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
-        metric_types.MetricKey(name='weighted_example_count'): 2,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            2,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertTrue(result.validation_ok)
@@ -781,7 +802,11 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                             config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold2)
-                        ]),
+                        ])
+                ],
+                model_names=['candidate']),
+            config_pb2.MetricsSpec(
+                metrics=[
                     config_pb2.MetricConfig(
                         class_name='ExampleCount',
                         # 1 == 1, OK.
@@ -790,7 +815,13 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                             config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold3)
-                        ]),
+                        ])
+                ],
+                model_names=['candidate'],
+                example_weights=config_pb2.ExampleWeightOptions(
+                    unweighted=True)),
+            config_pb2.MetricsSpec(
+                metrics=[
                     config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         # 1 == 1, OK.
@@ -799,9 +830,10 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                             config_pb2.PerSliceMetricThreshold(
                                 slicing_specs=slicing_specs,
                                 threshold=threshold4)
-                        ]),
+                        ])
                 ],
-                model_names=['candidate']),
+                model_names=['candidate'],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
@@ -822,7 +854,9 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
         metric_types.MetricKey(name='example_count', model_name='candidate'):
             1,
         metric_types.MetricKey(
-            name='weighted_example_count', model_name='candidate'):
+            name='weighted_example_count',
+            model_name='candidate',
+            example_weighted=True):
             1,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
@@ -952,11 +986,14 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = ((('feature1', 'value1'),), {
-        metric_types.MetricKey(name='weighted_example_count'): 0,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            0,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
 
@@ -1011,11 +1048,14 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
-        metric_types.MetricKey(name='weighted_example_count'): 0,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            0,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertTrue(result.validation_ok)
@@ -1048,11 +1088,14 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
-        metric_types.MetricKey(name='weighted_example_count'): 1.5,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            1.5,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertFalse(result.validation_ok)
@@ -1082,11 +1125,14 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
                                 threshold=threshold)
                         ]),
                 ],
-                model_names=['']),
+                model_names=[''],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         ],
     )
     sliced_metrics = (slice_key, {
-        metric_types.MetricKey(name='weighted_example_count'): 0,
+        metric_types.MetricKey(
+            name='weighted_example_count', example_weighted=True):
+            0,
     })
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertTrue(result.validation_ok)

@@ -32,7 +32,8 @@ from tensorflow_model_analysis.metrics import metric_util
 class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
 
   def testCalibrationHistogram(self):
-    histogram = calibration_histogram.calibration_histogram()[0]
+    histogram = calibration_histogram.calibration_histogram(
+        example_weighted=True)[0]
 
     example1 = {
         'labels': np.array([0.0]),
@@ -95,7 +96,8 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey('_calibration_histogram_10000')
+          key = metric_types.PlotKey(
+              '_calibration_histogram_10000', example_weighted=True)
           self.assertIn(key, got_plots)
           got_histogram = got_plots[key]
           self.assertLen(got_histogram, 5)
@@ -142,7 +144,7 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
 
   def testCalibrationHistogramWithK(self):
     histogram = calibration_histogram.calibration_histogram(
-        sub_key=metric_types.SubKey(k=2))[0]
+        sub_key=metric_types.SubKey(k=2), example_weighted=True)[0]
 
     example1 = {
         'labels': np.array([2]),
@@ -207,7 +209,8 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got_plots, 1)
           key = metric_types.PlotKey(
               name='_calibration_histogram_10000',
-              sub_key=metric_types.SubKey(k=2))
+              sub_key=metric_types.SubKey(k=2),
+              example_weighted=True)
           self.assertIn(key, got_plots)
           got_histogram = got_plots[key]
           self.assertLen(got_histogram, 5)
@@ -254,7 +257,7 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
 
   def testTopKCalibrationHistogramWithTopK(self):
     histogram = calibration_histogram.calibration_histogram(
-        sub_key=metric_types.SubKey(top_k=2))[0]
+        sub_key=metric_types.SubKey(top_k=2), example_weighted=True)[0]
 
     example1 = {
         'labels': np.array([2]),
@@ -296,7 +299,8 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got_plots, 1)
           key = metric_types.PlotKey(
               name='_calibration_histogram_10000',
-              sub_key=metric_types.SubKey(top_k=2))
+              sub_key=metric_types.SubKey(top_k=2),
+              example_weighted=True)
           self.assertIn(key, got_plots)
           got_histogram = got_plots[key]
           self.assertLen(got_histogram, 5)

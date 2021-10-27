@@ -36,7 +36,7 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
   def testMultiClassConfusionMatrixPlot(self):
     computations = (
         multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot()
-        .computations())
+        .computations(example_weighted=True))
     matrices = computations[0]
     plot = computations[1]
 
@@ -90,7 +90,8 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(name='multi_class_confusion_matrix_plot')
+          key = metric_types.PlotKey(
+              name='multi_class_confusion_matrix_plot', example_weighted=True)
           got_matrix = got_plots[key]
           self.assertProtoEquals(
               """
@@ -263,7 +264,7 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
   def testMultiClassConfusionMatrixPlotWithStringLabels(self):
     computations = (
         multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot()
-        .computations())
+        .computations(example_weighted=True))
     matrices = computations[0]
     plot = computations[1]
 
@@ -307,7 +308,8 @@ class MultiClassConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(name='multi_class_confusion_matrix_plot')
+          key = metric_types.PlotKey(
+              name='multi_class_confusion_matrix_plot', example_weighted=True)
           got_matrix = got_plots[key]
           self.assertProtoEquals(
               """

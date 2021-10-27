@@ -59,7 +59,6 @@ from google.protobuf import text_format
 metrics_specs = text_format.Parse("""
   metrics_specs {
     metrics { class_name: "ExampleCount" }
-    metrics { class_name: "WeightedExampleCount" }
     metrics { class_name: "MeanSquaredError" }
     metrics { class_name: "Accuracy" }
     metrics { class_name: "MeanLabel" }
@@ -78,7 +77,6 @@ This same setup can be created using the following python code:
 ```python
 metrics = [
     tfma.metrics.ExampleCount(name='example_count'),
-    tfma.metrics.WeightedExampleCount(name='weighted_example_count'),
     tf.keras.metrics.MeanSquaredError(name='mse'),
     tf.keras.metrics.Accuracy(name='accuracy'),
     tfma.metrics.MeanLabel(name='mean_label'),
@@ -105,7 +103,6 @@ from google.protobuf import text_format
 metrics_specs = text_format.Parse("""
   metrics_specs {
     metrics { class_name: "ExampleCount" }
-    metrics { class_name: "WeightedExampleCount" }
     metrics { class_name: "BinaryCrossentropy" }
     metrics { class_name: "BinaryAccuracy" }
     metrics { class_name: "AUC" }
@@ -124,7 +121,6 @@ This same setup can be created using the following python code:
 ```python
 metrics = [
     tfma.metrics.ExampleCount(name='example_count'),
-    tfma.metrics.WeightedExampleCount(name='weighted_example_count'),
     tf.keras.metrics.BinaryCrossentropy(name='binary_crossentropy'),
     tf.keras.metrics.BinaryAccuracy(name='accuracy'),
     tf.keras.metrics.AUC(name='auc', num_thresholds=10000),
@@ -156,7 +152,6 @@ from google.protobuf import text_format
 metrics_specs = text_format.Parse("""
   metrics_specs {
     metrics { class_name: "ExampleCount" }
-    metrics { class_name: "WeightedExampleCount" }
     metrics { class_name: "SparseCategoricalCrossentropy" }
     metrics { class_name: "SparseCategoricalAccuracy" }
     metrics { class_name: "Precision" config: '"top_k": 1' }
@@ -176,7 +171,6 @@ This same setup can be created using the following python code:
 ```python
 metrics = [
     tfma.metrics.ExampleCount(name='example_count'),
-    tfma.metrics.WeightedExampleCount(name='weighted_example_count'),
     tf.keras.metrics.SparseCategoricalCrossentropy(
         name='sparse_categorical_crossentropy'),
     tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),

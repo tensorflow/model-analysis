@@ -35,19 +35,21 @@ class MetricSpecsTest(tf.test.TestCase):
             'output_name1': [
                 tf.keras.metrics.MeanSquaredError('mse'),
                 tf.keras.losses.MeanAbsoluteError(name='mae'),
-                calibration.MeanLabel('mean_label')
             ],
             'output_name2': [
-                tf.keras.metrics.RootMeanSquaredError('rmse'),
                 tf.keras.losses.MeanAbsolutePercentageError(name='mape'),
                 calibration.MeanPrediction('mean_prediction')
             ]
+        },
+        unweighted_metrics={
+            'output_name1': [calibration.MeanLabel('mean_label')],
+            'output_name2': [tf.keras.metrics.RootMeanSquaredError('rmse')]
         },
         model_names=['model_name1', 'model_name2'],
         binarize=config_pb2.BinarizationOptions(class_ids={'values': [0, 1]}),
         aggregate=config_pb2.AggregationOptions(macro_average=True))
 
-    self.assertLen(metrics_specs, 5)
+    self.assertLen(metrics_specs, 7)
     self.assertProtoEquals(
         metrics_specs[0],
         config_pb2.MetricsSpec(
@@ -56,7 +58,8 @@ class MetricSpecsTest(tf.test.TestCase):
                     class_name='ExampleCount',
                     config=json.dumps({'name': 'example_count'})),
             ],
-            model_names=['model_name1', 'model_name2']))
+            model_names=['model_name1', 'model_name2'],
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)))
     self.assertProtoEquals(
         metrics_specs[1],
         config_pb2.MetricsSpec(
@@ -66,7 +69,8 @@ class MetricSpecsTest(tf.test.TestCase):
                     config=json.dumps({'name': 'weighted_example_count'})),
             ],
             model_names=['model_name1', 'model_name2'],
-            output_names=['output_name1']))
+            output_names=['output_name1'],
+            example_weights=config_pb2.ExampleWeightOptions(weighted=True)))
     self.assertProtoEquals(
         metrics_specs[2],
         config_pb2.MetricsSpec(
@@ -85,10 +89,7 @@ class MetricSpecsTest(tf.test.TestCase):
                         'reduction': 'auto',
                         'name': 'mae'
                     },
-                                      sort_keys=True)),
-                config_pb2.MetricConfig(
-                    class_name='MeanLabel',
-                    config=json.dumps({'name': 'mean_label'}))
+                                      sort_keys=True))
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1'],
@@ -100,22 +101,30 @@ class MetricSpecsTest(tf.test.TestCase):
         config_pb2.MetricsSpec(
             metrics=[
                 config_pb2.MetricConfig(
-                    class_name='WeightedExampleCount',
-                    config=json.dumps({'name': 'weighted_example_count'})),
+                    class_name='MeanLabel',
+                    config=json.dumps({'name': 'mean_label'}))
             ],
             model_names=['model_name1', 'model_name2'],
-            output_names=['output_name2']))
+            output_names=['output_name1'],
+            binarize=config_pb2.BinarizationOptions(
+                class_ids={'values': [0, 1]}),
+            aggregate=config_pb2.AggregationOptions(macro_average=True),
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)))
     self.assertProtoEquals(
         metrics_specs[4],
         config_pb2.MetricsSpec(
             metrics=[
                 config_pb2.MetricConfig(
-                    class_name='RootMeanSquaredError',
-                    config=json.dumps({
-                        'name': 'rmse',
-                        'dtype': 'float32'
-                    },
-                                      sort_keys=True)),
+                    class_name='WeightedExampleCount',
+                    config=json.dumps({'name': 'weighted_example_count'})),
+            ],
+            model_names=['model_name1', 'model_name2'],
+            output_names=['output_name2'],
+            example_weights=config_pb2.ExampleWeightOptions(weighted=True)))
+    self.assertProtoEquals(
+        metrics_specs[5],
+        config_pb2.MetricsSpec(
+            metrics=[
                 config_pb2.MetricConfig(
                     class_name='MeanAbsolutePercentageError',
                     module=metric_specs._TF_LOSSES_MODULE,
@@ -133,6 +142,24 @@ class MetricSpecsTest(tf.test.TestCase):
             binarize=config_pb2.BinarizationOptions(
                 class_ids={'values': [0, 1]}),
             aggregate=config_pb2.AggregationOptions(macro_average=True)))
+    self.assertProtoEquals(
+        metrics_specs[6],
+        config_pb2.MetricsSpec(
+            metrics=[
+                config_pb2.MetricConfig(
+                    class_name='RootMeanSquaredError',
+                    config=json.dumps({
+                        'name': 'rmse',
+                        'dtype': 'float32'
+                    },
+                                      sort_keys=True))
+            ],
+            model_names=['model_name1', 'model_name2'],
+            output_names=['output_name2'],
+            binarize=config_pb2.BinarizationOptions(
+                class_ids={'values': [0, 1]}),
+            aggregate=config_pb2.AggregationOptions(macro_average=True),
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)))
 
   def testMetricKeysToSkipForConfidenceIntervals(self):
     metrics_specs = [
@@ -161,34 +188,44 @@ class MetricSpecsTest(tf.test.TestCase):
         [tf.keras.metrics.MeanSquaredError('mse')],
         model_names=['model_name1', 'model_name2'])
     keys = metric_specs.metric_keys_to_skip_for_confidence_intervals(
-        metrics_specs)
-    self.assertLen(keys, 6)
+        metrics_specs, eval_config=config_pb2.EvalConfig())
+    self.assertLen(keys, 8)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name1',
+            output_name='output_name1'), keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name1',
+            output_name='output_name2'), keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name2',
+            output_name='output_name1'), keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='example_count',
+            model_name='model_name2',
+            output_name='output_name2'), keys)
     self.assertIn(
         metric_types.MetricKey(name='example_count', model_name='model_name1'),
         keys)
+    self.assertIn(
+        metric_types.MetricKey(
+            name='weighted_example_count',
+            model_name='model_name1',
+            example_weighted=True), keys)
     self.assertIn(
         metric_types.MetricKey(name='example_count', model_name='model_name2'),
         keys)
     self.assertIn(
         metric_types.MetricKey(
-            name='example_count',
-            model_name='model_name1',
-            output_name='output_name1'), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='example_count',
-            model_name='model_name1',
-            output_name='output_name2'), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='example_count',
+            name='weighted_example_count',
             model_name='model_name2',
-            output_name='output_name1'), keys)
-    self.assertIn(
-        metric_types.MetricKey(
-            name='example_count',
-            model_name='model_name2',
-            output_name='output_name2'), keys)
+            example_weighted=True), keys)
 
   def testMetricThresholdsFromMetricsSpecs(self):
     slice_specs = [
@@ -282,7 +319,7 @@ class MetricSpecsTest(tf.test.TestCase):
                         value_threshold=config_pb2.GenericValueThreshold()))
             ],
             model_names=['model_name1', 'model_name2'],
-            output_names=['output_name1', 'output_name2']),
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)),
         config_pb2.MetricsSpec(
             metrics=[
                 config_pb2.MetricConfig(
@@ -292,7 +329,8 @@ class MetricSpecsTest(tf.test.TestCase):
                         value_threshold=config_pb2.GenericValueThreshold()))
             ],
             model_names=['model_name1', 'model_name2'],
-            output_names=['output_name1', 'output_name2']),
+            output_names=['output_name1', 'output_name2'],
+            example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
         config_pb2.MetricsSpec(
             metrics=[
                 config_pb2.MetricConfig(
@@ -336,72 +374,64 @@ class MetricSpecsTest(tf.test.TestCase):
     ]
 
     thresholds = metric_specs.metric_thresholds_from_metrics_specs(
-        metrics_specs)
+        metrics_specs, eval_config=config_pb2.EvalConfig())
 
     expected_keys_and_threshold_counts = {
         metric_types.MetricKey(
             name='auc',
             model_name='model_name',
             output_name='output_name',
-            is_diff=False):
+            is_diff=False,
+            example_weighted=None):
             4,
         metric_types.MetricKey(
             name='auc',
             model_name='model_name',
             output_name='output_name',
-            is_diff=True):
+            is_diff=True,
+            example_weighted=None):
             1,
         metric_types.MetricKey(
             name='mean/label',
             model_name='model_name',
             output_name='output_name',
-            is_diff=True):
+            is_diff=True,
+            example_weighted=None):
             3,
         metric_types.MetricKey(
             name='mean/label',
             model_name='model_name',
             output_name='output_name',
-            is_diff=False):
+            is_diff=False,
+            example_weighted=None):
             3,
-        metric_types.MetricKey(
-            name='example_count',
-            model_name='model_name1',
-            output_name='output_name1'):
+        metric_types.MetricKey(name='example_count', model_name='model_name1'):
             1,
-        metric_types.MetricKey(
-            name='example_count',
-            model_name='model_name1',
-            output_name='output_name2'):
-            1,
-        metric_types.MetricKey(
-            name='example_count',
-            model_name='model_name2',
-            output_name='output_name1'):
-            1,
-        metric_types.MetricKey(
-            name='example_count',
-            model_name='model_name2',
-            output_name='output_name2'):
+        metric_types.MetricKey(name='example_count', model_name='model_name2'):
             1,
         metric_types.MetricKey(
             name='weighted_example_count',
             model_name='model_name1',
-            output_name='output_name1'):
+            output_name='output_name1',
+            example_weighted=True):
             1,
         metric_types.MetricKey(
             name='weighted_example_count',
             model_name='model_name1',
-            output_name='output_name2'):
+            output_name='output_name2',
+            example_weighted=True):
             1,
         metric_types.MetricKey(
             name='weighted_example_count',
             model_name='model_name2',
-            output_name='output_name1'):
+            output_name='output_name1',
+            example_weighted=True):
             1,
         metric_types.MetricKey(
             name='weighted_example_count',
             model_name='model_name2',
-            output_name='output_name2'):
+            output_name='output_name2',
+            example_weighted=True):
             1,
         metric_types.MetricKey(
             name='mse',
@@ -421,14 +451,16 @@ class MetricSpecsTest(tf.test.TestCase):
             name='mse',
             model_name='model_name',
             output_name='output_name',
-            is_diff=True):
-            2,
+            is_diff=False,
+            example_weighted=None):
+            1,
         metric_types.MetricKey(
             name='mse',
             model_name='model_name',
             output_name='output_name',
-            is_diff=False):
-            1,
+            is_diff=True,
+            example_weighted=None):
+            2,
         metric_types.MetricKey(
             name='mse',
             model_name='model_name',
@@ -502,7 +534,8 @@ class MetricSpecsTest(tf.test.TestCase):
           metric_types.MetricKey(
               name='weighted_example_count',
               model_name='model_name',
-              output_name=output_name), keys)
+              output_name=output_name,
+              example_weighted=True), keys)
       self.assertIn(
           metric_types.MetricKey(
               name='mse',

@@ -82,10 +82,11 @@ def _flip_rate(
     model_name: str = '',
     output_name: str = '',
     eval_config: Optional[config_pb2.EvalConfig] = None,
-) -> metric_types.MetricComputations:
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns computations for flip rate."""
   keys, metric_key_by_name_by_threshold = flip_count.create_metric_keys(
-      thresholds, _METRICS_LIST, name, model_name, output_name)
+      thresholds, _METRICS_LIST, name, model_name, output_name,
+      example_weighted)
 
   computations = flip_count.flip_count(
       thresholds=thresholds,
@@ -94,11 +95,12 @@ def _flip_rate(
       example_ids_count=example_ids_count,
       model_name=model_name,
       output_name=output_name,
-      eval_config=eval_config)
+      eval_config=eval_config,
+      example_weighted=example_weighted)
 
   _, flip_count_metric_key_by_name_by_threshold = flip_count.create_metric_keys(
       thresholds, flip_count.METRICS_LIST, flip_count.FLIP_COUNT_NAME,
-      model_name, output_name)
+      model_name, output_name, example_weighted)
 
   def result(
       metrics: Dict[metric_types.MetricKey, float]

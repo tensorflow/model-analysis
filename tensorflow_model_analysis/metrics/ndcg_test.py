@@ -41,7 +41,8 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
                 metric_types.SubKey(top_k=1),
                 metric_types.SubKey(top_k=2)
             ],
-            query_key='query')[0]
+            query_key='query',
+            example_weighted=True)[0]
 
     query1_example1 = {
         'labels': np.array([1.0]),
@@ -132,9 +133,13 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           ndcg1_key = metric_types.MetricKey(
-              name='ndcg', sub_key=metric_types.SubKey(top_k=1))
+              name='ndcg',
+              sub_key=metric_types.SubKey(top_k=1),
+              example_weighted=True)
           ndcg2_key = metric_types.MetricKey(
-              name='ndcg', sub_key=metric_types.SubKey(top_k=2))
+              name='ndcg',
+              sub_key=metric_types.SubKey(top_k=2),
+              example_weighted=True)
           # Query1 (weight=1): (p=0.8, g=0.5) (p=0.2, g=1.0)
           # Query2 (weight=2): (p=0.9, g=1.0) (p=0.5, g=0.5) (p=0.1, g=0.1)
           # Query3 (weight=3): (p=0.9, g=1.0)

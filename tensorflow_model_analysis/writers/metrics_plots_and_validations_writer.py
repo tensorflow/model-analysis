@@ -630,7 +630,7 @@ class CombineValidations(beam.CombineFn):
     if not accumulator:
       accumulator = validation_result_pb2.ValidationResult(validation_ok=False)
     thresholds = metric_specs.metric_thresholds_from_metrics_specs(
-        self._eval_config.metrics_specs)
+        self._eval_config.metrics_specs, eval_config=self._eval_config)
     if not thresholds:
       # Default is to validation NOT ok when not rubber stamping.
       accumulator.validation_ok = self._rubber_stamp

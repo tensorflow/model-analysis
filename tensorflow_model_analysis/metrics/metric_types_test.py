@@ -27,7 +27,8 @@ class MetricTypesTest(tf.test.TestCase):
 
   def testMetricKeyStrForMetricKeyWithOneField(self):
     self.assertEqual(
-        str(metric_types.MetricKey(name='metric_name')), 'name: "metric_name"')
+        str(metric_types.MetricKey(name='metric_name')),
+        'name: "metric_name" example_weighted: { }')
 
   def testMetricKeyStrForMetricKeyWithAllFields(self):
     self.assertEqual(
@@ -37,10 +38,11 @@ class MetricTypesTest(tf.test.TestCase):
                 model_name='model_name',
                 output_name='output_name',
                 sub_key=metric_types.SubKey(class_id=1),
+                example_weighted=True,
                 is_diff=True)),
         'name: "metric_name" output_name: "output_name" ' +
         'sub_key: { class_id: { value: 1 } } model_name: "model_name" ' +
-        'is_diff: true')
+        'is_diff: true example_weighted: { value: true }')
 
   def testMetricKeyFromProto(self):
     metric_keys = [
@@ -56,7 +58,13 @@ class MetricTypesTest(tf.test.TestCase):
             model_name='model_name',
             output_name='output_name',
             sub_key=metric_types.SubKey(top_k=2),
-            aggregation_type=metric_types.AggregationType(micro_average=True))
+            example_weighted=None,
+            aggregation_type=metric_types.AggregationType(micro_average=True)),
+        metric_types.MetricKey(
+            name='metric_name',
+            model_name='model_name',
+            output_name='output_name',
+            example_weighted=False)
     ]
     for key in metric_keys:
       got_key = metric_types.MetricKey.from_proto(key.to_proto())

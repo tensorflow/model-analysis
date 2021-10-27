@@ -69,8 +69,8 @@ def _fairness_indicators_metrics_at_thresholds(
     output_name: Text = '',
     aggregation_type: Optional[metric_types.AggregationType] = None,
     sub_key: Optional[metric_types.SubKey] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns computations for fairness metrics at thresholds."""
   metric_key_by_name_by_threshold = collections.defaultdict(dict)
   keys = []
@@ -83,7 +83,8 @@ def _fairness_indicators_metrics_at_thresholds(
            t),  # e.g. "fairness_indicators_metrics/positive_rate@0.5"
           model_name=model_name,
           output_name=output_name,
-          sub_key=sub_key)
+          sub_key=sub_key,
+          example_weighted=example_weighted)
       keys.append(key)
       metric_key_by_name_by_threshold[t][m] = key
 
@@ -95,6 +96,7 @@ def _fairness_indicators_metrics_at_thresholds(
       sub_key=sub_key,
       aggregation_type=aggregation_type,
       class_weights=class_weights,
+      example_weighted=example_weighted,
       thresholds=thresholds)
   confusion_matrices_key = computations[-1].keys[-1]
 

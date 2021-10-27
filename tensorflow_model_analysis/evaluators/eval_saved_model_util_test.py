@@ -80,10 +80,18 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
           self.assertEqual(got_slice_key, ())
           self.assertDictElementsAlmostEqual(
               got_metrics, {
-                  metric_types.MetricKey(name='accuracy'): 1.0,
-                  metric_types.MetricKey(name='label/mean'): 0.5,
-                  metric_types.MetricKey(name='my_mean_age'): 3.75,
-                  metric_types.MetricKey(name='my_mean_age_times_label'): 1.75
+                  metric_types.MetricKey(
+                      name='accuracy', example_weighted=None):
+                      1.0,
+                  metric_types.MetricKey(
+                      name='label/mean', example_weighted=None):
+                      0.5,
+                  metric_types.MetricKey(
+                      name='my_mean_age', example_weighted=None):
+                      3.75,
+                  metric_types.MetricKey(
+                      name='my_mean_age_times_label', example_weighted=None):
+                      1.75
               })
 
         except AssertionError as err:
@@ -152,17 +160,27 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           chinese_accuracy_key = metric_types.MetricKey(
-              name='accuracy', output_name='chinese_head')
+              name='accuracy',
+              output_name='chinese_head',
+              example_weighted=None)
           chinese_mean_label_key = metric_types.MetricKey(
-              name='label/mean', output_name='chinese_head')
+              name='label/mean',
+              output_name='chinese_head',
+              example_weighted=None)
           english_accuracy_key = metric_types.MetricKey(
-              name='accuracy', output_name='english_head')
+              name='accuracy',
+              output_name='english_head',
+              example_weighted=None)
           english_mean_label_key = metric_types.MetricKey(
-              name='label/mean', output_name='english_head')
+              name='label/mean',
+              output_name='english_head',
+              example_weighted=None)
           other_accuracy_key = metric_types.MetricKey(
-              name='accuracy', output_name='other_head')
+              name='accuracy', output_name='other_head', example_weighted=None)
           other_mean_label_key = metric_types.MetricKey(
-              name='label/mean', output_name='other_head')
+              name='label/mean',
+              output_name='other_head',
+              example_weighted=None)
           self.assertDictElementsAlmostEqual(
               got_metrics, {
                   chinese_accuracy_key: 0.75,

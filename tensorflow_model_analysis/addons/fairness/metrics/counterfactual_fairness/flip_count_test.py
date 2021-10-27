@@ -30,7 +30,7 @@ class FlipCountTest(testutil.TensorflowModelAnalysisTest):
     computations = flip_count.FlipCount(
         thresholds=[0.3],
         counterfactual_prediction_key='counterfactual_pred_key',
-        example_id_key='example_id_key').computations()
+        example_id_key='example_id_key').computations(example_weighted=True)
     binary_confusion_matrix = computations[0]
     matrices = computations[1]
     metrics = computations[2]
@@ -100,25 +100,30 @@ class FlipCountTest(testutil.TensorflowModelAnalysisTest):
           self.assertDictElementsAlmostEqual(
               got_metrics, {
                   metric_types.MetricKey(
-                      name='flip_count/positive_to_negative@0.3'):
+                      name='flip_count/positive_to_negative@0.3',
+                      example_weighted=True):
                       5.0,
                   metric_types.MetricKey(
-                      name='flip_count/negative_to_positive@0.3'):
+                      name='flip_count/negative_to_positive@0.3',
+                      example_weighted=True):
                       7.0,
                   metric_types.MetricKey(
-                      name='flip_count/positive_examples_count@0.3'):
+                      name='flip_count/positive_examples_count@0.3',
+                      example_weighted=True):
                       6.0,
                   metric_types.MetricKey(
-                      name='flip_count/negative_examples_count@0.3'):
+                      name='flip_count/negative_examples_count@0.3',
+                      example_weighted=True):
                       7.0,
               })
           self.assertAllEqual(
               got_metrics[metric_types.MetricKey(
-                  name='flip_count/positive_to_negative_examples_ids@0.3')],
-              np.array([['id_2'], ['id_3']]))
+                  name='flip_count/positive_to_negative_examples_ids@0.3',
+                  example_weighted=True)], np.array([['id_2'], ['id_3']]))
           self.assertAllEqual(
               got_metrics[metric_types.MetricKey(
-                  name='flip_count/negative_to_positive_examples_ids@0.3')],
+                  name='flip_count/negative_to_positive_examples_ids@0.3',
+                  example_weighted=True)],
               np.array([['id_2'], ['id_3'], ['id_4']]))
         except AssertionError as err:
           raise util.BeamAssertException(err)

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,12 @@
 # limitations under the License.
 """Example count metric."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 from typing import Optional, Dict, Iterable, List, Text
 
 import apache_beam as beam
-from tensorflow_model_analysis import types
+import numpy as np
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.utils import util
 
 EXAMPLE_COUNT_NAME = 'example_count'
 
@@ -42,7 +37,7 @@ class ExampleCount(metric_types.Metric):
       name: Metric name.
     """
 
-    super(ExampleCount, self).__init__(_example_count, name=name)
+    super(ExampleCount, self).__init__(example_count, name=name)
 
   @property
   def compute_confidence_interval(self) -> bool:
@@ -61,56 +56,79 @@ class ExampleCount(metric_types.Metric):
 metric_types.register_metric(ExampleCount)
 
 
-def _example_count(
+def example_count(
     name: Text = EXAMPLE_COUNT_NAME,
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
-    sub_keys: Optional[List[metric_types.SubKey]] = None
-) -> metric_types.MetricComputations:
-  """Returns metric computations for computing example counts."""
-  keys = []
+    sub_keys: Optional[List[metric_types.SubKey]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
+  """Returns metric computations for example count."""
+  computations = []
   for model_name in model_names or ['']:
     for output_name in output_names or ['']:
+      keys = []
       for sub_key in sub_keys or [None]:
         key = metric_types.MetricKey(
             name=name,
             model_name=model_name,
             output_name=output_name,
-            sub_key=sub_key)
+            sub_key=sub_key,
+            example_weighted=example_weighted)
         keys.append(key)
-  return [
-      metric_types.MetricComputation(
-          keys=keys,
-          preprocessor=_ExampleCountPreprocessor(),
-          combiner=_ExampleCountCombiner(keys))
-  ]
 
-
-class _ExampleCountPreprocessor(beam.DoFn):
-  """Computes example count."""
-
-  def process(self, extracts: types.Extracts) -> Iterable[int]:
-    yield 1
+      # Note: This cannot be implemented based on the weight stored in
+      # calibration because weighted example count is used with multi-class, etc
+      # models that do not use calibration metrics.
+      computations.append(
+          metric_types.MetricComputation(
+              keys=keys,
+              preprocessor=None,
+              combiner=_ExampleCountCombiner(model_name, output_name, keys,
+                                             example_weighted)))
+  return computations
 
 
 class _ExampleCountCombiner(beam.CombineFn):
   """Computes example count."""
 
-  def __init__(self, metric_keys: List[metric_types.MetricKey]):
-    self._metric_keys = metric_keys
+  def __init__(self, model_name: Text, output_name: Text,
+               keys: List[metric_types.MetricKey], example_weighted):
+    self._model_name = model_name
+    self._output_name = output_name
+    self._keys = keys
+    self._example_weighted = example_weighted
 
-  def create_accumulator(self) -> int:
-    return 0
+  def create_accumulator(self) -> float:
+    return 0.0
 
-  def add_input(self, accumulator: int, state: int) -> int:
-    return accumulator + state
+  def add_input(self, accumulator: float,
+                element: metric_types.StandardMetricInputs) -> float:
+    if not self._example_weighted or element.example_weight is None:
+      example_weight = np.array(1.0)
+    else:
+      example_weight = element.example_weight
+    if isinstance(example_weight, dict) and self._model_name:
+      value = util.get_by_keys(
+          example_weight, [self._model_name], optional=True)
+      if value is not None:
+        example_weight = value
+    if isinstance(example_weight, dict) and self._output_name:
+      example_weight = util.get_by_keys(example_weight, [self._output_name],
+                                        np.array(1.0))
+    if isinstance(example_weight, dict):
+      raise ValueError(
+          f'example_count cannot be calculated on a dict {example_weight}: '
+          f'model_name={self._model_name}, output_name={self._output_name}.\n\n'
+          'This is most likely a configuration error (for multi-output models'
+          'a separate metric is needed for each output).')
+    return accumulator + np.sum(example_weight)
 
-  def merge_accumulators(self, accumulators: Iterable[int]) -> int:
-    result = 0
+  def merge_accumulators(self, accumulators: Iterable[float]) -> float:
+    result = 0.0
     for accumulator in accumulators:
       result += accumulator
     return result
 
   def extract_output(self,
-                     accumulator: int) -> Dict[metric_types.MetricKey, int]:
-    return {k: accumulator for k in self._metric_keys}
+                     accumulator: float) -> Dict[metric_types.MetricKey, float]:
+    return {k: accumulator for k in self._keys}

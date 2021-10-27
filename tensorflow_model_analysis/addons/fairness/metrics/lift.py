@@ -60,6 +60,8 @@ class Lift(metric_types.Metric):
       ignore_out_of_bound_examples: Whether to ignore examples with label values
         falling outside of provide label interval i.e. [left, right).
     """
+    if name is None:
+      name = f'{LIFT_METRICS_NAME}@{num_buckets or DEFAULT_NUM_BUCKETS}'
     super(Lift, self).__init__(
         metric_util.merge_per_key_computations(_lift_metrics),
         num_buckets=num_buckets,
@@ -80,6 +82,7 @@ def _lift_metrics(
     aggregation_type: Optional[metric_types.AggregationType] = None,
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False,
     ignore_out_of_bound_examples: bool = False,
 ) -> metric_types.MetricComputations:
   """Returns computations for lift metrics."""
@@ -91,14 +94,12 @@ def _lift_metrics(
   if num_buckets is None:
     num_buckets = DEFAULT_NUM_BUCKETS
 
-  if name is None:
-    name = f'{LIFT_METRICS_NAME}@{num_buckets}'
-
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   computations = calibration_histogram.calibration_histogram(
       eval_config=eval_config,
@@ -110,6 +111,7 @@ def _lift_metrics(
       sub_key=sub_key,
       aggregation_type=aggregation_type,
       class_weights=class_weights,
+      example_weighted=example_weighted,
       prediction_based_bucketing=False,
       fractional_labels=False)
   metric_key = computations[-1].keys[-1]

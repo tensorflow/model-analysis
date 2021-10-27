@@ -4,6 +4,13 @@
 
 ## Major Features and Improvements
 
+*   Added support for specifying weighted vs unweighted metrics. The setting is
+    available in the `tfma.MetricsSpec(
+    example_weights=tfma.ExampleWeightOptions(weighted=True, unweighted=True))`.
+    If no options are provided then TFMA will default to weighted provided the
+    associated `tfma.ModelSpec` has an example weight key configured, otherwise
+    unweighted will be used.
+
 ## Bug fixes and other Changes
 
 *   Added support for example_weights that are arrays.
@@ -22,6 +29,18 @@
 *   Confidence intervals for scalar metrics are no longer stored in the
     `MetricValue.bounded_value`. Instead, the confidence interval for a metric
     can be found under `MetricKeysAndValues.confidence_interval`.
+*   MetricKeys now require specifying whether they are weighted (
+    `tfma.metrics.MetricKey(..., example_weighted=True)`) or unweighted (the
+    default). If the weighting is unknown then `example_weighted` will be None.
+    Any metric computed outside of a `tfma.metrics.MetricConfig` setting (i.e.
+    metrics loaded from a saved model) will have the weighting set to None.
+*   `ExampleCount` is now weighted based on `tfma.MetricsSpec.example_weights`
+    settings. `WeightedExampleCount` has been deprecated (use `ExampleCount`
+    instead). To get unweighted example counts (i.e. the previous implementation
+    of `ExampleCount`), `ExampleCount` must now be added to a `MetricsSpec`
+    where `example_weights.unweighted` is true. To get a weighted example count
+    (i.e. what was previously `WeightedExampleCount`), `ExampleCount` must now
+    be added to a `MetricsSpec` where `example_weights.weighted` is true.
 
 ## Deprecations
 

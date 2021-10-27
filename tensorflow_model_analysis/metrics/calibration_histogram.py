@@ -53,6 +53,7 @@ def calibration_histogram(
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False,
     prediction_based_bucketing: bool = True,
     fractional_labels: Optional[bool] = None,
 ) -> metric_types.MetricComputations:
@@ -71,6 +72,7 @@ def calibration_histogram(
     aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions prior to flattening (when micro averaging is used).
+    example_weighted:  True if example weights should be applied.
     prediction_based_bucketing: If true, create buckets based on predictions
       else use labels to perform bucketing.
     fractional_labels: If true, each incoming tuple of (label, prediction, and
@@ -95,12 +97,13 @@ def calibration_histogram(
   if fractional_labels is None:
     fractional_labels = (left == 0.0 and right == 1.0)
   if name is None:
-    name = '{}_{}'.format(CALIBRATION_HISTOGRAM_NAME, num_buckets)
+    name = f'{CALIBRATION_HISTOGRAM_NAME}_{num_buckets}'
   key = metric_types.PlotKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
   return [
       metric_types.MetricComputation(
           keys=[key],
@@ -110,6 +113,7 @@ def calibration_histogram(
               eval_config=eval_config,
               aggregation_type=aggregation_type,
               class_weights=class_weights,
+              example_weighted=example_weighted,
               num_buckets=num_buckets,
               left=left,
               right=right,
@@ -124,13 +128,15 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
   def __init__(self, key: metric_types.PlotKey,
                eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
-               class_weights: Optional[Dict[int, float]], num_buckets: int,
-               left: float, right: float, prediction_based_bucketing: bool,
-               fractional_labels: bool):
+               class_weights: Optional[Dict[int,
+                                            float]], example_weighted: bool,
+               num_buckets: int, left: float, right: float,
+               prediction_based_bucketing: bool, fractional_labels: bool):
     self._key = key
     self._eval_config = eval_config
     self._aggregation_type = aggregation_type
     self._class_weights = class_weights
+    self._example_weighted = example_weighted
     self._num_buckets = num_buckets
     self._left = left
     self._range = right - left
@@ -170,7 +176,8 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
             fractional_labels=self._fractional_labels,
             flatten=True,
             aggregation_type=self._aggregation_type,
-            class_weights=self._class_weights)):
+            class_weights=self._class_weights,
+            example_weighted=self._example_weighted)):
       example_weight = float(example_weight)
       label = float(label)
       prediction = float(prediction)

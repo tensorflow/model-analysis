@@ -35,7 +35,7 @@ def output_average(
     eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
-) -> metric_types.MetricComputations:
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for computing output average of given metric.
 
   Args:
@@ -44,6 +44,7 @@ def output_average(
     eval_config: Eval config.
     model_name: Optional model name.
     sub_key: Optional sub key associated with metric (e.g. top_k).
+    example_weighted: True if example weights should be applied.
 
   Returns:
     Computation for performing the output average.
@@ -51,7 +52,10 @@ def output_average(
   del eval_config
 
   key = metric_types.MetricKey(
-      name=metric_name, model_name=model_name, sub_key=sub_key)
+      name=metric_name,
+      model_name=model_name,
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   def result(
       metrics: Dict[metric_types.MetricKey, float]
@@ -64,7 +68,8 @@ def output_average(
           name=metric_name,
           model_name=model_name,
           output_name=output_name,
-          sub_key=sub_key)
+          sub_key=sub_key,
+          example_weighted=example_weighted)
       total_value += _to_float(metrics[child_key]) * output_weight
       total_weight += output_weight
     average = total_value / total_weight if total_weight else float('nan')
@@ -80,8 +85,8 @@ def macro_average(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for computing macro average of given metric.
 
   Args:
@@ -95,6 +100,7 @@ def macro_average(
       provided. If class_weights are provided, but a sub_key.class_id (if
       sub_key is None) or sub_key.k (if sub_key is top_k) is not set or not
       found in the dictionary then 0.0 is assumed.
+    example_weighted: True if example weights should be applied.
 
   Returns:
     Computation for performing the macro average.
@@ -106,7 +112,8 @@ def macro_average(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
-      aggregation_type=metric_types.AggregationType(macro_average=True))
+      aggregation_type=metric_types.AggregationType(macro_average=True),
+      example_weighted=example_weighted)
 
   def result(
       metrics: Dict[metric_types.MetricKey, float]
@@ -119,14 +126,16 @@ def macro_average(
           name=metric_name,
           model_name=model_name,
           output_name=output_name,
-          sub_key=sub_key)
+          sub_key=sub_key,
+          example_weighted=example_weighted)
       if child_key not in metrics:
         # Use private name if not found under metric name
         child_key = metric_types.MetricKey(
             name='_' + metric_name,
             model_name=model_name,
             output_name=output_name,
-            sub_key=sub_key)
+            sub_key=sub_key,
+            example_weighted=example_weighted)
       weight = 1.0 if not class_weights else 0.0
       offset = None
       if (child_key.sub_key is not None and
@@ -151,8 +160,8 @@ def weighted_macro_average(
     model_name: Text = '',
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for computing weighted macro average of metric.
 
   The weights per class are based on the percentage of positive labels for each
@@ -171,6 +180,7 @@ def weighted_macro_average(
       found in the dictionary then 0.0 is assumed. Note that these weights are
       applied in addition to the weights based on the positive labels for each
       class.
+    example_weighted: True if example weights should be applied.
 
   Returns:
     Computation for performing the weighted macro average.
@@ -180,7 +190,8 @@ def weighted_macro_average(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
-      aggregation_type=metric_types.AggregationType(macro_average=True))
+      aggregation_type=metric_types.AggregationType(macro_average=True),
+      example_weighted=example_weighted)
 
   class_ids = [k.class_id for k in sub_keys if k.class_id is not None]
 
@@ -189,7 +200,8 @@ def weighted_macro_average(
       class_ids=class_ids,
       eval_config=eval_config,
       model_name=model_name,
-      output_name=output_name)
+      output_name=output_name,
+      example_weighted=example_weighted)
   # Class weights metrics are based on a single computation and key.
   class_weights_from_labels_key = computations[0].keys[0]
 
@@ -205,14 +217,16 @@ def weighted_macro_average(
           name=metric_name,
           model_name=model_name,
           output_name=output_name,
-          sub_key=sub_key)
+          sub_key=sub_key,
+          example_weighted=example_weighted)
       if child_key not in metrics:
         # Use private name if not found under metric name
         child_key = metric_types.MetricKey(
             name='_' + metric_name,
             model_name=model_name,
             output_name=output_name,
-            sub_key=sub_key)
+            sub_key=sub_key,
+            example_weighted=example_weighted)
       weight = 1.0 if not class_weights else 0.0
       offset = None
       if (child_key.sub_key is not None and
@@ -252,7 +266,8 @@ def _class_weights_from_labels(
     name: Text = _CLASS_WEIGHTS_FROM_LABELS_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
-    output_name: Text = '') -> metric_types.MetricComputations:
+    output_name: Text = '',
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for class weights based on labels.
 
   Args:
@@ -261,15 +276,22 @@ def _class_weights_from_labels(
     eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
+    example_weighted: True if example weights should be applied.
   """
   key = metric_types.MetricKey(
-      name=name, model_name=model_name, output_name=output_name)
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      example_weighted=example_weighted)
   return [
       metric_types.MetricComputation(
           keys=[key],
           preprocessor=None,  # Use default
           combiner=_ClassWeightsFromLabelsCombiner(
-              key, eval_config=eval_config, class_ids=class_ids))
+              key,
+              eval_config=eval_config,
+              example_weighted=example_weighted,
+              class_ids=class_ids))
   ]
 
 
@@ -278,10 +300,11 @@ class _ClassWeightsFromLabelsCombiner(beam.CombineFn):
 
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config_pb2.EvalConfig],
-               class_ids: List[int]):
+               class_ids: List[int], example_weighted: bool):
     self._key = key
     self._eval_config = eval_config
     self._class_ids = class_ids
+    self._example_weighted = example_weighted
 
   def create_accumulator(self) -> Dict[int, float]:
     return {i: 0.0 for i in self._class_ids}
@@ -294,13 +317,11 @@ class _ClassWeightsFromLabelsCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
+            example_weighted=self._example_weighted,
             flatten=False,
             allow_none=True,
             require_single_example_weight=True)):
-      if example_weight is None:
-        example_weight = 1.0
-      else:
-        example_weight = float(example_weight)
+      example_weight = float(example_weight)
       if label is not None:
         for class_id in self._class_ids:
           if label.size == 1:

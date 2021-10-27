@@ -39,7 +39,7 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
 
   def testCalibrationPlot(self):
     computations = calibration_plot.CalibrationPlot(
-        num_buckets=10).computations()
+        num_buckets=10).computations(example_weighted=True)
     histogram = computations[0]
     plot = computations[1]
 
@@ -105,7 +105,8 @@ class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(name='calibration_plot')
+          key = metric_types.PlotKey(
+              name='calibration_plot', example_weighted=True)
           self.assertIn(key, got_plots)
           got_plot = got_plots[key]
           self.assertProtoEquals(

@@ -61,14 +61,20 @@ class QueryStatistics(metric_types.Metric):
 metric_types.register_metric(QueryStatistics)
 
 
-def _query_statistics(total_queries_name=TOTAL_QUERIES_NAME,
-                      total_documents_name=TOTAL_DOCUMENTS_NAME,
-                      min_documents_name=MIN_DOCUMENTS_NAME,
-                      max_documents_name=MAX_DOCUMENTS_NAME,
-                      query_key: Text = '') -> metric_types.MetricComputations:
+def _query_statistics(
+    total_queries_name=TOTAL_QUERIES_NAME,
+    total_documents_name=TOTAL_DOCUMENTS_NAME,
+    min_documents_name=MIN_DOCUMENTS_NAME,
+    max_documents_name=MAX_DOCUMENTS_NAME,
+    query_key: Text = '',
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for query statistics."""
   if not query_key:
     raise ValueError('a query_key is required to use QueryStatistics metrics')
+  if example_weighted:
+    raise NotImplementedError(
+        'QueryStatistics cannot be used with weighted metrics. It can only be '
+        'used with metrics_spec.example_weights.unweighted set to true')
 
   total_queries_key = metric_types.MetricKey(name=total_queries_name)
   total_documents_key = metric_types.MetricKey(name=total_documents_name)

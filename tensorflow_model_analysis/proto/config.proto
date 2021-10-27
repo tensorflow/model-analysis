@@ -303,6 +303,19 @@ message BinarizationOptions {
   reserved 1, 2, 3;
 }
 
+// Options for use of example weights in metric computations. These settings are
+// only useful if an example weight key is being used.
+message ExampleWeightOptions {
+  // Set to true to enable weighted metrics. Setting weighted to false has no
+  // effect. If weighted is true but an example weight key was not provided,
+  // then a weight of 1.0 will be assumed (which is effectively the same as
+  // unweighted, but the metric keys will have weighted set to true).
+  bool weighted = 1;
+  // Set to true to enable unweighted metrics. Setting unweighted to false has
+  // no effect.
+  bool unweighted = 2;
+}
+
 // Options for padding prediction and label arrays before feeding to metrics.
 //
 // Predictions and labels may not have the same length (for example,
@@ -482,6 +495,14 @@ message MetricsSpec {
   // separately from binarization options so both can be set safely at the same
   // time.
   AggregationOptions aggregate = 6;
+  // Optional example weight options. If no options are provided then the
+  // metrics will be weighted by default provided at least one of the models and
+  // outputs associated with this spec has an example_weight_key configured,
+  // otherwise the metrics will be unweighted by default. If weighted is enabled
+  // for the metrics, but an example_weight_key is not associated with a given
+  // model or output, then those metrics will still be considered weighted just
+  // using a weight value of 1.0.
+  ExampleWeightOptions example_weights = 11;
   // Optional query key for query/ranking based metrics.
   string query_key = 5;
 

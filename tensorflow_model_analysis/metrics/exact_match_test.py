@@ -86,7 +86,7 @@ class ExactMatchTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   def testExactMatchScoreWithWeights(self):
-    computations = exact_match.ExactMatch().computations()
+    computations = exact_match.ExactMatch().computations(example_weighted=True)
     metric = computations[0]
     example1 = {
         'labels': np.array(['Test 1 two 3']),

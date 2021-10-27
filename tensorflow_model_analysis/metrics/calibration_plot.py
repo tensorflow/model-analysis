@@ -111,14 +111,15 @@ def _calibration_plot(
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for calibration plot."""
   key = metric_types.PlotKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   label_left, label_right = None, None
   if (left is None or right is None) and eval_config and schema:
@@ -141,7 +142,8 @@ def _calibration_plot(
       left=left,
       right=right,
       aggregation_type=aggregation_type,
-      class_weights=class_weights)
+      class_weights=class_weights,
+      example_weighted=example_weighted)
   histogram_key = computations[-1].keys[-1]
 
   def result(

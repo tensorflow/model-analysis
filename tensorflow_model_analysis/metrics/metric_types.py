@@ -77,7 +77,7 @@ class SubKey(
   def __lt__(self, other):
     # Python3 does not allow comparison of NoneType, remove if present.
     return (tuple(x if x is not None else -1 for x in self) < tuple(
-        x if x is not None else -1 for x in other))
+        x if x is not None else -1 for x in other or ()))
 
   def __hash__(self):
     return hash(tuple(self))
@@ -167,7 +167,7 @@ class AggregationType(
   def __lt__(self, other):
     # Python3 does not allow comparison of NoneType, replace with -1.
     return (tuple(x if x is not None else -1 for x in self) < tuple(
-        x if x is not None else -1 for x in other))
+        x if x is not None else -1 for x in other or ()))
 
   def __hash__(self):
     return hash(tuple(self))
@@ -215,7 +215,7 @@ class MetricKey(
     NamedTuple('MetricKey', [('name', Text), ('model_name', Text),
                              ('output_name', Text), ('sub_key', SubKey),
                              ('aggregation_type', AggregationType),
-                             ('is_diff', bool)])):
+                             ('example_weighted', bool), ('is_diff', bool)])):
   """A MetricKey uniquely identifies a metric.
 
   Attributes:
@@ -226,6 +226,7 @@ class MetricKey(
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
     aggregation_type: Aggregation type.
+    example_weighted: Indicates whether this metric was weighted by examples.
     is_diff: Optional flag to indicate whether this metrics is a diff metric.
   """
 
@@ -235,23 +236,32 @@ class MetricKey(
               output_name: Text = '',
               sub_key: Optional[SubKey] = None,
               aggregation_type: Optional[AggregationType] = None,
+              example_weighted: Optional[bool] = False,
               is_diff: Optional[bool] = False):
-    return super(MetricKey, cls).__new__(cls, name, model_name, output_name,
-                                         sub_key, aggregation_type, is_diff)
+    return super(MetricKey,
+                 cls).__new__(cls, name, model_name, output_name, sub_key,
+                              aggregation_type, example_weighted, is_diff)
 
   def __eq__(self, other):
     return tuple(self) == other
 
   def __lt__(self, other):
+    if other is None:
+      return False
     # Python3 does not allow comparison of NoneType, remove if present.
     sub_key = self.sub_key if self.sub_key else ()
     other_sub_key = other.sub_key if other.sub_key else ()
     agg_type = self.aggregation_type if self.aggregation_type else ()
     other_agg_type = other.aggregation_type if other.aggregation_type else ()
+    example_weighted = self.example_weighted if self.example_weighted else ()
+    other_example_weighted = (
+        other.example_weighted if other.example_weighted else ())
     is_diff = self.is_diff
     other_is_diff = other.is_diff
-    return ((tuple(self[:-3])) < tuple(other[:-3]) and
+    # -4 for sub_key, aggregation_type, example_weighted, and is_diff
+    return ((tuple(self[:-4])) < tuple(other[:-4]) and
             sub_key < other_sub_key and agg_type < other_agg_type and
+            example_weighted < other_example_weighted and
             is_diff < other_is_diff)
 
   def __hash__(self):
@@ -274,6 +284,8 @@ class MetricKey(
       metric_key.sub_key.CopyFrom(self.sub_key.to_proto())
     if self.aggregation_type:
       metric_key.aggregation_type.CopyFrom(self.aggregation_type.to_proto())
+    if self.example_weighted is not None:
+      metric_key.example_weighted.value = self.example_weighted
     if self.is_diff:
       metric_key.is_diff = self.is_diff
     return metric_key
@@ -281,12 +293,16 @@ class MetricKey(
   @staticmethod
   def from_proto(pb: metrics_for_slice_pb2.MetricKey) -> 'MetricKey':
     """Configures class from proto."""
+    example_weighted = None
+    if pb.HasField('example_weighted'):
+      example_weighted = pb.example_weighted.value
     return MetricKey(
         name=pb.name,
         model_name=pb.model_name,
         output_name=pb.output_name,
         sub_key=SubKey.from_proto(pb.sub_key),
         aggregation_type=AggregationType.from_proto(pb.aggregation_type),
+        example_weighted=example_weighted,
         is_diff=pb.is_diff)
 
   # Generate a copy of the key except that the is_diff is True.
@@ -321,16 +337,22 @@ class PlotKey(MetricKey):
       plot_key.output_name = self.output_name
     if self.sub_key:
       plot_key.sub_key.CopyFrom(self.sub_key.to_proto())
+    if self.example_weighted is not None:
+      plot_key.example_weighted.value = self.example_weighted
     return plot_key
 
   @staticmethod
   def from_proto(pb: metrics_for_slice_pb2.PlotKey) -> 'PlotKey':
     """Configures class from proto."""
+    example_weighted = None
+    if pb.HasField('example_weighted'):
+      example_weighted = pb.example_weighted.value
     return PlotKey(
         name='',
         model_name=pb.model_name,
         output_name=pb.output_name,
-        sub_key=SubKey.from_proto(pb.sub_key))
+        sub_key=SubKey.from_proto(pb.sub_key),
+        example_weighted=example_weighted)
 
 
 # A separate version from proto is used here because protos are not hashable and
@@ -351,17 +373,26 @@ class AttributionsKey(MetricKey):
       attribution_key.output_name = self.output_name
     if self.sub_key:
       attribution_key.sub_key.CopyFrom(self.sub_key.to_proto())
+    if self.example_weighted is not None:
+      attribution_key.example_weighted.value = self.example_weighted
+    if self.is_diff:
+      attribution_key.is_diff = self.is_diff
     return attribution_key
 
   @staticmethod
   def from_proto(
       pb: metrics_for_slice_pb2.AttributionsKey) -> 'AttributionsKey':
     """Configures class from proto."""
+    example_weighted = None
+    if pb.HasField('example_weighted'):
+      example_weighted = pb.example_weighted.value
     return AttributionsKey(
         name=pb.name,
         model_name=pb.model_name,
         output_name=pb.output_name,
-        sub_key=SubKey.from_proto(pb.sub_key))
+        sub_key=SubKey.from_proto(pb.sub_key),
+        example_weighted=example_weighted,
+        is_diff=pb.is_diff)
 
 
 # LINT.ThenChange(../proto/metrics_for_slice.proto)
@@ -552,7 +583,7 @@ MetricComputations = List[Union[MetricComputation, DerivedMetricComputation,
                                 CIDerivedMetricComputation]]
 
 
-def update_create_computations_fn_kwargs(
+def validate_and_update_create_computations_fn_kwargs(
     arg_names: Iterable[Text],
     kwargs: Dict[Text, Any],
     eval_config: Optional[config_pb2.EvalConfig] = None,
@@ -562,9 +593,9 @@ def update_create_computations_fn_kwargs(
     sub_keys: Optional[List[Optional[SubKey]]] = None,
     aggregation_type: Optional[AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
-    query_key: Optional[Text] = None,
-    is_diff: Optional[bool] = False):
-  """Updates create_computations_fn kwargs based on arg spec.
+    example_weighted: bool = False,
+    query_key: Optional[Text] = None):
+  """Validates and updates create_computations_fn kwargs based on arg_names.
 
   Each metric's create_computations_fn is invoked with a variable set of
   parameters, depending on the argument names of the callable. If an argument
@@ -581,11 +612,14 @@ def update_create_computations_fn_kwargs(
     sub_keys: The value to use when `sub_keys` is in arg_names.
     aggregation_type: The value to use when `aggregation_type` is in arg_names.
     class_weights: The value to use when `class_weights` is in arg_names.
+    example_weighted: The value to use when `exampled_weighted` is in arg_names.
     query_key: The value to use when `query_key` is in arg_names.
-    is_diff: The value to use when `is_diff` is in arg_names.
 
   Returns:
     The kwargs passed as input, updated with the appropriate additional args.
+
+  Raises:
+    ValueError: If arg_names or kwargs don't support a requested parameter.
   """
   if 'eval_config' in arg_names:
     kwargs['eval_config'] = eval_config
@@ -601,10 +635,22 @@ def update_create_computations_fn_kwargs(
     kwargs['aggregation_type'] = aggregation_type
   if 'class_weights' in arg_names:
     kwargs['class_weights'] = class_weights
+  elif class_weights:
+    raise ValueError(
+        'A metric that does not support class_weights is being used with '
+        'class_weights applied. This is likely caused because micro_averaging '
+        'was enabled for a metric that does not support it. '
+        f'Metric args={arg_names}, kwargs={kwargs}')
   if 'query_key' in arg_names:
     kwargs['query_key'] = query_key
-  if 'is_diff' in arg_names:
-    kwargs['is_diff'] = is_diff
+  if 'example_weighted' in arg_names:
+    kwargs['example_weighted'] = example_weighted
+  elif example_weighted:
+    raise ValueError(
+        'A metric that does not support example weights is being used with '
+        'MetricsSpec.example_weights.weighted set to true. Contact the owner '
+        'of the Metric implementation to ask if support can be added. '
+        f'Metric args={arg_names}, kwargs={kwargs}')
   return kwargs
 
 
@@ -670,13 +716,13 @@ class Metric(object):
                    sub_keys: Optional[List[Optional[SubKey]]] = None,
                    aggregation_type: Optional[AggregationType] = None,
                    class_weights: Optional[Dict[int, float]] = None,
-                   query_key: Optional[Text] = None,
-                   is_diff: Optional[bool] = False) -> MetricComputations:
+                   example_weighted: bool = False,
+                   query_key: Optional[Text] = None) -> MetricComputations:
     """Creates computations associated with metric."""
-    updated_kwargs = update_create_computations_fn_kwargs(
+    updated_kwargs = validate_and_update_create_computations_fn_kwargs(
         self._args, self.kwargs.copy(), eval_config, schema, model_names,
-        output_names, sub_keys, aggregation_type, class_weights, query_key,
-        is_diff)
+        output_names, sub_keys, aggregation_type, class_weights,
+        example_weighted, query_key)
     return self.create_computations_fn(**updated_kwargs)
 
 

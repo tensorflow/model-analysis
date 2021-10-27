@@ -40,13 +40,18 @@ from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_plot
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.metrics import weighted_example_count
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 _TF_LOSSES_MODULE = tf.keras.losses.Loss().__class__.__module__
 
-_TFOrTFMAMetric = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss,
-                        metric_types.Metric]
+_TFOrTFMAMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss,
+                              metric_types.Metric]
 _TFMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]
+
+# List of metrics or losses optionally keyed by output name.
+_MetricsOrLosses = Union[List[_TFOrTFMAMetricOrLoss],
+                         Dict[Text, List[_TFOrTFMAMetricOrLoss]]]
 
 # TF configs that should be treated special by either modifying the class names
 # used or updating the default config settings.
@@ -68,8 +73,71 @@ _TF_CONFIG_DEFAULTS = {
 }
 
 
+def config_from_metric(
+    metric: _TFOrTFMAMetricOrLoss) -> config_pb2.MetricConfig:
+  """Returns MetricConfig associated with given metric instance."""
+  if isinstance(metric, tf.keras.metrics.Metric):
+    return _serialize_tf_metric(metric)
+  elif isinstance(metric, tf.keras.losses.Loss):
+    return _serialize_tf_loss(metric)
+  elif isinstance(metric, metric_types.Metric):
+    return _serialize_tfma_metric(metric)
+  else:
+    raise NotImplementedError('unknown metric type {}: metric={}'.format(
+        type(metric), metric))
+
+
+def _example_weighted_default(eval_config: config_pb2.EvalConfig,
+                              spec: config_pb2.MetricsSpec) -> bool:
+  """Returns tue if example weighted is the default for the given spec.
+
+  If any of the models and/or outputs have example weights then example weighted
+  will be true by default.
+
+  Args:
+    eval_config: Eval config.
+    spec: Metrics spec to get default for.
+  """
+
+  # Default to using example example weights if an example weight key is set.
+  def has_example_weight_key(model_spec: config_pb2.ModelSpec) -> bool:
+    if model_spec.example_weight_key:
+      return True
+    if spec.output_names and model_spec.example_weight_keys:
+      for output_name in spec.output_names:
+        if output_name in model_spec.example_weight_keys:
+          return True
+    return False
+
+  if spec.model_names:
+    for model_name in spec.model_names:
+      model_spec = model_util.get_model_spec(eval_config, model_name)
+      if model_spec and has_example_weight_key(model_spec):
+        return True
+  else:
+    for model_spec in eval_config.model_specs:
+      if has_example_weight_key(model_spec):
+        return True
+  return False
+
+
+def _example_weight_options(eval_config: config_pb2.EvalConfig,
+                            spec: config_pb2.MetricsSpec) -> List[bool]:
+  """Returns example weight options for given spec."""
+  result = []
+  if not spec.HasField('example_weights'):
+    result.append(_example_weighted_default(eval_config, spec))
+  else:
+    if spec.example_weights.weighted:
+      result.append(True)
+    if spec.example_weights.unweighted:
+      result.append(False)
+  return result
+
+
 def specs_from_metrics(
-    metrics: Union[List[_TFOrTFMAMetric], Dict[Text, List[_TFOrTFMAMetric]]],
+    metrics: Optional[_MetricsOrLosses] = None,
+    unweighted_metrics: Optional[_MetricsOrLosses] = None,
     model_names: Optional[List[Text]] = None,
     output_names: Optional[List[Text]] = None,
     output_weights: Optional[Dict[Text, float]] = None,
@@ -83,15 +151,18 @@ def specs_from_metrics(
 
   Examples:
 
-    metrics_specs = specs_from_metrics([
-        tf.keras.metrics.BinaryAccuracy(),
-        tf.keras.metrics.AUC(),
-        tf.keras.metrics.Precision(),
-        tf.keras.metrics.Recall(),
-        tfma.metrics.MeanLabel(),
-        tfma.metrics.MeanPrediction()
-        ...
-    ])
+    metrics_specs = specs_from_metrics(
+      [
+          tf.keras.metrics.BinaryAccuracy(),
+          tf.keras.metrics.AUC(),
+          tfma.metrics.MeanLabel(),
+          tfma.metrics.MeanPrediction()
+          ...
+      ],
+      unweighted=[
+          tf.keras.metrics.Precision(),
+          tf.keras.metrics.Recall()
+      ])
 
     metrics_specs = specs_from_metrics({
       'output1': [
@@ -110,7 +181,11 @@ def specs_from_metrics(
   Args:
     metrics: List of tf.keras.metrics.Metric, tf.keras.losses.Loss, or
       tfma.metrics.Metric. For multi-output models a dict of dicts may be passed
-      where the first dict is indexed by the output_name.
+      where the first dict is indexed by the output_name. Whether these metrics
+      are weighted or not will be determined based on whether the ModelSpec
+      associated with the metrics contains example weight key settings or not.
+    unweighted_metrics: Same as metrics only these metrics will not be weighted
+      by example_weight regardless of the example weight key settings.
     model_names: Optional model names (if multi-model evaluation).
     output_names: Optional output names (if multi-output models). If the metrics
       are a dict this should not be set.
@@ -122,20 +197,37 @@ def specs_from_metrics(
       metrics.
     query_key: Optional query key for query/ranking based metrics.
     include_example_count: True to add example_count metric. Default is True.
-    include_weighted_example_count: True to add weighted_example_count metric.
+    include_weighted_example_count: True to add weighted example_count metric.
       Default is True. A weighted example count will be added per output for
       multi-output models.
+
+  Returns:
+    MetricsSpecs based on options provided. A separate spec is returned for
+    weighted vs unweighted metrics. A separate spec is also returned for each
+    output if a dict of metrics per output is passed.
   """
   if isinstance(metrics, dict) and output_names:
     raise ValueError('metrics cannot be a dict when output_names is used: '
                      'metrics={}, output_names={}'.format(
                          metrics, output_names))
-  if isinstance(metrics, dict):
+  if (metrics and unweighted_metrics and
+      isinstance(metrics, dict) != isinstance(unweighted_metrics, dict)):
+    raise ValueError(
+        'metrics and unweighted_metrics must both be either dicts or lists: '
+        f'metrics={metrics}, unweighted_metrics={unweighted_metrics}')
+
+  if isinstance(metrics, dict) or isinstance(unweighted_metrics, dict):
+    metrics_dict = metrics if isinstance(metrics, dict) else {}
+    unweighted_metrics_dict = (
+        unweighted_metrics if isinstance(unweighted_metrics, dict) else {})
     specs = []
-    for output_name in sorted(metrics.keys()):
+    output_names = set(metrics_dict.keys()).union(
+        unweighted_metrics_dict.keys())
+    for output_name in sorted(output_names):
       specs.extend(
           specs_from_metrics(
-              metrics[output_name],
+              metrics_dict.get(output_name),
+              unweighted_metrics=unweighted_metrics_dict.get(output_name),
               model_names=model_names,
               output_names=[output_name],
               binarize=binarize,
@@ -159,26 +251,30 @@ def specs_from_metrics(
       include_example_count=include_example_count,
       include_weighted_example_count=include_weighted_example_count)
 
-  metric_configs = []
-  for metric in metrics:
-    if isinstance(metric, tf.keras.metrics.Metric):
-      metric_configs.append(_serialize_tf_metric(metric))
-    elif isinstance(metric, tf.keras.losses.Loss):
-      metric_configs.append(_serialize_tf_loss(metric))
-    elif isinstance(metric, metric_types.Metric):
-      metric_configs.append(_serialize_tfma_metric(metric))
-    else:
-      raise NotImplementedError('unknown metric type {}: metric={}'.format(
-          type(metric), metric))
-  specs.append(
-      config_pb2.MetricsSpec(
-          metrics=metric_configs,
-          model_names=model_names,
-          output_names=output_names,
-          output_weights=output_weights,
-          binarize=binarize,
-          aggregate=aggregate,
-          query_key=query_key))
+  if metrics:
+    specs.append(
+        config_pb2.MetricsSpec(
+            metrics=[config_from_metric(metric) for metric in metrics],
+            model_names=model_names,
+            output_names=output_names,
+            output_weights=output_weights,
+            binarize=binarize,
+            aggregate=aggregate,
+            example_weights=None,
+            query_key=query_key))
+  if unweighted_metrics:
+    specs.append(
+        config_pb2.MetricsSpec(
+            metrics=[
+                config_from_metric(metric) for metric in unweighted_metrics
+            ],
+            model_names=model_names,
+            output_names=output_names,
+            output_weights=output_weights,
+            binarize=binarize,
+            aggregate=aggregate,
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True),
+            query_key=query_key))
 
   return specs
 
@@ -207,8 +303,12 @@ def example_count_specs(
     metric_config = _serialize_tfma_metric(example_count.ExampleCount())
     specs.append(
         config_pb2.MetricsSpec(
-            metrics=[metric_config], model_names=model_names))
+            metrics=[metric_config],
+            model_names=model_names,
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)))
   if include_weighted_example_count:
+    # TODO(b/143180976): Replace WeightedExampleCount with ExampleCount once the
+    # UI is updated to distinguish weighted for unweighted metrics.
     metric_config = _serialize_tfma_metric(
         weighted_example_count.WeightedExampleCount())
     specs.append(
@@ -216,7 +316,8 @@ def example_count_specs(
             metrics=[metric_config],
             model_names=model_names,
             output_names=output_names,
-            output_weights=output_weights))
+            output_weights=output_weights,
+            example_weights=config_pb2.ExampleWeightOptions(weighted=True)))
   return specs
 
 
@@ -405,22 +506,25 @@ def metric_instance(
 def _keys_for_metric(
     metric_name: Text, spec: config_pb2.MetricsSpec,
     aggregation_type: Optional[metric_types.AggregationType],
-    sub_keys: List[Optional[metric_types.SubKey]]
-) -> Iterator[metric_types.MetricKey]:
+    sub_keys: List[Optional[metric_types.SubKey]],
+    example_weights: List[bool]) -> Iterator[metric_types.MetricKey]:
   """Yields all non-diff keys for a specific metric name."""
   for model_name in spec.model_names or ['']:
     for output_name in spec.output_names or ['']:
       for sub_key in sub_keys:
-        key = metric_types.MetricKey(
-            name=metric_name,
-            model_name=model_name,
-            output_name=output_name,
-            sub_key=sub_key,
-            aggregation_type=aggregation_type)
-        yield key
+        for example_weighted in example_weights:
+          key = metric_types.MetricKey(
+              name=metric_name,
+              model_name=model_name,
+              output_name=output_name,
+              sub_key=sub_key,
+              aggregation_type=aggregation_type,
+              example_weighted=example_weighted)
+          yield key
 
 
 def _keys_and_metrics_from_specs(
+    eval_config: config_pb2.EvalConfig,
     metrics_specs: Iterable[config_pb2.MetricsSpec]
 ) -> Iterator[Tuple[metric_types.MetricKey, config_pb2.MetricConfig,
                     metric_types.Metric]]:
@@ -431,16 +535,18 @@ def _keys_and_metrics_from_specs(
       for metric_config in spec.metrics:
         instance = metric_instance(metric_config, tfma_metric_classes)
         for key in _keys_for_metric(instance.name, spec, aggregation_type,
-                                    sub_keys):
+                                    sub_keys,
+                                    _example_weight_options(eval_config, spec)):
           yield key, metric_config, instance
 
 
 def metric_keys_to_skip_for_confidence_intervals(
-    metrics_specs: Iterable[config_pb2.MetricsSpec]
-) -> FrozenSet[metric_types.MetricKey]:
+    metrics_specs: Iterable[config_pb2.MetricsSpec],
+    eval_config: config_pb2.EvalConfig) -> FrozenSet[metric_types.MetricKey]:
   """Returns metric keys not to be displayed with confidence intervals."""
   skipped_keys = []
-  for key, _, instance in _keys_and_metrics_from_specs(metrics_specs):
+  for key, _, instance in _keys_and_metrics_from_specs(eval_config,
+                                                       metrics_specs):
     # if metric does not implement compute_confidence_interval, do not skip
     if not getattr(instance, 'compute_confidence_interval', True):
       skipped_keys.append(key)
@@ -456,9 +562,12 @@ _SliceAndThreshold = Tuple[Optional[Union[config_pb2.SlicingSpec,
 
 
 def metric_thresholds_from_metrics_specs(
-    metrics_specs: Iterable[config_pb2.MetricsSpec]
+    metrics_specs: Iterable[config_pb2.MetricsSpec],
+    eval_config: Optional[config_pb2.EvalConfig] = None
 ) -> Dict[metric_types.MetricKey, Iterable[_SliceAndThreshold]]:
   """Returns thresholds associated with given metrics specs."""
+  if eval_config is None:
+    eval_config = config_pb2.EvalConfig()
   result = collections.defaultdict(list)
   existing = collections.defaultdict(dict)
 
@@ -496,26 +605,27 @@ def metric_thresholds_from_metrics_specs(
       # Add thresholds for metrics computed in-graph.
       for metric_name, threshold in spec.thresholds.items():
         for key in _keys_for_metric(metric_name, spec, aggregation_type,
-                                    sub_keys):
+                                    sub_keys, [None]):
           add_threshold(key, None, threshold)
       for metric_name, per_slice_thresholds in spec.per_slice_thresholds.items(
       ):
         for key in _keys_for_metric(metric_name, spec, aggregation_type,
-                                    sub_keys):
+                                    sub_keys, [None]):
           for per_slice_threshold in per_slice_thresholds.thresholds:
             for slice_spec in per_slice_threshold.slicing_specs:
               add_threshold(key, slice_spec, per_slice_threshold.threshold)
       for metric_name, cross_slice_thresholds in (
           spec.cross_slice_thresholds.items()):
         for key in _keys_for_metric(metric_name, spec, aggregation_type,
-                                    sub_keys):
+                                    sub_keys, [None]):
           for cross_slice_threshold in cross_slice_thresholds.thresholds:
             for cross_slice_spec in cross_slice_threshold.cross_slicing_specs:
               add_threshold(key, cross_slice_spec,
                             cross_slice_threshold.threshold)
 
   # Add thresholds for post export metrics defined in MetricConfigs.
-  for key, metric_config, _ in _keys_and_metrics_from_specs(metrics_specs):
+  for key, metric_config, _ in _keys_and_metrics_from_specs(
+      eval_config, metrics_specs):
     if metric_config.HasField('threshold'):
       add_threshold(key, None, metric_config.threshold)
     for per_slice_threshold in metric_config.per_slice_thresholds:
@@ -554,8 +664,10 @@ def to_computations(
   # Note: Lists are used instead of Dicts for the following items because
   # protos are are no hashable.
   #
-  # List[List[_TFOrTFMAMetric]] (offsets align with metrics_specs).
+  # List[List[_TFOrTFMAMetricOrLoss]] (offsets align with metrics_specs).
   per_spec_metric_instances = []
+  # List[List[MetricConfig]] (offsets align with metrics_specs).
+  per_spec_metric_configs = []
   # List[List[_TFMetricOrLoss]] (offsets align with tf_metrics_specs).
   per_tf_spec_metric_instances = []
   # List[List[metric_types.Metric]]] (offsets align with tfma_metrics_specs).
@@ -585,6 +697,7 @@ def to_computations(
           tfma_spec.metrics.append(metric)
 
     metric_instances = []
+    metric_configs = []
     if tf_spec.metrics:
       tf_metrics_specs.append(tf_spec)
       tf_metric_instances = []
@@ -598,6 +711,7 @@ def to_computations(
               _deserialize_tf_metric(m, tf_metric_classes))
       per_tf_spec_metric_instances.append(tf_metric_instances)
       metric_instances.extend(tf_metric_instances)
+      metric_configs.extend(tf_spec.metrics)
     if tfma_spec.metrics:
       tfma_metrics_specs.append(tfma_spec)
       tfma_metric_instances = [
@@ -606,7 +720,9 @@ def to_computations(
       ]
       per_tfma_spec_metric_instances.append(tfma_metric_instances)
       metric_instances.extend(tfma_metric_instances)
+      metric_configs.extend(tfma_spec.metrics)
     per_spec_metric_instances.append(metric_instances)
+    per_spec_metric_configs.append(metric_configs)
 
   # Process TF specs
   computations.extend(
@@ -623,51 +739,57 @@ def to_computations(
   # Note that processing of TF and TFMA specs were setup to create the binarized
   # metrics that macro averaging depends on.
   for i, spec in enumerate(metrics_specs):
-    for aggregation_type, sub_keys in _create_sub_keys(spec).items():
-      output_names = spec.output_names or ['']
-      output_weights = dict(spec.output_weights)
-      if not set(output_weights.keys()).issubset(output_names):
-        raise ValueError(
-            'one or more output_names used in output_weights does not exist: '
-            'output_names={}, output_weights={}'.format(output_names,
-                                                        output_weights))
-      for model_name in spec.model_names or ['']:
-        for sub_key in sub_keys:
-          for metric in per_spec_metric_instances[i]:
-            if (aggregation_type and (aggregation_type.macro_average or
-                                      aggregation_type.weighted_macro_average)):
-              class_weights = _class_weights(spec) or {}
-              for output_name in output_names:
-                macro_average_sub_keys = _macro_average_sub_keys(
-                    sub_key, class_weights)
-                if aggregation_type.macro_average:
-                  computations.extend(
-                      aggregation.macro_average(
-                          metric.get_config()['name'],
-                          sub_keys=macro_average_sub_keys,
-                          eval_config=eval_config,
-                          model_name=model_name,
-                          output_name=output_name,
-                          sub_key=sub_key,
-                          class_weights=class_weights))
-                elif aggregation_type.weighted_macro_average:
-                  computations.extend(
-                      aggregation.weighted_macro_average(
-                          metric.get_config()['name'],
-                          sub_keys=macro_average_sub_keys,
-                          eval_config=eval_config,
-                          model_name=model_name,
-                          output_name=output_name,
-                          sub_key=sub_key,
-                          class_weights=class_weights))
-            if output_weights:
-              computations.extend(
-                  aggregation.output_average(
-                      metric.get_config()['name'],
-                      output_weights=output_weights,
-                      eval_config=eval_config,
-                      model_name=model_name,
-                      sub_key=sub_key))
+    for example_weighted in _example_weight_options(eval_config, spec):
+      for aggregation_type, sub_keys in _create_sub_keys(spec).items():
+        output_names = spec.output_names or ['']
+        output_weights = dict(spec.output_weights)
+        if not set(output_weights.keys()).issubset(output_names):
+          raise ValueError(
+              'one or more output_names used in output_weights does not exist: '
+              'output_names={}, output_weights={}'.format(
+                  output_names, output_weights))
+        for model_name in spec.model_names or ['']:
+          for sub_key in sub_keys:
+            for metric, _ in zip(per_spec_metric_instances[i],
+                                 per_spec_metric_configs[i]):
+              if (aggregation_type and
+                  (aggregation_type.macro_average or
+                   aggregation_type.weighted_macro_average)):
+                class_weights = _class_weights(spec) or {}
+                for output_name in output_names:
+                  macro_average_sub_keys = _macro_average_sub_keys(
+                      sub_key, class_weights)
+                  if aggregation_type.macro_average:
+                    computations.extend(
+                        aggregation.macro_average(
+                            metric.get_config()['name'],
+                            sub_keys=macro_average_sub_keys,
+                            eval_config=eval_config,
+                            model_name=model_name,
+                            output_name=output_name,
+                            sub_key=sub_key,
+                            class_weights=class_weights,
+                            example_weighted=example_weighted))
+                  elif aggregation_type.weighted_macro_average:
+                    computations.extend(
+                        aggregation.weighted_macro_average(
+                            metric.get_config()['name'],
+                            sub_keys=macro_average_sub_keys,
+                            eval_config=eval_config,
+                            model_name=model_name,
+                            output_name=output_name,
+                            sub_key=sub_key,
+                            class_weights=class_weights,
+                            example_weighted=example_weighted))
+              if output_weights:
+                computations.extend(
+                    aggregation.output_average(
+                        metric.get_config()['name'],
+                        output_weights=output_weights,
+                        eval_config=eval_config,
+                        model_name=model_name,
+                        sub_key=sub_key,
+                        example_weighted=example_weighted))
 
   return computations
 
@@ -747,22 +869,46 @@ def _process_tf_metrics_specs(
                   model_name, sub_key,
                   aggregation_type if not is_macro else None,
                   class_weights if not is_macro else ())
-              if output_name not in metrics_by_unique_args[unique_args]:
-                metrics_by_unique_args[unique_args][output_name] = []
-              metrics_by_unique_args[unique_args][output_name].extend(instances)
+              if unique_args not in metrics_by_unique_args:
+                # Tuple of weighted and unweighted metrics by output
+                metrics_by_unique_args[unique_args] = (
+                    collections.defaultdict(list),
+                    collections.defaultdict(list))
+              for instance in instances:
+                for example_weighted in _example_weight_options(
+                    eval_config, spec):
+                  if example_weighted:
+                    metrics_by_unique_args[unique_args][0][output_name].append(
+                        instance)
+                  else:
+                    metrics_by_unique_args[unique_args][1][output_name].append(
+                        instance)
 
   # Convert Unique args and outputs to calls to compute TF metrics
   result = []
   for args, metrics_by_output in metrics_by_unique_args.items():
     class_weights = dict(args.class_weights) if args.class_weights else None
-    result.extend(
-        tf_metric_wrapper.tf_metric_computations(
-            metrics_by_output,
-            eval_config=eval_config,
-            model_name=args.model_name,
-            sub_key=args.sub_key,
-            aggregation_type=args.aggregation_type,
-            class_weights=class_weights))
+    weighted_metrics_by_output, unweighted_metrics_by_output = metrics_by_output
+    if weighted_metrics_by_output:
+      result.extend(
+          tf_metric_wrapper.tf_metric_computations(
+              weighted_metrics_by_output,
+              eval_config=eval_config,
+              model_name=args.model_name,
+              sub_key=args.sub_key,
+              aggregation_type=args.aggregation_type,
+              class_weights=class_weights,
+              example_weighted=True))
+    if unweighted_metrics_by_output:
+      result.extend(
+          tf_metric_wrapper.tf_metric_computations(
+              unweighted_metrics_by_output,
+              eval_config=eval_config,
+              model_name=args.model_name,
+              sub_key=args.sub_key,
+              aggregation_type=args.aggregation_type,
+              class_weights=class_weights,
+              example_weighted=False))
   return result
 
 
@@ -782,6 +928,7 @@ def _process_tfma_metrics_specs(
   tfma_specs_by_metric_config = {}
   # Dict[bytes,metric_types.Metric] (hash(MetricConfig)->Metric)
   hashed_metrics = {}
+  hashed_configs = {}
   for i, spec in enumerate(tfma_metrics_specs):
     for metric_config, metric in zip(spec.metrics,
                                      per_tfma_spec_metric_instances[i]):
@@ -790,6 +937,7 @@ def _process_tfma_metrics_specs(
       config_hash = metric_config.SerializeToString()
       if config_hash not in tfma_specs_by_metric_config:
         hashed_metrics[config_hash] = metric
+        hashed_configs[config_hash] = metric_config
         tfma_specs_by_metric_config[config_hash] = []
       tfma_specs_by_metric_config[config_hash].append(spec)
 
@@ -800,6 +948,7 @@ def _process_tfma_metrics_specs(
   result = []
   for config_hash, specs in tfma_specs_by_metric_config.items():
     metric = hashed_metrics[config_hash]
+    metric_config = hashed_configs[config_hash]
     for spec in specs:
       sub_keys_by_aggregation_type = _create_sub_keys(spec)
       # Keep track of sub-keys that can be shared between macro averaging and
@@ -832,16 +981,18 @@ def _process_tfma_metrics_specs(
           instance = _private_tfma_metric(metric)
         else:
           instance = metric
-        result.extend(
-            instance.computations(
-                eval_config=eval_config,
-                schema=schema,
-                model_names=list(spec.model_names) or [''],
-                output_names=list(spec.output_names) or [''],
-                sub_keys=sub_keys,
-                aggregation_type=aggregation_type,
-                class_weights=class_weights if class_weights else None,
-                query_key=spec.query_key))
+        for example_weighted in _example_weight_options(eval_config, spec):
+          result.extend(
+              instance.computations(
+                  eval_config=eval_config,
+                  schema=schema,
+                  model_names=list(spec.model_names) or [''],
+                  output_names=list(spec.output_names) or [''],
+                  sub_keys=sub_keys,
+                  aggregation_type=aggregation_type,
+                  class_weights=class_weights if class_weights else None,
+                  example_weighted=example_weighted,
+                  query_key=spec.query_key))
   return result
 
 

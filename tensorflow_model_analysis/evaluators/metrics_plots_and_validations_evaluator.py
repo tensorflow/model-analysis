@@ -627,7 +627,8 @@ def _get_confidence_interval_params(
     intervals displayed in the output.
   """
   skip_ci_metric_keys = (
-      metric_specs.metric_keys_to_skip_for_confidence_intervals(metrics_specs))
+      metric_specs.metric_keys_to_skip_for_confidence_intervals(
+          metrics_specs, eval_config=eval_config))
   num_jackknife_samples = 0
   num_bootstrap_samples = 0
   ci_method = eval_config.options.confidence_intervals.method

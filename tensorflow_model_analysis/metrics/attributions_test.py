@@ -28,6 +28,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import attributions
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.metrics import metric_util
 
 
 class AttributionsTest(testutil.TensorflowModelAnalysisTest,
@@ -53,14 +54,13 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
 
     total_attributions_key = metric_types.AttributionsKey(
         name='_total_attributions')
-    weighted_examples_key = metric_types.MetricKey(
-        name='weighted_example_count')
+    example_count_key = metric_types.MetricKey(name='example_count')
     metrics = {
         total_attributions_key: {
             'feature1': 1.0,
             'feature2': -2.0
         },
-        weighted_examples_key: 0.5
+        example_count_key: 0.5
     }
 
     with beam.Pipeline() as pipeline:
@@ -96,14 +96,13 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
 
     total_absolute_attributions_key = metric_types.AttributionsKey(
         name='_total_absolute_attributions')
-    weighted_examples_key = metric_types.MetricKey(
-        name='weighted_example_count')
+    example_count_key = metric_types.MetricKey(name='example_count')
     metrics = {
         total_absolute_attributions_key: {
             'feature1': 1.0,
             'feature2': 2.0
         },
-        weighted_examples_key: 0.5
+        example_count_key: 0.5
     }
 
     with beam.Pipeline() as pipeline:
@@ -140,16 +139,25 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
           'model_name': '',
           'output_name': '',
           'examples': [{
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'feature1': 1.1,
                   'feature2': -1.2,
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'feature1': -2.1,
                   'feature2': 2.2
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'feature1': 3.1,
                   'feature2': -3.2
@@ -165,6 +173,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
           'model_name': 'model',
           'output_name': '',
           'examples': [{
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'model': {
                       'feature1': 11.1,
@@ -172,6 +183,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
                   },
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'model': {
                       'feature1': -22.1,
@@ -179,6 +193,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
                   },
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'model': {
                       'feature1': 33.1,
@@ -196,6 +213,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
           'model_name': 'model',
           'output_name': 'output',
           'examples': [{
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'model': {
                       'output': {
@@ -205,6 +225,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
                   },
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'model': {
                       'output': {
@@ -214,6 +237,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
                   },
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'model': {
                       'output': {
@@ -240,7 +266,7 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
       result = (
           pipeline
           | 'Create' >> beam.Create(examples)
-          | 'Process' >> beam.ParDo(computations[0].preprocessor)
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           |
           'CombineAttributions' >> beam.CombinePerKey(computations[0].combiner)
@@ -285,18 +311,27 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
         sub_keys=[sub_key])
 
     example1 = {
+        'labels': None,
+        'predictions': None,
+        'example_weights': np.array(1.0),
         'attributions': {
             'feature1': [1.11, 1.13, 1.12],
             'feature2': [1.21, 1.23, 1.22]
         }
     }
     example2 = {
+        'labels': None,
+        'predictions': None,
+        'example_weights': np.array(1.0),
         'attributions': {
             'feature1': [2.11, 2.13, 2.12],
             'feature2': [2.21, 2.23, 2.22]
         }
     }
     example3 = {
+        'labels': None,
+        'predictions': None,
+        'example_weights': np.array(1.0),
         'attributions': {
             'feature1': np.array([3.11, 3.13, 3.12]),
             'feature2': np.array([3.21, 3.23, 3.22])
@@ -308,7 +343,7 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
       result = (
           pipeline
           | 'Create' >> beam.Create([example1, example2, example3])
-          | 'Process' >> beam.ParDo(computations[0].preprocessor)
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           |
           'CombineAttributions' >> beam.CombinePerKey(computations[0].combiner)
@@ -339,24 +374,33 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
           'model_name': '',
           'output_name': '',
           'examples': [{
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(0.5),
               'attributions': {
                   'feature1': 1.1,
                   'feature2': -1.2,
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(0.7),
               'attributions': {
                   'feature1': 2.1,
                   'feature2': -2.2
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(0.9),
               'attributions': {
                   'feature1': 3.1,
                   'feature2': -3.2
               }
           }],
           'expected_values': {
-              'feature1': (1.1 + 2.1 + 3.1),
-              'feature2': (1.2 + 2.2 + 3.2),
+              'feature1': (1.1 * 0.5 + 2.1 * 0.7 + 3.1 * 0.9),
+              'feature2': (1.2 * 0.5 + 2.2 * 0.7 + 3.2 * 0.9),
           },
       },
       {
@@ -364,6 +408,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
           'model_name': 'model',
           'output_name': '',
           'examples': [{
+              'labels': None,
+              'predictions': None,
+              'example_weights': None,
               'attributions': {
                   'model': {
                       'feature1': 11.1,
@@ -371,6 +418,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
                   },
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': None,
               'attributions': {
                   'model': {
                       'feature1': 22.1,
@@ -378,6 +428,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
                   },
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': None,
               'attributions': {
                   'model': {
                       'feature1': 33.1,
@@ -395,6 +448,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
           'model_name': 'model',
           'output_name': 'output',
           'examples': [{
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'model': {
                       'output': {
@@ -404,6 +460,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
                   },
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'model': {
                       'output': {
@@ -413,6 +472,9 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
                   },
               }
           }, {
+              'labels': None,
+              'predictions': None,
+              'example_weights': np.array(1.0),
               'attributions': {
                   'model': {
                       'output': {
@@ -431,14 +493,16 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
   def testTotalAbsoluteAttributionsWithMultiModelsAndOutputs(
       self, model_name, output_name, examples, expected_values):
     computations = attributions.TotalAbsoluteAttributions().computations(
-        model_names=[model_name], output_names=[output_name])
+        model_names=[model_name],
+        output_names=[output_name],
+        example_weighted=True)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
           | 'Create' >> beam.Create(examples)
-          | 'Process' >> beam.ParDo(computations[0].preprocessor)
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           |
           'CombineAttributions' >> beam.CombinePerKey(computations[0].combiner)
@@ -455,7 +519,8 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
           total_attributions_key = metric_types.AttributionsKey(
               name='total_absolute_attributions',
               model_name=model_name,
-              output_name=output_name)
+              output_name=output_name,
+              example_weighted=True)
           self.assertIn(total_attributions_key, got_attributions)
           self.assertDictElementsAlmostEqual(
               got_attributions[total_attributions_key], expected_values)

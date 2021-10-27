@@ -76,6 +76,7 @@ def _ndcg(gain_key: Text,
           model_names: Optional[List[Text]] = None,
           output_names: Optional[List[Text]] = None,
           sub_keys: Optional[List[metric_types.SubKey]] = None,
+          example_weighted: bool = False,
           query_key: Text = '') -> metric_types.MetricComputations:
   """Returns metric computations for NDCG."""
   if not query_key:
@@ -100,7 +101,8 @@ def _ndcg(gain_key: Text,
                 name,
                 model_name=model_name,
                 output_name=output_name,
-                sub_key=sub_key))
+                sub_key=sub_key,
+                example_weighted=example_weighted))
       computations.append(
           metric_types.MetricComputation(
               keys=keys,
@@ -111,6 +113,7 @@ def _ndcg(gain_key: Text,
                   eval_config=eval_config,
                   model_name=model_name,
                   output_name=output_name,
+                  example_weighted=example_weighted,
                   query_key=query_key,
                   gain_key=gain_key)))
   return computations
@@ -130,7 +133,8 @@ class _NDCGCombiner(beam.CombineFn):
 
   def __init__(self, metric_keys: List[metric_types.MetricKey],
                eval_config: Optional[config_pb2.EvalConfig], model_name: Text,
-               output_name: Text, query_key: Text, gain_key: Text):
+               output_name: Text, example_weighted: bool, query_key: Text,
+               gain_key: Text):
     """Initialize.
 
     Args:
@@ -138,6 +142,7 @@ class _NDCGCombiner(beam.CombineFn):
       eval_config: Eval config.
       model_name: Model name.
       output_name: Output name.
+      example_weighted: True if example weights should be applied.
       query_key: Query key.
       gain_key: Key of feature in features dictionary that holds gain values.
     """
@@ -145,6 +150,7 @@ class _NDCGCombiner(beam.CombineFn):
     self._eval_config = eval_config
     self._model_name = model_name
     self._output_name = output_name
+    self._example_weighted = example_weighted
     self._query_key = query_key
     self._gain_key = gain_key
 
@@ -169,6 +175,7 @@ class _NDCGCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._model_name,
             output_name=self._output_name,
+            example_weighted=self._example_weighted,
             flatten=False,
             require_single_example_weight=True))  # pytype: disable=wrong-arg-types
     gains = util.get_by_keys(element.features, [self._gain_key])

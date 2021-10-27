@@ -57,15 +57,15 @@ def _mean_label(
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for mean label."""
-
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   # Make sure weighted_labels_predictions_examples are calculated.
   computations = _weighted_labels_predictions_examples(
@@ -74,7 +74,8 @@ def _mean_label(
       output_name=output_name,
       sub_key=sub_key,
       aggregation_type=aggregation_type,
-      class_weights=class_weights)
+      class_weights=class_weights,
+      example_weighted=example_weighted)
   weighted_labels_predictions_key = computations[-1].keys[-1]
 
   def result(
@@ -117,14 +118,15 @@ def _mean_prediction(
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for mean prediction."""
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   # Make sure weighted_labels_predictions_examples are calculated.
   computations = _weighted_labels_predictions_examples(
@@ -133,7 +135,8 @@ def _mean_prediction(
       output_name=output_name,
       sub_key=sub_key,
       aggregation_type=aggregation_type,
-      class_weights=class_weights)
+      class_weights=class_weights,
+      example_weighted=example_weighted)
   weighted_labels_predictions_key = computations[-1].keys[-1]
 
   def result(
@@ -180,14 +183,15 @@ def _calibration(
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for calibration."""
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   # Make sure weighted_labels_predictions_examples are calculated.
   computations = _weighted_labels_predictions_examples(
@@ -196,7 +200,8 @@ def _calibration(
       output_name=output_name,
       sub_key=sub_key,
       aggregation_type=aggregation_type,
-      class_weights=class_weights)
+      class_weights=class_weights,
+      example_weighted=example_weighted)
   weighted_labels_predictions_key = computations[-1].keys[-1]
 
   def result(
@@ -224,8 +229,8 @@ def _weighted_labels_predictions_examples(
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for weighted labels, predictions, and examples.
 
   Args:
@@ -237,12 +242,14 @@ def _weighted_labels_predictions_examples(
     aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions prior to flattening (when micro averaging is used).
+    example_weighted: True if example weights should be applied.
   """
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
   return [
       metric_types.MetricComputation(
           keys=[key],
@@ -251,7 +258,8 @@ def _weighted_labels_predictions_examples(
               key,
               eval_config=eval_config,
               aggregation_type=aggregation_type,
-              class_weights=class_weights))
+              class_weights=class_weights,
+              example_weighted=example_weighted))
   ]
 
 
@@ -275,11 +283,13 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
-               class_weights: Optional[Dict[int, float]]):
+               class_weights: Optional[Dict[int,
+                                            float]], example_weighted: bool):
     self._key = key
     self._eval_config = eval_config
     self._aggregation_type = aggregation_type
     self._class_weights = class_weights
+    self._example_weighted = example_weighted
 
   def create_accumulator(self) -> _WeightedLabelsPredictionsExamples:
     return _WeightedLabelsPredictionsExamples()
@@ -297,6 +307,7 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
             sub_key=self._key.sub_key,
             aggregation_type=self._aggregation_type,
             class_weights=self._class_weights,
+            example_weighted=self._example_weighted,
             allow_none=True)):
       example_weight = float(example_weight)
       accumulator.total_weighted_examples += example_weight

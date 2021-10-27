@@ -149,6 +149,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
       plot_keys_and_values {
         key {
           output_name: "output_name"
+          example_weighted { }
         }
         value {
           calibration_histogram_buckets {
@@ -290,6 +291,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
           key {
             name: "accuracy"
             output_name: "output_name"
+            example_weighted { }
           }
           value {
             double_value {
@@ -317,7 +319,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         """
         slice_key {}
         metric_keys_and_values {
-          key: { name: "confusion_matrix_at_thresholds" }
+          key: {
+            name: "confusion_matrix_at_thresholds"
+            example_weighted { }
+          }
           value {
             confusion_matrix_at_thresholds {
               matrices {
@@ -377,7 +382,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         """
         slice_key {}
         metric_keys_and_values {
-          key { name: "bounded_metrics" }
+          key {
+            name: "bounded_metrics"
+            example_weighted {}
+          }
           value {
             double_value {
               value: 0.234
@@ -846,7 +854,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         """
         slice_key {}
         metric_keys_and_values {
-          key { name: "metric_with_ci" }
+          key {
+            name: "metric_with_ci"
+            example_weighted { }
+          }
           value {
             double_value { value: 10 }
           }
@@ -1275,6 +1286,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
           key {
             name: "mean"
             output_name: "output_name"
+            example_weighted { }
           }
           values {
             key: "age"
@@ -1398,6 +1410,18 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             config_pb2.MetricsSpec(
                 metrics=[
                     config_pb2.MetricConfig(
+                        class_name='ExampleCount',
+                        # 2 > 10, NOT OK.
+                        threshold=config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
+                                lower_bound={'value': 10}))),
+                ],
+                model_names=['candidate', 'baseline'],
+                example_weights=config_pb2.ExampleWeightOptions(
+                    unweighted=True)),
+            config_pb2.MetricsSpec(
+                metrics=[
+                    config_pb2.MetricConfig(
                         class_name='WeightedExampleCount',
                         per_slice_thresholds=[
                             config_pb2.PerSliceMetricThreshold(
@@ -1417,12 +1441,11 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                                     .GenericValueThreshold(
                                         upper_bound={'value': 1})))
                         ]),
-                    config_pb2.MetricConfig(
-                        class_name='ExampleCount',
-                        # 2 > 10, NOT OK.
-                        threshold=config_pb2.MetricThreshold(
-                            value_threshold=config_pb2.GenericValueThreshold(
-                                lower_bound={'value': 10}))),
+                ],
+                model_names=['candidate', 'baseline'],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
+            config_pb2.MetricsSpec(
+                metrics=[
                     config_pb2.MetricConfig(
                         class_name='MeanLabel',
                         # 0.5 > 1 and 0.5 > 1?: NOT OK.
@@ -1508,27 +1531,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         text_format.Parse(
             """
             metric_key {
-              name: "weighted_example_count"
-              model_name: "candidate"
-            }
-            metric_threshold {
-              value_threshold {
-                upper_bound {
-                  value: 1.0
-                }
-              }
-            }
-            metric_value {
-              double_value {
-                value: 1.5
-              }
-            }
-            """, validation_result_pb2.ValidationFailure()),
-        text_format.Parse(
-            """
-            metric_key {
               name: "example_count"
               model_name: "candidate"
+              example_weighted { }
             }
             metric_threshold {
               value_threshold {
@@ -1546,9 +1551,30 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         text_format.Parse(
             """
             metric_key {
+              name: "weighted_example_count"
+              model_name: "candidate"
+              example_weighted { value: true }
+            }
+            metric_threshold {
+              value_threshold {
+                upper_bound {
+                  value: 1.0
+                }
+              }
+            }
+            metric_value {
+              double_value {
+                value: 1.5
+              }
+            }
+            """, validation_result_pb2.ValidationFailure()),
+        text_format.Parse(
+            """
+            metric_key {
               name: "mean_label"
               model_name: "candidate"
               is_diff: true
+              example_weighted { value: true }
             }
             metric_threshold {
               change_threshold {
@@ -1682,7 +1708,6 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         metrics_specs=[
             config_pb2.MetricsSpec(
                 metrics=[
-                    config_pb2.MetricConfig(class_name='WeightedExampleCount'),
                     config_pb2.MetricConfig(class_name='ExampleCount'),
                     config_pb2.MetricConfig(class_name='MeanLabel')
                 ],
@@ -2123,6 +2148,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     ]
 
     example1 = {
+        'labels': None,
+        'predictions': None,
+        'example_weights': None,
         'features': {},
         'attributions': {
             'feature1': 1.1,
@@ -2130,6 +2158,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         }
     }
     example2 = {
+        'labels': None,
+        'predictions': None,
+        'example_weights': None,
         'features': {},
         'attributions': {
             'feature1': 2.1,
@@ -2137,6 +2168,9 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         }
     }
     example3 = {
+        'labels': None,
+        'predictions': None,
+        'example_weights': None,
         'features': {},
         'attributions': {
             'feature1': np.array([3.1]),
@@ -2160,6 +2194,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         attributions_keys_and_values {
           key {
             name: "total_attributions"
+            example_weighted { }
           }
           values {
             key: "feature1"

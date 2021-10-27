@@ -146,7 +146,7 @@ class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
   def testMultiLabelConfusionMatrixPlotWithThresholds(self, kwargs):
     computation = (
         multi_label_confusion_matrix_plot.MultiLabelConfusionMatrixPlot(
-            **kwargs).computations()[0])
+            **kwargs).computations(example_weighted=True)[0])
 
     example1 = {
         'labels': np.array([1.0, 1.0, 0.0]),
@@ -186,7 +186,8 @@ class MultiLabelConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(name='multi_label_confusion_matrix_plot')
+          key = metric_types.PlotKey(
+              name='multi_label_confusion_matrix_plot', example_weighted=True)
           got_matrix = got_plots[key]
           self.assertProtoEquals(
               """

@@ -79,13 +79,16 @@ def _multi_class_confusion_matrix_plot(
     eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-) -> metric_types.MetricComputations:
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns computations for multi-class confusion matrix plot."""
   if num_thresholds is None and thresholds is None:
     thresholds = [0.0]
 
   key = metric_types.PlotKey(
-      name=name, model_name=model_name, output_name=output_name)
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      example_weighted=example_weighted)
 
   # Make sure matrices are calculated.
   matrices_computations = (
@@ -94,7 +97,8 @@ def _multi_class_confusion_matrix_plot(
           num_thresholds=num_thresholds,
           eval_config=eval_config,
           model_name=model_name,
-          output_name=output_name))
+          output_name=output_name,
+          example_weighted=example_weighted))
   matrices_key = matrices_computations[-1].keys[-1]
 
   def result(

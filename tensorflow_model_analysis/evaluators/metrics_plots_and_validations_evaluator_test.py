@@ -130,9 +130,8 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     # 2 models x 2 classes x _calibration_historgram_27
     # 2 models x 2 classes x _CompilableMetricsCombiner,
     # 2 models x 2 classes x _WeightedLabelsPredictionsExamplesCombiner,
-    # 2 models x _WeightedExampleCountCombiner
-    # 1 x _ExampleCountCombiner
-    self.assertLen(non_derived, 23)
+    # 4 models x _ExampleCountCombiner
+    self.assertLen(non_derived, 24)
     # 2 models x 2 classes x _binary_confusion_matrices_[0.5],
     # 2 models x 2 classes x _binary_confusion_matrices_10000
     # 2 models x 2 classes x _binary_confusion_matrices_confusion_matrix_plot
@@ -248,17 +247,28 @@ class MetricsPlotsAndValidationsEvaluatorTest(
             config_pb2.MetricsSpec(
                 metrics=[
                     config_pb2.MetricConfig(
-                        class_name='WeightedExampleCount',
-                        # 1.5 < 1, NOT OK.
-                        threshold=config_pb2.MetricThreshold(
-                            value_threshold=config_pb2.GenericValueThreshold(
-                                upper_bound={'value': 1}))),
-                    config_pb2.MetricConfig(
                         class_name='ExampleCount',
                         # 2 > 10, NOT OK.
                         threshold=config_pb2.MetricThreshold(
                             value_threshold=config_pb2.GenericValueThreshold(
                                 lower_bound={'value': 10}))),
+                ],
+                model_names=['candidate', 'baseline'],
+                example_weights=config_pb2.ExampleWeightOptions(
+                    unweighted=True)),
+            config_pb2.MetricsSpec(
+                metrics=[
+                    config_pb2.MetricConfig(
+                        class_name='WeightedExampleCount',
+                        # 1.5 < 1, NOT OK.
+                        threshold=config_pb2.MetricThreshold(
+                            value_threshold=config_pb2.GenericValueThreshold(
+                                upper_bound={'value': 1}))),
+                ],
+                model_names=['candidate', 'baseline'],
+                example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
+            config_pb2.MetricsSpec(
+                metrics=[
                     config_pb2.MetricConfig(
                         class_name='MeanLabel',
                         # 0 > 1 and 0 > 1?: NOT OK.
@@ -350,27 +360,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
               text_format.Parse(
                   """
                   metric_key {
-                    name: "weighted_example_count"
-                    model_name: "candidate"
-                  }
-                  metric_threshold {
-                    value_threshold {
-                      upper_bound {
-                        value: 1.0
-                      }
-                    }
-                  }
-                  metric_value {
-                    double_value {
-                      value: 1.5
-                    }
-                  }
-                  """, validation_result_pb2.ValidationFailure()),
-              text_format.Parse(
-                  """
-                  metric_key {
                     name: "example_count"
                     model_name: "candidate"
+                    example_weighted { }
                   }
                   metric_threshold {
                     value_threshold {
@@ -388,9 +380,30 @@ class MetricsPlotsAndValidationsEvaluatorTest(
               text_format.Parse(
                   """
                   metric_key {
+                    name: "weighted_example_count"
+                    model_name: "candidate"
+                    example_weighted { value: true }
+                  }
+                  metric_threshold {
+                    value_threshold {
+                      upper_bound {
+                        value: 1.0
+                      }
+                    }
+                  }
+                  metric_value {
+                    double_value {
+                      value: 1.5
+                    }
+                  }
+                  """, validation_result_pb2.ValidationFailure()),
+              text_format.Parse(
+                  """
+                  metric_key {
                     name: "mean_label"
                     model_name: "candidate"
                     is_diff: true
+                    example_weighted { value: true }
                   }
                   metric_threshold {
                     change_threshold {
@@ -551,11 +564,18 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           weighted_example_count_key = metric_types.MetricKey(
               name='weighted_example_count',
               model_name='candidate',
-              is_diff=True)
+              is_diff=True,
+              example_weighted=True)
           prediction_key = metric_types.MetricKey(
-              name='mean_prediction', model_name='candidate', is_diff=True)
+              name='mean_prediction',
+              model_name='candidate',
+              is_diff=True,
+              example_weighted=True)
           label_key = metric_types.MetricKey(
-              name='mean_label', model_name='candidate', is_diff=True)
+              name='mean_label',
+              model_name='candidate',
+              is_diff=True,
+              example_weighted=True)
           self.assertDictElementsAlmostEqual(
               got_metrics, {
                   weighted_example_count_key: 0,
@@ -651,28 +671,26 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           self.asssertCountEqual(
               list(slices.keys()),
               [overall_slice, fixed_string1_slice, fixed_string2_slice])
-          example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count')
-          label_key = metric_types.MetricKey(name='mean_label')
-          pred_key = metric_types.MetricKey(name='mean_prediction')
+              name='weighted_example_count', example_weighted=True)
+          label_key = metric_types.MetricKey(
+              name='mean_label', example_weighted=True)
+          pred_key = metric_types.MetricKey(
+              name='mean_prediction', example_weighted=True)
           self.assertDictElementsAlmostEqual(
               slices[overall_slice], {
-                  example_count_key: 3,
                   weighted_example_count_key: 4.0,
                   label_key: (1.0 + 0.0 + 2 * 0.0) / (1.0 + 1.0 + 2.0),
                   pred_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0),
               })
           self.assertDictElementsAlmostEqual(
               slices[fixed_string1_slice], {
-                  example_count_key: 2,
                   weighted_example_count_key: 2.0,
                   label_key: (1.0 + 0.0) / (1.0 + 1.0),
                   pred_key: (0.2 + 0.8) / (1.0 + 1.0),
               })
           self.assertDictElementsAlmostEqual(
               slices[fixed_string2_slice], {
-                  example_count_key: 1,
                   weighted_example_count_key: 2.0,
                   label_key: (2 * 0.0) / 2.0,
                   pred_key: (2 * 0.5) / 2.0,
@@ -702,6 +720,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     ]
 
     example1 = {
+        'labels': None,
+        'predictions': None,
+        'example_weights': np.array(1.0),
         'features': {},
         'attributions': {
             'feature1': 1.1,
@@ -709,6 +730,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         }
     }
     example2 = {
+        'labels': None,
+        'predictions': None,
+        'example_weights': np.array(1.0),
         'features': {},
         'attributions': {
             'feature1': 2.1,
@@ -716,6 +740,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         }
     }
     example3 = {
+        'labels': None,
+        'predictions': None,
+        'example_weights': np.array(1.0),
         'features': {},
         'attributions': {
             'feature1': np.array([3.1]),
@@ -849,33 +876,35 @@ class MetricsPlotsAndValidationsEvaluatorTest(
               [overall_slice, fixed_string1_slice, fixed_string2_slice])
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count')
-          label_key = metric_types.MetricKey(name='mean_label')
-          pred_key = metric_types.MetricKey(name='mean_prediction')
+              name='weighted_example_count', example_weighted=True)
+          label_key = metric_types.MetricKey(
+              name='mean_label', example_weighted=True)
+          pred_key = metric_types.MetricKey(
+              name='mean_prediction', example_weighted=True)
           self.assertDictElementsAlmostEqual(slices[overall_slice], {
               example_count_key: 3,
+              weighted_example_count_key: 4.0,
           })
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[overall_slice], {
-                  weighted_example_count_key: 4.0,
                   label_key: (1.0 + 0.0 + 2 * 0.0) / (1.0 + 1.0 + 2.0),
                   pred_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0),
               })
           self.assertDictElementsAlmostEqual(slices[fixed_string1_slice], {
               example_count_key: 2,
+              weighted_example_count_key: 2.0,
           })
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[fixed_string1_slice], {
-                  weighted_example_count_key: 2.0,
                   label_key: (1.0 + 0.0) / (1.0 + 1.0),
                   pred_key: (0.2 + 0.8) / (1.0 + 1.0),
               })
           self.assertDictElementsAlmostEqual(slices[fixed_string2_slice], {
               example_count_key: 1,
+              weighted_example_count_key: 2.0,
           })
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[fixed_string2_slice], {
-                  weighted_example_count_key: 2.0,
                   label_key: (2 * 0.0) / 2.0,
                   pred_key: (2 * 0.5) / 2.0,
               })
@@ -978,34 +1007,34 @@ class MetricsPlotsAndValidationsEvaluatorTest(
               [overall_slice, fixed_string1_slice, fixed_string2_slice])
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count')
-          label_key = metric_types.MetricKey(name='mean_label')
-          pred_key = metric_types.MetricKey(name='mean_prediction')
+              name='weighted_example_count', example_weighted=True)
+          label_key = metric_types.MetricKey(
+              name='mean_label', example_weighted=True)
+          pred_key = metric_types.MetricKey(
+              name='mean_prediction', example_weighted=True)
+          self.assertDictElementsAlmostEqual(slices[overall_slice], {
+              example_count_key: 3000,
+              weighted_example_count_key: 4000.0
+          })
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[overall_slice], {
-                  weighted_example_count_key: 4000.0,
                   label_key: (1.0 + 0.0 + 2 * 0.0) / (1.0 + 1.0 + 2.0),
                   pred_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0),
               })
-          self.assertDictElementsAlmostEqual(slices[overall_slice], {
-              example_count_key: 3000,
-          })
+          self.assertDictElementsAlmostEqual(
+              slices[fixed_string1_slice], {weighted_example_count_key: 2000.0})
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[fixed_string1_slice], {
-                  weighted_example_count_key: 2000.0,
                   label_key: (1.0 + 0.0) / (1.0 + 1.0),
                   pred_key: (0.2 + 0.8) / (1.0 + 1.0),
               })
-          self.assertDictElementsAlmostEqual(slices[fixed_string1_slice],
-                                             {example_count_key: 2000})
+          self.assertDictElementsAlmostEqual(
+              slices[fixed_string2_slice], {weighted_example_count_key: 2000.0})
           self.assertDictElementsWithTDistributionAlmostEqual(
               slices[fixed_string2_slice], {
-                  weighted_example_count_key: 2000.0,
                   label_key: (2 * 0.0) / 2.0,
                   pred_key: (2 * 0.5) / 2.0,
               })
-          self.assertDictElementsAlmostEqual(slices[fixed_string2_slice],
-                                             {example_count_key: 1000})
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -1140,11 +1169,18 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           weighted_example_count_key = metric_types.MetricKey(
               name='weighted_example_count',
               model_name='candidate',
-              is_diff=True)
+              is_diff=True,
+              example_weighted=True)
           prediction_key = metric_types.MetricKey(
-              name='mean_prediction', model_name='candidate', is_diff=True)
+              name='mean_prediction',
+              model_name='candidate',
+              is_diff=True,
+              example_weighted=True)
           label_key = metric_types.MetricKey(
-              name='mean_label', model_name='candidate', is_diff=True)
+              name='mean_label',
+              model_name='candidate',
+              is_diff=True,
+              example_weighted=True)
           self.assertDictElementsWithTDistributionAlmostEqual(
               got_metrics, {
                   weighted_example_count_key: 0,
@@ -1231,9 +1267,11 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           got_slice_key, got_metrics = got[0]
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count')
-          label_key = metric_types.MetricKey(name='mean_label')
-          pred_key = metric_types.MetricKey(name='mean_prediction')
+              name='weighted_example_count', example_weighted=True)
+          label_key = metric_types.MetricKey(
+              name='mean_label', example_weighted=True)
+          pred_key = metric_types.MetricKey(
+              name='mean_prediction', example_weighted=True)
           self.assertEqual(got_slice_key, ())
           self.assertDictElementsAlmostEqual(
               got_metrics, {
@@ -1376,8 +1414,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           self.assertLen(got, 3)
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count')
-          lift_key = metric_types.MetricKey(name='lift@3')
+              name='weighted_example_count', example_weighted=True)
+          lift_key = metric_types.MetricKey(
+              name='lift@3', example_weighted=True)
           for slice_key, metrics in got:
             if slice_key == (('fixed_string', 'fixed_string1'),):
               self.assertDictElementsAlmostEqual(metrics, {
@@ -1386,8 +1425,8 @@ class MetricsPlotsAndValidationsEvaluatorTest(
               })
             elif slice_key == (('fixed_string', 'fixed_string2'),):
               self.assertDictElementsAlmostEqual(metrics, {
-                  example_count_key: 5.0,
                   weighted_example_count_key: 13.0,
+                  example_count_key: 5.0,
               })
             else:
               self.assertDictElementsAlmostEqual(
@@ -1464,8 +1503,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           self.assertEqual(got_slice_key, ())
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count')
-          label_key = metric_types.MetricKey(name='mean_label')
+              name='weighted_example_count', example_weighted=True)
+          label_key = metric_types.MetricKey(
+              name='mean_label', example_weighted=True)
           self.assertDictElementsAlmostEqual(
               got_metrics, {
                   example_count_key: 3,
@@ -1481,7 +1521,8 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           self.assertLen(got, 1)
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
-          plot_key = metric_types.PlotKey('calibration_plot')
+          plot_key = metric_types.PlotKey(
+              'calibration_plot', example_weighted=True)
           self.assertIn(plot_key, got_plots)
           # 10 buckets + 2 for edge cases
           self.assertLen(got_plots[plot_key].buckets, 12)
@@ -1556,13 +1597,19 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           got_slice_key, got_metrics = got[0]
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count')
+              name='weighted_example_count', example_weighted=True)
           label_key_class_0 = metric_types.MetricKey(
-              name='mean_label', sub_key=metric_types.SubKey(class_id=0))
+              name='mean_label',
+              sub_key=metric_types.SubKey(class_id=0),
+              example_weighted=True)
           label_key_class_1 = metric_types.MetricKey(
-              name='mean_label', sub_key=metric_types.SubKey(class_id=1))
+              name='mean_label',
+              sub_key=metric_types.SubKey(class_id=1),
+              example_weighted=True)
           label_key_class_2 = metric_types.MetricKey(
-              name='mean_label', sub_key=metric_types.SubKey(class_id=2))
+              name='mean_label',
+              sub_key=metric_types.SubKey(class_id=2),
+              example_weighted=True)
           self.assertEqual(got_slice_key, ())
           self.assertDictElementsAlmostEqual(
               got_metrics, {
@@ -1672,17 +1719,29 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           self.assertEqual(got_slice_key, ())
           example_count_key = metric_types.MetricKey(name='example_count')
           chinese_weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count', output_name='chinese_head')
+              name='weighted_example_count',
+              output_name='chinese_head',
+              example_weighted=True)
           chinese_label_key = metric_types.MetricKey(
-              name='mean_label', output_name='chinese_head')
+              name='mean_label',
+              output_name='chinese_head',
+              example_weighted=True)
           english_weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count', output_name='english_head')
+              name='weighted_example_count',
+              output_name='english_head',
+              example_weighted=True)
           english_label_key = metric_types.MetricKey(
-              name='mean_label', output_name='english_head')
+              name='mean_label',
+              output_name='english_head',
+              example_weighted=True)
           other_weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count', output_name='other_head')
+              name='weighted_example_count',
+              output_name='other_head',
+              example_weighted=True)
           other_label_key = metric_types.MetricKey(
-              name='mean_label', output_name='other_head')
+              name='mean_label',
+              output_name='other_head',
+              example_weighted=True)
           self.assertDictElementsAlmostEqual(
               got_metrics, {
                   example_count_key:
@@ -1740,7 +1799,11 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         ],
         slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics(
-            [calibration.MeanLabel('mean_label')]))
+            [calibration.MeanLabel('mean_label')],
+            unweighted_metrics=[
+                tf.keras.metrics.BinaryAccuracy(name='binary_accuracy'),
+                calibration.MeanLabel('mean_label')
+            ]))
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir)
 
@@ -1845,21 +1908,31 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           self.assertEqual(got_slice_key, ())
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count')
-          label_key = metric_types.MetricKey(name='mean_label')
-          binary_accuracy_key = metric_types.MetricKey(name='binary_accuracy')
+              name='weighted_example_count', example_weighted=True)
+          label_key = metric_types.MetricKey(
+              name='mean_label', example_weighted=True)
+          label_unweighted_key = metric_types.MetricKey(
+              name='mean_label', example_weighted=False)
+          binary_accuracy_key = metric_types.MetricKey(
+              name='binary_accuracy', example_weighted=None)
           self.assertIn(binary_accuracy_key, got_metrics)
+          binary_accuracy_unweighted_key = metric_types.MetricKey(
+              name='binary_accuracy', example_weighted=False)
+          self.assertIn(binary_accuracy_unweighted_key, got_metrics)
           # Loss not supported in TFv1
           if _TF_MAJOR_VERSION > 1:
-            loss_key = metric_types.MetricKey(name='loss')
+            loss_key = metric_types.MetricKey(
+                name='loss', example_weighted=None)
             self.assertIn(loss_key, got_metrics)
           expected_values = {
               example_count_key: 2,
               weighted_example_count_key: (1.0 + 0.5),
               label_key: (1.0 * 1.0 + 0.0 * 0.5) / (1.0 + 0.5),
+              label_unweighted_key: (1.0 + 0.0) / (1.0 + 1.0),
           }
           if add_custom_metrics:
-            custom_key = metric_types.MetricKey(name='custom')
+            custom_key = metric_types.MetricKey(
+                name='custom', example_weighted=None)
             self.assertIn(custom_key, got_metrics)
             expected_values[custom_key] = 0.0 + 1.0 + 0.0 + 1.0
           self.assertDictElementsAlmostEqual(got_metrics, expected_values)
@@ -1977,11 +2050,15 @@ class MetricsPlotsAndValidationsEvaluatorTest(
               [overall_slice, query1_slice, query2_slice, query3_slice])
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
-              name='weighted_example_count')
+              name='weighted_example_count', example_weighted=True)
           ndcg1_key = metric_types.MetricKey(
-              name='ndcg', sub_key=metric_types.SubKey(top_k=1))
+              name='ndcg',
+              sub_key=metric_types.SubKey(top_k=1),
+              example_weighted=True)
           ndcg2_key = metric_types.MetricKey(
-              name='ndcg', sub_key=metric_types.SubKey(top_k=2))
+              name='ndcg',
+              sub_key=metric_types.SubKey(top_k=2),
+              example_weighted=True)
           # Query1 (weight=1): (p=0.8, g=0.5) (p=0.2, g=1.0)
           # Query2 (weight=2): (p=0.9, g=1.0) (p=0.5, g=0.5) (p=0.1, g=0.1)
           # Query3 (weight=3): (p=0.9, g=1.0)
@@ -2099,31 +2176,56 @@ class MetricsPlotsAndValidationsEvaluatorTest(
               list(slices.keys()), [overall_slice, first_slice, second_slice])
           self.assertDictElementsAlmostEqual(
               slices[overall_slice], {
-                  metric_types.MetricKey(name='accuracy'): 0.4,
-                  metric_types.MetricKey(name='label/mean'): 0.6,
-                  metric_types.MetricKey(name='my_mean_age'): 4.0,
-                  metric_types.MetricKey(name='my_mean_age_times_label'): 2.6,
-                  metric_types.MetricKey(name='added_example_count'): 5.0
+                  metric_types.MetricKey(
+                      name='accuracy', example_weighted=None):
+                      0.4,
+                  metric_types.MetricKey(
+                      name='label/mean', example_weighted=None):
+                      0.6,
+                  metric_types.MetricKey(
+                      name='my_mean_age', example_weighted=None):
+                      4.0,
+                  metric_types.MetricKey(
+                      name='my_mean_age_times_label', example_weighted=None):
+                      2.6,
+                  metric_types.MetricKey(
+                      name='added_example_count', example_weighted=None):
+                      5.0
               })
           self.assertDictElementsAlmostEqual(
               slices[first_slice], {
-                  metric_types.MetricKey(name='accuracy'): 1.0,
-                  metric_types.MetricKey(name='label/mean'): 0.5,
-                  metric_types.MetricKey(name='my_mean_age'): 3.0,
-                  metric_types.MetricKey(name='my_mean_age_times_label'): 1.5,
-                  metric_types.MetricKey(name='added_example_count'): 2.0
+                  metric_types.MetricKey(
+                      name='accuracy', example_weighted=None):
+                      1.0,
+                  metric_types.MetricKey(
+                      name='label/mean', example_weighted=None):
+                      0.5,
+                  metric_types.MetricKey(
+                      name='my_mean_age', example_weighted=None):
+                      3.0,
+                  metric_types.MetricKey(
+                      name='my_mean_age_times_label', example_weighted=None):
+                      1.5,
+                  metric_types.MetricKey(
+                      name='added_example_count', example_weighted=None):
+                      2.0
               })
           self.assertDictElementsAlmostEqual(
               slices[second_slice], {
-                  metric_types.MetricKey(name='accuracy'):
+                  metric_types.MetricKey(
+                      name='accuracy', example_weighted=None):
                       0.0,
-                  metric_types.MetricKey(name='label/mean'):
+                  metric_types.MetricKey(
+                      name='label/mean', example_weighted=None):
                       2.0 / 3.0,
-                  metric_types.MetricKey(name='my_mean_age'):
+                  metric_types.MetricKey(
+                      name='my_mean_age', example_weighted=None):
                       14.0 / 3.0,
-                  metric_types.MetricKey(name='my_mean_age_times_label'):
+                  metric_types.MetricKey(
+                      name='my_mean_age_times_label', example_weighted=None):
                       10.0 / 3.0,
-                  metric_types.MetricKey(name='added_example_count'):
+                  metric_types.MetricKey(
+                      name='added_example_count', example_weighted=None):
                       3.0
               })
 
@@ -2349,7 +2451,12 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         ],
         metrics_specs=[
             config_pb2.MetricsSpec(
-                metrics=[example_count_metric, mean_prediction_metric],
+                metrics=[example_count_metric],
+                model_names=['candidate', 'baseline'],
+                example_weights=config_pb2.ExampleWeightOptions(
+                    unweighted=True)),
+            config_pb2.MetricsSpec(
+                metrics=[mean_prediction_metric],
                 model_names=['candidate', 'baseline']),
         ])
     eval_shared_model = [
@@ -2464,6 +2571,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                     metric_key {
                       name: "example_count"
                       model_name: "candidate"
+                      example_weighted { }
                     }
                     metric_threshold {
                       value_threshold {
@@ -2480,6 +2588,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                     metric_key {
                       name: "example_count"
                       model_name: "candidate"
+                      example_weighted { }
                     }
                     metric_threshold {
                       value_threshold {
@@ -2506,6 +2615,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                     metric_key {
                       name: "mean_prediction"
                       model_name: "candidate"
+                      example_weighted { value: true }
                     }
                     metric_threshold {
                       value_threshold {
@@ -2523,6 +2633,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                       name: "mean_prediction"
                       model_name: "candidate"
                       is_diff: true
+                      example_weighted { value: true }
                     }
                     metric_threshold {
                       change_threshold {

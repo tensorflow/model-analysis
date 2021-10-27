@@ -106,7 +106,7 @@ def _calculate_digits(thresholds):
 
 def create_metric_keys(
     thresholds: Sequence[float], metrics: List[str], metric_name: str,
-    model_name: str, output_name: str
+    model_name: str, output_name: str, example_weighted: bool
 ) -> Tuple[List[metric_types.MetricKey], Dict[float, Dict[
     str, metric_types.MetricKey]]]:
   """Creates metric keys map keyed at threshold and metric name."""
@@ -118,7 +118,8 @@ def create_metric_keys(
       key = metric_types.MetricKey(
           name='%s/%s@%.*f' % (metric_name, metric, num_digits, threshold),
           model_name=model_name,
-          output_name=output_name)
+          output_name=output_name,
+          example_weighted=example_weighted)
       keys.append(key)
       metric_key_by_name_by_threshold[threshold][metric] = key
   return keys, metric_key_by_name_by_threshold
@@ -133,10 +134,10 @@ def flip_count(
     model_name: str = '',
     output_name: str = '',
     eval_config: Optional[config_pb2.EvalConfig] = None,
-) -> metric_types.MetricComputations:
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for computing flip counts."""
   keys, metric_key_by_name_by_threshold = create_metric_keys(
-      thresholds, METRICS_LIST, name, model_name, output_name)
+      thresholds, METRICS_LIST, name, model_name, output_name, example_weighted)
 
   feature_keys = [counterfactual_prediction_key]
   if example_id_key:
@@ -150,6 +151,7 @@ def flip_count(
       sub_key: Optional[metric_types.SubKey] = None,
       aggregation_type: Optional[metric_types.AggregationType] = None,
       class_weights: Optional[Dict[int, float]] = None,
+      example_weighted: bool = False,
       fractional_labels: bool = False,
       flatten: bool = True,
   ) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
@@ -169,6 +171,7 @@ def flip_count(
       aggregation_type: Optional aggregation type. (unused)
       class_weights: Optional class weights to apply to multi-class /
         multi-label labels and predictions. (unused)
+      example_weighted: True if example weights should be applied.
       fractional_labels: If true, each incoming tuple of (label, prediction,
         example weight) will be split into two tuples as follows (where l, p, w
         represent the resulting label, prediction, and example weight values):
@@ -228,6 +231,7 @@ def flip_count(
             eval_config=eval_config,
             model_name=model_name,
             output_name=output_name,
+            example_weighted=example_weighted,
             fractional_labels=False,  # Labels are ignored for flip counts.
             flatten=False,  # Flattened below
             allow_none=True,  # Allow None labels
@@ -256,6 +260,7 @@ def flip_count(
       eval_config=eval_config,
       model_name=model_name,
       output_name=output_name,
+      example_weighted=example_weighted,
       extract_label_prediction_and_weight=extract_label_prediction_and_weight,
       preprocessor=metric_types.FeaturePreprocessor(feature_keys=feature_keys),
       example_id_key=example_id_key,

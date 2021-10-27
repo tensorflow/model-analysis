@@ -97,7 +97,8 @@ class SquaredPearsonCorrelationTest(testutil.TensorflowModelAnalysisTest):
 
   def testSquaredPearsonCorrelationWithWeights(self):
     computations = (
-        squared_pearson_correlation.SquaredPearsonCorrelation().computations())
+        squared_pearson_correlation.SquaredPearsonCorrelation().computations(
+            example_weighted=True))
     metric = computations[0]
 
     example1 = {

@@ -165,6 +165,7 @@ def binary_confusion_matrices(
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False,
     use_histogram: Optional[bool] = None,
     extract_label_prediction_and_weight: Optional[Callable[
         ..., Any]] = metric_util.to_label_prediction_example_weight,
@@ -193,6 +194,7 @@ def binary_confusion_matrices(
     aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
       labels and predictions prior to flattening (when micro averaging is used).
+    example_weighted: True if example weights should be applied.
     use_histogram: If true, matrices will be derived from calibration
       histograms.
     extract_label_prediction_and_weight: User-provided function argument that
@@ -266,20 +268,21 @@ def binary_confusion_matrices(
                      f'example_ids_count: {example_ids_count}')
 
   if name is None:
-    name = '{}_{}'.format(BINARY_CONFUSION_MATRICES_NAME, thresholds_name_part)
+    name = f'{BINARY_CONFUSION_MATRICES_NAME}_{thresholds_name_part}'
   if examples_name is None:
-    examples_name = '{}_{}'.format(BINARY_CONFUSION_EXAMPLES_NAME,
-                                   thresholds_name_part)
+    examples_name = f'{BINARY_CONFUSION_EXAMPLES_NAME}_{thresholds_name_part}'
   matrices_key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
   examples_key = metric_types.MetricKey(
       name=examples_name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   computations = []
   if use_histogram:
@@ -304,7 +307,8 @@ def binary_confusion_matrices(
         output_name=output_name,
         sub_key=sub_key,
         aggregation_type=aggregation_type,
-        class_weights=class_weights)
+        class_weights=class_weights,
+        example_weighted=example_weighted)
     input_metric_key = computations[-1].keys[-1]
     output_metric_keys = [matrices_key]
   else:
@@ -324,6 +328,7 @@ def binary_confusion_matrices(
         example_ids_count=example_ids_count,
         aggregation_type=aggregation_type,
         class_weights=class_weights,
+        example_weighted=example_weighted,
         fractional_labels=fractional_labels)
     input_metric_key = computations[-1].keys[-1]
     # matrices_key is last for backwards compatibility with code that:
@@ -450,6 +455,7 @@ def _binary_confusion_matrix_computation(
     example_ids_count: Optional[int] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False,
     fractional_labels: float = True) -> metric_types.MetricComputations:
   """Returns metric computations for computing binary confusion matrix."""
   if example_ids_count is None:
@@ -457,14 +463,15 @@ def _binary_confusion_matrix_computation(
 
   # To generate unique name for each computation
   if name is None:
-    name = '{}_{}_{}_{}'.format(_BINARY_CONFUSION_MATRIX_NAME, list(thresholds),
-                                example_id_key, example_ids_count)
+    name = (f'{_BINARY_CONFUSION_MATRIX_NAME}_{list(thresholds)}_'
+            f'{example_id_key}_{example_ids_count}')
 
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   return [
       metric_types.MetricComputation(
@@ -479,6 +486,7 @@ def _binary_confusion_matrix_computation(
               example_ids_count=example_ids_count,
               aggregation_type=aggregation_type,
               class_weights=class_weights,
+              example_weighted=example_weighted,
               fractional_labels=fractional_labels))
   ]
 
@@ -492,8 +500,8 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
                extract_label_prediction_and_weight: Callable[..., Any],
                example_id_key: Optional[Text], example_ids_count: float,
                aggregation_type: Optional[metric_types.AggregationType],
-               class_weights: Optional[Dict[int,
-                                            float]], fractional_labels: float):
+               class_weights: Optional[Dict[int, float]],
+               example_weighted: bool, fractional_labels: float):
     self._key = key
     self._eval_config = eval_config
     self._thresholds = thresholds
@@ -502,6 +510,7 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
     self._example_ids_count = example_ids_count
     self._aggregation_type = aggregation_type
     self._class_weights = class_weights
+    self._example_weighted = example_weighted
     self._fractional_labels = fractional_labels
 
   def _merge_example_ids(self, list_1: List[Text],
@@ -553,7 +562,8 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
         fractional_labels=self._fractional_labels,
         flatten=True,
         aggregation_type=self._aggregation_type,
-        class_weights=self._class_weights):
+        class_weights=self._class_weights,
+        example_weighted=self._example_weighted):
       example_weights.append(float(example_weight))
       labels.append(float(label))
       predictions.append(float(prediction))

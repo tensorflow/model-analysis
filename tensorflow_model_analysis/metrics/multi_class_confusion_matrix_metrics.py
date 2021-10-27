@@ -72,20 +72,24 @@ def _multi_class_confusion_matrix_at_thresholds(
     eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-) -> metric_types.MetricComputations:
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns computations for multi-class confusion matrix at thresholds."""
   if not thresholds:
     thresholds = [0.5]
 
   key = metric_types.MetricKey(
-      name=name, model_name=model_name, output_name=output_name)
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      example_weighted=example_weighted)
 
   # Make sure matrices are calculated.
   matrices_computations = multi_class_confusion_matrices(
       thresholds=thresholds,
       eval_config=eval_config,
       model_name=model_name,
-      output_name=output_name)
+      output_name=output_name,
+      example_weighted=example_weighted)
   matrices_key = matrices_computations[-1].keys[-1]
 
   def result(
@@ -102,7 +106,7 @@ def _multi_class_confusion_matrix_at_thresholds(
   return computations
 
 
-MULTI_CLASS_CONFUSION_MATRICES = ('_multi_class_confusion_matrices')
+MULTI_CLASS_CONFUSION_MATRICES = '_multi_class_confusion_matrices'
 
 _EPSILON = 1e-7
 
@@ -118,7 +122,7 @@ def multi_class_confusion_matrices(
     eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
-) -> metric_types.MetricComputations:
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns computations for multi-class confusion matrices.
 
   Args:
@@ -133,6 +137,7 @@ def multi_class_confusion_matrices(
     eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
+    example_weighted: True if example weights should be applied.
 
   Raises:
     ValueError: If both num_thresholds and thresholds are set at the same time.
@@ -149,13 +154,19 @@ def multi_class_confusion_matrices(
     thresholds = [-_EPSILON] + thresholds + [1.0 + _EPSILON]
 
   key = metric_types.MetricKey(
-      name=name, model_name=model_name, output_name=output_name)
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      example_weighted=example_weighted)
   return [
       metric_types.MetricComputation(
           keys=[key],
           preprocessor=None,
           combiner=_MultiClassConfusionMatrixCombiner(
-              key=key, eval_config=eval_config, thresholds=thresholds))
+              key=key,
+              eval_config=eval_config,
+              example_weighted=example_weighted,
+              thresholds=thresholds))
   ]
 
 
@@ -224,9 +235,10 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
 
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config_pb2.EvalConfig],
-               thresholds: List[float]):
+               example_weighted: bool, thresholds: List[float]):
     self._key = key
     self._eval_config = eval_config
+    self._example_weighted = example_weighted
     self._thresholds = thresholds if thresholds else [0.0]
 
   def create_accumulator(self) -> Matrices:
@@ -240,6 +252,7 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
+            example_weighted=self._example_weighted,
             flatten=False,
             require_single_example_weight=True))  # pytype: disable=wrong-arg-types
     if not label.shape:

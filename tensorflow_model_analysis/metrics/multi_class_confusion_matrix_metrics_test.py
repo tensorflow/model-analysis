@@ -250,7 +250,8 @@ class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   def testMultiClassConfusionMatrixAtThresholds(self, kwargs):
     computations = (
         multi_class_confusion_matrix_metrics
-        .MultiClassConfusionMatrixAtThresholds(**kwargs).computations())
+        .MultiClassConfusionMatrixAtThresholds(**kwargs).computations(
+            example_weighted=True))
     matrices = computations[0]
     metrics = computations[1]
 
@@ -306,7 +307,8 @@ class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 1)
           key = metric_types.MetricKey(
-              name='multi_class_confusion_matrix_at_thresholds')
+              name='multi_class_confusion_matrix_at_thresholds',
+              example_weighted=True)
           got_matrix = got_metrics[key]
           self.assertEqual(
               multi_class_confusion_matrix_metrics.Matrices({
@@ -336,7 +338,8 @@ class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   def testMultiClassConfusionMatrixAtThresholdsWithStringLabels(self):
     computations = (
         multi_class_confusion_matrix_metrics
-        .MultiClassConfusionMatrixAtThresholds().computations())
+        .MultiClassConfusionMatrixAtThresholds().computations(
+            example_weighted=True))
     matrices = computations[0]
     metrics = computations[1]
 
@@ -381,7 +384,8 @@ class MultiClassConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 1)
           key = metric_types.MetricKey(
-              name='multi_class_confusion_matrix_at_thresholds')
+              name='multi_class_confusion_matrix_at_thresholds',
+              example_weighted=True)
           got_matrix = got_metrics[key]
           self.assertEqual(
               multi_class_confusion_matrix_metrics.Matrices({

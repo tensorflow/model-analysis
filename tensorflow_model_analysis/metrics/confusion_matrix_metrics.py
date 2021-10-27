@@ -82,14 +82,15 @@ class ConfusionMatrixMetric(
       output_name: Text = '',
       sub_key: Optional[metric_types.SubKey] = None,
       aggregation_type: Optional[metric_types.AggregationType] = None,
-      class_weights: Optional[Dict[int, float]] = None
-  ) -> metric_types.MetricComputations:
+      class_weights: Optional[Dict[int, float]] = None,
+      example_weighted: bool = False) -> metric_types.MetricComputations:
     """Returns metric computations for specificity."""
     key = metric_types.MetricKey(
         name=name,
         model_name=model_name,
         output_name=output_name,
-        sub_key=sub_key)
+        sub_key=sub_key,
+        example_weighted=example_weighted)
 
     if not thresholds:
       thresholds = [0.5]
@@ -102,7 +103,8 @@ class ConfusionMatrixMetric(
         sub_key=sub_key,
         aggregation_type=aggregation_type,
         class_weights=class_weights,
-        thresholds=thresholds)
+        thresholds=thresholds,
+        example_weighted=example_weighted)
     matrices_key = matrices_computations[-1].keys[-1]
 
     def result(
@@ -645,14 +647,15 @@ def _confusion_matrix_at_thresholds(
     output_name: Text = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
-) -> metric_types.MetricComputations:
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for confusion matrix at thresholds."""
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
       output_name=output_name,
-      sub_key=sub_key)
+      sub_key=sub_key,
+      example_weighted=example_weighted)
 
   # Make sure matrices are calculated.
   matrices_computations = binary_confusion_matrices.binary_confusion_matrices(
@@ -662,7 +665,8 @@ def _confusion_matrix_at_thresholds(
       sub_key=sub_key,
       aggregation_type=aggregation_type,
       class_weights=class_weights,
-      thresholds=thresholds)
+      thresholds=thresholds,
+      example_weighted=example_weighted)
   matrices_key = matrices_computations[-1].keys[-1]
 
   def result(

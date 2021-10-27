@@ -111,6 +111,7 @@ def _multi_label_confusion_matrix_plot(
     eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: Text = '',
     output_name: Text = '',
+    example_weighted: bool = False,
 ) -> metric_types.MetricComputations:
   """Returns computations for multi-label confusion matrix at thresholds."""
   if num_thresholds is not None and thresholds is not None:
@@ -125,13 +126,19 @@ def _multi_label_confusion_matrix_plot(
     thresholds = [-_EPSILON] + thresholds + [1.0 + _EPSILON]
 
   key = metric_types.PlotKey(
-      name=name, model_name=model_name, output_name=output_name)
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      example_weighted=example_weighted)
   return [
       metric_types.MetricComputation(
           keys=[key],
           preprocessor=None,
           combiner=_MultiLabelConfusionMatrixPlotCombiner(
-              key=key, eval_config=eval_config, thresholds=thresholds))
+              key=key,
+              eval_config=eval_config,
+              example_weighted=example_weighted,
+              thresholds=thresholds))
   ]
 
 
@@ -161,9 +168,10 @@ class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
 
   def __init__(self, key: metric_types.PlotKey,
                eval_config: Optional[config_pb2.EvalConfig],
-               thresholds: List[float]):
+               example_weighted: bool, thresholds: List[float]):
     self._key = key
     self._eval_config = eval_config
+    self._example_weighted = example_weighted
     self._thresholds = thresholds if thresholds else [0.5]
 
   def create_accumulator(self) -> _Matrices:
@@ -177,6 +185,7 @@ class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
+            example_weighted=self._example_weighted,
             flatten=False,
             require_single_example_weight=True))
     if not labels.shape:

@@ -38,7 +38,7 @@ class LiftTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
     computations = lift.Lift(
         num_buckets=num_buckets,
         ignore_out_of_bound_examples=ignore_out_of_bound_examples).computations(
-            eval_config=eval_config)
+            eval_config=eval_config, example_weighted=True)
     histogram = computations[0]
     lift_metrics = computations[1]
 
@@ -78,7 +78,8 @@ class LiftTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
           self.assertDictElementsAlmostEqual(
               lift_value, {
-                  metric_types.MetricKey(name=f'lift@{num_buckets}'):
+                  metric_types.MetricKey(
+                      name=f'lift@{num_buckets}', example_weighted=True):
                       lift_metric_value,
               })
         except AssertionError as err:

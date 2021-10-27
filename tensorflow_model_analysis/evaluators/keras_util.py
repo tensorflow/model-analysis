@@ -127,12 +127,16 @@ def _metric_keys(metrics: Iterable[tf.keras.metrics.Metric], model_name: Text,
                 name=name,
                 model_name=model_name,
                 output_name=output_name,
-                sub_key=sub_key))
+                sub_key=sub_key,
+                example_weighted=None))
         break
     else:
       result.append(
           metric_types.MetricKey(
-              name=metric.name, model_name=model_name, sub_key=sub_key))
+              name=metric.name,
+              model_name=model_name,
+              sub_key=sub_key,
+              example_weighted=None))
   return result
 
 
@@ -333,7 +337,8 @@ class _KerasCompiledMetricsCombiner(_KerasCombiner):
                 self._eval_config,
                 self._model_name,
                 output_name,
-                flatten=False))
+                flatten=False,
+                example_weighted=True))
       accumulator.add_input(i, labels, predictions, example_weights)
     return accumulator
 
@@ -424,7 +429,8 @@ class _KerasEvaluateCombiner(_KerasCombiner):
                 self._eval_config,
                 self._model_name,
                 output_name,
-                flatten=False))
+                flatten=False,
+                example_weighted=True))
       accumulator.add_input(i, element.inputs if i == 0 else None, labels,
                             example_weights)
 

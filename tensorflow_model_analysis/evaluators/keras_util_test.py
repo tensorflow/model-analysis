@@ -248,7 +248,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           expected = {
-              metric_types.MetricKey(name=name): value
+              metric_types.MetricKey(name=name, example_weighted=None): value
               for name, value in expected_values.items()
           }
           self.assertDictElementsAlmostEqual(got_metrics, expected)
@@ -399,7 +399,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
           expected = {}
           for output_name, per_output_values in expected_values.items():
             for name, value in per_output_values.items():
-              key = metric_types.MetricKey(name=name, output_name=output_name)
+              key = metric_types.MetricKey(
+                  name=name, output_name=output_name, example_weighted=None)
               expected[key] = value
           self.assertDictElementsAlmostEqual(got_metrics, expected)
 
@@ -504,7 +505,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             sub_key = None
             if '@' in name:
               sub_key = metric_types.SubKey(top_k=int(name.split('@')[1]))
-            key = metric_types.MetricKey(name=name, sub_key=sub_key)
+            key = metric_types.MetricKey(
+                name=name, sub_key=sub_key, example_weighted=None)
             expected[key] = value
           self.assertDictElementsAlmostEqual(got_metrics, expected)
 
@@ -667,7 +669,10 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
               if '@' in name:
                 sub_key = metric_types.SubKey(top_k=int(name.split('@')[1]))
               key = metric_types.MetricKey(
-                  name=name, output_name=output_name, sub_key=sub_key)
+                  name=name,
+                  output_name=output_name,
+                  sub_key=sub_key,
+                  example_weighted=None)
               expected[key] = value
           self.assertDictElementsAlmostEqual(got_metrics, expected)
 
