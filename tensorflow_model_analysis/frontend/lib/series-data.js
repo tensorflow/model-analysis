@@ -110,11 +110,12 @@ class SeriesData {
     return this.evalRuns_.map(evalRun => {
       const values = evalRun.data.getAllMetricValues('');
       const config = evalRun.config;
+      const additionalColumns = helper.getAdditionalDisplayTexts(config);
       const modelText = helper.getModelDisplayText(config);
       const dataText = helper.getDataDisplayText(config);
       const column1 = this.modelCentric_ ? modelText : dataText;
       const column2 = this.modelCentric_ ? dataText : modelText;
-      return [column1, column2].concat(values);
+      return additionalColumns.concat([column1, column2].concat(values));
     });
   }
 
@@ -163,9 +164,10 @@ class SeriesData {
   getHeader(requiredColumns) {
     const model = this.helper_.getModelHeader();
     const data = this.helper_.getDataHeader();
+    const additionalColumns = this.helper_.getAdditionalHeaders();
     const column1 = this.modelCentric_ ? model : data;
     const column2 = this.modelCentric_ ? data : model;
-    return [column1, column2].concat(requiredColumns);
+    return additionalColumns.concat([column1, column2].concat(requiredColumns));
   }
 
   /** @override */
@@ -286,6 +288,23 @@ class DefaultSeriesDataHelperImpl {
   /** @override */
   getDataHeader() {
     return Headers.DATA;
+  }
+
+  /**
+   * @override
+   * @return {!Array<string>}
+   */
+  getAdditionalHeaders() {
+    return [];
+  }
+
+  /**
+   * @override
+   * @param {!Object} config
+   * @return {!Array<string>}
+   */
+  getAdditionalDisplayTexts(config) {
+    return [];
   }
 }
 

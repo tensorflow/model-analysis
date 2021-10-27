@@ -515,6 +515,17 @@ tfma.SeriesDataHelper.prototype.getModelHeader = function() {};
 tfma.SeriesDataHelper.prototype.getDataHeader = function() {};
 
 /**
+ * @return {!Array<string>}
+ */
+tfma.SeriesDataHelper.prototype.getAdditionalHeaders = function() {};
+
+/**
+ * @param {!Object} config
+ * @return {!Array<string>}
+ */
+tfma.SeriesDataHelper.prototype.getAdditionalDisplayTexts = function(config) {};
+
+/**
  * @constructor
  */
 tfma.SeriesDataHelper.EvalRun = function() {};

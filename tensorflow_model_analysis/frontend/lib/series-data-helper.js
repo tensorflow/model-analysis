@@ -95,6 +95,20 @@ class SeriesDataHelper {
    * @export
    */
   getDataHeader() {}
+
+  /**
+   * @return {!Array<string>} The header that should be used for additional column in metrics
+   *     table.
+   * @export
+   */
+  getAdditionalHeaders() {}
+
+  /**
+   * @param {!Object} config
+   * @return {!Array<string>}
+   * @export
+   */
+  getAdditionalDisplayTexts(config) {}
 }
 
 exports = {
