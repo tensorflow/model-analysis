@@ -395,11 +395,12 @@ def _is_private_metrics(metric_key: metric_types.MetricKey):
       '_') and not metric_key.name.startswith('__')
 
 
-def _remove_private_metrics(result: Dict[metric_types.MetricKey, Any]):
-  keys = list(result.keys())
-  for k in keys:
-    if _is_private_metrics(k):
-      result.pop(k)
+def _remove_private_metrics(
+    slice_key: slicer.SliceKeyOrCrossSliceKeyType,
+    metrics: metric_types.MetricsDict
+) -> Tuple[slicer.SliceKeyOrCrossSliceKeyType, metric_types.MetricsDict]:
+  return (slice_key,
+          {k: v for (k, v) in metrics.items() if not _is_private_metrics(k)})
 
 
 @beam.ptransform_fn
@@ -659,9 +660,6 @@ def _add_ci_derived_metrics(
   result = copy.copy(metrics)
   for c in computations:
     result.update(c.result(result))
-
-  _remove_private_metrics(result)
-
   return slice_key, result
 
 
@@ -831,7 +829,8 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   sliced_metrics_plots_and_attributions = (
       sliced_metrics_plots_and_attributions
       | 'AddCIDerivedMetrics' >> beam.Map(
-          _add_ci_derived_metrics, metric_computations.ci_derived_computations))
+          _add_ci_derived_metrics, metric_computations.ci_derived_computations)
+      | 'RemovePrivateMetrics' >> beam.MapTuple(_remove_private_metrics))
 
   if eval_config.options.min_slice_size.value > 1:
     sliced_metrics_plots_and_attributions = (
