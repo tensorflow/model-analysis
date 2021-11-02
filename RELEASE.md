@@ -4,6 +4,16 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other Changes
+
+## Breaking Changes
+
+## Deprecations
+
+# Version 0.35.0
+
+## Major Features and Improvements
+
 *   Added support for specifying weighted vs unweighted metrics. The setting is
     available in the `tfma.MetricsSpec(
     example_weights=tfma.ExampleWeightOptions(weighted=True, unweighted=True))`.
@@ -19,10 +29,17 @@
     https://github.com/tensorflow/model-analysis/issues/112
 
 *   Fixing couple of issues with CIDerivedMetricComputation:
+
     *   no CI derived metric, deriving from private metrics such as
         binary_confusion_matrices, was being computed
     *   convert_slice_metrics_to_proto method didn't have support for bounded
         values metrics.
+
+*   Depends on `tfx-bsl>=1.4.0,<1.5.0`.
+
+*   Depends on `tensorflow-metadata>=1.4.0,<1.5.0`.
+
+*   Depends on `apache-beam[gcp]>=2.33,<3`.
 
 ## Breaking Changes
 
