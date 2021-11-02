@@ -19,7 +19,6 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-import copy
 from typing import Optional, Set, Tuple
 
 import apache_beam as beam
@@ -30,8 +29,6 @@ from tensorflow_model_analysis.evaluators import confidence_intervals_util
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
-_JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY = metric_types.MetricKey(
-    u'__jackknife_example_count')
 _FULL_SAMPLE_ID = -1
 
 
@@ -173,14 +170,9 @@ def _ComputeJackknifeSample(  # pylint: disable=invalid-name
     that sample
   """
 
-  def drop_example_count(sliced_count_and_metrics):
-    slice_key, (_, metrics) = sliced_count_and_metrics
-    return slice_key, metrics
-
   return (sample_accumulators
           | 'MergePartitionsPerSlice' >> beam.CombinePerKey(
               _AccumulatorCombineFn(computations_combine_fn))
-          | 'DropExampleCount' >> beam.Map(drop_example_count)
           | 'AddDerivedMetrics' >> derived_metrics_ptransform
           | 'AddSampleIdToValue' >> beam.MapTuple(
               _add_sample_id, sample_id=sample_id))
@@ -232,9 +224,6 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
       | f'Partition({num_jackknife_samples})' >> beam.Partition(
           partition_fn, num_jackknife_samples))
 
-  combine_fn = beam.combiners.SingleInputTupleCombineFn(
-      beam.transforms.combiners.CountCombineFn(), computations_combine_fn)
-
   # Within each partition, partially combine per slice key to get accumulators
   # and partition sizes; add partition_id for determinism.
   # List[PCollection[Tuple[slicer.SliceKeyType, AccumulatorType]]]
@@ -243,21 +232,13 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
     partition_accumulators.append(
         partition
         | f'CombinePartitionPerSlice[{i}]' >> beam.CombinePerKey(
-            _AccumulateOnlyCombineFn(combine_fn)))
-
-  def move_example_count_to_metrics(sliced_count_and_metrics):
-    slice_key, (count, metrics_dict) = sliced_count_and_metrics
-    result_metrics = copy.copy(metrics_dict)
-    result_metrics[_JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY] = count
-    return slice_key, result_metrics
+            _AccumulateOnlyCombineFn(computations_combine_fn)))
 
   unsampled_metrics = (
       partition_accumulators
       | 'FlattenPartitions' >> beam.Flatten()
       | 'MergePartitionsPerSlice' >> beam.CombinePerKey(
-          _AccumulatorCombineFn(combine_fn))
-      |
-      'MoveExampleCountToMetricsDict' >> beam.Map(move_example_count_to_metrics)
+          _AccumulatorCombineFn(computations_combine_fn))
       | 'AddDerivedMetrics' >> derived_metrics_ptransform
       | 'AddSampleIdToValue' >> beam.MapTuple(
           _add_sample_id, sample_id=_FULL_SAMPLE_ID))
@@ -276,7 +257,7 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
         | f'FlattenPartitions[{sample_id}]' >> beam.Flatten()
         | f'ComputeJackknifeSample[{sample_id}]' >> _ComputeJackknifeSample(  # pylint: disable=no-value-for-parameter
             sample_id=sample_id,
-            computations_combine_fn=combine_fn,
+            computations_combine_fn=computations_combine_fn,
             derived_metrics_ptransform=derived_metrics_ptransform))
 
   # PCollection[Tuple[slicer.SliceKeyType, metric_types.MetricsDict]]

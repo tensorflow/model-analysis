@@ -1012,6 +1012,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
               name='mean_label', example_weighted=True)
           pred_key = metric_types.MetricKey(
               name='mean_prediction', example_weighted=True)
+          self.assertLen(slices[overall_slice], 4)
           self.assertDictElementsAlmostEqual(slices[overall_slice], {
               example_count_key: 3000,
               weighted_example_count_key: 4000.0

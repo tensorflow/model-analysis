@@ -117,7 +117,6 @@ class JackknifeTest(absltest.TestCase):
                  x_key: 1.6,
                  y_key: 16,
                  cm_key: cm_metric,
-                 jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY: 100,
              })),
         # sample values 1 of 2 for slice 1
         (slice_key1,
@@ -143,7 +142,6 @@ class JackknifeTest(absltest.TestCase):
                  x_key: 3.3,
                  y_key: 33,
                  cm_key: cm_metric,
-                 jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY: 1000,
              })),
         # sample values 1 of 2 for slice 2
         (slice_key2,
@@ -203,8 +201,6 @@ class JackknifeTest(absltest.TestCase):
                                 fn=[1])),
                         sample_degrees_of_freedom=1,
                         unsampled_value=cm_metric),
-                jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY:
-                    100,
             }),
             (slice_key2, {
                 x_key:
@@ -231,8 +227,6 @@ class JackknifeTest(absltest.TestCase):
                                 fn=[10])),
                         sample_degrees_of_freedom=1,
                         unsampled_value=cm_metric),
-                jackknife._JACKKNIFE_EXAMPLE_COUNT_METRIC_KEY:
-                    1000,
             }),
         ]
         self.assertCountEqual(expected_pcoll, got_pcoll)
