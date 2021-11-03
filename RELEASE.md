@@ -6,6 +6,8 @@
 
 ## Bug fixes and other Changes
 
+*   Updated QueryStatistics to support weighted examples.
+
 ## Breaking Changes
 
 ## Deprecations

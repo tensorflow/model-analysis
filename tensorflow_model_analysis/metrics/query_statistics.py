@@ -19,10 +19,12 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
-from typing import Dict, Iterable, Text
+from typing import Dict, Iterable, Optional, Text
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
 
 TOTAL_QUERIES_NAME = 'total_queries'
 TOTAL_DOCUMENTS_NAME = 'total_documents'
@@ -38,10 +40,10 @@ class QueryStatistics(metric_types.Metric):
   """
 
   def __init__(self,
-               total_queries_name=TOTAL_QUERIES_NAME,
-               total_documents_name=TOTAL_DOCUMENTS_NAME,
-               min_documents_name=MIN_DOCUMENTS_NAME,
-               max_documents_name=MAX_DOCUMENTS_NAME):
+               total_queries_name: Text = TOTAL_QUERIES_NAME,
+               total_documents_name: Text = TOTAL_DOCUMENTS_NAME,
+               min_documents_name: Text = MIN_DOCUMENTS_NAME,
+               max_documents_name: Text = MAX_DOCUMENTS_NAME):
     """Initializes query statistics metrics.
 
     Args:
@@ -62,24 +64,39 @@ metric_types.register_metric(QueryStatistics)
 
 
 def _query_statistics(
-    total_queries_name=TOTAL_QUERIES_NAME,
-    total_documents_name=TOTAL_DOCUMENTS_NAME,
-    min_documents_name=MIN_DOCUMENTS_NAME,
-    max_documents_name=MAX_DOCUMENTS_NAME,
+    total_queries_name: Text = TOTAL_QUERIES_NAME,
+    total_documents_name: Text = TOTAL_DOCUMENTS_NAME,
+    min_documents_name: Text = MIN_DOCUMENTS_NAME,
+    max_documents_name: Text = MAX_DOCUMENTS_NAME,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
+    model_name: Text = '',
+    output_name: Text = '',
     query_key: Text = '',
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for query statistics."""
   if not query_key:
     raise ValueError('a query_key is required to use QueryStatistics metrics')
-  if example_weighted:
-    raise NotImplementedError(
-        'QueryStatistics cannot be used with weighted metrics. It can only be '
-        'used with metrics_spec.example_weights.unweighted set to true')
 
-  total_queries_key = metric_types.MetricKey(name=total_queries_name)
-  total_documents_key = metric_types.MetricKey(name=total_documents_name)
-  min_documents_key = metric_types.MetricKey(name=min_documents_name)
-  max_documents_key = metric_types.MetricKey(name=max_documents_name)
+  total_queries_key = metric_types.MetricKey(
+      name=total_queries_name,
+      model_name=model_name,
+      output_name=output_name,
+      example_weighted=example_weighted)
+  total_documents_key = metric_types.MetricKey(
+      name=total_documents_name,
+      model_name=model_name,
+      output_name=output_name,
+      example_weighted=example_weighted)
+  min_documents_key = metric_types.MetricKey(
+      name=min_documents_name,
+      model_name=model_name,
+      output_name=output_name,
+      example_weighted=example_weighted)
+  max_documents_key = metric_types.MetricKey(
+      name=max_documents_name,
+      model_name=model_name,
+      output_name=output_name,
+      example_weighted=example_weighted)
 
   return [
       metric_types.MetricComputation(
@@ -91,7 +108,9 @@ def _query_statistics(
           combiner=_QueryStatisticsCombiner(total_queries_key,
                                             total_documents_key,
                                             min_documents_key,
-                                            max_documents_key))
+                                            max_documents_key, eval_config,
+                                            model_name, output_name,
+                                            example_weighted))
   ]
 
 
@@ -101,13 +120,11 @@ class _QueryStatisticsAccumulator(object):
       'total_queries', 'total_documents', 'min_documents', 'max_documents'
   ]
 
-  LARGE_INT = 1000000000
-
   def __init__(self):
-    self.total_queries = 0
-    self.total_documents = 0
-    self.min_documents = self.LARGE_INT
-    self.max_documents = 0
+    self.total_queries = 0.0
+    self.total_documents = 0.0
+    self.min_documents = float('inf')
+    self.max_documents = 0.0
 
 
 class _QueryStatisticsCombiner(beam.CombineFn):
@@ -116,11 +133,17 @@ class _QueryStatisticsCombiner(beam.CombineFn):
   def __init__(self, total_queries_key: metric_types.MetricKey,
                total_documents_key: metric_types.MetricKey,
                min_documents_key: metric_types.MetricKey,
-               max_documents_key: metric_types.MetricKey):
+               max_documents_key: metric_types.MetricKey,
+               eval_config: config_pb2.EvalConfig, model_name: Text,
+               output_name: Text, example_weighted: bool):
     self._total_queries_key = total_queries_key
     self._total_documents_key = total_documents_key
     self._min_documents_key = min_documents_key
     self._max_documents_key = max_documents_key
+    self._eval_config = eval_config
+    self._model_name = model_name
+    self._output_name = output_name
+    self._example_weighted = example_weighted
 
   def create_accumulator(self) -> _QueryStatisticsAccumulator:
     return _QueryStatisticsAccumulator()
@@ -129,11 +152,20 @@ class _QueryStatisticsCombiner(beam.CombineFn):
       self, accumulator: _QueryStatisticsAccumulator,
       element: metric_types.StandardMetricInputs
   ) -> _QueryStatisticsAccumulator:
-    accumulator.total_queries += 1
-    num_documents = len(element.prediction)
-    accumulator.total_documents += num_documents
-    accumulator.min_documents = min(accumulator.min_documents, num_documents)
-    accumulator.max_documents = max(accumulator.max_documents, num_documents)
+    for _, _, example_weight in (metric_util.to_label_prediction_example_weight(
+        element,
+        eval_config=self._eval_config,
+        model_name=self._model_name,
+        output_name=self._output_name,
+        example_weighted=self._example_weighted,
+        flatten=False,
+        require_single_example_weight=True)):
+      example_weight = float(example_weight)
+      accumulator.total_queries += example_weight
+      num_documents = len(element.prediction) * example_weight
+      accumulator.total_documents += num_documents
+      accumulator.min_documents = min(accumulator.min_documents, num_documents)
+      accumulator.max_documents = max(accumulator.max_documents, num_documents)
     return accumulator
 
   def merge_accumulators(
@@ -152,7 +184,7 @@ class _QueryStatisticsCombiner(beam.CombineFn):
 
   def extract_output(
       self, accumulator: _QueryStatisticsAccumulator
-  ) -> Dict[metric_types.MetricKey, int]:
+  ) -> Dict[metric_types.MetricKey, float]:
     return {
         self._total_queries_key: accumulator.total_queries,
         self._total_documents_key: accumulator.total_documents,

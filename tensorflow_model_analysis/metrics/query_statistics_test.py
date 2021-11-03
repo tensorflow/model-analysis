@@ -19,6 +19,7 @@ from __future__ import division
 # Standard __future__ imports
 from __future__ import print_function
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -30,11 +31,16 @@ from tensorflow_model_analysis.metrics import query_statistics
 from tensorflow_model_analysis.utils import util as tfma_util
 
 
-class QueryStatisticsTest(testutil.TensorflowModelAnalysisTest):
+class QueryStatisticsTest(testutil.TensorflowModelAnalysisTest,
+                          parameterized.TestCase):
 
-  def testQueryStatistics(self):
+  @parameterized.named_parameters(('weighted', True, 1.0 + 2.0 + 3.0,
+                                   1 * 2.0 + 3 * 2.0 + 1 * 3.0, 2.0, 3 * 2.0),
+                                  ('unweighted', False, 3.0, 6.0, 1.0, 3.0))
+  def testQueryStatistics(self, example_weighted, total_queries,
+                          total_documents, min_documents, max_documents):
     metrics = query_statistics.QueryStatistics().computations(
-        query_key='query', example_weighted=False)[0]
+        query_key='query', example_weighted=example_weighted)[0]
 
     query1_example1 = {
         'labels': np.array([1.0]),
@@ -113,16 +119,20 @@ class QueryStatisticsTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 1)
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-          total_queries_key = metric_types.MetricKey(name='total_queries')
-          total_documents_key = metric_types.MetricKey(name='total_documents')
-          min_documents_key = metric_types.MetricKey(name='min_documents')
-          max_documents_key = metric_types.MetricKey(name='max_documents')
+          total_queries_key = metric_types.MetricKey(
+              name='total_queries', example_weighted=example_weighted)
+          total_documents_key = metric_types.MetricKey(
+              name='total_documents', example_weighted=example_weighted)
+          min_documents_key = metric_types.MetricKey(
+              name='min_documents', example_weighted=example_weighted)
+          max_documents_key = metric_types.MetricKey(
+              name='max_documents', example_weighted=example_weighted)
           self.assertDictElementsAlmostEqual(
               got_metrics, {
-                  total_queries_key: 3,
-                  total_documents_key: 6,
-                  min_documents_key: 1,
-                  max_documents_key: 3
+                  total_queries_key: total_queries,
+                  total_documents_key: total_documents,
+                  min_documents_key: min_documents,
+                  max_documents_key: max_documents
               },
               places=5)
 
