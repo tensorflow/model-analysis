@@ -14,6 +14,11 @@
 # limitations under the License.
 """Metric types."""
 
+from __future__ import absolute_import
+from __future__ import division
+# Standard __future__ imports
+from __future__ import print_function
+
 import copy
 import functools
 import inspect
@@ -676,21 +681,15 @@ class Metric(object):
         The kwargs passed to computations have precendence over these kwargs.
     """
     self.create_computations_fn = create_computations_fn
-    if 'name' in kwargs:
-      if not kwargs['name'] and self._default_name():
-        kwargs['name'] = self._default_name()  # pylint: disable=assignment-from-none
-      name = kwargs['name']
-    else:
-      name = None
-    self.name = name
     self.kwargs = kwargs
+    if 'name' in kwargs:
+      self.name = kwargs['name']
+    else:
+      self.name = None
     if hasattr(inspect, 'getfullargspec'):
       self._args = inspect.getfullargspec(self.create_computations_fn).args
     else:
       self._args = inspect.getargspec(self.create_computations_fn).args  # pylint: disable=deprecated-method
-
-  def _default_name(self) -> Optional[Text]:
-    return None
 
   def get_config(self) -> Dict[Text, Any]:
     """Returns serializable config."""
@@ -738,11 +737,6 @@ def register_metric(cls: Type[Metric]):
 def registered_metrics() -> Dict[Text, Type[Metric]]:
   """Returns standard TFMA metrics."""
   return copy.copy(_METRIC_OBJECTS)
-
-
-def is_registered_metric(metric_class_name: Text) -> bool:
-  """Returns True if given metric class name is registered."""
-  return metric_class_name in _METRIC_OBJECTS
 
 
 class StandardMetricInputs(util.StandardExtracts):

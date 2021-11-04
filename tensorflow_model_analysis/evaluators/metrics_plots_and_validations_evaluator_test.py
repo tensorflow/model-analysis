@@ -131,7 +131,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     # 2 models x 2 classes x _CompilableMetricsCombiner,
     # 2 models x 2 classes x _WeightedLabelsPredictionsExamplesCombiner,
     # 4 models x _ExampleCountCombiner
-    self.assertLen(non_derived, 20)
+    self.assertLen(non_derived, 24)
     # 2 models x 2 classes x _binary_confusion_matrices_[0.5],
     # 2 models x 2 classes x _binary_confusion_matrices_10000
     # 2 models x 2 classes x _binary_confusion_matrices_confusion_matrix_plot
@@ -144,8 +144,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     # 2 models x 2 classes x confusion_matrix_plot
     # 2 models x 2 classes x calibration_plot
     # 2 models x 2 classes x auc
-    # 2 models x 2 classes x accuracy
-    self.assertLen(derived, 52)
+    self.assertLen(derived, 48)
     # 2 models x 2 classes x lift
     self.assertLen(cross_slice, 4)
     # None of the metric has CIDerivedMetricComputation.

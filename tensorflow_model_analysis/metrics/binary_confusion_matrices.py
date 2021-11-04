@@ -30,7 +30,6 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 DEFAULT_NUM_THRESHOLDS = calibration_histogram.DEFAULT_NUM_BUCKETS
-_KERAS_DEFAULT_NUM_THRESHOLDS = 200
 
 DEFAULT_NUM_EXAMPLE_IDS = 100
 
@@ -225,25 +224,18 @@ def binary_confusion_matrices(
   Raises:
     ValueError: If both num_thresholds and thresholds are set at the same time.
   """
-  # TF v1 Keras AUC turns num_thresholds parameters into thresholds which
-  # circumvents sharing of settings. If the thresholds match the interpolated
-  # version of the thresholds then reset back to num_thresholds.
-  if thresholds:
-    if (not num_thresholds and
-        thresholds == _interpolated_thresholds(len(thresholds))):
-      num_thresholds = len(thresholds)
-      thresholds = None
-    elif (num_thresholds
-          in (DEFAULT_NUM_THRESHOLDS, _KERAS_DEFAULT_NUM_THRESHOLDS) and
-          len(thresholds) == num_thresholds - 2):
-      thresholds = None
   if num_thresholds is not None and thresholds is not None:
     raise ValueError(
-        'only one of thresholds or num_thresholds can be set at a time: '
-        f'num_thesholds={num_thresholds}, thresholds={thresholds}, '
-        f'len(thresholds)={len(thresholds)})')
+        'only one of thresholds or num_thresholds can be set at a time')
   if num_thresholds is None and thresholds is None:
     num_thresholds = DEFAULT_NUM_THRESHOLDS
+  # Keras AUC turns num_thresholds parameters into thresholds which circumvents
+  # sharing of settings. If the thresholds match the interpolated version of the
+  # thresholds then reset back to num_thresholds.
+  if (name is None and thresholds and
+      thresholds == _interpolated_thresholds(len(thresholds))):
+    num_thresholds = len(thresholds)
+    thresholds = None
   if num_thresholds is not None:
     if num_thresholds <= 1:
       raise ValueError('num_thresholds must be > 1')

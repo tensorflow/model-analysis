@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import copy
 import importlib
 import json
 import re
@@ -31,7 +32,6 @@ from tensorflow_model_analysis.metrics import aggregation
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import calibration_plot
-from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import confusion_matrix_plot
 from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import metric_types
@@ -53,19 +53,22 @@ _TFMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]
 _MetricsOrLosses = Union[List[_TFOrTFMAMetricOrLoss],
                          Dict[Text, List[_TFOrTFMAMetricOrLoss]]]
 
-# TF config settings that TFMA only supports default values for because the
-# parameters are not supported by the TFMA implementation of the metric. The
-# settings are keyed by class name -> arg_name -> [allowed defaults].
-_UNSUPPORTED_TF_SETTINGS = {
-    '': {  # All classes
-        # TFMA only implements float based versions of TF metrics.
-        'dtype': [None, 'float32', tf.float32]
-    },
+# TF configs that should be treated special by either modifying the class names
+# used or updating the default config settings.
+_TF_CONFIG_DEFAULTS = {
     'AUC': {
-        'multi_label': [False],
-        'num_labels': [None],
-        'label_weights': [None],
-        'from_logits': [False]
+        'class_name': 'AUC',
+        'config': {
+            'num_thresholds': binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS
+        }
+    },
+    'AUCPrecisionRecall': {
+        'class_name': 'AUC',
+        'config': {
+            'name': 'auc_precision_recall',
+            'num_thresholds': binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS,
+            'curve': 'PR'
+        }
     }
 }
 
@@ -74,10 +77,7 @@ def config_from_metric(
     metric: _TFOrTFMAMetricOrLoss) -> config_pb2.MetricConfig:
   """Returns MetricConfig associated with given metric instance."""
   if isinstance(metric, tf.keras.metrics.Metric):
-    if _is_supported_tf_metric(metric):
-      return _remove_unsupported_tf_settings(_serialize_tf_metric(metric))
-    else:
-      return _serialize_tf_metric(metric)
+    return _serialize_tf_metric(metric)
   elif isinstance(metric, tf.keras.losses.Loss):
     return _serialize_tf_loss(metric)
   elif isinstance(metric, metric_types.Metric):
@@ -154,37 +154,36 @@ def specs_from_metrics(
     metrics_specs = specs_from_metrics(
       [
           tf.keras.metrics.BinaryAccuracy(),
-          tfma.metrics.AUC(),
+          tf.keras.metrics.AUC(),
           tfma.metrics.MeanLabel(),
           tfma.metrics.MeanPrediction()
           ...
       ],
       unweighted=[
-          tfma.metrics.Precision(),
-          tfma.metrics.Recall()
+          tf.keras.metrics.Precision(),
+          tf.keras.metrics.Recall()
       ])
 
     metrics_specs = specs_from_metrics({
       'output1': [
           tf.keras.metrics.BinaryAccuracy(),
-          tfma.metrics.AUC(),
+          tf.keras.metrics.AUC(),
           tfma.metrics.MeanLabel(),
           tfma.metrics.MeanPrediction()
           ...
       ],
       'output2': [
-          tfma.metrics.Precision(),
-          tfma.metrics.Recall(),
+          tf.keras.metrics.Precision(),
+          tf.keras.metrics.Recall(),
       ]
     })
 
   Args:
-    metrics: List of tfma.metrics.Metric, tf.keras.metrics.Metric, or
-      tf.keras.losses.Loss. For multi-output models a dict of dicts may be
-      passed where the first dict is indexed by the output_name. Whether these
-      metrics are weighted or not will be determined based on whether the
-      ModelSpec associated with the metrics contains example weight key settings
-      or not.
+    metrics: List of tf.keras.metrics.Metric, tf.keras.losses.Loss, or
+      tfma.metrics.Metric. For multi-output models a dict of dicts may be passed
+      where the first dict is indexed by the output_name. Whether these metrics
+      are weighted or not will be determined based on whether the ModelSpec
+      associated with the metrics contains example weight key settings or not.
     unweighted_metrics: Same as metrics only these metrics will not be weighted
       by example_weight regardless of the example weight key settings.
     model_names: Optional model names (if multi-model evaluation).
@@ -388,16 +387,16 @@ def default_binary_classification_specs(
   """
 
   metrics = [
-      confusion_matrix_metrics.BinaryAccuracy(name='binary_accuracy'),
-      confusion_matrix_metrics.AUC(
+      tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+      tf.keras.metrics.AUC(
           name='auc',
           num_thresholds=binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS),
-      confusion_matrix_metrics.AUC(
+      tf.keras.metrics.AUC(
           name='auc_precison_recall',  # Matches default name used by estimator.
           curve='PR',
           num_thresholds=binary_confusion_matrices.DEFAULT_NUM_THRESHOLDS),
-      confusion_matrix_metrics.Precision(name='precision'),
-      confusion_matrix_metrics.Recall(name='recall'),
+      tf.keras.metrics.Precision(name='precision'),
+      tf.keras.metrics.Recall(name='recall'),
       calibration.MeanLabel(name='mean_label'),
       calibration.MeanPrediction(name='mean_prediction'),
       calibration.Calibration(name='calibration'),
@@ -452,8 +451,8 @@ def default_multi_class_classification_specs(
   if binarize is not None:
     for top_k in binarize.top_k_list.values:
       metrics.extend([
-          confusion_matrix_metrics.Precision(name='precision', top_k=top_k),
-          confusion_matrix_metrics.Recall(name='recall', top_k=top_k)
+          tf.keras.metrics.Precision(name='precision', top_k=top_k),
+          tf.keras.metrics.Recall(name='recall', top_k=top_k)
       ])
     binarize_without_top_k = config_pb2.BinarizationOptions()
     binarize_without_top_k.CopyFrom(binarize)
@@ -1075,44 +1074,6 @@ def _class_weights(spec: config_pb2.MetricsSpec) -> Optional[Dict[int, float]]:
   return dict(spec.aggregate.class_weights) or None
 
 
-def _is_supported_tf_metric(tf_metric: _TFMetricOrLoss) -> bool:
-  """Returns true if TF metric has an equivalent implementation in TFMA."""
-  if not metric_types.is_registered_metric(tf_metric.__class__.__name__):
-    return False
-  cfg = tf_metric.get_config()
-  for cls_name, settings in _UNSUPPORTED_TF_SETTINGS.items():
-    if not cls_name or cls_name == tf_metric.__class__.__name__:
-      for param, values in settings.items():
-        if param in cfg and cfg[param] not in values:
-          return False
-  return True
-
-
-def _remove_unsupported_tf_settings(
-    metric_config: config_pb2.MetricConfig) -> config_pb2.MetricConfig:
-  """Deletes unsupported TF settings from config.
-
-  Removes TF config settings that TFMA only supports default values for because
-  the parameters are not supported by the TFMA implementation of the metric.
-
-  Args:
-    metric_config: Metric config.
-
-  Returns:
-    Updated metric config with unsupported settings removed.
-  """
-  cfg = _metric_config(metric_config.config)
-  for cls_name, settings in _UNSUPPORTED_TF_SETTINGS.items():
-    if not cls_name or cls_name == metric_config.class_name:
-      for param in settings:
-        if param in cfg:
-          del cfg[param]
-
-  return config_pb2.MetricConfig(
-      class_name=metric_config.class_name,
-      config=json.dumps(cfg, sort_keys=True))
-
-
 def _metric_config(cfg: Text) -> Dict[Text, Any]:
   """Returns deserializable metric config from JSON string."""
   if not cfg:
@@ -1139,11 +1100,20 @@ def _tf_class_and_config(
   """Returns the tensorflow class and config associated with metric_config."""
   cls_name = metric_config.class_name
   cfg = _metric_config(metric_config.config)
+  for name, defaults in _TF_CONFIG_DEFAULTS.items():
+    if name == cls_name:
+      if 'class_name' in defaults:
+        cls_name = defaults['class_name']
+      if 'config' in defaults:
+        tmp = cfg
+        cfg = copy.copy(defaults['config'])
+        cfg.update(tmp)
+      break
 
   # The same metric type may be used for different keys when multi-class metrics
   # are used (e.g. AUC for class0, # class1, etc). TF tries to generate unique
   # metric names even though these metrics are already unique within a
-  # MetricKey. To workaround this issue, if a name is not set, then add a
+  # MetricKey. To workaroudn this issue, if a name is not set, then add a
   # default name ourselves.
   return cls_name, _maybe_add_name_to_config(cfg, cls_name)
 
@@ -1210,6 +1180,9 @@ def _private_tf_loss(loss: tf.keras.losses.Loss) -> tf.keras.losses.Loss:
 def _serialize_tfma_metric(
     metric: metric_types.Metric) -> config_pb2.MetricConfig:
   """Serializes TFMA metric."""
+  # This implementation is identical to _serialize_tf_metric, but keeping two
+  # implementations for symmetry with deserialize where separate implementations
+  # are required (and to be consistent with the keras implementation).
   cfg = tf.keras.utils.serialize_keras_object(metric)
   return config_pb2.MetricConfig(
       class_name=cfg['class_name'],

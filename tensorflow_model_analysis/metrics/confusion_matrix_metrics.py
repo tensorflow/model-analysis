@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,46 +14,27 @@
 # limitations under the License.
 """Confusion matrix metrics."""
 
+from __future__ import absolute_import
+from __future__ import division
+# Standard __future__ imports
+from __future__ import print_function
+
 import abc
-import copy
 import math
 
 from typing import Any, Dict, List, Optional, Text, Union
 
 import numpy as np
-import tensorflow as tf
+import six
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
 
-AUC_NAME = 'auc'
-AUC_PRECISION_RECALL_NAME = 'auc_precision_recall'
-SENSITIVITY_AT_SPECIFICITY_NAME = 'sensitivity_at_specificity'
-SPECIFICITY_AT_SENSITIVITY_NAME = 'specificity_at_sensitivity'
-PRECISION_AT_RECALL_NAME = 'precision_at_recall'
-RECALL_AT_PRECISION_NAME = 'recall_at_precision'
-TRUE_POSITIVES_NAME = 'true_positives'
-TP_NAME = 'tp'
-TRUE_NEGATIVES_NAME = 'true_negatives'
-TN_NAME = 'tn'
-FALSE_POSITIVES_NAME = 'false_positives'
-FP_NAME = 'fp'
-FALSE_NEGATIVES_NAME = 'false_negatives'
-FN_NAME = 'fn'
-BINARY_ACCURACY_NAME = 'binary_accuracy'
-PRECISION_NAME = 'precision'
-PPV_NAME = 'ppv'
-RECALL_NAME = 'recall'
-TPR_NAME = 'tpr'
 SPECIFICITY_NAME = 'specificity'
-TNR_NAME = 'tnr'
 FALL_OUT_NAME = 'fall_out'
-FPR_NAME = 'fpr'
 MISS_RATE_NAME = 'miss_rate'
-FNR_NAME = 'fnr'
 NEGATIVE_PREDICTIVE_VALUE_NAME = 'negative_predictive_value'
-NPV_NAME = 'npv'
 FALSE_DISCOVERY_RATE_NAME = 'false_discovery_rate'
 FALSE_OMISSION_RATE_NAME = 'false_omission_rate'
 PREVALENCE_NAME = 'prevalence'
@@ -60,7 +42,7 @@ PREVALENCE_THRESHOLD_NAME = 'prevalence_threshold'
 THREAT_SCORE_NAME = 'threat_score'
 BALANCED_ACCURACY_NAME = 'balanced_accuracy'
 F1_SCORE_NAME = 'f1_score'
-MATTHEWS_CORRELATION_COEFFICIENT_NAME = 'matthews_correlation_coefficient'
+MATTHEWS_CORRELATION_COEFFICENT_NAME = 'matthews_correlation_coefficient'
 FOWLKES_MALLOWS_INDEX_NAME = 'fowlkes_mallows_index'
 INFORMEDNESS_NAME = 'informedness'
 MARKEDNESS_NAME = 'markedness'
@@ -70,161 +52,39 @@ DIAGNOSTIC_ODDS_RATIO_NAME = 'diagnostic_odds_ratio'
 CONFUSION_MATRIX_AT_THRESHOLDS_NAME = 'confusion_matrix_at_thresholds'
 
 
-def _pos_sqrt(value: float) -> float:
-  """Returns sqrt of value or raises ValueError if negative."""
-  if value < 0:
-    raise ValueError('Attempt to take sqrt of negative value: {}'.format(value))
-  return math.sqrt(value)
-
-
-def _validate_and_update_sub_key(
-    metric_name: Text, model_name: Text, output_name: Text,
-    sub_key: metric_types.SubKey, top_k: Optional[int],
-    class_id: Optional[int]) -> metric_types.SubKey:
-  """Validates and updates sub key.
-
-  This function validates that the top_k and class_id settings that are
-  determined by the MetricsSpec.binarize are compatible and do not overlap with
-  any settings provided by MetricConfigs.
-
-  Args:
-    metric_name: Metric name.
-    model_name: Model name.
-    output_name: Output name.
-    sub_key: Sub key (from MetricsSpec).
-    top_k: Top k setting (from MetricConfig).
-    class_id: Class ID setting (from MetricConfig).
-
-  Returns:
-    Updated sub-key if top_k or class_id params are used.
-
-  Raises:
-    ValueError: If validation fails.
-  """
-  if top_k and class_id:
-    raise ValueError(
-        f'Metric {metric_name} is configured with both class_id={class_id} and '
-        f'top_k={top_k} settings. Only one may be specified at a time.')
-  if top_k is not None:
-    if sub_key is None or sub_key == metric_types.SubKey():
-      sub_key = metric_types.SubKey(top_k=top_k)
-    else:
-      raise ValueError(
-          f'Metric {metric_name} is configured with overlapping settings. '
-          f'The metric was initialized with top_k={top_k}, but the '
-          f'metric was defined in a spec using sub_key={sub_key}, '
-          f'model_name={model_name}, output_name={output_name}\n\n'
-          'Binarization related settings can be configured in either the'
-          'metrics_spec or the metric, but not both. Either remove the top_k '
-          'setting from this metric or remove the metrics_spec.binarize '
-          'settings.')
-  elif class_id is not None:
-    if sub_key is None or sub_key == metric_types.SubKey():
-      sub_key = metric_types.SubKey(class_id=class_id)
-    else:
-      raise ValueError(
-          f'Metric {metric_name} is configured with overlapping settings. '
-          f'The metric was initialized with class_id={class_id}, but the '
-          f'metric was defined in a spec using sub_key={sub_key}, '
-          f'model_name={model_name}, output_name={output_name}\n\n'
-          'Binarization related settings can be configured in either the'
-          'metrics_spec or the metric, but not both. Either remove the '
-          'class_id setting from this metric or remove the '
-          'metrics_spec.binarize settings.')
-  return sub_key
-
-
-class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
+class ConfusionMatrixMetric(
+    six.with_metaclass(abc.ABCMeta, metric_types.Metric)):
   """Base for confusion matrix metrics."""
 
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               num_thresholds: Optional[int] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[Text] = None,
-               **kwargs):
+  def __init__(self, name: Text, thresholds: Optional[List[float]] = None):
     """Initializes confusion matrix metric.
 
     Args:
-      thresholds: (Optional) Thresholds to use for calculating the matrices. Use
-        one of either thresholds or num_thresholds.
-      num_thresholds: (Optional) Number of thresholds to use for calculating the
-        matrices. Use one of either thresholds or num_thresholds.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-      name: (Optional) Metric name.
-      **kwargs: (Optional) Additional args to pass along to init (and eventually
-        on to _metric_computation and _metric_value)
+      name: Metric name.
+      thresholds: Thresholds to use for specificity. Defaults to [0.5].
     """
-    super(ConfusionMatrixMetricBase, self).__init__(
-        metric_util.merge_per_key_computations(self._metric_computations),
+    super(ConfusionMatrixMetric, self).__init__(
+        metric_util.merge_per_key_computations(self._metric_computation),
         thresholds=thresholds,
-        num_thresholds=num_thresholds,
-        top_k=top_k,
-        class_id=class_id,
-        name=name,
-        **kwargs)
-
-  def _default_threshold(self) -> Optional[float]:
-    """Returns default threshold if thresholds or num_thresholds unset."""
-    return None
-
-  def get_config(self) -> Dict[Text, Any]:
-    """Returns serializable config."""
-    # Not all subclasses of ConfusionMatrixMetric support all the __init__
-    # parameters as part of their __init__, to avoid deserialization issues
-    # where an unsupported parameter is passed to the subclass, filter out any
-    # parameters that are None.
-    kwargs = copy.copy(self.kwargs)
-    for arg in ('thresholds', 'num_thresholds', 'top_k', 'class_id'):
-      if kwargs[arg] is None:
-        del kwargs[arg]
-    return kwargs
+        name=name)
 
   @abc.abstractmethod
-  def _metric_value(
-      self, key: metric_types.MetricKey,
-      matrices: binary_confusion_matrices.Matrices) -> Union[float, np.ndarray]:
-    """Returns metric value associated with matrices.
-
-    Subclasses may override this method. Any additional kwargs passed to
-    __init__ will be forwarded along to this call.
-
-    Args:
-      key: Metric key.
-      matrices: Computed binary confusion matrices.
-    """
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
+    """Function for computing metric value from TP, TN, FP, FN values."""
     raise NotImplementedError('Must be implemented in subclasses.')
 
-  def _metric_computations(self,
-                           thresholds: Optional[Union[float,
-                                                      List[float]]] = None,
-                           num_thresholds: Optional[int] = None,
-                           top_k: Optional[int] = None,
-                           class_id: Optional[int] = None,
-                           name: Optional[Text] = None,
-                           eval_config: Optional[config_pb2.EvalConfig] = None,
-                           model_name: Text = '',
-                           output_name: Text = '',
-                           sub_key: Optional[metric_types.SubKey] = None,
-                           aggregation_type: Optional[
-                               metric_types.AggregationType] = None,
-                           class_weights: Optional[Dict[int, float]] = None,
-                           example_weighted: bool = False,
-                           **kwargs) -> metric_types.MetricComputations:
-    """Returns computations for confusion matrix metric."""
-    sub_key = _validate_and_update_sub_key(name, model_name, output_name,
-                                           sub_key, top_k, class_id)
-
+  def _metric_computation(
+      self,
+      thresholds: Optional[List[float]] = None,
+      name: Text = '',
+      eval_config: Optional[config_pb2.EvalConfig] = None,
+      model_name: Text = '',
+      output_name: Text = '',
+      sub_key: Optional[metric_types.SubKey] = None,
+      aggregation_type: Optional[metric_types.AggregationType] = None,
+      class_weights: Optional[Dict[int, float]] = None,
+      example_weighted: bool = False) -> metric_types.MetricComputations:
+    """Returns metric computations for specificity."""
     key = metric_types.MetricKey(
         name=name,
         model_name=model_name,
@@ -232,34 +92,31 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
         sub_key=sub_key,
         example_weighted=example_weighted)
 
-    if num_thresholds is None and thresholds is None:
-      # If top_k set, then use -inf as the default threshold setting.
-      if sub_key and sub_key.top_k:
-        thresholds = [float('-inf')]
-      elif self._default_threshold() is not None:
-        thresholds = [self._default_threshold()]
-    if isinstance(thresholds, float):
-      thresholds = [thresholds]
+    if not thresholds:
+      thresholds = [0.5]
 
     # Make sure matrices are calculated.
     matrices_computations = binary_confusion_matrices.binary_confusion_matrices(
-        num_thresholds=num_thresholds,
-        thresholds=thresholds,
         eval_config=eval_config,
         model_name=model_name,
         output_name=output_name,
         sub_key=sub_key,
         aggregation_type=aggregation_type,
         class_weights=class_weights,
+        thresholds=thresholds,
         example_weighted=example_weighted)
     matrices_key = matrices_computations[-1].keys[-1]
 
     def result(
         metrics: Dict[metric_types.MetricKey, Any]
     ) -> Dict[metric_types.MetricKey, Union[float, np.ndarray]]:
-      value = self._metric_value(
-          key=key, matrices=metrics[matrices_key], **kwargs)
-      return {key: value}
+      matrices = metrics[matrices_key]
+      values = []
+      for i in range(len(thresholds)):
+        values.append(
+            self.result(matrices.tp[i], matrices.tn[i], matrices.fp[i],
+                        matrices.fn[i]))
+      return {key: values[0] if len(thresholds) == 1 else np.array(values)}
 
     derived_computation = metric_types.DerivedMetricComputation(
         keys=[key], result=result)
@@ -268,995 +125,26 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
     return computations
 
 
-class ConfusionMatrixMetric(ConfusionMatrixMetricBase):
-  """Base for confusion matrix metrics."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               num_thresholds: Optional[int] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[Text] = None,
-               **kwargs):
-    """Initializes confusion matrix metric.
-
-    Args:
-      thresholds: (Optional) Thresholds to use for calculating the matrices. Use
-        one of either thresholds or num_thresholds.
-      num_thresholds: (Optional) Number of thresholds to use for calculating the
-        matrices. Use one of either thresholds or num_thresholds.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-      name: (Optional) Metric name.
-      **kwargs: (Optional) Additional args to pass along to init (and eventually
-        on to _metric_computation and _metric_value)
-    """
-    super(ConfusionMatrixMetric, self).__init__(
-        thresholds=thresholds,
-        num_thresholds=num_thresholds,
-        top_k=top_k,
-        class_id=class_id,
-        name=name,
-        **kwargs)
-
-  def _default_threshold(self) -> float:
-    """Returns default threshold if thresholds or num_thresholds unset."""
-    return 0.5
-
-  @abc.abstractmethod
-  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    """Function for computing metric value from TP, TN, FP, FN values."""
-    raise NotImplementedError('Must be implemented in subclasses.')
-
-  def _metric_value(
-      self, key: metric_types.MetricKey,
-      matrices: binary_confusion_matrices.Matrices) -> Union[float, np.ndarray]:
-    """Returns metric value associated with matrices.
-
-    Subclasses may override this method. Any additional kwargs passed to
-    __init__ will be forwarded along to this call. Note that since this method
-    is the only one that calls the result method, subclasses that override this
-    method are not required to provide an implementation for the result method.
-
-    Args:
-      key: Metric key.
-      matrices: Computed binary confusion matrices.
-    """
-    values = []
-    for i in range(len(matrices.thresholds)):
-      values.append(
-          self.result(matrices.tp[i], matrices.tn[i], matrices.fp[i],
-                      matrices.fn[i]))
-    return values[0] if len(matrices.thresholds) == 1 else np.array(values)
-
-
-class AUC(ConfusionMatrixMetricBase):
-  """Approximates the AUC (Area under the curve) of the ROC or PR curves.
-
-  The AUC (Area under the curve) of the ROC (Receiver operating
-  characteristic; default) or PR (Precision Recall) curves are quality measures
-  of binary classifiers. Unlike the accuracy, and like cross-entropy
-  losses, ROC-AUC and PR-AUC evaluate all the operational points of a model.
-
-  This class approximates AUCs using a Riemann sum. During the metric
-  accumulation phase, predictions are accumulated within predefined buckets
-  by value. The AUC is then computed by interpolating per-bucket averages. These
-  buckets define the evaluated operational points.
-
-  This metric uses `true_positives`, `true_negatives`, `false_positives` and
-  `false_negatives` to compute the AUC. To discretize the AUC curve, a linearly
-  spaced set of thresholds is used to compute pairs of recall and precision
-  values. The area under the ROC-curve is therefore computed using the height of
-  the recall values by the false positive rate, while the area under the
-  PR-curve is the computed using the height of the precision values by the
-  recall.
-
-  This value is ultimately returned as `auc`, an idempotent operation that
-  computes the area under a discretized curve of precision versus recall values
-  (computed using the aforementioned variables). The `num_thresholds` variable
-  controls the degree of discretization with larger numbers of thresholds more
-  closely approximating the true AUC. The quality of the approximation may vary
-  dramatically depending on `num_thresholds`. The `thresholds` parameter can be
-  used to manually specify thresholds which split the predictions more evenly.
-
-  For a best approximation of the real AUC, `predictions` should be distributed
-  approximately uniformly in the range [0, 1]. The quality of the AUC
-  approximation may be poor if this is not the case. Setting `summation_method`
-  to 'minoring' or 'majoring' can help quantify the error in the approximation
-  by providing lower or upper bound estimate of the AUC.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               num_thresholds: Optional[int] = None,
-               curve: Text = 'ROC',
-               summation_method: Text = 'interpolation',
-               name: Optional[Text] = None,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes AUC metric.
-
-    Args:
-      num_thresholds: (Optional) Defaults to 10000. The number of thresholds to
-        use when discretizing the roc curve. Values must be > 1.
-      curve: (Optional) Specifies the name of the curve to be computed, 'ROC'
-        [default] or 'PR' for the Precision-Recall-curve.
-      summation_method: (Optional) Specifies the [Riemann summation method](
-        https://en.wikipedia.org/wiki/Riemann_sum) used. 'interpolation'
-          (default) applies mid-point summation scheme for `ROC`. For PR-AUC,
-          interpolates (true/false) positives but not the ratio that is
-          precision (see Davis & Goadrich 2006 for details); 'minoring' applies
-          left summation for increasing intervals and right summation for
-          decreasing intervals; 'majoring' does the opposite.
-      name: (Optional) string name of the metric instance.
-      thresholds: (Optional) A list of floating point values to use as the
-        thresholds for discretizing the curve. If set, the `num_thresholds`
-        parameter is ignored. Values should be in [0, 1]. Endpoint thresholds
-        equal to {-epsilon, 1+epsilon} for a small positive epsilon value will
-        be automatically included with these to correctly handle predictions
-        equal to exactly 0 or 1.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-    """
-    super(AUC, self).__init__(
-        num_thresholds=num_thresholds,
-        thresholds=thresholds,
-        curve=curve,
-        summation_method=summation_method,
-        name=name,
-        top_k=top_k,
-        class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return AUC_NAME
-
-  def _metric_value(self, curve: Text, summation_method: Text,
-                    key: metric_types.MetricKey,
-                    matrices: binary_confusion_matrices.Matrices) -> float:
-    del key
-    metric = tf.keras.metrics.AUC(
-        num_thresholds=len(matrices.thresholds),
-        curve=curve,
-        summation_method=summation_method)
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.true_negatives.assign(np.array(matrices.tn))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
-
-
-metric_types.register_metric(AUC)
-
-
-class AUCPrecisionRecall(AUC):
-  """Alias for AUC(curve='PR')."""
-
-  def __init__(self,
-               num_thresholds: Optional[int] = None,
-               summation_method: Text = 'interpolation',
-               name: Optional[Text] = None,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes AUCPrecisionRecall metric.
-
-    Args:
-      num_thresholds: (Optional) Defaults to 10000. The number of thresholds to
-        use when discretizing the roc curve. Values must be > 1.
-      summation_method: (Optional) Specifies the [Riemann summation method](
-        https://en.wikipedia.org/wiki/Riemann_sum) used. 'interpolation'
-          interpolates (true/false) positives but not the ratio that is
-          precision (see Davis & Goadrich 2006 for details); 'minoring' applies
-          left summation for increasing intervals and right summation for
-          decreasing intervals; 'majoring' does the opposite.
-      name: (Optional) string name of the metric instance.
-      thresholds: (Optional) A list of floating point values to use as the
-        thresholds for discretizing the curve. If set, the `num_thresholds`
-        parameter is ignored. Values should be in [0, 1]. Endpoint thresholds
-        equal to {-epsilon, 1+epsilon} for a small positive epsilon value will
-        be automatically included with these to correctly handle predictions
-        equal to exactly 0 or 1.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-    """
-    super(AUCPrecisionRecall, self).__init__(
-        num_thresholds=num_thresholds,
-        thresholds=thresholds,
-        curve='PR',
-        summation_method=summation_method,
-        name=name,
-        top_k=top_k,
-        class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return AUC_PRECISION_RECALL_NAME
-
-
-metric_types.register_metric(AUCPrecisionRecall)
-
-
-class SensitivityAtSpecificity(ConfusionMatrixMetricBase):
-  """Computes best sensitivity where specificity is >= specified value.
-
-  `Sensitivity` measures the proportion of actual positives that are correctly
-  identified as such (tp / (tp + fn)).
-  `Specificity` measures the proportion of actual negatives that are correctly
-  identified as such (tn / (tn + fp)).
-
-  The threshold for the given specificity value is computed and used to evaluate
-  the corresponding sensitivity.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-
-  For additional information about specificity and sensitivity, see
-  [the following](https://en.wikipedia.org/wiki/Sensitivity_and_specificity).
-  """
-
-  def __init__(self,
-               specificity: float,
-               num_thresholds: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None):
-    """Initializes SensitivityAtSpecificity metric.
-
-
-    Args:
-      specificity: A scalar value in range `[0, 1]`.
-      num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
-        use for matching the given specificity.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-      name: (Optional) string name of the metric instance.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-    """
-    super(SensitivityAtSpecificity, self).__init__(
-        num_thresholds=num_thresholds,
-        specificity=specificity,
-        class_id=class_id,
-        name=name,
-        top_k=top_k)
-
-  def _default_name(self) -> Text:
-    return SENSITIVITY_AT_SPECIFICITY_NAME
-
-  def _metric_value(self, specificity: float, key: metric_types.MetricKey,
-                    matrices: binary_confusion_matrices.Matrices) -> float:
-    del key
-    metric = tf.keras.metrics.SensitivityAtSpecificity(
-        specificity=specificity, num_thresholds=len(matrices.thresholds))
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.true_negatives.assign(np.array(matrices.tn))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
-
-
-metric_types.register_metric(SensitivityAtSpecificity)
-
-
-class SpecificityAtSensitivity(ConfusionMatrixMetricBase):
-  """Computes best specificity where sensitivity is >= specified value.
-
-  `Sensitivity` measures the proportion of actual positives that are correctly
-  identified as such (tp / (tp + fn)).
-  `Specificity` measures the proportion of actual negatives that are correctly
-  identified as such (tn / (tn + fp)).
-
-  The threshold for the given sensitivity value is computed and used to evaluate
-  the corresponding specificity.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-
-  For additional information about specificity and sensitivity, see
-  [the following](https://en.wikipedia.org/wiki/Sensitivity_and_specificity).
-  """
-
-  def __init__(self,
-               sensitivity: float,
-               num_thresholds: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None):
-    """Initializes SpecificityAtSensitivity metric.
-
-
-    Args:
-      sensitivity: A scalar value in range `[0, 1]`.
-      num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
-        use for matching the given sensitivity.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-      name: (Optional) string name of the metric instance.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-    """
-    super(SpecificityAtSensitivity, self).__init__(
-        num_thresholds=num_thresholds,
-        sensitivity=sensitivity,
-        class_id=class_id,
-        name=name,
-        top_k=top_k)
-
-  def _default_name(self) -> Text:
-    return SPECIFICITY_AT_SENSITIVITY_NAME
-
-  def _metric_value(self, sensitivity: float, key: metric_types.MetricKey,
-                    matrices: binary_confusion_matrices.Matrices) -> float:
-    del key
-    metric = tf.keras.metrics.SpecificityAtSensitivity(
-        sensitivity=sensitivity, num_thresholds=len(matrices.thresholds))
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.true_negatives.assign(np.array(matrices.tn))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
-
-
-metric_types.register_metric(SpecificityAtSensitivity)
-
-
-class PrecisionAtRecall(ConfusionMatrixMetricBase):
-  """Computes best precision where recall is >= specified value.
-
-  The threshold for the given recall value is computed and used to evaluate the
-  corresponding precision.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               recall: float,
-               num_thresholds: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None):
-    """Initializes PrecisionAtRecall metric.
-
-
-    Args:
-      recall: A scalar value in range `[0, 1]`.
-      num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
-        use for matching the given recall.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-      name: (Optional) string name of the metric instance.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-    """
-    super(PrecisionAtRecall, self).__init__(
-        num_thresholds=num_thresholds,
-        recall=recall,
-        class_id=class_id,
-        name=name,
-        top_k=top_k)
-
-  def _default_name(self) -> Text:
-    return PRECISION_AT_RECALL_NAME
-
-  def _metric_value(self, recall: float, key: metric_types.MetricKey,
-                    matrices: binary_confusion_matrices.Matrices) -> float:
-    del key
-    metric = tf.keras.metrics.PrecisionAtRecall(
-        recall=recall, num_thresholds=len(matrices.thresholds))
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
-
-
-metric_types.register_metric(PrecisionAtRecall)
-
-
-class RecallAtPrecision(ConfusionMatrixMetricBase):
-  """Computes best recall where precision is >= specified value.
-
-  For a given score-label-distribution the required precision might not
-  be achievable, in this case 0.0 is returned as recall.
-
-  This metric creates three local variables, `true_positives`, `false_positives`
-  and `false_negatives` that are used to compute the recall at the given
-  precision. The threshold for the given precision value is computed and used to
-  evaluate the corresponding recall.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               precision: float,
-               num_thresholds: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None):
-    """Initializes RecallAtPrecision.
-
-
-    Args:
-      precision: A scalar value in range `[0, 1]`.
-      num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
-        use for matching the given precision.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-      name: (Optional) string name of the metric instance.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-    """
-    super(RecallAtPrecision, self).__init__(
-        num_thresholds=num_thresholds,
-        precision=precision,
-        class_id=class_id,
-        name=name,
-        top_k=top_k)
-
-  def _default_name(self) -> Text:
-    return RECALL_AT_PRECISION_NAME
-
-  def _metric_value(self, precision: float, key: metric_types.MetricKey,
-                    matrices: binary_confusion_matrices.Matrices) -> float:
-    del key
-    metric = tf.keras.metrics.RecallAtPrecision(
-        precision=precision, num_thresholds=len(matrices.thresholds))
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
-
-
-metric_types.register_metric(RecallAtPrecision)
-
-
-class TruePositives(ConfusionMatrixMetric):
-  """Calculates the number of true positives.
-
-  If `sample_weight` is given, calculates the sum of the weights of
-  true positives. This metric creates one local variable, `true_positives`
-  that is used to keep track of the number of true positives.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes TruePositives metric.
-
-    Args:
-      thresholds: (Optional) Defaults to [0.5]. A float value or a python
-        list/tuple of float threshold values in [0, 1]. A threshold is compared
-        with prediction values to determine the truth value of predictions
-        (i.e., above the threshold is `true`, below is `false`). One metric
-        value is generated for each threshold value.
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-    """
-    super(TruePositives, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return TRUE_POSITIVES_NAME
-
-  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    return tp
-
-
-metric_types.register_metric(TruePositives)
-
-
-class TP(TruePositives):
-  """Alias for TruePositives."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes TP metric."""
-    super(TP, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return TP_NAME
-
-
-metric_types.register_metric(TP)
-
-
-class TrueNegatives(ConfusionMatrixMetric):
-  """Calculates the number of true negatives.
-
-  If `sample_weight` is given, calculates the sum of the weights of true
-  negatives.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes TrueNegatives metric.
-
-    Args:
-      thresholds: (Optional) Defaults to [0.5]. A float value or a python
-        list/tuple of float threshold values in [0, 1]. A threshold is compared
-        with prediction values to determine the truth value of predictions
-        (i.e., above the threshold is `true`, below is `false`). One metric
-        value is generated for each threshold value.
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-    """
-    super(TrueNegatives, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return TRUE_NEGATIVES_NAME
-
-  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    return tn
-
-
-metric_types.register_metric(TrueNegatives)
-
-
-class TN(TrueNegatives):
-  """Alias for TrueNegatives."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes TN metric."""
-    super(TN, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return TN_NAME
-
-
-metric_types.register_metric(TN)
-
-
-class FalsePositives(ConfusionMatrixMetric):
-  """Calculates the number of false positives.
-
-  If `sample_weight` is given, calculates the sum of the weights of false
-  positives.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes FalsePositives metric.
-
-    Args:
-      thresholds: (Optional) Defaults to [0.5]. A float value or a python
-        list/tuple of float threshold values in [0, 1]. A threshold is compared
-        with prediction values to determine the truth value of predictions
-        (i.e., above the threshold is `true`, below is `false`). One metric
-        value is generated for each threshold value.
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-    """
-    super(FalsePositives, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FALSE_POSITIVES_NAME
-
-  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    return fp
-
-
-metric_types.register_metric(FalsePositives)
-
-
-class FP(FalsePositives):
-  """Alias for FalsePositives."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes FP metric."""
-    super(FP, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FP_NAME
-
-
-metric_types.register_metric(FP)
-
-
-class FalseNegatives(ConfusionMatrixMetric):
-  """Calculates the number of false negatives.
-
-  If `sample_weight` is given, calculates the sum of the weights of false
-  negatives.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes FalseNegatives metric.
-
-    Args:
-      thresholds: (Optional) Defaults to [0.5]. A float value or a python
-        list/tuple of float threshold values in [0, 1]. A threshold is compared
-        with prediction values to determine the truth value of predictions
-        (i.e., above the threshold is `true`, below is `false`). One metric
-        value is generated for each threshold value.
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-    """
-    super(FalseNegatives, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FALSE_NEGATIVES_NAME
-
-  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    return fn
-
-
-metric_types.register_metric(FalseNegatives)
-
-
-class FN(FalseNegatives):
-  """Alias for FalseNegatives."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes FN metric."""
-    super(FN, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FN_NAME
-
-
-metric_types.register_metric(FN)
-
-
-class BinaryAccuracy(ConfusionMatrixMetric):
-  """Calculates how often predictions match binary labels.
-
-  This metric computes the accuracy based on (TP + TN) / (TP + FP + TN + FN).
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               threshold: Optional[float] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[Text] = None):
-    """Initializes BinaryAccuracy metric.
-
-    Args:
-      threshold: (Optional) A float value in [0, 1]. The threshold is compared
-        with prediction values to determine the truth value of predictions
-        (i.e., above the threshold is `true`, below is `false`). If neither
-        threshold nor top_k are set, the default is to calculate with
-        `threshold=0.5`.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-      name: (Optional) string name of the metric instance.
-    """
-    super(BinaryAccuracy, self).__init__(
-        thresholds=threshold, top_k=top_k, class_id=class_id, name=name)
-
-  def _default_name(self) -> Text:
-    return BINARY_ACCURACY_NAME
-
-  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    denominator = tp + fp + tn + fn
-    if denominator:
-      return (tp + tn) / denominator
-    else:
-      return float('nan')
-
-
-metric_types.register_metric(BinaryAccuracy)
-
-
-class Precision(ConfusionMatrixMetric):
-  """Computes the precision of the predictions with respect to the labels.
-
-  The metric uses true positives and false positives to compute precision by
-  dividing the true positives by the sum of true positives and false positives.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[Text] = None):
-    """Initializes Precision metric.
-
-    Args:
-      thresholds: (Optional) A float value or a python list/tuple of float
-        threshold values in [0, 1]. A threshold is compared with prediction
-        values to determine the truth value of predictions (i.e., above the
-        threshold is `true`, below is `false`). One metric value is generated
-        for each threshold value. If neither thresholds nor top_k are set, the
-        default is to calculate precision with `thresholds=0.5`.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-      name: (Optional) string name of the metric instance.
-    """
-    super(Precision, self).__init__(
-        thresholds=thresholds, top_k=top_k, class_id=class_id, name=name)
-
-  def _default_name(self) -> Text:
-    return PRECISION_NAME
-
-  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    del tn, fn
-    denominator = tp + fp
-    if denominator:
-      return tp / denominator
-    else:
-      return float('nan')
-
-
-metric_types.register_metric(Precision)
-
-
-class PPV(Precision):
-  """Alias for Precision."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes PPV metric."""
-    super(PPV, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return PPV_NAME
-
-
-metric_types.register_metric(PPV)
-
-
-class Recall(ConfusionMatrixMetric):
-  """Computes the recall of the predictions with respect to the labels.
-
-  The metric uses true positives and false negatives to compute recall by
-  dividing the true positives by the sum of true positives and false negatives.
-
-  If `sample_weight` is `None`, weights default to 1.
-  Use `sample_weight` of 0 to mask values.
-  """
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[Text] = None):
-    """Initializes Recall metric.
-
-    Args:
-      thresholds: (Optional) A float value or a python list/tuple of float
-        threshold values in [0, 1]. A threshold is compared with prediction
-        values to determine the truth value of predictions (i.e., above the
-        threshold is `true`, below is `false`). One metric value is generated
-        for each threshold value. If neither thresholds nor top_k are set, the
-        default is to calculate precision with `thresholds=0.5`.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
-      name: (Optional) string name of the metric instance.
-    """
-    super(Recall, self).__init__(
-        thresholds=thresholds, top_k=top_k, class_id=class_id, name=name)
-
-  def _default_name(self) -> Text:
-    return RECALL_NAME
-
-  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    del tn, fp
-    denominator = tp + fn
-    if denominator > 0.0:
-      return tp / denominator
-    else:
-      return float('nan')
-
-
-metric_types.register_metric(Recall)
-
-
-class TPR(Recall):
-  """Alias for Recall."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes TPR metric."""
-    super(TPR, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return TPR_NAME
-
-
-metric_types.register_metric(TPR)
+def _pos_sqrt(value: float) -> float:
+  """Returns sqrt of value or raises ValueError if negative."""
+  if value < 0:
+    raise ValueError('Attempt to take sqrt of negative value: {}'.format(value))
+  return math.sqrt(value)
 
 
 class Specificity(ConfusionMatrixMetric):
   """Specificity (TNR) or selectivity."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = SPECIFICITY_NAME):
     """Initializes specificity metric.
 
     Args:
-      thresholds: (Optional) Thresholds to use for specificity. Defaults to
-        [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use for specificity. Defaults to [0.5].
+      name: Metric name.
     """
-    super(Specificity, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return SPECIFICITY_NAME
+    super(Specificity, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fn
@@ -1270,54 +158,19 @@ class Specificity(ConfusionMatrixMetric):
 metric_types.register_metric(Specificity)
 
 
-class TNR(Specificity):
-  """Alias for Specificity."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes TNR metric."""
-    super(TNR, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return TNR_NAME
-
-
-metric_types.register_metric(TNR)
-
-
 class FallOut(ConfusionMatrixMetric):
   """Fall-out (FPR)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = FALL_OUT_NAME):
     """Initializes fall-out metric.
 
     Args:
-      thresholds: (Optional) Thresholds to use for fall-out. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use for fall-out. Defaults to [0.5].
+      name: Metric name.
     """
-    super(FallOut, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FALL_OUT_NAME
+    super(FallOut, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fn
@@ -1331,54 +184,19 @@ class FallOut(ConfusionMatrixMetric):
 metric_types.register_metric(FallOut)
 
 
-class FPR(FallOut):
-  """Alias for FallOut."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes FPR metric."""
-    super(FPR, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FPR_NAME
-
-
-metric_types.register_metric(FPR)
-
-
 class MissRate(ConfusionMatrixMetric):
   """Miss rate (FNR)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = MISS_RATE_NAME):
     """Initializes miss rate metric.
 
     Args:
-      thresholds: (Optional) Thresholds to use for miss rate. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use for miss rate. Defaults to [0.5].
+      name: Metric name.
     """
-    super(MissRate, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return MISS_RATE_NAME
+    super(MissRate, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn, fp
@@ -1392,54 +210,20 @@ class MissRate(ConfusionMatrixMetric):
 metric_types.register_metric(MissRate)
 
 
-class FNR(MissRate):
-  """Alias for MissRate."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes FNR metric."""
-    super(FNR, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FNR_NAME
-
-
-metric_types.register_metric(FNR)
-
-
 class NegativePredictiveValue(ConfusionMatrixMetric):
   """Negative predictive value (NPV)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = NEGATIVE_PREDICTIVE_VALUE_NAME):
     """Initializes negative predictive value.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
     super(NegativePredictiveValue, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return NEGATIVE_PREDICTIVE_VALUE_NAME
+        name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fp
@@ -1453,54 +237,19 @@ class NegativePredictiveValue(ConfusionMatrixMetric):
 metric_types.register_metric(NegativePredictiveValue)
 
 
-class NPV(NegativePredictiveValue):
-  """Alias for NegativePredictiveValue."""
-
-  def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
-    """Initializes PPV metric."""
-    super(NPV, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return NPV_NAME
-
-
-metric_types.register_metric(NPV)
-
-
 class FalseDiscoveryRate(ConfusionMatrixMetric):
   """False discovery rate (FDR)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = FALSE_DISCOVERY_RATE_NAME):
     """Initializes false discovery rate.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(FalseDiscoveryRate, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FALSE_DISCOVERY_RATE_NAME
+    super(FalseDiscoveryRate, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn, fn
@@ -1518,31 +267,15 @@ class FalseOmissionRate(ConfusionMatrixMetric):
   """False omission rate (FOR)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = FALSE_OMISSION_RATE_NAME):
     """Initializes false omission rate.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(FalseOmissionRate, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FALSE_OMISSION_RATE_NAME
+    super(FalseOmissionRate, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fp
@@ -1560,31 +293,15 @@ class Prevalence(ConfusionMatrixMetric):
   """Prevalence."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = PREVALENCE_NAME):
     """Initializes prevalence.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(Prevalence, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return PREVALENCE_NAME
+    super(Prevalence, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     denominator = tp + tn + fp + fn
@@ -1601,31 +318,15 @@ class PrevalenceThreshold(ConfusionMatrixMetric):
   """Prevalence threshold (PT)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = PREVALENCE_THRESHOLD_NAME):
     """Initializes prevalence threshold.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(PrevalenceThreshold, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return PREVALENCE_THRESHOLD_NAME
+    super(PrevalenceThreshold, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     tpr_denominator = tp + fn
@@ -1645,31 +346,15 @@ class ThreatScore(ConfusionMatrixMetric):
   """Threat score or critical success index (TS or CSI)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = THREAT_SCORE_NAME):
     """Initializes threat score.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(ThreatScore, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return THREAT_SCORE_NAME
+    super(ThreatScore, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn
@@ -1687,31 +372,15 @@ class BalancedAccuracy(ConfusionMatrixMetric):
   """Balanced accuracy (BA)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = BALANCED_ACCURACY_NAME):
     """Initializes balanced accuracy.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(BalancedAccuracy, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return BALANCED_ACCURACY_NAME
+    super(BalancedAccuracy, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     tpr_denominator = tp + fn
@@ -1731,31 +400,15 @@ class F1Score(ConfusionMatrixMetric):
   """F1 score."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = F1_SCORE_NAME):
     """Initializes F1 score.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(F1Score, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return F1_SCORE_NAME
+    super(F1Score, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn
@@ -1772,35 +425,20 @@ class F1Score(ConfusionMatrixMetric):
 metric_types.register_metric(F1Score)
 
 
-class MatthewsCorrelationCoefficient(ConfusionMatrixMetric):
+class MatthewsCorrelationCoefficent(ConfusionMatrixMetric):
   """Matthews corrrelation coefficient (MCC)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = MATTHEWS_CORRELATION_COEFFICENT_NAME):
     """Initializes matthews corrrelation coefficient.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(MatthewsCorrelationCoefficient, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return MATTHEWS_CORRELATION_COEFFICIENT_NAME
+    super(MatthewsCorrelationCoefficent, self).__init__(
+        name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     denominator = _pos_sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
@@ -1810,38 +448,22 @@ class MatthewsCorrelationCoefficient(ConfusionMatrixMetric):
       return float('nan')
 
 
-metric_types.register_metric(MatthewsCorrelationCoefficient)
+metric_types.register_metric(MatthewsCorrelationCoefficent)
 
 
 class FowlkesMallowsIndex(ConfusionMatrixMetric):
   """Fowlkes-Mallows index (FM)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = FOWLKES_MALLOWS_INDEX_NAME):
     """Initializes fowlkes-mallows index.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(FowlkesMallowsIndex, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return FOWLKES_MALLOWS_INDEX_NAME
+    super(FowlkesMallowsIndex, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn
@@ -1862,31 +484,15 @@ class Informedness(ConfusionMatrixMetric):
   """Informedness or bookmaker informedness (BM)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = INFORMEDNESS_NAME):
     """Initializes informedness.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(Informedness, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return INFORMEDNESS_NAME
+    super(Informedness, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     positives = tp + fn
@@ -1906,31 +512,15 @@ class Markedness(ConfusionMatrixMetric):
   """Markedness (MK) or deltaP."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = MARKEDNESS_NAME):
     """Initializes markedness.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(Markedness, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return MARKEDNESS_NAME
+    super(Markedness, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     ppv_denominator = tp + fp
@@ -1950,31 +540,16 @@ class PositiveLikelihoodRatio(ConfusionMatrixMetric):
   """Positive likelihood ratio (LR+)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = POSITIVE_LIKELIHOOD_RATIO_NAME):
     """Initializes positive likelihood ratio.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
     super(PositiveLikelihoodRatio, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return POSITIVE_LIKELIHOOD_RATIO_NAME
+        name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     tpr_denominator = tp + fn
@@ -1994,31 +569,16 @@ class NegativeLikelihoodRatio(ConfusionMatrixMetric):
   """Negative likelihood ratio (LR-)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = NEGATIVE_LIKELIHOOD_RATIO_NAME):
     """Initializes negative likelihood ratio.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
     super(NegativeLikelihoodRatio, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return NEGATIVE_LIKELIHOOD_RATIO_NAME
+        name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     fnr_denominator = fn + tp
@@ -2038,31 +598,15 @@ class DiagnosticOddsRatio(ConfusionMatrixMetric):
   """Diagnostic odds ratio (DOR)."""
 
   def __init__(self,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               thresholds: Optional[List[float]] = None,
+               name: Text = DIAGNOSTIC_ODDS_RATIO_NAME):
     """Initializes diagnostic odds ratio.
 
     Args:
-      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      thresholds: Thresholds to use. Defaults to [0.5].
+      name: Metric name.
     """
-    super(DiagnosticOddsRatio, self).__init__(
-        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return DIAGNOSTIC_ODDS_RATIO_NAME
+    super(DiagnosticOddsRatio, self).__init__(name=name, thresholds=thresholds)
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     if fn > 0.0 and fp > 0.0 and tn > 0.0:
@@ -2079,81 +623,59 @@ class ConfusionMatrixAtThresholds(metric_types.Metric):
 
   def __init__(self,
                thresholds: List[float],
-               name: Optional[Text] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+               name: Text = CONFUSION_MATRIX_AT_THRESHOLDS_NAME):
     """Initializes confusion matrix at thresholds.
 
     Args:
       thresholds: Thresholds to use for confusion matrix.
-      name: (Optional) Metric name.
-      top_k: (Optional) Used with a multi-class model to specify that the top-k
-        values should be used to compute the confusion matrix. The net effect is
-        that the non-top-k values are set to -inf and the matrix is then
-        constructed from the average TP, FP, TN, FN across the classes. When
-        top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
-      class_id: (Optional) Used with a multi-class model to specify which class
-        to compute the confusion matrix for. When class_id is used,
-        metrics_specs.binarize settings must not be present. Only one of
-        class_id or top_k should be configured.
+      name: Metric name.
     """
     super(ConfusionMatrixAtThresholds, self).__init__(
-        metric_util.merge_per_key_computations(self._metric_computations),
+        metric_util.merge_per_key_computations(_confusion_matrix_at_thresholds),
         thresholds=thresholds,
-        name=name,
-        top_k=top_k,
-        class_id=class_id)
-
-  def _default_name(self) -> Text:
-    return CONFUSION_MATRIX_AT_THRESHOLDS_NAME
-
-  def _metric_computations(
-      self,
-      thresholds: List[float],
-      top_k: Optional[int] = None,
-      class_id: Optional[int] = None,
-      name: Optional[Text] = None,
-      eval_config: Optional[config_pb2.EvalConfig] = None,
-      model_name: Text = '',
-      output_name: Text = '',
-      sub_key: Optional[metric_types.SubKey] = None,
-      aggregation_type: Optional[metric_types.AggregationType] = None,
-      class_weights: Optional[Dict[int, float]] = None,
-      example_weighted: bool = False) -> metric_types.MetricComputations:
-    """Returns metric computations for confusion matrix at thresholds."""
-    sub_key = _validate_and_update_sub_key(name, model_name, output_name,
-                                           sub_key, top_k, class_id)
-    key = metric_types.MetricKey(
-        name=name,
-        model_name=model_name,
-        output_name=output_name,
-        sub_key=sub_key,
-        example_weighted=example_weighted)
-
-    # Make sure matrices are calculated.
-    matrices_computations = binary_confusion_matrices.binary_confusion_matrices(
-        eval_config=eval_config,
-        model_name=model_name,
-        output_name=output_name,
-        sub_key=sub_key,
-        aggregation_type=aggregation_type,
-        class_weights=class_weights,
-        thresholds=thresholds,
-        example_weighted=example_weighted)
-    matrices_key = matrices_computations[-1].keys[-1]
-
-    def result(
-        metrics: Dict[metric_types.MetricKey,
-                      binary_confusion_matrices.Matrices]
-    ) -> Dict[metric_types.MetricKey, Any]:
-      return {key: metrics[matrices_key]}
-
-    derived_computation = metric_types.DerivedMetricComputation(
-        keys=[key], result=result)
-    computations = matrices_computations
-    computations.append(derived_computation)
-    return computations
+        name=name)
 
 
 metric_types.register_metric(ConfusionMatrixAtThresholds)
+
+
+def _confusion_matrix_at_thresholds(
+    thresholds: List[float],
+    name: Text = CONFUSION_MATRIX_AT_THRESHOLDS_NAME,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
+    model_name: Text = '',
+    output_name: Text = '',
+    sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
+    class_weights: Optional[Dict[int, float]] = None,
+    example_weighted: bool = False) -> metric_types.MetricComputations:
+  """Returns metric computations for confusion matrix at thresholds."""
+  key = metric_types.MetricKey(
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key,
+      example_weighted=example_weighted)
+
+  # Make sure matrices are calculated.
+  matrices_computations = binary_confusion_matrices.binary_confusion_matrices(
+      eval_config=eval_config,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key,
+      aggregation_type=aggregation_type,
+      class_weights=class_weights,
+      thresholds=thresholds,
+      example_weighted=example_weighted)
+  matrices_key = matrices_computations[-1].keys[-1]
+
+  def result(
+      metrics: Dict[metric_types.MetricKey, binary_confusion_matrices.Matrices]
+  ) -> Dict[metric_types.MetricKey, Any]:
+    return {key: metrics[matrices_key]}
+
+  derived_computation = metric_types.DerivedMetricComputation(
+      keys=[key], result=result)
+  computations = matrices_computations
+  computations.append(derived_computation)
+  return computations
