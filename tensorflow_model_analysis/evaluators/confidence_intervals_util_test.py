@@ -235,6 +235,37 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
       self.assertLen(counters, 1)
       self.assertEqual(2, counters[0].committed)
 
+  def test_sample_combine_fn_no_input(self):
+    slice_key = (('slice_feature', 1),)
+    samples = [
+        (slice_key,
+         confidence_intervals_util.SampleMetrics(
+             sample_id=_FULL_SAMPLE_ID, metrics={})),
+        (slice_key,
+         confidence_intervals_util.SampleMetrics(sample_id=0, metrics={})),
+        (slice_key,
+         confidence_intervals_util.SampleMetrics(sample_id=1, metrics={})),
+    ]
+
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline
+          | 'Create' >> beam.Create(samples)
+          | 'CombineSamplesPerKey' >> beam.CombinePerKey(
+              _ValidateSampleCombineFn(
+                  num_samples=2, full_sample_id=_FULL_SAMPLE_ID)))
+
+      def check_result(got_pcoll):
+        self.assertLen(got_pcoll, 1)
+        accumulators_by_slice = dict(got_pcoll)
+        self.assertIn(slice_key, accumulators_by_slice)
+        accumulator = accumulators_by_slice[slice_key]
+        self.assertEqual(2, accumulator.num_samples)
+        self.assertIsInstance(accumulator.point_estimates, dict)
+        self.assertIsInstance(accumulator.metric_samples, dict)
+
+      util.assert_that(result, check_result)
+
 
 if __name__ == '__main__':
   absltest.main()

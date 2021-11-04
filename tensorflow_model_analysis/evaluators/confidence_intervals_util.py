@@ -181,7 +181,7 @@ class SampleCombineFn(beam.CombineFn):
     accumulators = iter(accumulators)
     result = next(accumulators)
     for accumulator in accumulators:
-      if accumulator.point_estimates:
+      if accumulator.point_estimates is not None:
         result.point_estimates = accumulator.point_estimates
       result.num_samples += accumulator.num_samples
       for metric_key, sample_values in accumulator.metric_samples.items():
