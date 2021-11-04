@@ -4,6 +4,9 @@
 
 ## Major Features and Improvements
 
+*   Replaced keras metrics with TFMA implementations. To use a keras metric in a
+    `tfma.MetricConfig` you must now specify a module (i.e. `tf.keras.metrics`).
+
 ## Bug fixes and other Changes
 
 *   Updated QueryStatistics to support weighted examples.

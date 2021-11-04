@@ -43,6 +43,7 @@ from tensorflow_model_analysis.extractors import legacy_feature_extractor
 from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.metrics import calibration_plot
+from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
@@ -733,7 +734,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         """, schema_pb2.Schema())
 
     metrics_spec = config_pb2.MetricsSpec()
-    for metric in (tf.keras.metrics.AUC(),):
+    for metric in (confusion_matrix_metrics.AUC(name='auc'),):
       cfg = tf.keras.utils.serialize_keras_object(metric)
       metrics_spec.metrics.append(
           config_pb2.MetricConfig(
@@ -930,7 +931,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             'output_1': 1.0,
             'output_2': 1.0
         })
-    for metric in (tf.keras.metrics.AUC(),):
+    for metric in (confusion_matrix_metrics.AUC(name='auc'),):
       cfg = tf.keras.utils.serialize_keras_object(metric)
       metrics_spec.metrics.append(
           config_pb2.MetricConfig(
