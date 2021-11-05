@@ -44,8 +44,6 @@ from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.utils import math_util
 from tensorflow_model_analysis.writers import writer
 
-from google.protobuf import wrappers_pb2
-
 _PARQUET_FORMAT = 'parquet'
 _TFRECORD_FORMAT = 'tfrecord'
 _SUPPORTED_FORMATS = (_PARQUET_FORMAT, _TFRECORD_FORMAT)
@@ -348,48 +346,29 @@ def convert_slice_metrics_to_proto(
               value.sample_standard_deviation),
           degrees_of_freedom={'value': value.sample_degrees_of_freedom})
       metric_value = convert_metric_value_to_proto(unsampled_value)
-      if isinstance(key, metric_types.MetricKey):
-        result.metric_keys_and_values.add(
-            key=key.to_proto(),
-            value=metric_value,
-            confidence_interval=confidence_interval)
-      else:
-        # For v1 we continue to populate bounded_value for backwards
-        # compatibility. If metric can be stored to double_value metrics,
-        # replace it with a bounded_value.
-        # TODO(b/171992041): remove the string-typed metric key branch once v1
-        # code is removed.
-        if metric_value.WhichOneof('type') == 'double_value':
-          # setting bounded_value clears double_value in the same oneof scope.
-          metric_value.bounded_value.value.value = unsampled_value
-          metric_value.bounded_value.lower_bound.value = lower_bound
-          metric_value.bounded_value.upper_bound.value = upper_bound
-          metric_value.bounded_value.methodology = (
-              metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
-        result.metrics[key].CopyFrom(metric_value)
-    elif isinstance(value, metrics_for_slice_pb2.BoundedValue):
-      metric_value = metrics_for_slice_pb2.MetricValue(
-          double_value=wrappers_pb2.DoubleValue(value=value.value.value))
-      confidence_interval = metrics_for_slice_pb2.ConfidenceInterval(
-          lower_bound=metrics_for_slice_pb2.MetricValue(
-              double_value=wrappers_pb2.DoubleValue(
-                  value=value.lower_bound.value)),
-          upper_bound=metrics_for_slice_pb2.MetricValue(
-              double_value=wrappers_pb2.DoubleValue(
-                  value=value.upper_bound.value)))
+
+      # If metric can be stored to double_value metrics, replace it with a
+      # bounded_value for backwards compatibility.
+      # TODO(b/188575688): remove this logic to stop populating bounded_value
+      if metric_value.WhichOneof('type') == 'double_value':
+        # setting bounded_value clears double_value in the same oneof scope.
+        metric_value.bounded_value.value.value = unsampled_value
+        metric_value.bounded_value.lower_bound.value = lower_bound
+        metric_value.bounded_value.upper_bound.value = upper_bound
+        metric_value.bounded_value.methodology = (
+            metrics_for_slice_pb2.BoundedValue.POISSON_BOOTSTRAP)
+    else:
+      metric_value = convert_metric_value_to_proto(value)
+      confidence_interval = None
+
+    if isinstance(key, metric_types.MetricKey):
       result.metric_keys_and_values.add(
           key=key.to_proto(),
           value=metric_value,
           confidence_interval=confidence_interval)
     else:
-      metric_value = convert_metric_value_to_proto(value)
-      if isinstance(key, metric_types.MetricKey):
-        result.metric_keys_and_values.add(
-            key=key.to_proto(), value=metric_value)
-      else:
-        # TODO(b/171992041): remove the string-typed metric key branch once v1
-        # code is removed.
-        result.metrics[key].CopyFrom(metric_value)
+      result.metrics[key].CopyFrom(metric_value)
+
   return result
 
 
