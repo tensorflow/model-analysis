@@ -44,6 +44,8 @@ from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.utils import math_util
 from tensorflow_model_analysis.writers import writer
 
+from google.protobuf import wrappers_pb2
+
 _PARQUET_FORMAT = 'parquet'
 _TFRECORD_FORMAT = 'tfrecord'
 _SUPPORTED_FORMATS = (_PARQUET_FORMAT, _TFRECORD_FORMAT)
@@ -335,7 +337,17 @@ def convert_slice_metrics_to_proto(
                                                     result.metrics)
   for key in sorted(slice_metrics.keys()):
     value = slice_metrics[key]
-    if isinstance(value, types.ValueWithTDistribution):
+    if isinstance(value, metrics_for_slice_pb2.BoundedValue):
+      metric_value = metrics_for_slice_pb2.MetricValue(
+          double_value=wrappers_pb2.DoubleValue(value=value.value.value))
+      confidence_interval = metrics_for_slice_pb2.ConfidenceInterval(
+          lower_bound=metrics_for_slice_pb2.MetricValue(
+              double_value=wrappers_pb2.DoubleValue(
+                  value=value.lower_bound.value)),
+          upper_bound=metrics_for_slice_pb2.MetricValue(
+              double_value=wrappers_pb2.DoubleValue(
+                  value=value.upper_bound.value)))
+    elif isinstance(value, types.ValueWithTDistribution):
       unsampled_value = value.unsampled_value
       _, lower_bound, upper_bound = (
           math_util.calculate_confidence_interval(value))
