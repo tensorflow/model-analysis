@@ -391,7 +391,7 @@ def _wrap_confusion_matrix_metric(
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
   ) -> Dict[metric_types.MetricKey, Any]:
-    """Returns result derived from binary confustion matrices."""
+    """Returns result derived from binary confusion matrices."""
     matrices = metrics[matrices_key]
 
     metric = tf.keras.metrics.deserialize(metric_config)
