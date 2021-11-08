@@ -22,6 +22,7 @@ from __future__ import print_function
 import json
 import tensorflow as tf
 from tensorflow_model_analysis.metrics import calibration
+from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import config_pb2
@@ -33,10 +34,12 @@ class MetricSpecsTest(tf.test.TestCase):
     metrics_specs = metric_specs.specs_from_metrics(
         {
             'output_name1': [
+                tf.keras.metrics.Precision(name='precision'),
                 tf.keras.metrics.MeanSquaredError('mse'),
                 tf.keras.losses.MeanAbsoluteError(name='mae'),
             ],
             'output_name2': [
+                confusion_matrix_metrics.Precision(name='precision'),
                 tf.keras.losses.MeanAbsolutePercentageError(name='mape'),
                 calibration.MeanPrediction('mean_prediction')
             ]
@@ -76,10 +79,20 @@ class MetricSpecsTest(tf.test.TestCase):
         config_pb2.MetricsSpec(
             metrics=[
                 config_pb2.MetricConfig(
+                    class_name='Precision',
+                    config=json.dumps(
+                        {
+                            'name': 'precision',
+                            'class_id': None,
+                            'thresholds': None,
+                            'top_k': None
+                        },
+                        sort_keys=True)),
+                config_pb2.MetricConfig(
                     class_name='MeanSquaredError',
                     config=json.dumps({
                         'name': 'mse',
-                        'dtype': 'float32'
+                        'dtype': 'float32',
                     },
                                       sort_keys=True)),
                 config_pb2.MetricConfig(
@@ -125,6 +138,11 @@ class MetricSpecsTest(tf.test.TestCase):
         metrics_specs[5],
         config_pb2.MetricsSpec(
             metrics=[
+                config_pb2.MetricConfig(
+                    class_name='Precision',
+                    config=json.dumps({
+                        'name': 'precision',
+                    }, sort_keys=True)),
                 config_pb2.MetricConfig(
                     class_name='MeanAbsolutePercentageError',
                     module=metric_specs._TF_LOSSES_MODULE,

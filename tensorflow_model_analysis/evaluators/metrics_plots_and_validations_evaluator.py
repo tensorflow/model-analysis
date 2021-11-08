@@ -158,34 +158,26 @@ def _filter_and_separate_computations(
   processed_ci_derived_computations = {}
   # The order of the computations matters (i.e. one computation may depend on
   # another). While there shouldn't be any differences in matching computations
-  # the implemented hash is only based on combiner/result names and the keys, so
-  # for consistency with TFMA's practice of having later metrics overide earlier
-  # we will return the latest computation added when there are duplicates.
+  # the implemented hash is only based on combiner/result names and the keys. To
+  # ensure we don't move a metric ahead of its dependencies (see b/205314632) we
+  # will return the first computation added when there are duplicates.
   for c in computations:
     if isinstance(c, metric_types.MetricComputation):
-      if c in processed_non_derived_computations:
-        non_derived_computations[processed_non_derived_computations[c]] = c
-      else:
+      if c not in processed_non_derived_computations:
         processed_non_derived_computations[c] = len(non_derived_computations)
         non_derived_computations.append(c)
     # CIDerivedMetricComputation is inherited from DerivedMetricComputation, so
     # order of elif's matter here.
     elif isinstance(c, metric_types.CIDerivedMetricComputation):
-      if c in processed_ci_derived_computations:
-        ci_derived_computations[processed_ci_derived_computations[c]] = c
-      else:
+      if c not in processed_ci_derived_computations:
         processed_ci_derived_computations[c] = len(ci_derived_computations)
         ci_derived_computations.append(c)
     elif isinstance(c, metric_types.DerivedMetricComputation):
-      if c in processed_derived_computations:
-        derived_computations[processed_derived_computations[c]] = c
-      else:
+      if c not in processed_derived_computations:
         processed_derived_computations[c] = len(derived_computations)
         derived_computations.append(c)
     elif isinstance(c, metric_types.CrossSliceMetricComputation):
-      if c in processed_cross_slice_computations:
-        cross_slice_computations[processed_cross_slice_computations[c]] = c
-      else:
+      if c not in processed_cross_slice_computations:
         processed_cross_slice_computations[c] = len(cross_slice_computations)
         cross_slice_computations.append(c)
     else:
