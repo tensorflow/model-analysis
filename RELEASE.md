@@ -48,6 +48,22 @@
 
 ## Breaking Changes
 
+*   Confidence intervals for scalar metrics are no longer stored in the
+    `MetricValue.bounded_value`. Instead, the confidence interval for a metric
+    can be found under `MetricKeysAndValues.confidence_interval`.
+*   MetricKeys now require specifying whether they are weighted (
+    `tfma.metrics.MetricKey(..., example_weighted=True)`) or unweighted (the
+    default). If the weighting is unknown then `example_weighted` will be None.
+    Any metric computed outside of a `tfma.metrics.MetricConfig` setting (i.e.
+    metrics loaded from a saved model) will have the weighting set to None.
+*   `ExampleCount` is now weighted based on `tfma.MetricsSpec.example_weights`
+    settings. `WeightedExampleCount` has been deprecated (use `ExampleCount`
+    instead). To get unweighted example counts (i.e. the previous implementation
+    of `ExampleCount`), `ExampleCount` must now be added to a `MetricsSpec`
+    where `example_weights.unweighted` is true. To get a weighted example count
+    (i.e. what was previously `WeightedExampleCount`), `ExampleCount` must now
+    be added to a `MetricsSpec` where `example_weights.weighted` is true.
+
 ## Deprecations
 
 *   Deprecated python3.6 support.
