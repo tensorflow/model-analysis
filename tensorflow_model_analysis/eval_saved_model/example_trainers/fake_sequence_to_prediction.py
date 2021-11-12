@@ -71,12 +71,6 @@ and produces the prediction:
  + 5 * (values_t2 + values_t2 ** 2 + values_t2 ** 3)
  + 6 * (values_t3 + values_t3 ** 2 + values_t3 ** 3)
 """
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-# Standard Imports
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +17,12 @@ Use this library for generating slices from a specification
 (List[SingleSliceSpec]) and input features.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import itertools
 
-from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
-import six
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
@@ -38,12 +31,12 @@ from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slice_accessor
 
 # FeatureValueType represents a value that a feature could take.
-FeatureValueType = Union[Text, int, float]  # pylint: disable=invalid-name
+FeatureValueType = Union[str, int, float]  # pylint: disable=invalid-name
 
 # SingletonSliceKeyType is a tuple, where the first element is the key of the
 # feature, and the second element is its value. This describes a single
 # feature-value pair.
-SingletonSliceKeyType = Tuple[Text, FeatureValueType]  # pylint: disable=invalid-name
+SingletonSliceKeyType = Tuple[str, FeatureValueType]  # pylint: disable=invalid-name
 
 # SliceKeyType is a either the empty tuple (for the overal slice) or a tuple of
 # SingletonSliceKeyType. This completely describes a single slice.
@@ -59,7 +52,7 @@ OVERALL_SLICE_NAME = 'Overall'
 OVERALL_SLICE_KEY = ()
 
 
-class SingleSliceSpec(object):
+class SingleSliceSpec:
   """Specification for a single slice.
 
   This is intended to be an immutable class that specifies a single slice.
@@ -91,8 +84,8 @@ class SingleSliceSpec(object):
     return hash((self._columns, self._features))
 
   def __init__(self,
-               columns: Iterable[Text] = (),
-               features: Iterable[Tuple[Text, FeatureValueType]] = (),
+               columns: Iterable[str] = (),
+               features: Iterable[Tuple[str, FeatureValueType]] = (),
                spec: Optional[config_pb2.SlicingSpec] = None):
     """Initialises a SingleSliceSpec.
 
@@ -112,10 +105,10 @@ class SingleSliceSpec(object):
       ValueError: columns or features was a string: they should probably be a
         singleton list containing that string.
     """
-    if isinstance(columns, six.string_types):
+    if isinstance(columns, str):
       raise ValueError('columns is a string: it should probably be a singleton '
                        'list containing that string')
-    if isinstance(features, six.string_types):
+    if isinstance(features, str):
       raise ValueError('features is a string: it should probably be a '
                        'singleton list containing that string')
 
@@ -275,9 +268,9 @@ def serialize_slice_key(
   for (col, val) in slice_key:
     single_slice_key = result.single_slice_keys.add()
     single_slice_key.column = col
-    if isinstance(val, (six.binary_type, six.text_type)):
+    if isinstance(val, (bytes, str)):
       single_slice_key.bytes_value = tf.compat.as_bytes(val)
-    elif isinstance(val, six.integer_types):
+    elif isinstance(val, int):
       single_slice_key.int64_value = val
     elif isinstance(val, float):
       single_slice_key.float_value = val
@@ -383,7 +376,7 @@ def get_slices_for_features_dicts(
       yield slice_key
 
 
-def stringify_slice_key(slice_key: SliceKeyType) -> Text:
+def stringify_slice_key(slice_key: SliceKeyType) -> str:
   """Stringifies a slice key.
 
   The string representation of a SingletonSliceKeyType is "feature:value". When
@@ -470,9 +463,9 @@ def get_slice_key_type(
       col, val = singleton_slice_key
     except ValueError:
       return False
-    if (isinstance(col, (six.binary_type, six.text_type)) and
-        (isinstance(val, (six.binary_type, six.text_type)) or
-         isinstance(val, six.integer_types) or isinstance(val, float))):
+    if (isinstance(col, (bytes, str)) and
+        (isinstance(val, (bytes, str)) or isinstance(val, int) or
+         isinstance(val, float))):
       return True
     else:
       return False
@@ -545,7 +538,7 @@ def slice_key_matches_slice_specs(
 class _FanoutSlicesDoFn(beam.DoFn):
   """A DoFn that performs per-slice key fanout prior to computing aggregates."""
 
-  def __init__(self, key_filter_fn: Callable[[Text], bool]):
+  def __init__(self, key_filter_fn: Callable[[str], bool]):
     self._num_slices_generated_per_instance = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'num_slices_generated_per_instance')
     self._post_slice_num_instances = beam.metrics.Metrics.counter(
@@ -632,7 +625,7 @@ def FilterOutSlices(  # pylint: disable=invalid-name
     values: beam.pvalue.PCollection,
     slices_count: beam.pvalue.PCollection,
     min_slice_size: int,
-    error_metric_key: Text = '__ERROR__') -> beam.pvalue.PCollection:
+    error_metric_key: str = '__ERROR__') -> beam.pvalue.PCollection:
   """Filter out slices with examples count lower than k_anonymization_count.
 
   Since we might filter out certain slices to preserve privacy in the case of
@@ -657,7 +650,7 @@ def FilterOutSlices(  # pylint: disable=invalid-name
   class FilterOutSmallSlicesDoFn(beam.DoFn):
     """DoFn to filter out small slices."""
 
-    def __init__(self, error_metric_key: Text):
+    def __init__(self, error_metric_key: str):
       self.error_metric_key = error_metric_key
 
     def process(

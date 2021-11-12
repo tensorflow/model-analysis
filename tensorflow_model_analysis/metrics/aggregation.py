@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Aggregation metrics."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Iterable, List, Optional, Text
+from typing import Any, Dict, Iterable, List, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
@@ -30,10 +24,10 @@ _CLASS_WEIGHTS_FROM_LABELS_NAME = '_class_weights_from_labels'
 
 
 def output_average(
-    metric_name: Text,
-    output_weights: Dict[Text, float],
+    metric_name: str,
+    output_weights: Dict[str, float],
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
+    model_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for computing output average of given metric.
@@ -79,11 +73,11 @@ def output_average(
 
 
 def macro_average(
-    metric_name: Text,
+    metric_name: str,
     sub_keys: Iterable[metric_types.SubKey],
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None,
     example_weighted: bool = False) -> metric_types.MetricComputations:
@@ -154,11 +148,11 @@ def macro_average(
 
 
 def weighted_macro_average(
-    metric_name: Text,
+    metric_name: str,
     sub_keys: Iterable[metric_types.SubKey],
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None,
     example_weighted: bool = False) -> metric_types.MetricComputations:
@@ -263,10 +257,10 @@ def _to_float(value: Any) -> float:
 
 def _class_weights_from_labels(
     class_ids: List[int],
-    name: Text = _CLASS_WEIGHTS_FROM_LABELS_NAME,
+    name: str = _CLASS_WEIGHTS_FROM_LABELS_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for class weights based on labels.
 

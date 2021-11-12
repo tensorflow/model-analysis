@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for TF metric wrapper."""
-
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
 
 from absl.testing import parameterized
 import apache_beam as beam
@@ -34,15 +28,15 @@ from tensorflow_model_analysis.proto import config_pb2
 class _CustomMetric(tf.keras.metrics.Mean):
 
   def __init__(self, name='custom', dtype=None, update_y_pred=True):
-    super(_CustomMetric, self).__init__(name=name, dtype=dtype)
+    super().__init__(name=name, dtype=dtype)
     self.update_y_pred = update_y_pred
 
   def update_state(self, y_true, y_pred, sample_weight):
-    return super(_CustomMetric, self).update_state(
+    return super().update_state(
         y_pred if self.update_y_pred else y_true, sample_weight=sample_weight)
 
   def get_config(self):
-    cfg = super(tf.keras.metrics.Mean, self).get_config()
+    cfg = super().get_config()
     cfg.update({'update_y_pred': self.update_y_pred})
     return cfg
 
@@ -50,15 +44,14 @@ class _CustomMetric(tf.keras.metrics.Mean):
 class _CustomConfusionMatrixMetric(tf.keras.metrics.Precision):
 
   def __init__(self, name='custom', dtype=None):
-    super(_CustomConfusionMatrixMetric, self).__init__(name=name, dtype=dtype)
+    super().__init__(name=name, dtype=dtype)
 
   def update_state(self, y_true, y_pred, sample_weight):
-    super(_CustomConfusionMatrixMetric, self).update_state(
-        y_true, y_pred, sample_weight=sample_weight)
+    super().update_state(y_true, y_pred, sample_weight=sample_weight)
 
   def get_config(self):
     # Remove config items we don't accept or they will be passed to __init__.
-    base_config = super(tf.keras.metrics.Precision, self).get_config()
+    base_config = super().get_config()
     return {'name': base_config['name'], 'dtype': base_config['dtype']}
 
 

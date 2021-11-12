@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,10 @@
 # limitations under the License.
 """Utils for evaluations using the keras."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import collections
 from itertools import chain  # pylint: disable=g-importing-member
 
-from typing import Dict, Iterable, List, Optional, Text
+from typing import Dict, Iterable, List, Optional
 
 import apache_beam as beam
 import numpy as np
@@ -39,7 +33,7 @@ from tfx_bsl.tfxio import tensor_adapter
 
 
 def metric_computations_using_keras_saved_model(
-    model_name: Text,
+    model_name: str,
     model_loader: types.ModelLoader,
     eval_config: Optional[config_pb2.EvalConfig],
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
@@ -100,8 +94,8 @@ def metric_computations_using_keras_saved_model(
     ]
 
 
-def _metric_keys(metrics: Iterable[tf.keras.metrics.Metric], model_name: Text,
-                 output_names: Iterable[Text]) -> List[metric_types.MetricKey]:
+def _metric_keys(metrics: Iterable[tf.keras.metrics.Metric], model_name: str,
+                 output_names: Iterable[str]) -> List[metric_types.MetricKey]:
   """Returns metric keys for given metrics."""
   # We need to use the metric name to determine the associated output because
   # keras does not provide an API (see b/149780822). Keras names its metrics
@@ -147,12 +141,12 @@ class _KerasCombiner(model_util.CombineFnWithModels):
 
   def __init__(self,
                keys: List[metric_types.MetricKey],
-               model_name: Text,
+               model_name: str,
                model_loader: types.ModelLoader,
                eval_config: Optional[config_pb2.EvalConfig],
                desired_batch_size: Optional[int] = None,
-               beam_metrics_prefix: Text = ''):
-    super(_KerasCombiner, self).__init__({model_name: model_loader})
+               beam_metrics_prefix: str = ''):
+    super().__init__({model_name: model_loader})
     self._keys = keys
     self._model_name = model_name
     self._eval_config = eval_config
@@ -296,13 +290,12 @@ class _KerasCompiledMetricsCombiner(_KerasCombiner):
 
   def __init__(self,
                keys: List[metric_types.MetricKey],
-               model_name: Text,
+               model_name: str,
                model_loader: types.ModelLoader,
                eval_config: Optional[config_pb2.EvalConfig],
                desired_batch_size: Optional[int] = None):
-    super(_KerasCompiledMetricsCombiner,
-          self).__init__(keys, model_name, model_loader, eval_config,
-                         desired_batch_size, 'keras_compiled_metrics_combine')
+    super().__init__(keys, model_name, model_loader, eval_config,
+                     desired_batch_size, 'keras_compiled_metrics_combine')
 
   def _metrics(self) -> Iterable[tf.keras.metrics.Metric]:
     return chain(self._model.compiled_metrics.metrics,
@@ -375,21 +368,20 @@ class _KerasEvaluateCombiner(_KerasCombiner):
 
   def __init__(self,
                keys: List[metric_types.MetricKey],
-               model_name: Text,
+               model_name: str,
                model_loader: types.ModelLoader,
                eval_config: Optional[config_pb2.EvalConfig],
                tensor_adapter_config: Optional[
                    tensor_adapter.TensorAdapterConfig] = None,
                desired_batch_size: Optional[int] = None):
-    super(_KerasEvaluateCombiner,
-          self).__init__(keys, model_name, model_loader, eval_config,
-                         desired_batch_size, 'keras_evaluate_combine')
+    super().__init__(keys, model_name, model_loader, eval_config,
+                     desired_batch_size, 'keras_evaluate_combine')
     self._tensor_adapter_config = tensor_adapter_config
     self._tensor_adapter = None
     self._decoder = None
 
   def setup(self):
-    super(_KerasEvaluateCombiner, self).setup()
+    super().setup()
     # TODO(b/180125126): Re-enable use of passed in TensorAdapter after bug
     # requiring matching schema's is fixed.
     # if self._tensor_adapter is None and

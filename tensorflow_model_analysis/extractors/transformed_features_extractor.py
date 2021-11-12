@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Transformed features extractor."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Dict, Optional, Text
+from typing import Dict, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -76,7 +70,7 @@ def TransformedFeaturesExtractor(
 def _ExtractTransformedFeatures(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Dict[Text, types.EvalSharedModel],
+    eval_shared_models: Dict[str, types.EvalSharedModel],
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
 ) -> beam.pvalue.PCollection:
   """A PTransform that updates extracts to include transformed features.

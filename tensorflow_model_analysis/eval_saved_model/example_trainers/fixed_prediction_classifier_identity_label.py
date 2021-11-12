@@ -19,12 +19,6 @@ This model generates (class, score) pairs from zipping the "classes" and
 The eval_input_receiver_fn includes a label that is a single class identifier.
 It also parses "language" and "age" features.
 """
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-# Standard Imports
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export

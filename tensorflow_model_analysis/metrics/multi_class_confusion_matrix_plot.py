@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Multi-class confusion matrix plot at thresholds."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Dict, List, Optional, Text
+from typing import Dict, List, Optional
 
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -44,7 +38,7 @@ class MultiClassConfusionMatrixPlot(metric_types.Metric):
   def __init__(self,
                thresholds: Optional[List[float]] = None,
                num_thresholds: Optional[int] = None,
-               name: Text = MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME):
+               name: str = MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME):
     """Initializes multi-class confusion matrix.
 
     Args:
@@ -61,7 +55,7 @@ class MultiClassConfusionMatrixPlot(metric_types.Metric):
         should be used.
       name: Metric name.
     """
-    super(MultiClassConfusionMatrixPlot, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(
             _multi_class_confusion_matrix_plot),
         thresholds=thresholds,
@@ -75,10 +69,10 @@ metric_types.register_metric(MultiClassConfusionMatrixPlot)
 def _multi_class_confusion_matrix_plot(
     thresholds: Optional[List[float]] = None,
     num_thresholds: Optional[int] = None,
-    name: Text = MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME,
+    name: str = MULTI_CLASS_CONFUSION_MATRIX_PLOT_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns computations for multi-class confusion matrix plot."""
   if num_thresholds is None and thresholds is None:

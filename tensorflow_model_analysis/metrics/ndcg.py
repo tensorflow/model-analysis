@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """NDCG (normalized discounted cumulative gain) metric."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Dict, Iterable, List, Optional, Text, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
@@ -51,9 +45,9 @@ class NDCG(metric_types.Metric):
   """
 
   def __init__(self,
-               gain_key: Text,
+               gain_key: str,
                top_k_list: Optional[List[int]] = None,
-               name: Text = NDCG_NAME):
+               name: str = NDCG_NAME):
     """Initializes NDCG.
 
     Args:
@@ -62,22 +56,21 @@ class NDCG(metric_types.Metric):
         tfma.MetricsSpec.binarize.top_k_list associated with the metric.
       name: Metric name.
     """
-    super(NDCG, self).__init__(
-        _ndcg, gain_key=gain_key, top_k_list=top_k_list, name=name)
+    super().__init__(_ndcg, gain_key=gain_key, top_k_list=top_k_list, name=name)
 
 
 metric_types.register_metric(NDCG)
 
 
-def _ndcg(gain_key: Text,
+def _ndcg(gain_key: str,
           top_k_list: Optional[List[int]] = None,
-          name: Text = NDCG_NAME,
+          name: str = NDCG_NAME,
           eval_config: Optional[config_pb2.EvalConfig] = None,
-          model_names: Optional[List[Text]] = None,
-          output_names: Optional[List[Text]] = None,
+          model_names: Optional[List[str]] = None,
+          output_names: Optional[List[str]] = None,
           sub_keys: Optional[List[metric_types.SubKey]] = None,
           example_weighted: bool = False,
-          query_key: Text = '') -> metric_types.MetricComputations:
+          query_key: str = '') -> metric_types.MetricComputations:
   """Returns metric computations for NDCG."""
   if not query_key:
     raise ValueError('a query_key is required to use NDCG metric')
@@ -119,7 +112,7 @@ def _ndcg(gain_key: Text,
   return computations
 
 
-class _NDCGAccumulator(object):
+class _NDCGAccumulator:
   """NDCG accumulator."""
   __slots__ = ['ndcg', 'total_weighted_examples']
 
@@ -132,9 +125,9 @@ class _NDCGCombiner(beam.CombineFn):
   """Computes NDCG (normalized discounted cumulative gain)."""
 
   def __init__(self, metric_keys: List[metric_types.MetricKey],
-               eval_config: Optional[config_pb2.EvalConfig], model_name: Text,
-               output_name: Text, example_weighted: bool, query_key: Text,
-               gain_key: Text):
+               eval_config: Optional[config_pb2.EvalConfig], model_name: str,
+               output_name: str, example_weighted: bool, query_key: str,
+               gain_key: str):
     """Initialize.
 
     Args:
@@ -156,7 +149,7 @@ class _NDCGCombiner(beam.CombineFn):
 
   def _query(
       self,
-      element: metric_types.StandardMetricInputs) -> Union[float, int, Text]:
+      element: metric_types.StandardMetricInputs) -> Union[float, int, str]:
     query = util.get_by_keys(element.features, [self._query_key]).flatten()
     if query.size == 0 or not np.all(query == query[0]):
       raise ValueError(

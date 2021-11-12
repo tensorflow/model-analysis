@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,10 @@
 # limitations under the License.
 """EvalConfig writer."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import os
 import pickle
 
-from typing import Any, Dict, Optional, Text, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import apache_beam as beam
 import six
@@ -38,7 +32,7 @@ EVAL_CONFIG_FILE = 'eval_config'
 EVAL_CONFIG_FILE_FORMAT = 'json'
 
 
-def _check_version(version: Text, path: Text):
+def _check_version(version: str, path: str):
   if not version:
     raise ValueError(
         'could not find TFMA version in raw deserialized dictionary for '
@@ -47,9 +41,9 @@ def _check_version(version: Text, path: Text):
   # compatibility issues.
 
 
-def _serialize_eval_run(eval_config: config_pb2.EvalConfig, data_location: Text,
-                        file_format: Text, model_locations: Dict[Text,
-                                                                 Text]) -> Text:
+def _serialize_eval_run(eval_config: config_pb2.EvalConfig, data_location: str,
+                        file_format: str, model_locations: Dict[str,
+                                                                str]) -> str:
   return json_format.MessageToJson(
       config_pb2.EvalRun(
           eval_config=eval_config,
@@ -60,10 +54,10 @@ def _serialize_eval_run(eval_config: config_pb2.EvalConfig, data_location: Text,
 
 
 def load_eval_run(
-    output_path: Text,
-    output_file_format: Text = EVAL_CONFIG_FILE_FORMAT,
-    filename: Optional[Text] = None
-) -> Tuple[Optional[config_pb2.EvalConfig], Text, Text, Dict[Text, Text]]:
+    output_path: str,
+    output_file_format: str = EVAL_CONFIG_FILE_FORMAT,
+    filename: Optional[str] = None
+) -> Tuple[Optional[config_pb2.EvalConfig], str, str, Dict[str, str]]:
   """Returns eval config, data location, file format, and model locations.
 
   Args:
@@ -112,13 +106,13 @@ def load_eval_run(
 
 
 def EvalConfigWriter(  # pylint: disable=invalid-name
-    output_path: Text,
+    output_path: str,
     eval_config: config_pb2.EvalConfig,
-    output_file_format: Text = EVAL_CONFIG_FILE_FORMAT,
-    data_location: Optional[Text] = None,
-    data_file_format: Optional[Text] = None,
-    model_locations: Optional[Dict[Text, Text]] = None,
-    filename: Optional[Text] = None) -> writer.Writer:
+    output_file_format: str = EVAL_CONFIG_FILE_FORMAT,
+    data_location: Optional[str] = None,
+    data_file_format: Optional[str] = None,
+    model_locations: Optional[Dict[str, str]] = None,
+    filename: Optional[str] = None) -> writer.Writer:
   """Returns eval config writer.
 
   Args:
@@ -159,9 +153,9 @@ def EvalConfigWriter(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteEvalConfig(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation, eval_config: config_pb2.EvalConfig,
-    output_path: Text, output_file_format: Text, data_location: Text,
-    data_file_format: Text, model_locations: Dict[Text, Text],
-    filename: Text) -> beam.pvalue.PDone:
+    output_path: str, output_file_format: str, data_location: str,
+    data_file_format: str, model_locations: Dict[str, str],
+    filename: str) -> beam.pvalue.PDone:
   """Writes EvalConfig to file.
 
   Args:

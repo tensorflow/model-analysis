@@ -799,6 +799,7 @@
 
 *   Rollback populating TDistributionValue metric when confidence intervals is
     enabled in V2.
+*   Drop Py2 support.
 
 ## Deprecations
 

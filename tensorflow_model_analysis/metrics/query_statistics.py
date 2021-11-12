@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Query statistics metrics."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Dict, Iterable, Optional, Text
+from typing import Dict, Iterable, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
@@ -40,10 +34,10 @@ class QueryStatistics(metric_types.Metric):
   """
 
   def __init__(self,
-               total_queries_name: Text = TOTAL_QUERIES_NAME,
-               total_documents_name: Text = TOTAL_DOCUMENTS_NAME,
-               min_documents_name: Text = MIN_DOCUMENTS_NAME,
-               max_documents_name: Text = MAX_DOCUMENTS_NAME):
+               total_queries_name: str = TOTAL_QUERIES_NAME,
+               total_documents_name: str = TOTAL_DOCUMENTS_NAME,
+               min_documents_name: str = MIN_DOCUMENTS_NAME,
+               max_documents_name: str = MAX_DOCUMENTS_NAME):
     """Initializes query statistics metrics.
 
     Args:
@@ -52,7 +46,7 @@ class QueryStatistics(metric_types.Metric):
       min_documents_name: Min documents name.
       max_documents_name: Max documents name.
     """
-    super(QueryStatistics, self).__init__(
+    super().__init__(
         _query_statistics,
         total_queries_name=total_queries_name,
         total_documents_name=total_documents_name,
@@ -64,14 +58,14 @@ metric_types.register_metric(QueryStatistics)
 
 
 def _query_statistics(
-    total_queries_name: Text = TOTAL_QUERIES_NAME,
-    total_documents_name: Text = TOTAL_DOCUMENTS_NAME,
-    min_documents_name: Text = MIN_DOCUMENTS_NAME,
-    max_documents_name: Text = MAX_DOCUMENTS_NAME,
+    total_queries_name: str = TOTAL_QUERIES_NAME,
+    total_documents_name: str = TOTAL_DOCUMENTS_NAME,
+    min_documents_name: str = MIN_DOCUMENTS_NAME,
+    max_documents_name: str = MAX_DOCUMENTS_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
-    query_key: Text = '',
+    model_name: str = '',
+    output_name: str = '',
+    query_key: str = '',
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for query statistics."""
   if not query_key:
@@ -114,7 +108,7 @@ def _query_statistics(
   ]
 
 
-class _QueryStatisticsAccumulator(object):
+class _QueryStatisticsAccumulator:
   """Query statistics accumulator."""
   __slots__ = [
       'total_queries', 'total_documents', 'min_documents', 'max_documents'
@@ -134,8 +128,8 @@ class _QueryStatisticsCombiner(beam.CombineFn):
                total_documents_key: metric_types.MetricKey,
                min_documents_key: metric_types.MetricKey,
                max_documents_key: metric_types.MetricKey,
-               eval_config: config_pb2.EvalConfig, model_name: Text,
-               output_name: Text, example_weighted: bool):
+               eval_config: config_pb2.EvalConfig, model_name: str,
+               output_name: str, example_weighted: bool):
     self._total_queries_key = total_queries_key
     self._total_documents_key = total_documents_key
     self._min_documents_key = min_documents_key

@@ -19,12 +19,6 @@ This is a custom estimator with a custom model fn that defines its own
 eval_metric_ops which passes "transformed" predictions and labels to the
 metrics.
 """
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-# Standard Imports
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export

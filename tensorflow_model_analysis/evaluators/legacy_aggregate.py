@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Public API for performing evaluations using the EvalMetricsGraph."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Generator, Iterable, List, Optional, Text, Tuple
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
 
 import apache_beam as beam
 import numpy as np
@@ -34,7 +28,7 @@ from tensorflow_model_analysis.utils import size_estimator
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(Tuple[slicer.SliceKeyType, types.Extracts])
-@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, Dict[Text, Any]])
+@beam.typehints.with_output_types(Tuple[slicer.SliceKeyType, Dict[str, Any]])
 def ComputePerSliceMetrics(  # pylint: disable=invalid-name
     slice_result: beam.pvalue.PCollection,
     eval_shared_model: types.EvalSharedModel,
@@ -83,7 +77,7 @@ def _add_metric_variables(  # pylint: disable=invalid-name
     return right
 
 
-class _AggState(object):
+class _AggState:
   """Combine state for AggregateCombineFn.
 
   There are two parts to the state: the metric variables (the actual state),
@@ -173,10 +167,10 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
                desired_batch_size: Optional[int] = None,
                compute_with_sampling: Optional[bool] = False,
                seed_for_testing: Optional[int] = None) -> None:
-    super(_AggregateCombineFn,
-          self).__init__({'': eval_shared_model.model_loader})
+    super().__init__({'': eval_shared_model.model_loader})
     self._seed_for_testing = seed_for_testing
-    self._eval_metrics_graph = None  # type: eval_metrics_graph.EvalMetricsGraph
+    self._eval_metrics_graph: Optional[
+        eval_metrics_graph.EvalMetricsGraph] = None
     self._desired_batch_size = desired_batch_size
 
     self._compute_with_sampling = compute_with_sampling
@@ -303,8 +297,7 @@ class _ExtractOutputDoFn(model_util.DoFnWithModels):
   """A DoFn that extracts the metrics output."""
 
   def __init__(self, eval_shared_model: types.EvalSharedModel) -> None:
-    super(_ExtractOutputDoFn,
-          self).__init__({'': eval_shared_model.model_loader})
+    super().__init__({'': eval_shared_model.model_loader})
 
     # This keeps track of the number of times the poisson bootstrap encounters
     # an empty set of elements for a slice sample. Should be extremely rare in
@@ -315,7 +308,7 @@ class _ExtractOutputDoFn(model_util.DoFnWithModels):
 
   def process(
       self, element: Tuple[slicer.SliceKeyType, types.MetricVariablesType]
-  ) -> Generator[Tuple[slicer.SliceKeyType, Dict[Text, Any]], None, None]:
+  ) -> Generator[Tuple[slicer.SliceKeyType, Dict[str, Any]], None, None]:
     (slice_key, metric_variables) = element
     if metric_variables:
       eval_saved_model = self._loaded_models['']

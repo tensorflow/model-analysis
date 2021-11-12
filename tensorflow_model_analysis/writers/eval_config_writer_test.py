@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,7 @@
 import os
 import pickle
 
-from typing import Dict, List, NamedTuple, Optional, Text, Union
+from typing import Dict, List, NamedTuple, Optional, Union
 
 import tensorflow as tf
 from tensorflow_model_analysis import version as tfma_version
@@ -27,12 +26,12 @@ from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.writers import eval_config_writer
 
 LegacyConfig = NamedTuple(
-    'LegacyConfig',
-    [('model_location', Text), ('data_location', Text),
-     ('slice_spec', Optional[List[slicer.SingleSliceSpec]]),
-     ('example_count_metric_key', Text),
-     ('example_weight_metric_key', Union[Text, Dict[Text, Text]]),
-     ('compute_confidence_intervals', bool), ('k_anonymization_count', int)])
+    'LegacyConfig', [('model_location', str), ('data_location', str),
+                     ('slice_spec', Optional[List[slicer.SingleSliceSpec]]),
+                     ('example_count_metric_key', str),
+                     ('example_weight_metric_key', Union[str, Dict[str, str]]),
+                     ('compute_confidence_intervals', bool),
+                     ('k_anonymization_count', int)])
 
 
 class EvalConfigWriterTest(testutil.TensorflowModelAnalysisTest):

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +13,6 @@
 # limitations under the License.
 """Weighted example count metric."""
 
-from typing import Text
-
 from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import metric_types
 
@@ -26,14 +23,14 @@ WEIGHTED_EXAMPLE_COUNT_NAME = 'weighted_example_count'
 class WeightedExampleCount(example_count.ExampleCount):
   """Weighted example count (deprecated - use ExampleCount)."""
 
-  def __init__(self, name: Text = WEIGHTED_EXAMPLE_COUNT_NAME):
+  def __init__(self, name: str = WEIGHTED_EXAMPLE_COUNT_NAME):
     """Initializes weighted example count.
 
     Args:
       name: Metric name.
     """
 
-    super(WeightedExampleCount, self).__init__(name=name)
+    super().__init__(name=name)
 
 
 metric_types.register_metric(WeightedExampleCount)

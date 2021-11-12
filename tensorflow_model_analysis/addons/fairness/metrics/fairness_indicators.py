@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,8 @@
 # limitations under the License.
 """Fairness Indicators Metrics."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import collections
-from typing import Any, Dict, List, Optional, Sequence, Text
+from typing import Any, Dict, List, Optional, Sequence
 
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
@@ -42,14 +36,14 @@ class FairnessIndicators(metric_types.Metric):
 
   def __init__(self,
                thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
-               name: Text = FAIRNESS_INDICATORS_METRICS_NAME):
+               name: str = FAIRNESS_INDICATORS_METRICS_NAME):
     """Initializes fairness indicators metrics.
 
     Args:
       thresholds: Thresholds to use for fairness metrics.
       name: Metric name.
     """
-    super(FairnessIndicators, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(
             _fairness_indicators_metrics_at_thresholds),
         thresholds=thresholds,
@@ -63,10 +57,10 @@ def calculate_digits(thresholds):
 
 def _fairness_indicators_metrics_at_thresholds(
     thresholds: List[float],
-    name: Text = FAIRNESS_INDICATORS_METRICS_NAME,
+    name: str = FAIRNESS_INDICATORS_METRICS_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     aggregation_type: Optional[metric_types.AggregationType] = None,
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None,

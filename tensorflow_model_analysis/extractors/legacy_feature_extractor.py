@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Implements API for extracting features from an example."""
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
 
 import copy
 
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 import apache_beam as beam
@@ -37,10 +32,10 @@ _FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
 
 
 def FeatureExtractor(
-    additional_extracts: Optional[List[Text]] = None,
+    additional_extracts: Optional[List[str]] = None,
     excludes: Optional[List[bytes]] = None,
-    extract_source: Text = constants.FEATURES_PREDICTIONS_LABELS_KEY,
-    extract_dest: Text = constants.MATERIALIZE_COLUMNS):
+    extract_source: str = constants.FEATURES_PREDICTIONS_LABELS_KEY,
+    extract_dest: str = constants.MATERIALIZE_COLUMNS):
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_FEATURE_EXTRACTOR_STAGE_NAME,
@@ -52,7 +47,7 @@ def FeatureExtractor(
   # pylint: enable=no-value-for-parameter
 
 
-def _AugmentExtracts(data: Dict[Text, Any], prefix: Text, excludes: List[bytes],
+def _AugmentExtracts(data: Dict[str, Any], prefix: str, excludes: List[bytes],
                      extracts: types.Extracts) -> None:
   """Augments the Extracts with FeaturesPredictionsLabels.
 
@@ -117,11 +112,11 @@ def _ParseExample(extracts: types.Extracts,
       key = util.compound_key(['features', name])
       value = example.features.feature[name]
       if value.HasField('bytes_list'):
-        values = [v for v in value.bytes_list.value]
+        values = list(v for v in value.bytes_list.value)
       elif value.HasField('float_list'):
-        values = [v for v in value.float_list.value]
+        values = list(v for v in value.float_list.value)
       elif value.HasField('int64_list'):
-        values = [v for v in value.int64_list.value]
+        values = list(v for v in value.int64_list.value)
       if materialize_columns:
         extracts[key] = types.MaterializedColumn(name=key, value=values)
       if name not in features:
@@ -130,10 +125,10 @@ def _ParseExample(extracts: types.Extracts,
 
 def _MaterializeFeatures(
     extracts: types.Extracts,
-    additional_extracts: Optional[List[Text]] = None,
+    additional_extracts: Optional[List[str]] = None,
     excludes: Optional[List[bytes]] = None,
-    source: Text = constants.FEATURES_PREDICTIONS_LABELS_KEY,
-    dest: Text = constants.MATERIALIZE_COLUMNS,
+    source: str = constants.FEATURES_PREDICTIONS_LABELS_KEY,
+    dest: str = constants.MATERIALIZE_COLUMNS,
 ) -> types.Extracts:
   """Converts FeaturesPredictionsLabels into MaterializedColumn in the extract.
 
@@ -203,10 +198,10 @@ def _MaterializeFeatures(
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractFeatures(
     extracts: beam.pvalue.PCollection,
-    additional_extracts: Optional[List[Text]] = None,
+    additional_extracts: Optional[List[str]] = None,
     excludes: Optional[List[bytes]] = None,
-    source: Text = constants.FEATURES_PREDICTIONS_LABELS_KEY,
-    dest: Text = constants.MATERIALIZE_COLUMNS) -> beam.pvalue.PCollection:
+    source: str = constants.FEATURES_PREDICTIONS_LABELS_KEY,
+    dest: str = constants.MATERIALIZE_COLUMNS) -> beam.pvalue.PCollection:
   """Builds MaterializedColumn extracts from FPL created in evaluate.Predict().
 
   It must be the case that the PredictExtractor was called before calling this

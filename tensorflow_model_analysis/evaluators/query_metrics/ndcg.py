@@ -23,12 +23,7 @@ DCG@k = \sum_{i=1}^k gain_i/log_2(i+1), where gain_i is the gain (relevance
 score) of the i^th ranked response, indexed from 1.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Iterable, List, NamedTuple, Text, Tuple
+from typing import Any, Dict, Iterable, List, NamedTuple, Tuple
 
 import apache_beam as beam
 import numpy as np
@@ -38,7 +33,7 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 _State = NamedTuple('_State', [('ndcg', Dict[int, float]), ('weight', float)])
 
 
-def _get_feature_value(fpl: query_types.FPL, key: Text) -> float:
+def _get_feature_value(fpl: query_types.FPL, key: str) -> float:
   """Get value of the given feature from the features dictionary.
 
   The feature must have exactly one value.
@@ -63,7 +58,7 @@ def _get_feature_value(fpl: query_types.FPL, key: Text) -> float:
 class NdcgMetricCombineFn(beam.CombineFn):
   """Computes normalized discounted cumulative gain."""
 
-  def __init__(self, at_vals: List[int], gain_key: Text, weight_key: Text):
+  def __init__(self, at_vals: List[int], gain_key: str, weight_key: str):
     """Initialize.
 
     Args:
@@ -158,7 +153,7 @@ class NdcgMetricCombineFn(beam.CombineFn):
       result = self._add_states(result, accumulator)
     return result
 
-  def extract_output(self, accumulator: _State) -> Dict[Text, Any]:
+  def extract_output(self, accumulator: _State) -> Dict[str, Any]:
     avg_dict = {}
     for at in self._at_vals:
       if accumulator.weight > 0:

@@ -13,16 +13,11 @@
 # limitations under the License.
 """Library for useful metrics not provided by tf.metrics."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
+from typing import List, Optional, Tuple
 
-# Standard Imports
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
-from typing import List, Optional, Tuple
 
 
 def total(values: types.TensorType

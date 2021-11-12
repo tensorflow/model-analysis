@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +17,7 @@ import collections
 import copy
 import importlib
 import os
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Text, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from absl import logging
 import apache_beam as beam
@@ -71,7 +70,7 @@ _TFLITE_FILE_NAME = 'tflite'
 _PREDICT_SIGNATURE_DEF_KEY = 'predict'
 
 
-class ModelContents(object):
+class ModelContents:
   """Class for storing model contents.
 
   This class exists because weak references to bytes are not allowed.
@@ -82,8 +81,7 @@ class ModelContents(object):
     self.contents = contents
 
 
-def get_preprocessing_signature(
-    signature_name: Text) -> Tuple[Text, List[Text]]:
+def get_preprocessing_signature(signature_name: str) -> Tuple[str, List[str]]:
   """Returns the preprocessing function name and its feature name."""
   signature_name, *input_names = signature_name.split('@')
   if len(input_names) > 1:
@@ -110,7 +108,7 @@ def get_non_baseline_model_specs(
 
 
 def get_model_spec(eval_config: config_pb2.EvalConfig,
-                   model_name: Text) -> Optional[config_pb2.ModelSpec]:
+                   model_name: str) -> Optional[config_pb2.ModelSpec]:
   """Returns model spec with given model name."""
   if len(eval_config.model_specs) == 1 and not model_name:
     return eval_config.model_specs[0]
@@ -121,7 +119,7 @@ def get_model_spec(eval_config: config_pb2.EvalConfig,
 
 
 def get_label_key(model_spec: config_pb2.ModelSpec,
-                  output_name: Text) -> Optional[Text]:
+                  output_name: str) -> Optional[str]:
   """Returns the label_key corresponding to a given output name."""
   if output_name:
     if model_spec.label_key:
@@ -141,8 +139,8 @@ def get_label_key(model_spec: config_pb2.ModelSpec,
 
 
 def get_model_type(model_spec: Optional[config_pb2.ModelSpec],
-                   model_path: Optional[Text] = '',
-                   tags: Optional[List[Text]] = None) -> Text:
+                   model_path: Optional[str] = '',
+                   tags: Optional[List[str]] = None) -> str:
   """Returns model type for given model spec taking into account defaults.
 
   The defaults are chosen such that if a model_path is provided and the model
@@ -238,8 +236,8 @@ def verify_and_update_eval_shared_models(
 
 def get_feature_values_for_model_spec_field(
     model_specs: List[config_pb2.ModelSpec],
-    field: Text,
-    multi_output_field: Optional[Text],
+    field: str,
+    multi_output_field: Optional[str],
     batched_extracts: types.Extracts,
     allow_missing: bool = False) -> Optional[Any]:
   """Gets feature values associated with given model spec fields from extracts.
@@ -329,7 +327,7 @@ def get_feature_values_for_model_spec_field(
   return batched_values if not all_none else None
 
 
-def get_default_signature_name(model: Any) -> Text:
+def get_default_signature_name(model: Any) -> str:
   """Returns default signature name for given model."""
   # First try 'predict' then try 'serving_default'. The estimator output
   # for the 'serving_default' key does not include all the heads in a
@@ -371,7 +369,7 @@ def is_callable_fn(fn: Any) -> bool:
 
 
 def get_callable(model: Any,
-                 signature_name: Optional[Text] = None,
+                 signature_name: Optional[str] = None,
                  required: bool = True) -> Optional[Callable[..., Any]]:
   """Returns callable associated with given signature or None if not callable.
 
@@ -419,8 +417,8 @@ def get_callable(model: Any,
 
 
 def get_input_specs(model: Any,
-                    signature_name: Optional[Text] = None,
-                    required: bool = True) -> Optional[Dict[Text, tf.TypeSpec]]:
+                    signature_name: Optional[str] = None,
+                    required: bool = True) -> Optional[Dict[str, tf.TypeSpec]]:
   """Returns the input names and tensor specs associated with callable or None.
 
   Args:
@@ -486,7 +484,7 @@ def get_input_specs(model: Any,
 
 
 def input_specs_to_tensor_representations(
-    input_specs: Dict[Text,
+    input_specs: Dict[str,
                       tf.TypeSpec]) -> tensor_adapter.TensorRepresentations:
   """Converts input specs into tensor representations."""
   tensor_representations = {}
@@ -510,8 +508,8 @@ def input_specs_to_tensor_representations(
   return tensor_representations
 
 
-def find_input_name_in_features(features: Set[Text],
-                                input_name: Text) -> Optional[Text]:
+def find_input_name_in_features(features: Set[str],
+                                input_name: str) -> Optional[str]:
   """Maps input name to an entry in features. Returns None if not found."""
   if input_name in features:
     return input_name
@@ -523,8 +521,8 @@ def find_input_name_in_features(features: Set[Text],
   return None
 
 
-def filter_by_input_names(d: Dict[Text, Any],
-                          input_names: List[Text]) -> Optional[Dict[Text, Any]]:
+def filter_by_input_names(d: Dict[str, Any],
+                          input_names: List[str]) -> Optional[Dict[str, Any]]:
   """Filters dict by input names.
 
   In case we don't find the specified input name in the dict and there
@@ -560,9 +558,9 @@ def filter_by_input_names(d: Dict[Text, Any],
 
 def get_inputs(
     record_batch: pa.RecordBatch,
-    input_specs: Dict[Text, tf.TypeSpec],
+    input_specs: Dict[str, tf.TypeSpec],
     adapter: Optional[tensor_adapter.TensorAdapter] = None
-) -> Optional[Dict[Text, Any]]:
+) -> Optional[Dict[str, Any]]:
   """Returns inputs from record batch for given input specs.
 
   Args:
@@ -596,13 +594,13 @@ def get_inputs(
 
 
 def model_construct_fn(  # pylint: disable=invalid-name
-    eval_saved_model_path: Optional[Text] = None,
+    eval_saved_model_path: Optional[str] = None,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
     include_default_metrics: Optional[bool] = None,
-    additional_fetches: Optional[List[Text]] = None,
-    blacklist_feature_fetches: Optional[List[Text]] = None,
-    tags: Optional[List[Text]] = None,
-    model_type: Optional[Text] = constants.TF_ESTIMATOR) -> Callable[[], Any]:
+    additional_fetches: Optional[List[str]] = None,
+    blacklist_feature_fetches: Optional[List[str]] = None,
+    tags: Optional[List[str]] = None,
+    model_type: Optional[str] = constants.TF_ESTIMATOR) -> Callable[[], Any]:
   """Returns function for constructing shared models."""
   if tags is None:
     tags = [eval_constants.EVAL_TAG]
@@ -662,7 +660,7 @@ def model_construct_fn(  # pylint: disable=invalid-name
 class DoFnWithModels(beam.DoFn):
   """Abstract class for DoFns that need the shared models."""
 
-  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
+  def __init__(self, model_loaders: Dict[str, types.ModelLoader]):
     """Initializes DoFn using dict of model loaders keyed by model location."""
     self._model_loaders = model_loaders
     self._loaded_models = None
@@ -702,8 +700,8 @@ class BatchReducibleDoFnWithModels(DoFnWithModels):
   at batch size 1.
   """
 
-  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
-    super(BatchReducibleDoFnWithModels, self).__init__(model_loaders)
+  def __init__(self, model_loaders: Dict[str, types.ModelLoader]):
+    super().__init__(model_loaders)
     self._batch_size = (
         beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
                                           'batch_size'))
@@ -748,8 +746,8 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
   attempt will be made to process the elements serially at batch size 1.
   """
 
-  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
-    super(BatchReducibleBatchedDoFnWithModels, self).__init__(model_loaders)
+  def __init__(self, model_loaders: Dict[str, types.ModelLoader]):
+    super().__init__(model_loaders)
     self._batch_size = (
         beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
                                           'batch_size'))
@@ -799,9 +797,9 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
 
   def __init__(self,
                eval_config: config_pb2.EvalConfig,
-               eval_shared_models: Dict[Text, types.EvalSharedModel],
-               signature_names: Dict[Text, Dict[Text, List[Text]]],
-               default_signature_names: Optional[List[Text]] = None,
+               eval_shared_models: Dict[str, types.EvalSharedModel],
+               signature_names: Dict[str, Dict[str, List[str]]],
+               default_signature_names: Optional[List[str]] = None,
                prefer_dict_outputs: bool = True,
                tensor_adapter_config: Optional[
                    tensor_adapter.TensorAdapterConfig] = None):
@@ -853,8 +851,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
       tensor_adapter_config: Tensor adapter config which specifies how to obtain
         tensors from the Arrow RecordBatch.
     """
-    super(ModelSignaturesDoFn, self).__init__(
-        {k: v.model_loader for k, v in eval_shared_models.items()})
+    super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
     self._signature_names = signature_names
     self._default_signature_names = default_signature_names
@@ -863,7 +860,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
     self._tensor_adapter = None
 
   def setup(self):
-    super(ModelSignaturesDoFn, self).setup()
+    super().setup()
     if self._tensor_adapter_config is not None:
       self._tensor_adapter = tensor_adapter.TensorAdapter(
           self._tensor_adapter_config)
@@ -1014,7 +1011,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
 class CombineFnWithModels(beam.CombineFn):
   """Abstract class for CombineFns that need the shared models."""
 
-  def __init__(self, model_loaders: Dict[Text, types.ModelLoader]):
+  def __init__(self, model_loaders: Dict[str, types.ModelLoader]):
     """Initializes CombineFn using dict of loaders keyed by model location."""
     self._model_loaders = model_loaders
     self._loaded_models = None

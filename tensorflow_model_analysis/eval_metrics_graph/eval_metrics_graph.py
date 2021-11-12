@@ -26,34 +26,28 @@ of TFMA. The prediction part does not have a separate base class, and can be
 found in EvalSavedModel.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import abc
 import itertools
 import threading
-# Standard Imports
+from typing import Any, Dict, List, NamedTuple, Tuple
+
 import apache_beam as beam
 import tensorflow as tf
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.utils import util as general_util
-from typing import Any, Dict, List, NamedTuple, Text, Tuple
 
 # Config for defining the input tensor feed into the EvalMetricsGraph. This
 # is needed for model agnostic use cases where a graph must be constructed.
 FPLFeedConfig = NamedTuple(  # pylint: disable=invalid-name
-    'FPLFeedConfig', [('features', Dict[Text, Any]),
-                      ('predictions', Dict[Text, Any]),
-                      ('labels', Dict[Text, Any])])
+    'FPLFeedConfig', [('features', Dict[str, Any]),
+                      ('predictions', Dict[str, Any]),
+                      ('labels', Dict[str, Any])])
 
 
-class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
+class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
   """Abstraction for a graph that is used for computing and aggregating metrics.
 
   This abstract class contains methods and lays out the API to handle metrics
@@ -194,7 +188,7 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
     self._graph.finalize()
 
   def register_additional_metric_ops(
-      self, metric_ops: Dict[Text, Tuple[tf.Tensor, tf.Tensor]]) -> None:
+      self, metric_ops: Dict[str, Tuple[tf.Tensor, tf.Tensor]]) -> None:
     """Register additional metric ops that were added.
 
     Args:
@@ -267,7 +261,7 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
     def flatten(target: List[List[Any]]) -> List[Any]:
       return list(itertools.chain.from_iterable(target))
 
-    def log_list(name: Text, target: List[Any]) -> None:
+    def log_list(name: str, target: List[Any]) -> None:
       tf.compat.v1.logging.info('%s = [', name)
       for elem_type, elem_name in flatten(
           [create_tuple_list(x) for x in target]):
@@ -325,7 +319,7 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
     except (RuntimeError, TypeError, ValueError,
             tf.errors.OpError) as exception:
       general_util.reraise_augmented(exception,
-                                     'raw_input = %s' % (examples_list))
+                                     'raw_input = %s' % examples_list)
 
   def metrics_reset_update_get(
       self, features_predictions_labels: types.FeaturesPredictionsLabels
@@ -407,19 +401,18 @@ class EvalMetricsGraph(object):  # pytype: disable=ignored-metaclass
     with self._lock:
       self._reset_metric_variables()
 
-  def _get_metric_values(self) -> Dict[Text, Any]:
+  def _get_metric_values(self) -> Dict[str, Any]:
     # Lock should be acquired before calling this function.
     metric_values = self._session.run(fetches=self._metric_value_ops)
     return dict(zip(self._metric_names, metric_values))
 
-  def get_metric_values(self) -> Dict[Text, Any]:
+  def get_metric_values(self) -> Dict[str, Any]:
     """Retrieve metric values."""
     with self._lock:
       return self._get_metric_values()
 
-  def metrics_set_variables_and_get_values(self,
-                                           metric_variable_values: List[Any]
-                                          ) -> Dict[Text, Any]:
+  def metrics_set_variables_and_get_values(
+      self, metric_variable_values: List[Any]) -> Dict[str, Any]:
     with self._lock:
       self._set_metric_variables(metric_variable_values)
       return self._get_metric_values()

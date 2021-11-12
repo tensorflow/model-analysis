@@ -13,8 +13,7 @@
 # limitations under the License.
 """TFMA API for OSS Colab renderer."""
 
-# Standard __future__ imports
-from typing import Any, Callable, Dict, List, Optional, Text, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 from tensorflow_model_analysis.notebook.colab import util
 
 
@@ -28,10 +27,11 @@ def get_trusted_html_for_vulcanized_js():
 
 
 def render_slicing_metrics(
-    data: List[Dict[Text, Union[Dict[Text, Any], Text]]],
-    config: Dict[Text, Text],
-    event_handlers: Optional[
-        Callable[[Dict[Text, Union[Text, float]]], None]] = None) -> None:
+    data: List[Dict[str, Union[Dict[str, Any], str]]],
+    config: Dict[str, str],
+    event_handlers: Optional[Callable[[Dict[str, Union[str, float]]],
+                                      None]] = None
+) -> None:
   """Renders the slicing metrics view in Colab.
 
   Args:
@@ -47,9 +47,9 @@ def render_slicing_metrics(
       trusted_html_for_vulcanized_tfma_js=get_trusted_html_for_vulcanized_js())
 
 
-def render_time_series(
-    data: List[Dict[Text, Union[Dict[Union[float, Text], Any], Text]]],
-    config: Dict[Text, bool]) -> None:
+def render_time_series(data: List[Dict[str, Union[Dict[Union[float, str], Any],
+                                                  str]]],
+                       config: Dict[str, bool]) -> None:
   """Renders the time series view in Colab.
 
   Args:
@@ -64,8 +64,8 @@ def render_time_series(
 
 
 def render_plot(
-    data: Dict[Text, List[Union[Text, float, List[float]]]],
-    config: Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text]]) -> None:
+    data: Dict[str, List[Union[str, float, List[float]]]],
+    config: Dict[str, Union[Dict[str, Dict[str, str]], str]]) -> None:
   """Renders the plot view in Colab.
 
   Args:

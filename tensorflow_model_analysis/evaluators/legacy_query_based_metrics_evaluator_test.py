@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test for using the QueryBasedEvaluator API."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 
@@ -39,7 +34,7 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
-    super(QueryBasedMetricsEvaluatorTest, self).setUp()
+    super().setUp()
     self.longMessage = True  # pylint: disable=invalid-name
 
   def _getEvalExportDir(self):

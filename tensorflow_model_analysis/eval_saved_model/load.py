@@ -13,12 +13,8 @@
 # limitations under the License.
 """Library for loading and applying the EvalSavedModel."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
+from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
 
-# Standard Imports
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import types
@@ -27,7 +23,6 @@ from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import graph_ref
 from tensorflow_model_analysis.eval_saved_model import util
-from typing import Any, Dict, Generator, List, NamedTuple, Optional, Text, Tuple, Union
 
 from tensorflow.core.protobuf import meta_graph_pb2
 
@@ -45,7 +40,7 @@ FetchedTensorValues = NamedTuple(
     [
         ('input_ref', int),
         # Dict is keyed by group ('features', 'predictions', 'labels', etc).
-        ('values', Dict[Text, types.TensorValueMaybeDict])
+        ('values', Dict[str, types.TensorValueMaybeDict])
     ])
 
 # pylint: enable=invalid-name
@@ -63,11 +58,11 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
   """
 
   def __init__(self,
-               path: Text,
+               path: str,
                include_default_metrics: Optional[bool] = True,
-               additional_fetches: Optional[List[Text]] = None,
-               blacklist_feature_fetches: Optional[List[Text]] = None,
-               tags: Optional[List[Text]] = None):
+               additional_fetches: Optional[List[str]] = None,
+               blacklist_feature_fetches: Optional[List[str]] = None,
+               tags: Optional[List[str]] = None):
     """Initializes EvalSavedModel.
 
     Args:
@@ -99,7 +94,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
       self._tags = tags
     else:
       self._tags = [constants.EVAL_TAG]
-    super(EvalSavedModel, self).__init__()
+    super().__init__()
 
   def _check_version(self, version_node: types.TensorType):
     version = self._session.run(version_node)
@@ -128,7 +123,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
 
   def _iterate_fpl_maps_in_canonical_order(
       self
-  ) -> Generator[Tuple[Text, types.FPLKeyType, types.TensorType], None, None]:
+  ) -> Generator[Tuple[str, types.FPLKeyType, types.TensorType], None, None]:
     """Iterate through features, predictions, labels maps in canonical order.
 
     We need to fix a canonical order because to use `make_callable`, we must use
@@ -406,7 +401,7 @@ class EvalSavedModel(eval_metrics_graph.EvalMetricsGraph):
     """Gets features, predictions, labels as FeaturesPredictionsLabelsType."""
 
     def fpl_dict(fetched: FetchedTensorValues,
-                 group: Text) -> types.DictOfFetchedTensorValues:
+                 group: str) -> types.DictOfFetchedTensorValues:
       native = fetched.values[group]
       wrapped = {}
       if not isinstance(native, dict):

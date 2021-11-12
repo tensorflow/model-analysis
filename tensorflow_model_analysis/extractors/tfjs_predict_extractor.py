@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +13,13 @@
 # limitations under the License.
 """Predict extractor for TFJS models."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import collections
 import copy
 import json
 import os
 import subprocess
 import tempfile
-from typing import Dict, Union, Sequence, Text
+from typing import Dict, Union, Sequence
 
 import uuid
 
@@ -59,16 +53,15 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   """A DoFn that loads tfjs models and predicts."""
 
   def __init__(self, eval_config: config_pb2.EvalConfig,
-               eval_shared_models: Dict[Text, types.EvalSharedModel]) -> None:
-    super(_TFJSPredictionDoFn, self).__init__(
-        {k: v.model_loader for k, v in eval_shared_models.items()})
+               eval_shared_models: Dict[str, types.EvalSharedModel]) -> None:
+    super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
     self._src_model_paths = {
         k: v.model_path for k, v in eval_shared_models.items()
     }
 
   def setup(self):
-    super(_TFJSPredictionDoFn, self).setup()
+    super().setup()
     self._binary_path = get_tfjs_binary()
 
     base_path = tempfile.mkdtemp()
@@ -232,7 +225,7 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractTFJSPredictions(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Dict[Text,
+    eval_shared_models: Dict[str,
                              types.EvalSharedModel]) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
@@ -254,7 +247,7 @@ def _ExtractTFJSPredictions(  # pylint: disable=invalid-name
 
 def TFJSPredictExtractor(  # pylint: disable=invalid-name
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Union[types.EvalSharedModel, Dict[Text,
+    eval_shared_model: Union[types.EvalSharedModel, Dict[str,
                                                          types.EvalSharedModel]]
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions on tfjs models.

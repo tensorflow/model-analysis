@@ -20,14 +20,8 @@ and the feedlist as they match. To achieve this, the graph is created with
 an example FPL to determine FPL feed structure.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 from typing import List, Optional  # pytype: disable=not-supported-yet
 
-# Standard Imports
 import tensorflow as tf
 
 from tensorflow_model_analysis import types
@@ -58,7 +52,7 @@ class ModelAgnosticEvaluateGraph(eval_metrics_graph.EvalMetricsGraph):
     # config.
     self._add_metrics_callbacks = add_metrics_callbacks
     self._config = config
-    super(ModelAgnosticEvaluateGraph, self).__init__()
+    super().__init__()
 
   def _construct_graph(self):
     """Creates a graph which we instantiate FPL infeed and metric ops."""

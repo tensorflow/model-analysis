@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Utility for evaluator to add / update beam counters."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import List, Text, Set
+from typing import List, Set
 
 import apache_beam as beam
 
@@ -28,8 +22,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.proto import config_pb2
 
 
-def _IncrementMetricsCounters(metric_name: Text, version: Text,
-                              model_type: Text):
+def _IncrementMetricsCounters(metric_name: str, version: str, model_type: str):
   # LINT.IfChange
   metric_name = 'metric_computed_%s_%s_%s' % (metric_name, version, model_type)
   # LINT.ThenChange(../../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
@@ -44,7 +37,7 @@ def _IncrementMetricsCounters(metric_name: Text, version: Text,
 # @beam.typehints.with_output_types(beam.pvalue.PDone)
 def IncrementMetricsCallbacksCounters(
     pipeline: beam.Pipeline,
-    metrics_callbacks: List[types.AddMetricsCallbackType], model_type: Text):
+    metrics_callbacks: List[types.AddMetricsCallbackType], model_type: str):
   """To track count of all the metrics being computed using TFMA."""
 
   def _MakeAndIncrementCounters(_):
@@ -84,7 +77,7 @@ def IncrementSliceSpecCounters(pipeline: beam.Pipeline):
 # @beam.typehints.with_output_types(beam.pvalue.PDone)
 def IncrementMetricsSpecsCounters(pipeline: beam.Pipeline,
                                   metrics_specs: List[config_pb2.MetricsSpec],
-                                  model_types: Set[Text]):
+                                  model_types: Set[str]):
   """To track count of all metrics specs in TFMA."""
 
   def _MakeAndIncrementCounters(_):

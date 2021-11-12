@@ -18,19 +18,14 @@ parameter of Evaluate to compute them.
 
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
+from typing import Any, Dict, List, Optional, Tuple
 
-# Standard Imports
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
-from typing import Any, Dict, List, Optional, Text, Tuple
 
 
 # pylint: disable=protected-access
@@ -62,9 +57,9 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
   """
 
   _thresholds = ...  # type: List[float]
-  _example_weight_key = ...  # type: Text
-  _labels_key = ...  # type: Text
-  _metric_tag = None  # type: Text
+  _example_weight_key = ...  # type: str
+  _labels_key = ...  # type: str
+  _metric_tag = None  # type: str
 
   # We could use the same keys as the ConfusionMatrix metrics, but with the way
   # that post_export_metrics are currently implemented, if both
@@ -75,10 +70,10 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
 
   def __init__(self,
                thresholds: Optional[List[float]] = None,
-               example_weight_key: Optional[Text] = None,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
+               example_weight_key: Optional[str] = None,
+               target_prediction_keys: Optional[List[str]] = None,
+               labels_key: Optional[str] = None,
+               metric_tag: Optional[str] = None,
                tensor_index: Optional[int] = None) -> None:
     if not thresholds:
       thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
@@ -91,7 +86,7 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
       if len(str(t)) - 2 > self._key_digits:
         self._key_digits = len(str(t)) - 2
 
-    super(_FairnessIndicators, self).__init__(
+    super().__init__(
         thresholds,
         example_weight_key,
         target_prediction_keys,
@@ -99,10 +94,11 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
         metric_tag,
         tensor_index=tensor_index)
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(
+      self, features_dict: types.TensorTypeMaybeDict,
+      predictions_dict: types.TensorTypeMaybeDict,
+      labels_dict: types.TensorTypeMaybeDict
+  ) -> Dict[str, Tuple[types.TensorType, types.TensorType]]:
 
     values, update_ops = self.confusion_matrix_metric_ops(
         features_dict, predictions_dict, labels_dict)
@@ -180,9 +176,9 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
     return output_dict  # pytype: disable=bad-return-type
 
   def populate_stats_and_pop(
-      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text,
+      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[str,
                                                                          Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      output_metrics: Dict[str, metrics_pb2.MetricValue]) -> None:
     matrices = combine_metrics.pop(self._metric_key(self.matrices_key))
     thresholds = combine_metrics.pop(self._metric_key(self.thresholds_key))
 
@@ -216,18 +212,18 @@ class _FairnessAuc(post_export_metrics._PostExportMetric):
   Classification](https://ai.google/research/pubs/pub46743)
   """
 
-  _target_prediction_keys = ...  # type: List[Text]
-  _labels_key = ...  # type: Text
-  _metric_tag = None  # type: Text
+  _target_prediction_keys = ...  # type: List[str]
+  _labels_key = ...  # type: str
+  _metric_tag = None  # type: str
   _tensor_index = ...  # type: int
 
   def __init__(self,
-               subgroup_key: Text,
-               example_weight_key: Optional[Text] = None,
+               subgroup_key: str,
+               example_weight_key: Optional[str] = None,
                num_buckets: int = post_export_metrics._DEFAULT_NUM_BUCKETS,
-               target_prediction_keys: Optional[List[Text]] = None,
-               labels_key: Optional[Text] = None,
-               metric_tag: Optional[Text] = None,
+               target_prediction_keys: Optional[List[str]] = None,
+               labels_key: Optional[str] = None,
+               metric_tag: Optional[str] = None,
                tensor_index: Optional[int] = None) -> None:
     """Create a metric that computes fairness auc.
 
@@ -270,7 +266,7 @@ class _FairnessAuc(post_export_metrics._PostExportMetric):
     self._bnsp_auc_metric = self._metric_key(self._metric_name + '/bnsp_auc/' +
                                              self._subgroup_key)
 
-    super(_FairnessAuc, self).__init__(
+    super().__init__(
         target_prediction_keys=target_prediction_keys,
         labels_key=labels_key,
         metric_tag=metric_tag,
@@ -285,10 +281,11 @@ class _FairnessAuc(post_export_metrics._PostExportMetric):
                                                self._subgroup_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
-  def get_metric_ops(self, features_dict: types.TensorTypeMaybeDict,
-                     predictions_dict: types.TensorTypeMaybeDict,
-                     labels_dict: types.TensorTypeMaybeDict
-                    ) -> Dict[Text, Tuple[types.TensorType, types.TensorType]]:
+  def get_metric_ops(
+      self, features_dict: types.TensorTypeMaybeDict,
+      predictions_dict: types.TensorTypeMaybeDict,
+      labels_dict: types.TensorTypeMaybeDict
+  ) -> Dict[str, Tuple[types.TensorType, types.TensorType]]:
     # Note that we have to squeeze predictions, labels, weights so they are all
     # N element vectors (otherwise some of them might be N x 1 tensors, and
     # multiplying a N element vector with a N x 1 tensor uses matrix
@@ -348,8 +345,8 @@ class _FairnessAuc(post_export_metrics._PostExportMetric):
     return ops_dict
 
   def populate_stats_and_pop(
-      self, slice_key: slicer.SliceKeyType, combine_metrics: Dict[Text, Any],
-      output_metrics: Dict[Text, metrics_pb2.MetricValue]) -> None:
+      self, slice_key: slicer.SliceKeyType, combine_metrics: Dict[str, Any],
+      output_metrics: Dict[str, metrics_pb2.MetricValue]) -> None:
     # Remove metrics if it's not Overall slice. This post export metrics
     # calculate subgroup_auc, bpsn_auc, bnsp_auc. All of these are based on
     # all examples. That's why only the overall slice makes sence and the rest

@@ -16,19 +16,14 @@
 This is an internal library for use only by load.py.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import collections
-# Standard Imports
+from typing import Dict, List, Optional, Tuple, Union
+
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
-from typing import Dict, List, Optional, Text, Tuple, Union
 
 from google.protobuf import any_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
@@ -37,11 +32,11 @@ CollectionDefValueType = Union[float, int, bytes, any_pb2.Any]  # pylint: disabl
 
 
 def extract_signature_inputs_or_outputs_with_prefix(
-    prefix: Text,
+    prefix: str,
     # Inputs and outputs are not actually Dicts, but behave like them
-    signature_inputs_or_outputs: Dict[Text, meta_graph_pb2.TensorInfo],
-    key_if_single_element: Optional[Text] = None
-) -> Dict[Text, meta_graph_pb2.TensorInfo]:
+    signature_inputs_or_outputs: Dict[str, meta_graph_pb2.TensorInfo],
+    key_if_single_element: Optional[str] = None
+) -> Dict[str, meta_graph_pb2.TensorInfo]:
   """Extracts signature outputs with the given prefix.
 
   This is the reverse of _wrap_and_check_metrics / _wrap_and_check_outputs and
@@ -104,7 +99,7 @@ def extract_signature_inputs_or_outputs_with_prefix(
 def load_legacy_inputs(
     meta_graph_def: tf.compat.v1.MetaGraphDef,
     signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
-    graph: tf.Graph) -> Tuple[Dict[Text, types.TensorType], types.TensorType]:
+    graph: tf.Graph) -> Tuple[Dict[str, types.TensorType], types.TensorType]:
   """Loads legacy inputs.
 
   Args:
@@ -136,7 +131,7 @@ def load_legacy_inputs(
 # TODO(b/119308261): Remove once all exported EvalSavedModels are updated.
 def load_legacy_features_and_labels(
     meta_graph_def: tf.compat.v1.MetaGraphDef, graph: tf.Graph
-) -> Tuple[Dict[Text, types.TensorType], Dict[Text, types.TensorType]]:
+) -> Tuple[Dict[str, types.TensorType], Dict[str, types.TensorType]]:
   """Loads legacy features and labels nodes.
 
   Args:
@@ -192,7 +187,7 @@ def load_tfma_version(
 def load_inputs(
     signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
     graph: tf.Graph,
-) -> Tuple[Dict[Text, types.TensorType], types.TensorType]:
+) -> Tuple[Dict[str, types.TensorType], types.TensorType]:
   """Loads input nodes from signature_def.inputs.
 
   Args:
@@ -243,10 +238,10 @@ def load_iterator_initializer_name(
 
 
 def load_additional_inputs(
-    prefix: Text,
+    prefix: str,
     signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
     graph: tf.Graph,
-) -> Dict[Text, types.TensorType]:
+) -> Dict[str, types.TensorType]:
   """Loads additional input tensors from signature_def.inputs.
 
   Args:
@@ -267,7 +262,7 @@ def load_additional_inputs(
 
 
 def load_predictions(signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
-                     graph: tf.Graph) -> Dict[Text, types.TensorType]:
+                     graph: tf.Graph) -> Dict[str, types.TensorType]:
   """Loads prediction nodes from signature_def.outputs.
 
   Args:
@@ -292,9 +287,9 @@ def load_predictions(signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
   return predictions_map
 
 
-def load_metrics(signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
-                 graph: tf.Graph
-                ) -> Dict[types.FPLKeyType, Dict[Text, types.TensorType]]:
+def load_metrics(
+    signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
+    graph: tf.Graph) -> Dict[types.FPLKeyType, Dict[str, types.TensorType]]:
   """Loads metric nodes from signature_def.outputs.
 
   Args:
@@ -321,9 +316,10 @@ def load_metrics(signature_def: tf.compat.v1.MetaGraphDef.SignatureDefEntry,
   return metrics_map
 
 
-def get_node_map(meta_graph_def: meta_graph_pb2.MetaGraphDef, prefix: Text,
-                 node_suffixes: List[Text]
-                ) -> Dict[types.FPLKeyType, Dict[Text, CollectionDefValueType]]:
+def get_node_map(
+    meta_graph_def: meta_graph_pb2.MetaGraphDef, prefix: str,
+    node_suffixes: List[str]
+) -> Dict[types.FPLKeyType, Dict[str, CollectionDefValueType]]:
   """Get node map from meta_graph_def.
 
   This is designed to extract structures of the following form from the
@@ -393,9 +389,9 @@ def get_node_map(meta_graph_def: meta_graph_pb2.MetaGraphDef, prefix: Text,
 
 
 def get_node_map_in_graph(
-    meta_graph_def: meta_graph_pb2.MetaGraphDef, prefix: Text,
-    node_suffixes: List[Text],
-    graph: tf.Graph) -> Dict[types.FPLKeyType, Dict[Text, types.TensorType]]:
+    meta_graph_def: meta_graph_pb2.MetaGraphDef, prefix: str,
+    node_suffixes: List[str],
+    graph: tf.Graph) -> Dict[types.FPLKeyType, Dict[str, types.TensorType]]:
   """Like get_node_map, but looks up the nodes in the given graph.
 
   Args:
@@ -421,7 +417,7 @@ def get_node_map_in_graph(
 
 
 def get_node_wrapped_tensor_info(meta_graph_def: meta_graph_pb2.MetaGraphDef,
-                                 path: Text) -> any_pb2.Any:
+                                 path: str) -> any_pb2.Any:
   """Get the Any-wrapped TensorInfo for the node from the meta_graph_def.
 
   Args:
@@ -447,7 +443,7 @@ def get_node_wrapped_tensor_info(meta_graph_def: meta_graph_pb2.MetaGraphDef,
   return meta_graph_def.collection_def[path].any_list.value[0]
 
 
-def get_node_in_graph(meta_graph_def: meta_graph_pb2.MetaGraphDef, path: Text,
+def get_node_in_graph(meta_graph_def: meta_graph_pb2.MetaGraphDef, path: str,
                       graph: tf.Graph) -> types.TensorType:
   """Like get_node_wrapped_tensor_info, but looks up the node in the graph.
 

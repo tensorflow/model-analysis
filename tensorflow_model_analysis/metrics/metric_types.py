@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +16,7 @@
 import copy
 import functools
 import inspect
-
-from typing import Any, Callable, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Text, Type, Union
+from typing import Any, Callable, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Type, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -27,8 +25,8 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.utils import util
 
-from tensorflow_metadata.proto.v0 import schema_pb2
 from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 # LINT.IfChange
 
@@ -77,7 +75,7 @@ class SubKey(
   def __hash__(self):
     return hash(tuple(self))
 
-  def __str__(self) -> Text:
+  def __str__(self) -> str:
     if self.class_id is not None:
       return 'classId:' + str(self.class_id)
     elif self.k is not None:
@@ -167,7 +165,7 @@ class AggregationType(
   def __hash__(self):
     return hash(tuple(self))
 
-  def __str__(self) -> Text:
+  def __str__(self) -> str:
     if self.micro_average is not None:
       return 'micro'
     elif self.macro_average is not None:
@@ -207,8 +205,8 @@ class AggregationType(
 # SerializeToString is not guaranteed to be stable between different binaries.
 @functools.total_ordering
 class MetricKey(
-    NamedTuple('MetricKey', [('name', Text), ('model_name', Text),
-                             ('output_name', Text), ('sub_key', SubKey),
+    NamedTuple('MetricKey', [('name', str), ('model_name', str),
+                             ('output_name', str), ('sub_key', SubKey),
                              ('aggregation_type', AggregationType),
                              ('example_weighted', bool), ('is_diff', bool)])):
   """A MetricKey uniquely identifies a metric.
@@ -226,9 +224,9 @@ class MetricKey(
   """
 
   def __new__(cls,
-              name: Text,
-              model_name: Text = '',
-              output_name: Text = '',
+              name: str,
+              model_name: str = '',
+              output_name: str = '',
               sub_key: Optional[SubKey] = None,
               aggregation_type: Optional[AggregationType] = None,
               example_weighted: Optional[bool] = False,
@@ -305,7 +303,7 @@ class MetricKey(
     return self._replace(is_diff=True)
 
   # Generate a copy of the key with a different model name and is_diff False.
-  def make_baseline_key(self, model_name: Text) -> 'MetricKey':
+  def make_baseline_key(self, model_name: str) -> 'MetricKey':
     return self._replace(model_name=model_name, is_diff=False)
 
 
@@ -579,17 +577,17 @@ MetricComputations = List[Union[MetricComputation, DerivedMetricComputation,
 
 
 def validate_and_update_create_computations_fn_kwargs(
-    arg_names: Iterable[Text],
-    kwargs: Dict[Text, Any],
+    arg_names: Iterable[str],
+    kwargs: Dict[str, Any],
     eval_config: Optional[config_pb2.EvalConfig] = None,
     schema: Optional[schema_pb2.Schema] = None,
-    model_names: Optional[List[Text]] = None,
-    output_names: Optional[List[Text]] = None,
+    model_names: Optional[List[str]] = None,
+    output_names: Optional[List[str]] = None,
     sub_keys: Optional[List[Optional[SubKey]]] = None,
     aggregation_type: Optional[AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
     example_weighted: bool = False,
-    query_key: Optional[Text] = None):
+    query_key: Optional[str] = None):
   """Validates and updates create_computations_fn kwargs based on arg_names.
 
   Each metric's create_computations_fn is invoked with a variable set of
@@ -649,7 +647,7 @@ def validate_and_update_create_computations_fn_kwargs(
   return kwargs
 
 
-class Metric(object):
+class Metric:
   """Metric wraps a set of metric computations.
 
   This class exists to provide similarity between tfma.metrics.Metric and
@@ -689,10 +687,10 @@ class Metric(object):
     else:
       self._args = inspect.getargspec(self.create_computations_fn).args  # pylint: disable=deprecated-method
 
-  def _default_name(self) -> Optional[Text]:
+  def _default_name(self) -> Optional[str]:
     return None
 
-  def get_config(self) -> Dict[Text, Any]:
+  def get_config(self) -> Dict[str, Any]:
     """Returns serializable config."""
     return self.kwargs
 
@@ -712,13 +710,13 @@ class Metric(object):
   def computations(self,
                    eval_config: Optional[config_pb2.EvalConfig] = None,
                    schema: Optional[schema_pb2.Schema] = None,
-                   model_names: Optional[List[Text]] = None,
-                   output_names: Optional[List[Text]] = None,
+                   model_names: Optional[List[str]] = None,
+                   output_names: Optional[List[str]] = None,
                    sub_keys: Optional[List[Optional[SubKey]]] = None,
                    aggregation_type: Optional[AggregationType] = None,
                    class_weights: Optional[Dict[int, float]] = None,
                    example_weighted: bool = False,
-                   query_key: Optional[Text] = None) -> MetricComputations:
+                   query_key: Optional[str] = None) -> MetricComputations:
     """Creates computations associated with metric."""
     updated_kwargs = validate_and_update_create_computations_fn_kwargs(
         self._args, self.kwargs.copy(), eval_config, schema, model_names,
@@ -735,12 +733,12 @@ def register_metric(cls: Type[Metric]):
   _METRIC_OBJECTS[cls.__name__] = cls
 
 
-def registered_metrics() -> Dict[Text, Type[Metric]]:
+def registered_metrics() -> Dict[str, Type[Metric]]:
   """Returns standard TFMA metrics."""
   return copy.copy(_METRIC_OBJECTS)
 
 
-def is_registered_metric(metric_class_name: Text) -> bool:
+def is_registered_metric(metric_class_name: str) -> bool:
   """Returns True if given metric class name is registered."""
   return metric_class_name in _METRIC_OBJECTS
 
@@ -768,28 +766,27 @@ class StandardMetricInputs(util.StandardExtracts):
     return self.get_example_weights()
 
   def get_by_key(self,
-                 key: Text,
-                 model_name: Optional[Text] = None,
-                 output_name: Optional[Text] = None) -> Any:
+                 key: str,
+                 model_name: Optional[str] = None,
+                 output_name: Optional[str] = None) -> Any:
     if key not in self and key.endswith('s'):
       # The previous version of StandardMetricInputs was a NamedTuple that
       # used label, prediction, and example_weight as the field names. Some
       # tests may be creating StandardMetricInputs using these names, so also
       # search under the non-pluralized form of the key.
       key = key[:-1]
-    return super(StandardMetricInputs, self).get_by_key(key, model_name,
-                                                        output_name)
+    return super().get_by_key(key, model_name, output_name)
 
 
 class StandardMetricInputsPreprocessor(beam.DoFn):
   """Preprocessor for filtering the extracts used in StandardMetricInputs."""
 
   def __init__(self,
-               include_filter: Optional[Union[Iterable[Text],
-                                              Dict[Text, Any]]] = None,
+               include_filter: Optional[Union[Iterable[str], Dict[str,
+                                                                  Any]]] = None,
                include_default_inputs: bool = True,
-               model_names: Optional[Iterable[Text]] = None,
-               output_names: Optional[Iterable[Text]] = None):
+               model_names: Optional[Iterable[str]] = None,
+               output_names: Optional[Iterable[str]] = None):
     """Initializes preprocessor.
 
     Args:
@@ -849,10 +846,10 @@ def InputPreprocessor(  # pylint: disable=invalid-name
 
 
 def FeaturePreprocessor(  # pylint: disable=invalid-name
-    feature_keys: Iterable[Text],
+    feature_keys: Iterable[str],
     include_default_inputs: bool = True,
-    model_names: Optional[Iterable[Text]] = None,
-    output_names: Optional[Iterable[Text]] = None
+    model_names: Optional[Iterable[str]] = None,
+    output_names: Optional[Iterable[str]] = None
 ) -> StandardMetricInputsPreprocessor:
   """Returns preprocessor for including features in StandardMetricInputs.
 
@@ -877,10 +874,10 @@ def FeaturePreprocessor(  # pylint: disable=invalid-name
 
 
 def TransformedFeaturePreprocessor(  # pylint: disable=invalid-name
-    feature_keys: Iterable[Text],
+    feature_keys: Iterable[str],
     include_default_inputs: bool = True,
-    model_names: Optional[Iterable[Text]] = None,
-    output_names: Optional[Iterable[Text]] = None,
+    model_names: Optional[Iterable[str]] = None,
+    output_names: Optional[Iterable[str]] = None,
 ) -> StandardMetricInputsPreprocessor:
   """Returns preprocessor for incl transformed features in StandardMetricInputs.
 
@@ -907,10 +904,10 @@ def TransformedFeaturePreprocessor(  # pylint: disable=invalid-name
 
 
 def AttributionPreprocessor(  # pylint: disable=invalid-name
-    feature_keys: Iterable[Text],
+    feature_keys: Iterable[str],
     include_default_inputs: bool = True,
-    model_names: Optional[Iterable[Text]] = None,
-    output_names: Optional[Iterable[Text]] = None
+    model_names: Optional[Iterable[str]] = None,
+    output_names: Optional[Iterable[str]] = None
 ) -> StandardMetricInputsPreprocessor:
   """Returns preprocessor for including attributions in StandardMetricInputs.
 

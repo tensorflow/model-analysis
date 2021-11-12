@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +16,7 @@
 For use within this directory only.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Iterable, List, Optional, Text, Union
+from typing import Iterable, List, Optional, Union
 
 import numpy as np
 import pyarrow as pa
@@ -30,7 +24,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import types
 
 
-class SliceAccessor(object):
+class SliceAccessor:
   """Wrapper around features dict for accessing keys and values for slicing."""
 
   def __init__(self,
@@ -42,7 +36,7 @@ class SliceAccessor(object):
     self._features_dicts = features_dicts
     self._default_features_dict = default_features_dict
 
-  def has_key(self, key: Text):
+  def has_key(self, key: str):
     for d in self._features_dicts:
       if key in d and d[key] is not None:
         return True
@@ -51,7 +45,7 @@ class SliceAccessor(object):
       return True
     return False
 
-  def get(self, key: Text) -> List[Union[int, bytes, float]]:
+  def get(self, key: str) -> List[Union[int, bytes, float]]:
     """Get the values of the feature with the given key.
 
     Args:

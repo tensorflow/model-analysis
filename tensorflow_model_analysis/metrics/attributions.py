@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """Attribution related metrics."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import functools
 
-from typing import Any, Dict, Iterable, List, Optional, Text, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 import apache_beam as beam
 import numpy as np
@@ -59,13 +53,13 @@ def has_attributions_metrics(
 class MeanAttributions(AttributionsMetric):
   """Mean attributions metric."""
 
-  def __init__(self, name: Text = MEAN_ATTRIBUTIONS_NAME):
+  def __init__(self, name: str = MEAN_ATTRIBUTIONS_NAME):
     """Initializes mean attributions metric.
 
     Args:
       name: Attribution metric name.
     """
-    super(MeanAttributions, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(
             functools.partial(_mean_attributions, False)),
         name=name)
@@ -77,13 +71,13 @@ metric_types.register_metric(MeanAttributions)
 class MeanAbsoluteAttributions(AttributionsMetric):
   """Mean aboslute attributions metric."""
 
-  def __init__(self, name: Text = MEAN_ABSOLUTE_ATTRIBUTIONS_NAME):
+  def __init__(self, name: str = MEAN_ABSOLUTE_ATTRIBUTIONS_NAME):
     """Initializes mean absolute attributions metric.
 
     Args:
       name: Attribution metric name.
     """
-    super(MeanAbsoluteAttributions, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(
             functools.partial(_mean_attributions, True)),
         name=name)
@@ -94,10 +88,10 @@ metric_types.register_metric(MeanAbsoluteAttributions)
 
 def _mean_attributions(
     absolute: bool = True,
-    name: Text = MEAN_ATTRIBUTIONS_NAME,
+    name: str = MEAN_ATTRIBUTIONS_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     example_weighted: bool = False,
 ) -> metric_types.MetricComputations:
@@ -129,7 +123,7 @@ def _mean_attributions(
 
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
-  ) -> Dict[metric_types.AttributionsKey, Dict[Text, Union[float, np.ndarray]]]:
+  ) -> Dict[metric_types.AttributionsKey, Dict[str, Union[float, np.ndarray]]]:
     """Returns mean attributions."""
     total_attributions = metrics[total_attributions_key]
     count = metrics[example_count_key]
@@ -150,13 +144,13 @@ def _mean_attributions(
 class TotalAttributions(AttributionsMetric):
   """Total attributions metric."""
 
-  def __init__(self, name: Text = TOTAL_ATTRIBUTIONS_NAME):
+  def __init__(self, name: str = TOTAL_ATTRIBUTIONS_NAME):
     """Initializes total attributions metric.
 
     Args:
       name: Attribution metric name.
     """
-    super(TotalAttributions, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(
             functools.partial(_total_attributions, False)),
         name=name)
@@ -168,13 +162,13 @@ metric_types.register_metric(TotalAttributions)
 class TotalAbsoluteAttributions(AttributionsMetric):
   """Total absolute attributions metric."""
 
-  def __init__(self, name: Text = TOTAL_ABSOLUTE_ATTRIBUTIONS_NAME):
+  def __init__(self, name: str = TOTAL_ABSOLUTE_ATTRIBUTIONS_NAME):
     """Initializes total absolute attributions metric.
 
     Args:
       name: Attribution metric name.
     """
-    super(TotalAbsoluteAttributions, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(
             functools.partial(_total_attributions, True)),
         name=name)
@@ -185,10 +179,10 @@ metric_types.register_metric(TotalAbsoluteAttributions)
 
 def _total_attributions(
     absolute: bool = True,
-    name: Text = '',
+    name: str = '',
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for total attributions."""
@@ -211,7 +205,7 @@ def _total_attributions(
 
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
-  ) -> Dict[metric_types.AttributionsKey, Dict[Text, Union[float, np.ndarray]]]:
+  ) -> Dict[metric_types.AttributionsKey, Dict[str, Union[float, np.ndarray]]]:
     """Returns total attributions."""
     return {key: metrics[private_key]}
 
@@ -223,10 +217,10 @@ def _total_attributions(
 
 def _total_attributions_computations(
     absolute: bool = True,
-    name: Text = '',
+    name: str = '',
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for total attributions.
@@ -261,7 +255,7 @@ def _total_attributions_computations(
 
 @beam.typehints.with_input_types(metric_types.StandardMetricInputs)
 @beam.typehints.with_output_types(Dict[metric_types.AttributionsKey,
-                                       Dict[Text, Union[float, np.ndarray]]])
+                                       Dict[str, Union[float, np.ndarray]]])
 class _TotalAttributionsCombiner(beam.CombineFn):
   """Computes total attributions."""
 
@@ -286,12 +280,12 @@ class _TotalAttributionsCombiner(beam.CombineFn):
       for i, v in enumerate(b):
         a[i] += abs(v) if self._absolute else v
 
-  def create_accumulator(self) -> Dict[Text, List[float]]:
+  def create_accumulator(self) -> Dict[str, List[float]]:
     return {}
 
   def add_input(
-      self, accumulator: Dict[Text, List[float]],
-      extracts: metric_types.StandardMetricInputs) -> Dict[Text, List[float]]:
+      self, accumulator: Dict[str, List[float]],
+      extracts: metric_types.StandardMetricInputs) -> Dict[str, List[float]]:
     if constants.ATTRIBUTIONS_KEY not in extracts:
       raise ValueError(
           '{} missing from extracts {}\n\n. An attribution extractor is '
@@ -330,8 +324,7 @@ class _TotalAttributionsCombiner(beam.CombineFn):
 
   def merge_accumulators(
       self,
-      accumulators: Iterable[Dict[Text,
-                                  List[float]]]) -> Dict[Text, List[float]]:
+      accumulators: Iterable[Dict[str, List[float]]]) -> Dict[str, List[float]]:
     accumulators = iter(accumulators)
     result = next(accumulators)
     for accumulator in accumulators:
@@ -343,8 +336,8 @@ class _TotalAttributionsCombiner(beam.CombineFn):
     return result
 
   def extract_output(
-      self, accumulator: Dict[Text, List[float]]
-  ) -> Dict[metric_types.AttributionsKey, Dict[Text, Union[float, np.ndarray]]]:
+      self, accumulator: Dict[str, List[float]]
+  ) -> Dict[metric_types.AttributionsKey, Dict[str, Union[float, np.ndarray]]]:
     result = {}
     for k, v in accumulator.items():
       result[k] = v[0] if len(v) == 1 else np.array(v)

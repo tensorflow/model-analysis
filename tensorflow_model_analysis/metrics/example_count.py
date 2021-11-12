@@ -13,7 +13,7 @@
 # limitations under the License.
 """Example count metric."""
 
-from typing import Optional, Dict, Iterable, List, Text
+from typing import Optional, Dict, Iterable, List
 
 import apache_beam as beam
 import numpy as np
@@ -30,14 +30,14 @@ class ExampleCount(metric_types.Metric):
   will be associated with a model for consistency with other metrics.
   """
 
-  def __init__(self, name: Text = EXAMPLE_COUNT_NAME):
+  def __init__(self, name: str = EXAMPLE_COUNT_NAME):
     """Initializes example count.
 
     Args:
       name: Metric name.
     """
 
-    super(ExampleCount, self).__init__(example_count, name=name)
+    super().__init__(example_count, name=name)
 
   @property
   def compute_confidence_interval(self) -> bool:
@@ -57,9 +57,9 @@ metric_types.register_metric(ExampleCount)
 
 
 def example_count(
-    name: Text = EXAMPLE_COUNT_NAME,
-    model_names: Optional[List[Text]] = None,
-    output_names: Optional[List[Text]] = None,
+    name: str = EXAMPLE_COUNT_NAME,
+    model_names: Optional[List[str]] = None,
+    output_names: Optional[List[str]] = None,
     sub_keys: Optional[List[metric_types.SubKey]] = None,
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns metric computations for example count."""
@@ -91,7 +91,7 @@ def example_count(
 class _ExampleCountCombiner(beam.CombineFn):
   """Computes example count."""
 
-  def __init__(self, model_name: Text, output_name: Text,
+  def __init__(self, model_name: str, output_name: str,
                keys: List[metric_types.MetricKey], example_weighted):
     self._model_name = model_name
     self._output_name = output_name

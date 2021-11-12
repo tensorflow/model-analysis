@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Public API for creating analysis table."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Iterable, Optional, Text, Union
+from typing import Any, Dict, Iterable, Optional, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -29,11 +23,11 @@ from tensorflow_model_analysis.extractors import extractor
 
 
 def AnalysisTableEvaluator(  # pylint: disable=invalid-name
-    key: Text = constants.ANALYSIS_KEY,
-    run_after: Text = extractor.LAST_EXTRACTOR_STAGE_NAME,
-    include: Optional[Union[Iterable[Text], Dict[Text, Any]]] = None,
-    exclude: Optional[Union[Iterable[Text],
-                            Dict[Text, Any]]] = None) -> evaluator.Evaluator:
+    key: str = constants.ANALYSIS_KEY,
+    run_after: str = extractor.LAST_EXTRACTOR_STAGE_NAME,
+    include: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
+    exclude: Optional[Union[Iterable[str],
+                            Dict[str, Any]]] = None) -> evaluator.Evaluator:
   """Creates an Evaluator for returning Extracts data for analysis.
 
   If both include and exclude are None then tfma.INPUT_KEY extracts will be
@@ -76,10 +70,10 @@ def AnalysisTableEvaluator(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(Any)
 def EvaluateExtracts(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    key: Text = constants.ANALYSIS_KEY,
-    include: Optional[Union[Iterable[Text], Dict[Text, Any]]] = None,
-    exclude: Optional[Union[Iterable[Text],
-                            Dict[Text, Any]]] = None) -> evaluator.Evaluation:
+    key: str = constants.ANALYSIS_KEY,
+    include: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
+    exclude: Optional[Union[Iterable[str],
+                            Dict[str, Any]]] = None) -> evaluator.Evaluation:
   """Creates Evaluation output for extracts.
 
   If both include and exclude are None then tfma.INPUT_KEY extracts will be

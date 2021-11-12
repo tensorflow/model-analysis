@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +13,7 @@
 # limitations under the License.
 """Exact match metric."""
 import json
-from typing import Dict, Iterable, Optional, Text
+from typing import Dict, Iterable, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
@@ -30,8 +29,8 @@ class ExactMatch(metric_types.Metric):
   """Exact Match Metric."""
 
   def __init__(self,
-               name: Text = EXACT_MATCH_NAME,
-               convert_to: Optional[Text] = None):
+               name: str = EXACT_MATCH_NAME,
+               convert_to: Optional[str] = None):
     """Initializes exact match metric.
 
     Args:
@@ -39,7 +38,7 @@ class ExactMatch(metric_types.Metric):
       convert_to: The conversion to perform before checking equality.
     """
 
-    super(ExactMatch, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(_exact_match),
         name=name,
         convert_to=convert_to)
@@ -52,15 +51,15 @@ metric_types.register_metric(ExactMatch)
 
 
 def _exact_match(
-    name: Text,
+    name: str,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
     example_weighted: bool = False,
-    convert_to: Optional[Text] = None) -> metric_types.MetricComputations:
+    convert_to: Optional[str] = None) -> metric_types.MetricComputations:
   """Returns metric computations for computing the exact match score."""
   key = metric_types.MetricKey(
       name=name,
@@ -78,7 +77,7 @@ def _exact_match(
   ]
 
 
-class _ExactMatchAccumulator(object):
+class _ExactMatchAccumulator:
   """Exact match accumulator."""
   __slots__ = ['total_weighted_exact_match_scores', 'total_weighted_examples']
 
@@ -99,7 +98,7 @@ class _ExactMatchCombiner(beam.CombineFn):
                eval_config: Optional[config_pb2.EvalConfig],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]],
-               exampled_weighted: bool, convert_to: Optional[Text]):
+               exampled_weighted: bool, convert_to: Optional[str]):
     self._key = key
     self._eval_config = eval_config
     self._aggregation_type = aggregation_type

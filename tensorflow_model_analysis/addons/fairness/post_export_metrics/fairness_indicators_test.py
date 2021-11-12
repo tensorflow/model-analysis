@@ -15,12 +15,8 @@
 
 Note that we actually train and export models within these tests.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
-# Standard Imports
 
 import apache_beam as beam
 from apache_beam.testing import util

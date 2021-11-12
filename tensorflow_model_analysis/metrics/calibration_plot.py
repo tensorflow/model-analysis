@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Calibration plot."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, List, Optional, Text, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
@@ -42,7 +36,7 @@ class CalibrationPlot(metric_types.Metric):
                num_buckets: int = DEFAULT_NUM_BUCKETS,
                left: Optional[float] = None,
                right: Optional[float] = None,
-               name: Text = CALIBRATION_PLOT_NAME):
+               name: str = CALIBRATION_PLOT_NAME):
     """Initializes calibration plot.
 
     Args:
@@ -54,7 +48,7 @@ class CalibrationPlot(metric_types.Metric):
         provided.
       name: Plot name.
     """
-    super(CalibrationPlot, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(_calibration_plot),
         num_buckets=num_buckets,
         left=left,
@@ -67,7 +61,7 @@ metric_types.register_metric(CalibrationPlot)
 
 def _find_label_domain(
     eval_config: config_pb2.EvalConfig, schema: schema_pb2.Schema,
-    model_name: Text, output_name: Text
+    model_name: str, output_name: str
 ) -> Tuple[Optional[Union[int, float]], Optional[Union[int, float]]]:
   """Find the min and max value for the label_key for this model / output."""
   model_spec = model_util.get_model_spec(eval_config, model_name)
@@ -104,11 +98,11 @@ def _calibration_plot(
     num_buckets: int = DEFAULT_NUM_BUCKETS,
     left: Optional[float] = None,
     right: Optional[float] = None,
-    name: Text = CALIBRATION_PLOT_NAME,
+    name: str = CALIBRATION_PLOT_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
     schema: Optional[schema_pb2.Schema] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,

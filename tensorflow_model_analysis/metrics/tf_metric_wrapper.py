@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,11 @@
 # limitations under the License.
 """TF metric wrapper."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import collections
 import importlib
 import itertools
 
-from typing import Any, Dict, Iterable, List, Optional, Text, Type, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Type, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
@@ -47,9 +41,9 @@ _TFMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]
 
 
 def tf_metric_computations(
-    metrics: Union[List[_TFMetricOrLoss], Dict[Text, List[_TFMetricOrLoss]]],
+    metrics: Union[List[_TFMetricOrLoss], Dict[str, List[_TFMetricOrLoss]]],
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
+    model_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -151,10 +145,10 @@ def tf_metric_computations(
 
 
 def _filter_duplicate_metrics(
-    metrics: Dict[Text, List[tf.keras.metrics.Metric]],
-    model_name: Text,
+    metrics: Dict[str, List[tf.keras.metrics.Metric]],
+    model_name: str,
     sub_key: Optional[metric_types.SubKey] = None,
-) -> Dict[Text, List[tf.keras.metrics.Metric]]:
+) -> Dict[str, List[tf.keras.metrics.Metric]]:
   """Filters duplicate metrics from the metrics."""
   for output_name, metrics_list in metrics.items():
     unique_metrics = {}
@@ -172,8 +166,8 @@ def _filter_duplicate_metrics(
 
 
 def _sparse_metrics(
-    metrics: Dict[Text, List[tf.keras.metrics.Metric]]
-) -> Dict[Text, List[tf.keras.metrics.Metric]]:
+    metrics: Dict[str, List[tf.keras.metrics.Metric]]
+) -> Dict[str, List[tf.keras.metrics.Metric]]:
   """Returns input metrics filtered to contain only the sparse metrics."""
   results = {}
   for k, v in metrics.items():
@@ -186,9 +180,9 @@ def _sparse_metrics(
 
 
 def _separate_confusion_matrix_metrics(
-    metrics: Dict[Optional[Text], List[_TFMetricOrLoss]]
-) -> Tuple[Dict[Optional[Text], List[tf.keras.metrics.Metric]], Dict[
-    Optional[Text], List[_TFMetricOrLoss]]]:
+    metrics: Dict[Optional[str], List[_TFMetricOrLoss]]
+) -> Tuple[Dict[Optional[str], List[tf.keras.metrics.Metric]], Dict[
+    Optional[str], List[_TFMetricOrLoss]]]:
   """Separates the confusion matrix metrics from the other metrics."""
   confusion_matrix_metrics = {}
   non_confusion_matrix_metrics = {}
@@ -217,7 +211,7 @@ def _separate_confusion_matrix_metrics(
   return confusion_matrix_metrics, non_confusion_matrix_metrics  # pytype: disable=bad-return-type  # typed-keras
 
 
-def _verify_and_update_sub_key(model_name: Text, output_name: Text,
+def _verify_and_update_sub_key(model_name: str, output_name: str,
                                sub_key: metric_types.SubKey,
                                metric: _TFMetricOrLoss):
   """Verifies the multi-class metric key matches settings used by the metric."""
@@ -242,11 +236,11 @@ def _verify_and_update_sub_key(model_name: Text, output_name: Text,
 _KeysBySubKey = Dict[Optional[metric_types.SubKey],
                      List[metric_types.MetricKey]]
 _ConfigsBySubKey = Dict[Optional[metric_types.SubKey],
-                        Dict[Text, List[Dict[Text, Any]]]]
+                        Dict[str, List[Dict[str, Any]]]]
 
 
 def _metric_keys_and_configs(
-    metrics: Dict[Text, List[_TFMetricOrLoss]], model_name: Text,
+    metrics: Dict[str, List[_TFMetricOrLoss]], model_name: str,
     sub_key: Optional[metric_types.SubKey],
     aggregation_type: Optional[metric_types.AggregationType],
     example_weighted: bool
@@ -281,18 +275,17 @@ def _metric_keys_and_configs(
 
 
 def _deserialize_metrics(
-    metric_configs: List[Dict[Text, Any]]) -> List[tf.keras.metrics.Metric]:
+    metric_configs: List[Dict[str, Any]]) -> List[tf.keras.metrics.Metric]:
   return [tf.keras.metrics.deserialize(c) for c in metric_configs]
 
 
 def _deserialize_losses(
-    loss_configs: List[Dict[Text, Any]]) -> List[tf.keras.losses.Loss]:
+    loss_configs: List[Dict[str, Any]]) -> List[tf.keras.losses.Loss]:
   return [tf.keras.losses.deserialize(c) for c in loss_configs]
 
 
 def _custom_objects(
-    metrics: Dict[Text,
-                  List[tf.keras.metrics.Metric]]) -> List[Tuple[Text, Text]]:
+    metrics: Dict[str, List[tf.keras.metrics.Metric]]) -> List[Tuple[str, str]]:
   """Returns list of (module, class_name) tuples for custom objects."""
   custom_objects = []
   for metric_list in metrics.values():
@@ -305,7 +298,7 @@ def _custom_objects(
 
 
 def _load_custom_objects(
-    custom_objects: List[Tuple[Text, Text]]) -> Dict[Text, Type[Any]]:
+    custom_objects: List[Tuple[str, str]]) -> Dict[str, Type[Any]]:
   """Loads custom metric options."""
   loaded_custom_objects = {}
   for module_name, class_name in custom_objects:
@@ -314,8 +307,7 @@ def _load_custom_objects(
   return loaded_custom_objects
 
 
-def _get_config_value(key: Text, metric_config: Dict[Text,
-                                                     Any]) -> Optional[Any]:
+def _get_config_value(key: str, metric_config: Dict[str, Any]) -> Optional[Any]:
   """Returns value for key within config or None."""
   if _CONFIG_KEY in metric_config and key in metric_config[_CONFIG_KEY]:
     return metric_config[_CONFIG_KEY][key]
@@ -324,7 +316,7 @@ def _get_config_value(key: Text, metric_config: Dict[Text,
 
 def _wrap_confusion_matrix_metric(
     metric: tf.keras.metrics.Metric, eval_config: config_pb2.EvalConfig,
-    model_name: Text, output_name: Text, sub_key: Optional[metric_types.SubKey],
+    model_name: str, output_name: str, sub_key: Optional[metric_types.SubKey],
     aggregation_type: Optional[metric_types.AggregationType],
     class_weights: Optional[Dict[int, float]],
     example_weighted: bool) -> metric_types.MetricComputations:
@@ -430,11 +422,11 @@ class _LossMetric(tf.keras.metrics.Mean):
   def __init__(self, loss, name=None, dtype=None):
     if name is None:
       name = loss.name
-    super(_LossMetric, self).__init__(name=name, dtype=dtype)
+    super().__init__(name=name, dtype=dtype)
     self.loss = loss
 
   def update_state(self, y_true, y_pred, sample_weight):
-    return super(_LossMetric, self).update_state(
+    return super().update_state(
         self.loss(y_true, y_pred), sample_weight=sample_weight)
 
 
@@ -444,11 +436,11 @@ class _CompilableMetricsCombiner(beam.CombineFn):
   # TODO(b/173811366): Consider removing the desired_batch_size knob and
   # only use input size.
   def __init__(self,
-               metric_configs: Dict[Text, List[Dict[Text, Any]]],
-               loss_configs: Dict[Text, List[Dict[Text, Any]]],
-               custom_objects: List[Tuple[Text, Text]],
+               metric_configs: Dict[str, List[Dict[str, Any]]],
+               loss_configs: Dict[str, List[Dict[str, Any]]],
+               custom_objects: List[Tuple[str, str]],
                eval_config: Optional[config_pb2.EvalConfig],
-               model_name: Optional[Text],
+               model_name: Optional[str],
                sub_key: Optional[metric_types.SubKey],
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Dict[int, float],
@@ -473,7 +465,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
       if _get_config_value(_TOP_K_KEY, cfg) is None:
         self._sub_key_in_config = False
         break
-    self._metrics = None  # type: Dict[Text, List[tf.keras.metrics.Metric]]
+    self._metrics = None  # type: Dict[str, List[tf.keras.metrics.Metric]]
     self._desired_batch_size = desired_batch_size
     self._batch_size_beam_metric = (
         beam.metrics.Metrics.distribution(

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Multi-label confusion matrix at thresholds."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Dict, Iterable, List, Optional, NamedTuple, Text
+from typing import Dict, Iterable, List, Optional, NamedTuple
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
@@ -79,7 +73,7 @@ class MultiLabelConfusionMatrixPlot(metric_types.Metric):
   def __init__(self,
                thresholds: Optional[List[float]] = None,
                num_thresholds: Optional[int] = None,
-               name: Text = MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME):
+               name: str = MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME):
     """Initializes multi-label confusion matrix.
 
     Args:
@@ -93,7 +87,7 @@ class MultiLabelConfusionMatrixPlot(metric_types.Metric):
         should be used.
       name: Metric name.
     """
-    super(MultiLabelConfusionMatrixPlot, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(
             _multi_label_confusion_matrix_plot),
         thresholds=thresholds,
@@ -107,10 +101,10 @@ metric_types.register_metric(MultiLabelConfusionMatrixPlot)
 def _multi_label_confusion_matrix_plot(
     thresholds: Optional[List[float]] = None,
     num_thresholds: Optional[int] = None,
-    name: Text = MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME,
+    name: str = MULTI_LABEL_CONFUSION_MATRIX_PLOT_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     example_weighted: bool = False,
 ) -> metric_types.MetricComputations:
   """Returns computations for multi-label confusion matrix at thresholds."""
@@ -146,7 +140,7 @@ _MatrixEntryKey = NamedTuple('_MatrixEntryKey', [('actual_class_id', int),
                                                  ('predicted_class_id', int)])
 
 
-class _ConfusionMatrix(object):
+class _ConfusionMatrix:
   """Confusion matrix."""
   __slots__ = [
       'false_negatives', 'true_negatives', 'false_positives', 'true_positives'

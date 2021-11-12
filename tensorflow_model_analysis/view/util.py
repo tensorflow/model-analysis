@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """View API for Tensorflow Model Analysis."""
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
 
 import json
 import os
 
-from typing import Any, Dict, List, Optional, Text, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from absl import logging
 
 from tensorflow_model_analysis.metrics import example_count
@@ -37,10 +32,10 @@ from google.protobuf import json_format
 
 
 def get_slicing_metrics(
-    results: List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]],
-    slicing_column: Optional[Text] = None,
+    results: List[Tuple[slicer.SliceKeyType, Dict[str, Any]]],
+    slicing_column: Optional[str] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
-) -> List[Dict[Text, Union[Dict[Text, Any], Text]]]:
+) -> List[Dict[str, Union[Dict[str, Any], str]]]:
   """Util function that extracts slicing metrics from the results.
 
   If neither slicing_column nor slicing_spec is provided, get Overall. If
@@ -86,8 +81,8 @@ def get_slicing_metrics(
 
 def find_all_slices(
     results: List[Tuple[slicer.SliceKeyType,
-                        Dict[Text, Any]]], slicing_spec: slicer.SingleSliceSpec
-) -> List[Dict[Text, Union[Dict[Text, Any], Text]]]:
+                        Dict[str, Any]]], slicing_spec: slicer.SingleSliceSpec
+) -> List[Dict[str, Union[Dict[str, Any], str]]]:
   """Util function that extracts slicing metrics for the named column.
 
   Args:
@@ -112,7 +107,7 @@ def find_all_slices(
 def get_time_series(
     results: view_types.EvalResults, slicing_spec: slicer.SingleSliceSpec,
     display_full_path: bool
-) -> List[Dict[Text, Union[Dict[Union[float, Text], Any], Text]]]:
+) -> List[Dict[str, Union[Dict[Union[float, str], Any], str]]]:
   """Util function that extracts time series data for the specified slice.
 
   Args:
@@ -153,7 +148,7 @@ def get_time_series(
   return data  # pytype: disable=bad-return-type
 
 
-def _get_identifier(path: Text, use_full_path: bool) -> Text:
+def _get_identifier(path: str, use_full_path: bool) -> str:
   """"Returns the desired identifier based on the path to the file.
 
   Args:
@@ -190,8 +185,8 @@ _SUPPORTED_PLOT_KEYS = {
 
 
 def _replace_nan_with_none(
-    plot_data: Union[Dict[Text, Any], Text],
-    plot_keys: Dict[Text, Dict[Text, Text]]) -> Union[Dict[Text, Any], Text]:
+    plot_data: Union[Dict[str, Any], str],
+    plot_keys: Dict[str, Dict[str, str]]) -> Union[Dict[str, Any], str]:
   """Replaces all instances of nan with None in plot data.
 
   This is necessary for Colab integration where we serializes the data into json
@@ -228,15 +223,15 @@ def _replace_nan_with_none(
 
 
 def get_plot_data_and_config(
-    results: List[Tuple[slicer.SliceKeyType, Dict[Text, Any]]],
+    results: List[Tuple[slicer.SliceKeyType, Dict[str, Any]]],
     slicing_spec: slicer.SingleSliceSpec,
-    output_name: Optional[Text] = None,
+    output_name: Optional[str] = None,
     class_id: Optional[int] = None,
     top_k: Optional[int] = None,
     k: Optional[int] = None,
-    label: Optional[Text] = None,
-) -> Tuple[Union[Dict[Text, Any], Text], Dict[Text, Union[Dict[Text, Dict[
-    Text, Text]], Text]]]:
+    label: Optional[str] = None,
+) -> Tuple[Union[Dict[str, Any], str], Dict[str, Union[Dict[str, Dict[
+    str, str]], str]]]:
   """Util function that extracts plot for a particular slice from the results.
 
   Args:
@@ -362,7 +357,7 @@ def get_plot_data_and_config(
 # TODO(paulyang): Add support for multi-model / multi-output selection.
 def get_slicing_config(
     eval_config: config_pb2.EvalConfig,
-    weighted_example_column_to_use: Optional[Text] = None) -> Dict[Text, Text]:
+    weighted_example_column_to_use: Optional[str] = None) -> Dict[str, str]:
   """Util function that generates config for visualization.
 
   Args:
@@ -407,7 +402,7 @@ def get_slicing_config(
 # MessageMap is not a protobuf message, none of the exising utility methods work
 # on it. We must iterate over its values and call the utility function
 # individually.
-def _convert_proto_map_to_dict(proto_map: Any) -> Dict[Text, Dict[Text, Any]]:
+def _convert_proto_map_to_dict(proto_map: Any) -> Dict[str, Dict[str, Any]]:
   """Converts a metric map (metrics in MetricsForSlice protobuf) into a dict.
 
   Args:
@@ -511,7 +506,7 @@ def _get_metric_value_with_ci(
 
 def convert_metrics_proto_to_dict(
     metrics_for_slice: metrics_for_slice_pb2.MetricsForSlice,
-    model_name: Optional[Text] = None
+    model_name: Optional[str] = None
 ) -> Optional[Tuple[slicer.SliceKeyOrCrossSliceKeyType,
                     Optional[view_types.MetricsByOutputName]]]:
   """Converts metrics proto to dict."""
@@ -586,7 +581,7 @@ def convert_metrics_proto_to_dict(
 
 def convert_plots_proto_to_dict(
     plots_for_slice: metrics_for_slice_pb2.PlotsForSlice,
-    model_name: Optional[Text] = None
+    model_name: Optional[str] = None
 ) -> Optional[Tuple[slicer.SliceKeyType,
                     Optional[view_types.PlotsByOutputName]]]:
   """Converts plots proto to dict."""
@@ -638,7 +633,7 @@ def convert_plots_proto_to_dict(
 
 def convert_attributions_proto_to_dict(
     attributions_for_slice: metrics_for_slice_pb2.AttributionsForSlice,
-    model_name: Optional[Text] = None
+    model_name: Optional[str] = None
 ) -> Tuple[slicer.SliceKeyType, Optional[view_types.AttributionsByOutputName]]:
   """Converts attributions proto to dict."""
   model_metrics_map = {}

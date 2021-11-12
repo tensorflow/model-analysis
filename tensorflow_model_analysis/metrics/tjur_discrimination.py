@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,12 +17,7 @@ TJUR discrimination metrics are used for logistic regression problems and are
 designed for class imbalance problems.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Iterable, Optional, Text
+from typing import Any, Dict, Iterable, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
@@ -48,13 +42,13 @@ class CoefficientOfDiscrimination(metric_types.Metric):
   https://www.tandfonline.com/doi/abs/10.1198/tast.2009.08210
   """
 
-  def __init__(self, name: Text = COEFFICIENT_OF_DISCRIMINATION_NAME):
+  def __init__(self, name: str = COEFFICIENT_OF_DISCRIMINATION_NAME):
     """Initializes coefficient of discrimination metric.
 
     Args:
       name: Metric name.
     """
-    super(CoefficientOfDiscrimination, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(_coefficient_of_discrimination),
         name=name)
 
@@ -63,10 +57,10 @@ metric_types.register_metric(CoefficientOfDiscrimination)
 
 
 def _coefficient_of_discrimination(
-    name: Text = COEFFICIENT_OF_DISCRIMINATION_NAME,
+    name: str = COEFFICIENT_OF_DISCRIMINATION_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -124,13 +118,13 @@ class RelativeCoefficientOfDiscrimination(metric_types.Metric):
   a negative example.
   """
 
-  def __init__(self, name: Text = RELATIVE_COEFFICIENT_OF_DISCRIMINATION_NAME):
+  def __init__(self, name: str = RELATIVE_COEFFICIENT_OF_DISCRIMINATION_NAME):
     """Initializes relative coefficient of discrimination metric.
 
     Args:
       name: Metric name.
     """
-    super(RelativeCoefficientOfDiscrimination, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(
             _relative_coefficient_of_discrimination),
         name=name)
@@ -140,10 +134,10 @@ metric_types.register_metric(RelativeCoefficientOfDiscrimination)
 
 
 def _relative_coefficient_of_discrimination(
-    name: Text = RELATIVE_COEFFICIENT_OF_DISCRIMINATION_NAME,
+    name: str = RELATIVE_COEFFICIENT_OF_DISCRIMINATION_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[float, int]] = None,
     example_weighted: bool = False) -> metric_types.MetricComputations:
@@ -191,10 +185,10 @@ def _relative_coefficient_of_discrimination(
 
 
 def _tjur_discrimination(
-    name: Text = _TJUR_DISCRIMINATION_NAME,
+    name: str = _TJUR_DISCRIMINATION_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
     example_weighted: bool = False) -> metric_types.MetricComputations:
@@ -214,7 +208,7 @@ def _tjur_discrimination(
   ]
 
 
-class _TJURDiscriminationAccumulator(object):
+class _TJURDiscriminationAccumulator:
   """TJUR discrimination accumulator."""
   __slots__ = [
       'total_negative_weighted_predictions', 'total_negative_weighted_labels',

@@ -13,14 +13,10 @@
 # limitations under the License.
 """Types for query based metrics."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
+from typing import Dict, List, NamedTuple
 
 from tensorflow_model_analysis import types
-from typing import Dict, List, NamedTuple, Text
 
 # Should contain features, predictions, labels
-FPL = Dict[Text, types.DictOfTensorValue]
-QueryFPL = NamedTuple('QueryFPL', [('fpls', List[FPL]), ('query_id', Text)])
+FPL = Dict[str, types.DictOfTensorValue]
+QueryFPL = NamedTuple('QueryFPL', [('fpls', List[FPL]), ('query_id', str)])

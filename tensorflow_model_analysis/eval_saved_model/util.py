@@ -13,28 +13,23 @@
 # limitations under the License.
 """Utility functions for EvalSavedModel."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
+from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
-import six
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.utils import util
-from typing import Any, List, Callable, Optional, Text, Tuple
 
 from tensorflow.core.example import example_pb2
 
 
-def default_dict_key(prefix: Text) -> Text:
+def default_dict_key(prefix: str) -> str:
   """Returns the default key to use with a dict associated with given prefix."""
   return util.KEY_SEPARATOR + prefix
 
 
 def extract_tensor_maybe_dict(
-    prefix: Text,
+    prefix: str,
     dict_of_tensors: types.DictOfTensorType) -> types.TensorTypeMaybeDict:
   """Returns tensor if single entry under default key else returns dict."""
   default_key = default_dict_key(prefix)
@@ -114,9 +109,9 @@ def make_example(**kwargs) -> example_pb2.Example:
       result.features.feature[key].float_list.value[:] = [value]
     elif isinstance(value, int):
       result.features.feature[key].int64_list.value[:] = [value]
-    elif isinstance(value, six.binary_type):
+    elif isinstance(value, bytes):
       result.features.feature[key].bytes_list.value[:] = [value]
-    elif isinstance(value, six.text_type):
+    elif isinstance(value, str):
       result.features.feature[key].bytes_list.value[:] = [value.encode('utf8')]
     elif isinstance(value, list):
       if len(value) == 0:  # pylint: disable=g-explicit-length-test
@@ -126,9 +121,9 @@ def make_example(**kwargs) -> example_pb2.Example:
         result.features.feature[key].float_list.value[:] = value
       elif isinstance(value[0], int):
         result.features.feature[key].int64_list.value[:] = value
-      elif isinstance(value[0], six.binary_type):
+      elif isinstance(value[0], bytes):
         result.features.feature[key].bytes_list.value[:] = value
-      elif isinstance(value[0], six.text_type):
+      elif isinstance(value[0], str):
         result.features.feature[key].bytes_list.value[:] = [
             v.encode('utf8') for v in value
         ]
@@ -485,11 +480,11 @@ def add_build_data_collection():
 
 def export_legacy_eval_savedmodel(
     estimator,
-    export_dir_base: Text,
+    export_dir_base: str,
     eval_input_receiver_fn: Callable[[], Any],
     serving_input_receiver_fn: Optional[Callable[
         [], tf.estimator.export.ServingInputReceiver]] = None,
-    checkpoint_path: Optional[Text] = None) -> Optional[bytes]:
+    checkpoint_path: Optional[str] = None) -> Optional[bytes]:
   """Exports a legacy EvalSavedModel for the given estimator.
 
   Args:

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,9 @@
 # limitations under the License.
 """View types for Tensorflow Model Analysis."""
 
-# Standard __future__ imports
-
 import copy
 
-from typing import Any, Dict, List, Sequence, Text, NamedTuple, Optional, Union
+from typing import Any, Dict, List, Sequence, NamedTuple, Optional, Union
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import config_pb2
@@ -26,8 +23,8 @@ from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 Plots = Any
-PlotsBySubKey = Dict[Text, Plots]
-PlotsByOutputName = Dict[Text, PlotsBySubKey]
+PlotsBySubKey = Dict[str, Plots]
+PlotsByOutputName = Dict[str, PlotsBySubKey]
 
 
 class SlicedPlots(
@@ -46,9 +43,9 @@ class SlicedPlots(
   """
 
 
-MetricsByTextKey = Dict[Text, Dict[Text, Any]]
-MetricsBySubKey = Dict[Text, MetricsByTextKey]
-MetricsByOutputName = Dict[Text, MetricsBySubKey]
+MetricsByTextKey = Dict[str, Dict[str, Any]]
+MetricsBySubKey = Dict[str, MetricsByTextKey]
+MetricsByOutputName = Dict[str, MetricsBySubKey]
 
 
 class SlicedMetrics(
@@ -96,10 +93,10 @@ class SlicedMetrics(
   """
 
 
-AttributionsByFeatureKey = Dict[Text, metrics_for_slice_pb2.MetricValue]
-AttributionsByMetricName = Dict[Text, AttributionsByFeatureKey]
-AttributionsBySubKey = Dict[Text, AttributionsByMetricName]
-AttributionsByOutputName = Dict[Text, AttributionsBySubKey]
+AttributionsByFeatureKey = Dict[str, metrics_for_slice_pb2.MetricValue]
+AttributionsByMetricName = Dict[str, AttributionsByFeatureKey]
+AttributionsBySubKey = Dict[str, AttributionsByMetricName]
+AttributionsByOutputName = Dict[str, AttributionsBySubKey]
 
 
 class SlicedAttributions(
@@ -156,8 +153,8 @@ class EvalResult(
                               ('plots', List[SlicedPlots]),
                               ('attributions', List[SlicedAttributions]),
                               ('config', config_pb2.EvalConfig),
-                              ('data_location', Text), ('file_format', Text),
-                              ('model_location', Text)])):
+                              ('data_location', str), ('file_format', str),
+                              ('model_location', str)])):
   """The result of a single model analysis run.
 
   Attributes:
@@ -175,7 +172,7 @@ class EvalResult(
   def get_metrics_for_slice(
       self,
       slice_name: slicer.SliceKeyType = (),
-      output_name: Text = '',
+      output_name: str = '',
       class_id: Optional[int] = None,
       k: Optional[int] = None,
       top_k: Optional[int] = None) -> Union[MetricsByTextKey, None]:
@@ -217,10 +214,10 @@ class EvalResult(
 
   def get_metrics_for_all_slices(
       self,
-      output_name: Text = '',
+      output_name: str = '',
       class_id: Optional[int] = None,
       k: Optional[int] = None,
-      top_k: Optional[int] = None) -> Dict[Text, MetricsByTextKey]:
+      top_k: Optional[int] = None) -> Dict[str, MetricsByTextKey]:
     """Get metric names and values for every slice.
 
     Args:
@@ -250,7 +247,7 @@ class EvalResult(
       }
     return sliced_metrics  # pytype: disable=bad-return-type
 
-  def get_metric_names(self) -> Sequence[Text]:
+  def get_metric_names(self) -> Sequence[str]:
     """Get names of metrics.
 
     Returns:
@@ -267,8 +264,8 @@ class EvalResult(
   def get_attributions_for_slice(
       self,
       slice_name: slicer.SliceKeyType = (),
-      metric_name: Text = '',
-      output_name: Text = '',
+      metric_name: str = '',
+      output_name: str = '',
       class_id: Optional[int] = None,
       k: Optional[int] = None,
       top_k: Optional[int] = None) -> Union[AttributionsByFeatureKey, None]:
@@ -321,11 +318,11 @@ class EvalResult(
 
   def get_attributions_for_all_slices(
       self,
-      metric_name: Text = '',
-      output_name: Text = '',
+      metric_name: str = '',
+      output_name: str = '',
       class_id: Optional[int] = None,
       k: Optional[int] = None,
-      top_k: Optional[int] = None) -> Dict[Text, AttributionsByFeatureKey]:
+      top_k: Optional[int] = None) -> Dict[str, AttributionsByFeatureKey]:
     """Get attribution feature keys and values for every slice.
 
     Args:
@@ -361,7 +358,7 @@ class EvalResult(
       all_sliced_attributions[slice_name] = copy.copy(attributions)
     return all_sliced_attributions  # pytype: disable=bad-return-type
 
-  def get_slice_names(self) -> Sequence[Text]:
+  def get_slice_names(self) -> Sequence[str]:
     """Get names of slices.
 
     Returns:
@@ -371,19 +368,19 @@ class EvalResult(
     return [slicing_metric[0] for slicing_metric in self.slicing_metrics]  # pytype: disable=bad-return-type
 
 
-class EvalResults(object):
+class EvalResults:
   """The results from multiple TFMA runs, or a TFMA run on multiple models."""
 
   def __init__(self,
                results: List[EvalResult],
-               mode: Text = constants.UNKNOWN_EVAL_MODE):
+               mode: str = constants.UNKNOWN_EVAL_MODE):
     supported_modes = [
         constants.DATA_CENTRIC_MODE,
         constants.MODEL_CENTRIC_MODE,
     ]
     if mode not in supported_modes:
       raise ValueError('Mode ' + mode + ' must be one of ' +
-                       Text(supported_modes))
+                       str(supported_modes))
 
     self._results = results
     self._mode = mode
@@ -391,5 +388,5 @@ class EvalResults(object):
   def get_results(self) -> List[EvalResult]:
     return self._results
 
-  def get_mode(self) -> Text:
+  def get_mode(self) -> str:
     return self._mode

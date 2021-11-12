@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """Predict extractor for TFLite models."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import collections
 import copy
-from typing import Dict, Sequence, Text, Union
+from typing import Dict, Sequence, Union
 
 from absl import logging
 import apache_beam as beam
@@ -43,13 +37,12 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   """A DoFn that loads tflite models and predicts."""
 
   def __init__(self, eval_config: config_pb2.EvalConfig,
-               eval_shared_models: Dict[Text, types.EvalSharedModel]) -> None:
-    super(_TFLitePredictionDoFn, self).__init__(
-        {k: v.model_loader for k, v in eval_shared_models.items()})
+               eval_shared_models: Dict[str, types.EvalSharedModel]) -> None:
+    super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
 
   def setup(self):
-    super(_TFLitePredictionDoFn, self).setup()
+    super().setup()
     self._interpreters = {}
     for model_name, model_contents in self._loaded_models.items():
       self._interpreters[model_name] = tf.lite.Interpreter(
@@ -152,7 +145,7 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Dict[Text,
+    eval_shared_models: Dict[str,
                              types.EvalSharedModel]) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
@@ -174,7 +167,7 @@ def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
 
 def TFLitePredictExtractor(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Union[types.EvalSharedModel, Dict[Text,
+    eval_shared_model: Union[types.EvalSharedModel, Dict[str,
                                                          types.EvalSharedModel]]
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions on tflite models.

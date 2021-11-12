@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +21,7 @@ import apache_beam as beam
 from tensorflow_model_analysis import constants
 
 
-class SizeEstimator(object):
+class SizeEstimator:
   """Size estimator."""
 
   def __init__(self, size_threshold: int, size_fn: Callable[[Any], int]):

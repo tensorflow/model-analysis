@@ -14,16 +14,11 @@
 # ==============================================================================
 """`Exporter` class represents different flavors of model export."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import collections
 import contextlib
 import os
 import types
-from typing import Callable, Dict, List, Optional, Text, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import tensorflow as tf
 
@@ -44,13 +39,13 @@ class _EvalSavedModelExporter(tf.estimator.Exporter):
   """
 
   @tfma_util.kwargs_only
-  def __init__(
-      self,
-      name: Text,
-      eval_input_receiver_fn: Callable[[], export.EvalInputReceiverType],
-      serving_input_receiver_fn: Optional[
-          Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
-      assets_extra: Optional[Dict[Text, Text]] = None):
+  def __init__(self,
+               name: str,
+               eval_input_receiver_fn: Callable[[],
+                                                export.EvalInputReceiverType],
+               serving_input_receiver_fn: Optional[Callable[
+                   [], tf.estimator.export.ServingInputReceiver]] = None,
+               assets_extra: Optional[Dict[str, str]] = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
@@ -75,11 +70,11 @@ class _EvalSavedModelExporter(tf.estimator.Exporter):
     self._assets_extra = assets_extra
 
   @property
-  def name(self) -> Text:
+  def name(self) -> str:
     return self._name
 
-  def export(self, estimator: tf.estimator.Estimator, export_path: Text,
-             checkpoint_path: Optional[Text], eval_result: Optional[bytes],
+  def export(self, estimator: tf.estimator.Estimator, export_path: str,
+             checkpoint_path: Optional[str], eval_result: Optional[bytes],
              is_the_final_export: bool) -> bytes:
     del is_the_final_export
 
@@ -102,13 +97,13 @@ class FinalExporter(tf.estimator.Exporter):
   """
 
   @tfma_util.kwargs_only
-  def __init__(
-      self,
-      name: Text,
-      eval_input_receiver_fn: Callable[[], export.EvalInputReceiverType],
-      serving_input_receiver_fn: Optional[
-          Callable[[], tf.estimator.export.ServingInputReceiver]] = None,
-      assets_extra: Optional[Dict[Text, Text]] = None):
+  def __init__(self,
+               name: str,
+               eval_input_receiver_fn: Callable[[],
+                                                export.EvalInputReceiverType],
+               serving_input_receiver_fn: Optional[Callable[
+                   [], tf.estimator.export.ServingInputReceiver]] = None,
+               assets_extra: Optional[Dict[str, str]] = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
@@ -134,11 +129,11 @@ class FinalExporter(tf.estimator.Exporter):
         assets_extra=assets_extra)
 
   @property
-  def name(self) -> Text:
+  def name(self) -> str:
     return self._eval_saved_model_exporter.name
 
-  def export(self, estimator: tf.estimator.Estimator, export_path: Text,
-             checkpoint_path: Optional[Text], eval_result: Optional[bytes],
+  def export(self, estimator: tf.estimator.Estimator, export_path: str,
+             checkpoint_path: Optional[str], eval_result: Optional[bytes],
              is_the_final_export: bool) -> Optional[bytes]:
     if not is_the_final_export:
       return None
@@ -158,13 +153,13 @@ class LatestExporter(tf.estimator.Exporter):
 
   @tfma_util.kwargs_only
   def __init__(self,
-               name: Text,
+               name: str,
                eval_input_receiver_fn: Callable[[],
                                                 export.EvalInputReceiverType],
                serving_input_receiver_fn: Optional[Callable[
                    [], tf.estimator.export.ServingInputReceiver]] = None,
                exports_to_keep: int = 5,
-               assets_extra: Optional[Dict[Text, Text]] = None):
+               assets_extra: Optional[Dict[str, str]] = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
     Args:
@@ -200,11 +195,11 @@ class LatestExporter(tf.estimator.Exporter):
           '`exports_to_keep`, if provided, must be positive number')
 
   @property
-  def name(self) -> Text:
+  def name(self) -> str:
     return self._eval_saved_model_exporter.name
 
-  def export(self, estimator: tf.estimator.Estimator, export_path: Text,
-             checkpoint_path: Optional[Text], eval_result: Optional[bytes],
+  def export(self, estimator: tf.estimator.Estimator, export_path: str,
+             checkpoint_path: Optional[str], eval_result: Optional[bytes],
              is_the_final_export: bool) -> bytes:
     export_result = self._eval_saved_model_exporter.export(
         estimator, export_path, checkpoint_path, eval_result,
@@ -213,7 +208,7 @@ class LatestExporter(tf.estimator.Exporter):
     self._garbage_collect_exports(export_path)
     return export_result
 
-  def _garbage_collect_exports(self, export_dir_base: Text):
+  def _garbage_collect_exports(self, export_dir_base: str):
     """Deletes older exports, retaining only a given number of the most recent.
 
     Export subdirectories are assumed to be named with monotonically increasing
@@ -247,8 +242,7 @@ class LatestExporter(tf.estimator.Exporter):
 
 @contextlib.contextmanager
 def _remove_metrics(estimator: tf.estimator.Estimator,
-                    metrics_to_remove: Union[List[Text], Callable[[Text],
-                                                                  bool]]):
+                    metrics_to_remove: Union[List[str], Callable[[str], bool]]):
   """Modifies the Estimator to make its model_fn return less metrics in EVAL.
 
   Note that this only removes the metrics from the
@@ -298,8 +292,8 @@ def _remove_metrics(estimator: tf.estimator.Estimator,
 
 
 def adapt_to_remove_metrics(
-    exporter: tf.estimator.Exporter, metrics_to_remove: Union[List[Text],
-                                                              Callable[[Text],
+    exporter: tf.estimator.Exporter, metrics_to_remove: Union[List[str],
+                                                              Callable[[str],
                                                                        bool]]
 ) -> tf.estimator.Exporter:
   """Modifies the given exporter to remove metrics before export.
@@ -322,7 +316,7 @@ def adapt_to_remove_metrics(
   old_export = exporter.export
 
   def wrapped_export(unused_self, estimator: tf.estimator.Estimator,
-                     export_path: Text, checkpoint_path: Optional[Text],
+                     export_path: str, checkpoint_path: Optional[str],
                      eval_result: Optional[bytes],
                      is_the_final_export: bool) -> bytes:
     with _remove_metrics(estimator, metrics_to_remove):

@@ -15,9 +15,6 @@
 
 Note that we actually train and export models within these tests.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import numpy as np
@@ -62,7 +59,7 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = multi_head.simple_multi_head(None,
                                                       temp_eval_export_dir)
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'additional_fetches should not contain "features"'):
       load.EvalSavedModel(eval_export_dir, additional_fetches=['features'])
 
@@ -70,7 +67,7 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = multi_head.simple_multi_head(None,
                                                       temp_eval_export_dir)
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'additional_fetches should not contain "labels"'):
       load.EvalSavedModel(eval_export_dir, additional_fetches=['labels'])
 
@@ -360,8 +357,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
             None, temp_eval_export_dir))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    with self.assertRaisesRegexp(ValueError,
-                                 'input_refs should be batch-aligned'):
+    with self.assertRaisesRegex(ValueError,
+                                'input_refs should be batch-aligned'):
       eval_saved_model.predict_list(['1'])
 
   def testPredictListOutOfRangeInputRefs(self):
@@ -372,8 +369,8 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
             None, temp_eval_export_dir))
 
     eval_saved_model = load.EvalSavedModel(eval_export_dir)
-    with self.assertRaisesRegexp(ValueError,
-                                 'An index in input_refs is out of range'):
+    with self.assertRaisesRegex(ValueError,
+                                'An index in input_refs is out of range'):
       eval_saved_model.predict_list(['1'])
 
   def testVariablePredictionLengths(self):

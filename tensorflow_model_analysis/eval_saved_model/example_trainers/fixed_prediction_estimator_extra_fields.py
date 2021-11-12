@@ -18,12 +18,6 @@ This model always predicts the value of the "prediction" feature.
 The eval_input_receiver_fn also parses the "fixed_float", "fixed_string",
 "fixed_int", and "var_float", "var_string", "var_int" features.
 """
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-# Standard Imports
 
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import export

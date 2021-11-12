@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Multi-class confusion matrix metrics at thresholds."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Callable, Dict, Iterable, List, Optional, Text, NamedTuple
+from typing import Callable, Dict, Iterable, List, Optional, NamedTuple
 
 import apache_beam as beam
 import numpy as np
@@ -46,7 +40,7 @@ class MultiClassConfusionMatrixAtThresholds(metric_types.Metric):
 
   def __init__(self,
                thresholds: Optional[List[float]] = None,
-               name: Text = MULTI_CLASS_CONFUSION_MATRIX_AT_THRESHOLDS_NAME):
+               name: str = MULTI_CLASS_CONFUSION_MATRIX_AT_THRESHOLDS_NAME):
     """Initializes multi-class confusion matrix.
 
     Args:
@@ -56,7 +50,7 @@ class MultiClassConfusionMatrixAtThresholds(metric_types.Metric):
         predicted_class_id will be set to NO_PREDICTED_CLASS_ID).
       name: Metric name.
     """
-    super(MultiClassConfusionMatrixAtThresholds, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(
             _multi_class_confusion_matrix_at_thresholds),
         thresholds=thresholds,
@@ -68,10 +62,10 @@ metric_types.register_metric(MultiClassConfusionMatrixAtThresholds)
 
 def _multi_class_confusion_matrix_at_thresholds(
     thresholds: Optional[List[float]] = None,
-    name: Text = MULTI_CLASS_CONFUSION_MATRIX_AT_THRESHOLDS_NAME,
+    name: str = MULTI_CLASS_CONFUSION_MATRIX_AT_THRESHOLDS_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns computations for multi-class confusion matrix at thresholds."""
   if not thresholds:
@@ -118,10 +112,10 @@ NO_PREDICTED_CLASS_ID = -1
 def multi_class_confusion_matrices(
     thresholds: Optional[List[float]] = None,
     num_thresholds: Optional[int] = None,
-    name: Text = MULTI_CLASS_CONFUSION_MATRICES,
+    name: str = MULTI_CLASS_CONFUSION_MATRICES,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     example_weighted: bool = False) -> metric_types.MetricComputations:
   """Returns computations for multi-class confusion matrices.
 

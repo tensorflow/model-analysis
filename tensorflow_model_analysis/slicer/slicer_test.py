@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Slicer test."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from absl.testing import parameterized
 import apache_beam as beam
@@ -79,7 +74,7 @@ def wrap_fpl(fpl):
 class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
   def setUp(self):
-    super(SlicerTest, self).setUp()
+    super().setUp()
     self.longMessage = True  # pylint: disable=invalid-name
 
   def _makeFeaturesDict(self, features_dict):

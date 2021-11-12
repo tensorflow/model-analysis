@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """View API for Tensorflow Model Analysis."""
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
 
-from typing import Callable, Dict, Optional, Text, Union
+from typing import Callable, Dict, Optional, Union
 
 from tensorflow_model_analysis import constants
 import tensorflow_model_analysis.notebook.visualization as visualization
@@ -30,11 +25,11 @@ from tensorflow_model_analysis.view import view_types
 
 def render_slicing_metrics(
     result: view_types.EvalResult,
-    slicing_column: Optional[Text] = None,
+    slicing_column: Optional[str] = None,
     slicing_spec: Optional[Union[slicer.SingleSliceSpec,
                                  config_pb2.SlicingSpec]] = None,
-    weighted_example_column: Optional[Text] = None,
-    event_handlers: Optional[Callable[[Dict[Text, Union[Text, float]]],
+    weighted_example_column: Optional[str] = None,
+    event_handlers: Optional[Callable[[Dict[str, Union[str, float]]],
                                       None]] = None,
 ) -> Optional[visualization.SlicingMetricsViewer]:  # pytype: disable=invalid-annotation
   """Renders the slicing metrics view as widget.
@@ -93,11 +88,11 @@ def render_plot(
     result: view_types.EvalResult,
     slicing_spec: Optional[Union[slicer.SingleSliceSpec,
                                  config_pb2.SlicingSpec]] = None,
-    output_name: Optional[Text] = None,
+    output_name: Optional[str] = None,
     class_id: Optional[int] = None,
     top_k: Optional[int] = None,
     k: Optional[int] = None,
-    label: Optional[Text] = None,
+    label: Optional[str] = None,
 ) -> Optional[visualization.PlotViewer]:  # pytype: disable=invalid-annotation
   """Renders the plot view as widget.
 
@@ -125,12 +120,12 @@ def render_plot(
 
 def render_slicing_attributions(
     result: view_types.EvalResult,
-    slicing_column: Optional[Text] = None,
+    slicing_column: Optional[str] = None,
     slicing_spec: Optional[Union[slicer.SingleSliceSpec,
                                  config_pb2.SlicingSpec]] = None,
-    metric_name: Optional[Text] = None,
-    weighted_example_column: Optional[Text] = None,
-    event_handlers: Optional[Callable[[Dict[Text, Union[Text, float]]],
+    metric_name: Optional[str] = None,
+    weighted_example_column: Optional[str] = None,
+    event_handlers: Optional[Callable[[Dict[str, Union[str, float]]],
                                       None]] = None,
 ) -> Optional[visualization.SlicingMetricsViewer]:  # pytype: disable=invalid-annotation
   """Renders the slicing metrics view as widget.

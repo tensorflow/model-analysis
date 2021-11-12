@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Binary confusion matrices."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
@@ -40,10 +34,10 @@ BINARY_CONFUSION_EXAMPLES_NAME = '_binary_confusion_examples'
 
 class Examples(
     NamedTuple('Examples', [('thresholds', List[float]),
-                            ('tp_examples', List[List[Text]]),
-                            ('tn_examples', List[List[Text]]),
-                            ('fp_examples', List[List[Text]]),
-                            ('fn_examples', List[List[Text]])])):
+                            ('tp_examples', List[List[str]]),
+                            ('tn_examples', List[List[str]]),
+                            ('fp_examples', List[List[str]]),
+                            ('fn_examples', List[List[str]])])):
   """A set of examples for each binary confusion case at each threshold."""
 
 
@@ -159,10 +153,10 @@ def _interpolated_thresholds(num_thresholds: int) -> List[float]:
 def binary_confusion_matrices(
     num_thresholds: Optional[int] = None,
     thresholds: Optional[List[float]] = None,
-    name: Optional[Text] = None,
+    name: Optional[str] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -171,8 +165,8 @@ def binary_confusion_matrices(
     extract_label_prediction_and_weight: Optional[Callable[
         ..., Any]] = metric_util.to_label_prediction_example_weight,
     preprocessor: Optional[Callable[..., Any]] = None,
-    examples_name: Optional[Text] = None,
-    example_id_key: Optional[Text] = None,
+    examples_name: Optional[str] = None,
+    example_id_key: Optional[str] = None,
     example_ids_count: Optional[int] = None,
     fractional_labels: float = True) -> metric_types.MetricComputations:
   """Returns metric computations for computing binary confusion matrices.
@@ -441,25 +435,25 @@ Matrix = NamedTuple('Matrix', [('tp', float), ('tn', float), ('fp', float),
                                ('fn', float)])
 
 _ThresholdEntry = NamedTuple('_ThresholdEntry', [('matrix', Matrix),
-                                                 ('tp_examples', List[Text]),
-                                                 ('tn_examples', List[Text]),
-                                                 ('fp_examples', List[Text]),
-                                                 ('fn_examples', List[Text])])
+                                                 ('tp_examples', List[str]),
+                                                 ('tn_examples', List[str]),
+                                                 ('fp_examples', List[str]),
+                                                 ('fn_examples', List[str])])
 
 MatrixAccumulator = Dict[float, _ThresholdEntry]
 
 
 def _binary_confusion_matrix_computation(
     thresholds: List[float],
-    name: Optional[Text] = None,
+    name: Optional[str] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     extract_label_prediction_and_weight: Optional[Callable[
         ..., Any]] = metric_util.to_label_prediction_example_weight,
     preprocessor: Optional[Callable[..., Any]] = None,
-    example_id_key: Optional[Text] = None,
+    example_id_key: Optional[str] = None,
     example_ids_count: Optional[int] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -506,7 +500,7 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
                eval_config: Optional[config_pb2.EvalConfig],
                thresholds: List[float],
                extract_label_prediction_and_weight: Callable[..., Any],
-               example_id_key: Optional[Text], example_ids_count: float,
+               example_id_key: Optional[str], example_ids_count: float,
                aggregation_type: Optional[metric_types.AggregationType],
                class_weights: Optional[Dict[int, float]],
                example_weighted: bool, fractional_labels: float):
@@ -521,8 +515,8 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
     self._example_weighted = example_weighted
     self._fractional_labels = fractional_labels
 
-  def _merge_example_ids(self, list_1: List[Text],
-                         list_2: List[Text]) -> List[Text]:
+  def _merge_example_ids(self, list_1: List[str],
+                         list_2: List[str]) -> List[str]:
     result = list_1[:self._example_ids_count]
     result.extend(list_2[:self._example_ids_count - len(result)])
     return result

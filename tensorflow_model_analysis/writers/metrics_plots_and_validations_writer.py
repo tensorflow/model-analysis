@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,21 +13,15 @@
 # limitations under the License.
 """Metrics, plots, and validations writer."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import itertools
 import os
 
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 from absl import logging
 import apache_beam as beam
 import numpy as np
 import pyarrow as pa
-import six
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
@@ -68,10 +61,10 @@ _SLICED_PARQUET_SCHEMA = pa.schema([
 _UNSLICED_PARQUET_SCHEMA = pa.schema(
     [pa.field(_SERIALIZED_VALUE_PARQUET_COLUMN_NAME, pa.binary())])
 
-_SliceKeyDictPythonType = Dict[Text, List[Dict[Text, Union[bytes, float, int]]]]
+_SliceKeyDictPythonType = Dict[str, List[Dict[str, Union[bytes, float, int]]]]
 
 
-def _match_all_files(file_path: Text) -> Text:
+def _match_all_files(file_path: str) -> str:
   """Return expression to match all files at given path."""
   return file_path + '*'
 
@@ -89,8 +82,8 @@ def _parquet_column_iterator(paths: Iterable[str],
 
 
 def _raw_value_iterator(
-    paths: Iterable[Text],
-    output_file_format: Text) -> Iterator[Union[pa.Buffer, bytes]]:
+    paths: Iterable[str],
+    output_file_format: str) -> Iterator[Union[pa.Buffer, bytes]]:
   """Returns an iterator of raw per-record values from supported file formats.
 
   When reading parquet format files, values from the column with name
@@ -118,8 +111,8 @@ def _raw_value_iterator(
 
 
 def load_and_deserialize_metrics(
-    output_path: Text,
-    output_file_format: Text = '',
+    output_path: str,
+    output_file_format: str = '',
     slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
 ) -> Iterator[metrics_for_slice_pb2.MetricsForSlice]:
   """Read and deserialize the MetricsForSlice records.
@@ -150,8 +143,8 @@ def load_and_deserialize_metrics(
 
 
 def load_and_deserialize_plots(
-    output_path: Text,
-    output_file_format: Text = '',
+    output_path: str,
+    output_file_format: str = '',
     slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
 ) -> Iterator[metrics_for_slice_pb2.PlotsForSlice]:
   """Read and deserialize the PlotsForSlice records.
@@ -182,8 +175,8 @@ def load_and_deserialize_plots(
 
 
 def load_and_deserialize_attributions(
-    output_path: Text,
-    output_file_format: Text = '',
+    output_path: str,
+    output_file_format: str = '',
     slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
 ) -> Iterator[metrics_for_slice_pb2.AttributionsForSlice]:
   """Read and deserialize the AttributionsForSlice records.
@@ -214,8 +207,8 @@ def load_and_deserialize_attributions(
 
 
 def load_and_deserialize_validation_result(
-    output_path: Text,
-    output_file_format: Text = '') -> validation_result_pb2.ValidationResult:
+    output_path: str,
+    output_file_format: str = '') -> validation_result_pb2.ValidationResult:
   """Read and deserialize the ValidationResult record.
 
   Args:
@@ -261,7 +254,7 @@ def _convert_to_array_value(
     # For all other types, cast to string and convert to bytes.
     result.data_type = metrics_for_slice_pb2.ArrayValue.BYTES
     result.bytes_values[:] = [
-        tf.compat.as_bytes(x) for x in array.astype(six.text_type).flatten()
+        tf.compat.as_bytes(x) for x in array.astype(str).flatten()
     ]
   return result
 
@@ -273,10 +266,10 @@ def convert_metric_value_to_proto(
     return value.to_proto()
 
   result = metrics_for_slice_pb2.MetricValue()
-  if isinstance(value, six.binary_type):
+  if isinstance(value, bytes):
     # Convert textual types to string metrics.
     result.bytes_value = value
-  elif isinstance(value, six.text_type):
+  elif isinstance(value, str):
     # Convert textual types to string metrics.
     result.bytes_value = value.encode('utf8')
   elif isinstance(value, np.ndarray):
@@ -476,7 +469,7 @@ def convert_slice_plots_to_proto(
 
 def convert_slice_attributions_to_proto(
     attributions: Tuple[slicer.SliceKeyOrCrossSliceKeyType,
-                        Dict[Any, Dict[Text, Any]]]
+                        Dict[Any, Dict[str, Any]]]
 ) -> metrics_for_slice_pb2.AttributionsForSlice:
   """Converts the given slice attributions into serialized AtributionsForSlice.
 
@@ -504,10 +497,10 @@ def convert_slice_attributions_to_proto(
     key_and_value.key.CopyFrom(key.to_proto())
     for feature, value in slice_attributions[key].items():
       attribution_value = metrics_for_slice_pb2.MetricValue()
-      if isinstance(value, six.binary_type):
+      if isinstance(value, bytes):
         # Convert textual types to string metrics.
         attribution_value.bytes_value = value
-      elif isinstance(value, six.text_type):
+      elif isinstance(value, str):
         # Convert textual types to string metrics.
         attribution_value.bytes_value = value.encode('utf8')
       elif isinstance(value, np.ndarray) and value.size != 1:
@@ -526,14 +519,14 @@ def convert_slice_attributions_to_proto(
 
 
 def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
-    output_paths: Dict[Text, Text],
+    output_paths: Dict[str, str],
     eval_config: config_pb2.EvalConfig,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
-    metrics_key: Text = constants.METRICS_KEY,
-    plots_key: Text = constants.PLOTS_KEY,
-    attributions_key: Text = constants.ATTRIBUTIONS_KEY,
-    validations_key: Text = constants.VALIDATIONS_KEY,
-    output_file_format: Text = '',
+    metrics_key: str = constants.METRICS_KEY,
+    plots_key: str = constants.PLOTS_KEY,
+    attributions_key: str = constants.ATTRIBUTIONS_KEY,
+    validations_key: str = constants.VALIDATIONS_KEY,
+    output_file_format: str = '',
     rubber_stamp: Optional[bool] = False) -> writer.Writer:
   """Returns metrics and plots writer.
 
@@ -661,14 +654,14 @@ class CombineValidations(beam.CombineFn):
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation,
-    output_paths: Dict[Text, Text],
+    output_paths: Dict[str, str],
     eval_config: config_pb2.EvalConfig,
     add_metrics_callbacks: List[types.AddMetricsCallbackType],
-    metrics_key: Text,
-    plots_key: Text,
-    attributions_key: Text,
-    validations_key: Text,
-    output_file_format: Text,
+    metrics_key: str,
+    plots_key: str,
+    attributions_key: str,
+    validations_key: str,
+    output_file_format: str,
     rubber_stamp: bool = False) -> beam.pvalue.PDone:
   """PTransform to write metrics and plots."""
 
@@ -691,7 +684,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
       value: Union[metrics_for_slice_pb2.MetricsForSlice,
                    metrics_for_slice_pb2.PlotsForSlice,
                    metrics_for_slice_pb2.AttributionsForSlice]
-  ) -> Dict[Text, Union[_SliceKeyDictPythonType, bytes]]:
+  ) -> Dict[str, Union[_SliceKeyDictPythonType, bytes]]:
     return {
         _SLICE_KEY_PARQUET_COLUMN_NAME:
             convert_slice_key_to_parquet_dict(value.slice_key),

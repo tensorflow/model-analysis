@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Utils for evaluations using the EvalMetricsGraph."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Iterable, List, Optional, Text
+from typing import Any, Dict, Iterable, List, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -31,7 +25,7 @@ from tensorflow_model_analysis.utils import size_estimator
 
 
 def metric_computations_using_eval_saved_model(
-    model_name: Text,
+    model_name: str,
     model_loader: types.ModelLoader,
     batch_size: Optional[int] = None) -> metric_types.MetricComputations:
   """Returns computations for computing metrics natively using EvalMetricsGraph.
@@ -71,7 +65,7 @@ def _add_metric_variables(  # pylint: disable=invalid-name
 
 
 def _metrics_by_output_name(
-    metrics: Dict[Text, Any]) -> Dict[Text, Dict[Text, Any]]:
+    metrics: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
   """Returns metrics grouped by output name."""
   # If an output (head) name is used in an estimator, the metric names are of
   # the form "<metric_name>/<head>". This code checks for the existence of a '/'
@@ -96,7 +90,7 @@ def _metrics_by_output_name(
 
 # TODO(b/171992041): Clean up by removing this and share logic with
 # legacy_aggregate.py
-class _AggState(object):
+class _AggState:
   """Combine state for AggregateCombineFn.
 
   There are two parts to the state: the metric variables (the actual state),
@@ -182,13 +176,14 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
   """
 
   def __init__(self,
-               model_name: Text,
+               model_name: str,
                model_loader: types.ModelLoader,
                desired_batch_size: Optional[int] = None):
-    super(_EvalSavedModelCombiner, self).__init__({model_name: model_loader})
+    super().__init__({model_name: model_loader})
     self._model_name = model_name
     self._desired_batch_size = desired_batch_size
-    self._eval_metrics_graph = None  # type: eval_metrics_graph.EvalMetricsGraph
+    self._eval_metrics_graph: Optional[
+        eval_metrics_graph.EvalMetricsGraph] = None
     self._batch_size_beam_metric = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE, 'eval_saved_model_combine_batch_size')
     self._total_input_byte_size_beam_metric = beam.metrics.Metrics.distribution(

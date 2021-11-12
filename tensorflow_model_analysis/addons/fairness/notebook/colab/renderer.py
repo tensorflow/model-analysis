@@ -13,7 +13,6 @@
 # limitations under the License.
 """Fairness Indicators API for OSS Colab renderer."""
 
-# Standard __future__ imports
 from tensorflow_model_analysis.addons.fairness.notebook.colab import util
 from tensorflow_model_analysis.notebook.colab.renderer import get_trusted_html_for_vulcanized_js
 

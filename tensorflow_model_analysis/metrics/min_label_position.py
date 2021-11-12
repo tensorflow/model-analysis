@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Min label position metric."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Dict, Iterable, List, Optional, Text
+from typing import Dict, Iterable, List, Optional
 
 import apache_beam as beam
 import numpy as np
@@ -46,28 +40,26 @@ class MinLabelPosition(metric_types.Metric):
 
   def __init__(self,
                name=MIN_LABEL_POSITION_NAME,
-               label_key: Optional[Text] = None):
+               label_key: Optional[str] = None):
     """Initializes min label position metric.
 
     Args:
       name: Metric name.
       label_key: Optional label key to override default label.
     """
-    super(MinLabelPosition, self).__init__(
-        _min_label_position, name=name, label_key=label_key)
+    super().__init__(_min_label_position, name=name, label_key=label_key)
 
 
 metric_types.register_metric(MinLabelPosition)
 
 
-def _min_label_position(
-    name: Text = MIN_LABEL_POSITION_NAME,
-    label_key: Optional[Text] = None,
-    eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_names: Optional[List[Text]] = None,
-    output_names: Optional[List[Text]] = None,
-    example_weighted: bool = False,
-    query_key: Text = '') -> metric_types.MetricComputations:
+def _min_label_position(name: str = MIN_LABEL_POSITION_NAME,
+                        label_key: Optional[str] = None,
+                        eval_config: Optional[config_pb2.EvalConfig] = None,
+                        model_names: Optional[List[str]] = None,
+                        output_names: Optional[List[str]] = None,
+                        example_weighted: bool = False,
+                        query_key: str = '') -> metric_types.MetricComputations:
   """Returns metric computations for min label position."""
   if not query_key:
     raise ValueError('a query_key is required to use MinLabelPosition metric')
@@ -97,7 +89,7 @@ def _min_label_position(
   return computations
 
 
-class _MinLabelPositionAccumulator(object):
+class _MinLabelPositionAccumulator:
   """Min label position accumulator."""
   __slots__ = ['total_min_position', 'total_weighted_examples']
 
@@ -111,7 +103,7 @@ class _MinLabelPositionCombiner(beam.CombineFn):
 
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config_pb2.EvalConfig],
-               example_weighted: bool, label_key: Optional[Text]):
+               example_weighted: bool, label_key: Optional[str]):
     self._key = key
     self._eval_config = eval_config
     self._example_weighted = example_weighted

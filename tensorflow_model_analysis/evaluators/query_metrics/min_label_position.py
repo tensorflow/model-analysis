@@ -19,12 +19,8 @@ which have at least one labeled entry. Note, ranking is indexed from one, so the
 optimal value for this metric is one. If there are no labeled rows in the
 evaluation set, the final output will be zero.
 """
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
 
-from typing import Any, Dict, Iterable, NamedTuple, Text
+from typing import Any, Dict, Iterable, NamedTuple
 
 import apache_beam as beam
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
@@ -35,7 +31,7 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 _State = NamedTuple('_State', [('min_pos_sum', float), ('weight_sum', float)])
 
 
-def _get_feature_value(fpl: query_types.FPL, key: Text) -> float:
+def _get_feature_value(fpl: query_types.FPL, key: str) -> float:
   """Get value of the given feature from the features dictionary.
 
   The feature must have exactly one value.
@@ -60,7 +56,7 @@ def _get_feature_value(fpl: query_types.FPL, key: Text) -> float:
 class MinLabelPositionCombineFn(beam.CombineFn):
   """Computes minimum label position."""
 
-  def __init__(self, label_key: Text, weight_key: Text):
+  def __init__(self, label_key: str, weight_key: str):
     """Initialize.
 
     Args:
@@ -128,7 +124,7 @@ class MinLabelPositionCombineFn(beam.CombineFn):
       result = self._add_states(result, accumulator)
     return result
 
-  def extract_output(self, accumulator: _State) -> Dict[Text, Any]:
+  def extract_output(self, accumulator: _State) -> Dict[str, Any]:
     if accumulator.weight_sum > 0:
       return {
           metric_keys.base_key('average_min_label_position/%s' %

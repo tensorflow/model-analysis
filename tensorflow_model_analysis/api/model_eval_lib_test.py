@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test for using the model_eval_lib API."""
-
-from __future__ import division
-from __future__ import print_function
 
 import json
 import os
@@ -77,7 +73,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                    parameterized.TestCase):
 
   def setUp(self):
-    super(EvaluateTest, self).setUp()
+    super().setUp()
     self.longMessage = True  # pylint: disable=invalid-name
 
   def _getTempDir(self):

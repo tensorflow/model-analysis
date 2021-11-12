@@ -13,15 +13,14 @@
 # limitations under the License.
 """Utility for Colab TFMA renderer API."""
 
-# Standard __future__ imports
 import base64
 import json
-from typing import Any, Callable, Dict, List, Optional, Text, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 from google.colab import output
 from IPython import display
 
 # For expressing the set of JS events to listen and respond to in Python
-PythonEventHandlersMap = Callable[[Dict[Text, Union[Text, float]]], None]
+PythonEventHandlersMap = Callable[[Dict[str, Union[str, float]]], None]
 
 # Safelist the web component names that can be rendered.
 _TRUSTED_TFMA_COMPONENT_NAMES = frozenset(
@@ -81,7 +80,7 @@ def make_trusted_event_handler_js(event_handlers):
     return '/** No event handlers needed. */'
 
 
-def to_base64_encoded_json(obj) -> Text:
+def to_base64_encoded_json(obj) -> str:
   """Encode a Python object as a base64-endoded JSON string.
 
   When embedding JSON inline inside HTML, serialize it to a JSON string in
@@ -99,11 +98,11 @@ def to_base64_encoded_json(obj) -> Text:
 
 
 def render_tfma_component(
-    component_name: Text,
-    data: Union[List[Dict[Text, Union[Dict[Text, Any], Text]]],
-                Dict[Text, List[Union[Text, float, List[float]]]]],
-    config: Dict[Text, Union[Dict[Text, Dict[Text, Text]], Text, bool]],
-    trusted_html_for_vulcanized_tfma_js: Text,
+    component_name: str,
+    data: Union[List[Dict[str, Union[Dict[str, Any], str]]],
+                Dict[str, List[Union[str, float, List[float]]]]],
+    config: Dict[str, Union[Dict[str, Dict[str, str]], str, bool]],
+    trusted_html_for_vulcanized_tfma_js: str,
     event_handlers: Optional[PythonEventHandlersMap] = None,
 ) -> None:
   """Renders the specified TFMA component in Colab.

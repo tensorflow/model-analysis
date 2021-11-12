@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +16,8 @@
 The widget is based on the template generated from jupyter-widget's
 widget-cookiecutter.
 """
+from distutils import log
+from distutils import spawn
 import os
 import platform
 import subprocess
@@ -29,12 +30,11 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 from setuptools.command.egg_info import egg_info
 from setuptools.command.sdist import sdist
+
 # pylint: disable=g-bad-import-order
 # It is recommended to import setuptools prior to importing distutils to avoid
 # using legacy behavior from distutils.
 # https://setuptools.readthedocs.io/en/latest/history.html#v48-0-0
-from distutils import log
-from distutils import spawn
 # pylint: enable=g-bad-import-order
 
 # Find the Protocol Compiler.

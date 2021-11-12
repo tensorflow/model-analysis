@@ -15,21 +15,15 @@
 
 # TODO(b/72233799): Have TF.Learn review this.
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
+from typing import Any, Callable, Dict, Optional, Union
 
-# Standard Imports
 import tensorflow as tf
-
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import version
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.utils import util as tfma_util
-from typing import Any, Callable, Dict, Optional, Text, Union
 
 from tensorflow.python.estimator.export import export as export_lib
 
@@ -44,7 +38,7 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
     labels: Optional[types.TensorTypeMaybeDict],
     receiver_tensors: types.TensorTypeMaybeDict,
     input_refs: Optional[types.TensorType] = None,
-    iterator_initializer: Optional[Text] = None) -> EvalInputReceiverType:
+    iterator_initializer: Optional[str] = None) -> EvalInputReceiverType:
   """Returns an appropriate receiver for eval_input_receiver_fn.
 
   This is a wrapper around TensorFlow's InputReceiver that adds additional
@@ -153,7 +147,7 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
 def _LegacyEvalInputReceiver(  # pylint: disable=invalid-name
     features: types.TensorTypeMaybeDict,
     labels: Optional[types.TensorTypeMaybeDict],
-    receiver_tensors: Dict[Text, types.TensorType],
+    receiver_tensors: Dict[str, types.TensorType],
     input_refs: Optional[types.TensorType] = None) -> EvalInputReceiverType:
   """Returns a legacy eval_input_receiver_fn.
 
@@ -263,7 +257,7 @@ def _add_tfma_collections(features: types.TensorTypeMaybeDict,
                                  version.VERSION)
 
 
-def _encode_and_add_to_node_collection(collection_prefix: Text,
+def _encode_and_add_to_node_collection(collection_prefix: str,
                                        key: types.FPLKeyType,
                                        node: types.TensorType) -> None:
   tf.compat.v1.add_to_collection(
@@ -276,7 +270,7 @@ def _encode_and_add_to_node_collection(collection_prefix: Text,
 
 def build_parsing_eval_input_receiver_fn(
     feature_spec,
-    label_key: Optional[Text]) -> Callable[[], EvalInputReceiverType]:
+    label_key: Optional[str]) -> Callable[[], EvalInputReceiverType]:
   """Build a eval_input_receiver_fn expecting fed tf.Examples.
 
   Creates a eval_input_receiver_fn that expects a serialized tf.Example fed
@@ -313,12 +307,12 @@ def build_parsing_eval_input_receiver_fn(
 @tfma_util.kwargs_only
 def export_eval_savedmodel(
     estimator,
-    export_dir_base: Text,
+    export_dir_base: str,
     eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
     serving_input_receiver_fn: Optional[Callable[
         [], tf.estimator.export.ServingInputReceiver]] = None,
-    assets_extra: Optional[Dict[Text, Text]] = None,
-    checkpoint_path: Optional[Text] = None) -> Text:
+    assets_extra: Optional[Dict[str, str]] = None,
+    checkpoint_path: Optional[str] = None) -> str:
   """Export a EvalSavedModel for the given estimator.
 
   Args:

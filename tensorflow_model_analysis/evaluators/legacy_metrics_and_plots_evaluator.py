@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Public API for performing metrics and plots evaluations."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Optional, Text, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -38,9 +32,9 @@ from tensorflow_model_analysis.writers import metrics_plots_and_validations_writ
 def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
-    metrics_key: Text = constants.METRICS_KEY,
-    plots_key: Text = constants.PLOTS_KEY,
-    run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
+    metrics_key: str = constants.METRICS_KEY,
+    plots_key: str = constants.PLOTS_KEY,
+    run_after: str = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
     serialize=False,
@@ -173,8 +167,8 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
-    metrics_key: Text = constants.METRICS_KEY,
-    plots_key: Text = constants.PLOTS_KEY,
+    metrics_key: str = constants.METRICS_KEY,
+    plots_key: str = constants.PLOTS_KEY,
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
     serialize: bool = False,
@@ -252,7 +246,7 @@ class _SeparateMetricsAndPlotsFn(beam.DoFn):
   OUTPUT_TAG_METRICS = 'tag_metrics'
   OUTPUT_TAG_PLOTS = 'tag_plots'
 
-  def process(self, element: Tuple[slicer.SliceKeyType, Dict[Text, Any]]):
+  def process(self, element: Tuple[slicer.SliceKeyType, Dict[str, Any]]):
     (slice_key, results) = element
     slicing_metrics = {}
     plots = {}

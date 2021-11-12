@@ -13,7 +13,6 @@
 # limitations under the License.
 """Jupyter renderer API."""
 
-# Standard __future__ imports
 from tensorflow_model_analysis.addons.fairness.notebook.jupyter import widget
 
 

@@ -13,16 +13,8 @@
 # limitations under the License.
 """Library for encoding and decoding keys, Tensors, etc in EvalSavedModel."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-# Standard Imports
-import six
 import tensorflow as tf
 from tensorflow_model_analysis import types
-from typing import Text
 
 from google.protobuf import any_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
@@ -47,7 +39,7 @@ _TUPLE_KEY_PREFIX = b'$Tuple$'
 _BYTES_KEY_PREFIX = b'$Bytes$'
 
 
-def with_suffix(name: Text, suffix: Text) -> Text:
+def with_suffix(name: str, suffix: str) -> str:
   return '%s/%s' % (name, suffix)  # pytype: disable=bad-return-type
 
 
@@ -77,15 +69,14 @@ def encode_key(key: types.FPLKeyType) -> bytes:
 
   if isinstance(key, tuple):
     if not all(
-        isinstance(elem, six.binary_type) or isinstance(elem, six.text_type)
-        for elem in key):
+        isinstance(elem, bytes) or isinstance(elem, str) for elem in key):
       raise TypeError('if key is tuple, all elements should be strings. '
                       'key was: %s' % key)
     utf8_keys = [tf.compat.as_bytes(elem) for elem in key]
     length_strs = [tf.compat.as_bytes('%d' % len(key)) for key in utf8_keys]
     return (_TUPLE_KEY_PREFIX + tf.compat.as_bytes('%d' % len(length_strs)) +
             b'$' + b'$'.join(length_strs) + b'$' + b'$'.join(utf8_keys))
-  elif isinstance(key, six.binary_type) or isinstance(key, six.text_type):
+  elif isinstance(key, bytes) or isinstance(key, str):
     return b'$Bytes$' + tf.compat.as_bytes(key)
   else:
     raise TypeError('key has unrecognised type: type: %s, value %s' %

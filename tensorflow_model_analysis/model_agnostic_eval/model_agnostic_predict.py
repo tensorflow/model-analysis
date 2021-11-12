@@ -59,32 +59,26 @@ Then the expected output is:
   FPL.labels = {'labels' : np.array[2.0]}
 """
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
+from typing import Any, Dict, List, NamedTuple  # pytype: disable=not-supported-yet
 
-# Standard Imports
 import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.utils import util as general_util
 
-from typing import Any, Dict, List, NamedTuple, Text  # pytype: disable=not-supported-yet
-
 
 class ModelAgnosticConfig(
     NamedTuple(  # pylint: disable=invalid-name
         'ModelAgnosticConfig', [
-            ('label_keys', List[Text]),
-            ('prediction_keys', List[Text]),
-            ('feature_spec', Dict[Text, Any]),
+            ('label_keys', List[str]),
+            ('prediction_keys', List[str]),
+            ('feature_spec', Dict[str, Any]),
         ])):
   """A config spec for running ModelAgnostic evaluation."""
 
-  def __new__(cls, label_keys: List[Text], prediction_keys: List[Text],
-              feature_spec: Dict[Text, Any]):
+  def __new__(cls, label_keys: List[str], prediction_keys: List[str],
+              feature_spec: Dict[str, Any]):
     """Creates a ModelAgnosticConfig instance.
 
     Creates a config spec for doing ModelAgnostic evaluation (Model evaluation
@@ -129,7 +123,7 @@ class ModelAgnosticConfig(
         feature_spec=feature_spec)
 
 
-class ModelAgnosticPredict(object):
+class ModelAgnosticPredict:
   """Abstraction for using a model agnostic evaluation.
 
   This class is an API interface to interact with the with Model Agnostic graph

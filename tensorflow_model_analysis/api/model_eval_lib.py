@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,14 +15,10 @@
 
 # TODO(b/149126671): Put ValidationResultsWriter in a separate file.
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
 
 import os
 import tempfile
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Text, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Union
 
 from absl import logging
 import apache_beam as beam
@@ -150,7 +145,7 @@ def _default_eval_config(eval_shared_models: List[types.EvalSharedModel],
 
 def _model_types(
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels]
-) -> Optional[Set[Text]]:
+) -> Optional[Set[str]]:
   """Returns model types associated with given EvalSharedModels."""
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model)
@@ -177,8 +172,8 @@ def _update_eval_config_with_defaults(
 MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice
 
 
-def load_metrics(output_path: Text,
-                 output_file_format: Text = '') -> Iterator[MetricsForSlice]:
+def load_metrics(output_path: str,
+                 output_file_format: str = '') -> Iterator[MetricsForSlice]:
   """Read and deserialize the MetricsForSlice records."""
   for m in metrics_plots_and_validations_writer.load_and_deserialize_metrics(
       output_path, output_file_format):
@@ -188,8 +183,8 @@ def load_metrics(output_path: Text,
 PlotsForSlice = metrics_for_slice_pb2.PlotsForSlice
 
 
-def load_plots(output_path: Text,
-               output_file_format: Text = '') -> Iterator[PlotsForSlice]:
+def load_plots(output_path: str,
+               output_file_format: str = '') -> Iterator[PlotsForSlice]:
   """Read and deserialize the PlotsForSlice records."""
   for p in metrics_plots_and_validations_writer.load_and_deserialize_plots(
       output_path, output_file_format):
@@ -200,8 +195,8 @@ AttributionsForSlice = metrics_for_slice_pb2.AttributionsForSlice
 
 
 def load_attributions(
-    output_path: Text,
-    output_file_format: Text = '') -> Iterator[AttributionsForSlice]:
+    output_path: str,
+    output_file_format: str = '') -> Iterator[AttributionsForSlice]:
   """Read and deserialize the AttributionsForSlice records."""
   for a in (
       metrics_plots_and_validations_writer.load_and_deserialize_attributions(
@@ -213,15 +208,15 @@ def load_attributions(
 ValidationResult = validation_result_pb2.ValidationResult
 
 
-def load_validation_result(output_path: Text,
-                           output_file_format: Text = '') -> ValidationResult:
+def load_validation_result(output_path: str,
+                           output_file_format: str = '') -> ValidationResult:
   """Read and deserialize the ValidationResult."""
   return metrics_plots_and_validations_writer.load_and_deserialize_validation_result(
       output_path, output_file_format)
 
 
 def make_eval_results(results: List[view_types.EvalResult],
-                      mode: Text) -> view_types.EvalResults:
+                      mode: str) -> view_types.EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:
@@ -237,10 +232,10 @@ def make_eval_results(results: List[view_types.EvalResult],
 
 
 def load_eval_results(
-    output_paths: Union[Text, List[Text]],
-    output_file_format: Optional[Text] = '',
-    mode: Text = constants.MODEL_CENTRIC_MODE,
-    model_name: Optional[Text] = None) -> view_types.EvalResults:
+    output_paths: Union[str, List[str]],
+    output_file_format: Optional[str] = '',
+    mode: str = constants.MODEL_CENTRIC_MODE,
+    model_name: Optional[str] = None) -> view_types.EvalResults:
   """Loads results for multiple models or multiple data sets.
 
   Args:
@@ -271,10 +266,9 @@ def load_eval_results(
   return make_eval_results(results, mode)
 
 
-def load_eval_result(
-    output_path: Text,
-    output_file_format: Optional[Text] = '',
-    model_name: Optional[Text] = None) -> view_types.EvalResult:
+def load_eval_result(output_path: str,
+                     output_file_format: Optional[str] = '',
+                     model_name: Optional[str] = None) -> view_types.EvalResult:
   """Loads EvalResult object for use with the visualization functions.
 
   Args:
@@ -327,14 +321,14 @@ def load_eval_result(
 
 
 def default_eval_shared_model(
-    eval_saved_model_path: Text,
+    eval_saved_model_path: str,
     add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
     include_default_metrics: Optional[bool] = True,
-    example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
-    additional_fetches: Optional[List[Text]] = None,
-    blacklist_feature_fetches: Optional[List[Text]] = None,
-    tags: Optional[List[Text]] = None,
-    model_name: Text = '',
+    example_weight_key: Optional[Union[str, Dict[str, str]]] = None,
+    additional_fetches: Optional[List[str]] = None,
+    blacklist_feature_fetches: Optional[List[str]] = None,
+    tags: Optional[List[str]] = None,
+    model_name: str = '',
     eval_config: Optional[config_pb2.EvalConfig] = None,
     custom_model_loader: Optional[types.ModelLoader] = None,
     rubber_stamp: Optional[bool] = False) -> types.EvalSharedModel:
@@ -698,12 +692,12 @@ def default_evaluators(  # pylint: disable=invalid-name
 
 
 def default_writers(
-    output_path: Optional[Text],
+    output_path: Optional[str],
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    display_only_data_location: Optional[Text] = None,
-    display_only_data_file_format: Optional[Text] = None,
-    output_file_format: Text = '',
+    display_only_data_location: Optional[str] = None,
+    display_only_data_file_format: Optional[str] = None,
+    output_file_format: str = '',
     add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None
 ) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
@@ -831,7 +825,7 @@ def ExtractAndEvaluate(  # pylint: disable=invalid-name
   # evaluation[k] = list of values for k
   evaluation = {}
 
-  def update(evaluation: Dict[Text, Any], new_evaluation: Dict[Text, Any]):
+  def update(evaluation: Dict[str, Any], new_evaluation: Dict[str, Any]):
     for k, v in new_evaluation.items():
       if k not in evaluation:
         evaluation[k] = []
@@ -874,11 +868,11 @@ def ExtractAndEvaluate(  # pylint: disable=invalid-name
 class _CombineEvaluationDictionariesFn(beam.CombineFn):
   """CombineFn to combine dictionaries generated by different evaluators."""
 
-  def create_accumulator(self) -> Dict[Text, Any]:
+  def create_accumulator(self) -> Dict[str, Any]:
     return {}
 
-  def _merge(self, accumulator: Dict[Text, Any],
-             output_dict: Dict[Text, Any]) -> None:
+  def _merge(self, accumulator: Dict[str, Any], output_dict: Dict[str,
+                                                                  Any]) -> None:
     intersection = set(accumulator) & set(output_dict)
     if intersection:
       raise ValueError(
@@ -887,8 +881,8 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
           'evaluators' % intersection)
     accumulator.update(output_dict)
 
-  def add_input(self, accumulator: Dict[Text, Any],
-                output_dict: Dict[Text, Any]) -> Dict[Text, Any]:
+  def add_input(self, accumulator: Dict[str, Any],
+                output_dict: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(output_dict, dict):
       raise TypeError(
           'for outputs written to by multiple evaluators, the outputs must all '
@@ -898,14 +892,14 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: Iterable[Dict[Text, Any]]) -> Dict[Text, Any]:
+      self, accumulators: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
     accumulators = iter(accumulators)
     result = next(accumulators)
     for acc in accumulators:
       self._merge(result, acc)
     return result
 
-  def extract_output(self, accumulator: Dict[Text, Any]) -> Dict[Text, Any]:
+  def extract_output(self, accumulator: Dict[str, Any]) -> Dict[str, Any]:
     return accumulator
 
 
@@ -992,9 +986,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     extractors: Optional[List[extractor.Extractor]] = None,
     evaluators: Optional[List[evaluator.Evaluator]] = None,
     writers: Optional[List[writer.Writer]] = None,
-    output_path: Optional[Text] = None,
-    display_only_data_location: Optional[Text] = None,
-    display_only_file_format: Optional[Text] = None,
+    output_path: Optional[str] = None,
+    display_only_data_location: Optional[str] = None,
+    display_only_file_format: Optional[str] = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     write_config: Optional[bool] = True,
     compute_confidence_intervals: Optional[bool] = False,
@@ -1149,9 +1143,9 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
 def run_model_analysis(
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    data_location: Text = '',
-    file_format: Text = 'tfrecords',
-    output_path: Optional[Text] = None,
+    data_location: str = '',
+    file_format: str = 'tfrecords',
+    output_path: Optional[str] = None,
     extractors: Optional[List[extractor.Extractor]] = None,
     evaluators: Optional[List[evaluator.Evaluator]] = None,
     writers: Optional[List[writer.Writer]] = None,
@@ -1292,9 +1286,9 @@ def run_model_analysis(
 
 
 def single_model_analysis(
-    model_location: Text,
-    data_location: Text,
-    output_path: Optional[Text] = None,
+    model_location: str,
+    data_location: str,
+    output_path: Optional[str] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None
 ) -> view_types.EvalResult:
@@ -1335,7 +1329,7 @@ def single_model_analysis(
       output_path=output_path)  # pytype: disable=bad-return-type
 
 
-def multiple_model_analysis(model_locations: List[Text], data_location: Text,
+def multiple_model_analysis(model_locations: List[str], data_location: str,
                             **kwargs) -> view_types.EvalResults:
   """Run model analysis for multiple models on the same data set.
 
@@ -1355,7 +1349,7 @@ def multiple_model_analysis(model_locations: List[Text], data_location: Text,
   return view_types.EvalResults(results, constants.MODEL_CENTRIC_MODE)
 
 
-def multiple_data_analysis(model_location: Text, data_locations: List[Text],
+def multiple_data_analysis(model_location: str, data_locations: List[str],
                            **kwargs) -> view_types.EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
@@ -1378,7 +1372,7 @@ def multiple_data_analysis(model_location: Text, data_locations: List[Text],
 def analyze_raw_data(
     data: pd.DataFrame,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    output_path: Optional[Text] = None,
+    output_path: Optional[str] = None,
     add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None
 ) -> view_types.EvalResult:
   """Runs TensorFlow model analysis on a pandas.DataFrame.

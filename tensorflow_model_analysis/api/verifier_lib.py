@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """API for Tensorflow Model Analysis model validation."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
@@ -30,8 +24,7 @@ from tensorflow_model_analysis.validators import validator
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Any)
 def Validate(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection, alternatives: Dict[Text,
-                                                          beam.PTransform],
+    extracts: beam.pvalue.PCollection, alternatives: Dict[str, beam.PTransform],
     validators: List[validator.Validator]) -> validator.Validation:
   """Performs validation of alternative evaluations.
 

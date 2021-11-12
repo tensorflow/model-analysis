@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,10 @@
 # limitations under the License.
 """Utils for metrics."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import inspect
 import math
 
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -53,7 +47,7 @@ def within_interval(value: float, left: float, right: float) -> bool:
   return value >= left - _EPSILON and value <= right + _EPSILON
 
 
-def serialize_metric(metric: tf.keras.metrics.Metric) -> Dict[Text, Any]:
+def serialize_metric(metric: tf.keras.metrics.Metric) -> Dict[str, Any]:
   """Serializes keras metric."""
   cfg = tf.keras.metrics.serialize(metric)
   # If a metric function (vs a class) is passed directly to compile, it
@@ -66,7 +60,7 @@ def serialize_metric(metric: tf.keras.metrics.Metric) -> Dict[Text, Any]:
   return cfg
 
 
-def serialize_loss(loss: tf.keras.losses.Loss) -> Dict[Text, Any]:
+def serialize_loss(loss: tf.keras.losses.Loss) -> Dict[str, Any]:
   """Serializes keras loss."""
   cfg = tf.keras.losses.serialize(loss)
   # If a metric function (vs a class) is passed directly to compile, it
@@ -79,13 +73,13 @@ def serialize_loss(loss: tf.keras.losses.Loss) -> Dict[Text, Any]:
   return cfg
 
 
-def _camel_case(txt: Text) -> Text:
+def _camel_case(txt: str) -> str:
   return ''.join(s.capitalize() for s in txt.split('_'))
 
 
-def to_scalar(
-    tensor: Optional[Union[types.TensorValue, tf.compat.v1.SparseTensorValue]],
-    tensor_name: Text = 'unknown') -> Optional[Union[float, int, Text]]:
+def to_scalar(tensor: Optional[Union[types.TensorValue,
+                                     tf.compat.v1.SparseTensorValue]],
+              tensor_name: str = 'unknown') -> Optional[Union[float, int, str]]:
   """Returns value as a scalar or raises ValueError."""
   if tensor is None:
     return None
@@ -245,8 +239,8 @@ def select_indices(
 def to_label_prediction_example_weight(
     inputs: metric_types.StandardMetricInputs,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -390,7 +384,7 @@ def to_label_prediction_example_weight(
             f'fractional_labels={fractional_labels}, flatten={flatten}, '
             f'squeeze={squeeze}, allow_none={allow_none})')
 
-  def optionally_get_by_keys(value: Any, keys: List[Text]) -> Any:
+  def optionally_get_by_keys(value: Any, keys: List[str]) -> Any:
     if isinstance(value, Mapping):
       new_value = util.get_by_keys(value, keys, optional=True)
       if new_value is not None:
@@ -616,8 +610,8 @@ def _squeeze(arr: np.ndarray):
 def prepare_labels_and_predictions(
     labels: Any,
     predictions: Any,
-    prediction_key: Optional[Text] = None,
-    label_vocabulary: Optional[Union[np.ndarray, List[Text]]] = None
+    prediction_key: Optional[str] = None,
+    label_vocabulary: Optional[Union[np.ndarray, List[str]]] = None
 ) -> Tuple[np.ndarray, np.ndarray]:
   """Prepares labels and predictions for use in calculations.
 
@@ -732,7 +726,7 @@ def _to_dense_tensor(values: np.ndarray, indices: np.ndarray,
   return result.reshape(dense_shape)
 
 
-def _string_labels_to_class_ids(label_vocabulary: Union[np.ndarray, List[Text]],
+def _string_labels_to_class_ids(label_vocabulary: Union[np.ndarray, List[str]],
                                 labels: np.ndarray) -> np.ndarray:
   """Returns class ID for given string label using given classes or -1."""
 
@@ -910,13 +904,13 @@ def merge_per_key_computations(
   def merge_computations_fn(
       eval_config: Optional[config_pb2.EvalConfig] = None,
       schema: Optional[schema_pb2.Schema] = None,
-      model_names: Optional[List[Text]] = None,
-      output_names: Optional[List[Text]] = None,
+      model_names: Optional[List[str]] = None,
+      output_names: Optional[List[str]] = None,
       sub_keys: Optional[List[Optional[metric_types.SubKey]]] = None,
       aggregation_type: Optional[metric_types.AggregationType] = None,
       class_weights: Optional[Dict[int, float]] = None,
       example_weighted: bool = False,
-      query_key: Optional[Text] = None,
+      query_key: Optional[str] = None,
       **kwargs) -> metric_types.MetricComputations:
     """Merge computations function."""
     if model_names is None:

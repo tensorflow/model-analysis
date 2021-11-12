@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Validator types."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Dict, NamedTuple, Text
+from typing import Dict, NamedTuple
 
 import apache_beam as beam
 
@@ -30,7 +24,7 @@ import apache_beam as beam
 Validator = NamedTuple(  # pylint: disable=invalid-name
     'Validator',
     [
-        ('stage_name', Text),
+        ('stage_name', str),
         # Dict[Text, Evaluation] -> Validation (e.g. 'baseline', 'candidate').
         ('ptransform', beam.PTransform)
     ])
@@ -38,4 +32,4 @@ Validator = NamedTuple(  # pylint: disable=invalid-name
 # A Validation represents the output from verifying alternative Evaluations.
 # The validation outputs are keyed by their associated output type. For example,
 # the serialized proto from evaluating metrics would be stored under "metrics".
-Validation = Dict[Text, beam.pvalue.PCollection]
+Validation = Dict[str, beam.pvalue.PCollection]

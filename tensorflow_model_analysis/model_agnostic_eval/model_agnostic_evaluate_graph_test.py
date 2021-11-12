@@ -13,11 +13,6 @@
 # limitations under the License.
 """Test Model Agnostic graph handler."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-# Standard Imports
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -230,7 +225,7 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
         english_slice = (('language', 'english'),)
         chinese_slice = (('language', 'chinese'),)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             list(slices.keys()), [overall_slice, english_slice, chinese_slice])
         # Overall slice has label/predictions sum = 24 and 12 elements.
         self.assertDictElementsAlmostEqual(slices[overall_slice], {

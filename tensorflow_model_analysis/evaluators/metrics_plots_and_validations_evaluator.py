@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,10 @@
 # limitations under the License.
 """Metrics and plots evaluation."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import copy
 import datetime
 import numbers
-from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Text, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Type, Union
 import apache_beam as beam
 import numpy as np
 
@@ -64,10 +58,10 @@ _COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT = 8
 def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
     eval_config: config_pb2.EvalConfig,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    metrics_key: Text = constants.METRICS_KEY,
-    plots_key: Text = constants.PLOTS_KEY,
-    attributions_key: Text = constants.ATTRIBUTIONS_KEY,
-    run_after: Text = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
+    metrics_key: str = constants.METRICS_KEY,
+    plots_key: str = constants.PLOTS_KEY,
+    attributions_key: str = constants.ATTRIBUTIONS_KEY,
+    run_after: str = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     schema: Optional[schema_pb2.Schema] = None,
     random_seed_for_testing: Optional[int] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
@@ -194,7 +188,7 @@ def _filter_and_separate_computations(
 @beam.typehints.with_output_types(types.Extracts)
 def _GroupByQueryKey(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    query_key: Text,
+    query_key: str,
 ) -> beam.pvalue.PCollection:
   """PTransform for grouping extracts by a query key.
 
@@ -211,7 +205,7 @@ def _GroupByQueryKey(  # pylint: disable=invalid-name
       constants.METRICS_NAMESPACE, 'missing_query_key')
 
   def key_by_query_key(extracts: types.Extracts,
-                       query_key: Text) -> Tuple[Text, types.Extracts]:
+                       query_key: str) -> Tuple[str, types.Extracts]:
     """Extract the query key from the extract and key by that."""
     value = metric_util.to_scalar(
         util.get_by_keys(
@@ -352,8 +346,7 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
     Args:
       computations: List of MetricComputations.
     """
-    super(_ComputationsCombineFn,
-          self).__init__(*[c.combiner for c in computations])
+    super().__init__(*[c.combiner for c in computations])
     self._num_compacts = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_compacts')
 
@@ -373,7 +366,7 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
 
   def compact(self, accumulator: Any) -> Any:
     self._num_compacts.inc(1)
-    return super(_ComputationsCombineFn, self).compact(accumulator)
+    return super().compact(accumulator)
 
   def extract_output(self, accumulator: Any) -> metric_types.MetricsDict:
     result = {}
@@ -502,7 +495,7 @@ def _AddDerivedCrossSliceAndDiffMetrics(  # pylint: disable=invalid-name
     derived_computations: List[metric_types.DerivedMetricComputation],
     cross_slice_computations: List[metric_types.CrossSliceMetricComputation],
     cross_slice_specs: Optional[Iterable[config_pb2.CrossSlicingSpec]] = None,
-    baseline_model_name: Optional[Text] = None
+    baseline_model_name: Optional[str] = None
 ) -> beam.PCollection[Tuple[slicer.SliceKeyType, metric_types.MetricsDict]]:
   """A PTransform for adding cross slice and derived metrics.
 
@@ -540,7 +533,7 @@ def _AddDerivedCrossSliceAndDiffMetrics(  # pylint: disable=invalid-name
       sliced_metrics: Tuple[Union[slicer.SliceKeyType,
                                   slicer.CrossSliceKeyType],
                             Dict[metric_types.MetricKey, Any]],
-      baseline_model_name: Optional[Text],
+      baseline_model_name: Optional[str],
   ) -> Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]:
     """Add diff metrics if there is a baseline model."""
 
@@ -662,10 +655,10 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_config: config_pb2.EvalConfig,
     metrics_specs: List[config_pb2.MetricsSpec],
-    eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
-    metrics_key: Text = constants.METRICS_KEY,
-    plots_key: Text = constants.PLOTS_KEY,
-    attributions_key: Text = constants.ATTRIBUTIONS_KEY,
+    eval_shared_models: Optional[Dict[str, types.EvalSharedModel]] = None,
+    metrics_key: str = constants.METRICS_KEY,
+    plots_key: str = constants.PLOTS_KEY,
+    attributions_key: str = constants.ATTRIBUTIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
     random_seed_for_testing: Optional[int] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
@@ -858,11 +851,11 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
 def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Optional[Dict[Text, types.EvalSharedModel]] = None,
-    metrics_key: Text = constants.METRICS_KEY,
-    plots_key: Text = constants.PLOTS_KEY,
-    attributions_key: Text = constants.ATTRIBUTIONS_KEY,
-    validations_key: Text = constants.VALIDATIONS_KEY,
+    eval_shared_models: Optional[Dict[str, types.EvalSharedModel]] = None,
+    metrics_key: str = constants.METRICS_KEY,
+    plots_key: str = constants.PLOTS_KEY,
+    attributions_key: str = constants.ATTRIBUTIONS_KEY,
+    validations_key: str = constants.VALIDATIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
     random_seed_for_testing: Optional[int] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
@@ -959,7 +952,7 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
 
 
 def _get_model_types_for_logging(
-    eval_shared_models: Dict[Text, types.EvalSharedModel]):
+    eval_shared_models: Dict[str, types.EvalSharedModel]):
   if eval_shared_models:
     return set(
         [model.model_type for (name, model) in eval_shared_models.items()])

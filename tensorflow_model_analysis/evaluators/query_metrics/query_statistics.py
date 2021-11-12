@@ -13,12 +13,7 @@
 # limitations under the License.
 """Simple statistics about queries, e.g. number of queries, documents, etc."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Iterable, NamedTuple, Text
+from typing import Any, Dict, Iterable, NamedTuple
 
 import apache_beam as beam
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
@@ -65,7 +60,7 @@ class QueryStatisticsCombineFn(beam.CombineFn):
         min_documents=min_documents,
         max_documents=max_documents)
 
-  def extract_output(self, accumulator: _State) -> Dict[Text, Any]:
+  def extract_output(self, accumulator: _State) -> Dict[str, Any]:
     return {
         metric_keys.base_key('total_queries'): accumulator.total_queries,
         metric_keys.base_key('total_documents'): accumulator.total_documents,

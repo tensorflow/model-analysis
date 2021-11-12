@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Squared pearson correlation (r^2) metric."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Dict, Iterable, Optional, Text
+from typing import Dict, Iterable, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
@@ -32,13 +26,13 @@ SQUARED_PEARSON_CORRELATION_NAME = 'squared_pearson_correlation'
 class SquaredPearsonCorrelation(metric_types.Metric):
   """Squared pearson correlation (r^2) metric."""
 
-  def __init__(self, name: Text = SQUARED_PEARSON_CORRELATION_NAME):
+  def __init__(self, name: str = SQUARED_PEARSON_CORRELATION_NAME):
     """Initializes squared pearson correlation (r^2) metric.
 
     Args:
       name: Metric name.
     """
-    super(SquaredPearsonCorrelation, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(_squared_pearson_correlation),
         name=name)
 
@@ -47,10 +41,10 @@ metric_types.register_metric(SquaredPearsonCorrelation)
 
 
 def _squared_pearson_correlation(
-    name: Text = SQUARED_PEARSON_CORRELATION_NAME,
+    name: str = SQUARED_PEARSON_CORRELATION_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -73,7 +67,7 @@ def _squared_pearson_correlation(
   ]
 
 
-class _SquaredPearsonCorrelationAccumulator(object):
+class _SquaredPearsonCorrelationAccumulator:
   """Squared pearson correlation (r^2) accumulator."""
   __slots__ = [
       'total_weighted_labels', 'total_weighted_predictions',

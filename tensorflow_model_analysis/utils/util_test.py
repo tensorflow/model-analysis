@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -206,7 +205,7 @@ class UtilTest(tf.test.TestCase):
     self.assertAllClose(actual, expected)
 
   def testToTensorflowTensorsRaisesIncompatibleSpecError(self):
-    with self.assertRaisesRegexp(ValueError, '.* is not compatible with .*'):
+    with self.assertRaisesRegex(ValueError, '.* is not compatible with .*'):
       util.to_tensorflow_tensors(
           {'features': {
               'feature_1': np.array([1, 2, 3], dtype=np.int64)
@@ -215,7 +214,7 @@ class UtilTest(tf.test.TestCase):
           }})
 
   def testToTensorflowTensorsRaisesUnknownKeyError(self):
-    with self.assertRaisesRegexp(ValueError, '.* not found in .*'):
+    with self.assertRaisesRegex(ValueError, '.* not found in .*'):
       util.to_tensorflow_tensors(
           {'features': {
               'feature_1': np.array([1, 2, 3], dtype=np.float32)
@@ -254,9 +253,9 @@ class UtilTest(tf.test.TestCase):
         util.get_by_keys({'labels': {}}, ['labels'], optional=True))
 
   def testGetByKeysMissingAndNonOptional(self):
-    with self.assertRaisesRegexp(ValueError, 'not found'):
+    with self.assertRaisesRegex(ValueError, 'not found'):
       util.get_by_keys({}, ['labels'])
-    with self.assertRaisesRegexp(ValueError, 'not found'):
+    with self.assertRaisesRegex(ValueError, 'not found'):
       util.get_by_keys({'labels': {}}, ['labels'])
 
   def testGetByKeysWitMultiLevel(self):
@@ -300,7 +299,7 @@ class UtilTest(tf.test.TestCase):
                          }, ['predictions', 'model', 'output']))
 
   def testGetByKeysMissingSecondaryKey(self):
-    with self.assertRaisesRegexp(ValueError, 'not found'):
+    with self.assertRaisesRegex(ValueError, 'not found'):
       util.get_by_keys({'predictions': {
           'missing': [1]
       }}, ['predictions', 'output'])
@@ -472,11 +471,11 @@ class UtilTest(tf.test.TestCase):
 
     self.assertEqual(1 + 2 + 3 + 100 + 5, fn(a=1, b=2, c=3))
     self.assertEqual(1 + 2 + 3 + 100 + 1000, fn(a=1, b=2, c=3, e=None))
-    with self.assertRaisesRegexp(TypeError, 'keyword-arguments only'):
+    with self.assertRaisesRegex(TypeError, 'keyword-arguments only'):
       fn(1, 2, 3)
-    with self.assertRaisesRegexp(TypeError, 'with c specified'):
+    with self.assertRaisesRegex(TypeError, 'with c specified'):
       fn(a=1, b=2, e=5)  # pylint: disable=no-value-for-parameter
-    with self.assertRaisesRegexp(TypeError, 'with extraneous kwargs'):
+    with self.assertRaisesRegex(TypeError, 'with extraneous kwargs'):
       fn(a=1, b=2, c=3, f=11)  # pylint: disable=unexpected-keyword-arg
 
   def testGetFeaturesFromExtracts(self):

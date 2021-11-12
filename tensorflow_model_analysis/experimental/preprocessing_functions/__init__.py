@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,5 +16,5 @@
 # pylint: disable=unused-import
 # pylint: disable=g-bad-import-order
 
-from tensorflow_model_analysis.experimental.preprocessing_functions.text import whitespace_tokenization
 from tensorflow_model_analysis.experimental.preprocessing_functions.test_util import _plus_one
+from tensorflow_model_analysis.experimental.preprocessing_functions.text import whitespace_tokenization

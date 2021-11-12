@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +13,7 @@
 # limitations under the License.
 """Lift Metrics."""
 
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional
 
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
@@ -47,7 +46,7 @@ class Lift(metric_types.Metric):
                num_buckets: Optional[int] = None,
                left: Optional[float] = None,
                right: Optional[float] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                ignore_out_of_bound_examples: bool = False):
     """Initializes lift metrics.
 
@@ -62,7 +61,7 @@ class Lift(metric_types.Metric):
     """
     if name is None:
       name = f'{LIFT_METRICS_NAME}@{num_buckets or DEFAULT_NUM_BUCKETS}'
-    super(Lift, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(_lift_metrics),
         num_buckets=num_buckets,
         left=left,
@@ -75,10 +74,10 @@ def _lift_metrics(
     num_buckets: Optional[int] = None,
     left: Optional[float] = None,
     right: Optional[float] = None,
-    name: Optional[Text] = None,
+    name: Optional[str] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     aggregation_type: Optional[metric_types.AggregationType] = None,
     sub_key: Optional[metric_types.SubKey] = None,
     class_weights: Optional[Dict[int, float]] = None,

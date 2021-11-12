@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,11 @@
 # limitations under the License.
 """Types."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import abc
 import datetime
 import operator
 
-from typing import Any, Callable, Dict, List, MutableMapping, Optional, Text, TypeVar, Tuple, Union, NamedTuple
+from typing import Any, Callable, Dict, List, MutableMapping, Optional, TypeVar, Tuple, Union, NamedTuple
 
 from apache_beam.utils import shared
 import numpy as np
@@ -61,23 +55,23 @@ class SparseTensorValue(
 
 TensorType = Union[tf.Tensor, tf.SparseTensor, tf.RaggedTensor]
 TensorOrOperationType = Union[TensorType, tf.Operation]
-DictOfTensorType = Dict[Text, TensorType]
+DictOfTensorType = Dict[str, TensorType]
 TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
-DictOfTensorTypeMaybeDict = Dict[Text, TensorTypeMaybeDict]
+DictOfTensorTypeMaybeDict = Dict[str, TensorTypeMaybeDict]
 TensorTypeMaybeMultiLevelDict = Union[TensorTypeMaybeDict,
                                       DictOfTensorTypeMaybeDict]
 
-DictOfTypeSpec = Dict[Text, tf.TypeSpec]
+DictOfTypeSpec = Dict[str, tf.TypeSpec]
 TypeSpecMaybeDict = Union[tf.TypeSpec, DictOfTypeSpec]
-DictOfTypeSpecMaybeDict = Dict[Text, TypeSpecMaybeDict]
+DictOfTypeSpecMaybeDict = Dict[str, TypeSpecMaybeDict]
 TypeSpecMaybeMultiLevelDict = Union[TypeSpecMaybeDict, DictOfTypeSpecMaybeDict]
 
 # TODO(b/171992041): Remove tf.compat.v1.SparseTensorValue.
 TensorValue = Union[np.ndarray, SparseTensorValue, RaggedTensorValue,
                     tf.compat.v1.SparseTensorValue]
-DictOfTensorValue = Dict[Text, TensorValue]
+DictOfTensorValue = Dict[str, TensorValue]
 TensorValueMaybeDict = Union[TensorValue, DictOfTensorValue]
-DictOfTensorValueMaybeDict = Dict[Text, TensorValueMaybeDict]
+DictOfTensorValueMaybeDict = Dict[str, TensorValueMaybeDict]
 TensorValueMaybeMultiLevelDict = Union[TensorValueMaybeDict,
                                        DictOfTensorValueMaybeDict]
 
@@ -238,16 +232,18 @@ class ValueWithTDistribution(
 # necessarily dictionaries - they might also be Tensors, depending on what the
 # model's eval_input_receiver_fn returns.
 # pyformat: disable
-AddMetricsCallbackType = Any
+AddMetricsCallbackType = Callable[[
+    TensorTypeMaybeDict, TensorTypeMaybeDict, TensorTypeMaybeDict
+], Dict[str, Tuple[TensorType, TensorType]]]
 # pyformat: enable
 
 # Type of keys we support for prediction, label and features dictionaries.
-FPLKeyType = Union[Text, Tuple[Text, ...]]
+FPLKeyType = Union[str, Tuple[str, ...]]
 
 # Dictionary of Tensor values fetched. The dictionary maps original dictionary
 # keys => ('node' => value). This type exists for backward compatibility with
 # FeaturesPredictionsLabels, new code should use DictOfTensorValue instead.
-DictOfFetchedTensorValues = Dict[FPLKeyType, Dict[Text, TensorValue]]
+DictOfFetchedTensorValues = Dict[FPLKeyType, Dict[str, TensorValue]]
 
 FeaturesPredictionsLabels = NamedTuple(
     'FeaturesPredictionsLabels', [('input_ref', int),
@@ -261,7 +257,7 @@ FeaturesPredictionsLabels = NamedTuple(
 # features can have arbitrary bytes values.
 MaterializedColumn = NamedTuple(
     'MaterializedColumn',
-    [('name', Text),
+    [('name', str),
      ('value', Union[List[bytes], List[int], List[float], bytes, int, float])])
 
 # Extracts represent data extracted during pipeline processing. In order to
@@ -269,12 +265,12 @@ MaterializedColumn = NamedTuple(
 # (reserved for use) by different extractor implementations. For example, the
 # FeaturesExtractor stores the data for the features under the key "features",
 # LabelsExtractor stores the data for the labels under the key "labels", etc.
-Extracts = MutableMapping[Text, Any]
+Extracts = MutableMapping[str, Any]
 
 # pylint: enable=invalid-name
 
 
-class ModelLoader(object):
+class ModelLoader:
   """Model loader is responsible for loading shared model types.
 
   Attributes:
@@ -289,7 +285,7 @@ class ModelLoader(object):
 
   def __init__(self,
                construct_fn: Callable[[], Any],
-               tags: Optional[List[Text]] = None):
+               tags: Optional[List[str]] = None):
     self.construct_fn = construct_fn
     self.tags = tags
     self._shared_handle = shared.Shared()
@@ -327,15 +323,15 @@ class EvalSharedModel(
     NamedTuple(
         'EvalSharedModel',
         [
-            ('model_path', Text),
+            ('model_path', str),
             ('add_metrics_callbacks',
              List[Callable]),  # List[AnyMetricsCallbackType]
             ('include_default_metrics', bool),
-            ('example_weight_key', Union[Text, Dict[Text, Text]]),
-            ('additional_fetches', List[Text]),
+            ('example_weight_key', Union[str, Dict[str, str]]),
+            ('additional_fetches', List[str]),
             ('model_loader', ModelLoader),
-            ('model_name', Text),
-            ('model_type', Text),
+            ('model_name', str),
+            ('model_type', str),
             ('rubber_stamp', bool),
             ('is_baseline', bool)
         ])):
@@ -390,14 +386,14 @@ class EvalSharedModel(
 
   def __new__(
       cls,
-      model_path: Optional[Text] = None,
+      model_path: Optional[str] = None,
       add_metrics_callbacks: Optional[List[AddMetricsCallbackType]] = None,
       include_default_metrics: Optional[bool] = True,
-      example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
-      additional_fetches: Optional[List[Text]] = None,
+      example_weight_key: Optional[Union[str, Dict[str, str]]] = None,
+      additional_fetches: Optional[List[str]] = None,
       model_loader: Optional[ModelLoader] = None,
-      model_name: Text = '',
-      model_type: Text = '',
+      model_name: str = '',
+      model_type: str = '',
       rubber_stamp: bool = False,
       is_baseline: bool = False,
       construct_fn: Optional[Callable[[], Any]] = None):
@@ -424,4 +420,4 @@ class EvalSharedModel(
 #
 # TODO(b/150416505): Deprecate support for dict.
 MaybeMultipleEvalSharedModels = Union[EvalSharedModel, List[EvalSharedModel],
-                                      Dict[Text, EvalSharedModel]]
+                                      Dict[str, EvalSharedModel]]

@@ -13,10 +13,6 @@
 # limitations under the License.
 """Simple tests for export."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import export
@@ -26,7 +22,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 class ExportTest(testutil.TensorflowModelAnalysisTest):
 
   def testEvalInputReceiverReceiverTensorKeyCheck(self):
-    with self.assertRaisesRegexp(ValueError, 'exactly one key named examples'):
+    with self.assertRaisesRegex(ValueError, 'exactly one key named examples'):
       export.EvalInputReceiver(
           features={},
           labels={},

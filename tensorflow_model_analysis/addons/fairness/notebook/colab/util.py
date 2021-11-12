@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +13,7 @@
 # limitations under the License.
 """Utility for Colab Fairness Indicators renderer API."""
 
-# Standard __future__ imports
-
-from typing import Optional, Text, Dict, Any
+from typing import Optional, Dict, Any
 
 from IPython import display
 from tensorflow_model_analysis.notebook.colab.util import make_trusted_event_handler_js
@@ -26,7 +23,7 @@ from tensorflow_model_analysis.notebook.colab.util import to_base64_encoded_json
 
 def render_fairness_indicators_html(
     ui_payload,
-    trusted_html_for_vulcanized_tfma_js: Text,
+    trusted_html_for_vulcanized_tfma_js: str,
     event_handlers: Optional[PythonEventHandlersMap] = None,
 ) -> None:
   """Renders an HTML stub for the Fairness Indicators UI and display it.
@@ -64,7 +61,7 @@ def render_fairness_indicators_html(
 
 
 def make_fi_ui_payload(slicing_metrics=None,
-                       multi_slicing_metrics=None) -> Dict[Text, Any]:
+                       multi_slicing_metrics=None) -> Dict[str, Any]:
   """Creates a Python Dict that can be passed into the Fairness Indicators JS UI.
 
   Args:

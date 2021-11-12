@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Writer types."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, NamedTuple, Text, Union
+from typing import Any, NamedTuple, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis.evaluators import evaluator
@@ -30,7 +24,7 @@ from tensorflow_model_analysis.validators import validator
 Writer = NamedTuple(
     'Writer',
     [
-        ('stage_name', Text),
+        ('stage_name', str),
         # PTransform Evaluation -> PDone or Validation -> PDone
         ('ptransform', beam.PTransform)
     ])
@@ -40,7 +34,7 @@ Writer = NamedTuple(
 @beam.typehints.with_input_types(Any)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def Write(evaluation_or_validation: Union[evaluator.Evaluation,
-                                          validator.Validation], key: Text,
+                                          validator.Validation], key: str,
           ptransform: beam.PTransform) -> beam.pvalue.PDone:
   """Writes given Evaluation or Validation data using given writer PTransform.
 

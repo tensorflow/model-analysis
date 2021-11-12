@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Calibration related metrics."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Iterable, Optional, Text
+from typing import Any, Dict, Iterable, Optional
 
 import apache_beam as beam
 import numpy as np
@@ -37,13 +31,13 @@ _WEIGHTED_LABELS_PREDICTIONS_EXAMPLES_NAME = (
 class MeanLabel(metric_types.Metric):
   """Mean label."""
 
-  def __init__(self, name: Text = MEAN_LABEL_NAME):
+  def __init__(self, name: str = MEAN_LABEL_NAME):
     """Initializes mean label.
 
     Args:
       name: Metric name.
     """
-    super(MeanLabel, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(_mean_label), name=name)
 
 
@@ -51,10 +45,10 @@ metric_types.register_metric(MeanLabel)
 
 
 def _mean_label(
-    name: Text = MEAN_LABEL_NAME,
+    name: str = MEAN_LABEL_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -98,13 +92,13 @@ def _mean_label(
 class MeanPrediction(metric_types.Metric):
   """Mean prediction."""
 
-  def __init__(self, name: Text = MEAN_PREDICTION_NAME):
+  def __init__(self, name: str = MEAN_PREDICTION_NAME):
     """Initializes mean prediction.
 
     Args:
       name: Metric name.
     """
-    super(MeanPrediction, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(_mean_prediction), name=name)
 
 
@@ -112,10 +106,10 @@ metric_types.register_metric(MeanPrediction)
 
 
 def _mean_prediction(
-    name: Text = MEAN_PREDICTION_NAME,
+    name: str = MEAN_PREDICTION_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -163,13 +157,13 @@ class Calibration(metric_types.Metric):
   total weighted labels.
   """
 
-  def __init__(self, name: Text = CALIBRATION_NAME):
+  def __init__(self, name: str = CALIBRATION_NAME):
     """Initializes calibration.
 
     Args:
       name: Metric name.
     """
-    super(Calibration, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(_calibration), name=name)
 
 
@@ -177,10 +171,10 @@ metric_types.register_metric(Calibration)
 
 
 def _calibration(
-    name: Text = CALIBRATION_NAME,
+    name: str = CALIBRATION_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -223,10 +217,10 @@ def _calibration(
 
 
 def _weighted_labels_predictions_examples(
-    name: Text = _WEIGHTED_LABELS_PREDICTIONS_EXAMPLES_NAME,
+    name: str = _WEIGHTED_LABELS_PREDICTIONS_EXAMPLES_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -263,7 +257,7 @@ def _weighted_labels_predictions_examples(
   ]
 
 
-class _WeightedLabelsPredictionsExamples(object):
+class _WeightedLabelsPredictionsExamples:
   """Total weighted labels, predictions, and examples."""
   __slots__ = [
       'total_weighted_labels', 'total_weighted_predictions',

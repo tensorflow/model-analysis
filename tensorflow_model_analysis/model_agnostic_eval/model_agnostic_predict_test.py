@@ -13,11 +13,6 @@
 # limitations under the License.
 """Test Model Agnostic graph handler."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-# Standard Imports
 import numpy as np
 
 import tensorflow as tf
@@ -30,7 +25,7 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
 
   def testValidation(self):
     # Test no feature spec.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'ModelAgnosticConfig must have feature_spec set.'):
       model_agnostic_predict.ModelAgnosticConfig(
           label_keys=['label'],
@@ -49,13 +44,13 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
             tf.io.FixedLenFeature([], tf.int64)
     }
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'ModelAgnosticConfig must have prediction keys set.'):
       model_agnostic_predict.ModelAgnosticConfig(
           label_keys=['label'], prediction_keys=[], feature_spec=feature_map)
 
     # Test no label keys.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'ModelAgnosticConfig must have label keys set.'):
       model_agnostic_predict.ModelAgnosticConfig(
           label_keys=[],
@@ -63,7 +58,7 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
           feature_spec=feature_map)
 
     # Test prediction key not in feature spec.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Prediction key not_prob not defined in feature_spec.'):
       model_agnostic_predict.ModelAgnosticConfig(
           label_keys=['label'],
@@ -71,7 +66,7 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
           feature_spec=feature_map)
 
     # Test label key not in feature spec.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Label key not_label not defined in feature_spec.'):
       model_agnostic_predict.ModelAgnosticConfig(
           label_keys=['not_label'],
@@ -156,12 +151,12 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
       self.assertIn('label', fpl.features)  # Labels should also be in features.
       self.assertIn('probabilities', fpl.predictions)
       self.assertIn('age', fpl.features)
-      self.assertEquals(expected_age[i], fpl.features['age']['node'])
+      self.assertEqual(expected_age[i], fpl.features['age']['node'])
       self.assertSparseTensorValueEqual(expected_language[i],
                                         fpl.features['language']['node'])
       self.assertAllClose(expected_probabilities[i],
                           fpl.predictions['probabilities']['node'])
-      self.assertEquals(expected_labels[i], fpl.labels['label']['node'])
+      self.assertEqual(expected_labels[i], fpl.labels['label']['node'])
 
 
 if __name__ == '__main__':

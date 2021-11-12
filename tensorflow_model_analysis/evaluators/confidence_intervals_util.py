@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities shared by the jackknife and bootstrap CI methodologies."""
-
 
 import collections
 import numbers
@@ -117,7 +115,7 @@ def mean_and_std(
 class SampleCombineFn(beam.CombineFn):
   """Computes the standard deviation for each metric from samples."""
 
-  class _SampleAccumulator(object):
+  class _SampleAccumulator:
 
     __slots__ = ['point_estimates', 'num_samples', 'metric_samples']
 

@@ -35,7 +35,6 @@ python tensorflow_model_analysis/tools/build_docs.py --output_dir=/tmp/tfma_api
 import inspect
 import os
 
-# Standard Imports
 from absl import app
 from absl import flags
 

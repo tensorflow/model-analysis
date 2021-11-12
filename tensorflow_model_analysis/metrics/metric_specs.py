@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,12 @@
 # limitations under the License.
 """Specifications for common metrics."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import collections
 import importlib
 import json
 import re
 
-from typing import Any, Dict, FrozenSet, Iterator, Iterable, List, NamedTuple, Optional, Text, Type, Union, Tuple
+from typing import Any, Dict, FrozenSet, Iterator, Iterable, List, NamedTuple, Optional, Type, Union, Tuple
 
 import tensorflow as tf
 from tensorflow_model_analysis.metrics import aggregation
@@ -51,7 +45,7 @@ _TFMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]
 
 # List of metrics or losses optionally keyed by output name.
 _MetricsOrLosses = Union[List[_TFOrTFMAMetricOrLoss],
-                         Dict[Text, List[_TFOrTFMAMetricOrLoss]]]
+                         Dict[str, List[_TFOrTFMAMetricOrLoss]]]
 
 # TF config settings that TFMA only supports default values for because the
 # parameters are not supported by the TFMA implementation of the metric. The
@@ -138,12 +132,12 @@ def _example_weight_options(eval_config: config_pb2.EvalConfig,
 def specs_from_metrics(
     metrics: Optional[_MetricsOrLosses] = None,
     unweighted_metrics: Optional[_MetricsOrLosses] = None,
-    model_names: Optional[List[Text]] = None,
-    output_names: Optional[List[Text]] = None,
-    output_weights: Optional[Dict[Text, float]] = None,
+    model_names: Optional[List[str]] = None,
+    output_names: Optional[List[str]] = None,
+    output_weights: Optional[Dict[str, float]] = None,
     binarize: Optional[config_pb2.BinarizationOptions] = None,
     aggregate: Optional[config_pb2.AggregationOptions] = None,
-    query_key: Optional[Text] = None,
+    query_key: Optional[str] = None,
     include_example_count: Optional[bool] = None,
     include_weighted_example_count: Optional[bool] = None
 ) -> List[config_pb2.MetricsSpec]:
@@ -281,9 +275,9 @@ def specs_from_metrics(
 
 
 def example_count_specs(
-    model_names: Optional[List[Text]] = None,
-    output_names: Optional[List[Text]] = None,
-    output_weights: Optional[Dict[Text, float]] = None,
+    model_names: Optional[List[str]] = None,
+    output_names: Optional[List[str]] = None,
+    output_weights: Optional[Dict[str, float]] = None,
     include_example_count: bool = True,
     include_weighted_example_count: bool = True
 ) -> List[config_pb2.MetricsSpec]:
@@ -323,9 +317,9 @@ def example_count_specs(
 
 
 def default_regression_specs(
-    model_names: Optional[List[Text]] = None,
-    output_names: Optional[List[Text]] = None,
-    output_weights: Optional[Dict[Text, float]] = None,
+    model_names: Optional[List[str]] = None,
+    output_names: Optional[List[str]] = None,
+    output_weights: Optional[Dict[str, float]] = None,
     loss_functions: Optional[List[Union[tf.keras.metrics.Metric,
                                         tf.keras.losses.Loss]]] = None,
     min_value: Optional[float] = None,
@@ -367,9 +361,9 @@ def default_regression_specs(
 
 
 def default_binary_classification_specs(
-    model_names: Optional[List[Text]] = None,
-    output_names: Optional[List[Text]] = None,
-    output_weights: Optional[Dict[Text, float]] = None,
+    model_names: Optional[List[str]] = None,
+    output_names: Optional[List[str]] = None,
+    output_weights: Optional[Dict[str, float]] = None,
     binarize: Optional[config_pb2.BinarizationOptions] = None,
     aggregate: Optional[config_pb2.AggregationOptions] = None,
     include_loss: bool = True) -> List[config_pb2.MetricsSpec]:
@@ -417,9 +411,9 @@ def default_binary_classification_specs(
 
 
 def default_multi_class_classification_specs(
-    model_names: Optional[List[Text]] = None,
-    output_names: Optional[List[Text]] = None,
-    output_weights: Optional[Dict[Text, float]] = None,
+    model_names: Optional[List[str]] = None,
+    output_names: Optional[List[str]] = None,
+    output_weights: Optional[Dict[str, float]] = None,
     binarize: Optional[config_pb2.BinarizationOptions] = None,
     aggregate: Optional[config_pb2.AggregationOptions] = None,
     sparse: bool = True) -> List[config_pb2.MetricsSpec]:
@@ -478,7 +472,7 @@ def default_multi_class_classification_specs(
 
 def metric_instance(
     metric_config: config_pb2.MetricConfig,
-    tfma_metric_classes: Optional[Dict[Text, Type[metric_types.Metric]]] = None
+    tfma_metric_classes: Optional[Dict[str, Type[metric_types.Metric]]] = None
 ) -> metric_types.Metric:
   """Creates instance of metric associated with config."""
   if tfma_metric_classes is None:
@@ -505,7 +499,7 @@ def metric_instance(
 
 
 def _keys_for_metric(
-    metric_name: Text, spec: config_pb2.MetricsSpec,
+    metric_name: str, spec: config_pb2.MetricsSpec,
     aggregation_type: Optional[metric_types.AggregationType],
     sub_keys: List[Optional[metric_types.SubKey]],
     example_weights: List[bool]) -> Iterator[metric_types.MetricKey]:
@@ -804,7 +798,7 @@ def _process_tf_metrics_specs(
   # Wrap args into structure that is hashable so we can track unique arg sets.
   class UniqueArgs(
       NamedTuple('UniqueArgs',
-                 [('model_name', Text),
+                 [('model_name', str),
                   ('sub_key', Optional[metric_types.SubKey]),
                   ('aggregation_type', Optional[metric_types.AggregationType]),
                   ('class_weights', Tuple[Tuple[int, float], ...])])):
@@ -1113,7 +1107,7 @@ def _remove_unsupported_tf_settings(
       config=json.dumps(cfg, sort_keys=True))
 
 
-def _metric_config(cfg: Text) -> Dict[Text, Any]:
+def _metric_config(cfg: str) -> Dict[str, Any]:
   """Returns deserializable metric config from JSON string."""
   if not cfg:
     json_cfg = '{}'
@@ -1124,8 +1118,8 @@ def _metric_config(cfg: Text) -> Dict[Text, Any]:
   return json.loads(json_cfg)
 
 
-def _maybe_add_name_to_config(cfg: Dict[Text, Any],
-                              class_name: Text) -> Dict[Text, Any]:
+def _maybe_add_name_to_config(cfg: Dict[str, Any],
+                              class_name: str) -> Dict[str, Any]:
   """Adds default name field to metric config if not present."""
   if 'name' not in cfg:
     # Use snake_case version of class name as default name.
@@ -1135,7 +1129,7 @@ def _maybe_add_name_to_config(cfg: Dict[Text, Any],
 
 
 def _tf_class_and_config(
-    metric_config: config_pb2.MetricConfig) -> Tuple[Text, Dict[Text, Any]]:
+    metric_config: config_pb2.MetricConfig) -> Tuple[str, Dict[str, Any]]:
   """Returns the tensorflow class and config associated with metric_config."""
   cls_name = metric_config.class_name
   cfg = _metric_config(metric_config.config)
@@ -1159,7 +1153,7 @@ def _serialize_tf_metric(
 
 def _deserialize_tf_metric(
     metric_config: config_pb2.MetricConfig,
-    custom_objects: Dict[Text, Type[tf.keras.metrics.Metric]]
+    custom_objects: Dict[str, Type[tf.keras.metrics.Metric]]
 ) -> tf.keras.metrics.Metric:
   """Deserializes a tf.keras.metrics metric."""
   cls_name, cfg = _tf_class_and_config(metric_config)
@@ -1189,7 +1183,7 @@ def _serialize_tf_loss(loss: tf.keras.losses.Loss) -> config_pb2.MetricConfig:
 
 def _deserialize_tf_loss(
     metric_config: config_pb2.MetricConfig,
-    custom_objects: Dict[Text,
+    custom_objects: Dict[str,
                          Type[tf.keras.losses.Loss]]) -> tf.keras.losses.Loss:
   """Deserializes a tf.keras.loss metric."""
   cls_name, cfg = _tf_class_and_config(metric_config)
@@ -1218,7 +1212,7 @@ def _serialize_tfma_metric(
 
 def _deserialize_tfma_metric(
     metric_config: config_pb2.MetricConfig,
-    custom_objects: Dict[Text,
+    custom_objects: Dict[str,
                          Type[metric_types.Metric]]) -> metric_types.Metric:
   """Deserializes a tfma.metrics metric."""
   with tf.keras.utils.custom_object_scope(custom_objects):

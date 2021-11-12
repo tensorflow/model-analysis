@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,10 @@
 # limitations under the License.
 """Utilities for writing tests."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import math
 import tempfile
 
-from typing import Dict, Iterable, List, Optional, Union, Sequence, Text, Tuple
+from typing import Dict, Iterable, List, Optional, Union, Sequence, Tuple
 
 import tensorflow as tf
 from tensorflow_model_analysis import constants
@@ -39,7 +33,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
   def setUp(self) -> None:
     self.longMessage = True  # pylint: disable=invalid-name
 
-  def _getTempDir(self) -> Text:
+  def _getTempDir(self) -> str:
     return tempfile.mkdtemp()
 
   def _makeExample(self, **kwargs) -> tf.train.Example:
@@ -47,8 +41,8 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
 
   def assertHasKeyWithTDistributionAlmostEqual(
       self,
-      d: Dict[Text, types.ValueWithTDistribution],
-      key: Text,
+      d: Dict[str, types.ValueWithTDistribution],
+      key: str,
       value: float,
       places: int = 5) -> None:
 
@@ -58,8 +52,8 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
         d[key].unsampled_value, value, places=places, msg='key {}'.format(key))
 
   def assertHasKeyWithValueAlmostEqual(self,
-                                       d: Dict[Text, float],
-                                       key: Text,
+                                       d: Dict[str, float],
+                                       key: str,
                                        value: float,
                                        places: int = 5) -> None:
     self.assertIn(key, d)
@@ -67,8 +61,8 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
         d[key], value, places=places, msg='key {}'.format(key))
 
   def assertDictElementsAlmostEqual(self,
-                                    got_values_dict: Dict[Text, float],
-                                    expected_values_dict: Dict[Text, float],
+                                    got_values_dict: Dict[str, float],
+                                    expected_values_dict: Dict[str, float],
                                     places: int = 5) -> None:
     for key, expected_value in expected_values_dict.items():
       self.assertHasKeyWithValueAlmostEqual(got_values_dict, key,
@@ -76,8 +70,8 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
 
   def assertDictElementsWithTDistributionAlmostEqual(
       self,
-      got_values_dict: Dict[Text, types.ValueWithTDistribution],
-      expected_values_dict: Dict[Text, float],
+      got_values_dict: Dict[str, types.ValueWithTDistribution],
+      expected_values_dict: Dict[str, float],
       places: int = 5) -> None:
     for key, expected_value in expected_values_dict.items():
       self.assertHasKeyWithTDistributionAlmostEqual(got_values_dict, key,
@@ -85,10 +79,10 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
 
   def assertDictMatrixRowsAlmostEqual(
       self,
-      got_values_dict: Dict[Text, Sequence[Iterable[Union[float, int]]]],
-      expected_values_dict: Dict[Text, Iterable[Tuple[int,
-                                                      Iterable[Union[float,
-                                                                     int]]]]],
+      got_values_dict: Dict[str, Sequence[Iterable[Union[float, int]]]],
+      expected_values_dict: Dict[str, Iterable[Tuple[int,
+                                                     Iterable[Union[float,
+                                                                    int]]]]],
       places: int = 5) -> None:
     """Fails if got_values_dict does not match values in expected_values_dict.
 
@@ -160,15 +154,15 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
 
   def createTestEvalSharedModel(
       self,
-      eval_saved_model_path: Optional[Text] = None,
+      eval_saved_model_path: Optional[str] = None,
       add_metrics_callbacks: Optional[List[
           types.AddMetricsCallbackType]] = None,
       include_default_metrics: Optional[bool] = True,
-      example_weight_key: Optional[Union[Text, Dict[Text, Text]]] = None,
-      additional_fetches: Optional[List[Text]] = None,
-      tags: Optional[Text] = None,
-      model_type: Optional[Text] = None,
-      model_name: Text = '',
+      example_weight_key: Optional[Union[str, Dict[str, str]]] = None,
+      additional_fetches: Optional[List[str]] = None,
+      tags: Optional[str] = None,
+      model_type: Optional[str] = None,
+      model_name: str = '',
       rubber_stamp: Optional[bool] = False,
       is_baseline: Optional[bool] = False) -> types.EvalSharedModel:
 

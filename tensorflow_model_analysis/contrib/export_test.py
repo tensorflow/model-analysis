@@ -13,13 +13,8 @@
 # limitations under the License.
 """Test for using the contrib export API."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import tempfile
-# Standard Imports
 
 import tensorflow as tf
 

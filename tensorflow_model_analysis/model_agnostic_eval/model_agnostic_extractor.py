@@ -13,16 +13,10 @@
 # limitations under the License.
 """Public API for extracting FeaturesPredictionsLabels without eval model."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import copy
 import datetime
 from typing import Generator, List, Optional
 
-# Standard Imports
 
 import apache_beam as beam
 from apache_beam.utils import shared

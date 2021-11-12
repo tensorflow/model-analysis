@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Public API for performing query-based metrics evaluations."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Iterable, List, Optional, Text, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 import apache_beam as beam
 import numpy as np
@@ -36,11 +30,11 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 
 
 def QueryBasedMetricsEvaluator(  # pylint: disable=invalid-name
-    query_id: Text,
-    prediction_key: Text,
+    query_id: str,
+    prediction_key: str,
     combine_fns: List[beam.CombineFn],
-    metrics_key: Text = constants.METRICS_KEY,
-    run_after: Optional[Text] = slice_key_extractor
+    metrics_key: str = constants.METRICS_KEY,
+    run_after: Optional[str] = slice_key_extractor
     .SLICE_KEY_EXTRACTOR_STAGE_NAME,
 ) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
@@ -77,7 +71,7 @@ class CreateQueryExamples(beam.CombineFn):
   enough to fit in memory.
   """
 
-  def __init__(self, prediction_key: Text):
+  def __init__(self, prediction_key: str):
     if not prediction_key:
       # If prediction key is set to the empty string, the user is telling us
       # that their Estimator returns a predictions Tensor rather than a
@@ -145,8 +139,8 @@ class CreateQueryExamples(beam.CombineFn):
 @beam.typehints.with_input_types(types.Extracts)
 def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    prediction_key: Text,
-    query_id: Text,
+    prediction_key: str,
+    query_id: str,
     combine_fns: List[beam.CombineFn],
 ) -> beam.pvalue.PCollection:
   """Computes metrics and plots using the EvalSavedModel.
@@ -170,18 +164,13 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
   missing_query_id_counter = beam.metrics.Metrics.counter(
       constants.METRICS_NAMESPACE, 'missing_query_id')
 
-  # TODO(b/142683826): Beam type check error in
-  # //third_party/py/tensorflow_model_analysis/api:model_eval_lib_test.python3
-  # External issue: https://issues.apache.org/jira/browse/BEAM-9377
-  # Remove quotes on return type when fixed.
-  def key_by_query_id(
-      extract: types.Extracts,
-      query_id: Text) -> 'Optional[Tuple[Text, types.Extracts]]':
+  def key_by_query_id(extract: types.Extracts,
+                      query_id: str) -> Iterator[Tuple[str, types.Extracts]]:
     """Extract the query ID from the extract and key by that."""
     features = extract[constants.FEATURES_PREDICTIONS_LABELS_KEY].features
     if query_id not in features:
       missing_query_id_counter.inc()
-      return None
+      return
     feature_value = features[query_id][encoding.NODE_SUFFIX]
     if isinstance(feature_value, tf.compat.v1.SparseTensorValue):
       feature_value = feature_value.values
@@ -189,10 +178,10 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
       raise ValueError('Query ID feature "%s" should have exactly 1 value, but '
                        'found %d instead. Values were: %s' %
                        (query_id, feature_value.size(), feature_value))
-    return ('{}'.format(np.asscalar(feature_value)), extract)
+    yield ('{}'.format(np.asscalar(feature_value)), extract)
 
   def merge_dictionaries(
-      dictionaries: Tuple[Dict[Text, Any], ...]) -> Dict[Text, Any]:
+      dictionaries: Tuple[Dict[str, Any], ...]) -> Dict[str, Any]:
     """Merge dictionaries in a tuple into a single dictionary."""
     result = dict()
     for d in dictionaries:
@@ -207,7 +196,7 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
 
   # pylint: disable=no-value-for-parameter
   return (extracts
-          | 'KeyByQueryId' >> beam.Map(key_by_query_id, query_id)
+          | 'KeyByQueryId' >> beam.FlatMap(key_by_query_id, query_id)
           | 'CreateQueryExamples' >> beam.CombinePerKey(
               CreateQueryExamples(prediction_key=prediction_key))
           | 'DropQueryId' >> beam.Map(lambda kv: kv[1]._replace(query_id=kv[0]))
@@ -223,10 +212,10 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(Any)
 def EvaluateQueryBasedMetrics(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    prediction_key: Text,
-    query_id: Text,
+    prediction_key: str,
+    query_id: str,
     combine_fns: List[beam.CombineFn],
-    metrics_key: Text = constants.METRICS_KEY,
+    metrics_key: str = constants.METRICS_KEY,
 ) -> evaluator.Evaluation:
   """Evaluates query-based metrics.
 

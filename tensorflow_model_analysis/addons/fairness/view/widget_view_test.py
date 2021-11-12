@@ -13,10 +13,6 @@
 # limitations under the License.
 """Tests for tensorflow_model_analysis.addons.fairness.view.widget_view."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.view import widget_view
 from tensorflow_model_analysis.eval_saved_model import testutil

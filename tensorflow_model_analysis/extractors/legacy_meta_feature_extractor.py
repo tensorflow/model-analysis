@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,14 +15,10 @@
 
 For example usage, see the tests associated with this file.
 """
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
 
 import copy
 
-from typing import Any, Callable, Text
+from typing import Any, Callable
 
 import apache_beam as beam
 import numpy as np
@@ -35,7 +30,7 @@ from tensorflow_model_analysis.eval_saved_model import encoding
 
 
 def get_feature_value(fpl: types.FeaturesPredictionsLabels,
-                      feature_key: Text) -> Any:
+                      feature_key: str) -> Any:
   """Helper to get value from FPL dict."""
   node_value = fpl.features[feature_key][encoding.NODE_SUFFIX]
   if isinstance(node_value, tf.compat.v1.SparseTensorValue):
@@ -44,7 +39,7 @@ def get_feature_value(fpl: types.FeaturesPredictionsLabels,
 
 
 def _set_feature_value(features: types.DictOfFetchedTensorValues,
-                       feature_key: Text,
+                       feature_key: str,
                        feature_value: Any) -> types.DictOfFetchedTensorValues:
   """Helper to set feature in FPL dict."""
   if not isinstance(feature_value, np.ndarray) and not isinstance(

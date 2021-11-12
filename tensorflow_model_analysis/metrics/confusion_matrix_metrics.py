@@ -17,7 +17,7 @@ import abc
 import copy
 import math
 
-from typing import Any, Dict, List, Optional, Text, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -78,7 +78,7 @@ def _pos_sqrt(value: float) -> float:
 
 
 def _validate_and_update_sub_key(
-    metric_name: Text, model_name: Text, output_name: Text,
+    metric_name: str, model_name: str, output_name: str,
     sub_key: metric_types.SubKey, top_k: Optional[int],
     class_id: Optional[int]) -> metric_types.SubKey:
   """Validates and updates sub key.
@@ -142,7 +142,7 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
                num_thresholds: Optional[int] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                **kwargs):
     """Initializes confusion matrix metric.
 
@@ -165,7 +165,7 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
       **kwargs: (Optional) Additional args to pass along to init (and eventually
         on to _metric_computation and _metric_value)
     """
-    super(ConfusionMatrixMetricBase, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(self._metric_computations),
         thresholds=thresholds,
         num_thresholds=num_thresholds,
@@ -178,7 +178,7 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
     """Returns default threshold if thresholds or num_thresholds unset."""
     return None
 
-  def get_config(self) -> Dict[Text, Any]:
+  def get_config(self) -> Dict[str, Any]:
     """Returns serializable config."""
     # Not all subclasses of ConfusionMatrixMetric support all the __init__
     # parameters as part of their __init__, to avoid deserialization issues
@@ -211,10 +211,10 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
                            num_thresholds: Optional[int] = None,
                            top_k: Optional[int] = None,
                            class_id: Optional[int] = None,
-                           name: Optional[Text] = None,
+                           name: Optional[str] = None,
                            eval_config: Optional[config_pb2.EvalConfig] = None,
-                           model_name: Text = '',
-                           output_name: Text = '',
+                           model_name: str = '',
+                           output_name: str = '',
                            sub_key: Optional[metric_types.SubKey] = None,
                            aggregation_type: Optional[
                                metric_types.AggregationType] = None,
@@ -276,7 +276,7 @@ class ConfusionMatrixMetric(ConfusionMatrixMetricBase):
                num_thresholds: Optional[int] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                **kwargs):
     """Initializes confusion matrix metric.
 
@@ -299,7 +299,7 @@ class ConfusionMatrixMetric(ConfusionMatrixMetricBase):
       **kwargs: (Optional) Additional args to pass along to init (and eventually
         on to _metric_computation and _metric_value)
     """
-    super(ConfusionMatrixMetric, self).__init__(
+    super().__init__(
         thresholds=thresholds,
         num_thresholds=num_thresholds,
         top_k=top_k,
@@ -379,9 +379,9 @@ class AUC(ConfusionMatrixMetricBase):
 
   def __init__(self,
                num_thresholds: Optional[int] = None,
-               curve: Text = 'ROC',
-               summation_method: Text = 'interpolation',
-               name: Optional[Text] = None,
+               curve: str = 'ROC',
+               summation_method: str = 'interpolation',
+               name: Optional[str] = None,
                thresholds: Optional[Union[float, List[float]]] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
@@ -417,7 +417,7 @@ class AUC(ConfusionMatrixMetricBase):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(AUC, self).__init__(
+    super().__init__(
         num_thresholds=num_thresholds,
         thresholds=thresholds,
         curve=curve,
@@ -426,10 +426,10 @@ class AUC(ConfusionMatrixMetricBase):
         top_k=top_k,
         class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return AUC_NAME
 
-  def _metric_value(self, curve: Text, summation_method: Text,
+  def _metric_value(self, curve: str, summation_method: str,
                     key: metric_types.MetricKey,
                     matrices: binary_confusion_matrices.Matrices) -> float:
     del key
@@ -452,8 +452,8 @@ class AUCPrecisionRecall(AUC):
 
   def __init__(self,
                num_thresholds: Optional[int] = None,
-               summation_method: Text = 'interpolation',
-               name: Optional[Text] = None,
+               summation_method: str = 'interpolation',
+               name: Optional[str] = None,
                thresholds: Optional[Union[float, List[float]]] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
@@ -486,7 +486,7 @@ class AUCPrecisionRecall(AUC):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(AUCPrecisionRecall, self).__init__(
+    super().__init__(
         num_thresholds=num_thresholds,
         thresholds=thresholds,
         curve='PR',
@@ -495,7 +495,7 @@ class AUCPrecisionRecall(AUC):
         top_k=top_k,
         class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return AUC_PRECISION_RECALL_NAME
 
 
@@ -524,7 +524,7 @@ class SensitivityAtSpecificity(ConfusionMatrixMetricBase):
                specificity: float,
                num_thresholds: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None):
     """Initializes SensitivityAtSpecificity metric.
 
@@ -545,14 +545,14 @@ class SensitivityAtSpecificity(ConfusionMatrixMetricBase):
         top_k is used, metrics_specs.binarize settings must not be present. Only
         one of class_id or top_k should be configured.
     """
-    super(SensitivityAtSpecificity, self).__init__(
+    super().__init__(
         num_thresholds=num_thresholds,
         specificity=specificity,
         class_id=class_id,
         name=name,
         top_k=top_k)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return SENSITIVITY_AT_SPECIFICITY_NAME
 
   def _metric_value(self, specificity: float, key: metric_types.MetricKey,
@@ -592,7 +592,7 @@ class SpecificityAtSensitivity(ConfusionMatrixMetricBase):
                sensitivity: float,
                num_thresholds: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None):
     """Initializes SpecificityAtSensitivity metric.
 
@@ -613,14 +613,14 @@ class SpecificityAtSensitivity(ConfusionMatrixMetricBase):
         top_k is used, metrics_specs.binarize settings must not be present. Only
         one of class_id or top_k should be configured.
     """
-    super(SpecificityAtSensitivity, self).__init__(
+    super().__init__(
         num_thresholds=num_thresholds,
         sensitivity=sensitivity,
         class_id=class_id,
         name=name,
         top_k=top_k)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return SPECIFICITY_AT_SENSITIVITY_NAME
 
   def _metric_value(self, sensitivity: float, key: metric_types.MetricKey,
@@ -652,7 +652,7 @@ class PrecisionAtRecall(ConfusionMatrixMetricBase):
                recall: float,
                num_thresholds: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None):
     """Initializes PrecisionAtRecall metric.
 
@@ -673,14 +673,14 @@ class PrecisionAtRecall(ConfusionMatrixMetricBase):
         top_k is used, metrics_specs.binarize settings must not be present. Only
         one of class_id or top_k should be configured.
     """
-    super(PrecisionAtRecall, self).__init__(
+    super().__init__(
         num_thresholds=num_thresholds,
         recall=recall,
         class_id=class_id,
         name=name,
         top_k=top_k)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return PRECISION_AT_RECALL_NAME
 
   def _metric_value(self, recall: float, key: metric_types.MetricKey,
@@ -716,7 +716,7 @@ class RecallAtPrecision(ConfusionMatrixMetricBase):
                precision: float,
                num_thresholds: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None):
     """Initializes RecallAtPrecision.
 
@@ -737,14 +737,14 @@ class RecallAtPrecision(ConfusionMatrixMetricBase):
         top_k is used, metrics_specs.binarize settings must not be present. Only
         one of class_id or top_k should be configured.
     """
-    super(RecallAtPrecision, self).__init__(
+    super().__init__(
         num_thresholds=num_thresholds,
         precision=precision,
         class_id=class_id,
         name=name,
         top_k=top_k)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return RECALL_AT_PRECISION_NAME
 
   def _metric_value(self, precision: float, key: metric_types.MetricKey,
@@ -774,7 +774,7 @@ class TruePositives(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes TruePositives metric.
@@ -797,10 +797,10 @@ class TruePositives(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(TruePositives, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return TRUE_POSITIVES_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -815,14 +815,14 @@ class TP(TruePositives):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes TP metric."""
-    super(TP, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return TP_NAME
 
 
@@ -841,7 +841,7 @@ class TrueNegatives(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes TrueNegatives metric.
@@ -864,10 +864,10 @@ class TrueNegatives(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(TrueNegatives, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return TRUE_NEGATIVES_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -882,14 +882,14 @@ class TN(TrueNegatives):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes TN metric."""
-    super(TN, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return TN_NAME
 
 
@@ -908,7 +908,7 @@ class FalsePositives(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes FalsePositives metric.
@@ -931,10 +931,10 @@ class FalsePositives(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(FalsePositives, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FALSE_POSITIVES_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -949,14 +949,14 @@ class FP(FalsePositives):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes FP metric."""
-    super(FP, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FP_NAME
 
 
@@ -975,7 +975,7 @@ class FalseNegatives(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes FalseNegatives metric.
@@ -998,10 +998,10 @@ class FalseNegatives(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(FalseNegatives, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FALSE_NEGATIVES_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1016,14 +1016,14 @@ class FN(FalseNegatives):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes FN metric."""
-    super(FN, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FN_NAME
 
 
@@ -1043,7 +1043,7 @@ class BinaryAccuracy(ConfusionMatrixMetric):
                threshold: Optional[float] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[Text] = None):
+               name: Optional[str] = None):
     """Initializes BinaryAccuracy metric.
 
     Args:
@@ -1064,10 +1064,10 @@ class BinaryAccuracy(ConfusionMatrixMetric):
         class_id or top_k should be configured.
       name: (Optional) string name of the metric instance.
     """
-    super(BinaryAccuracy, self).__init__(
+    super().__init__(
         thresholds=threshold, top_k=top_k, class_id=class_id, name=name)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return BINARY_ACCURACY_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1095,7 +1095,7 @@ class Precision(ConfusionMatrixMetric):
                thresholds: Optional[Union[float, List[float]]] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[Text] = None):
+               name: Optional[str] = None):
     """Initializes Precision metric.
 
     Args:
@@ -1117,10 +1117,10 @@ class Precision(ConfusionMatrixMetric):
         class_id or top_k should be configured.
       name: (Optional) string name of the metric instance.
     """
-    super(Precision, self).__init__(
+    super().__init__(
         thresholds=thresholds, top_k=top_k, class_id=class_id, name=name)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return PRECISION_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1140,14 +1140,14 @@ class PPV(Precision):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes PPV metric."""
-    super(PPV, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return PPV_NAME
 
 
@@ -1168,7 +1168,7 @@ class Recall(ConfusionMatrixMetric):
                thresholds: Optional[Union[float, List[float]]] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[Text] = None):
+               name: Optional[str] = None):
     """Initializes Recall metric.
 
     Args:
@@ -1190,10 +1190,10 @@ class Recall(ConfusionMatrixMetric):
         class_id or top_k should be configured.
       name: (Optional) string name of the metric instance.
     """
-    super(Recall, self).__init__(
+    super().__init__(
         thresholds=thresholds, top_k=top_k, class_id=class_id, name=name)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return RECALL_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1213,14 +1213,14 @@ class TPR(Recall):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes TPR metric."""
-    super(TPR, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return TPR_NAME
 
 
@@ -1232,7 +1232,7 @@ class Specificity(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes specificity metric.
@@ -1252,10 +1252,10 @@ class Specificity(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(Specificity, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return SPECIFICITY_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1275,14 +1275,14 @@ class TNR(Specificity):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes TNR metric."""
-    super(TNR, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return TNR_NAME
 
 
@@ -1294,7 +1294,7 @@ class FallOut(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes fall-out metric.
@@ -1313,10 +1313,10 @@ class FallOut(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(FallOut, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FALL_OUT_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1336,14 +1336,14 @@ class FPR(FallOut):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes FPR metric."""
-    super(FPR, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FPR_NAME
 
 
@@ -1355,7 +1355,7 @@ class MissRate(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes miss rate metric.
@@ -1374,10 +1374,10 @@ class MissRate(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(MissRate, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return MISS_RATE_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1397,14 +1397,14 @@ class FNR(MissRate):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes FNR metric."""
-    super(FNR, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FNR_NAME
 
 
@@ -1416,7 +1416,7 @@ class NegativePredictiveValue(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes negative predictive value.
@@ -1435,10 +1435,10 @@ class NegativePredictiveValue(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(NegativePredictiveValue, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return NEGATIVE_PREDICTIVE_VALUE_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1458,14 +1458,14 @@ class NPV(NegativePredictiveValue):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes PPV metric."""
-    super(NPV, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return NPV_NAME
 
 
@@ -1477,7 +1477,7 @@ class FalseDiscoveryRate(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes false discovery rate.
@@ -1496,10 +1496,10 @@ class FalseDiscoveryRate(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(FalseDiscoveryRate, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FALSE_DISCOVERY_RATE_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1519,7 +1519,7 @@ class FalseOmissionRate(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes false omission rate.
@@ -1538,10 +1538,10 @@ class FalseOmissionRate(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(FalseOmissionRate, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FALSE_OMISSION_RATE_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1561,7 +1561,7 @@ class Prevalence(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes prevalence.
@@ -1580,10 +1580,10 @@ class Prevalence(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(Prevalence, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return PREVALENCE_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1602,7 +1602,7 @@ class PrevalenceThreshold(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes prevalence threshold.
@@ -1621,10 +1621,10 @@ class PrevalenceThreshold(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(PrevalenceThreshold, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return PREVALENCE_THRESHOLD_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1646,7 +1646,7 @@ class ThreatScore(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes threat score.
@@ -1665,10 +1665,10 @@ class ThreatScore(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(ThreatScore, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return THREAT_SCORE_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1688,7 +1688,7 @@ class BalancedAccuracy(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes balanced accuracy.
@@ -1707,10 +1707,10 @@ class BalancedAccuracy(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(BalancedAccuracy, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return BALANCED_ACCURACY_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1732,7 +1732,7 @@ class F1Score(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes F1 score.
@@ -1751,10 +1751,10 @@ class F1Score(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(F1Score, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return F1_SCORE_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1777,7 +1777,7 @@ class MatthewsCorrelationCoefficient(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes matthews corrrelation coefficient.
@@ -1796,10 +1796,10 @@ class MatthewsCorrelationCoefficient(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(MatthewsCorrelationCoefficient, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return MATTHEWS_CORRELATION_COEFFICIENT_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1818,7 +1818,7 @@ class FowlkesMallowsIndex(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes fowlkes-mallows index.
@@ -1837,10 +1837,10 @@ class FowlkesMallowsIndex(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(FowlkesMallowsIndex, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return FOWLKES_MALLOWS_INDEX_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1863,7 +1863,7 @@ class Informedness(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes informedness.
@@ -1882,10 +1882,10 @@ class Informedness(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(Informedness, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return INFORMEDNESS_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1907,7 +1907,7 @@ class Markedness(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes markedness.
@@ -1926,10 +1926,10 @@ class Markedness(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(Markedness, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return MARKEDNESS_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1951,7 +1951,7 @@ class PositiveLikelihoodRatio(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes positive likelihood ratio.
@@ -1970,10 +1970,10 @@ class PositiveLikelihoodRatio(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(PositiveLikelihoodRatio, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return POSITIVE_LIKELIHOOD_RATIO_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -1995,7 +1995,7 @@ class NegativeLikelihoodRatio(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes negative likelihood ratio.
@@ -2014,10 +2014,10 @@ class NegativeLikelihoodRatio(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(NegativeLikelihoodRatio, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return NEGATIVE_LIKELIHOOD_RATIO_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -2039,7 +2039,7 @@ class DiagnosticOddsRatio(ConfusionMatrixMetric):
 
   def __init__(self,
                thresholds: Optional[Union[float, List[float]]] = None,
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes diagnostic odds ratio.
@@ -2058,10 +2058,10 @@ class DiagnosticOddsRatio(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(DiagnosticOddsRatio, self).__init__(
+    super().__init__(
         thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return DIAGNOSTIC_ODDS_RATIO_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
@@ -2079,7 +2079,7 @@ class ConfusionMatrixAtThresholds(metric_types.Metric):
 
   def __init__(self,
                thresholds: List[float],
-               name: Optional[Text] = None,
+               name: Optional[str] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None):
     """Initializes confusion matrix at thresholds.
@@ -2098,14 +2098,14 @@ class ConfusionMatrixAtThresholds(metric_types.Metric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
     """
-    super(ConfusionMatrixAtThresholds, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(self._metric_computations),
         thresholds=thresholds,
         name=name,
         top_k=top_k,
         class_id=class_id)
 
-  def _default_name(self) -> Text:
+  def _default_name(self) -> str:
     return CONFUSION_MATRIX_AT_THRESHOLDS_NAME
 
   def _metric_computations(
@@ -2113,10 +2113,10 @@ class ConfusionMatrixAtThresholds(metric_types.Metric):
       thresholds: List[float],
       top_k: Optional[int] = None,
       class_id: Optional[int] = None,
-      name: Optional[Text] = None,
+      name: Optional[str] = None,
       eval_config: Optional[config_pb2.EvalConfig] = None,
-      model_name: Text = '',
-      output_name: Text = '',
+      model_name: str = '',
+      output_name: str = '',
       sub_key: Optional[metric_types.SubKey] = None,
       aggregation_type: Optional[metric_types.AggregationType] = None,
       class_weights: Optional[Dict[int, float]] = None,

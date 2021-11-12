@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,12 @@
 # limitations under the License.
 """Calibration histogram."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import bisect
 import heapq
 import itertools
 import operator
 
-from typing import Dict, Iterable, List, Optional, NamedTuple, Text
+from typing import Dict, Iterable, List, Optional, NamedTuple
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
@@ -46,10 +40,10 @@ def calibration_histogram(
     num_buckets: Optional[int] = None,
     left: Optional[float] = None,
     right: Optional[float] = None,
-    name: Optional[Text] = None,
+    name: Optional[str] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """TF metric accumulators."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Callable, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import numpy as np
 from tensorflow_model_analysis.metrics import metric_util
@@ -27,7 +21,7 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import size_estimator
 
 
-class TFMetricsAccumulator(object):
+class TFMetricsAccumulator:
   """Accumulator for TF metrics.
 
   Attributes:
@@ -169,7 +163,7 @@ class TFCompilableMetricsAccumulator(TFMetricsAccumulator):
                metric_counts: List[int],
                desired_batch_size: Optional[int] = None):
     """Initializes accumulator using a list of metric counts per output."""
-    super(TFCompilableMetricsAccumulator, self).__init__(
+    super().__init__(
         # Input args of labels, predictions, example_weights for each output.
         input_counts=[3] * len(metric_counts),
         metric_counts=metric_counts,
@@ -191,8 +185,7 @@ class TFCompilableMetricsAccumulator(TFMetricsAccumulator):
   def add_input(self, output_index: int, label: np.ndarray,
                 prediction: np.ndarray, example_weight: np.ndarray):
     """Adds label, prediction, and example weight to output_index."""
-    super(TFCompilableMetricsAccumulator,
-          self).add_input(output_index, label, prediction, example_weight)
+    super().add_input(output_index, label, prediction, example_weight)
     if self._pad:
       self._pad_to_dim = max(self._pad_to_dim, label.shape[-1],
                              prediction.shape[-1])
@@ -200,12 +193,11 @@ class TFCompilableMetricsAccumulator(TFMetricsAccumulator):
   def get_inputs(
       self, output_index: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Returns labels, predictions, and weights for output at given offset."""
-    labels, preds, example_weights = super(TFCompilableMetricsAccumulator,
-                                           self).get_inputs(output_index)
+    labels, preds, example_weights = super().get_inputs(output_index)
     if self._pad:
 
       def pad_value(
-          name: Text, a: np.ndarray,
+          name: str, a: np.ndarray,
           configured_value: Optional[Union[float, int]]) -> Union[int, float]:
         if configured_value is None:
           return 0 if a.dtype.kind == 'i' else .0
@@ -230,5 +222,5 @@ class TFCompilableMetricsAccumulator(TFMetricsAccumulator):
 
   def clear_inputs(self):
     """Clears currently stored inputs."""
-    super(TFCompilableMetricsAccumulator, self).clear_inputs()
+    super().clear_inputs()
     self._pad_to_dim = 0

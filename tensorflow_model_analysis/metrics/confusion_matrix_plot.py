@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Confusion matrix Plot."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional
 
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
@@ -36,7 +30,7 @@ class ConfusionMatrixPlot(metric_types.Metric):
 
   def __init__(self,
                num_thresholds: int = DEFAULT_NUM_THRESHOLDS,
-               name: Text = CONFUSION_MATRIX_PLOT_NAME):
+               name: str = CONFUSION_MATRIX_PLOT_NAME):
     """Initializes confusion matrix plot.
 
     Args:
@@ -44,7 +38,7 @@ class ConfusionMatrixPlot(metric_types.Metric):
         Values must be > 1. Defaults to 1000.
       name: Metric name.
     """
-    super(ConfusionMatrixPlot, self).__init__(
+    super().__init__(
         metric_util.merge_per_key_computations(_confusion_matrix_plot),
         num_thresholds=num_thresholds,
         name=name)
@@ -55,10 +49,10 @@ metric_types.register_metric(ConfusionMatrixPlot)
 
 def _confusion_matrix_plot(
     num_thresholds: int = DEFAULT_NUM_THRESHOLDS,
-    name: Text = CONFUSION_MATRIX_PLOT_NAME,
+    name: str = CONFUSION_MATRIX_PLOT_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: Text = '',
-    output_name: Text = '',
+    model_name: str = '',
+    output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,

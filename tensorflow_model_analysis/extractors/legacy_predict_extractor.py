@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,10 @@
 # limitations under the License.
 """Public API for performing evaluations using the EvalSavedModel."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
 import collections
 import copy
 
-from typing import Any, Dict, List, Optional, Sequence, Text
+from typing import Any, Dict, List, Optional, Sequence
 
 import apache_beam as beam
 import numpy as np
@@ -89,14 +83,13 @@ def PredictExtractor(  # pylint: disable=invalid-name
 class _TFMAPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
   """A DoFn that loads the model and predicts."""
 
-  def __init__(self, eval_shared_models: Dict[Text, types.EvalSharedModel],
+  def __init__(self, eval_shared_models: Dict[str, types.EvalSharedModel],
                eval_config):
-    super(_TFMAPredictionDoFn, self).__init__(
-        {k: v.model_loader for k, v in eval_shared_models.items()})
+    super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
 
-  def _get_example_weights(self, model_name: Text, features: Dict[Text,
-                                                                  Any]) -> Any:
+  def _get_example_weights(self, model_name: str, features: Dict[str,
+                                                                 Any]) -> Any:
     spec = model_util.get_model_spec(self._eval_config, model_name)
     if not spec:
       raise ValueError(
@@ -205,7 +198,7 @@ def _unwrap_batched_extract(
 @beam.typehints.with_output_types(types.Extracts)
 def _TFMAPredict(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    eval_shared_models: Dict[Text, types.EvalSharedModel],
+    eval_shared_models: Dict[str, types.EvalSharedModel],
     desired_batch_size: Optional[int] = None,
     materialize: Optional[bool] = True,
     eval_config: Optional[

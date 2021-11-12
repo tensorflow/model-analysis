@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +18,7 @@ import inspect
 import sys
 import traceback
 
-from typing import Any, List, Mapping, MutableMapping, Optional, Text, Union
+from typing import Any, List, Mapping, MutableMapping, Optional, Union
 
 import numpy as np
 import six
@@ -144,7 +143,7 @@ def to_tensorflow_tensors(
 
   def to_tensors(values: types.TensorValueMaybeMultiLevelDict,
                  specs: Optional[types.TypeSpecMaybeMultiLevelDict],
-                 keys: List[Text]) -> types.TensorTypeMaybeMultiLevelDict:
+                 keys: List[str]) -> types.TensorTypeMaybeMultiLevelDict:
     if (specs is not None and
         ((isinstance(specs, Mapping) and not isinstance(values, Mapping)) or
          (not isinstance(specs, Mapping) and isinstance(values, Mapping)))):
@@ -174,9 +173,9 @@ def to_tensorflow_tensors(
   return to_tensors(values, specs, [])
 
 
-def unique_key(key: Text,
-               current_keys: List[Text],
-               update_keys: Optional[bool] = False) -> Text:
+def unique_key(key: str,
+               current_keys: List[str],
+               update_keys: Optional[bool] = False) -> str:
   """Returns a unique key given a list of current keys.
 
   If the key exists in current_keys then a new key with _1, _2, ..., etc
@@ -197,7 +196,7 @@ def unique_key(key: Text,
   return k
 
 
-def compound_key(keys: List[Text], separator: Text = KEY_SEPARATOR) -> Text:
+def compound_key(keys: List[str], separator: str = KEY_SEPARATOR) -> str:
   """Returns a compound key based on a list of keys.
 
   Args:
@@ -209,17 +208,17 @@ def compound_key(keys: List[Text], separator: Text = KEY_SEPARATOR) -> Text:
   return separator.join([key.replace(separator, separator * 2) for key in keys])
 
 
-def create_keys_key(key: Text) -> Text:
+def create_keys_key(key: str) -> str:
   """Creates secondary key representing the sparse keys associated with key."""
   return '_'.join([key, KEYS_SUFFIX])
 
 
-def create_values_key(key: Text) -> Text:
+def create_values_key(key: str) -> str:
   """Creates secondary key representing sparse values associated with key."""
   return '_'.join([key, VALUES_SUFFIX])
 
 
-def get_by_keys(data: Mapping[Text, Any],
+def get_by_keys(data: Mapping[str, Any],
                 keys: List[Any],
                 default_value=None,
                 optional: bool = False) -> Any:
@@ -370,7 +369,7 @@ def merge_filters(
   return result
 
 
-def reraise_augmented(exception: Exception, additional_message: Text) -> None:
+def reraise_augmented(exception: Exception, additional_message: str) -> None:
   """Reraise a given exception with additional information.
 
   Based on _reraise_augmented in Apache Beam.
@@ -485,7 +484,7 @@ def get_features_from_extracts(
 def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
   """Merges list of extracts into single extract with multi-dimentional data."""
 
-  def merge_with_lists(target: types.Extracts, key: Text, value: Any):
+  def merge_with_lists(target: types.Extracts, key: str, value: Any):
     """Merges key and value into the target extracts as a list of values."""
     if isinstance(value, Mapping):
       if key not in target:
@@ -546,7 +545,7 @@ def split_extracts(extracts: types.Extracts) -> List[types.Extracts]:
   """Splits extracts into a list of extracts along the batch dimension."""
   results = []
 
-  def add_to_results(keys: List[Text], values: Any):
+  def add_to_results(keys: List[str], values: Any):
     # Use TF to split SparseTensor and RaggedTensorValue
     if isinstance(values, types.SparseTensorValue):
       values = to_tensorflow_tensor(values)
@@ -576,7 +575,7 @@ def split_extracts(extracts: types.Extracts) -> List[types.Extracts]:
         value = np.expand_dims(value, 0)
       parent[keys[-1]] = value
 
-  def visit(subtree: types.Extracts, keys: List[Text]):
+  def visit(subtree: types.Extracts, keys: List[str]):
     for key, value in subtree.items():
       if isinstance(value, Mapping):
         visit(value, keys + [key])
@@ -638,8 +637,8 @@ class StandardExtracts(collections.abc.MutableMapping):
 
   def get_labels(
       self,
-      model_name: Optional[Text] = None,
-      output_name: Optional[Text] = None
+      model_name: Optional[str] = None,
+      output_name: Optional[str] = None
   ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
     """Returns tfma.LABELS_KEY extract."""
     return self.get_by_key(constants.LABELS_KEY, model_name, output_name)
@@ -648,8 +647,8 @@ class StandardExtracts(collections.abc.MutableMapping):
 
   def get_predictions(
       self,
-      model_name: Optional[Text] = None,
-      output_name: Optional[Text] = None
+      model_name: Optional[str] = None,
+      output_name: Optional[str] = None
   ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
     """Returns tfma.PREDICTIONS_KEY extract."""
     return self.get_by_key(constants.PREDICTIONS_KEY, model_name, output_name)
@@ -658,8 +657,8 @@ class StandardExtracts(collections.abc.MutableMapping):
 
   def get_example_weights(
       self,
-      model_name: Optional[Text] = None,
-      output_name: Optional[Text] = None
+      model_name: Optional[str] = None,
+      output_name: Optional[str] = None
   ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
     """Returns tfma.EXAMPLE_WEIGHTS_KEY extract."""
     return self.get_by_key(constants.EXAMPLE_WEIGHTS_KEY, model_name,
@@ -675,7 +674,7 @@ class StandardExtracts(collections.abc.MutableMapping):
 
   def get_transformed_features(
       self,
-      model_name: Optional[Text] = None
+      model_name: Optional[str] = None
   ) -> Optional[types.DictOfTensorValueMaybeDict]:
     """Returns tfma.TRANSFORMED_FEATURES_KEY extract."""
     return self.get_by_key(constants.TRANSFORMED_FEATURES_KEY, model_name)
@@ -684,8 +683,8 @@ class StandardExtracts(collections.abc.MutableMapping):
 
   def get_attributions(
       self,
-      model_name: Optional[Text] = None,
-      output_name: Optional[Text] = None
+      model_name: Optional[str] = None,
+      output_name: Optional[str] = None
   ) -> Optional[types.DictOfTensorValueMaybeDict]:
     """Returns tfma.ATTRIBUTIONS_KEY extract."""
     return self.get_by_key(constants.ATTRIBUTIONS_KEY, model_name, output_name)
@@ -693,9 +692,9 @@ class StandardExtracts(collections.abc.MutableMapping):
   attributions = property(get_attributions)
 
   def get_by_key(self,
-                 key: Text,
-                 model_name: Optional[Text] = None,
-                 output_name: Optional[Text] = None) -> Any:
+                 key: str,
+                 model_name: Optional[str] = None,
+                 output_name: Optional[str] = None) -> Any:
     """Returns item for key possibly filtered by model and/or output names."""
 
     def optionally_get_by_keys(value: Any, keys: List[Any]) -> Any:

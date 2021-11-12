@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Extractor type."""
 
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
-
-from typing import Any, Dict, Iterable, NamedTuple, Optional, Text, Union
+from typing import Any, Dict, Iterable, NamedTuple, Optional, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import types
@@ -35,7 +29,7 @@ LAST_EXTRACTOR_STAGE_NAME = '<last-extractor>'
 Extractor = NamedTuple(  # pylint: disable=invalid-name
     'Extractor',
     [
-        ('stage_name', Text),
+        ('stage_name', str),
         # PTransform Extracts -> Extracts
         ('ptransform', beam.PTransform)
     ])
@@ -46,10 +40,9 @@ Extractor = NamedTuple(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(types.Extracts)
 def Filter(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    include: Optional[Union[Iterable[Text], Dict[Text, Any]]] = None,
-    exclude: Optional[Union[Iterable[Text],
-                            Dict[Text,
-                                 Any]]] = None) -> beam.pvalue.PCollection:
+    include: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
+    exclude: Optional[Union[Iterable[str],
+                            Dict[str, Any]]] = None) -> beam.pvalue.PCollection:
   """Filters extracts to include/exclude specified keys.
 
   Args:

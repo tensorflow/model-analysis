@@ -12,19 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """View API for Fairness Indicators."""
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
 
-from typing import Optional, Text, Dict, Callable, Any, List, Tuple
+from typing import Optional, Dict, Callable, Any, List, Tuple
 import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.notebook import visualization
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.view import view_types
 
 
-def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> Text:
+def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> str:
   """Stringifies a slice key value.
 
   The string representation of a SingletonSliceKeyType is "feature:value". This
@@ -98,10 +94,10 @@ def _add_cross_slice_key_data(slice_key: slicer.CrossSliceKeyType,
 def convert_slicing_metrics_to_ui_input(
     slicing_metrics: List[Tuple[slicer.SliceKeyOrCrossSliceKeyType,
                                 view_types.MetricsByOutputName]],
-    slicing_column: Optional[Text] = None,
+    slicing_column: Optional[str] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
-    output_name: Text = '',
-    multi_class_key: Text = '') -> Optional[List[Dict[Text, Any]]]:
+    output_name: str = '',
+    multi_class_key: str = '') -> Optional[List[Dict[str, Any]]]:
   """Renders the Fairness Indicator view.
 
   Args:
@@ -156,12 +152,12 @@ def convert_slicing_metrics_to_ui_input(
 
 def render_fairness_indicator(
     eval_result: Optional[view_types.EvalResult] = None,
-    multi_eval_results: Optional[Dict[Text, view_types.EvalResult]] = None,
-    slicing_column: Optional[Text] = None,
+    multi_eval_results: Optional[Dict[str, view_types.EvalResult]] = None,
+    slicing_column: Optional[str] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
-    output_name: Text = '',
-    multi_class_key: Text = '',
-    event_handlers: Optional[Dict[Text, Callable[..., Any]]] = None,
+    output_name: str = '',
+    multi_class_key: str = '',
+    event_handlers: Optional[Dict[str, Callable[..., Any]]] = None,
 ) -> Optional[Any]:
   """Renders the Fairness Indicator view.
 

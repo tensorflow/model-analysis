@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test for using the tfma_unit library."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 
@@ -73,7 +68,7 @@ class TFMAUnitTest(tfma_unit.TestCase):
                 tfma_unit.BoundedValue(lower_bound=0.03, upper_bound=0.05)
         })
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         AssertionError, 'expecting key average_loss to have value between'):
       self.assertMetricsComputedWithoutBeamAre(
           eval_saved_model_path=eval_export_dir,
@@ -82,7 +77,7 @@ class TFMAUnitTest(tfma_unit.TestCase):
               'average_loss': tfma_unit.BoundedValue(upper_bound=0.01)
           })
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         AssertionError, 'expecting key average_loss to have value between'):
       self.assertMetricsComputedWithoutBeamAre(
           eval_saved_model_path=eval_export_dir,

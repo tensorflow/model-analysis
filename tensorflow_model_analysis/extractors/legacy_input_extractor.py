@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Input extractor for extracting features, labels, weights."""
-from __future__ import absolute_import
-from __future__ import division
-# Standard __future__ imports
-from __future__ import print_function
 
 import copy
 
-from typing import Any, Dict, List, Optional, Text, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
@@ -70,10 +65,10 @@ def InputExtractor(eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
 
 
 def _keys_and_values(  # pylint: disable=invalid-name
-    key_maybe_dict: Union[Text, Dict[Text, Text]],
-    features: Dict[Text,
-                   np.ndarray]) -> Tuple[Optional[List[Text]], Optional[Union[
-                       np.ndarray, Dict[Text, np.ndarray]]]]:
+    key_maybe_dict: Union[str, Dict[str, str]],
+    features: Dict[str,
+                   np.ndarray]) -> Tuple[Optional[List[str]], Optional[Union[
+                       np.ndarray, Dict[str, np.ndarray]]]]:
   """Returns keys and values in dict given key (or dict of keys)."""
   if isinstance(key_maybe_dict, dict):
     values = {}
@@ -106,7 +101,7 @@ def _ParseExample(extracts: types.Extracts, eval_config: config_pb2.EvalConfig):
   extracts = copy.copy(extracts)
 
   def add_to_extracts(  # pylint: disable=invalid-name
-      key: Text, model_name: Text, feature_values: Any):
+      key: str, model_name: str, feature_values: Any):
     """Adds features_values to extracts and feature_keys to keys_to_pop."""
     # Only key by model name if multiple models.
     if len(eval_config.model_specs) > 1:
