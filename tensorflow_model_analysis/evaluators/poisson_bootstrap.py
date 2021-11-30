@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utils for performing poisson bootstrapping."""
 
-from typing import Any, Optional, Set, Tuple
+from typing import Any, Optional, Set, Tuple, TypeVar
 
 import apache_beam as beam
 import numpy as np
@@ -22,12 +22,15 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import confidence_intervals_util
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import beam_util
 
 DEFAULT_NUM_BOOTSTRAP_SAMPLES = 20
 _FULL_SAMPLE_ID = -1
 
+_AccumulatorType = TypeVar('_AccumulatorType')
 
-class _BootstrapCombineFn(confidence_intervals_util.CombineFnWrapper):
+
+class _BootstrapCombineFn(beam_util.DelegatingCombineFn):
   """CombineFn wrapper which adds poisson resampling to input elements."""
 
   def __init__(self,
@@ -40,8 +43,8 @@ class _BootstrapCombineFn(confidence_intervals_util.CombineFnWrapper):
     super().setup()
     self._random_state = np.random.RandomState(self._random_seed)
 
-  def add_input(self, accumulator: confidence_intervals_util.AccumulatorType,
-                element: Any) -> confidence_intervals_util.AccumulatorType:
+  def add_input(self, accumulator: _AccumulatorType,
+                element: Any) -> _AccumulatorType:
     for sampled_element in [element] * int(self._random_state.poisson(1, 1)):
       accumulator = self._combine_fn.add_input(accumulator, sampled_element)
     return accumulator
@@ -122,7 +125,7 @@ class _BootstrapSampleCombineFn(confidence_intervals_util.SampleCombineFn):
 
   def extract_output(
       self,
-      accumulator: confidence_intervals_util.SampleCombineFn._SampleAccumulator
+      accumulator: confidence_intervals_util.SampleCombineFn.SampleAccumulator
   ) -> metric_types.MetricsDict:
     accumulator = self._validate_accumulator(accumulator)
     result = {}

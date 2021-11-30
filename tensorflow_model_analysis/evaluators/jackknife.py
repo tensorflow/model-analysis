@@ -13,7 +13,7 @@
 # limitations under the License.
 """Helper methods for computing jackknife std error estimates on metrics."""
 
-from typing import Optional, Set, Tuple
+from typing import Optional, Set, Tuple, TypeVar
 
 import apache_beam as beam
 import numpy as np
@@ -22,11 +22,14 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.evaluators import confidence_intervals_util
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import beam_util
 
 _FULL_SAMPLE_ID = -1
 
+_AccumulatorType = TypeVar('_AccumulatorType')
 
-class _AccumulateOnlyCombineFn(confidence_intervals_util.CombineFnWrapper):
+
+class _AccumulateOnlyCombineFn(beam_util.DelegatingCombineFn):
   """A combine_fn wrapper which returns the accumulator as the output value.
 
   This is intended to allow invoking CombineFns in settings where you might need
@@ -50,13 +53,11 @@ class _AccumulateOnlyCombineFn(confidence_intervals_util.CombineFnWrapper):
           | beam.CombinePerKey(_AccumulatorCombineFn(c)))
   """
 
-  def extract_output(
-      self, accumulator: confidence_intervals_util.AccumulatorType
-  ) -> confidence_intervals_util.AccumulatorType:
+  def extract_output(self, accumulator: _AccumulatorType) -> _AccumulatorType:
     return accumulator
 
 
-class _AccumulatorCombineFn(confidence_intervals_util.CombineFnWrapper):
+class _AccumulatorCombineFn(beam_util.DelegatingCombineFn):
   """A CombineFn wrapper that takes accumulators as add_input elements.
 
   In combination with _AccumulateOnlyCombineFn, this makes it possible to
@@ -64,10 +65,8 @@ class _AccumulatorCombineFn(confidence_intervals_util.CombineFnWrapper):
   _AccumulateOnlyCombineFn docstring for more details.
   """
 
-  def add_input(
-      self, accumulator: confidence_intervals_util.AccumulatorType,
-      element: confidence_intervals_util.AccumulatorType
-  ) -> confidence_intervals_util.AccumulatorType:
+  def add_input(self, accumulator: _AccumulatorType,
+                element: _AccumulatorType) -> _AccumulatorType:
     return self._combine_fn.merge_accumulators([accumulator, element])
 
 
@@ -93,7 +92,7 @@ class _JackknifeSampleCombineFn(confidence_intervals_util.SampleCombineFn):
 
   def extract_output(
       self,
-      accumulator: confidence_intervals_util.SampleCombineFn._SampleAccumulator
+      accumulator: confidence_intervals_util.SampleCombineFn.SampleAccumulator
   ) -> metric_types.MetricsDict:
     accumulator = self._validate_accumulator(accumulator)
     result = {}
@@ -140,8 +139,8 @@ def _add_sample_id(slice_key,
 @beam.ptransform_fn
 def _ComputeJackknifeSample(  # pylint: disable=invalid-name
     sample_accumulators: beam.PCollection[
-        confidence_intervals_util.AccumulatorType], sample_id: int,
-    computations_combine_fn: beam.CombineFn,
+        confidence_intervals_util.SampleCombineFn.SampleAccumulator],
+    sample_id: int, computations_combine_fn: beam.CombineFn,
     derived_metrics_ptransform: beam.PTransform
 ) -> beam.PCollection[confidence_intervals_util.SampleMetrics]:
   """Computes a single jackknife delete-d sample from partition accumulators.

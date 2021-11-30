@@ -15,8 +15,7 @@
 
 import collections
 import numbers
-from typing import Any, Iterable, NamedTuple, Optional, Set, Sequence, Tuple, TypeVar
-
+from typing import Iterable, NamedTuple, Optional, Set, Sequence, Tuple
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import constants
@@ -27,53 +26,6 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 SampleMetrics = NamedTuple('SampleMetrics',
                            [('metrics', metric_types.MetricsDict),
                             ('sample_id', int)])
-
-_RawAccumulatorType = TypeVar('_RawAccumulatorType')
-AccumulatorType = Sequence[_RawAccumulatorType]
-
-
-class CombineFnWrapper(beam.CombineFn):
-  """CombineFn which wraps and delegates to another CombineFn.
-
-  This is useful as a base case for other CombineFn wrappers that need to do
-  instance-level overriding. By subclassing CombineFnWrapper and overriding only
-  the methods which need to be changed, a subclass can rely on CombineFnWrapper
-  to appropriately delegate all of the other CombineFn API methods.
-
-  Note that it is important that this class handle all of the CombineFn APIs,
-  otherwise a combine_fn wrapped by any subclass which uses an un-delegated API
-  would break. For example if setup() weren't delegated, then on calls to
-  add_input(), the wrapped CombineFn would find that none of the setup had
-  happened.
-
-  TODO(b/194704747): Find ways to mitigate risk of future CombineFn API changes.
-  """
-
-  def __init__(self, combine_fn: beam.CombineFn):
-    self._combine_fn = combine_fn
-
-  def setup(self, *args, **kwargs):
-    self._combine_fn.setup(*args, **kwargs)
-
-  def create_accumulator(self):
-    return self._combine_fn.create_accumulator()
-
-  def add_input(self, accumulator: AccumulatorType,
-                element: Any) -> AccumulatorType:
-    return self._combine_fn.add_input(accumulator, element)
-
-  def merge_accumulators(
-      self, accumulators: Iterable[AccumulatorType]) -> AccumulatorType:
-    return self._combine_fn.merge_accumulators(accumulators)
-
-  def compact(self, accumulator: AccumulatorType) -> AccumulatorType:
-    return self._combine_fn.compact(accumulator)
-
-  def extract_output(self, accumulator: AccumulatorType) -> AccumulatorType:
-    return self._combine_fn.extract_output(accumulator)
-
-  def teardown(self, *args, **kwargs):
-    return self._combine_fn.teardown(*args, **kwargs)
 
 
 def mean_and_std(
@@ -115,7 +67,7 @@ def mean_and_std(
 class SampleCombineFn(beam.CombineFn):
   """Computes the standard deviation for each metric from samples."""
 
-  class _SampleAccumulator:
+  class SampleAccumulator:
 
     __slots__ = ['point_estimates', 'num_samples', 'metric_samples']
 
@@ -148,11 +100,11 @@ class SampleCombineFn(beam.CombineFn):
     self._missing_metric_samples_counter = beam.metrics.Metrics.counter(
         constants.METRICS_NAMESPACE, 'num_slices_missing_metric_samples')
 
-  def create_accumulator(self) -> 'SampleCombineFn._SampleAccumulator':
-    return SampleCombineFn._SampleAccumulator()
+  def create_accumulator(self) -> 'SampleCombineFn.SampleAccumulator':
+    return SampleCombineFn.SampleAccumulator()
 
-  def add_input(self, accumulator: 'SampleCombineFn._SampleAccumulator',
-                sample: SampleMetrics) -> 'SampleCombineFn._SampleAccumulator':
+  def add_input(self, accumulator: 'SampleCombineFn.SampleAccumulator',
+                sample: SampleMetrics) -> 'SampleCombineFn.SampleAccumulator':
     sample_id = sample.sample_id
     sample = sample.metrics
     if sample_id == self._full_sample_id:
@@ -173,8 +125,8 @@ class SampleCombineFn(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: Iterable['SampleCombineFn._SampleAccumulator']
-  ) -> 'SampleCombineFn._SampleAccumulator':
+      self, accumulators: Iterable['SampleCombineFn.SampleAccumulator']
+  ) -> 'SampleCombineFn.SampleAccumulator':
     # treat as iterator to enforce streaming processing
     accumulators = iter(accumulators)
     result = next(accumulators)
@@ -187,8 +139,8 @@ class SampleCombineFn(beam.CombineFn):
     return result
 
   def _validate_accumulator(
-      self, accumulator: 'SampleCombineFn._SampleAccumulator'
-  ) -> 'SampleCombineFn._SampleAccumulator':
+      self, accumulator: 'SampleCombineFn.SampleAccumulator'
+  ) -> 'SampleCombineFn.SampleAccumulator':
     self._num_slices_counter.inc(1)
     error_metric_key = metric_types.MetricKey(metric_keys.ERROR_METRIC)
     if accumulator.num_samples < self._num_samples:
@@ -215,6 +167,6 @@ class SampleCombineFn(beam.CombineFn):
 
   # TODO(b/195132951): replace with @abc.abstractmethod
   def extract_output(
-      self, accumulator: 'SampleCombineFn._SampleAccumulator'
+      self, accumulator: 'SampleCombineFn.SampleAccumulator'
   ) -> metric_types.MetricsDict:
     raise NotImplementedError('Must be implemented in subclasses.')

@@ -31,8 +31,8 @@ class _ValidateSampleCombineFn(confidence_intervals_util.SampleCombineFn):
 
   def extract_output(
       self,
-      accumulator: confidence_intervals_util.SampleCombineFn._SampleAccumulator
-  ) -> confidence_intervals_util.SampleCombineFn._SampleAccumulator:
+      accumulator: confidence_intervals_util.SampleCombineFn.SampleAccumulator
+  ) -> confidence_intervals_util.SampleCombineFn.SampleAccumulator:
     return self._validate_accumulator(accumulator)
 
 
