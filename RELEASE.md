@@ -6,6 +6,8 @@
 
 *   Replaced keras metrics with TFMA implementations. To use a keras metric in a
     `tfma.MetricConfig` you must now specify a module (i.e. `tf.keras.metrics`).
+*   Added FixedSizeSample metric which can be used to extract a random,
+    per-slice, fixed-sized sample of values for a user-configured feature key.
 
 ## Bug fixes and other Changes
 
