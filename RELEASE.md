@@ -18,6 +18,10 @@
 
 ## Breaking Changes
 
+*   Removes register_metric from public API, as it is not intended to be public
+    facing. To use a custom metric, provide the module name in which the
+    metric is defined in the MetricConfig message, instead.
+
 ## Deprecations
 
 # Version 0.35.0
