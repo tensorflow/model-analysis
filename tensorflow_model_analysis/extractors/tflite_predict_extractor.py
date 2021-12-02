@@ -44,9 +44,19 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   def setup(self):
     super().setup()
     self._interpreters = {}
+
+    major, minor, _ = tf.version.VERSION.split('.')
     for model_name, model_contents in self._loaded_models.items():
-      self._interpreters[model_name] = tf.lite.Interpreter(
-          model_content=model_contents.contents)
+      # TODO(b/207600661): drop BUILTIN_WITHOUT_DEFAULT_DELEGATES once the issue
+      # is fixed.
+      if int(major) > 2 or (int(major) == 2 and int(minor) >= 5):
+        self._interpreters[model_name] = tf.lite.Interpreter(
+            model_content=model_contents.contents,
+            experimental_op_resolver_type=tf.lite.experimental.OpResolverType
+            .BUILTIN_WITHOUT_DEFAULT_DELEGATES)
+      else:
+        self._interpreters[model_name] = tf.lite.Interpreter(
+            model_content=model_contents.contents)
 
   def _get_input_name_from_input_detail(self, input_detail):
     """Get input name from input detail.
