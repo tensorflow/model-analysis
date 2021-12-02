@@ -152,7 +152,8 @@ combinations may also work.
 
 tensorflow-model-analysis                                                            | apache-beam[gcp] | pyarrow | tensorflow        | tensorflow-metadata | tfx-bsl
 ------------------------------------------------------------------------------------ | ---------------- | ------- | ----------------- | ------------------- | -------
-[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.33.0           | 2.0.0   | nightly (1.x/2.x) | 1.4.0               | 1.4.0
+[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.34.0           | 2.0.0   | nightly (1.x/2.x) | 1.5.0               | 1.5.0
+[0.36.0](https://github.com/tensorflow/model-analysis/blob/v0.36.0/RELEASE.md)       | 2.34.0           | 2.0.0   | 1.15 / 2.7        | 1.5.0               | 1.5.0
 [0.35.0](https://github.com/tensorflow/model-analysis/blob/v0.35.0/RELEASE.md)       | 2.33.0           | 2.0.0   | 1.15 / 2.6        | 1.4.0               | 1.4.0
 [0.34.1](https://github.com/tensorflow/model-analysis/blob/v0.34.1/RELEASE.md)       | 2.32.0           | 2.0.0   | 1.15 / 2.6        | 1.2.0               | 1.3.0
 [0.34.0](https://github.com/tensorflow/model-analysis/blob/v0.34.0/RELEASE.md)       | 2.31.0           | 2.0.0   | 1.15 / 2.6        | 1.2.0               | 1.3.1
