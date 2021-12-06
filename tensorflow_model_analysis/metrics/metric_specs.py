@@ -518,7 +518,7 @@ def _keys_for_metric(
           yield key
 
 
-def _keys_and_metrics_from_specs(
+def keys_and_metrics_from_specs(
     eval_config: config_pb2.EvalConfig,
     metrics_specs: Iterable[config_pb2.MetricsSpec]
 ) -> Iterator[Tuple[metric_types.MetricKey, config_pb2.MetricConfig,
@@ -540,8 +540,8 @@ def metric_keys_to_skip_for_confidence_intervals(
     eval_config: config_pb2.EvalConfig) -> FrozenSet[metric_types.MetricKey]:
   """Returns metric keys not to be displayed with confidence intervals."""
   skipped_keys = []
-  for key, _, instance in _keys_and_metrics_from_specs(eval_config,
-                                                       metrics_specs):
+  for key, _, instance in keys_and_metrics_from_specs(eval_config,
+                                                      metrics_specs):
     # if metric does not implement compute_confidence_interval, do not skip
     if not getattr(instance, 'compute_confidence_interval', True):
       skipped_keys.append(key)
@@ -619,7 +619,7 @@ def metric_thresholds_from_metrics_specs(
                             cross_slice_threshold.threshold)
 
   # Add thresholds for post export metrics defined in MetricConfigs.
-  for key, metric_config, _ in _keys_and_metrics_from_specs(
+  for key, metric_config, _ in keys_and_metrics_from_specs(
       eval_config, metrics_specs):
     if metric_config.HasField('threshold'):
       add_threshold(key, None, metric_config.threshold)
