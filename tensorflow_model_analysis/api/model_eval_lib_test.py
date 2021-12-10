@@ -794,7 +794,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
           schema=schema)
 
     # Directly check validaton file since it is not in EvalResult.
-    validations_file = os.path.join(output_path, constants.VALIDATIONS_KEY)
+    validations_file = os.path.join(output_path,
+                                    f'{constants.VALIDATIONS_KEY}.tfrecord')
     self.assertTrue(os.path.exists(validations_file))
     validation_records = []
     for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
@@ -974,7 +975,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         output_path=output_path)
 
     # Directly check validaton file since it is not in EvalResult.
-    validations_file = os.path.join(output_path, constants.VALIDATIONS_KEY)
+    validations_file = os.path.join(output_path,
+                                    f'{constants.VALIDATIONS_KEY}.tfrecord')
     self.assertTrue(os.path.exists(validations_file))
     validation_records = []
     for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
@@ -1155,7 +1157,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         schema=schema)
 
     # Directly check validaton file since it is not in EvalResult.
-    validations_file = os.path.join(output_path, constants.VALIDATIONS_KEY)
+    validations_file = os.path.join(output_path,
+                                    f'{constants.VALIDATIONS_KEY}.tfrecord')
     self.assertTrue(os.path.exists(validations_file))
     validation_records = []
     for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):

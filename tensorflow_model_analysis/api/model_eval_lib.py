@@ -172,8 +172,9 @@ def _update_eval_config_with_defaults(
 MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice
 
 
-def load_metrics(output_path: str,
-                 output_file_format: str = '') -> Iterator[MetricsForSlice]:
+def load_metrics(
+    output_path: str,
+    output_file_format: str = 'tfrecord') -> Iterator[MetricsForSlice]:
   """Read and deserialize the MetricsForSlice records."""
   for m in metrics_plots_and_validations_writer.load_and_deserialize_metrics(
       output_path, output_file_format):
@@ -184,7 +185,7 @@ PlotsForSlice = metrics_for_slice_pb2.PlotsForSlice
 
 
 def load_plots(output_path: str,
-               output_file_format: str = '') -> Iterator[PlotsForSlice]:
+               output_file_format: str = 'tfrecord') -> Iterator[PlotsForSlice]:
   """Read and deserialize the PlotsForSlice records."""
   for p in metrics_plots_and_validations_writer.load_and_deserialize_plots(
       output_path, output_file_format):
@@ -196,7 +197,7 @@ AttributionsForSlice = metrics_for_slice_pb2.AttributionsForSlice
 
 def load_attributions(
     output_path: str,
-    output_file_format: str = '') -> Iterator[AttributionsForSlice]:
+    output_file_format: str = 'tfrecord') -> Iterator[AttributionsForSlice]:
   """Read and deserialize the AttributionsForSlice records."""
   for a in (
       metrics_plots_and_validations_writer.load_and_deserialize_attributions(
@@ -233,7 +234,7 @@ def make_eval_results(results: List[view_types.EvalResult],
 
 def load_eval_results(
     output_paths: Union[str, List[str]],
-    output_file_format: Optional[str] = '',
+    output_file_format: Optional[str] = 'tfrecord',
     mode: str = constants.MODEL_CENTRIC_MODE,
     model_name: Optional[str] = None) -> view_types.EvalResults:
   """Loads results for multiple models or multiple data sets.
@@ -267,7 +268,7 @@ def load_eval_results(
 
 
 def load_eval_result(output_path: str,
-                     output_file_format: Optional[str] = '',
+                     output_file_format: Optional[str] = 'tfrecord',
                      model_name: Optional[str] = None) -> view_types.EvalResult:
   """Loads EvalResult object for use with the visualization functions.
 
@@ -697,7 +698,7 @@ def default_writers(
     eval_config: Optional[config_pb2.EvalConfig] = None,
     display_only_data_location: Optional[str] = None,
     display_only_data_file_format: Optional[str] = None,
-    output_file_format: str = '',
+    output_file_format: str = 'tfrecord',
     add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None
 ) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.

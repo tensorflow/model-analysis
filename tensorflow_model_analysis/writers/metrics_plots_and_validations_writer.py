@@ -112,7 +112,7 @@ def _raw_value_iterator(
 
 def load_and_deserialize_metrics(
     output_path: str,
-    output_file_format: str = '',
+    output_file_format: str = 'tfrecord',
     slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
 ) -> Iterator[metrics_for_slice_pb2.MetricsForSlice]:
   """Read and deserialize the MetricsForSlice records.
