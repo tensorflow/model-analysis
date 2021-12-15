@@ -22,6 +22,8 @@
 ## Bug fixes and other Changes
 
 *   Updated QueryStatistics to support weighted examples.
+*   Replace confusion matrix based metrics with numpy counterparts, shifting
+    away from Keras metrics class.
 *   Depends on `apache-beam[gcp]>=2.34,<3`.
 *   Depends on
     `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<3`.

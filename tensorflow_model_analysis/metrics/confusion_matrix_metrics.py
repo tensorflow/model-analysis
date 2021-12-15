@@ -15,12 +15,12 @@
 
 import abc
 import copy
+import enum
 import math
 
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-import tensorflow as tf
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -68,6 +68,17 @@ POSITIVE_LIKELIHOOD_RATIO_NAME = 'positive_likelihood_ratio'
 NEGATIVE_LIKELIHOOD_RATIO_NAME = 'negative_likelihood_ratio'
 DIAGNOSTIC_ODDS_RATIO_NAME = 'diagnostic_odds_ratio'
 CONFUSION_MATRIX_AT_THRESHOLDS_NAME = 'confusion_matrix_at_thresholds'
+
+
+class AUCCurve(enum.Enum):
+  ROC = 'ROC'
+  PR = 'PR'
+
+
+class AUCSummationMethod(enum.Enum):
+  INTERPOLATION = 'interpolation'
+  MAJORING = 'majoring'
+  MINORING = 'minoring'
 
 
 def _pos_sqrt(value: float) -> float:
@@ -132,6 +143,29 @@ def _validate_and_update_sub_key(
           'class_id setting from this metric or remove the '
           'metrics_spec.binarize settings.')
   return sub_key
+
+
+def _find_max_under_constraint(constrained, dependent, value):
+  """Returns the maximum of dependent that satisfies contrained >= value.
+
+  Args:
+    constrained: Over these values the constraint is specified. A rank-1 np
+      array.
+    dependent: From these values the maximum that satiesfies the constraint is
+      selected. Values in this array and in `constrained` are linked by having
+      the same threshold at each position, hence this array must have the same
+      shape.
+    value: The lower bound where contrained >= value.
+
+  Returns:
+    Maximal dependent value, if no value satiesfies the constraint 0.0.
+  """
+  feasible = np.where(constrained >= value)
+  gathered = np.take(dependent, feasible)
+  if gathered.size > 0:
+    return np.where(np.size(feasible) > 0, np.nanmax(gathered), 0.0)
+  # If the gathered is empty, return 0.0 assuming all NaNs are 0.0
+  return 0.0
 
 
 class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
@@ -433,15 +467,47 @@ class AUC(ConfusionMatrixMetricBase):
                     key: metric_types.MetricKey,
                     matrices: binary_confusion_matrices.Matrices) -> float:
     del key
-    metric = tf.keras.metrics.AUC(
-        num_thresholds=len(matrices.thresholds),
-        curve=curve,
-        summation_method=summation_method)
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.true_negatives.assign(np.array(matrices.tn))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
+    curve = AUCCurve(curve.upper())
+    summation_method = AUCSummationMethod(summation_method.lower())
+    num_thresholds = len(matrices.thresholds)
+    tp, tn = np.array(matrices.tp), np.array(matrices.tn)
+    fp, fn = np.array(matrices.fp), np.array(matrices.fn)
+    if (curve == AUCCurve.PR and
+        summation_method == AUCSummationMethod.INTERPOLATION):
+      dtp = tp[:num_thresholds - 1] - tp[1:]
+      p = tp + fp
+      dp = p[:num_thresholds - 1] - p[1:]
+      prec_slope = dtp / np.maximum(dp, 0)
+      intercept = tp[1:] - prec_slope * p[1:]
+      safe_p_ratio = np.where(
+          np.logical_and(p[:num_thresholds - 1] > 0, p[1:] > 0),
+          p[:num_thresholds - 1] / np.maximum(p[1:], 0), np.ones_like(p[1:]))
+      pr_auc_increment = (
+          prec_slope * (dtp + intercept * np.log(safe_p_ratio)) /
+          np.maximum(tp[1:] + fn[1:], 0))
+      return np.nansum(pr_auc_increment)
+
+    # Set `x` and `y` values for the curves based on `curve` config.
+    recall = tp / (tp + fn)
+    if curve == AUCCurve.ROC:
+      fp_rate = fp / (fp + tn)
+      x = fp_rate
+      y = recall
+    elif curve == AUCCurve.PR:
+      precision = tp / (tp + fp)
+      x = recall
+      y = precision
+
+    # Find the rectangle heights based on `summation_method`.
+    if summation_method == AUCSummationMethod.INTERPOLATION:
+      heights = (y[:num_thresholds - 1] + y[1:]) / 2.
+    elif summation_method == AUCSummationMethod.MINORING:
+      heights = np.minimum(y[:num_thresholds - 1], y[1:])
+    elif summation_method == AUCSummationMethod.MAJORING:
+      heights = np.maximum(y[:num_thresholds - 1], y[1:])
+
+    # Sum up the areas of all the rectangles.
+    return np.nansum((x[:num_thresholds - 1] - x[1:]) * heights)
 
 
 metric_types.register_metric(AUC)
@@ -558,13 +624,11 @@ class SensitivityAtSpecificity(ConfusionMatrixMetricBase):
   def _metric_value(self, specificity: float, key: metric_types.MetricKey,
                     matrices: binary_confusion_matrices.Matrices) -> float:
     del key
-    metric = tf.keras.metrics.SensitivityAtSpecificity(
-        specificity=specificity, num_thresholds=len(matrices.thresholds))
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.true_negatives.assign(np.array(matrices.tn))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
+    tp, tn = np.array(matrices.tp), np.array(matrices.tn)
+    fp, fn = np.array(matrices.fp), np.array(matrices.fn)
+    specificities = tn / (tn + fp)
+    sensitivities = tp / (tp + fn)
+    return _find_max_under_constraint(specificities, sensitivities, specificity)
 
 
 metric_types.register_metric(SensitivityAtSpecificity)
@@ -626,13 +690,11 @@ class SpecificityAtSensitivity(ConfusionMatrixMetricBase):
   def _metric_value(self, sensitivity: float, key: metric_types.MetricKey,
                     matrices: binary_confusion_matrices.Matrices) -> float:
     del key
-    metric = tf.keras.metrics.SpecificityAtSensitivity(
-        sensitivity=sensitivity, num_thresholds=len(matrices.thresholds))
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.true_negatives.assign(np.array(matrices.tn))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
+    tp, tn = np.array(matrices.tp), np.array(matrices.tn)
+    fp, fn = np.array(matrices.fp), np.array(matrices.fn)
+    specificities = tn / (tn + fp)
+    sensitivities = tp / (tp + fn)
+    return _find_max_under_constraint(sensitivities, specificities, sensitivity)
 
 
 metric_types.register_metric(SpecificityAtSensitivity)
@@ -673,6 +735,9 @@ class PrecisionAtRecall(ConfusionMatrixMetricBase):
         top_k is used, metrics_specs.binarize settings must not be present. Only
         one of class_id or top_k should be configured.
     """
+    if recall < 0 or recall > 1:
+      raise ValueError('Argument `recall` must be in the range [0, 1]. '
+                       f'Received: recall={recall}')
     super().__init__(
         num_thresholds=num_thresholds,
         recall=recall,
@@ -686,12 +751,11 @@ class PrecisionAtRecall(ConfusionMatrixMetricBase):
   def _metric_value(self, recall: float, key: metric_types.MetricKey,
                     matrices: binary_confusion_matrices.Matrices) -> float:
     del key
-    metric = tf.keras.metrics.PrecisionAtRecall(
-        recall=recall, num_thresholds=len(matrices.thresholds))
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
+    tp = np.array(matrices.tp)
+    fp, fn = np.array(matrices.fp), np.array(matrices.fn)
+    recalls = tp / (tp + fn)
+    precisions = tp / (tp + fp)
+    return _find_max_under_constraint(recalls, precisions, recall)
 
 
 metric_types.register_metric(PrecisionAtRecall)
@@ -737,6 +801,9 @@ class RecallAtPrecision(ConfusionMatrixMetricBase):
         top_k is used, metrics_specs.binarize settings must not be present. Only
         one of class_id or top_k should be configured.
     """
+    if precision < 0 or precision > 1:
+      raise ValueError('Argument `precision` must be in the range [0, 1]. '
+                       f'Received: precision={precision}')
     super().__init__(
         num_thresholds=num_thresholds,
         precision=precision,
@@ -750,12 +817,11 @@ class RecallAtPrecision(ConfusionMatrixMetricBase):
   def _metric_value(self, precision: float, key: metric_types.MetricKey,
                     matrices: binary_confusion_matrices.Matrices) -> float:
     del key
-    metric = tf.keras.metrics.RecallAtPrecision(
-        precision=precision, num_thresholds=len(matrices.thresholds))
-    metric.true_positives.assign(np.array(matrices.tp))
-    metric.false_positives.assign(np.array(matrices.fp))
-    metric.false_negatives.assign(np.array(matrices.fn))
-    return metric.result().numpy()
+    tp = np.array(matrices.tp)
+    fp, fn = np.array(matrices.fp), np.array(matrices.fn)
+    recalls = tp / (tp + fn)
+    precisions = tp / (tp + fp)
+    return _find_max_under_constraint(precisions, recalls, precision)
 
 
 metric_types.register_metric(RecallAtPrecision)
