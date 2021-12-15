@@ -313,6 +313,24 @@ class UtilTest(tf.test.TestCase):
           got_pred, np.array([expected_prediction]), atol=0, rtol=0)
       self.assertAllClose(got_example_weight, np.array([1.0]), atol=0, rtol=0)
 
+  def testStandardMetricInputsWithMissingStringLabel(self):
+    example = metric_types.StandardMetricInputs(
+        label=np.array(['d']),
+        prediction={
+            'scores': np.array([0.2, 0.7, 0.1]),
+            'classes': np.array(['a', 'b', 'c'])
+        },
+        example_weight=np.array([1.0]))
+    iterator = metric_util.to_label_prediction_example_weight(example)
+
+    for expected_label, expected_prediction in zip((0.0, 0.0, 0.0),
+                                                   (0.2, 0.7, 0.1)):
+      got_label, got_pred, got_example_weight = next(iterator)
+      self.assertAllClose(got_label, np.array([expected_label]), atol=0, rtol=0)
+      self.assertAllClose(
+          got_pred, np.array([expected_prediction]), atol=0, rtol=0)
+      self.assertAllClose(got_example_weight, np.array([1.0]), atol=0, rtol=0)
+
   def testStandardMetricInputsWithoutLabels(self):
     example = metric_types.StandardMetricInputs(
         label={'output_name': np.array([])},

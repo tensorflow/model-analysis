@@ -527,6 +527,12 @@ def to_label_prediction_example_weight(
           for i in range(flatten_size)
       ])
 
+    # String lookups that fail result in a -1 label value. Most metrics won't
+    # accept this as a valid value so we convert to a one_hot value to ensure
+    # that we are only working with 0's (i.e. -1 maps to all 0's in one-hot).
+    if label.size and np.all(label == -1):
+      label = one_hot(label, prediction)
+
     def yield_results(label, prediction, example_weight):
       if (not flatten or (label.size == 0 and prediction.size == 0) or
           (label.size == 1 and prediction.size == 1 and
