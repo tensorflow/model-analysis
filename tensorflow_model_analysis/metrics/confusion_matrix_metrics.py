@@ -163,7 +163,7 @@ def _find_max_under_constraint(constrained, dependent, value):
   feasible = np.where(constrained >= value)
   gathered = np.take(dependent, feasible)
   if gathered.size > 0:
-    return np.where(np.size(feasible) > 0, np.nanmax(gathered), 0.0)
+    return float(np.where(np.size(feasible) > 0, np.nanmax(gathered), 0.0))
   # If the gathered is empty, return 0.0 assuming all NaNs are 0.0
   return 0.0
 
