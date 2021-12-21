@@ -23,8 +23,9 @@ from tensorflow_model_analysis.view import view_types
 class ViewTypesTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('empty_subkey', None, None, None), ('class_id', 1, None, None),
-      ('top_k', None, None, 1), ('k', None, 1, None))
+      ('empty_subkey', None, None, None), ('class_id_0', 0, None, None),
+      ('class_id_1', 1, None, None), ('top_k', None, None, 1),
+      ('k', None, 1, None))
   def testEvalResultGetMetrics(self, class_id, k, top_k):
 
     # Slices
@@ -56,10 +57,10 @@ class ViewTypesTest(parameterized.TestCase):
     }
 
     # EvalResult
-    if class_id or k or top_k:
-      sub_key = str(metric_types.SubKey(class_id, k, top_k))
-    else:
+    if all(v is None for v in [class_id, k, top_k]):
       sub_key = ''
+    else:
+      sub_key = str(metric_types.SubKey(class_id, k, top_k))
     slicing_metrics = [(overall_slice, {
         output_name: {
             sub_key: metrics_overall
