@@ -264,7 +264,8 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
         model_name=model_name,
         output_name=output_name,
         sub_key=sub_key,
-        example_weighted=example_weighted)
+        example_weighted=example_weighted,
+        aggregation_type=aggregation_type)
 
     if num_thresholds is None and thresholds is None:
       # If top_k set, then use -inf as the default threshold setting.
@@ -2195,7 +2196,8 @@ class ConfusionMatrixAtThresholds(metric_types.Metric):
         model_name=model_name,
         output_name=output_name,
         sub_key=sub_key,
-        example_weighted=example_weighted)
+        example_weighted=example_weighted,
+        aggregation_type=aggregation_type)
 
     # Make sure matrices are calculated.
     matrices_computations = binary_confusion_matrices.binary_confusion_matrices(

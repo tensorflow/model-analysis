@@ -6,6 +6,8 @@
 
 ## Bug fixes and other Changes
 
+*   Fixed issue with aggregation type not being set properly in keys associated
+    with confusion matrix metrics.
 *   Depends on `numpy>=1.16,<2`.
 
 ## Breaking Changes
