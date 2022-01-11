@@ -780,7 +780,7 @@ Note that it is acceptable (recommended) to include the computations that a
 derived computation depends on in the list of computations created by a metric.
 This avoid having to pre-create and pass computations that are shared between
 multiple metrics. The evaluator will automatically de-dup computations that have
-the same definition so ony one computation is actually run.
+the same definition so only one computation is actually run.
 
 ##### Example
 
