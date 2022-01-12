@@ -39,6 +39,8 @@ from tensorflow_model_analysis.writers import writer
 
 from google.protobuf import wrappers_pb2
 
+METRICS_PLOTS_AND_VALIDATIONS_WRITER_STAGE_NAME = 'WriteMetricsAndPlots'
+
 _PARQUET_FORMAT = 'parquet'
 _TFRECORD_FORMAT = 'tfrecord'
 _SUPPORTED_FORMATS = (_PARQUET_FORMAT, _TFRECORD_FORMAT)
@@ -527,7 +529,9 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     attributions_key: str = constants.ATTRIBUTIONS_KEY,
     validations_key: str = constants.VALIDATIONS_KEY,
     output_file_format: str = '',
-    rubber_stamp: Optional[bool] = False) -> writer.Writer:
+    rubber_stamp: Optional[bool] = False,
+    stage_name: str = METRICS_PLOTS_AND_VALIDATIONS_WRITER_STAGE_NAME
+) -> writer.Writer:
   """Returns metrics and plots writer.
 
   Note, sharding will be enabled by default if a output_file_format is provided.
@@ -555,9 +559,11 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     rubber_stamp: True if this model is being rubber stamped. When a model is
       rubber stamped diff thresholds will be ignored if an associated baseline
       model is not passed.
+    stage_name: The stage name to use when this writer is added to the Beam
+      pipeline.
   """
   return writer.Writer(
-      stage_name='WriteMetricsAndPlots',
+      stage_name=stage_name,
       ptransform=_WriteMetricsPlotsAndValidations(  # pylint: disable=no-value-for-parameter
           output_paths=output_paths,
           eval_config=eval_config,
