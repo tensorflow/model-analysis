@@ -33,6 +33,8 @@ from tensorflow_model_analysis.utils import util
 from tensorflow.python.estimator.canned import prediction_keys  # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.ops import metrics_impl  # pylint: disable=g-direct-tensorflow-import
 
+_HAS_DYNAMIC_ATTRIBUTES = True
+
 
 # TODO(b/111754250): revisit it and determine whether to simplify the 4-level
 # deep nesting of functions
