@@ -13,7 +13,7 @@
 # limitations under the License.
 """Evaluator types."""
 
-from typing import Any, Dict, Iterable, List, NamedTuple
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis.extractors import extractor
@@ -30,7 +30,7 @@ Evaluator = NamedTuple(  # pylint: disable=invalid-name
         # Extractor.stage_name. If None then evaluation is run before any
         # extractors are run. If LAST_EXTRACTOR_STAGE_NAME then evaluation is
         # run after the last extractor has run.
-        ('run_after', str),
+        ('run_after', Optional[str]),
         # PTransform Extracts -> Evaluation
         ('ptransform', beam.PTransform)
     ])
