@@ -15,7 +15,6 @@
 
 # TODO(b/149126671): Put ValidationResultsWriter in a separate file.
 
-
 import os
 import tempfile
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Union
@@ -108,9 +107,8 @@ def _is_legacy_eval(
   return ((config_version is not None and config_version == 1) or
           (eval_shared_model and not isinstance(eval_shared_model, dict) and
            not isinstance(eval_shared_model, list) and
-           (not eval_shared_model.model_loader.tags or
-            eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags) and
-           not eval_config))
+           (not eval_shared_model.model_loader.tags or eval_constants.EVAL_TAG
+            in eval_shared_model.model_loader.tags) and not eval_config))
 
 
 def _default_eval_config(eval_shared_models: List[types.EvalSharedModel],
@@ -441,6 +439,14 @@ def default_eval_shared_model(
       is_baseline=is_baseline)
 
 
+def _has_sql_slices(eval_config: Optional[config_pb2.EvalConfig]) -> bool:
+  if eval_config:
+    for spec in eval_config.slicing_specs:
+      if spec.slice_keys_sql:
+        return True
+  return False
+
+
 def default_extractors(  # pylint: disable=invalid-name
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
@@ -495,7 +501,16 @@ def default_extractors(  # pylint: disable=invalid-name
         slice_key_extractor.SliceKeyExtractor(
             eval_config=eval_config, materialize=materialize)
     ]
-  elif eval_shared_model:
+  slicing_extractors = []
+  if _has_sql_slices(eval_config):
+    slicing_extractors.append(
+        sql_slice_key_extractor.SqlSliceKeyExtractor(eval_config))
+  slicing_extractors.extend([
+      unbatch_extractor.UnbatchExtractor(),
+      slice_key_extractor.SliceKeyExtractor(
+          eval_config=eval_config, materialize=materialize)
+  ])
+  if eval_shared_model:
     model_types = _model_types(eval_shared_model)
     eval_shared_models = model_util.verify_and_update_eval_shared_models(
         eval_shared_model)
@@ -520,11 +535,8 @@ def default_extractors(  # pylint: disable=invalid-name
               eval_config=eval_config),
           (custom_predict_extractor or
            tflite_predict_extractor.TFLitePredictExtractor(
-               eval_config=eval_config, eval_shared_model=eval_shared_model)),
-          unbatch_extractor.UnbatchExtractor(),
-          slice_key_extractor.SliceKeyExtractor(
-              eval_config=eval_config, materialize=materialize)
-      ]
+               eval_config=eval_config, eval_shared_model=eval_shared_model))
+      ] + slicing_extractors
     elif constants.TF_LITE in model_types:
       raise NotImplementedError(
           'support for mixing tf_lite and non-tf_lite models is not '
@@ -538,11 +550,8 @@ def default_extractors(  # pylint: disable=invalid-name
               eval_config=eval_config),
           (custom_predict_extractor or
            tfjs_predict_extractor.TFJSPredictExtractor(
-               eval_config=eval_config, eval_shared_model=eval_shared_model)),
-          unbatch_extractor.UnbatchExtractor(),
-          slice_key_extractor.SliceKeyExtractor(
-              eval_config=eval_config, materialize=materialize)
-      ]
+               eval_config=eval_config, eval_shared_model=eval_shared_model))
+      ] + slicing_extractors
     elif constants.TF_JS in model_types:
       raise NotImplementedError(
           'support for mixing tf_js and non-tf_js models is not '
@@ -555,11 +564,8 @@ def default_extractors(  # pylint: disable=invalid-name
           custom_predict_extractor or legacy_predict_extractor.PredictExtractor(
               eval_shared_model,
               materialize=materialize,
-              eval_config=eval_config),
-          unbatch_extractor.UnbatchExtractor(),
-          slice_key_extractor.SliceKeyExtractor(
-              eval_config=eval_config, materialize=materialize)
-      ]
+              eval_config=eval_config)
+      ] + slicing_extractors
     elif (eval_config and constants.TF_ESTIMATOR in model_types and
           any(eval_constants.EVAL_TAG in m.model_loader.tags
               for m in eval_shared_models)):
@@ -585,10 +591,8 @@ def default_extractors(  # pylint: disable=invalid-name
                eval_config=eval_config,
                eval_shared_model=eval_shared_model,
                tensor_adapter_config=tensor_adapter_config)),
-          unbatch_extractor.UnbatchExtractor(),
-          slice_key_extractor.SliceKeyExtractor(
-              eval_config=eval_config, materialize=materialize)
       ])
+      extractors.extend(slicing_extractors)
       return extractors
   else:
     return [
@@ -596,12 +600,8 @@ def default_extractors(  # pylint: disable=invalid-name
         labels_extractor.LabelsExtractor(eval_config=eval_config),
         example_weights_extractor.ExampleWeightsExtractor(
             eval_config=eval_config),
-        predictions_extractor.PredictionsExtractor(eval_config=eval_config),
-        sql_slice_key_extractor.SqlSliceKeyExtractor(eval_config),
-        unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(
-            eval_config=eval_config, materialize=materialize)
-    ]
+        predictions_extractor.PredictionsExtractor(eval_config=eval_config)
+    ] + slicing_extractors
 
 
 def default_evaluators(  # pylint: disable=invalid-name

@@ -8,6 +8,7 @@
 
 *   Fixed issue with aggregation type not being set properly in keys associated
     with confusion matrix metrics.
+*   Enabled the sql_slice_key extractor when evaluating a model.
 *   Depends on `numpy>=1.16,<2`.
 *   Depends on `absl-py>=0.9,<2.0.0`.
 *   Depends on
