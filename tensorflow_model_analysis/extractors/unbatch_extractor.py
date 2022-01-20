@@ -39,7 +39,7 @@ def UnbatchExtractor() -> extractor.Extractor:
       stage_name=UNBATCH_EXTRACTOR_STAGE_NAME, ptransform=_UnbatchInputs())
 
 
-def _ExtractUnbatchedInputs(
+def _extract_unbatched_inputs(  # pylint: disable=invalid-name
     batched_extract: types.Extracts) -> Sequence[types.Extracts]:
   """Extract features, predictions, labels and weights from batched extract."""
   keys_to_retain = set(batched_extract.keys())
@@ -49,7 +49,11 @@ def _ExtractUnbatchedInputs(
   for key in keys_to_retain:
     if isinstance(batched_extract[key], Mapping) and not batched_extract[key]:
       continue
-    dataframe[key] = batched_extract[key]
+    try:
+      dataframe[key] = batched_extract[key]
+    except Exception as e:
+      raise RuntimeError(f'Exception encountered while adding key {key} with '
+                         f'batched length {len(batched_extract[key])}') from e
   return dataframe.to_dict(orient='records')
 
 
@@ -66,4 +70,4 @@ def _UnbatchInputs(
   Returns:
     PCollection of per-example extracts.
   """
-  return extracts | 'UnbatchInputs' >> beam.FlatMap(_ExtractUnbatchedInputs)
+  return extracts | 'UnbatchInputs' >> beam.FlatMap(_extract_unbatched_inputs)

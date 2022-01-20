@@ -34,6 +34,27 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 
 class UnbatchExtractorTest(testutil.TensorflowModelAnalysisTest):
 
+  def testExtractUnbatchedInputsRaisesChainedException(self):
+    batched_extracts = {
+        'features': [{
+            'label': np.array([1.]),
+            'fixed_int': np.array([1]),
+        }, {
+            'label': np.array([2.]),
+            'fixed_int': np.array([2]),
+        }],
+        'labels': [np.array([1.]),],
+    }
+    with self.assertRaisesRegex(
+        RuntimeError,
+        'Exception encountered while adding key .* with batched length .'
+    ) as ctx:
+      unbatch_extractor._extract_unbatched_inputs(batched_extracts)
+    self.assertIsInstance(ctx.exception.__cause__, ValueError)
+    self.assertRegex(
+        str(ctx.exception.__cause__),
+        r'Length of values \(.\) does not match length of index \(.\)')
+
   def testUnbatchExtractor(self):
     model_spec = config_pb2.ModelSpec(
         label_key='label', example_weight_key='example_weight')
