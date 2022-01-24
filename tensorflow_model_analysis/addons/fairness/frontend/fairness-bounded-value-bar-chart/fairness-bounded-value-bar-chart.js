@@ -300,15 +300,17 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
         }
       });
 
-      const labelNameParams = {
-        'sliceValue': metricsData.length ? metricsData[0].sliceValue : '',
-        'evalName': metricsData.length ? metricsData[0].evalName : '',
-        'evalComparison': this.evalComparison_(),
-        'sort': this.sort
+      const makeLabelNameParams = (metricDataObject) => {
+        return {
+          'sliceValue': metricsData.length ? metricDataObject[0].sliceValue : '',
+          'evalName': metricsData.length ? metricDataObject[0].evalName : '',
+          'evalComparison': this.evalComparison_(),
+          'sort': this.sort
+        };
       };
-      d3Data.push(D3DataObject.create(metricsData, labelNameParams));
+      d3Data.push(D3DataObject.create(metricsData, makeLabelNameParams(metricsData)));
       if (this.evalComparison_()) {
-        d3Data.push(D3DataObject.create(metricsDataCompare, labelNameParams));
+        d3Data.push(D3DataObject.create(metricsDataCompare, makeLabelNameParams(metricsDataCompare)));
       }
     });
 

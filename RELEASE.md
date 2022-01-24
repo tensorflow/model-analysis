@@ -18,6 +18,8 @@
 
 ## Bug fixes and other Changes
 
+*   Fix Fairness Indicators UI bug with overlapping charts when comparing
+    EvalResults
 *   Fixed issue with aggregation type not being set properly in keys associated
     with confusion matrix metrics.
 *   Enabled the sql_slice_key extractor when evaluating a model.
