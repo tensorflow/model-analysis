@@ -13,15 +13,33 @@
 # limitations under the License.
 """Simple statistics about queries, e.g. number of queries, documents, etc."""
 
-from typing import Any, Dict, Iterable, NamedTuple
+import dataclasses
+from typing import Any, Dict, Iterable
 
 import apache_beam as beam
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 
 
-_State = NamedTuple('_State', [('total_queries', int), ('total_documents', int),
-                               ('min_documents', int), ('max_documents', int)])
+@dataclasses.dataclass
+class _State:
+  """QueryStatisticsCombineFn accumulator type."""
+  total_queries: int
+  total_documents: int
+  min_documents: int
+  max_documents: int
+
+  def merge(self, other: '_State') -> None:
+    self.total_queries += other.total_queries
+    self.total_documents += other.total_documents
+    self.min_documents = min(self.min_documents, other.min_documents)
+    self.max_documents = max(self.max_documents, other.max_documents)
+
+  def add(self, query_fpl: query_types.QueryFPL) -> None:
+    self.total_queries += 1
+    self.total_documents += len(query_fpl.fpls)
+    self.min_documents = min(self.min_documents, len(query_fpl.fpls))
+    self.max_documents = max(self.max_documents, len(query_fpl.fpls))
 
 
 class QueryStatisticsCombineFn(beam.CombineFn):
@@ -38,27 +56,15 @@ class QueryStatisticsCombineFn(beam.CombineFn):
 
   def add_input(self, accumulator: _State,
                 query_fpl: query_types.QueryFPL) -> _State:
-    return _State(
-        total_queries=accumulator.total_queries + 1,
-        total_documents=accumulator.total_documents + len(query_fpl.fpls),
-        min_documents=min(accumulator.min_documents, len(query_fpl.fpls)),
-        max_documents=max(accumulator.max_documents, len(query_fpl.fpls)))
+    accumulator.add(query_fpl)
+    return accumulator
 
   def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
-    total_queries = 0
-    total_documents = 0
-    min_documents = self.LARGE_INT
-    max_documents = 0
-    for acc in accumulators:
-      total_queries += acc.total_queries
-      total_documents += acc.total_documents
-      min_documents = min(min_documents, acc.min_documents)
-      max_documents = max(max_documents, acc.max_documents)
-    return _State(
-        total_queries=total_queries,
-        total_documents=total_documents,
-        min_documents=min_documents,
-        max_documents=max_documents)
+    it = iter(accumulators)
+    result = next(it)
+    for acc in it:
+      result.merge(acc)
+    return result
 
   def extract_output(self, accumulator: _State) -> Dict[str, Any]:
     return {

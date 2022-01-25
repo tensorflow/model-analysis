@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for calibration histogram."""
 
+import dataclasses
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -371,7 +372,8 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
     ]
     self.assertLen(got, len(expected))
     for i in range(len(got)):
-      self.assertSequenceAlmostEqual(got[i], expected[i])
+      self.assertSequenceAlmostEqual(
+          dataclasses.astuple(got[i]), dataclasses.astuple(expected[i]))
 
   def testRebinWithSparseData(self):
     histogram = [
@@ -399,7 +401,8 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
     ]
     self.assertLen(got, len(expected))
     for i in range(len(got)):
-      self.assertSequenceAlmostEqual(got[i], expected[i])
+      self.assertSequenceAlmostEqual(
+          dataclasses.astuple(got[i]), dataclasses.astuple(expected[i]))
 
 
 if __name__ == '__main__':

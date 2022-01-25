@@ -611,11 +611,13 @@ class CombineValidations(beam.CombineFn):
       self,
       accumulators: 'Iterable[Optional[validation_result_pb2.ValidationResult]]'
   ) -> 'Optional[validation_result_pb2.ValidationResult]':
-    accumulators = [accumulator for accumulator in accumulators if accumulator]
-    if not accumulators:
-      return None
-    result = validation_result_pb2.ValidationResult(validation_ok=True)
-    for new_input in accumulators:
+    it = iter(accumulators)
+    result = next(it)
+    for new_input in it:
+      if new_input is None:
+        continue
+      if result is None:
+        result = validation_result_pb2.ValidationResult(validation_ok=True)
       result.metric_validations_per_slice.extend(
           new_input.metric_validations_per_slice)
       metrics_validator.merge_details(result, new_input)

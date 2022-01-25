@@ -13,12 +13,9 @@
 # limitations under the License.
 """Calibration histogram."""
 
-import bisect
-import heapq
-import itertools
+import dataclasses
 import operator
-
-from typing import Dict, Iterable, List, Optional, NamedTuple
+from typing import Dict, Iterable, List, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis.metrics import metric_types
@@ -29,9 +26,23 @@ CALIBRATION_HISTOGRAM_NAME = '_calibration_histogram'
 
 DEFAULT_NUM_BUCKETS = 10000
 
-Bucket = NamedTuple('Bucket', [('bucket_id', int), ('weighted_labels', float),
-                               ('weighted_predictions', float),
-                               ('weighted_examples', float)])
+
+@dataclasses.dataclass
+class Bucket:
+  """Bucket for calibration histogram."""
+  bucket_id: int
+  weighted_labels: float
+  weighted_predictions: float
+  weighted_examples: float
+
+  def merge(self, other: 'Bucket') -> None:
+    """Add a bucket with the same bucket_id, updating self in place."""
+    if self.bucket_id != other.bucket_id:
+      raise ValueError('attempted to merge mismatched bucket_id')
+    self.weighted_labels += other.weighted_labels
+    self.weighted_predictions += other.weighted_predictions
+    self.weighted_examples += other.weighted_examples
+
 
 Histogram = List[Bucket]
 
@@ -115,6 +126,9 @@ def calibration_histogram(
               fractional_labels=fractional_labels))
   ]
 
+# bucket_id to bucket.
+_CalibrationHistogramCombinerAcctype = Dict[int, Bucket]
+
 
 class _CalibrationHistogramCombiner(beam.CombineFn):
   """Creates histogram from labels, predictions, and example weights."""
@@ -147,15 +161,17 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
       return self._num_buckets + 1
     return int(bucket_index)
 
-  def create_accumulator(self) -> Histogram:
+  def create_accumulator(self) -> _CalibrationHistogramCombinerAcctype:
     # The number of accumulator (histogram) buckets is variable and depends on
     # the number of distinct intervals that are matched during calls to
-    # add_inputs. This allows the historam size to start small and gradually
+    # add_inputs. This allows the histogram size to start small and gradually
     # grow size during calls to merge until reaching the final histogram.
-    return []
+    return {}
 
-  def add_input(self, accumulator: Histogram,
-                element: metric_types.StandardMetricInputs) -> Histogram:
+  def add_input(
+      self, accumulator: _CalibrationHistogramCombinerAcctype,
+      element: metric_types.StandardMetricInputs
+  ) -> _CalibrationHistogramCombinerAcctype:
     # Note that in the case of top_k, if the aggregation type is not set then
     # the non-top_k predictions will be set to float('-inf'), but the labels
     # will remain unchanged. If aggregation type is set then both the
@@ -181,41 +197,36 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
         bucket_index = self._bucket_index(prediction)
       else:
         bucket_index = self._bucket_index(label)
-      # Check if bucket exists, all bucket values are > 0, so -1 are always less
-      insert_index = bisect.bisect_left(accumulator,
-                                        Bucket(bucket_index, -1, -1, -1))
-      if (insert_index == len(accumulator) or
-          accumulator[insert_index].bucket_id != bucket_index):
-        accumulator.insert(
-            insert_index,
-            Bucket(bucket_index, weighted_label, weighted_prediction,
-                   example_weight))
+      if bucket_index not in accumulator:
+        accumulator[bucket_index] = Bucket(bucket_index, weighted_label,
+                                           weighted_prediction, example_weight)
       else:
-        existing_bucket = accumulator[insert_index]
-        accumulator[insert_index] = Bucket(
-            bucket_index, existing_bucket.weighted_labels + weighted_label,
-            existing_bucket.weighted_predictions + weighted_prediction,
-            existing_bucket.weighted_examples + example_weight)
+        existing_bucket = accumulator[bucket_index]
+        existing_bucket.weighted_labels += weighted_label
+        existing_bucket.weighted_predictions += weighted_prediction
+        existing_bucket.weighted_examples += example_weight
     return accumulator
 
-  def merge_accumulators(self, accumulators: Iterable[Histogram]) -> Histogram:
-    result = []
-    for bucket_id, buckets in itertools.groupby(
-        heapq.merge(*accumulators), key=operator.attrgetter('bucket_id')):
-      total_weighted_labels = 0.0
-      total_weighted_predictions = 0.0
-      total_weighted_examples = 0.0
-      for bucket in buckets:
-        total_weighted_labels += bucket.weighted_labels
-        total_weighted_predictions += bucket.weighted_predictions
-        total_weighted_examples += bucket.weighted_examples
-      result.append(
-          Bucket(bucket_id, total_weighted_labels, total_weighted_predictions,
-                 total_weighted_examples))
+  def merge_accumulators(
+      self, accumulators: Iterable[_CalibrationHistogramCombinerAcctype]
+  ) -> _CalibrationHistogramCombinerAcctype:
+    it = iter(accumulators)
+    result = next(it)
+    for acc in it:
+      for bucket_id, bucket in acc.items():
+        if bucket_id not in result:
+          new_bucket = Bucket(bucket_id, 0.0, 0.0, 0.0)
+          new_bucket.merge(bucket)
+          result[bucket_id] = new_bucket
+        else:
+          result[bucket_id].merge(bucket)
     return result
 
   def extract_output(
-      self, accumulator: Histogram) -> Dict[metric_types.PlotKey, Histogram]:
+      self, accumulator: _CalibrationHistogramCombinerAcctype
+  ) -> Dict[metric_types.PlotKey, Histogram]:
+    accumulator = list(accumulator.values())
+    accumulator.sort(key=operator.attrgetter('bucket_id'))
     return {self._key: accumulator}
 
 
