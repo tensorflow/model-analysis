@@ -20,6 +20,7 @@ import tempfile
 from absl.testing import absltest
 from absl.testing import parameterized
 
+import apache_beam as beam
 import pandas as pd
 import tensorflow as tf
 from tensorflow_model_analysis import constants
@@ -48,6 +49,7 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflow_model_analysis.view import view_types
+from tfx_bsl.coders import example_coder
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -1794,6 +1796,56 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     with self.assertRaises(KeyError):
       model_eval_lib.analyze_raw_data(df_data, eval_config)
 
+  def testBytesProcessedCountForSerializedExamples(self):
+    examples = [
+        self._makeExample(age=3.0, language='english', label=1.0),
+        self._makeExample(age=3.0, language='chinese', label=0.0),
+        self._makeExample(age=4.0, language='english', label=1.0),
+        self._makeExample(age=5.0, language='chinese', label=1.0),
+        self._makeExample(age=5.0, language='hindi', label=1.0)
+    ]
+    serialized_examples = [example.SerializeToString() for example in examples]
+    expected_num_bytes = sum([len(se) for se in serialized_examples])
+    with beam.Pipeline() as p:
+      _ = (
+          p | beam.Create(serialized_examples)
+          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=[], evaluators=[]))
+    pipeline_result = p.run()
+    metrics = pipeline_result.metrics()
+    actual_counter = metrics.query(
+        beam.metrics.metric.MetricsFilter().with_name(
+            'extract_input_bytes'))['counters']
+    self.assertLen(actual_counter, 1)
+    self.assertEqual(actual_counter[0].committed, expected_num_bytes)
+
+  def testBytesProcessedCountForRecordBatches(self):
+    examples = [
+        self._makeExample(age=3.0, language='english', label=1.0),
+        self._makeExample(age=3.0, language='chinese', label=0.0),
+        self._makeExample(age=4.0, language='english', label=1.0),
+        self._makeExample(age=5.0, language='chinese', label=1.0),
+        self._makeExample(age=5.0, language='hindi', label=1.0)
+    ]
+    examples = [example.SerializeToString() for example in examples]
+    decoder = example_coder.ExamplesToRecordBatchDecoder()
+    record_batch = decoder.DecodeBatch(examples)
+    expected_num_bytes = record_batch.nbytes
+    with beam.Pipeline() as p:
+      _ = (
+          p | beam.Create(record_batch)
+          |
+          'BatchedInputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=[], evaluators=[]))
+    pipeline_result = p.run()
+    metrics = pipeline_result.metrics()
+    actual_counter = metrics.query(
+        beam.metrics.metric.MetricsFilter().with_name('extract_input_bytes'))[
+            metrics.COUNTERS]
+    self.assertLen(actual_counter, 1)
+    self.assertEqual(actual_counter[0].committed, expected_num_bytes)
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

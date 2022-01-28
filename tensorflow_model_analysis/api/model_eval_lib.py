@@ -167,6 +167,37 @@ def _update_eval_config_with_defaults(
       rubber_stamp=model_util.has_rubber_stamp(eval_shared_models))
 
 
+def _get_extract_num_bytes(extract: types.Extracts) -> int:
+  """Returns the number of bytes in the input."""
+  if constants.ARROW_RECORD_BATCH_KEY in extract:
+    return extract[constants.ARROW_RECORD_BATCH_KEY].nbytes
+  if constants.INPUT_KEY in extract:
+    if isinstance(extract[constants.INPUT_KEY], bytes):
+      return len(extract[constants.INPUT_KEY])
+  logging.warning('Failed to extract number of input bytes.')
+  return 0
+
+
+def _increment_counter(counter_name: str, value: int) -> int:
+  """Increments the specified counter by the value."""
+  counter = beam.metrics.Metrics.counter(constants.METRICS_NAMESPACE,
+                                         counter_name)
+  counter.inc(value)
+  return value
+
+
+@beam.ptransform_fn
+def _TrackBytesProcessed(  # pylint: disable=invalid-name
+    dataset: beam.PCollection[types.Extracts]) -> beam.pvalue.PCollection[int]:
+  """Gathers telemetry on input Extracts."""
+
+  return (dataset
+          | 'GetExtractSize' >> beam.Map(_get_extract_num_bytes)
+          | 'SumTotalBytes' >> beam.CombineGlobally(sum)
+          | 'IncrementCounter' >>
+          beam.Map(lambda x: _increment_counter('extract_input_bytes', x)))
+
+
 MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice
 
 
@@ -833,6 +864,7 @@ def ExtractAndEvaluate(  # pylint: disable=invalid-name
       evaluation[k].append(v)
     return evaluation
 
+  _ = extracts | 'TrackInputBytes' >> _TrackBytesProcessed()  # pylint: disable=no-value-for-parameter
   # Run evaluators that run before extraction (i.e. that only require
   # the incoming input extract added by ReadInputs)
   for v in evaluators:
