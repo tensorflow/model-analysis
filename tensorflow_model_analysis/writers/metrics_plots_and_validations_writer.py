@@ -114,7 +114,7 @@ def _raw_value_iterator(
 
 def load_and_deserialize_metrics(
     output_path: str,
-    output_file_format: str = 'tfrecord',
+    output_file_format: str = _TFRECORD_FORMAT,
     slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
 ) -> Iterator[metrics_for_slice_pb2.MetricsForSlice]:
   """Read and deserialize the MetricsForSlice records.
@@ -122,7 +122,8 @@ def load_and_deserialize_metrics(
   Args:
     output_path: Path or pattern to search for metrics files under. If a
       directory is passed, files matching 'metrics*' will be searched for.
-    output_file_format: Optional file extension to filter files by.
+    output_file_format: Optional file extension to filter files by and the
+      format to use for parsing. The default value is tfrecord.
     slice_specs: A set of SingleSliceSpecs to use for filtering returned
       metrics. The metrics for a given slice key will be returned if that slice
       key matches any of the slice_specs.
@@ -136,6 +137,11 @@ def load_and_deserialize_metrics(
   if output_file_format:
     pattern = pattern + '.' + output_file_format
   paths = tf.io.gfile.glob(pattern)
+  if not paths:
+    # For backwards compatibility, check for files without an explicit suffix,
+    # but still use the output_file_format for parsing.
+    no_suffix_pattern = _match_all_files(output_path)
+    paths = tf.io.gfile.glob(no_suffix_pattern)
   for value in _raw_value_iterator(paths, output_file_format):
     metrics = metrics_for_slice_pb2.MetricsForSlice.FromString(value)
     if slice_specs and not slicer.slice_key_matches_slice_specs(
@@ -146,7 +152,7 @@ def load_and_deserialize_metrics(
 
 def load_and_deserialize_plots(
     output_path: str,
-    output_file_format: str = '',
+    output_file_format: str = _TFRECORD_FORMAT,
     slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
 ) -> Iterator[metrics_for_slice_pb2.PlotsForSlice]:
   """Read and deserialize the PlotsForSlice records.
@@ -154,7 +160,8 @@ def load_and_deserialize_plots(
   Args:
     output_path: Path or pattern to search for plots files under. If a directory
       is passed, files matching 'plots*' will be searched for.
-    output_file_format: Optional file extension to filter files by.
+    output_file_format: Optional file extension to filter files by and the
+      format to use for parsing. The default value is tfrecord.
     slice_specs: A set of SingleSliceSpecs to use for filtering returned plots.
       The plots for a given slice key will be returned if that slice key matches
       any of the slice_specs.
@@ -168,6 +175,11 @@ def load_and_deserialize_plots(
   if output_file_format:
     pattern = pattern + '.' + output_file_format
   paths = tf.io.gfile.glob(pattern)
+  if not paths:
+    # For backwards compatibility, check for files without an explicit suffix,
+    # but still use the output_file_format for parsing.
+    no_suffix_pattern = _match_all_files(output_path)
+    paths = tf.io.gfile.glob(no_suffix_pattern)
   for value in _raw_value_iterator(paths, output_file_format):
     plots = metrics_for_slice_pb2.PlotsForSlice.FromString(value)
     if slice_specs and not slicer.slice_key_matches_slice_specs(
@@ -178,7 +190,7 @@ def load_and_deserialize_plots(
 
 def load_and_deserialize_attributions(
     output_path: str,
-    output_file_format: str = '',
+    output_file_format: str = _TFRECORD_FORMAT,
     slice_specs: Optional[Iterable[slicer.SingleSliceSpec]] = None
 ) -> Iterator[metrics_for_slice_pb2.AttributionsForSlice]:
   """Read and deserialize the AttributionsForSlice records.
@@ -186,7 +198,8 @@ def load_and_deserialize_attributions(
   Args:
     output_path: Path or pattern to search for attribution files under. If a
       directory is passed, files matching 'attributions*' will be searched for.
-    output_file_format: Optional file extension to filter files by.
+    output_file_format: Optional file extension to filter files by and the
+      format to use for parsing. The default value is tfrecord.
     slice_specs: A set of SingleSliceSpecs to use for filtering returned
       attributions. The attributions for a given slice key will be returned if
       that slice key matches any of the slice_specs.
@@ -200,6 +213,11 @@ def load_and_deserialize_attributions(
   if output_file_format:
     pattern = pattern + '.' + output_file_format
   paths = tf.io.gfile.glob(pattern)
+  if not paths:
+    # For backwards compatibility, check for files without an explicit suffix,
+    # but still use the output_file_format for parsing.
+    no_suffix_pattern = _match_all_files(output_path)
+    paths = tf.io.gfile.glob(no_suffix_pattern)
   for value in _raw_value_iterator(paths, output_file_format):
     attributions = metrics_for_slice_pb2.AttributionsForSlice.FromString(value)
     if slice_specs and not slicer.slice_key_matches_slice_specs(
@@ -210,13 +228,15 @@ def load_and_deserialize_attributions(
 
 def load_and_deserialize_validation_result(
     output_path: str,
-    output_file_format: str = '') -> validation_result_pb2.ValidationResult:
+    output_file_format: str = _TFRECORD_FORMAT
+) -> validation_result_pb2.ValidationResult:
   """Read and deserialize the ValidationResult record.
 
   Args:
     output_path: Path or pattern to search for validation file under. If a
       directory is passed, a file matching 'validations*' will be searched for.
-    output_file_format: Optional file extension to filter file by.
+    output_file_format: Optional file extension to filter files by and the
+      format to use for parsing. The default value is tfrecord.
 
   Returns:
     ValidationResult proto.
@@ -288,7 +308,8 @@ def convert_metric_value_to_proto(
 
 
 def convert_slice_metrics_to_proto(
-    metrics: Tuple[slicer.SliceKeyOrCrossSliceKeyType, Dict[Any, Any]],
+    metrics: Tuple[slicer.SliceKeyOrCrossSliceKeyType,
+                   metric_types.MetricsDict],
     add_metrics_callbacks: List[types.AddMetricsCallbackType]
 ) -> metrics_for_slice_pb2.MetricsForSlice:
   """Converts the given slice metrics into serialized proto MetricsForSlice.
@@ -528,7 +549,7 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     plots_key: str = constants.PLOTS_KEY,
     attributions_key: str = constants.ATTRIBUTIONS_KEY,
     validations_key: str = constants.VALIDATIONS_KEY,
-    output_file_format: str = '',
+    output_file_format: str = _TFRECORD_FORMAT,
     rubber_stamp: Optional[bool] = False,
     stage_name: str = METRICS_PLOTS_AND_VALIDATIONS_WRITER_STAGE_NAME
 ) -> writer.Writer:
@@ -548,14 +569,14 @@ def MetricsPlotsAndValidationsWriter(  # pylint: disable=invalid-name
     attributions_key: Name to use for attributions key in Evaluation output.
     validations_key: Name to use for validations key in Evaluation output.
     output_file_format: File format to use when saving files. Currently
-      'tfrecord' and 'parquet' are supported. If using parquet, the output
-      metrics and plots files will contain two columns: 'slice_key' and
-        'serialized_value'. The 'slice_key' column will be a structured column
-        matching the metrics_for_slice_pb2.SliceKey proto. the
-        'serialized_value' column will contain a serialized MetricsForSlice or
-        PlotsForSlice proto. The validation result file will contain a single
-        column 'serialized_value' which will contain a single serialized
-        ValidationResult proto.
+      'tfrecord' and 'parquet' are supported and 'tfrecord is the default'.
+      If using parquet, the output metrics and plots files will contain two
+      columns, 'slice_key' and 'serialized_value'. The 'slice_key' column will
+      be a structured column matching the metrics_for_slice_pb2.SliceKey proto.
+      The 'serialized_value' column will contain a serialized MetricsForSlice or
+      PlotsForSlice proto. The validation result file will contain a single
+      column 'serialized_value' which will contain a single serialized
+      ValidationResult proto.
     rubber_stamp: True if this model is being rubber stamped. When a model is
       rubber stamped diff thresholds will be ignored if an associated baseline
       model is not passed.
@@ -673,7 +694,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     rubber_stamp: bool = False) -> beam.pvalue.PDone:
   """PTransform to write metrics and plots."""
 
-  if output_file_format and output_file_format not in _SUPPORTED_FORMATS:
+  if output_file_format not in _SUPPORTED_FORMATS:
     raise ValueError('only "{}" formats are currently supported but got '
                      'output_file_format={}'.format(_SUPPORTED_FORMATS,
                                                     output_file_format))
@@ -715,13 +736,15 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
               file_path_prefix=file_path_prefix,
               schema=_SLICED_PARQUET_SCHEMA,
               file_name_suffix='.' + output_file_format))
-    elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
+    elif output_file_format == _TFRECORD_FORMAT:
       _ = metrics | 'WriteMetrics' >> beam.io.WriteToTFRecord(
           file_path_prefix=file_path_prefix,
           shard_name_template=None if output_file_format else '',
           file_name_suffix=('.' +
                             output_file_format if output_file_format else ''),
           coder=beam.coders.ProtoCoder(metrics_for_slice_pb2.MetricsForSlice))
+    else:
+      raise ValueError(f'Unsupported output file format: {output_file_format}.')
 
   if plots_key in evaluation and constants.PLOTS_KEY in output_paths:
     plots = (
@@ -739,13 +762,15 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
               file_path_prefix=file_path_prefix,
               schema=_SLICED_PARQUET_SCHEMA,
               file_name_suffix='.' + output_file_format))
-    elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
+    elif output_file_format == _TFRECORD_FORMAT:
       _ = plots | 'WritePlotsToTFRecord' >> beam.io.WriteToTFRecord(
           file_path_prefix=file_path_prefix,
           shard_name_template=None if output_file_format else '',
           file_name_suffix=('.' +
                             output_file_format if output_file_format else ''),
           coder=beam.coders.ProtoCoder(metrics_for_slice_pb2.PlotsForSlice))
+    else:
+      raise ValueError(f'Unsupported output file format: {output_file_format}.')
 
   if (attributions_key in evaluation and
       constants.ATTRIBUTIONS_KEY in output_paths):
@@ -763,7 +788,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
               file_path_prefix=file_path_prefix,
               schema=_SLICED_PARQUET_SCHEMA,
               file_name_suffix='.' + output_file_format))
-    elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
+    elif output_file_format == _TFRECORD_FORMAT:
       _ = attributions | 'WriteAttributionsToTFRecord' >> beam.io.WriteToTFRecord(
           file_path_prefix=file_path_prefix,
           shard_name_template=None if output_file_format else '',
@@ -771,6 +796,8 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
                             output_file_format if output_file_format else ''),
           coder=beam.coders.ProtoCoder(
               metrics_for_slice_pb2.AttributionsForSlice))
+    else:
+      raise ValueError(f'Unsupported output file format: {output_file_format}.')
 
   if (validations_key in evaluation and
       constants.VALIDATIONS_KEY in output_paths):
@@ -794,7 +821,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
               shard_name_template=shard_name_template,
               schema=_UNSLICED_PARQUET_SCHEMA,
               file_name_suffix='.' + output_file_format))
-    elif not output_file_format or output_file_format == _TFRECORD_FORMAT:
+    elif output_file_format == _TFRECORD_FORMAT:
       _ = (
           validations
           | 'WriteValidationsToTFRecord' >> beam.io.WriteToTFRecord(
@@ -804,5 +831,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
                                 if output_file_format else ''),
               coder=beam.coders.ProtoCoder(
                   validation_result_pb2.ValidationResult)))
+    else:
+      raise ValueError(f'Unsupported output file format: {output_file_format}.')
 
   return beam.pvalue.PDone(list(evaluation.values())[0].pipeline)

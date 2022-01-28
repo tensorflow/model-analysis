@@ -1313,8 +1313,7 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         (slice_key, slice_attributions))
     self.assertProtoEquals(expected_attributions_for_slice, got)
 
-  _OUTPUT_FORMAT_PARAMS = [('without_output_file_format', ''),
-                           ('tfrecord_file_format', 'tfrecord'),
+  _OUTPUT_FORMAT_PARAMS = [('tfrecord_file_format', 'tfrecord'),
                            ('parquet_file_format', 'parquet')]
 
   @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
@@ -1946,6 +1945,116 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             plots_file, output_file_format))
     self.assertLen(plot_records, 1, 'plots: %s' % plot_records)
     self.assertProtoEquals(expected_plots_for_slice, plot_records[0])
+
+  @parameterized.named_parameters(('load_from_dir', ''),
+                                  ('load_metrics', 'metrics'))
+  def testLoadAndDeserializeMetricsNoSuffix(self, load_path_suffix):
+    metrics_for_slice = text_format.Parse(
+        """
+        slice_key {
+          single_slice_keys {
+            column: "x"
+            float_value: 0
+          }
+        }
+        metric_keys_and_values {
+          key {
+            name: "example_count"
+            example_weighted: { value: false }
+          }
+          value {
+            double_value {
+              value: 1.0
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.MetricsForSlice())
+
+    output_dir = self._getTempDir()
+    # TFMA previously wrote metrics in tfrecord format but without suffix.
+    legacy_metrics_path = os.path.join(
+        output_dir, constants.METRICS_KEY + '-00000-of-00001')
+    with tf.io.TFRecordWriter(legacy_metrics_path) as writer:
+      writer.write(metrics_for_slice.SerializeToString())
+
+    metric_records = list(
+        metrics_plots_and_validations_writer.load_and_deserialize_metrics(
+            os.path.join(output_dir, load_path_suffix), 'tfrecord'))
+    self.assertLen(metric_records, 1, 'metrics: %s' % metric_records)
+    # verify proto roud trips unchanged.
+    self.assertProtoEquals(metrics_for_slice, metric_records[0])
+
+  @parameterized.named_parameters(('load_from_dir', ''),
+                                  ('load_plots', 'plots'))
+  def testLoadAndDeserializePlotsNoSuffix(self, load_path_suffix):
+    plots_for_slice = text_format.Parse(
+        """
+        slice_key {
+          single_slice_keys {
+            column: "x"
+            float_value: 0
+          }
+        }
+        plot_keys_and_values {
+          key {}
+          value {
+            calibration_histogram_buckets {
+              buckets {
+                lower_threshold_inclusive: 0.0
+                upper_threshold_exclusive: 0.1
+              }
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.PlotsForSlice())
+
+    output_dir = self._getTempDir()
+    # TFMA previously wrote plots in tfrecord format but without suffix.
+    legacy_plots_path = os.path.join(output_dir,
+                                     constants.PLOTS_KEY + '-00000-of-00001')
+    with tf.io.TFRecordWriter(legacy_plots_path) as writer:
+      writer.write(plots_for_slice.SerializeToString())
+
+    plot_records = list(
+        metrics_plots_and_validations_writer.load_and_deserialize_plots(
+            os.path.join(output_dir, load_path_suffix), 'tfrecord'))
+    self.assertLen(plot_records, 1, 'plots: %s' % plot_records)
+    # verify proto roud trips unchanged.
+    self.assertProtoEquals(plots_for_slice, plot_records[0])
+
+  @parameterized.named_parameters(('load_from_dir', ''),
+                                  ('load_attributions', 'attributions'))
+  def testLoadAndDeserializeAttributionsNoSuffix(self, load_path_suffix):
+    attributions_for_slice = text_format.Parse(
+        """
+        slice_key { }
+        attributions_keys_and_values {
+          key {
+            name: "attrbution_name"
+          }
+          values {
+            key: 'f1'
+            value {
+              double_value { value: 1.0 }
+            }
+          }
+        }
+        """, metrics_for_slice_pb2.AttributionsForSlice())
+
+    output_dir = self._getTempDir()
+    # TFMA previously wrote attributions in tfrecord format but without suffix.
+    legacy_attributions_path = os.path.join(
+        output_dir, constants.ATTRIBUTIONS_KEY + '-00000-of-00001')
+    with tf.io.TFRecordWriter(legacy_attributions_path) as writer:
+      writer.write(attributions_for_slice.SerializeToString())
+
+    attribution_records = list(
+        metrics_plots_and_validations_writer.load_and_deserialize_attributions(
+            os.path.join(output_dir, load_path_suffix), 'tfrecord'))
+    self.assertLen(attribution_records, 1,
+                   'attributions: %s' % attribution_records)
+    # verify proto roud trips unchanged.
+    self.assertProtoEquals(attributions_for_slice, attribution_records[0])
 
   @parameterized.named_parameters(('parquet_file_format', 'parquet'))
   def testLoadAndDeserializeFilteredMetricsAndPlots(self, output_file_format):

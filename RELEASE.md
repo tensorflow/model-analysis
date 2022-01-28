@@ -6,7 +6,16 @@
 
 ## Bug fixes and other Changes
 
+*   Fixes issue attempting to parse metrics, plots, and attributions without a
+    format suffix.
+
 ## Breaking Changes
+
+*   MetricsPlotsAndValidationsWriter will now write files with an explicit
+    output format suffix (".tfrecord" by default). This should only affect
+    pipelines which directly construct `MetricsPlotsAndValidationWriter`
+    instances and do not set `output_file_format`. Those which use
+    `default_writers()` should be unchanged.
 
 ## Deprecations
 
