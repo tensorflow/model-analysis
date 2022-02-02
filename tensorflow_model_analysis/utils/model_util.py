@@ -37,6 +37,13 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 # TODO(b/162075791): Need to load tensorflow_ranking, tensorflow_text,
 # tensorflow_decision_forests, and struct2tensor for models that use those ops.
 # pylint: disable=g-import-not-at-top
+# LINT.IfChange
+try:
+  # Needed to load SavedModel on s3://
+  importlib.import_module('tensorflow_io')
+  logging.info('imported tensorflow_io')
+except Exception as e:  # pylint: disable=broad-except
+  logging.info('tensorflow_io is not available: %s', e)
 try:
   importlib.import_module('tensorflow_ranking')
   logging.info('imported tensorflow_ranking')
@@ -59,6 +66,7 @@ try:
   logging.info('imported struct2tensor')
 except Exception as e:  # pylint: disable=broad-except
   logging.info('struct2tensor is not available: %s', e)
+# LINT.ThenChange(tensorflow_transform/saved/saved_transform_io.py)
 # pylint: enable=g-import-not-at-top
 
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
