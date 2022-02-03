@@ -9,6 +9,8 @@
 *   Fixes issue attempting to parse metrics, plots, and attributions without a
     format suffix.
 
+*   Update variable name to respectful terminology
+
 ## Breaking Changes
 
 *   MetricsPlotsAndValidationsWriter will now write files with an explicit
