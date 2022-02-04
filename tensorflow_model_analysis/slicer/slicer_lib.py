@@ -19,7 +19,7 @@ Use this library for generating slices from a specification
 
 import itertools
 
-from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Union, NamedTuple
 
 import apache_beam as beam
 import numpy as np
@@ -248,6 +248,53 @@ class SingleSliceSpec:
     # the Cartesian product of [] is ().
     for column_part in itertools.product(*column_matches):
       yield tuple(sorted(self._value_matches + list(column_part)))
+
+
+class CrossSliceSpec(
+    NamedTuple('CrossSliceSpec', [('base_slicing_spec', SingleSliceSpec),
+                                  ('slicing_specs', Tuple[SingleSliceSpec])])):
+  """Specification for a cross slice.
+
+  This is intended to be an immutable class that specifies a cross slice.
+  Use this in conjunction with get_slices_for_features_dicts to generate slices
+  for dictionaries of features.
+
+  Attributes:
+    base_slicing_spec: The baseline slicing spec.
+    slicing_specs: A tuple of slicing specs of the proto counterparts.
+  """
+
+  def __new__(cls, spec: config_pb2.CrossSlicingSpec):
+    """Create a new CrrossSliceSpec object from its Proto counnterpart."""
+    # This is organized as a Tuple(baseline_spec, Tuple(slice_specs))
+    return super(CrossSliceSpec, cls).__new__(
+        cls, SingleSliceSpec(spec=spec.baseline_spec),
+        tuple(
+            SingleSliceSpec(spec=slicing_spec)
+            for slicing_spec in spec.slicing_specs))
+
+
+def deserialize_slice_spec(
+    slice_spec: Union[config_pb2.SlicingSpec, config_pb2.CrossSlicingSpec]
+) -> Union[SingleSliceSpec, CrossSliceSpec]:
+  """Creates the appropriate hashable slicing spec object.
+
+  Args:
+    slice_spec: Proto counnterpart of slicing spec.
+
+  Returns:
+    The python object of single slice spec or cross slice spec.
+
+  Raises:
+    NotImplementedError: if the type of slice_spec is not supported.
+  """
+  if isinstance(slice_spec, config_pb2.SlicingSpec):
+    return SingleSliceSpec(spec=slice_spec)
+  elif isinstance(slice_spec, config_pb2.CrossSlicingSpec):
+    return CrossSliceSpec(spec=slice_spec)
+  else:
+    raise NotImplementedError(
+        f'Not implemented for slice_spec type: {type(slice_spec)}')
 
 
 def serialize_slice_key(

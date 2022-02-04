@@ -17,8 +17,7 @@ import collections
 import importlib
 import json
 import re
-
-from typing import Any, Dict, FrozenSet, Iterator, Iterable, List, NamedTuple, Optional, Type, Union, Tuple
+from typing import Any, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Type, Union
 
 import tensorflow as tf
 from tensorflow_model_analysis.metrics import aggregation
@@ -34,7 +33,9 @@ from tensorflow_model_analysis.metrics import multi_class_confusion_matrix_plot
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.metrics import weighted_example_count
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.utils import model_util
+
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 _TF_LOSSES_MODULE = tf.keras.losses.Loss().__class__.__module__
@@ -573,15 +574,17 @@ def metric_thresholds_from_metrics_specs(
       threshold: Union[config_pb2.GenericChangeThreshold,
                        config_pb2.GenericValueThreshold]):
     """Adds value to results if it doesn't already exist."""
+    hashable_slice_spec = None
+    if slice_spec:
+      hashable_slice_spec = slicer.deserialize_slice_spec(slice_spec)
     # Note that hashing by SerializeToString() is only safe if used within the
     # same process.
-    slice_hash = slice_spec.SerializeToString() if slice_spec else None
     threshold_hash = threshold.SerializeToString()
-    if (not (key in existing and slice_hash in existing[key] and
-             threshold_hash in existing[key][slice_hash])):
-      if slice_hash not in existing[key]:
-        existing[key][slice_hash] = {}
-      existing[key][slice_hash][threshold_hash] = True
+    if (not (key in existing and hashable_slice_spec in existing[key] and
+             threshold_hash in existing[key][hashable_slice_spec])):
+      if hashable_slice_spec not in existing[key]:
+        existing[key][hashable_slice_spec] = {}
+      existing[key][hashable_slice_spec][threshold_hash] = True
       result[key].append((slice_spec, threshold))
 
   def add_threshold(key: metric_types.MetricKey,

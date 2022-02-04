@@ -204,15 +204,14 @@ def validate_metrics(
 
 def _hashed_slicing_details(
     slicing_details: Iterable[validation_result_pb2.SlicingDetails]
-) -> Dict[bytes, validation_result_pb2.SlicingDetails]:
+) -> Dict[Union[slicer.SingleSliceSpec, slicer.CrossSliceSpec],
+          validation_result_pb2.SlicingDetails]:
   """Returns hash table of slicing details keyed by serialized slice spec."""
-  # Note that hashing by SerializeToString() is only safe if used within the
-  # same process.
   hashed_details = {}
   for details in slicing_details:
-    slice_hash = details.slicing_spec.SerializeToString()
-    if slice_hash not in hashed_details:
-      hashed_details[slice_hash] = details
+    hashable_slice_spec = slicer.deserialize_slice_spec(details.slicing_spec)
+    if hashable_slice_spec not in hashed_details:
+      hashed_details[hashable_slice_spec] = details
   return hashed_details
 
 
@@ -222,12 +221,12 @@ def merge_details(a: validation_result_pb2.ValidationResult,
   hashed_details = _hashed_slicing_details(b.validation_details.slicing_details)
   # Combine a with matching values from b
   for details in a.validation_details.slicing_details:
-    slice_hash = details.slicing_spec.SerializeToString()
-    if slice_hash in hashed_details:
+    hashable_slice_spec = slicer.deserialize_slice_spec(details.slicing_spec)
+    if hashable_slice_spec in hashed_details:
       details.num_matching_slices = (
           details.num_matching_slices +
-          hashed_details[slice_hash].num_matching_slices)
-      del hashed_details[slice_hash]
+          hashed_details[hashable_slice_spec].num_matching_slices)
+      del hashed_details[hashable_slice_spec]
   # Add any values from b not matched in a
   for details in hashed_details.values():
     a.validation_details.slicing_details.append(details)
@@ -259,9 +258,10 @@ def get_missing_slices(
     for slice_spec, _ in sliced_thresholds:
       if not slice_spec:
         slice_spec = config_pb2.SlicingSpec()
-      slice_hash = slice_spec.SerializeToString()
-      if slice_hash not in hashed_details:
+      hashable_slice_spec = slicer.deserialize_slice_spec(slice_spec)
+      if hashable_slice_spec not in hashed_details:
         missing_slices.append(slice_spec)
         # Same slice may be used by other metrics/thresholds, only add once
-        hashed_details[slice_hash] = validation_result_pb2.SlicingDetails()
+        hashed_details[
+            hashable_slice_spec] = validation_result_pb2.SlicingDetails()
   return missing_slices

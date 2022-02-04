@@ -8,6 +8,8 @@
 
 *   Fixes issue attempting to parse metrics, plots, and attributions without a
     format suffix.
+*   Fixes the non-deterministic key ordering caused by proto string
+    serialization in metrics validator.
 
 *   Update variable name to respectful terminology
 

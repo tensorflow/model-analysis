@@ -432,6 +432,39 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       with self.assertRaises(TypeError, msg=name + str(slice_key)):
         slicer.get_slice_key_type(slice_key)
 
+  @parameterized.named_parameters(
+      {
+          'testcase_name': '_single_slice_spec',
+          'slice_type': slicer.SingleSliceSpec,
+          'slicing_spec': config_pb2.SlicingSpec(feature_values={'a': '1'}),
+      }, {
+          'testcase_name':
+              '_cross_slice_spec',
+          'slice_type':
+              slicer.CrossSliceSpec,
+          'slicing_spec':
+              config_pb2.CrossSlicingSpec(
+                  baseline_spec=config_pb2.SlicingSpec(),
+                  slicing_specs=[
+                      config_pb2.SlicingSpec(feature_values={'b': '2'})
+                  ]),
+      })
+  def testDeserializeSliceSpec(self, slice_type, slicing_spec):
+    slice_spec = slicer.deserialize_slice_spec(slicing_spec)
+    self.assertIsInstance(slice_spec, slice_type)
+
+  def testDeserializeSliceSpec_hashable(self):
+    single_slice_spec = slicer.deserialize_slice_spec(
+        config_pb2.SlicingSpec(feature_values={'a': '1'}))
+    cross_slice_spec = slicer.deserialize_slice_spec(
+        slicer.config_pb2.CrossSlicingSpec(
+            baseline_spec=config_pb2.SlicingSpec(),
+            slicing_specs=[config_pb2.SlicingSpec(feature_values={'b': '2'})]))
+    # Check either of them can be hashed and used as keys.
+    slice_map = {single_slice_spec: 1, cross_slice_spec: 2}
+    self.assertEqual(slice_map[single_slice_spec], 1)
+    self.assertEqual(slice_map[cross_slice_spec], 2)
+
   def testIsSliceApplicable(self):
     test_cases = [
         ('applicable', ['column1'],
