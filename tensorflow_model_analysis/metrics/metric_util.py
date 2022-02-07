@@ -726,7 +726,7 @@ def _to_dense_tensor(values: np.ndarray, indices: np.ndarray,
   # Squeeze is used on the values, indices, and result to ensure that single
   # value inputs that still have the batch dimension such as [1, n_classes] can
   # still be indexed properly from SparseTensorValues that don't use batching.
-  result = _squeeze(np.zeros(dense_shape))
+  result = _squeeze(np.zeros(dense_shape, dtype=values.dtype))
   for value, index in zip(_squeeze(values), _squeeze(indices)):
     result[index] = value
   return result.reshape(dense_shape)

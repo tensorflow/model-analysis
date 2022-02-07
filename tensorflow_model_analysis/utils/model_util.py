@@ -30,6 +30,7 @@ from tensorflow_model_analysis.eval_saved_model import constants as eval_constan
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.experimental import preprocessing_functions
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import util
 from tfx_bsl.tfxio import tensor_adapter
 
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -271,68 +272,57 @@ def get_feature_values_for_model_spec_field(
     model name. If no values are found and allow_missing is False then None
     will be returned.
   """
+  values = {}
   if (constants.FEATURES_KEY in batched_extracts and
       batched_extracts[constants.FEATURES_KEY]):
-    batch_size = len(batched_extracts[constants.FEATURES_KEY])
-  elif (constants.TRANSFORMED_FEATURES_KEY in batched_extracts and
-        batched_extracts[constants.TRANSFORMED_FEATURES_KEY]):
-    batch_size = len(batched_extracts[constants.TRANSFORMED_FEATURES_KEY])
+    features = batched_extracts[constants.FEATURES_KEY]
   else:
-    batch_size = batched_extracts[constants.ARROW_RECORD_BATCH_KEY].num_rows
-
-  batched_values = []
-  all_none = True
-  for i in range(batch_size):
-    values = {}
-    if (constants.FEATURES_KEY in batched_extracts and
-        batched_extracts[constants.FEATURES_KEY]):
-      features = batched_extracts[constants.FEATURES_KEY][i]
+    features = {}
+  for spec in model_specs:
+    # Get transformed features (if any) for this model.
+    if (constants.TRANSFORMED_FEATURES_KEY in batched_extracts and
+        batched_extracts[constants.TRANSFORMED_FEATURES_KEY]):
+      transformed_features = batched_extracts[
+          constants.TRANSFORMED_FEATURES_KEY]
+      # TODO(b/178158073): Remove merge_extracts after batching supported.
+      if transformed_features and isinstance(transformed_features, list):
+        transformed_features = util.merge_extracts(transformed_features)
+      if len(model_specs) > 1 and transformed_features:
+        if spec.name in transformed_features:
+          transformed_features = transformed_features[spec.name]
+      transformed_features = transformed_features or {}
     else:
-      features = {}
-    for spec in model_specs:
-      # Get transformed features (if any) for this model.
-      if (constants.TRANSFORMED_FEATURES_KEY in batched_extracts and
-          batched_extracts[constants.TRANSFORMED_FEATURES_KEY]):
-        transformed_features = batched_extracts[
-            constants.TRANSFORMED_FEATURES_KEY][i]
-        if len(model_specs) > 1 and transformed_features:
-          if spec.name in transformed_features:
-            transformed_features = transformed_features[spec.name]
-        transformed_features = transformed_features or {}
-      else:
-        transformed_features = {}
-      # Lookup first in transformed_features and then in features.
-      if hasattr(spec, field) and getattr(spec, field):
-        key = getattr(spec, field)
-        if key in transformed_features:
-          values[spec.name] = transformed_features[key]
-        elif key in features:
-          values[spec.name] = features[key]
-        elif allow_missing:
-          values[spec.name] = None
-      elif (multi_output_field and hasattr(spec, multi_output_field) and
-            getattr(spec, multi_output_field)):
-        output_values = {}
-        for output_name, key in getattr(spec, multi_output_field).items():
-          if key in transformed_features:
-            output_values[output_name] = transformed_features[key]
-          elif key in features:
-            output_values[output_name] = features[key]
-          elif allow_missing:
-            output_values[output_name] = None
-        if output_values:
-          values[spec.name] = output_values
+      transformed_features = {}
+    # Lookup first in transformed_features and then in features.
+    if hasattr(spec, field) and getattr(spec, field):
+      key = getattr(spec, field)
+      if key in transformed_features:
+        values[spec.name] = transformed_features[key]
+      elif key in features:
+        values[spec.name] = features[key]
       elif allow_missing:
         values[spec.name] = None
-    if values:
-      all_none = False
-      # If only one model, the output is stored without using a dict
-      if len(model_specs) == 1:
-        values = next(iter(values.values()))
-    else:
-      values = None
-    batched_values.append(values)
-  return batched_values if not all_none else None
+    elif (multi_output_field and hasattr(spec, multi_output_field) and
+          getattr(spec, multi_output_field)):
+      output_values = {}
+      for output_name, key in getattr(spec, multi_output_field).items():
+        if key in transformed_features:
+          output_values[output_name] = transformed_features[key]
+        elif key in features:
+          output_values[output_name] = features[key]
+        elif allow_missing:
+          output_values[output_name] = None
+      if output_values:
+        values[spec.name] = output_values
+    elif allow_missing:
+      values[spec.name] = None
+  if values:
+    # If only one model, the output is stored without using a dict
+    if len(model_specs) == 1:
+      values = next(iter(values.values()))
+  else:
+    values = None
+  return values
 
 
 def get_default_signature_name(model: Any) -> str:
@@ -785,14 +775,22 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
       self._batch_size_failed.update(batch_size)
       result = []
       record_batch = element[constants.ARROW_RECORD_BATCH_KEY]
+      unbatched_extracts = {}
       for i in range(batch_size):
         self._batch_size.update(1)
         unbatched_element = {}
         for key in element.keys():
-          if key == constants.ARROW_RECORD_BATCH_KEY:
+          if element[key] is None:
+            unbatched_element[key] = None
+          elif key == constants.ARROW_RECORD_BATCH_KEY:
             unbatched_element[key] = record_batch.slice(i, 1)
-          else:
+          elif isinstance(element[key], (list, np.ndarray)):
             unbatched_element[key] = [element[key][i]]
+          else:
+            if key not in unbatched_extracts:
+              unbatched_extracts[key] = util.split_extracts(
+                  element[key], keep_batch_dim=True)
+            unbatched_element[key] = unbatched_extracts[key][i]
         result.extend(self._batch_reducible_process(unbatched_element))
       self._num_instances.inc(len(result))
       return result

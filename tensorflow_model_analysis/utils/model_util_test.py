@@ -20,7 +20,6 @@ from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
-import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -362,47 +361,40 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           'model_specs': [config_pb2.ModelSpec(label_key='feature1')],
           'field': 'label_key',
           'multi_output_field': 'label_keys',
-          'expected_values': [[1.0, 1.1, 1.2],]
+          'expected_values': [1.0, 1.1, 1.2]
       },
       {
-          'testcase_name':
-              'single_model_multi_key',
+          'testcase_name': 'single_model_multi_key',
           'model_specs': [
               config_pb2.ModelSpec(label_keys={
                   'output1': 'feature1',
                   'output2': 'feature2'
               })
           ],
-          'field':
-              'label_key',
-          'multi_output_field':
-              'label_keys',
-          'expected_values': [{
+          'field': 'label_key',
+          'multi_output_field': 'label_keys',
+          'expected_values': {
               'output1': [1.0, 1.1, 1.2],
               'output2': [2.0, 2.1, 2.2]
-          },]
+          }
       },
       {
-          'testcase_name':
-              'multi_model_single_key',
+          'testcase_name': 'multi_model_single_key',
           'model_specs': [
               config_pb2.ModelSpec(
                   name='model1', example_weight_key='feature2'),
               config_pb2.ModelSpec(
                   name='model2', example_weight_key='feature3')
           ],
-          'field':
-              'example_weight_key',
-          'multi_output_field':
-              'example_weight_keys',
-          'expected_values': [{
+          'field': 'example_weight_key',
+          'multi_output_field': 'example_weight_keys',
+          'expected_values': {
               'model1': [2.0, 2.1, 2.2],
               'model2': [3.0, 3.1, 3.2]
-          },]
+          }
       },
       {
-          'testcase_name':
-              'multi_model_multi_key',
+          'testcase_name': 'multi_model_multi_key',
           'model_specs': [
               config_pb2.ModelSpec(
                   name='model1',
@@ -417,11 +409,9 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                       'output3': 'feature3'
                   })
           ],
-          'field':
-              'prediction_key',
-          'multi_output_field':
-              'prediction_keys',
-          'expected_values': [{
+          'field': 'prediction_key',
+          'multi_output_field': 'prediction_keys',
+          'expected_values': {
               'model1': {
                   'output1': [1.0, 1.1, 1.2],
                   'output2': [2.0, 2.1, 2.2]
@@ -430,22 +420,18 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                   'output1': [1.0, 1.1, 1.2],
                   'output3': [3.0, 3.1, 3.2]
               }
-          },]
+          }
       },
   )
   def testGetFeatureValuesForModelSpecField(self, model_specs, field,
                                             multi_output_field,
                                             expected_values):
     extracts = {
-        # Only need the num_rows from RecordBatch so use fake array of same len
-        # as features.
-        constants.ARROW_RECORD_BATCH_KEY:
-            pa.RecordBatch.from_arrays([pa.array([1])], ['dummy']),
-        constants.FEATURES_KEY: [{
+        constants.FEATURES_KEY: {
             'feature1': [1.0, 1.1, 1.2],
             'feature2': [2.0, 2.1, 2.2],
             'feature3': [3.0, 3.1, 3.2],
-        },]
+        }
     }
     got = model_util.get_feature_values_for_model_spec_field(
         model_specs, field, multi_output_field, extracts)
@@ -457,41 +443,34 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           'model_specs': [config_pb2.ModelSpec(label_key='feature2')],
           'field': 'label_key',
           'multi_output_field': 'label_keys',
-          'expected_values': [[4.0, 4.1, 4.2],]
+          'expected_values': [4.0, 4.1, 4.2]
       },
       {
-          'testcase_name':
-              'single_model_multi_key',
+          'testcase_name': 'single_model_multi_key',
           'model_specs': [
               config_pb2.ModelSpec(label_keys={
                   'output1': 'feature1',
                   'output2': 'feature2'
               })
           ],
-          'field':
-              'label_key',
-          'multi_output_field':
-              'label_keys',
-          'expected_values': [{
+          'field': 'label_key',
+          'multi_output_field': 'label_keys',
+          'expected_values': {
               'output1': [1.0, 1.1, 1.2],
               'output2': [4.0, 4.1, 4.2]
-          },]
+          }
       },
   )
   def testGetFeatureValuesForModelSpecFieldWithSingleModelTransforedFeatures(
       self, model_specs, field, multi_output_field, expected_values):
     extracts = {
-        # Only need the num_rows from RecordBatch so use fake array of same len
-        # as features.
-        constants.ARROW_RECORD_BATCH_KEY:
-            pa.RecordBatch.from_arrays([pa.array([1])], ['dummy']),
-        constants.FEATURES_KEY: [{
+        constants.FEATURES_KEY: {
             'feature1': [1.0, 1.1, 1.2],
             'feature2': [2.0, 2.1, 2.2],
-        },],
-        constants.TRANSFORMED_FEATURES_KEY: [{
+        },
+        constants.TRANSFORMED_FEATURES_KEY: {
             'feature2': [4.0, 4.1, 4.2],
-        },]
+        }
     }
     got = model_util.get_feature_values_for_model_spec_field(
         model_specs, field, multi_output_field, extracts)
@@ -499,26 +478,22 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
 
   @parameterized.named_parameters(
       {
-          'testcase_name':
-              'multi_model_single_key',
+          'testcase_name': 'multi_model_single_key',
           'model_specs': [
               config_pb2.ModelSpec(
                   name='model1', example_weight_key='feature2'),
               config_pb2.ModelSpec(
                   name='model2', example_weight_key='feature3')
           ],
-          'field':
-              'example_weight_key',
-          'multi_output_field':
-              'example_weight_keys',
-          'expected_values': [{
+          'field': 'example_weight_key',
+          'multi_output_field': 'example_weight_keys',
+          'expected_values': {
               'model1': [4.0, 4.1, 4.2],
               'model2': [7.0, 7.1, 7.2]
-          },]
+          }
       },
       {
-          'testcase_name':
-              'multi_model_multi_key',
+          'testcase_name': 'multi_model_multi_key',
           'model_specs': [
               config_pb2.ModelSpec(
                   name='model1',
@@ -533,11 +508,9 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                       'output3': 'feature3'
                   })
           ],
-          'field':
-              'example_weight_key',
-          'multi_output_field':
-              'example_weight_keys',
-          'expected_values': [{
+          'field': 'example_weight_key',
+          'multi_output_field': 'example_weight_keys',
+          'expected_values': {
               'model1': {
                   'output1': [1.0, 1.1, 1.2],
                   'output2': [4.0, 4.1, 4.2]
@@ -546,21 +519,17 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                   'output1': [1.0, 1.1, 1.2],
                   'output3': [7.0, 7.1, 7.2]
               }
-          },]
+          }
       },
   )
   def testGetFeatureValuesForModelSpecFieldWithMultiModelTransforedFeatures(
       self, model_specs, field, multi_output_field, expected_values):
     extracts = {
-        # Only need the num_rows from RecordBatch so use fake array of same len
-        # as features.
-        constants.ARROW_RECORD_BATCH_KEY:
-            pa.RecordBatch.from_arrays([pa.array([1])], ['dummy']),
-        constants.FEATURES_KEY: [{
+        constants.FEATURES_KEY: {
             'feature1': [1.0, 1.1, 1.2],
             'feature2': [2.0, 2.1, 2.2],
-        },],
-        constants.TRANSFORMED_FEATURES_KEY: [{
+        },
+        constants.TRANSFORMED_FEATURES_KEY: {
             'model1': {
                 'feature2': [4.0, 4.1, 4.2],
                 'feature3': [5.0, 5.1, 5.2]
@@ -569,7 +538,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'feature2': [6.0, 6.1, 6.2],
                 'feature3': [7.0, 7.1, 7.2]
             }
-        },]
+        }
     }
     got = model_util.get_feature_values_for_model_spec_field(
         model_specs, field, multi_output_field, extracts)
@@ -578,10 +547,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
   def testGetFeatureValuesForModelSpecFieldNoValues(self):
     model_spec = config_pb2.ModelSpec(
         name='model1', example_weight_key='feature2')
-    extracts = {
-        constants.ARROW_RECORD_BATCH_KEY:
-            pa.RecordBatch.from_arrays([pa.array([1])], ['dummy']),
-    }
+    extracts = {}
     got = model_util.get_feature_values_for_model_spec_field([model_spec],
                                                              'example_weight',
                                                              'example_weights',

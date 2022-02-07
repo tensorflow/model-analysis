@@ -20,6 +20,9 @@
     pipelines which directly construct `MetricsPlotsAndValidationWriter`
     instances and do not set `output_file_format`. Those which use
     `default_writers()` should be unchanged.
+*   Batched based extractors previously worked off of either lists of dicts of
+    single tensor values or arrow record batches. These have been updated to be
+    based on dicts with batched tensor values at the leaves.
 
 ## Deprecations
 

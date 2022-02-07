@@ -21,10 +21,14 @@ import traceback
 from typing import Any, List, Mapping, MutableMapping, Optional, Union
 
 import numpy as np
+import pyarrow as pa
 import six
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tfx_bsl.tfxio import tensor_adapter
+
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 # Separator used when combining multiple layers of Extracts keys into a single
 # string. Normally we would like to use '.' or '/' as a separator, but the
@@ -171,6 +175,127 @@ def to_tensorflow_tensors(
       return tensor
 
   return to_tensors(values, specs, [])
+
+
+def record_batch_to_tensor_values(
+    record_batch: pa.RecordBatch,
+    tensor_representations: Optional[Mapping[
+        str, schema_pb2.TensorRepresentation]] = None
+) -> MutableMapping[str, types.TensorValue]:
+  """Returns tensor values extracted from given record batch.
+
+  Args:
+    record_batch: Record batch to extract features from.
+    tensor_representations: Tensor representations to use when extracting the
+      features. If a representation is not found for a given column name, a
+      default representation will be used where possible, otherwise an exception
+      will be raised.
+
+  Returns:
+    Features dict.
+
+  Raises:
+    ValueError: If a tensor value cannot be determined for a given column in the
+    record batch.
+  """
+  if tensor_representations is None:
+    tensor_representations = {}
+
+  def _shape(value: Any) -> List[int]:
+    """Returns the shape associated with given value."""
+    if hasattr(value, '__len__'):
+      return [len(value)] + _shape(value[0]) if value else [len(value)]
+    else:
+      return []
+
+  features = {}
+  updated_tensor_representations = {}
+  for i, col in enumerate(record_batch.schema):
+    if col.name in tensor_representations:
+      updated_tensor_representations[col.name] = (
+          tensor_representations[col.name])
+    else:
+      col_sizes = record_batch.column(i).value_lengths().unique()
+      if len(col_sizes) != 1:
+        # Assume VarLenSparseTensor
+        tensor_representation = schema_pb2.TensorRepresentation()
+        tensor_representation.varlen_sparse_tensor.column_name = col.name
+        updated_tensor_representations[col.name] = tensor_representation
+      elif not np.all(record_batch[i].is_valid()):
+        # Features that are missing some values can't be parsed using a default
+        # tensor representation. Convert to numpy arrays containing None values.
+        features[col.name] = record_batch[i].to_numpy(zero_copy_only=False)
+      else:
+        tensor_representation = schema_pb2.TensorRepresentation()
+        tensor_representation.dense_tensor.column_name = col.name
+        dims = _shape(record_batch[i])
+        # Convert dims of the form (..., n, 1) to (..., n).
+        if len(dims) > 1 and dims[-1] == 1:
+          dims = dims[:-1]
+        if len(dims) > 1:
+          for dim in dims[1:]:  # Skip batch dimension
+            tensor_representation.dense_tensor.shape.dim.append(
+                schema_pb2.FixedShape.Dim(size=dim))
+        updated_tensor_representations[col.name] = tensor_representation
+  if updated_tensor_representations:
+    adapter = tensor_adapter.TensorAdapter(
+        tensor_adapter.TensorAdapterConfig(
+            arrow_schema=record_batch.schema,
+            tensor_representations=updated_tensor_representations))
+    try:
+      for k, v in adapter.ToBatchTensors(
+          record_batch, produce_eager_tensors=False).items():
+        if isinstance(v, tf.compat.v1.ragged.RaggedTensorValue):
+          features[k] = to_ragged_tensor_value(v)
+        elif isinstance(v, tf.compat.v1.SparseTensorValue):
+          features[k] = to_sparse_tensor_value(v)
+        else:
+          features[k] = v
+    except Exception as e:
+      raise ValueError(e, updated_tensor_representations, record_batch) from e
+  return features
+
+
+def batch_size(values: Any) -> Optional[int]:
+  """Returns batch size of values or raises error if not same dimensions."""
+
+  # Wrap in another function so can close over original values
+  def get_batch_size(val: Any) -> Optional[int]:
+    """Gets batch size."""
+    if isinstance(val, Mapping):
+      result = None
+      for v in val.values():
+        sz = get_batch_size(v)
+        if result is None:
+          result = sz
+        elif sz != result:
+          raise ValueError(
+              f'Batch sizes have differing values: {result} != {sz}, '
+              f'values={values}')
+      return result
+    else:
+      if hasattr(val, 'shape'):
+        if val.shape is not None and len(val.shape) >= 1:
+          return val.shape[0]
+        else:
+          return 0
+      elif hasattr(val, 'dense_shape'):
+        if val.dense_shape is not None and len(val.dense_shape) >= 1:
+          return val.dense_shape[0]
+        else:
+          return 0
+      elif hasattr(val, 'nested_row_splits'):
+        if (val.nested_row_splits is not None and
+            len(val.nested_row_splits) >= 1):
+          return len(val.nested_row_splits[0]) - 1
+        else:
+          return 0
+      elif hasattr(val, '__len__'):
+        return len(val)
+      else:
+        return 0
+
+  return get_batch_size(values)
 
 
 def unique_key(key: str,
@@ -536,12 +661,14 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
 
   result = {}
   for x in extracts:
-    for k, v in x.items():
-      merge_with_lists(result, k, v)
+    if x:
+      for k, v in x.items():
+        merge_with_lists(result, k, v)
   return merge_lists(result)
 
 
-def split_extracts(extracts: types.Extracts) -> List[types.Extracts]:
+def split_extracts(extracts: types.Extracts,
+                   keep_batch_dim: bool = False) -> List[types.Extracts]:
   """Splits extracts into a list of extracts along the batch dimension."""
   results = []
 
@@ -566,12 +693,21 @@ def split_extracts(extracts: types.Extracts) -> List[types.Extracts]:
         if key not in parent:
           parent[key] = {}
         parent = parent[key]
+      # In order avoid loosing type information, expand the dims if values shape
+      # is (n,). For example, np.array([a, ...]) will become np.array([[a], ...)
+      # Without this step, to_tensor_value would be passed 'a' instead of
+      # np.array([a]) and a new np.array with default dtype would be created.
+      if isinstance(values, np.ndarray) and len(values.shape) == 1:
+        values = np.expand_dims(values, 1)
       value = to_tensor_value(values[i])
       # Scalars should be in array form (e.g. np.array([0.0]) vs np.array(0.0)).
       # The overall slice '()' also needs special handling since numpy encodes
       # it as dimension of 0 size (e.g. compare np.array([()]) vs np.array([0]))
       if (isinstance(value, np.ndarray) and
           (not value.shape or value.shape == (0,))):
+        value = np.expand_dims(value, 0)
+      # Add a batch dimension of size 1.
+      if keep_batch_dim and isinstance(value, np.ndarray):
         value = np.expand_dims(value, 0)
       parent[keys[-1]] = value
 
@@ -582,7 +718,20 @@ def split_extracts(extracts: types.Extracts) -> List[types.Extracts]:
       else:
         add_to_results(keys + [key], value)
 
+  empty = []
+  for k, v in list(extracts.items()):
+    if v is None:
+      empty.append(k)
+      del extracts[k]
+
   visit(extracts, [])
+
+  if empty:
+    for i in range(len(results)):
+      for k in empty:
+        if k not in results[i]:
+          results[i][k] = None
+
   return results
 
 

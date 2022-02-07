@@ -26,6 +26,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
+from tensorflow_model_analysis.utils import util
 
 _TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
 
@@ -81,8 +82,9 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
       self, element: types.Extracts) -> Sequence[types.Extracts]:
     """Invokes the tflite model on the provided inputs and stores the result."""
     result = copy.copy(element)
-    result[constants.PREDICTIONS_KEY] = []
-    feature_rows = element[constants.FEATURES_KEY]
+
+    batched_features = element[constants.FEATURES_KEY]
+    batch_size = util.batch_size(batched_features)
 
     for spec in self._eval_config.model_specs:
       model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
@@ -102,8 +104,11 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
         # model was invoked. Set it to 1 to "reset".
         input_shape = [1] + list(i['shape'])[1:]
         input_type = i['dtype']
-        for r in feature_rows:
-          value = r.get(input_name)
+        for idx in range(batch_size):
+          if input_name in batched_features:
+            value = batched_features[input_name][idx]
+          else:
+            value = None
           if value is None or np.any(np.equal(value, None)):
             default = -1 if input_type in [np.float32, np.int64] else ''
             value = np.empty(input_shape)
@@ -128,25 +133,23 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
       interpreter.invoke()
 
       outputs = {
-          o['name']: interpreter.get_tensor(o['index']) for o in output_details
+          o['name']: interpreter.get_tensor(o['index']).astype(np.float64)
+          for o in output_details
       }
 
       for v in outputs.values():
-        if len(v) != len(feature_rows):
+        if len(v) != batch_size:
           raise ValueError('Did not get the expected number of results.')
 
-      for i in range(len(feature_rows)):
-        output = {k: v[i] for k, v in outputs.items()}
+      if len(outputs) == 1:
+        outputs = list(outputs.values())[0]
 
-        if len(output) == 1:
-          output = list(output.values())[0]
-
-        if len(self._eval_config.model_specs) == 1:
-          result[constants.PREDICTIONS_KEY].append(output)
-        else:
-          if i >= len(result[constants.PREDICTIONS_KEY]):
-            result[constants.PREDICTIONS_KEY].append({})
-          result[constants.PREDICTIONS_KEY][i].update({spec.name: output})
+      if len(self._eval_config.model_specs) == 1:
+        result[constants.PREDICTIONS_KEY] = outputs
+      else:
+        if constants.PREDICTIONS_KEY not in result:
+          result[constants.PREDICTIONS_KEY] = {}
+        result[constants.PREDICTIONS_KEY][spec.name] = outputs
     return [result]
 
 

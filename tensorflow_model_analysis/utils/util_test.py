@@ -14,10 +14,13 @@
 """Simple tests for util."""
 
 import numpy as np
+import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.utils import util
+
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 class UtilTest(tf.test.TestCase):
@@ -223,6 +226,79 @@ class UtilTest(tf.test.TestCase):
                   'missing_feature': tf.TensorSpec([1], dtype=tf.float32)
               }
           })
+
+  def testRecordBatchToTensorValues(self):
+    record_batch = pa.record_batch(
+        [pa.array([[1], [2], [3]]),
+         pa.array([[0], [1], [1]])], ['feature_1', 'feature_2'])
+    actual = util.record_batch_to_tensor_values(record_batch)
+    expected = {
+        'feature_1': np.array([1, 2, 3]),
+        'feature_2': np.array([0, 1, 1])
+    }
+    self.assertAllClose(actual, expected)
+
+  def testRecordBatchToTensorValuesWithTensorRepresentation(self):
+    record_batch = pa.record_batch(
+        [pa.array([[1, 2], [2, 3], [3, 4]]),
+         pa.array([[0], [1], [1]])], ['feature_1', 'feature_2'])
+    tensor_representation = schema_pb2.TensorRepresentation()
+    tensor_representation.dense_tensor.column_name = 'feature_1'
+    tensor_representation.dense_tensor.shape.dim.append(
+        schema_pb2.FixedShape.Dim(size=2))
+    actual = util.record_batch_to_tensor_values(
+        record_batch, {'feature_1': tensor_representation})
+    expected = {
+        'feature_1': np.array([[1, 2], [2, 3], [3, 4]]),
+        'feature_2': np.array([0, 1, 1])
+    }
+    self.assertAllClose(actual, expected)
+
+  def testBatchSizeWithTensorValues(self):
+    tensor_values = {
+        'feature_1':
+            np.array([1, 2], dtype=np.float32),
+        'feature_2':
+            types.SparseTensorValue(
+                values=np.array([0.5, -1., 0.5, -1.], dtype=np.float32),
+                indices=np.array([[0, 3, 1], [0, 20, 0], [1, 3, 1], [1, 20,
+                                                                     0]]),
+                dense_shape=np.array([2, 100, 3])),
+        'feature_3':
+            types.RaggedTensorValue(
+                values=np.array([3, 1, 4, 1, 5, 9, 2, 7, 1, 8, 8, 2, 1],
+                                dtype=np.float32),
+                nested_row_splits=[
+                    np.array([0, 3, 6]),
+                    np.array([0, 2, 3, 4, 5, 5, 8]),
+                    np.array([0, 2, 3, 3, 6, 9, 10, 11, 13])
+                ]),
+    }
+    self.assertEqual(util.batch_size(tensor_values), 2)
+
+  def testBatchSizeWithTFTensors(self):
+    tensor_values = {
+        'feature_1':
+            tf.constant([1, 2]),
+        'feature_2':
+            tf.SparseTensor(
+                values=[0.5, -1., 0.5, -1.],
+                indices=[[0, 3, 1], [0, 20, 0], [1, 3, 1], [1, 20, 0]],
+                dense_shape=[2, 100, 3]),
+        'feature_3':
+            tf.RaggedTensor.from_nested_row_lengths(
+                [3, 1, 4, 1, 5, 9, 2, 7, 1, 8, 8, 2, 1],
+                [[3, 3], [2, 1, 1, 1, 0, 3], [2, 1, 0, 3, 3, 1, 1, 2]]),
+    }
+    self.assertEqual(util.batch_size(tensor_values), 2)
+
+  def testBatchSizeError(self):
+    with self.assertRaisesRegex(ValueError,
+                                'Batch sizes have differing values.*'):
+      util.batch_size({
+          'feature_1': np.array([1, 2, 3], dtype=np.int64),
+          'feature_2': np.array([1, 2], dtype=np.int64)
+      })
 
   def testUniqueKey(self):
     self.assertEqual('key', util.unique_key('key', ['key1', 'key2']))
@@ -669,6 +745,7 @@ class UtilTest(tf.test.TestCase):
             'model1': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]),
             'model2': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
         },
+        'empty': None,
         '_slice_key_types': np.array([(), (), ()])
     }
 
@@ -747,7 +824,13 @@ class UtilTest(tf.test.TestCase):
         },
     ]
 
-    self.assertAllClose(util.split_extracts(extracts), expected)
+    splits = util.split_extracts(extracts)
+    self.assertLen(splits, 3)
+    # Verify empty and delete since None can't be compared with assertAllClose
+    for i in range(3):
+      self.assertIn('empty', splits[i])
+      del splits[i]['empty']
+    self.assertAllClose(splits, expected)
 
 
 if __name__ == '__main__':

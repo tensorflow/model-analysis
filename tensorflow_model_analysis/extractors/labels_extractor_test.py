@@ -95,13 +95,11 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          tf.compat.v1.logging.error('HERE >>>> {}'.format(got))
-          self.assertAlmostEqual(got[0][constants.LABELS_KEY][0],
-                                 np.array([1.0]) if label is not None else None)
-          self.assertAlmostEqual(got[0][constants.LABELS_KEY][1],
-                                 np.array([0.0]) if label is not None else None)
-          self.assertAlmostEqual(got[0][constants.LABELS_KEY][2],
-                                 np.array([0.0]) if label is not None else None)
+          if label is None:
+            self.assertIsNone(got[0][constants.LABELS_KEY])
+          else:
+            self.assertAllClose(got[0][constants.LABELS_KEY],
+                                np.array([1.0, 0.0, 0.0]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -157,18 +155,14 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.LABELS_KEY][0], {
-                  'output1': np.array([1.0]),
-                  'output2': np.array([0.0]),
-                  'output3': None
-              })
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.LABELS_KEY][1], {
-                  'output1': np.array([1.0]),
-                  'output2': np.array([1.0]),
-                  'output3': None
-              })
+          # None cannot be compared with assertAllClose
+          self.assertIn('output3', got[0][constants.LABELS_KEY])
+          self.assertIsNone(got[0][constants.LABELS_KEY]['output3'])
+          del got[0][constants.LABELS_KEY]['output3']
+          self.assertAllClose(got[0][constants.LABELS_KEY], {
+              'output1': np.array([1.0, 1.0]),
+              'output2': np.array([0.0, 1.0])
+          })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -230,24 +224,13 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
         try:
           self.assertLen(got, 1)
           for model_name in ('model1', 'model2'):
-            self.assertIn(model_name, got[0][constants.LABELS_KEY][0])
-          self.assertAlmostEqual(got[0][constants.LABELS_KEY][0]['model1'],
-                                 np.array([1.0]))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.LABELS_KEY][0]['model2'], {
-                  'output1': np.array([1.0]),
-                  'output2': np.array([0.0])
-              })
-
-          for model_name in ('model1', 'model2'):
-            self.assertIn(model_name, got[0][constants.LABELS_KEY][1])
-          self.assertAlmostEqual(got[0][constants.LABELS_KEY][1]['model1'],
-                                 np.array([1.0]))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.LABELS_KEY][1]['model2'], {
-                  'output1': np.array([1.0]),
-                  'output2': np.array([1.0])
-              })
+            self.assertIn(model_name, got[0][constants.LABELS_KEY])
+          self.assertAllClose(got[0][constants.LABELS_KEY]['model1'],
+                              np.array([1.0, 1.0]))
+          self.assertAllClose(got[0][constants.LABELS_KEY]['model2'], {
+              'output1': np.array([1.0, 1.0]),
+              'output2': np.array([0.0, 1.0])
+          })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

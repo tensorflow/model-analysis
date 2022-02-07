@@ -233,7 +233,9 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     transformation_extractor = (
         transformed_features_extractor.TransformedFeaturesExtractor(
             eval_config=eval_config,
@@ -260,17 +262,25 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       # pylint: enable=no-value-for-parameter
 
-      def check_result(got):
+      def check_result(batches):
         try:
-          self.assertLen(got, 2)
-          for item in got:
+          self.assertLen(batches, 2)
+          for got in batches:
             for extracts_key, feature_keys in expected_extract_keys.items():
-              self.assertIn(extracts_key, item)
-              for value in item[extracts_key]:
+              self.assertIn(extracts_key, got)
+              if extracts_key == 'transformed_features':
+                # TODO(mdreves): Remove after converted to batched numpy arrays.
+                for i in range(len(got[extracts_key])):
+                  per_example_extracts = got[extracts_key][i]
+                  self.assertEqual(
+                      set(feature_keys),
+                      set(per_example_extracts.keys()),
+                      msg=f'got[{extracts_key}][{i}]={per_example_extracts}')
+              else:
                 self.assertEqual(
                     set(feature_keys),
-                    set(value.keys()),
-                    msg='got={}'.format(item))
+                    set(got[extracts_key].keys()),
+                    msg=f'got[{extracts_key}]={got[extracts_key]}')
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

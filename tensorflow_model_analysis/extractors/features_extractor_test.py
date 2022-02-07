@@ -50,9 +50,10 @@ class FeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       def check_result(got):
         self.assertLen(got, 1)
-        self.assertLen(got[0], 3)
-        for d in got[0][constants.FEATURES_KEY]:
-          self.assertEmpty(d)
+        self.assertIn(constants.FEATURES_KEY, got[0])
+        self.assertEmpty(got[0][constants.FEATURES_KEY])
+        self.assertIn(constants.INPUT_KEY, got[0])
+        self.assertLen(got[0][constants.INPUT_KEY], 3)
 
       util.assert_that(result, check_result, label='CheckResult')
 
@@ -122,27 +123,26 @@ class FeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][0],
-                                             {
-                                                 'fixed_int': np.array([1]),
-                                                 'fixed_float': np.array([1.0]),
-                                             })
-          self.assertEqual(got[0][constants.FEATURES_KEY][0]['fixed_string'],
-                           np.array([b'fixed_string1']))
-          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][1],
-                                             {
-                                                 'fixed_int': np.array([1]),
-                                                 'fixed_float': np.array([1.0]),
-                                             })
-          self.assertEqual(got[0][constants.FEATURES_KEY][1]['fixed_string'],
-                           np.array([b'fixed_string2']))
-          self.assertDictElementsAlmostEqual(got[0][constants.FEATURES_KEY][2],
-                                             {
-                                                 'fixed_int': np.array([2]),
-                                                 'fixed_float': np.array([0.0]),
-                                             })
-          self.assertEqual(got[0][constants.FEATURES_KEY][2]['fixed_string'],
-                           np.array([b'fixed_string3']))
+          self.assertIn(constants.FEATURES_KEY, got[0])
+          self.assertLen(got[0][constants.FEATURES_KEY], 4)  # 4 features
+          self.assertIn('example_weight', got[0][constants.FEATURES_KEY])
+          # Arrays of type np.object won't compare with assertAllClose
+          self.assertEqual(
+              got[0][constants.FEATURES_KEY]['example_weight'].tolist(),
+              [None, None, None])
+          self.assertIn('fixed_int', got[0][constants.FEATURES_KEY])
+          self.assertAllClose(got[0][constants.FEATURES_KEY]['fixed_int'],
+                              np.array([1, 1, 2]))
+          self.assertIn('fixed_float', got[0][constants.FEATURES_KEY])
+          self.assertAllClose(got[0][constants.FEATURES_KEY]['fixed_float'],
+                              np.array([1.0, 1.0, 0.0]))
+          self.assertIn('fixed_string', got[0][constants.FEATURES_KEY])
+          # Arrays of type np.object won't compare with assertAllClose
+          self.assertEqual(
+              got[0][constants.FEATURES_KEY]['fixed_string'].tolist(),
+              [b'fixed_string1', b'fixed_string2', b'fixed_string3'])
+          self.assertIn(constants.INPUT_KEY, got[0])
+          self.assertLen(got[0][constants.INPUT_KEY], 3)  # 3 examples
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

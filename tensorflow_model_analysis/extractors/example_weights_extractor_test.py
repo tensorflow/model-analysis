@@ -98,12 +98,8 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
         try:
           self.assertLen(got, 1)
           if example_weight:
-            self.assertAlmostEqual(got[0][constants.EXAMPLE_WEIGHTS_KEY][0],
-                                   np.array([0.5]))
-            self.assertAlmostEqual(got[0][constants.EXAMPLE_WEIGHTS_KEY][1],
-                                   np.array([0.0]))
-            self.assertAlmostEqual(got[0][constants.EXAMPLE_WEIGHTS_KEY][2],
-                                   np.array([1.0]))
+            self.assertAllClose(got[0][constants.EXAMPLE_WEIGHTS_KEY],
+                                np.array([0.5, 0.0, 1.0]))
           else:
             self.assertNotIn(constants.EXAMPLE_WEIGHTS_KEY, got[0])
 
@@ -166,16 +162,10 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.EXAMPLE_WEIGHTS_KEY][0], {
-                  'output1': np.array([0.5]),
-                  'output2': np.array([0.5]),
-              })
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.EXAMPLE_WEIGHTS_KEY][1], {
-                  'output1': np.array([0.0]),
-                  'output2': np.array([1.0]),
-              })
+          self.assertAllClose(got[0][constants.EXAMPLE_WEIGHTS_KEY], {
+              'output1': np.array([0.5, 0.0]),
+              'output2': np.array([0.5, 1.0]),
+          })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -249,26 +239,13 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
         try:
           self.assertLen(got, 1)
           for model_name in ('model1', 'model2'):
-            self.assertIn(model_name, got[0][constants.EXAMPLE_WEIGHTS_KEY][0])
-          self.assertAlmostEqual(
-              got[0][constants.EXAMPLE_WEIGHTS_KEY][0]['model1'],
-              np.array([0.5]))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.EXAMPLE_WEIGHTS_KEY][0]['model2'], {
-                  'output1': np.array([0.5]),
-                  'output2': np.array([0.5])
-              })
-
-          for model_name in ('model1', 'model2'):
-            self.assertIn(model_name, got[0][constants.EXAMPLE_WEIGHTS_KEY][1])
-          self.assertAlmostEqual(
-              got[0][constants.EXAMPLE_WEIGHTS_KEY][1]['model1'],
-              np.array([0.0]))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.EXAMPLE_WEIGHTS_KEY][1]['model2'], {
-                  'output1': np.array([0.0]),
-                  'output2': np.array([1.0])
-              })
+            self.assertIn(model_name, got[0][constants.EXAMPLE_WEIGHTS_KEY])
+          self.assertAllClose(got[0][constants.EXAMPLE_WEIGHTS_KEY]['model1'],
+                              np.array([0.5, 0.0]))
+          self.assertAllClose(got[0][constants.EXAMPLE_WEIGHTS_KEY]['model2'], {
+              'output1': np.array([0.5, 0.0]),
+              'output2': np.array([0.5, 1.0])
+          })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

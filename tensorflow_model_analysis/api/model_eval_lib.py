@@ -496,11 +496,8 @@ def default_extractors(  # pylint: disable=invalid-name
     slice_spec: Deprecated (use EvalConfig).
     materialize: True to have extractors create materialized output.
     tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. The model's signature will be invoked
-      with those tensors (matched by names). If None, an attempt will be made to
-      create an adapter based on the model's input signature otherwise the model
-      will be invoked with raw examples (assuming a  signature of a single 1-D
-      string tensor).
+      tensors from the Arrow RecordBatch. If None, an attempt will be made to
+      create the tensors using default TensorRepresentations.
     custom_predict_extractor: Optional custom predict extractor for non-TF
       models.
     config_version: Optional config version for this evaluation. This should not
@@ -520,6 +517,9 @@ def default_extractors(  # pylint: disable=invalid-name
   if eval_config is not None:
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
+  tensor_representations = None
+  if tensor_adapter_config:
+    tensor_representations = tensor_adapter_config.tensor_representations
 
   if _is_legacy_eval(config_version, eval_shared_model, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
@@ -556,7 +556,9 @@ def default_extractors(  # pylint: disable=invalid-name
       # TODO(b/163889779): Convert TFLite extractor to operate on batched
       # extracts. Then we can remove the input extractor.
       return [
-          features_extractor.FeaturesExtractor(eval_config=eval_config),
+          features_extractor.FeaturesExtractor(
+              eval_config=eval_config,
+              tensor_representations=tensor_representations),
           transformed_features_extractor.TransformedFeaturesExtractor(
               eval_config=eval_config,
               eval_shared_model=eval_shared_model,
@@ -575,7 +577,9 @@ def default_extractors(  # pylint: disable=invalid-name
 
     if model_types == set([constants.TF_JS]):
       return [
-          features_extractor.FeaturesExtractor(eval_config=eval_config),
+          features_extractor.FeaturesExtractor(
+              eval_config=eval_config,
+              tensor_representations=tensor_representations),
           labels_extractor.LabelsExtractor(eval_config=eval_config),
           example_weights_extractor.ExampleWeightsExtractor(
               eval_config=eval_config),
@@ -605,7 +609,9 @@ def default_extractors(  # pylint: disable=invalid-name
           'implemented: eval_config={}'.format(eval_config))
     else:
       extractors = [
-          features_extractor.FeaturesExtractor(eval_config=eval_config)
+          features_extractor.FeaturesExtractor(
+              eval_config=eval_config,
+              tensor_representations=tensor_representations)
       ]
       if not custom_predict_extractor:
         extractors.append(
@@ -627,7 +633,9 @@ def default_extractors(  # pylint: disable=invalid-name
       return extractors
   else:
     return [
-        features_extractor.FeaturesExtractor(eval_config=eval_config),
+        features_extractor.FeaturesExtractor(
+            eval_config=eval_config,
+            tensor_representations=tensor_representations),
         labels_extractor.LabelsExtractor(eval_config=eval_config),
         example_weights_extractor.ExampleWeightsExtractor(
             eval_config=eval_config),
@@ -663,11 +671,8 @@ def default_evaluators(  # pylint: disable=invalid-name
       the provided eval_config was generated internally, and thus not a reliable
       indicator of user intent.
     tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. The model's signature will be invoked
-      with those tensors (matched by names). If None, an attempt will be made to
-      create an adapter based on the model's input signature otherwise the model
-      will be invoked with raw examples (assuming a  signature of a single 1-D
-      string tensor).
+      tensors from the Arrow RecordBatch. If None, an attempt will be made to
+      create the tensors using default TensorRepresentations.
   """
   disabled_outputs = []
   if eval_config:
@@ -1099,8 +1104,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     min_slice_size: Deprecated (use EvalConfig).
     random_seed_for_testing: Provide for deterministic tests only.
     tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. If None, we feed the raw examples to
-      the model.
+      tensors from the Arrow RecordBatch. If None, an attempt will be made to
+      create the tensors using default TensorRepresentations.
     schema: A schema to use for customizing evaluators.
     config_version: Optional config version for this evaluation. This should not
       be explicitly set by users. It is only intended to be used in cases where

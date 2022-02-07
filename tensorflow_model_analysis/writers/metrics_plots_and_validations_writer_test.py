@@ -1478,7 +1478,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         'baseline': baseline_eval_shared_model
     }
     extractors = [
-        features_extractor.FeaturesExtractor(eval_config),
+        features_extractor.FeaturesExtractor(
+            eval_config=eval_config,
+            tensor_representations=tensor_adapter_config.tensor_representations
+        ),
         labels_extractor.LabelsExtractor(eval_config),
         example_weights_extractor.ExampleWeightsExtractor(eval_config),
         predictions_extractor.PredictionsExtractor(
@@ -1718,7 +1721,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
         'baseline': baseline_eval_shared_model
     }
     extractors = [
-        features_extractor.FeaturesExtractor(eval_config),
+        features_extractor.FeaturesExtractor(
+            eval_config=eval_config,
+            tensor_representations=tensor_adapter_config.tensor_representations
+        ),
         labels_extractor.LabelsExtractor(eval_config),
         example_weights_extractor.ExampleWeightsExtractor(eval_config),
         predictions_extractor.PredictionsExtractor(

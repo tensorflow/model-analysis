@@ -450,7 +450,10 @@ class _KerasEvaluateCombiner(_KerasCombiner):
       # Single-output models don't use dicts.
       labels = next(iter(labels.values()))
       example_weights = next(iter(example_weights.values()))
-    record_batch = self._decoder.DecodeBatch(serialized_examples)
+    # Serialized examples may be encoded as [np.array(['...']), ...], this will
+    # convert them to a list of strings.
+    record_batch = self._decoder.DecodeBatch(
+        np.array(serialized_examples, dtype=object).squeeze().tolist())
     input_specs = model_util.get_input_specs(self._model, signature_name=None)
     inputs = model_util.get_inputs(record_batch, input_specs,
                                    self._tensor_adapter)

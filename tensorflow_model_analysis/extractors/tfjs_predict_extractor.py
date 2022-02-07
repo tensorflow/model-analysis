@@ -32,6 +32,7 @@ from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors.tfjs_predict_extractor_util import get_tfjs_binary
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
+from tensorflow_model_analysis.utils import util
 
 _TFJS_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFJSPredictions'
 
@@ -106,15 +107,13 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
       self, element: types.Extracts) -> Sequence[types.Extracts]:
     """Invokes the tfjs model on the provided inputs and stores the result."""
     result = copy.copy(element)
-    result[constants.PREDICTIONS_KEY] = []
 
-    batched_features = collections.defaultdict(list)
-    feature_rows = element[constants.FEATURES_KEY]
-    for r in feature_rows:
-      for key, value in r.items():
-        if value.dtype == np.int64:
-          value = value.astype(np.int32)
-        batched_features[key].append(value)
+    batched_features = {}
+    for key, value in element[constants.FEATURES_KEY].items():
+      if value.dtype == np.int64:
+        value = value.astype(np.int32)
+      batched_features[key] = value
+    batch_size = util.batch_size(batched_features)
 
     for spec in self._eval_config.model_specs:
       model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
@@ -202,21 +201,18 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
         outputs[n] = np.reshape(np.array(d_val, t), s)
 
       for v in outputs.values():
-        if len(v) != len(feature_rows):
+        if len(v) != batch_size:
           raise ValueError('Did not get the expected number of results.')
 
-      for i in range(len(feature_rows)):
-        output = {k: v[i] for k, v in outputs.items()}
+      if len(outputs) == 1:
+        outputs = list(outputs.values())[0]
 
-        if len(output) == 1:
-          output = list(output.values())[0]
-
-        if len(self._eval_config.model_specs) == 1:
-          result[constants.PREDICTIONS_KEY].append(output)
-        else:
-          if i >= len(result[constants.PREDICTIONS_KEY]):
-            result[constants.PREDICTIONS_KEY].append({})
-          result[constants.PREDICTIONS_KEY][i].update({spec.name: output})
+      if len(self._eval_config.model_specs) == 1:
+        result[constants.PREDICTIONS_KEY] = outputs
+      else:
+        if constants.PREDICTIONS_KEY not in result:
+          result[constants.PREDICTIONS_KEY] = {}
+        result[constants.PREDICTIONS_KEY][spec.name] = outputs
     return [result]
 
 

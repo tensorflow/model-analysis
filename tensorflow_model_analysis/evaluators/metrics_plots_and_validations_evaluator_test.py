@@ -301,7 +301,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     )
     eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
-        features_extractor.FeaturesExtractor(eval_config),
+        features_extractor.FeaturesExtractor(
+            eval_config=eval_config,
+            tensor_representations=tensor_adapter_config.tensor_representations
+        ),
         labels_extractor.LabelsExtractor(eval_config),
         example_weights_extractor.ExampleWeightsExtractor(eval_config),
         predictions_extractor.PredictionsExtractor(
@@ -523,7 +526,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
 
     eval_shared_models = [eval_shared_model, baseline_eval_shared_model]
     extractors = [
-        features_extractor.FeaturesExtractor(eval_config),
+        features_extractor.FeaturesExtractor(
+            eval_config=eval_config,
+            tensor_representations=tensor_adapter_config.tensor_representations
+        ),
         labels_extractor.LabelsExtractor(eval_config),
         example_weights_extractor.ExampleWeightsExtractor(eval_config),
         predictions_extractor.PredictionsExtractor(
@@ -1128,7 +1134,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     ]
 
     extractors = [
-        features_extractor.FeaturesExtractor(eval_config),
+        features_extractor.FeaturesExtractor(
+            eval_config=eval_config,
+            tensor_representations=tensor_adapter_config.tensor_representations
+        ),
         labels_extractor.LabelsExtractor(eval_config),
         example_weights_extractor.ExampleWeightsExtractor(eval_config),
         predictions_extractor.PredictionsExtractor(
@@ -1871,7 +1880,10 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
     extractors = [
-        features_extractor.FeaturesExtractor(eval_config),
+        features_extractor.FeaturesExtractor(
+            eval_config=eval_config,
+            tensor_representations=tensor_adapter_config.tensor_representations
+        ),
         labels_extractor.LabelsExtractor(eval_config),
         example_weights_extractor.ExampleWeightsExtractor(eval_config),
         predictions_extractor.PredictionsExtractor(

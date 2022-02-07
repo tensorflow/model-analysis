@@ -78,7 +78,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
@@ -159,7 +161,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
@@ -227,7 +231,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
@@ -303,7 +309,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
@@ -406,7 +414,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model={
@@ -549,7 +559,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
@@ -644,7 +656,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
@@ -747,7 +761,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
@@ -807,7 +823,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
         tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
@@ -850,12 +868,21 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
             'output2': 'prediction2'
         })
     eval_config = config_pb2.EvalConfig(model_specs=[model_spec1, model_spec2])
-    feature_extractor = features_extractor.FeaturesExtractor(eval_config)
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config)
-
     schema = text_format.Parse(
         """
+        tensor_representation_group {
+          key: ""
+          value {
+            tensor_representation {
+              key: "fixed_int"
+              value {
+                dense_tensor {
+                  column_name: "fixed_int"
+                }
+              }
+            }
+          }
+        }
         feature {
           name: "prediction"
           type: FLOAT
@@ -875,6 +902,14 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         """, schema_pb2.Schema())
     tfx_io = test_util.InMemoryTFExampleRecord(
         schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
+        eval_config)
 
     examples = [
         self._makeExample(
@@ -900,24 +935,13 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         try:
           self.assertLen(got, 1)
           for model_name in ('model1', 'model2'):
-            self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY][0])
-          self.assertAlmostEqual(got[0][constants.PREDICTIONS_KEY][0]['model1'],
-                                 np.array([1.0]))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.PREDICTIONS_KEY][0]['model2'], {
-                  'output1': np.array([1.0]),
-                  'output2': np.array([0.0])
-              })
-
-          for model_name in ('model1', 'model2'):
-            self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY][1])
-          self.assertAlmostEqual(got[0][constants.PREDICTIONS_KEY][1]['model1'],
-                                 np.array([1.0]))
-          self.assertDictElementsAlmostEqual(
-              got[0][constants.PREDICTIONS_KEY][1]['model2'], {
-                  'output1': np.array([1.0]),
-                  'output2': np.array([1.0])
-              })
+            self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY])
+          self.assertAllClose(got[0][constants.PREDICTIONS_KEY]['model1'],
+                              np.array([1.0, 1.0]))
+          self.assertAllClose(got[0][constants.PREDICTIONS_KEY]['model2'], {
+              'output1': np.array([1.0, 1.0]),
+              'output2': np.array([0.0, 1.0])
+          })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

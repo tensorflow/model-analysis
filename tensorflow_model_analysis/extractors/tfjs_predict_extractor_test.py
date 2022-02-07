@@ -156,19 +156,17 @@ class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           got = got[0]
           self.assertIn(constants.PREDICTIONS_KEY, got)
-          self.assertLen(got[constants.PREDICTIONS_KEY], 2)
-
-          for item in got[constants.PREDICTIONS_KEY]:
-            if multi_model:
-              self.assertIn('model1', item)
-              self.assertIn('model2', item)
-              if multi_output:
-                self.assertIn('Identity', item['model1'])
-                self.assertIn('Identity_1', item['model1'])
-
-            elif multi_output:
-              self.assertIn('Identity', item)
-              self.assertIn('Identity_1', item)
+          for model in ('model1', 'model2') if multi_model else (''):
+            per_model_result = got[constants.PREDICTIONS_KEY]
+            if model:
+              self.assertIn(model, per_model_result)
+              per_model_result = per_model_result[model]
+            for output in ('Identity', 'Identity_1') if multi_output else (''):
+              per_output_result = per_model_result
+              if output:
+                self.assertIn(output, per_output_result)
+                per_output_result = per_output_result[output]
+              self.assertLen(per_output_result, 2)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
