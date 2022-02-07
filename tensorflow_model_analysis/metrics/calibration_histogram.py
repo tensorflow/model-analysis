@@ -211,7 +211,7 @@ class _CalibrationHistogramCombiner(beam.CombineFn):
       self, accumulators: Iterable[_CalibrationHistogramCombinerAcctype]
   ) -> _CalibrationHistogramCombinerAcctype:
     it = iter(accumulators)
-    result = next(it)
+    result = next(it, self.create_accumulator())
     for acc in it:
       for bucket_id, bucket in acc.items():
         if bucket_id not in result:

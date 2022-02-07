@@ -633,7 +633,7 @@ class CombineValidations(beam.CombineFn):
       accumulators: 'Iterable[Optional[validation_result_pb2.ValidationResult]]'
   ) -> 'Optional[validation_result_pb2.ValidationResult]':
     it = iter(accumulators)
-    result = next(it)
+    result = next(it, self.create_accumulator())
     for new_input in it:
       if new_input is None:
         continue

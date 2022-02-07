@@ -240,7 +240,7 @@ class _NDCGCombiner(beam.CombineFn):
   def merge_accumulators(
       self, accumulators: Iterable[_NDCGAccumulator]) -> _NDCGAccumulator:
     accumulators = iter(accumulators)
-    result = next(accumulators)
+    result = next(accumulators, self.create_accumulator())
     for accumulator in accumulators:
       result.ndcg = [a + b for a, b in zip(result.ndcg, accumulator.ndcg)]
       result.total_weighted_examples += accumulator.total_weighted_examples

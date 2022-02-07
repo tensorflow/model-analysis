@@ -236,7 +236,7 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
 
   def merge_accumulators(self, accumulators: Iterable[_AggState]) -> _AggState:
     accumulators = iter(accumulators)
-    result = next(accumulators)
+    result = next(accumulators, self.create_accumulator())
     self._maybe_do_batch(result)
     for acc in accumulators:
       result += acc

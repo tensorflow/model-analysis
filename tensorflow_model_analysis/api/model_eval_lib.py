@@ -932,7 +932,7 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
   def merge_accumulators(
       self, accumulators: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
     accumulators = iter(accumulators)
-    result = next(accumulators)
+    result = next(accumulators, self.create_accumulator())
     for acc in accumulators:
       self._merge(result, acc)
     return result

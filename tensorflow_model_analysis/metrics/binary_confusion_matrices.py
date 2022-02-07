@@ -610,7 +610,7 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
   def merge_accumulators(
       self, accumulators: Iterable[MatrixAccumulator]) -> MatrixAccumulator:
     accumulators = iter(accumulators)
-    result = next(accumulators)
+    result = next(accumulators, self.create_accumulator())
     for accumulator in accumulators:
       for threshold in self._thresholds:
         if threshold not in accumulator:

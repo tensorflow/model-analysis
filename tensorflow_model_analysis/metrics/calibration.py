@@ -325,7 +325,7 @@ class _WeightedLabelsPredictionsExamplesCombiner(beam.CombineFn):
       self, accumulators: Iterable[_WeightedLabelsPredictionsExamples]
   ) -> _WeightedLabelsPredictionsExamples:
     accumulators = iter(accumulators)
-    result = next(accumulators)
+    result = next(accumulators, self.create_accumulator())
     for accumulator in accumulators:
       result.total_weighted_labels += accumulator.total_weighted_labels
       result.total_weighted_predictions += (

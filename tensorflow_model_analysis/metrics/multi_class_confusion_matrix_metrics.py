@@ -277,7 +277,7 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
 
   def merge_accumulators(self, accumulators: Iterable[Matrices]) -> Matrices:
     accumulators = iter(accumulators)
-    result = next(accumulators)
+    result = next(accumulators, self.create_accumulator())
     for accumulator in accumulators:
       for threshold, matrix in accumulator.items():
         if threshold not in result:

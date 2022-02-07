@@ -143,7 +143,7 @@ class _MinLabelPositionCombiner(beam.CombineFn):
       self, accumulators: Iterable[_MinLabelPositionAccumulator]
   ) -> _MinLabelPositionAccumulator:
     accumulators = iter(accumulators)
-    result = next(accumulators)
+    result = next(accumulators, self.create_accumulator())
     for accumulator in accumulators:
       result.total_min_position += accumulator.total_min_position
       result.total_weighted_examples += accumulator.total_weighted_examples

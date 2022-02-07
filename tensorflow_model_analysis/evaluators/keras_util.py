@@ -242,7 +242,7 @@ class _KerasCombiner(model_util.CombineFnWithModels):
       self, accumulators: Iterable[tf_metric_accumulators.TFMetricsAccumulator]
   ) -> tf_metric_accumulators.TFMetricsAccumulator:
     accumulators = iter(accumulators)
-    result = next(accumulators)
+    result = next(accumulators, self.create_accumulator())
     # Finish processing last batch
     self._process_batch(result)
     for accumulator in accumulators:
