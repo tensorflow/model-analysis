@@ -67,6 +67,7 @@ MARKEDNESS_NAME = 'markedness'
 POSITIVE_LIKELIHOOD_RATIO_NAME = 'positive_likelihood_ratio'
 NEGATIVE_LIKELIHOOD_RATIO_NAME = 'negative_likelihood_ratio'
 DIAGNOSTIC_ODDS_RATIO_NAME = 'diagnostic_odds_ratio'
+PREDICTED_POSITIVE_RATE_NAME = 'predicted_positive_rate'
 CONFUSION_MATRIX_AT_THRESHOLDS_NAME = 'confusion_matrix_at_thresholds'
 
 
@@ -2139,6 +2140,48 @@ class DiagnosticOddsRatio(ConfusionMatrixMetric):
 
 
 metric_types.register_metric(DiagnosticOddsRatio)
+
+
+class PredictedPositiveRate(ConfusionMatrixMetric):
+  """Predicted positive rate."""
+
+  def __init__(self,
+               thresholds: Optional[Union[float, List[float]]] = None,
+               name: Optional[str] = None,
+               top_k: Optional[int] = None,
+               class_id: Optional[int] = None):
+    """Initializes predicted positive rate.
+
+    Args:
+      thresholds: (Optional) Thresholds to use. Defaults to [0.5].
+      name: (Optional) Metric name.
+      top_k: (Optional) Used with a multi-class model to specify that the top-k
+        values should be used to compute the confusion matrix. The net effect is
+        that the non-top-k values are set to -inf and the matrix is then
+        constructed from the average TP, FP, TN, FN across the classes. When
+        top_k is used, metrics_specs.binarize settings must not be present. Only
+        one of class_id or top_k should be configured.
+      class_id: (Optional) Used with a multi-class model to specify which class
+        to compute the confusion matrix for. When class_id is used,
+        metrics_specs.binarize settings must not be present. Only one of
+        class_id or top_k should be configured.
+    """
+    super().__init__(
+        thresholds=thresholds, name=name, top_k=top_k, class_id=class_id)
+
+  def _default_name(self) -> str:
+    return PREDICTED_POSITIVE_RATE_NAME
+
+  def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
+    total_count = tp + fp + tn + fn
+    if total_count:
+      predicted_positives = tp + fp
+      return predicted_positives / total_count
+    else:
+      return float('nan')
+
+
+metric_types.register_metric(PredictedPositiveRate)
 
 
 class ConfusionMatrixAtThresholds(metric_types.Metric):

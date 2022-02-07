@@ -102,6 +102,9 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
        (4.0 / (4.0 + 1.0)) / (2.0 / (2.0 + 3.0))),
       ('diagnostic_odds_ratio', confusion_matrix_metrics.DiagnosticOddsRatio(),
        ((1.0 / 3.0)) / (4.0 / 2.0)),
+      ('predicted_positive_rate',
+       confusion_matrix_metrics.PredictedPositiveRate(),
+       (1.0 + 3.0) / (1.0 + 2.0 + 3.0 + 4.0)),
   )
   def testConfusionMatrixMetrics(self, metric, expected_value):
     if (_TF_MAJOR_VERSION < 2 and metric.__class__.__name__
@@ -259,6 +262,9 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       ('negative_likelihood_ratio',
        confusion_matrix_metrics.NegativeLikelihoodRatio(),
        (0.0 / (0.0 + 0.7)) / (0.9 / (0.9 + 0.5))),
+      ('predicted_positive_rate',
+       confusion_matrix_metrics.PredictedPositiveRate(),
+       (0.7 + 0.5) / (0.7 + 0.9 + 0.5 + 0.0)),
   )
   def testConfusionMatrixMetricsWithWeights(self, metric, expected_value):
     if (_TF_MAJOR_VERSION < 2 and metric.__class__.__name__
@@ -271,6 +277,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     matrix = computations[1]
     derived_metric = computations[2]
 
+    # tp = 0.7
+    # tn = 0.9
+    # fp = 0.5
+    # fn = 0.0
     example1 = {
         'labels': np.array([0.0]),
         'predictions': np.array([1.0]),
