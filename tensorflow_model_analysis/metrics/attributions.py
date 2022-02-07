@@ -326,7 +326,7 @@ class _TotalAttributionsCombiner(beam.CombineFn):
       self,
       accumulators: Iterable[Dict[str, List[float]]]) -> Dict[str, List[float]]:
     accumulators = iter(accumulators)
-    result = next(accumulators, self.create_accumulator())
+    result = next(accumulators)
     for accumulator in accumulators:
       for k, v in accumulator.items():
         if k in result:

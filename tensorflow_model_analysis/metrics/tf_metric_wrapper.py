@@ -552,7 +552,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
           tf_metric_accumulators.TFCompilableMetricsAccumulator]
   ) -> tf_metric_accumulators.TFCompilableMetricsAccumulator:
     accumulators = iter(accumulators)
-    result = next(accumulators, self.create_accumulator())
+    result = next(accumulators)
     self._process_batch(result)
     for accumulator in accumulators:
       # Finish processing last batch

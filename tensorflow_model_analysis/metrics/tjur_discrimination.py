@@ -269,7 +269,7 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
       self, accumulators: Iterable[_TJURDiscriminationAccumulator]
   ) -> _TJURDiscriminationAccumulator:
     accumulators = iter(accumulators)
-    result = next(accumulators, self.create_accumulator())
+    result = next(accumulators)
     for accumulator in accumulators:
       result.total_negative_weighted_predictions += (
           accumulator.total_negative_weighted_predictions)

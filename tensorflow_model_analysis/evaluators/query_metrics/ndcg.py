@@ -148,7 +148,7 @@ class NdcgMetricCombineFn(beam.CombineFn):
 
   def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
     accumulators = iter(accumulators)
-    result = next(accumulators, self.create_accumulator())
+    result = next(accumulators)
     for accumulator in accumulators:
       result = self._add_states(result, accumulator)
     return result

@@ -166,7 +166,7 @@ class _QueryStatisticsCombiner(beam.CombineFn):
       self, accumulators: Iterable[_QueryStatisticsAccumulator]
   ) -> _QueryStatisticsAccumulator:
     accumulators = iter(accumulators)
-    result = next(accumulators, self.create_accumulator())
+    result = next(accumulators)
     for accumulator in accumulators:
       result.total_queries += accumulator.total_queries
       result.total_documents += accumulator.total_documents

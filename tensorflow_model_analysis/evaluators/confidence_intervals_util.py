@@ -129,7 +129,7 @@ class SampleCombineFn(beam.CombineFn):
   ) -> 'SampleCombineFn.SampleAccumulator':
     # treat as iterator to enforce streaming processing
     accumulators = iter(accumulators)
-    result = next(accumulators, self.create_accumulator())
+    result = next(accumulators)
     for accumulator in accumulators:
       if accumulator.point_estimates is not None:
         result.point_estimates = accumulator.point_estimates

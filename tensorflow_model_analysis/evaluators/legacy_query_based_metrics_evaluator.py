@@ -93,7 +93,7 @@ class CreateQueryExamples(beam.CombineFn):
       self,
       accumulators: Iterable[List[types.Extracts]]) -> List[types.Extracts]:
     accumulators = iter(accumulators)
-    result = next(accumulators, self.create_accumulator())
+    result = next(accumulators)
     for acc in accumulators:
       result.extend(acc)
     return result

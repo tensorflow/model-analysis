@@ -61,7 +61,7 @@ class QueryStatisticsCombineFn(beam.CombineFn):
 
   def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
     it = iter(accumulators)
-    result = next(it, self.create_accumulator())
+    result = next(it)
     for acc in it:
       result.merge(acc)
     return result
