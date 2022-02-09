@@ -23,6 +23,8 @@
 *   Batched based extractors previously worked off of either lists of dicts of
     single tensor values or arrow record batches. These have been updated to be
     based on dicts with batched tensor values at the leaves.
+*   Depends on
+    `tensorflow>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,<3`.
 
 ## Deprecations
 
