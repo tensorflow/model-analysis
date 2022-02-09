@@ -22,7 +22,6 @@ def tensorflow_model_analysis_polymer_workspace():
             "google-legacy-loader.html",
             "google-maps-api.html",
             "google-plusone-api.html",
-            "google-realtime-api.html",
             "google-youtube-api.html",
         ],
         deps = [
