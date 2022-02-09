@@ -53,7 +53,7 @@ export class TimeSeriesBrowser extends PolymerElement {
        * A comma separated string of metrics to skip.
        * @type {string}
        */
-      blacklist: {
+      ignoredMetrics: {
         type: String,
         value: '',
       },
@@ -117,7 +117,7 @@ export class TimeSeriesBrowser extends PolymerElement {
    * Computes the metrics available in all models.
    * @param {!tfma.SeriesData|undefined} seriesData
    * @return {!Array<string>}
-   * @private
+   * @protected
    */
   computeMetrics_(seriesData) {
     return seriesData ? seriesData.getMetrics() : [];
@@ -127,7 +127,7 @@ export class TimeSeriesBrowser extends PolymerElement {
    * Appends necessary format override to the formats specified by the client.
    * @param {!Object} formats
    * @return {!Object}
-   * @private
+   * @protected
    */
   computeMetricFormats_(formats) {
     const desiredFormats = Object.assign({}, formats);

@@ -62,7 +62,7 @@ export class LineChartGrid extends PolymerElement {
        * A comma separated string of metrics to skip.
        * @type {string}
        */
-      blacklist: {
+      ignoredMetrics: {
         type: String,
         value: '',
       },
@@ -73,7 +73,7 @@ export class LineChartGrid extends PolymerElement {
        */
       selectableMetrics_: {
         type: Array,
-        computed: 'computeSelectableMetrics_(metrics, blacklist)',
+        computed: 'computeSelectableMetrics_(metrics, ignoredMetrics)',
         observer: 'selectableMetricsChanged_',
       },
 
@@ -190,7 +190,7 @@ export class LineChartGrid extends PolymerElement {
   /**
    * Closes a line chart.
    * @param {!Event} e
-   * @private
+   * @protected
    */
   closeLineChart_(e) {
     const item = e['model']['item'];
@@ -205,7 +205,7 @@ export class LineChartGrid extends PolymerElement {
    * @param {string} metric
    * @param {!tfma.LineChartProvider} provider
    * @return {!Array<!Object>|undefined}
-   * @private
+   * @protected
    */
   computeChartData_(metric, provider) {
     if (!provider) {
@@ -239,7 +239,7 @@ export class LineChartGrid extends PolymerElement {
 
   /**
    * Updates the addable metrics.
-   * @private
+   * @protected
    */
   updateAddableMetrics_() {
     this.setAddableMetrics_(this.selectableMetrics_, this.selectedMetrics_);
@@ -251,7 +251,7 @@ export class LineChartGrid extends PolymerElement {
    * the dropdown will not pop-out so it is necessary to have a hint presented.
    * @param {!Array<string>} addableMetrics_
    * @return {string} The add series label.
-   * @private
+   * @protected
    */
   computeAddSeriesLabel_(addableMetrics_) {
     return addableMetrics_.length ? 'Add metric series' :
@@ -261,7 +261,7 @@ export class LineChartGrid extends PolymerElement {
   /**
    * Observer for selectedMetric_ property.
    * @param {string} metric
-   * @private
+   * @protected
    */
   selectedMetricChanged_(metric) {
     if (metric) {
@@ -270,23 +270,23 @@ export class LineChartGrid extends PolymerElement {
   }
 
   /**
-   * Determines selectable metrics by filtering out all blacklisted metrics from
+   * Determines selectable metrics by filtering out all ignoredMetrics from
    * available metrics.
    * @param {!Array<string>} metrics
-   * @param {string} blacklist A comma separated string of metrics that should
-   *     be blacklisted.
+   * @param {string} ignoredMetrics A comma separated string of metrics that should
+   *     be ignored.
    * @return {!Array<string>}
-   * @private
+   * @protected
    */
-  computeSelectableMetrics_(metrics, blacklist) {
-    const blacklisted = blacklist.split(',');
-    return metrics.filter(metric => blacklisted.indexOf(metric) == -1);
+  computeSelectableMetrics_(metrics, ignoredMetrics) {
+    const ignored = ignoredMetrics.split(',');
+    return metrics.filter(metric => ignored.indexOf(metric) == -1);
   }
 
   /**
    * Resets the selectedMetrics to the first available metric. This is expected
    * to only occur when the input data changes.
-   * @private
+   * @protected
    */
   selectableMetricsChanged_() {
     // By default show the first available metric series.
@@ -296,7 +296,7 @@ export class LineChartGrid extends PolymerElement {
   /**
    * Handler for select event from a line chart.
    * @param {!Event} e
-   * @private
+   * @protected
    */
   onChartSelect_(e) {
     e.stopPropagation();
@@ -312,7 +312,7 @@ export class LineChartGrid extends PolymerElement {
   /**
    * Handler for clear-selection event from any line chart.
    * @param {!Event} e
-   * @private
+   * @protected
    */
   onChartClearSelection_(e) {
     e.stopPropagation();

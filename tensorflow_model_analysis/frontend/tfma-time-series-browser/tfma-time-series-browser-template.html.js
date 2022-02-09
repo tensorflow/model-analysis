@@ -23,7 +23,7 @@ template.innerHTML = `
 </style>
 <div>
   <tfma-line-chart-grid id="grid" provider="[[seriesData]]" metrics="[[metrics_]]"
-                        blacklist="[[blacklist]]">
+                        ignoredMetrics="[[ignoredMetrics]]">
   </tfma-line-chart-grid>
   <tfma-metrics-table id="table" data="[[seriesData]]" metrics="[[metrics_]]"
                       metric-formats="[[metricFormats_]]">

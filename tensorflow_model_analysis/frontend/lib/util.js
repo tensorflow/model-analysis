@@ -82,7 +82,7 @@ function buildPrefix(config, compact) {
  *   ...
  * }
  * @param {!Array<!ConfigListItem>} configsList The list of configs to use.
- * @param {!Object<string>=} blacklist The metrics to omit in the merged result.
+ * @param {!Object<string>=} ignoredMetrics The metrics to omit in the merged result.
  * @return {!Object} The merged metrics. If only only one config is selected,
  *     there is no change to the metric names. When more than one config is
  *     selected, a prefix containig the metric key will be added to help
@@ -94,10 +94,10 @@ function buildPrefix(config, compact) {
  * }
  */
 function mergeMetricsForSelectedConfigsList(
-    metricsMap, configsList, blacklist) {
+    metricsMap, configsList, ignoredMetrics) {
   // Only add prefix if there are more than on config selected.
   const addPrefix = configsList.length > 1;
-  const noBlacklist = !blacklist;
+  const noIgnored = !ignoredMetrics;
   const mergedMetrics = {};
   const classIdPrefixUsed = {};
   configsList.forEach(config => {
@@ -114,7 +114,7 @@ function mergeMetricsForSelectedConfigsList(
     const classResult = outputMap[config.classId] || {};
     const prefix = addPrefix ? buildPrefix(config, useCompactPrefix) : '';
     for (let metricName in classResult) {
-      if (noBlacklist || !blacklist[metricName]) {
+      if (noIgnored || !ignoredMetrics[metricName]) {
         mergedMetrics[prefix + metricName] = classResult[metricName];
       }
     }

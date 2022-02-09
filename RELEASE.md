@@ -13,6 +13,8 @@
 
 *   Update variable name to respectful terminology
 
+*   Update variable name to respectful terminology, rebuild JS
+
 ## Breaking Changes
 
 *   MetricsPlotsAndValidationsWriter will now write files with an explicit

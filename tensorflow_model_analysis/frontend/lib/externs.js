@@ -561,11 +561,11 @@ tfma.Util.createConfigsList = function(configs) {};
 /**
  * @param {!Object} metrics
  * @param {!Array<!Object>} configsList
- * @param {!Object<string>=} blacklist
+ * @param {!Object<string>=} ignoredMetrics
  * @return {!Object}
  */
 tfma.Util.mergeMetricsForSelectedConfigsList = function(
-    metrics, configsList, blacklist) {};
+    metrics, configsList, ignoredMetrics) {};
 
 /** @type {string} */
 tfma.VALUE;

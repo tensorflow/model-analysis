@@ -102,8 +102,8 @@ suite('tests', () => {
   });
 
   test('SkipBlackListedMetric', done => {
-    const setBlackList = () => {
-      element.blacklist = 'metricB';
+    const setIgnored = () => {
+      element.ignoredMetrics = 'metricB';
       setTimeout(skipMetricB, 0);
     };
     const skipMetricB = () => {
@@ -112,7 +112,7 @@ suite('tests', () => {
       assert.equal(items[0].value, 'metricC');
       done();
     };
-    run(setBlackList);
+    run(setIgnored);
   });
 
   test('addAndRemoveChart', done => {
