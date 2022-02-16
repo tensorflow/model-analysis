@@ -746,6 +746,12 @@ class UtilTest(tf.test.TestCase):
             'model2': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
         },
         'empty': None,
+        'multi_level_empty': {
+            'empty': None,
+            'next_level': {
+                'empty': None
+            },
+        },
         '_slice_key_types': np.array([(), (), ()])
     }
 
@@ -829,7 +835,15 @@ class UtilTest(tf.test.TestCase):
     # Verify empty and delete since None can't be compared with assertAllClose
     for i in range(3):
       self.assertIn('empty', splits[i])
+      self.assertIsNone(splits[i]['empty'])
       del splits[i]['empty']
+      self.assertIn('multi_level_empty', splits[i])
+      self.assertIn('empty', splits[i]['multi_level_empty'])
+      self.assertIsNone(splits[i]['multi_level_empty']['empty'])
+      self.assertIn('next_level', splits[i]['multi_level_empty'])
+      self.assertIn('empty', splits[i]['multi_level_empty']['next_level'])
+      self.assertIsNone(splits[i]['multi_level_empty']['next_level']['empty'])
+      del splits[i]['multi_level_empty']
     self.assertAllClose(splits, expected)
 
 

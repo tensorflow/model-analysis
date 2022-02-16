@@ -671,8 +671,12 @@ def split_extracts(extracts: types.Extracts,
                    keep_batch_dim: bool = False) -> List[types.Extracts]:
   """Splits extracts into a list of extracts along the batch dimension."""
   results = []
+  empty = []  # List of list of keys to values that are None
 
   def add_to_results(keys: List[str], values: Any):
+    if values is None:
+      empty.append(keys)
+      return
     # Use TF to split SparseTensor and RaggedTensorValue
     if isinstance(values, types.SparseTensorValue):
       values = to_tensorflow_tensor(values)
@@ -718,19 +722,18 @@ def split_extracts(extracts: types.Extracts,
       else:
         add_to_results(keys + [key], value)
 
-  empty = []
-  for k, v in list(extracts.items()):
-    if v is None:
-      empty.append(k)
-      del extracts[k]
-
   visit(extracts, [])
 
+  # Add entries for keys that are None
   if empty:
     for i in range(len(results)):
-      for k in empty:
-        if k not in results[i]:
-          results[i][k] = None
+      for key_list in empty:
+        parent = results[i]
+        for k in key_list[:-1]:
+          if k not in parent:
+            parent[k] = {}
+          parent = parent[k]
+        parent[key_list[-1]] = None
 
   return results
 
