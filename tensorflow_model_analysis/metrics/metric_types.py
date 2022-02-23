@@ -16,7 +16,7 @@
 import copy
 import functools
 import inspect
-from typing import Any, Callable, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Type, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, MutableMapping, NamedTuple, Optional, Type, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -826,9 +826,9 @@ class StandardMetricInputsPreprocessor(beam.DoFn):
       })
     self.include_filter = include_filter
 
-  def process(self, extracts: types.Extracts) -> Iterable[types.Extracts]:
+  def process(self, extracts: types.Extracts) -> Iterator[types.Extracts]:
     if not self.include_filter:
-      return {}
+      yield {}
     yield util.include_filter(self.include_filter, extracts)
 
 

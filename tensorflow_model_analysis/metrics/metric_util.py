@@ -105,17 +105,19 @@ def pad(arr: np.ndarray, last_dim: int, value: float) -> np.ndarray:
 
 def to_standard_metric_inputs(
     extracts: types.Extracts,
+    include_labels: bool = True,
+    include_predictions: bool = True,
     include_features: bool = False,
     include_transformed_features: bool = False,
     include_attributions: bool = False) -> metric_types.StandardMetricInputs:
   """Verifies extract keys and converts extracts to StandardMetricInputs."""
-  if constants.LABELS_KEY not in extracts:
+  if include_labels and constants.LABELS_KEY not in extracts:
     raise ValueError(f'"{constants.LABELS_KEY}" key not found in extracts. '
                      'Check that the configuration is setup properly to '
                      'specify the name of label input and that the proper '
                      'extractor has been configured to extract the labels from '
                      'the inputs.')
-  if constants.PREDICTIONS_KEY not in extracts:
+  if include_predictions and constants.PREDICTIONS_KEY not in extracts:
     raise ValueError(f'"{constants.PREDICTIONS_KEY}" key not found in '
                      'extracts. Check that the proper extractor has been '
                      'configured to perform model inference.')

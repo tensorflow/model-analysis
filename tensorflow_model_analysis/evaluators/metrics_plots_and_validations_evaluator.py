@@ -311,7 +311,8 @@ class _PreprocessorDoFn(beam.DoFn):
         combiner_inputs.append(None)
         standard_preprocessors.append(computation.preprocessor)
       else:
-        combiner_inputs.append(next(computation.preprocessor.process(extracts)))
+        combiner_inputs.append(
+            next(iter(computation.preprocessor.process(extracts))))
 
     output = {
         constants.SLICE_KEY_TYPES_KEY: extracts[constants.SLICE_KEY_TYPES_KEY],
@@ -321,9 +322,13 @@ class _PreprocessorDoFn(beam.DoFn):
       preprocessor = metric_types.StandardMetricInputsPreprocessorList(
           standard_preprocessors)
       extracts = copy.copy(extracts)
-      preprocessor.process(extracts)
+      # DoFn.process should return an Iterable but we only want a single value.
+      extracts = next(iter(preprocessor.process(extracts)))
       default_combiner_input = metric_util.to_standard_metric_inputs(
           extracts,
+          include_labels=constants.LABELS_KEY in preprocessor.include_filter,
+          include_predictions=(constants.PREDICTIONS_KEY
+                               in preprocessor.include_filter),
           include_features=(constants.FEATURES_KEY
                             in preprocessor.include_filter),
           include_transformed_features=(constants.TRANSFORMED_FEATURES_KEY

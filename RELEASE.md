@@ -10,10 +10,8 @@
     format suffix.
 *   Fixes the non-deterministic key ordering caused by proto string
     serialization in metrics validator.
-
-*   Update variable name to respectful terminology
-
 *   Update variable name to respectful terminology, rebuild JS
+*   Fixes issues preventing standard preprocessors from being applied.
 
 ## Breaking Changes
 
