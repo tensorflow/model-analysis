@@ -158,7 +158,7 @@ class _TFMAPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
     return result
 
 
-# TODO(pachristopher): Currently the batched extract has a list of per-example
+# TODO(b/178158073): Currently the batched extract has a list of per-example
 # feature dicts. Convert this to a batched feature dict where each feature
 # will have a batch of ndarrays.
 def _wrap_as_batched_extract(extracts: List[types.Extracts]) -> types.Extracts:

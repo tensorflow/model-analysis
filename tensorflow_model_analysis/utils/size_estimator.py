@@ -51,7 +51,7 @@ class SizeEstimator:
     # assume only part of the refcount is due to duplication we want to account
     # for (which prevents us from drammatically underestimating the common case
     # of combining where there are no fanouts).
-    # TODO(pachristopher): Possibly adjust the value of discounted_references
+    # TODO(b/162743769): Possibly adjust the value of discounted_references
     # based on telemetry.
     discounted_references = 3
     unamortized_size = self._size_fn(value)

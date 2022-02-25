@@ -686,7 +686,7 @@ class DoFnWithModels(beam.DoFn):
       self._model_load_seconds = None
 
 
-# TODO(pachristopher): Remove this class once non-batched predict extractor v2
+# TODO(b/178158073): Remove this class once non-batched predict extractor v2
 # is deleted and override the process method directly in predict extractor v1.
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
