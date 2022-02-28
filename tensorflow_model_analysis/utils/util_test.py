@@ -591,7 +591,12 @@ class UtilTest(tf.test.TestCase):
                 'feature_4':
                     types.RaggedTensorValue(
                         values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])])
+                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
+                'feature_5':
+                    types.SparseTensorValue(
+                        values=np.array([1]),
+                        indices=np.array([[0, 1]]),
+                        dense_shape=np.array([1, 3])),
             },
             'labels': np.array([1.0]),
             'example_weights': np.array(0.0),
@@ -615,7 +620,12 @@ class UtilTest(tf.test.TestCase):
                 'feature_4':
                     types.RaggedTensorValue(
                         values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])])
+                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
+                'feature_5':
+                    types.SparseTensorValue(
+                        values=np.array([2]),
+                        indices=np.array([[0, 2]]),
+                        dense_shape=np.array([1, 4])),
             },
             'labels': np.array([0.0]),
             'example_weights': np.array(0.5),
@@ -639,7 +649,12 @@ class UtilTest(tf.test.TestCase):
                 'feature_4':
                     types.RaggedTensorValue(
                         values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])])
+                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
+                'feature_5':
+                    types.SparseTensorValue(
+                        values=np.array([3]),
+                        indices=np.array([[0, 3]]),
+                        dense_shape=np.array([1, 5])),
             },
             'labels': np.array([1.0]),
             'example_weights': np.array(1.0),
@@ -674,7 +689,12 @@ class UtilTest(tf.test.TestCase):
                             0, 4, 4, 7, 8, 8, 12, 12, 15, 16, 16, 20, 20, 23,
                             24, 24
                         ])
-                    ])
+                    ]),
+            'feature_5':
+                types.SparseTensorValue(
+                    values=np.array([1, 2, 3]),
+                    indices=np.array([[0, 0, 1], [1, 0, 2], [2, 0, 3]]),
+                    dense_shape=np.array([3, 1, 5])),
         },
         'labels': np.array([1.0, 0.0, 1.0]),
         'example_weights': np.array([0.0, 0.5, 1.0]),
@@ -686,32 +706,6 @@ class UtilTest(tf.test.TestCase):
     }
 
     self.assertAllClose(util.merge_extracts(extracts), expected)
-
-  def testMergeExtractsRaisesException(self):
-    extracts = [
-        {
-            'features': {
-                'feature_3':
-                    types.SparseTensorValue(
-                        values=np.array([1]),
-                        indices=np.array([[0, 1]]),
-                        dense_shape=np.array([1, 2]))
-            },
-        },
-        {
-            'features': {
-                'feature_3':
-                    types.SparseTensorValue(
-                        values=np.array([2]),
-                        indices=np.array([[0, 2]]),
-                        dense_shape=np.array([1, 3]))
-            },
-        },
-    ]
-
-    with self.assertRaisesWithPredicateMatch(
-        RuntimeError, lambda exc: isinstance(exc.__cause__, RuntimeError)):
-      util.merge_extracts(extracts)
 
   def testSplitExtracts(self):
     extracts = {

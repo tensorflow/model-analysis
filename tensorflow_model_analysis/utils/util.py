@@ -637,9 +637,10 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
       return {k: merge_lists(v) for k, v in target.items()}
     elif target and (isinstance(target[0], tf.compat.v1.SparseTensorValue) or
                      isinstance(target[0], types.SparseTensorValue)):
-      t = tf.sparse.concat(
+      t = tf.compat.v1.sparse_concat(
           0,
-          [tf.sparse.expand_dims(to_tensorflow_tensor(t), 0) for t in target])
+          [tf.sparse.expand_dims(to_tensorflow_tensor(t), 0) for t in target],
+          expand_nonconcat_dim=True)
       return to_tensor_value(t)
     elif target and isinstance(target[0], types.RaggedTensorValue):
       t = tf.concat(

@@ -12,6 +12,7 @@
     serialization in metrics validator.
 *   Update variable name to respectful terminology, rebuild JS
 *   Fixes issues preventing standard preprocessors from being applied.
+*   Allow merging extracts including sparse tensors with different dense shapes.
 
 ## Breaking Changes
 
