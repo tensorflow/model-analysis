@@ -291,7 +291,7 @@ setup_args = {
     'install_requires': [
         # Sort alphabetically
         'absl-py>=0.9,<2.0.0',
-        'apache-beam[gcp]>=2.35,<3',
+        'apache-beam[gcp]>=2.36,<3',
         'ipython>=7,<8',
         'ipywidgets>=7,<8',
         'numpy>=1.16,<2',
@@ -302,12 +302,12 @@ setup_args = {
         'six>=1.12,<2',
         'tensorflow>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,<3',
         'tensorflow-metadata' + select_constraint(
-            default='>=1.6.0,<1.7.0',
-            nightly='>=1.7.0.dev',
+            default='>=1.7.0,<1.8.0',
+            nightly='>=1.8.0.dev',
             git_master='@git+https://github.com/tensorflow/metadata@master'),
         'tfx-bsl' + select_constraint(
-            default='>=1.6.0,<1.7.0',
-            nightly='>=1.7.0.dev',
+            default='>=1.7.0,<1.8.0',
+            nightly='>=1.8.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
     ],
     'extras_require': {
