@@ -79,7 +79,9 @@ def to_ragged_tensor_value(
 
 def to_tensor_value(tensor: Any) -> types.TensorValue:
   """Converts tensor to a tensor value."""
-  if isinstance(tensor, tf.SparseTensor):
+  if isinstance(tensor, types.SparseTensorValue):
+    return tensor
+  elif isinstance(tensor, tf.SparseTensor):
     return to_sparse_tensor_value(tensor)
   elif isinstance(tensor, tf.compat.v1.SparseTensorValue):
     return to_sparse_tensor_value(tensor)
@@ -87,6 +89,8 @@ def to_tensor_value(tensor: Any) -> types.TensorValue:
     return to_ragged_tensor_value(tensor)
   elif isinstance(tensor, tf.compat.v1.ragged.RaggedTensorValue):
     return to_ragged_tensor_value(tensor)
+  elif isinstance(tensor, types.RaggedTensorValue):
+    return tensor
   else:
     return to_numpy(tensor)
 
@@ -668,6 +672,24 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
   return merge_lists(result)
 
 
+def _split_sparse_batch(
+    sparse_batch: types.SparseTensorValue) -> List[types.SparseTensorValue]:
+  """Converts a batched SparseTensorValue to a list of SparseTensorValues."""
+  result = []
+  batch_indices = sparse_batch.indices[:, 0]
+  split_shape = sparse_batch.dense_shape[1:]
+  for i in range(sparse_batch.dense_shape[0]):
+    element_mask = batch_indices == i
+    split_batch_indices = sparse_batch.indices[element_mask, :]
+    split_indices = split_batch_indices[:, 1:]
+    split_values = sparse_batch.values[element_mask]
+    result.append(
+        types.SparseTensorValue(
+            values=split_values, indices=split_indices,
+            dense_shape=split_shape))
+  return result
+
+
 def split_extracts(extracts: types.Extracts,
                    keep_batch_dim: bool = False) -> List[types.Extracts]:
   """Splits extracts into a list of extracts along the batch dimension."""
@@ -680,11 +702,7 @@ def split_extracts(extracts: types.Extracts,
       return
     # Use TF to split SparseTensor and RaggedTensorValue
     if isinstance(values, types.SparseTensorValue):
-      values = to_tensorflow_tensor(values)
-      values = tf.sparse.split(
-          sp_input=values, num_split=values.dense_shape[0], axis=0)
-      # Drop the batch dimension
-      values = [tf.sparse.reshape(v, v.dense_shape[1:]) for v in values]
+      values = _split_sparse_batch(values)
     elif isinstance(values, types.RaggedTensorValue):
       values = to_tensorflow_tensor(values)
     size = len(values) if hasattr(values, '__len__') else values.shape[0]
