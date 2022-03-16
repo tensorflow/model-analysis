@@ -20,6 +20,7 @@ import traceback
 
 from typing import Any, List, Mapping, MutableMapping, Optional, Union
 
+from absl import logging
 import numpy as np
 import pyarrow as pa
 import six
@@ -136,14 +137,14 @@ def to_tensorflow_tensors(
     values: Tensor values (np.ndarray, etc) to convert to tensorflow tensors.
     specs: If provided, filters output to include only tensors that are also in
       specs. Returned tensors will also be validated against their associated
-      spec.
+      spec and a warning will be logged for specs that are incompatible.
 
   Returns:
     Tensorflow tensors optionally filtered by specs.
 
   Raises:
-    ValueError: If specs is provided and a tensor value does not match a
-      provided spec.
+    ValueError: If specs is provided and a tensor value for a given spec is not
+      found.
   """
   # Wrap in inner function so we can hold onto contextual info for logging
   all_values = values
@@ -170,12 +171,18 @@ def to_tensorflow_tensors(
                                  keys + [key])
       return result
     else:
+      # Try to reshape dense tensor to expected shape
+      if (isinstance(specs, tf.TensorSpec) and specs.shape and
+          hasattr(values, 'shape') and values.shape):
+        # Keep batch dimension from original values shape
+        values = values.reshape(values.shape[:1] + tuple(
+            -1 if x is None else x for x in specs.shape[1:]))
       tensor = to_tensorflow_tensor(values)
       if (isinstance(specs, tf.TypeSpec) and
           not specs.is_compatible_with(tensor)):
-        raise ValueError(
-            f'Tensor {tensor} is not compatible with {specs} \n\n'
-            f'Failed at key {keys} in {all_values} and specs {all_specs}')
+        logging.warning(
+            'Tensor %s is not compatible with %s \n\nFailed at key %s in %s '
+            'and specs %s', tensor, specs, keys, all_values, all_specs)
       return tensor
 
   return to_tensors(values, specs, [])
@@ -185,7 +192,7 @@ def record_batch_to_tensor_values(
     record_batch: pa.RecordBatch,
     tensor_representations: Optional[Mapping[
         str, schema_pb2.TensorRepresentation]] = None
-) -> MutableMapping[str, types.TensorValue]:
+) -> types.TensorValueMaybeMultiLevelDict:
   """Returns tensor values extracted from given record batch.
 
   Args:
@@ -270,6 +277,8 @@ def batch_size(values: Any) -> Optional[int]:
       result = None
       for v in val.values():
         sz = get_batch_size(v)
+        if sz is None:
+          continue
         if result is None:
           result = sz
         elif sz != result:
@@ -297,7 +306,7 @@ def batch_size(values: Any) -> Optional[int]:
       elif hasattr(val, '__len__'):
         return len(val)
       else:
-        return 0
+        return None
 
   return get_batch_size(values)
 

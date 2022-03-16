@@ -13,7 +13,7 @@
 # limitations under the License.
 """Transformed features extractor."""
 
-from typing import Dict, Optional
+from typing import Dict
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -21,7 +21,6 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
-from tfx_bsl.tfxio import tensor_adapter
 
 _TRANSFORMED_FEATURES_EXTRACTOR_STAGE_NAME = 'ExtractTransformedFeatures'
 
@@ -32,7 +31,6 @@ _DEFAULT_SIGNATURE_NAMES = ('transformed_features', 'transformed_labels')
 def TransformedFeaturesExtractor(
     eval_config: config_pb2.EvalConfig,
     eval_shared_model: types.MaybeMultipleEvalSharedModels,
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
 ) -> extractor.Extractor:
   """Creates an extractor for extracting transformed features.
 
@@ -45,9 +43,6 @@ def TransformedFeaturesExtractor(
     eval_config: Eval config.
     eval_shared_model: Shared model (single-model evaluation) or list of shared
       models (multi-model evaluation).
-    tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. If None, the tensors are matched (best
-      effort) againt the inputs expected by the signature function.
 
   Returns:
     Extractor for extracting preprocessed features.
@@ -60,8 +55,7 @@ def TransformedFeaturesExtractor(
       stage_name=_TRANSFORMED_FEATURES_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractTransformedFeatures(
           eval_config=eval_config,
-          eval_shared_models={m.model_name: m for m in eval_shared_models},
-          tensor_adapter_config=tensor_adapter_config))
+          eval_shared_models={m.model_name: m for m in eval_shared_models}))
 
 
 @beam.ptransform_fn
@@ -71,7 +65,6 @@ def _ExtractTransformedFeatures(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     eval_config: config_pb2.EvalConfig,
     eval_shared_models: Dict[str, types.EvalSharedModel],
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
 ) -> beam.pvalue.PCollection:
   """A PTransform that updates extracts to include transformed features.
 
@@ -81,8 +74,6 @@ def _ExtractTransformedFeatures(  # pylint: disable=invalid-name
       tfma.INPUTS_KEY (if preprocessing functions take raw tf.Examples as input)
     eval_config: Eval config.
     eval_shared_models: Shared model parameters keyed by model name.
-    tensor_adapter_config: Optional tensor adapter config which specifies how to
-      obtain tensors from the Arrow RecordBatch.
 
   Returns:
     PCollection of Extracts updated with the to include transformed features
@@ -102,5 +93,4 @@ def _ExtractTransformedFeatures(  # pylint: disable=invalid-name
                       constants.TRANSFORMED_FEATURES_KEY: signature_names
                   },
                   default_signature_names=list(_DEFAULT_SIGNATURE_NAMES),
-                  prefer_dict_outputs=True,
-                  tensor_adapter_config=tensor_adapter_config)))
+                  prefer_dict_outputs=True)))

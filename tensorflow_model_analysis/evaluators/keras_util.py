@@ -28,6 +28,7 @@ from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_accumulators
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
+from tensorflow_model_analysis.utils import util
 from tfx_bsl.coders import example_coder
 from tfx_bsl.tfxio import tensor_adapter
 
@@ -450,13 +451,18 @@ class _KerasEvaluateCombiner(_KerasCombiner):
       # Single-output models don't use dicts.
       labels = next(iter(labels.values()))
       example_weights = next(iter(example_weights.values()))
+    # TODO(b/178158073): Remove record batch and use features directly.
     # Serialized examples may be encoded as [np.array(['...']), ...], this will
     # convert them to a list of strings.
     record_batch = self._decoder.DecodeBatch(
         np.array(serialized_examples, dtype=object).squeeze().tolist())
+    tensor_representations = None
+    if self._tensor_adapter:
+      tensor_representations = self._tensor_adapter.tensor_representations
+    tensor_values = util.record_batch_to_tensor_values(record_batch,
+                                                       tensor_representations)
     input_specs = model_util.get_input_specs(self._model, signature_name=None)
-    inputs = model_util.get_inputs(record_batch, input_specs,
-                                   self._tensor_adapter)
+    inputs = model_util.get_inputs(tensor_values, input_specs)
     if inputs is None:
       raise ValueError('unable to prepare inputs for evaluation: '
                        'input_specs={}, record_batch={}'.format(

@@ -238,9 +238,7 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
         tensor_representations=tensor_adapter_config.tensor_representations)
     transformation_extractor = (
         transformed_features_extractor.TransformedFeaturesExtractor(
-            eval_config=eval_config,
-            eval_shared_model=eval_shared_model,
-            tensor_adapter_config=tensor_adapter_config))
+            eval_config=eval_config, eval_shared_model=eval_shared_model))
 
     examples = [
         self._makeExample(input_1=1.0, input_2=2.0),
@@ -268,19 +266,10 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
           for got in batches:
             for extracts_key, feature_keys in expected_extract_keys.items():
               self.assertIn(extracts_key, got)
-              if extracts_key == 'transformed_features':
-                # TODO(mdreves): Remove after converted to batched numpy arrays.
-                for i in range(len(got[extracts_key])):
-                  per_example_extracts = got[extracts_key][i]
-                  self.assertEqual(
-                      set(feature_keys),
-                      set(per_example_extracts.keys()),
-                      msg=f'got[{extracts_key}][{i}]={per_example_extracts}')
-              else:
-                self.assertEqual(
-                    set(feature_keys),
-                    set(got[extracts_key].keys()),
-                    msg=f'got[{extracts_key}]={got[extracts_key]}')
+              self.assertEqual(
+                  set(feature_keys),
+                  set(got[extracts_key].keys()),
+                  msg=f'got[{extracts_key}]={got[extracts_key]}')
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

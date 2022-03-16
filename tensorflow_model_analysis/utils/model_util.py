@@ -17,12 +17,11 @@ import collections
 import copy
 import importlib
 import os
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from absl import logging
 import apache_beam as beam
 import numpy as np
-import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
@@ -284,9 +283,6 @@ def get_feature_values_for_model_spec_field(
         batched_extracts[constants.TRANSFORMED_FEATURES_KEY]):
       transformed_features = batched_extracts[
           constants.TRANSFORMED_FEATURES_KEY]
-      # TODO(b/178158073): Remove merge_extracts after batching supported.
-      if transformed_features and isinstance(transformed_features, list):
-        transformed_features = util.merge_extracts(transformed_features)
       if len(model_specs) > 1 and transformed_features:
         if spec.name in transformed_features:
           transformed_features = transformed_features[spec.name]
@@ -519,23 +515,20 @@ def find_input_name_in_features(features: Set[str],
   return None
 
 
-def filter_by_input_names(d: Dict[str, Any],
-                          input_names: List[str]) -> Optional[Dict[str, Any]]:
+def filter_by_input_names(
+    d: Mapping[str, types.TensorType],
+    input_names: List[str]) -> Optional[Mapping[str, types.TensorType]]:
   """Filters dict by input names.
 
-  In case we don't find the specified input name in the dict and there
-  exists only one input name, we assume we are feeding serialized examples to
-  the model and return None.
+  In case we don't find the specified input name in the dict, we assume we are
+  feeding serialized examples to the model and return None.
 
   Args:
     d: Dict to filter.
     input_names: List of input names.
 
   Returns:
-    Dict with keys matching input_names.
-
-  Raises:
-    RuntimeError: When the specified input name cannot be found.
+    Dict with keys matching input_names or None if not all keys could be found.
   """
   if not input_names:
     return None
@@ -544,50 +537,39 @@ def filter_by_input_names(d: Dict[str, Any],
   for name in input_names:
     input_name = find_input_name_in_features(dict_keys, name)
     if input_name is None:
-      # This should happen only in the case where the model takes serialized
-      # examples as input. Else raise an exception.
-      if len(input_names) == 1:
-        return None
-      raise RuntimeError('Input not found: {}. Existing keys: {}.'.format(
-          name, ','.join(d.keys())))
+      return None
     result[name] = d[input_name]
   return result
 
 
 def get_inputs(
-    record_batch: pa.RecordBatch,
-    input_specs: Dict[str, tf.TypeSpec],
-    adapter: Optional[tensor_adapter.TensorAdapter] = None
-) -> Optional[Dict[str, Any]]:
-  """Returns inputs from record batch for given input specs.
+    features: types.DictOfTensorValue,
+    input_specs: types.DictOfTypeSpec,
+) -> Optional[types.TensorTypeMaybeMultiLevelDict]:
+  """Returns inputs from features for given input specs.
 
   Args:
-    record_batch: Record batch to prepare inputs from.
+    features: Dict of feature tensors.
     input_specs: Input specs keyed by input name.
-    adapter: Optional tensor adapter.
 
   Returns:
     Input tensors keyed by input name.
   """
   inputs = None
-  if (not adapter and
-      set(input_specs.keys()) <= set(record_batch.schema.names)):
-    # Create adapter based on input_specs
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=record_batch.schema,
-        tensor_representations=input_specs_to_tensor_representations(
-            input_specs))
-    adapter = tensor_adapter.TensorAdapter(tensor_adapter_config)
-  # Avoid getting the tensors if we appear to be feeding serialized
-  # examples to the callable.
-  if adapter and not (len(input_specs) == 1 and
-                      next(iter(input_specs.values())).dtype == tf.string and
-                      find_input_name_in_features(
-                          set(adapter.TypeSpecs().keys()),
-                          next(iter(input_specs.keys()))) is None):
-    # TODO(b/172376802): Update to pass input specs to ToBatchTensors.
-    inputs = filter_by_input_names(
-        adapter.ToBatchTensors(record_batch), list(input_specs.keys()))
+  input_names = list(input_specs.keys())
+  # Avoid getting the tensors if we appear to be feeding serialized examples to
+  # the callable.
+  single_input = (
+      next(iter(input_specs.values())) if len(input_specs) == 1 else None)
+  single_input_name = input_names[0] if single_input else None
+  if not (single_input and
+          single_input.dtype == tf.string and find_input_name_in_features(
+              set(features.keys()), single_input_name) is None):
+    # If filtering is not successful (i.e. None is returned) fallback to feeding
+    # serialized examples.
+    features = filter_by_input_names(features, input_names)
+    if features:
+      inputs = util.to_tensorflow_tensors(features, input_specs)
   return inputs
 
 
@@ -739,9 +721,9 @@ class BatchReducibleDoFnWithModels(DoFnWithModels):
 class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
   """Abstract class for DoFns that need the shared models.
 
-  This DoFn operates on batched Arrow RecordBatch as input. This DoFn will try
-  to use a large batch size at first. If a functional failure is caught, an
-  attempt will be made to process the elements serially at batch size 1.
+  This DoFn operates on batched features as input. This DoFn will try to use a
+  large batch size at first. If a functional failure is caught, an attempt will
+  be made to process the elements serially at batch size 1.
   """
 
   def __init__(self, model_loaders: Dict[str, types.ModelLoader]):
@@ -760,7 +742,7 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
     raise NotImplementedError('Subclasses are expected to override this.')
 
   def process(self, element: types.Extracts) -> Sequence[types.Extracts]:
-    batch_size = element[constants.ARROW_RECORD_BATCH_KEY].num_rows
+    batch_size = util.batch_size(element)
     try:
       result = self._batch_reducible_process(element)
       self._batch_size.update(batch_size)
@@ -774,23 +756,9 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
           'significantly affect the performance.', batch_size, e)
       self._batch_size_failed.update(batch_size)
       result = []
-      record_batch = element[constants.ARROW_RECORD_BATCH_KEY]
-      unbatched_extracts = {}
-      for i in range(batch_size):
+      for unbatched_element in util.split_extracts(
+          element, keep_batch_dim=True):
         self._batch_size.update(1)
-        unbatched_element = {}
-        for key in element.keys():
-          if element[key] is None:
-            unbatched_element[key] = None
-          elif key == constants.ARROW_RECORD_BATCH_KEY:
-            unbatched_element[key] = record_batch.slice(i, 1)
-          elif isinstance(element[key], (list, np.ndarray)):
-            unbatched_element[key] = [element[key][i]]
-          else:
-            if key not in unbatched_extracts:
-              unbatched_extracts[key] = util.split_extracts(
-                  element[key], keep_batch_dim=True)
-            unbatched_element[key] = unbatched_extracts[key][i]
         result.extend(self._batch_reducible_process(unbatched_element))
       self._num_instances.inc(len(result))
       return result
@@ -806,9 +774,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
                eval_shared_models: Dict[str, types.EvalSharedModel],
                signature_names: Dict[str, Dict[str, List[str]]],
                default_signature_names: Optional[List[str]] = None,
-               prefer_dict_outputs: bool = True,
-               tensor_adapter_config: Optional[
-                   tensor_adapter.TensorAdapterConfig] = None):
+               prefer_dict_outputs: bool = True):
     """Initializes DoFn.
 
     Examples of combinations of signature_names and default_signatures that
@@ -854,22 +820,15 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
         predictions as single output values (unless a multi-output model is
         used) whereas it is preferrable to always store features as a dict where
         the output keys represent the feature names.
-      tensor_adapter_config: Tensor adapter config which specifies how to obtain
-        tensors from the Arrow RecordBatch.
     """
     super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
     self._signature_names = signature_names
     self._default_signature_names = default_signature_names
     self._prefer_dict_outputs = prefer_dict_outputs
-    self._tensor_adapter_config = tensor_adapter_config
-    self._tensor_adapter = None
 
   def setup(self):
     super().setup()
-    if self._tensor_adapter_config is not None:
-      self._tensor_adapter = tensor_adapter.TensorAdapter(
-          self._tensor_adapter_config)
     # Verify and filter models to only those used in ModelSpecs.
     loaded_models = {}
     for spec in self._eval_config.model_specs:
@@ -907,11 +866,15 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
             f'Batch size: {batch_size}, Dimensions: {t.shape}, Key: {key}.')
 
     result = copy.copy(batched_extract)
-    record_batch = batched_extract[constants.ARROW_RECORD_BATCH_KEY]
+    batch_size = util.batch_size(batched_extract)
+    features = util.get_features_from_extracts(batched_extract)
     serialized_examples = batched_extract[constants.INPUT_KEY]
+    if isinstance(serialized_examples, np.ndarray):
+      # Most models only accept serialized examples as a 1-d tensor
+      serialized_examples = serialized_examples.flatten()
     for extracts_key in self._signature_names.keys():
-      if extracts_key not in result or not result[extracts_key]:
-        result[extracts_key] = [None] * record_batch.num_rows
+      if extracts_key not in result:
+        result[extracts_key] = None
     for model_name, model in self._loaded_models.items():
       for extracts_key, signature_names in self._signature_names.items():
         for signature_name in (signature_names[model_name] or
@@ -930,7 +893,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
                   input_name: type_spec for input_name, type_spec in zip(
                       input_names, signature.input_signature)
               }
-              inputs = get_inputs(record_batch, input_specs)
+              inputs = get_inputs(features, input_specs)
               positional_inputs = True
             except AttributeError as e:
               logging.warning(
@@ -943,8 +906,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
             # If input_specs exist then try to filter the inputs by the input
             # names (unlike estimators, keras does not accept unknown inputs).
             if input_specs:
-              inputs = get_inputs(record_batch, input_specs,
-                                  self._tensor_adapter)
+              inputs = get_inputs(features, input_specs)
           if not inputs:
             # Assume serialized examples
             assert serialized_examples is not None, 'Raw examples not found.'
@@ -981,36 +943,30 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
           if isinstance(outputs, dict):
             for k, v in outputs.items():
               dense_outputs[k] = to_dense(v)
-              check_shape(dense_outputs[k], record_batch.num_rows, key=k)
+              check_shape(dense_outputs[k], batch_size, key=k)
           else:
             dense_outputs = to_dense(outputs)
-            check_shape(dense_outputs, record_batch.num_rows)
+            check_shape(dense_outputs, batch_size)
 
-          for i in range(record_batch.num_rows):
-            if isinstance(dense_outputs, dict):
-              output = {
-                  k: maybe_expand_dims(v[i].numpy())
-                  for k, v in dense_outputs.items()
-              }
-            else:
-              output = {
-                  signature_name:
-                      maybe_expand_dims(np.asarray(dense_outputs)[i])
-              }
-            if result[extracts_key][i] is None:
-              result[extracts_key][i] = collections.defaultdict(dict)
-            result[extracts_key][i][model_name].update(output)  # pytype: disable=unsupported-operands
-    for i in range(len(result[extracts_key])):
-      # PyType doesn't recognize isinstance(..., dict).
-      # pytype: disable=attribute-error,unsupported-operands
-      if isinstance(result[extracts_key][i], dict):
-        for model_name, output in result[extracts_key][i].items():
-          if not self._prefer_dict_outputs and len(output) == 1:
-            result[extracts_key][i][model_name] = list(output.values())[0]
-        # If only one model, the output is stored without using a dict
-        if len(self._eval_config.model_specs) == 1:
-          result[extracts_key][i] = list(result[extracts_key][i].values())[0]
-      # pytype: enable=attribute-error,unsupported-operands
+          if isinstance(dense_outputs, dict):
+            output = {
+                k: maybe_expand_dims(v.numpy())
+                for k, v in dense_outputs.items()
+            }
+          else:
+            output = {
+                signature_name: maybe_expand_dims(np.asarray(dense_outputs))
+            }
+          if result[extracts_key] is None:
+            result[extracts_key] = collections.defaultdict(dict)
+          result[extracts_key][model_name].update(output)
+    if isinstance(result[extracts_key], dict):
+      for model_name, output in result[extracts_key].items():
+        if not self._prefer_dict_outputs and len(output) == 1:
+          result[extracts_key][model_name] = list(output.values())[0]
+      # If only one model, the output is stored without using a dict
+      if len(self._eval_config.model_specs) == 1:
+        result[extracts_key] = list(result[extracts_key].values())[0]
     return [result]
 
 

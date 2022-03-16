@@ -23,15 +23,13 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
-from tfx_bsl.tfxio import tensor_adapter
 
 _PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
 
 def PredictionsExtractor(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions over a batch.
 
@@ -62,12 +60,6 @@ def PredictionsExtractor(
     eval_shared_model: Shared model (single-model evaluation) or list of shared
       models (multi-model evaluation) or None (predictions obtained from
       features).
-    tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. The model's signature will be invoked
-      with those tensors (matched by names). If None, an attempt will be made to
-      create an adapter based on the model's input signature otherwise the model
-      will be invoked with raw examples (assuming a  signature of a single 1-D
-      string tensor).
 
   Returns:
     Extractor for extracting predictions.
@@ -81,19 +73,15 @@ def PredictionsExtractor(
   return extractor.Extractor(
       stage_name=_PREDICTIONS_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractPredictions(
-          eval_config=eval_config,
-          eval_shared_models=eval_shared_models,
-          tensor_adapter_config=tensor_adapter_config))
+          eval_config=eval_config, eval_shared_models=eval_shared_models))
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractPredictions(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection,
-    eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Optional[Dict[str, types.EvalSharedModel]],
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
+    extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig,
+    eval_shared_models: Optional[Dict[str, types.EvalSharedModel]]
 ) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
@@ -103,8 +91,6 @@ def _ExtractPredictions(  # pylint: disable=invalid-name
       takes raw tf.Examples as input).
     eval_config: Eval config.
     eval_shared_models: Shared model parameters keyed by model name or None.
-    tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch.
 
   Returns:
     PCollection of Extracts updated with the predictions.
@@ -123,8 +109,7 @@ def _ExtractPredictions(  # pylint: disable=invalid-name
                 eval_config=eval_config,
                 eval_shared_models=eval_shared_models,
                 signature_names={constants.PREDICTIONS_KEY: signature_names},
-                prefer_dict_outputs=False,
-                tensor_adapter_config=tensor_adapter_config)))
+                prefer_dict_outputs=False)))
   else:
 
     def extract_predictions(  # pylint: disable=invalid-name

@@ -108,7 +108,7 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
     """Invokes the tfjs model on the provided inputs and stores the result."""
     result = copy.copy(element)
 
-    batched_features = {}
+    batched_features = collections.defaultdict(list)
     for key, value in element[constants.FEATURES_KEY].items():
       if value.dtype == np.int64:
         value = value.astype(np.int32)

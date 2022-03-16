@@ -82,9 +82,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        tensor_adapter_config=tensor_adapter_config)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(
@@ -124,9 +122,8 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         try:
           self.assertLen(got, 1)
           self.assertIn(constants.PREDICTIONS_KEY, got[0])
-          expected_preds = [0.2, 0.8, 0.5]
-          self.assertAlmostEqual(got[0][constants.PREDICTIONS_KEY],
-                                 expected_preds)
+          expected_preds = np.array([[0.2], [0.8], [0.5]])
+          self.assertAllClose(got[0][constants.PREDICTIONS_KEY], expected_preds)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -165,9 +162,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        tensor_adapter_config=tensor_adapter_config)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
@@ -194,9 +189,8 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
             self.assertIn(constants.PREDICTIONS_KEY, item)
-            for pred in item[constants.PREDICTIONS_KEY]:
-              for pred_key in ('logistic', 'probabilities', 'all_classes'):
-                self.assertIn(pred_key, pred)
+            for pred_key in ('logistic', 'probabilities', 'all_classes'):
+              self.assertIn(pred_key, item[constants.PREDICTIONS_KEY])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -235,9 +229,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        tensor_adapter_config=tensor_adapter_config)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
@@ -265,9 +257,8 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
             self.assertIn(constants.PREDICTIONS_KEY, item)
-            for pred in item[constants.PREDICTIONS_KEY]:
-              for pred_key in ('probabilities', 'all_classes'):
-                self.assertIn(pred_key, pred)
+            for pred_key in ('probabilities', 'all_classes'):
+              self.assertIn(pred_key, item[constants.PREDICTIONS_KEY])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -313,9 +304,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        tensor_adapter_config=tensor_adapter_config)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(
@@ -363,10 +352,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           # We can't verify the actual predictions, but we can verify the keys.
           for item in got:
             self.assertIn(constants.PREDICTIONS_KEY, item)
-            for pred in item[constants.PREDICTIONS_KEY]:
-              for output_name in ('chinese_head', 'english_head', 'other_head'):
-                for pred_key in ('logistic', 'probabilities', 'all_classes'):
-                  self.assertIn(output_name + '/' + pred_key, pred)
+            for output_name in ('chinese_head', 'english_head', 'other_head'):
+              for pred_key in ('logistic', 'probabilities', 'all_classes'):
+                self.assertIn(output_name + '/' + pred_key,
+                              item[constants.PREDICTIONS_KEY])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -422,8 +411,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_shared_model={
             'model1': eval_shared_model1,
             'model2': eval_shared_model2
-        },
-        tensor_adapter_config=tensor_adapter_config)
+        })
 
     examples = [
         self._makeExample(
@@ -471,14 +459,12 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           for item in got:
             # We can't verify the actual predictions, but we can verify the keys
             self.assertIn(constants.PREDICTIONS_KEY, item)
-            for pred in item[constants.PREDICTIONS_KEY]:
-              for model_name in ('model1', 'model2'):
-                self.assertIn(model_name, pred)
-                for output_name in ('chinese_head', 'english_head',
-                                    'other_head'):
-                  for pred_key in ('logistic', 'probabilities', 'all_classes'):
-                    self.assertIn(output_name + '/' + pred_key,
-                                  pred[model_name])
+            for model_name in ('model1', 'model2'):
+              self.assertIn(model_name, item[constants.PREDICTIONS_KEY])
+              for output_name in ('chinese_head', 'english_head', 'other_head'):
+                for pred_key in ('logistic', 'probabilities', 'all_classes'):
+                  self.assertIn(output_name + '/' + pred_key,
+                                item[constants.PREDICTIONS_KEY][model_name])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -563,9 +549,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        tensor_adapter_config=tensor_adapter_config)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(
@@ -660,9 +644,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        tensor_adapter_config=tensor_adapter_config)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     # Notice that the features are 'test' but the model expects 'test_input'.
     # This tests that the PredictExtractor properly handles this case.
@@ -765,9 +747,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        tensor_adapter_config=tensor_adapter_config)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = []
     for _ in range(4):
@@ -827,9 +807,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
     prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        tensor_adapter_config=tensor_adapter_config)
+        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = []
     for _ in range(4):

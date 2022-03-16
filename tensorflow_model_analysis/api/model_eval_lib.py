@@ -560,9 +560,7 @@ def default_extractors(  # pylint: disable=invalid-name
               eval_config=eval_config,
               tensor_representations=tensor_representations),
           transformed_features_extractor.TransformedFeaturesExtractor(
-              eval_config=eval_config,
-              eval_shared_model=eval_shared_model,
-              tensor_adapter_config=tensor_adapter_config),
+              eval_config=eval_config, eval_shared_model=eval_shared_model),
           labels_extractor.LabelsExtractor(eval_config=eval_config),
           example_weights_extractor.ExampleWeightsExtractor(
               eval_config=eval_config),
@@ -616,18 +614,14 @@ def default_extractors(  # pylint: disable=invalid-name
       if not custom_predict_extractor:
         extractors.append(
             transformed_features_extractor.TransformedFeaturesExtractor(
-                eval_config=eval_config,
-                eval_shared_model=eval_shared_model,
-                tensor_adapter_config=tensor_adapter_config))
+                eval_config=eval_config, eval_shared_model=eval_shared_model))
       extractors.extend([
           labels_extractor.LabelsExtractor(eval_config=eval_config),
           example_weights_extractor.ExampleWeightsExtractor(
               eval_config=eval_config),
           (custom_predict_extractor or
            predictions_extractor.PredictionsExtractor(
-               eval_config=eval_config,
-               eval_shared_model=eval_shared_model,
-               tensor_adapter_config=tensor_adapter_config)),
+               eval_config=eval_config, eval_shared_model=eval_shared_model)),
       ])
       extractors.extend(slicing_extractors)
       return extractors

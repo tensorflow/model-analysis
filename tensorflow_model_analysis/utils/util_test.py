@@ -207,15 +207,6 @@ class UtilTest(tf.test.TestCase):
     }
     self.assertAllClose(actual, expected)
 
-  def testToTensorflowTensorsRaisesIncompatibleSpecError(self):
-    with self.assertRaisesRegex(ValueError, '.* is not compatible with .*'):
-      util.to_tensorflow_tensors(
-          {'features': {
-              'feature_1': np.array([1, 2, 3], dtype=np.int64)
-          }}, {'features': {
-              'feature_1': tf.TensorSpec([1], dtype=tf.float32)
-          }})
-
   def testToTensorflowTensorsRaisesUnknownKeyError(self):
     with self.assertRaisesRegex(ValueError, '.* not found in .*'):
       util.to_tensorflow_tensors(

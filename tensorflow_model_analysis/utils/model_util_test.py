@@ -25,7 +25,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
-from tfx_bsl.tfxio import tensor_adapter
+from tensorflow_model_analysis.utils import util as tfma_util
 from tfx_bsl.tfxio import tf_example_record
 
 from google.protobuf import text_format
@@ -37,8 +37,8 @@ _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 def _record_batch_to_extracts(record_batch):
   input_index = record_batch.schema.names.index(constants.ARROW_INPUT_COLUMN)
   return {
-      constants.ARROW_RECORD_BATCH_KEY:
-          record_batch,
+      constants.FEATURES_KEY:
+          tfma_util.record_batch_to_tensor_values(record_batch),
       constants.INPUT_KEY:
           np.asarray(record_batch.columns[input_index].flatten())
   }
@@ -726,22 +726,22 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           }
       }, ['unknown', 'custom_single_output'], False, True, 1),
       ('keras_prefer_dict_outputs', True, {
-          constants.FEATURES_KEY: {
+          constants.TRANSFORMED_FEATURES_KEY: {
               '': [],
           }
       }, ['unknown', 'custom_single_output', 'custom_multi_output'
          ], True, True, 3),
       ('tf_prefer_dict_outputs', False, {
-          constants.FEATURES_KEY: {
+          constants.TRANSFORMED_FEATURES_KEY: {
               '': [],
           }
       }, ['unknown', 'custom_single_output', 'custom_multi_output'
          ], True, True, 3),
       ('custom_attribute', True, {
-          constants.FEATURES_KEY: {
+          constants.TRANSFORMED_FEATURES_KEY: {
               '': ['custom_attribute'],
           }
-      }, None, True, True, 1),
+      }, None, True, True, 3),
       ('keras_no_schema', True, {
           constants.PREDICTIONS_KEY: {
               '': [None]
@@ -780,11 +780,6 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
         physical_format='text',
         schema=schema,
         raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = None
-    if use_schema:
-      tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-          arrow_schema=tfx_io.ArrowSchema(),
-          tensor_representations=tfx_io.TensorRepresentations())
 
     examples = [
         self._makeExample(input_1=1.0, input_2=2.0),
@@ -805,8 +800,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                   eval_shared_models=eval_shared_models,
                   signature_names=signature_names,
                   default_signature_names=default_signature_names,
-                  prefer_dict_outputs=prefer_dict_outputs,
-                  tensor_adapter_config=tensor_adapter_config)))
+                  prefer_dict_outputs=prefer_dict_outputs)))
 
       # pylint: enable=no-value-for-parameter
 
@@ -816,9 +810,9 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           for key in signature_names:
             self.assertIn(key, got[0])
             if prefer_dict_outputs:
-              for entry in got[0][key]:
-                self.assertIsInstance(entry, dict)
-                self.assertLen(entry, expected_num_outputs)
+              self.assertIsInstance(got[0][key], dict)
+              self.assertEqual(
+                  tfma_util.batch_size(got[0][key]), expected_num_outputs)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -841,9 +835,6 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
         physical_format='text',
         schema=schema,
         raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
 
     examples = [
         self._makeExample(input_1=1.0, input_2=2.0),
@@ -866,8 +857,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                     eval_shared_models=eval_shared_models,
                     signature_names=signature_names,
                     default_signature_names=None,
-                    prefer_dict_outputs=False,
-                    tensor_adapter_config=tensor_adapter_config)))
+                    prefer_dict_outputs=False)))
 
   def testHasRubberStamp(self):
     # Model agnostic.
