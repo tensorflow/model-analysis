@@ -800,7 +800,7 @@ class _Calibration(_PostExportMetric):
         metrics on in the case of multi-class models.
     """
 
-    self._example_weight_key = example_weight_key
+    self._example_weight_key = example_weight_key  # pytype: disable=annotation-type-mismatch  # trace-all-classes
     super().__init__(
         target_prediction_keys=target_prediction_keys,
         labels_key=labels_key,
@@ -1910,7 +1910,7 @@ class _MeanAbsoluteError(_TFMetricBaseClass):
       tensor_index: Optional index to specify class predictions to calculate
         metrics on in the case of multi-class models.
     """
-    self._example_weight_key = example_weight_key
+    self._example_weight_key = example_weight_key  # pytype: disable=annotation-type-mismatch  # trace-all-classes
     super().__init__(
         metric_keys.MEAN_ABSOLUTE_ERROR,
         tf.compat.v1.metrics.mean_absolute_error,
@@ -1960,7 +1960,7 @@ class _MeanSquaredError(_TFMetricBaseClass):
       tensor_index: Optional index to specify class predictions to calculate
         metrics on in the case of multi-class models.
     """
-    self._example_weight_key = example_weight_key
+    self._example_weight_key = example_weight_key  # pytype: disable=annotation-type-mismatch  # trace-all-classes
     super().__init__(
         metric_keys.MEAN_SQUARED_ERROR,
         tf.compat.v1.metrics.mean_squared_error,
@@ -2010,7 +2010,7 @@ class _RootMeanSquaredError(_TFMetricBaseClass):
       tensor_index: Optional index to specify class predictions to calculate
         metrics on in the case of multi-class models.
     """
-    self._example_weight_key = example_weight_key
+    self._example_weight_key = example_weight_key  # pytype: disable=annotation-type-mismatch  # trace-all-classes
     super().__init__(
         metric_keys.ROOT_MEAN_SQUARED_ERROR,
         tf.compat.v1.metrics.root_mean_squared_error,
