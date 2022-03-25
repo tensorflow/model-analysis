@@ -19,6 +19,7 @@ model.
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -46,13 +47,13 @@ def simple_fixed_prediction_estimator_no_labels(
       # EVAL mode.
       predictions_dict = {}
 
-    if mode == tf.estimator.ModeKeys.PREDICT:
-      return tf.estimator.EstimatorSpec(
+    if mode == tf_estimator.ModeKeys.PREDICT:
+      return tf_estimator.EstimatorSpec(
           mode=mode,
           predictions=predictions_dict,
           export_outputs={
               tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
-                  tf.estimator.export.RegressionOutput(predictions)
+                  tf_estimator.export.RegressionOutput(predictions)
           })
 
     # We use create a nonsensical loss that is easy to compute:
@@ -65,7 +66,7 @@ def simple_fixed_prediction_estimator_no_labels(
         metric_keys.MetricKeys.LOSS_MEAN: tf.compat.v1.metrics.mean(loss),
     }
 
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode,
         loss=loss,
         train_op=train_op,
@@ -78,7 +79,7 @@ def simple_fixed_prediction_estimator_no_labels(
         'prediction': tf.constant([[1.0], [2.0], [3.0], [4.0]]),
     }
 
-  estimator = tf.estimator.Estimator(model_fn=model_fn)
+  estimator = tf_estimator.Estimator(model_fn=model_fn)
   estimator.train(input_fn=train_input_fn, steps=1)
 
   feature_spec = {'prediction': tf.io.FixedLenFeature([1], dtype=tf.float32)}
@@ -89,7 +90,7 @@ def simple_fixed_prediction_estimator_no_labels(
   return util.export_model_and_eval_model(
       estimator=estimator,
       serving_input_receiver_fn=(
-          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+          tf_estimator.export.build_parsing_serving_input_receiver_fn(
               feature_spec)),
       eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(
           eval_feature_spec, label_key=None),

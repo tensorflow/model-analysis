@@ -23,6 +23,7 @@ This model also extracts an additional slice_key feature for evaluation
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -36,10 +37,10 @@ def simple_linear_regressor(export_path, eval_export_path):
       util.linear_columns(True) +
       [tf.feature_column.categorical_column_with_hash_bucket('slice_key', 100)])
 
-  regressor = tf.estimator.LinearRegressor(
+  regressor = tf_estimator.LinearRegressor(
       feature_columns=util.linear_columns(),
       loss_reduction=tf.losses.Reduction.SUM)
-  regressor = tf.estimator.add_metrics(regressor, util.regressor_extra_metrics)
+  regressor = tf_estimator.add_metrics(regressor, util.regressor_extra_metrics)
   regressor.train(
       input_fn=util.make_regressor_input_fn(
           tf.feature_column.make_parse_example_spec(util.linear_columns(True))),
@@ -48,7 +49,7 @@ def simple_linear_regressor(export_path, eval_export_path):
   return util.export_model_and_eval_model(
       estimator=regressor,
       serving_input_receiver_fn=(
-          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+          tf_estimator.export.build_parsing_serving_input_receiver_fn(
               feature_spec)),
       eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(
           eval_feature_spec, label_key='label'),

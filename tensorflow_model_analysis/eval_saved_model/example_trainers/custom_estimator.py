@@ -21,6 +21,7 @@ metrics.
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -35,12 +36,12 @@ def simple_custom_estimator(export_path, eval_export_path):
     c = tf.Variable(0.0, dtype=tf.float32, name='c')
     predictions = m * features['age'] + c
 
-    if mode == tf.estimator.ModeKeys.PREDICT:
-      return tf.estimator.EstimatorSpec(
+    if mode == tf_estimator.ModeKeys.PREDICT:
+      return tf_estimator.EstimatorSpec(
           mode=mode,
           predictions={'score': predictions},
           export_outputs={
-              'score': tf.estimator.export.RegressionOutput(predictions)
+              'score': tf_estimator.export.RegressionOutput(predictions)
           })
 
     loss = tf.compat.v1.losses.mean_squared_error(labels, predictions)
@@ -58,7 +59,7 @@ def simple_custom_estimator(export_path, eval_export_path):
     train_op = optimizer.minimize(
         loss=loss, global_step=tf.compat.v1.train.get_global_step())
 
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode,
         loss=loss,
         train_op=train_op,
@@ -79,7 +80,7 @@ def simple_custom_estimator(export_path, eval_export_path):
     receiver_tensors = {'examples': serialized_tf_example}
     features = tf.io.parse_example(
         serialized=serialized_tf_example, features=feature_spec)
-    return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
+    return tf_estimator.export.ServingInputReceiver(features, receiver_tensors)
 
   def eval_input_receiver_fn():
     """Eval input receiver function."""
@@ -98,7 +99,7 @@ def simple_custom_estimator(export_path, eval_export_path):
         labels=features['label'],
         receiver_tensors=receiver_tensors)
 
-  estimator = tf.estimator.Estimator(model_fn=model_fn)
+  estimator = tf_estimator.Estimator(model_fn=model_fn)
   estimator.train(input_fn=train_input_fn, steps=1000)
 
   return util.export_model_and_eval_model(

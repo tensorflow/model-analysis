@@ -25,6 +25,7 @@ The eval_input_receiver_fn also parses the "fixed_float", "fixed_string",
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -74,13 +75,13 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
         prediction_keys.PredictionKeys.PREDICTIONS: predictions,
     }
 
-    if mode == tf.estimator.ModeKeys.PREDICT:
-      return tf.estimator.EstimatorSpec(
+    if mode == tf_estimator.ModeKeys.PREDICT:
+      return tf_estimator.EstimatorSpec(
           mode=mode,
           predictions=predictions_dict,
           export_outputs={
               tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
-                  tf.estimator.export.RegressionOutput(predictions)
+                  tf_estimator.export.RegressionOutput(predictions)
           })
 
     loss = tf.compat.v1.losses.mean_squared_error(predictions,
@@ -88,7 +89,7 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
     train_op = tf.compat.v1.assign_add(tf.compat.v1.train.get_global_step(), 1)
 
     eval_metric_ops = {}
-    if mode == tf.estimator.ModeKeys.EVAL:
+    if mode == tf_estimator.ModeKeys.EVAL:
       eval_metric_ops = {
           metric_keys.MetricKeys.LOSS_MEAN:
               tf.compat.v1.metrics.mean(loss),
@@ -111,7 +112,7 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
               control_dependency_metric(10000.0, predictions),
       }
 
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode,
         loss=loss,
         train_op=train_op,
@@ -138,7 +139,7 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
       'var_int': tf.io.VarLenFeature(dtype=tf.int64),
   }
 
-  estimator = tf.estimator.Estimator(model_fn=model_fn)
+  estimator = tf_estimator.Estimator(model_fn=model_fn)
   estimator.train(input_fn=train_input_fn, steps=1)
 
   def eval_input_receiver_fn():
@@ -156,7 +157,7 @@ def simple_control_dependency_estimator(export_path, eval_export_path):
   return util.export_model_and_eval_model(
       estimator=estimator,
       serving_input_receiver_fn=(
-          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+          tf_estimator.export.build_parsing_serving_input_receiver_fn(
               feature_spec)),
       eval_input_receiver_fn=eval_input_receiver_fn,
       export_path=export_path,

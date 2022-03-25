@@ -21,6 +21,8 @@ The true model for the Other head is language == 'other'.
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
+from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -90,7 +92,7 @@ def simple_multi_head(export_path, eval_export_path):
   other_head = binary_class_head.BinaryClassHead(name='other_head')
   combined_head = multi_head.MultiHead([english_head, chinese_head, other_head])
 
-  estimator = tf.compat.v1.estimator.DNNLinearCombinedEstimator(
+  estimator = tf_compat_v1_estimator.DNNLinearCombinedEstimator(
       head=combined_head,
       dnn_feature_columns=[],
       dnn_optimizer=tf.compat.v1.train.AdagradOptimizer(learning_rate=0.01),
@@ -102,7 +104,7 @@ def simple_multi_head(export_path, eval_export_path):
   return util.export_model_and_eval_model(
       estimator=estimator,
       serving_input_receiver_fn=(
-          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+          tf_estimator.export.build_parsing_serving_input_receiver_fn(
               feature_spec)),
       eval_input_receiver_fn=eval_input_receiver_fn,
       export_path=export_path,

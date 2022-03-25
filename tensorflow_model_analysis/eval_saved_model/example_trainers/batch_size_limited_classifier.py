@@ -14,6 +14,7 @@
 """Exports a simple model which explicitly limits batch size for testing."""
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -39,13 +40,13 @@ def model_fn(features, labels, mode, config):
       prediction_keys.PredictionKeys.CLASSES: classes,
   }
 
-  if mode == tf.estimator.ModeKeys.PREDICT:
-    return tf.estimator.EstimatorSpec(
+  if mode == tf_estimator.ModeKeys.PREDICT:
+    return tf_estimator.EstimatorSpec(
         mode=mode,
         predictions=predictions,
         export_outputs={
             tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
-                tf.estimator.export.ClassificationOutput(
+                tf_estimator.export.ClassificationOutput(
                     scores=scores, classes=classes),
         })
 
@@ -55,7 +56,7 @@ def model_fn(features, labels, mode, config):
       metric_keys.MetricKeys.LOSS_MEAN: tf.compat.v1.metrics.mean(loss),
   }
 
-  return tf.estimator.EstimatorSpec(
+  return tf_estimator.EstimatorSpec(
       mode=mode,
       loss=loss,
       train_op=train_op,
@@ -76,11 +77,11 @@ def train_input_fn():
 def simple_batch_size_limited_classifier(export_path, eval_export_path):
   """Exports a simple fixed prediction classifier."""
 
-  estimator = tf.estimator.Estimator(model_fn=model_fn)
+  estimator = tf_estimator.Estimator(model_fn=model_fn)
   estimator.train(input_fn=train_input_fn, steps=1)
 
   serving_input_receiver_fn = (
-      tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      tf_estimator.export.build_parsing_serving_input_receiver_fn(
           feature_spec={
               'classes': tf.io.FixedLenFeature([], dtype=tf.string),
               'scores': tf.io.FixedLenFeature([], dtype=tf.float32)

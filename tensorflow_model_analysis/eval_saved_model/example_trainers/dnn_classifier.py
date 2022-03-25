@@ -20,6 +20,7 @@ metrics added using tf.estimator.
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -57,19 +58,19 @@ def get_simple_dnn_classifier_and_metadata(n_classes=2, label_vocabulary=None):
   else:
     feature_spec = tf.feature_column.make_parse_example_spec(
         feature_columns=util.dnn_columns(True, n_classes=n_classes))
-  classifier = tf.estimator.DNNClassifier(
+  classifier = tf_estimator.DNNClassifier(
       hidden_units=[4],
       feature_columns=util.dnn_columns(False),
       n_classes=n_classes,
       label_vocabulary=label_vocabulary,
       loss_reduction=tf.losses.Reduction.SUM)
-  classifier = tf.estimator.add_metrics(classifier,
+  classifier = tf_estimator.add_metrics(classifier,
                                         util.classifier_extra_metrics)
   return {
       'estimator':
           classifier,
       'serving_input_receiver_fn':
-          (tf.estimator.export.build_parsing_serving_input_receiver_fn(
+          (tf_estimator.export.build_parsing_serving_input_receiver_fn(
               tf.feature_column.make_parse_example_spec(
                   util.dnn_columns(False)))),
       'eval_input_receiver_fn':

@@ -73,6 +73,7 @@ and produces the prediction:
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model import util
 
@@ -150,12 +151,12 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
         e * tf.reduce_sum(input_tensor=dense_values[:, 1, :], axis=1) +
         f * tf.reduce_sum(input_tensor=dense_values[:, 2, :], axis=1))
 
-    if mode == tf.estimator.ModeKeys.PREDICT:
-      return tf.estimator.EstimatorSpec(
+    if mode == tf_estimator.ModeKeys.PREDICT:
+      return tf_estimator.EstimatorSpec(
           mode=mode,
           predictions={'score': predictions},
           export_outputs={
-              'score': tf.estimator.export.RegressionOutput(predictions)
+              'score': tf_estimator.export.RegressionOutput(predictions)
           })
 
     loss = tf.compat.v1.losses.mean_squared_error(
@@ -166,7 +167,7 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
     train_op = optimizer.minimize(
         loss=loss, global_step=tf.compat.v1.train.get_global_step())
 
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode,
         loss=loss,
         train_op=train_op,
@@ -228,7 +229,7 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
     features = tf.io.parse_example(
         serialized=serialized_tf_example, features=input_feature_spec)
     _make_embedding_and_sparse_values(features)
-    return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
+    return tf_estimator.export.ServingInputReceiver(features, receiver_tensors)
 
   def eval_input_receiver_fn():
     """Eval input receiver function."""
@@ -244,7 +245,7 @@ def simple_fake_sequence_to_prediction(export_path, eval_export_path):
         receiver_tensors=receiver_tensors,
         labels=features['label'])
 
-  estimator = tf.estimator.Estimator(model_fn=model_fn)
+  estimator = tf_estimator.Estimator(model_fn=model_fn)
   estimator.train(input_fn=train_input_fn, steps=10)
 
   export_dir = None

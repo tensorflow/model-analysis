@@ -21,6 +21,7 @@ to linear_classifier.py.
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -74,14 +75,14 @@ def simple_csv_linear_classifier(export_path, eval_export_path):
   all_features = [age, language]
   feature_spec = tf.feature_column.make_parse_example_spec(all_features)
 
-  classifier = tf.estimator.LinearClassifier(
+  classifier = tf_estimator.LinearClassifier(
       feature_columns=all_features, loss_reduction=tf.losses.Reduction.SUM)
   classifier.train(input_fn=input_fn, steps=1000)
 
   return util.export_model_and_eval_model(
       estimator=classifier,
       serving_input_receiver_fn=(
-          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+          tf_estimator.export.build_parsing_serving_input_receiver_fn(
               feature_spec)),
       eval_input_receiver_fn=eval_input_receiver_fn,
       export_path=export_path,

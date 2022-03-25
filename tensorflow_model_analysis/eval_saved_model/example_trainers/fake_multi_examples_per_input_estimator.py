@@ -30,6 +30,7 @@ m:n (usually m=n=1).
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 from tensorflow.python.estimator.canned import metric_keys
@@ -173,7 +174,7 @@ def _serving_input_receiver_fn():
       dtype=tf.string, shape=[None], name='input_csv_row')
   features = _parse_csv(csv_row)
   receiver_tensors = {'examples': csv_row}
-  return tf.estimator.export.ServingInputReceiver(
+  return tf_estimator.export.ServingInputReceiver(
       features=features, receiver_tensors=receiver_tensors)
 
 
@@ -193,13 +194,13 @@ def _model_fn(features, labels, mode, config):
   del config  # Unused.
 
   predictions = tf.cast(features['input_index'], tf.float32)
-  if mode == tf.estimator.ModeKeys.PREDICT:
-    return tf.estimator.EstimatorSpec(
+  if mode == tf_estimator.ModeKeys.PREDICT:
+    return tf_estimator.EstimatorSpec(
         mode=mode,
         predictions=predictions,
         export_outputs={
             tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
-                tf.estimator.export.RegressionOutput(predictions)
+                tf_estimator.export.RegressionOutput(predictions)
         })
 
   loss = tf.compat.v1.losses.mean_squared_error(features['example_count'],
@@ -209,7 +210,7 @@ def _model_fn(features, labels, mode, config):
       metric_keys.MetricKeys.LOSS_MEAN: tf.compat.v1.metrics.mean(loss),
   }
 
-  return tf.estimator.EstimatorSpec(
+  return tf_estimator.EstimatorSpec(
       mode=mode,
       loss=loss,
       train_op=train_op,
@@ -221,7 +222,7 @@ def fake_multi_examples_per_input_estimator(export_path,
                                             eval_export_path,
                                             use_iterator=False):
   """Trains and exports a model that treats 1 input as 0 to n examples ."""
-  estimator = tf.estimator.Estimator(model_fn=_model_fn)
+  estimator = tf_estimator.Estimator(model_fn=_model_fn)
   estimator.train(input_fn=_train_input_fn, steps=1)
 
   eval_input_receiver_fn = _eval_input_receiver_fn
@@ -238,7 +239,7 @@ def fake_multi_examples_per_input_estimator(export_path,
 def legacy_fake_multi_examples_per_input_estimator(export_path,
                                                    eval_export_path):
   """Trains and exports a model that treats 1 input as 0 to n examples ."""
-  estimator = tf.estimator.Estimator(model_fn=_model_fn)
+  estimator = tf_estimator.Estimator(model_fn=_model_fn)
   estimator.train(input_fn=_train_input_fn, steps=1)
 
   return util.export_model_and_eval_model(
@@ -252,7 +253,7 @@ def legacy_fake_multi_examples_per_input_estimator(export_path,
 def bad_multi_examples_per_input_estimator_misaligned_input_refs(
     export_path, eval_export_path):
   """Like the above (good) estimator, but the input_refs is misaligned."""
-  estimator = tf.estimator.Estimator(model_fn=_model_fn)
+  estimator = tf_estimator.Estimator(model_fn=_model_fn)
   estimator.train(input_fn=_train_input_fn, steps=1)
 
   return util.export_model_and_eval_model(
@@ -266,7 +267,7 @@ def bad_multi_examples_per_input_estimator_misaligned_input_refs(
 def bad_multi_examples_per_input_estimator_out_of_range_input_refs(
     export_path, eval_export_path):
   """Like the above (good) estimator, but the input_refs is out of range."""
-  estimator = tf.estimator.Estimator(model_fn=_model_fn)
+  estimator = tf_estimator.Estimator(model_fn=_model_fn)
   estimator.train(input_fn=_train_input_fn, steps=1)
 
   return util.export_model_and_eval_model(

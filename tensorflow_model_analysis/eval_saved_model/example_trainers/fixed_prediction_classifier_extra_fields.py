@@ -21,6 +21,7 @@ The eval_input_receiver_fn also parses the "fixed_float", "fixed_string",
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
@@ -30,12 +31,12 @@ def simple_fixed_prediction_classifier_extra_fields(export_path,
                                                     eval_export_path):
   """Exports a simple fixed prediction classifier that parses extra fields."""
 
-  estimator = tf.estimator.Estimator(
+  estimator = tf_estimator.Estimator(
       model_fn=fixed_prediction_classifier.model_fn)
   estimator.train(input_fn=fixed_prediction_classifier.train_input_fn, steps=1)
 
   serving_input_receiver_fn = (
-      tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      tf_estimator.export.build_parsing_serving_input_receiver_fn(
           feature_spec={
               'classes': tf.io.VarLenFeature(dtype=tf.string),
               'scores': tf.io.VarLenFeature(dtype=tf.float32)

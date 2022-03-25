@@ -20,6 +20,7 @@ metrics added using tf.estimator.
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -29,18 +30,18 @@ def simple_dnn_regressor(export_path, eval_export_path):
 
   feature_spec = tf.feature_column.make_parse_example_spec(
       feature_columns=util.dnn_columns(True))
-  regressor = tf.estimator.DNNRegressor(
+  regressor = tf_estimator.DNNRegressor(
       hidden_units=[4],
       feature_columns=util.dnn_columns(False),
       loss_reduction=tf.losses.Reduction.SUM)
-  regressor = tf.estimator.add_metrics(regressor, util.regressor_extra_metrics)
+  regressor = tf_estimator.add_metrics(regressor, util.regressor_extra_metrics)
   regressor.train(
       input_fn=util.make_regressor_input_fn(feature_spec), steps=3000)
 
   return util.export_model_and_eval_model(
       estimator=regressor,
       serving_input_receiver_fn=(
-          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+          tf_estimator.export.build_parsing_serving_input_receiver_fn(
               tf.feature_column.make_parse_example_spec(
                   util.dnn_columns(False)))),
       eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(

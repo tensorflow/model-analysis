@@ -20,6 +20,7 @@ The eval_input_receiver_fn also parses the "fixed_float", "fixed_string",
 """
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 
@@ -40,13 +41,13 @@ def simple_fixed_prediction_estimator_extra_fields(export_path,
         prediction_keys.PredictionKeys.PREDICTIONS: predictions,
     }
 
-    if mode == tf.estimator.ModeKeys.PREDICT:
-      return tf.estimator.EstimatorSpec(
+    if mode == tf_estimator.ModeKeys.PREDICT:
+      return tf_estimator.EstimatorSpec(
           mode=mode,
           predictions=predictions_dict,
           export_outputs={
               tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
-                  tf.estimator.export.RegressionOutput(predictions)
+                  tf_estimator.export.RegressionOutput(predictions)
           })
 
     loss = tf.compat.v1.losses.mean_squared_error(predictions, labels)
@@ -57,7 +58,7 @@ def simple_fixed_prediction_estimator_extra_fields(export_path,
       eval_metric_ops[
           metric_keys.MetricKeys.LOSS_MEAN] = tf.compat.v1.metrics.mean(loss)
 
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode,
         loss=loss,
         train_op=train_op,
@@ -90,13 +91,13 @@ def simple_fixed_prediction_estimator_extra_fields(export_path,
           tf.io.VarLenFeature(dtype=tf.int64),
   }
 
-  estimator = tf.estimator.Estimator(model_fn=model_fn)
+  estimator = tf_estimator.Estimator(model_fn=model_fn)
   estimator.train(input_fn=train_input_fn, steps=1)
 
   return util.export_model_and_eval_model(
       estimator=estimator,
       serving_input_receiver_fn=(
-          tf.estimator.export.build_parsing_serving_input_receiver_fn(
+          tf_estimator.export.build_parsing_serving_input_receiver_fn(
               feature_spec)),
       eval_input_receiver_fn=export.build_parsing_eval_input_receiver_fn(
           eval_feature_spec, label_key='label'),
