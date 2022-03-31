@@ -18,6 +18,7 @@
 from typing import Any, Callable, Dict, Optional, Union
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis import version
 from tensorflow_model_analysis.eval_saved_model import constants
@@ -310,7 +311,7 @@ def export_eval_savedmodel(
     export_dir_base: str,
     eval_input_receiver_fn: Callable[[], EvalInputReceiverType],
     serving_input_receiver_fn: Optional[Callable[
-        [], tf.estimator.export.ServingInputReceiver]] = None,
+        [], tf_estimator.export.ServingInputReceiver]] = None,
     assets_extra: Optional[Dict[str, str]] = None,
     checkpoint_path: Optional[str] = None) -> str:
   """Export a EvalSavedModel for the given estimator.
@@ -352,8 +353,8 @@ def export_eval_savedmodel(
   return estimator.experimental_export_all_saved_models(
       export_dir_base=export_dir_base,
       input_receiver_fn_map={
-          tf.estimator.ModeKeys.EVAL: eval_input_receiver_fn,
-          tf.estimator.ModeKeys.PREDICT: serving_input_receiver_fn,
+          tf_estimator.ModeKeys.EVAL: eval_input_receiver_fn,
+          tf_estimator.ModeKeys.PREDICT: serving_input_receiver_fn,
       },
       assets_extra=assets_extra,
       checkpoint_path=checkpoint_path)
@@ -363,7 +364,7 @@ def export_eval_savedmodel(
 def make_export_strategy(
     eval_input_receiver_fn: Callable[[], Any],
     serving_input_receiver_fn: Optional[Callable[
-        [], tf.estimator.export.ServingInputReceiver]] = None,
+        [], tf_estimator.export.ServingInputReceiver]] = None,
     exports_to_keep: Optional[int] = 5,
 ) -> Any:
   """Create an ExportStrategy for EvalSavedModel.

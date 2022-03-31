@@ -21,6 +21,7 @@ from typing import Any, Callable, Dict, Optional
 
 import six
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.utils import util as tfma_util
@@ -281,7 +282,7 @@ def export_eval_savedmodel_with_feature_metadata(
     export_dir_base: str,
     eval_input_receiver_fn: Callable[[], tfma.export.EvalInputReceiverType],
     serving_input_receiver_fn: Optional[Callable[
-        [], tf.estimator.export.ServingInputReceiver]] = None,
+        [], tf_estimator.export.ServingInputReceiver]] = None,
     assets_extra: Optional[Dict[str, str]] = None,
     checkpoint_path: Optional[str] = None) -> str:
   """Like tfma.export.export_eval_savedmodel, with extra feature metadata."""

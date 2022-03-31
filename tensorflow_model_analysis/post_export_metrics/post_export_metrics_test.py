@@ -22,6 +22,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
@@ -3128,7 +3129,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         metrics=['accuracy'])
 
     estimator = tf.keras.estimator.model_to_estimator(
-        keras_model=model, config=tf.estimator.RunConfig())
+        keras_model=model, config=tf_estimator.RunConfig())
 
     eval_feature_spec = {
         'prediction': tf.io.FixedLenFeature([3], dtype=tf.float32),

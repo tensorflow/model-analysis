@@ -20,8 +20,8 @@ import os
 import types
 from typing import Callable, Dict, List, Optional, Union
 
-import tensorflow as tf
 
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.utils import util as tfma_util
 from tensorflow.python.estimator import gc
@@ -31,7 +31,7 @@ from tensorflow.python.platform import tf_logging
 
 
 # Largely copied from tensorflow.python.estimator.exporter
-class _EvalSavedModelExporter(tf.estimator.Exporter):
+class _EvalSavedModelExporter(tf_estimator.Exporter):
   """This class exports the EvalSavedModel.
 
   This class provides a basic exporting functionality and serves as a
@@ -44,7 +44,7 @@ class _EvalSavedModelExporter(tf.estimator.Exporter):
                eval_input_receiver_fn: Callable[[],
                                                 export.EvalInputReceiverType],
                serving_input_receiver_fn: Optional[Callable[
-                   [], tf.estimator.export.ServingInputReceiver]] = None,
+                   [], tf_estimator.export.ServingInputReceiver]] = None,
                assets_extra: Optional[Dict[str, str]] = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
@@ -73,7 +73,7 @@ class _EvalSavedModelExporter(tf.estimator.Exporter):
   def name(self) -> str:
     return self._name
 
-  def export(self, estimator: tf.estimator.Estimator, export_path: str,
+  def export(self, estimator: tf_estimator.Estimator, export_path: str,
              checkpoint_path: Optional[str], eval_result: Optional[bytes],
              is_the_final_export: bool) -> bytes:
     del is_the_final_export
@@ -90,7 +90,7 @@ class _EvalSavedModelExporter(tf.estimator.Exporter):
     return export_result
 
 
-class FinalExporter(tf.estimator.Exporter):
+class FinalExporter(tf_estimator.Exporter):
   """This class exports the EvalSavedModel in the end.
 
   This class performs a single export in the end of training.
@@ -102,7 +102,7 @@ class FinalExporter(tf.estimator.Exporter):
                eval_input_receiver_fn: Callable[[],
                                                 export.EvalInputReceiverType],
                serving_input_receiver_fn: Optional[Callable[
-                   [], tf.estimator.export.ServingInputReceiver]] = None,
+                   [], tf_estimator.export.ServingInputReceiver]] = None,
                assets_extra: Optional[Dict[str, str]] = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
 
@@ -132,7 +132,7 @@ class FinalExporter(tf.estimator.Exporter):
   def name(self) -> str:
     return self._eval_saved_model_exporter.name
 
-  def export(self, estimator: tf.estimator.Estimator, export_path: str,
+  def export(self, estimator: tf_estimator.Estimator, export_path: str,
              checkpoint_path: Optional[str], eval_result: Optional[bytes],
              is_the_final_export: bool) -> Optional[bytes]:
     if not is_the_final_export:
@@ -145,7 +145,7 @@ class FinalExporter(tf.estimator.Exporter):
                                                   is_the_final_export)
 
 
-class LatestExporter(tf.estimator.Exporter):
+class LatestExporter(tf_estimator.Exporter):
   """This class regularly exports the EvalSavedModel.
 
   In addition to exporting, this class also garbage collects stale exports.
@@ -157,7 +157,7 @@ class LatestExporter(tf.estimator.Exporter):
                eval_input_receiver_fn: Callable[[],
                                                 export.EvalInputReceiverType],
                serving_input_receiver_fn: Optional[Callable[
-                   [], tf.estimator.export.ServingInputReceiver]] = None,
+                   [], tf_estimator.export.ServingInputReceiver]] = None,
                exports_to_keep: int = 5,
                assets_extra: Optional[Dict[str, str]] = None):
     """Create an `Exporter` to use with `tf.estimator.EvalSpec`.
@@ -198,7 +198,7 @@ class LatestExporter(tf.estimator.Exporter):
   def name(self) -> str:
     return self._eval_saved_model_exporter.name
 
-  def export(self, estimator: tf.estimator.Estimator, export_path: str,
+  def export(self, estimator: tf_estimator.Estimator, export_path: str,
              checkpoint_path: Optional[str], eval_result: Optional[bytes],
              is_the_final_export: bool) -> bytes:
     export_result = self._eval_saved_model_exporter.export(
@@ -241,7 +241,7 @@ class LatestExporter(tf.estimator.Exporter):
 
 
 @contextlib.contextmanager
-def _remove_metrics(estimator: tf.estimator.Estimator,
+def _remove_metrics(estimator: tf_estimator.Estimator,
                     metrics_to_remove: Union[List[str], Callable[[str], bool]]):
   """Modifies the Estimator to make its model_fn return less metrics in EVAL.
 
@@ -270,7 +270,7 @@ def _remove_metrics(estimator: tf.estimator.Estimator,
 
   def wrapped_call_model_fn(unused_self, features, labels, mode, config):
     result = old_call_model_fn(features, labels, mode, config)
-    if mode == tf.estimator.ModeKeys.EVAL:
+    if mode == tf_estimator.ModeKeys.EVAL:
       filtered_eval_metric_ops = {}
       for k, v in result.eval_metric_ops.items():
         if isinstance(metrics_to_remove, collections.Iterable):
@@ -292,10 +292,10 @@ def _remove_metrics(estimator: tf.estimator.Estimator,
 
 
 def adapt_to_remove_metrics(
-    exporter: tf.estimator.Exporter, metrics_to_remove: Union[List[str],
+    exporter: tf_estimator.Exporter, metrics_to_remove: Union[List[str],
                                                               Callable[[str],
                                                                        bool]]
-) -> tf.estimator.Exporter:
+) -> tf_estimator.Exporter:
   """Modifies the given exporter to remove metrics before export.
 
   This is useful for when you use py_func, streaming metrics, or other metrics
@@ -315,7 +315,7 @@ def adapt_to_remove_metrics(
 
   old_export = exporter.export
 
-  def wrapped_export(unused_self, estimator: tf.estimator.Estimator,
+  def wrapped_export(unused_self, estimator: tf_estimator.Estimator,
                      export_path: str, checkpoint_path: Optional[str],
                      eval_result: Optional[bytes],
                      is_the_final_export: bool) -> bytes:
