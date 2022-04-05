@@ -18,7 +18,7 @@ import inspect
 import sys
 import traceback
 
-from typing import Any, List, Mapping, MutableMapping, Optional, Union
+from typing import Any, Iterator, List, Mapping, MutableMapping, Optional, Tuple, Union
 
 from absl import logging
 import numpy as np
@@ -27,6 +27,7 @@ import six
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tensor_adapter
 
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -380,7 +381,7 @@ def get_by_keys(data: Mapping[str, Any],
     ValueError: If (non-optional) key is not found.
   """
   if not keys:
-    raise ValueError('no keys provided to get_by_keys: %d' % data)
+    raise ValueError('no keys provided to get_by_keys: %s' % data)
 
   format_keys = lambda keys: '->'.join([str(k) for k in keys if k is not None])
 
@@ -421,6 +422,58 @@ def get_by_keys(data: Mapping[str, Any],
     raise ValueError('"%s" key not found (or value is empty dict): %s' %
                      (format_keys(keys[:keys_matched + 1]), data))
   return value
+
+
+def _contains_keys(data: Mapping[str, Any], keys: List[str]) -> bool:
+  """Returns whether a possibly mult-level mapping contains a key path."""
+  value = data
+  for key in keys:
+    if key in value:
+      value = value[key]
+    else:
+      return False
+  return True
+
+
+def _set_by_keys(root: MutableMapping[str, Any], keys: List[str],
+                 value: Any) -> None:
+  """Sets value under the given key path in (possibly multi-level) dict."""
+  if not keys:
+    raise ValueError('_set_by_keys() must be called with at least one key.')
+  if not isinstance(root, MutableMapping):
+    raise ValueError(f'Cannot set keys ({keys}) on a non-mapping root. This '
+                     'can happen when a value was previously set for a prefix '
+                     'of keys. Non-mapping root: {root}')
+  # copy to avoid modifying parameter
+  first_key = keys[0]
+  remaining_keys = keys[1:]
+  if not remaining_keys:
+    root[first_key] = value
+  else:
+    if first_key not in root:
+      root[first_key] = {}
+    try:
+      _set_by_keys(root[first_key], remaining_keys, value)
+    except Exception as e:
+      raise RuntimeError(f'_set_by_keys failed with arguments: '
+                         f'keys: {remaining_keys}, '
+                         f'value: {value}, root: {root[first_key]}') from e
+
+
+def _get_keys(root: Mapping[Any, Any],
+              max_depth: Optional[int] = None,
+              depth: int = 0) -> Iterator[Tuple[str, ...]]:
+  """Yields all key paths in a possibly multi-level dict up to max_depth."""
+  if max_depth and depth == max_depth:
+    return
+  if not root:
+    return
+  for key, value in root.items():
+    if isinstance(value, Mapping):
+      for sub_key in _get_keys(root[key], max_depth, depth + 1):
+        yield (key,) + sub_key
+    else:
+      yield (key,)
 
 
 def include_filter(
@@ -815,6 +868,36 @@ class StandardExtracts(collections.abc.MutableMapping):
 
   inputs = property(get_inputs)
 
+  def get_model_and_output_names(
+      self, eval_config: config_pb2.EvalConfig
+  ) -> List[Tuple[Optional[str], Optional[str]]]:
+    """Returns a list of model_name-output_name tuples present in extracts."""
+    if constants.PREDICTIONS_KEY not in self:
+      logging.warning('Attempting to get model names and output names from '
+                      'extracts that don\'t contain predictions')
+      return []
+    keys = []
+    predictions = self[constants.PREDICTIONS_KEY]
+    config_model_names = {spec.name for spec in eval_config.model_specs}
+    if not config_model_names:
+      config_model_names = {''}
+    if isinstance(predictions, Mapping):
+      for key in _get_keys(predictions, max_depth=2):
+        if len(key) == 1:
+          # Because of the dynamic structure of Extracts, we don't know whether
+          # a single key is a model name or output name. To distinguish between
+          # these cases, we inspect the config.
+          if key[0] in config_model_names:
+            # multi-model, single output case
+            key = key + (None,)
+          else:
+            # single model, multi-output case
+            key = (None,) + key
+        keys.append(key)
+    else:
+      keys = [(None, None)]
+    return keys
+
   def get_labels(
       self,
       model_name: Optional[str] = None,
@@ -822,6 +905,19 @@ class StandardExtracts(collections.abc.MutableMapping):
   ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
     """Returns tfma.LABELS_KEY extract."""
     return self.get_by_key(constants.LABELS_KEY, model_name, output_name)
+
+  def set_labels(
+      self,
+      labels: types.TensorValueMaybeMultiLevelDict,
+      model_name: Optional[str] = None,
+      output_name: Optional[str] = None
+  ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    """Sets tfma.LABELS_KEY extract for a given model and output."""
+    self._set_by_key(
+        key=constants.LABELS_KEY,
+        value=labels,
+        model_name=model_name,
+        output_name=output_name)
 
   labels = property(get_labels)
 
@@ -832,6 +928,19 @@ class StandardExtracts(collections.abc.MutableMapping):
   ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
     """Returns tfma.PREDICTIONS_KEY extract."""
     return self.get_by_key(constants.PREDICTIONS_KEY, model_name, output_name)
+
+  def set_predictions(
+      self,
+      predictions: types.TensorValueMaybeMultiLevelDict,
+      model_name: Optional[str] = None,
+      output_name: Optional[str] = None
+  ) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    """Sets tfma.PREDICTIONS_KEY extract for a given model and output."""
+    self._set_by_key(
+        key=constants.PREDICTIONS_KEY,
+        value=predictions,
+        model_name=model_name,
+        output_name=output_name)
 
   predictions = property(get_predictions)
 
@@ -881,7 +990,11 @@ class StandardExtracts(collections.abc.MutableMapping):
       """Returns item in dict (if value is dict and path exists) else value."""
       if isinstance(value, Mapping):
         new_value = get_by_keys(value, keys, optional=True)
-        if new_value is not None:
+        # When invoking get_by_keys with optional=True we can't tell the
+        # difference between a missing entry and a None entry. To support
+        # returning actual None values, we explicitly check whether the key is
+        # contained
+        if new_value is not None or _contains_keys(value, keys):
           return new_value
       return value
 
@@ -891,3 +1004,23 @@ class StandardExtracts(collections.abc.MutableMapping):
     if output_name is not None:
       value = optionally_get_by_keys(value, [output_name])
     return value
+
+  def _set_by_key(self,
+                  key: str,
+                  value: Any,
+                  model_name: Optional[str] = None,
+                  output_name: Optional[str] = None):
+    """Sets a value for a key, optionally for a model name and output name.
+
+    Args:
+      key: The key to set.
+      value: The value to set.
+      model_name: Optionally, the model name for which to set this key.
+      output_name: Optionally, the output name for which to set this key.
+    """
+    keys = [key]
+    if model_name:
+      keys.append(model_name)
+    if output_name:
+      keys.append(output_name)
+    _set_by_keys(self, keys, value)

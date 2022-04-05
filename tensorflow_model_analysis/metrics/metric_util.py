@@ -116,7 +116,7 @@ def to_standard_metric_inputs(
                      'Check that the configuration is setup properly to '
                      'specify the name of label input and that the proper '
                      'extractor has been configured to extract the labels from '
-                     'the inputs.')
+                     f'the inputs. Existing keys: {extracts.keys()}')
   if include_predictions and constants.PREDICTIONS_KEY not in extracts:
     raise ValueError(f'"{constants.PREDICTIONS_KEY}" key not found in '
                      'extracts. Check that the proper extractor has been '
@@ -124,17 +124,19 @@ def to_standard_metric_inputs(
   if include_features and constants.FEATURES_KEY not in extracts:
     raise ValueError(f'"{constants.FEATURES_KEY}" key not found in extracts. '
                      'Check that the proper extractor has been configured to '
-                     'extract the features from the inputs.')
+                     'extract the features from the inputs. Existing keys: '
+                     f'{extracts.keys()}')
   if (include_transformed_features and
       constants.TRANSFORMED_FEATURES_KEY not in extracts):
     raise ValueError(f'"{constants.TRANSFORMED_FEATURES_KEY}" key not found in '
                      'extracts. Check that the proper extractor has been '
                      'configured to extract the transformed features from the '
-                     'inputs.')
+                     f'inputs. Existing keys: {extracts.keys()}')
   if (include_attributions and constants.ATTRIBUTIONS_KEY not in extracts):
     raise ValueError(f'"{constants.ATTRIBUTIONS_KEY}" key not found in '
                      'extracts. Check that the proper extractor has been '
-                     'configured to extract the attributions from the inputs.')
+                     'configured to extract the attributions from the inputs.'
+                     f'Existing keys: {extracts.keys()}')
   return metric_types.StandardMetricInputs(extracts)
 
 
