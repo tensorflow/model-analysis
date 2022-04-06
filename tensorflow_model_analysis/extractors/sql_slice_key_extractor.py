@@ -24,8 +24,10 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import util
 
 from tfx_bsl.arrow import sql_util
+from tfx_bsl.tfxio import tensor_to_arrow
 
 _SQL_SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSqlSliceKeys'
 
@@ -56,6 +58,7 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
   """A DoFn that extracts slice keys in batch."""
 
   def __init__(self, eval_config: config_pb2.EvalConfig):
+    self._eval_config = eval_config
     self._sqls = [
         """
         SELECT
@@ -84,7 +87,23 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
     self._cached_queries = functools.lru_cache(maxsize=3)(_GenerateQueries)
 
   def process(self, batched_extract: types.Extracts) -> List[types.Extracts]:
-    record_batch = batched_extract[constants.ARROW_RECORD_BATCH_KEY]
+    features = batched_extract[constants.FEATURES_KEY]
+    # Slice on transformed features if available.
+    if (constants.TRANSFORMED_FEATURES_KEY in batched_extract and
+        batched_extract[constants.TRANSFORMED_FEATURES_KEY] is not None):
+      transformed_features = batched_extract[constants.TRANSFORMED_FEATURES_KEY]
+      # If only one model, the output is stored without keying on model name.
+      if not self._eval_config or len(self._eval_config.model_specs) == 1:
+        features.update(transformed_features)
+      else:
+        # Models listed earlier have precedence in feature lookup.
+        for spec in reversed(self._eval_config.model_specs):
+          if spec.name in transformed_features:
+            features.update(transformed_features[spec.name])
+    tensors = util.to_tensorflow_tensors(features)
+    converter = tensor_to_arrow.TensorsToRecordBatchConverter(
+        util.infer_tensor_specs(tensors))
+    record_batch = converter.convert(tensors)
     sql_slice_keys = [[] for _ in range(record_batch.num_rows)]
 
     for query in self._cached_queries(record_batch.schema):

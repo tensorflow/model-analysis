@@ -15,11 +15,13 @@
 
 import apache_beam as beam
 from apache_beam.testing import util
+import numpy as np
 import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import sql_slice_key_extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tf_example_record
@@ -57,6 +59,8 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
         WHERE fixed_int = 1
         """)
     ])
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config)
     slice_key_extractor = sql_slice_key_extractor.SqlSliceKeyExtractor(
         eval_config)
 
@@ -82,6 +86,71 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | slice_key_extractor.stage_name >> slice_key_extractor.ptransform)
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          self.assertEqual(got[0][constants.SLICE_KEY_TYPES_KEY],
+                           [[(('fixed_string', 'fixed_string1'),)],
+                            [(('fixed_string', 'fixed_string2'),)], []])
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result)
+
+  def testSqlSliceKeyExtractorWithTransformedFeatures(self):
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(name='model1'),
+            config_pb2.ModelSpec(name='model2')
+        ],
+        slicing_specs=[
+            config_pb2.SlicingSpec(slice_keys_sql="""
+            SELECT
+              STRUCT(fixed_string)
+            FROM
+              example.fixed_string,
+              example.fixed_int
+            WHERE fixed_int = 1
+            """)
+        ])
+    slice_key_extractor = sql_slice_key_extractor.SqlSliceKeyExtractor(
+        eval_config)
+
+    extracts = {
+        constants.FEATURES_KEY: {
+            'fixed_int': np.array([1, 1, 2]),
+        },
+        constants.TRANSFORMED_FEATURES_KEY: {
+            'model1': {
+                'fixed_int':
+                    np.array([1, 1, 2]),
+                'fixed_float':
+                    np.array([1.0, 1.0, 0.0]),
+                'fixed_string':
+                    np.array(
+                        ['fixed_string1', 'fixed_string2', 'fixed_string3'])
+            },
+            'model2': {
+                'fixed_int':
+                    np.array([1, 1, 2]),
+                'fixed_string':
+                    np.array(
+                        ['fixed_string1', 'fixed_string2', 'fixed_string3'])
+            },
+        }
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'CreateTestInput' >> beam.Create([extracts])
           | slice_key_extractor.stage_name >> slice_key_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
@@ -109,6 +178,8 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
         WHERE fixed_int = 1
         """)
     ])
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config)
     slice_key_extractor = sql_slice_key_extractor.SqlSliceKeyExtractor(
         eval_config)
 
@@ -134,6 +205,7 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | feature_extractor.stage_name >> feature_extractor.ptransform
           | slice_key_extractor.stage_name >> slice_key_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
@@ -152,6 +224,8 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testSqlSliceKeyExtractorWithEmptySqlConfig(self):
     eval_config = config_pb2.EvalConfig()
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config)
     slice_key_extractor = sql_slice_key_extractor.SqlSliceKeyExtractor(
         eval_config)
 
@@ -177,6 +251,7 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
                                     reshuffle=False)
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | feature_extractor.stage_name >> feature_extractor.ptransform
           | slice_key_extractor.stage_name >> slice_key_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter
@@ -202,6 +277,8 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
         WHERE fixed_int = 1
         """)
     ])
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config)
     slice_key_extractor = sql_slice_key_extractor.SqlSliceKeyExtractor(
         eval_config)
 
@@ -227,6 +304,7 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
           | 'Create' >> beam.Create([record_batch_1, record_batch_2],
                                     reshuffle=False)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | feature_extractor.stage_name >> feature_extractor.ptransform
           | slice_key_extractor.stage_name >> slice_key_extractor.ptransform)
 
       # pylint: enable=no-value-for-parameter

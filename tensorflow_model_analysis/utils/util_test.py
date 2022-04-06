@@ -219,6 +219,43 @@ class UtilTest(tf.test.TestCase):
               }
           })
 
+  def testInferTensorSpecs(self):
+    sparse_value = types.SparseTensorValue(
+        values=np.array([0.5, -1., 0.5, -1.], dtype=np.float32),
+        indices=np.array([[0, 3, 1], [0, 20, 0], [1, 3, 1], [1, 20, 0]]),
+        dense_shape=np.array([2, 100, 3]))
+    ragged_value = types.RaggedTensorValue(
+        values=np.array([3, 1, 4, 1, 5, 9, 2, 7, 1, 8, 8, 2, 1],
+                        dtype=np.float32),
+        nested_row_splits=[
+            np.array([0, 3, 6]),
+            np.array([0, 2, 3, 4, 5, 5, 8]),
+            np.array([0, 2, 3, 3, 6, 9, 10, 11, 13])
+        ])
+    tensor_values = {
+        'features': {
+            'feature_1': np.array([1, 2, 3], dtype=np.float32),
+            'feature_2': sparse_value,
+            'feature_3': ragged_value,
+        },
+        'labels': np.array([1], dtype=np.float32),
+    }
+    expected_specs = {
+        'features': {
+            'feature_1':
+                tf.TensorSpec([None], dtype=tf.float32),
+            'feature_2':
+                tf.SparseTensorSpec(shape=[None, 100, 3], dtype=tf.float32),
+            'feature_3':
+                tf.RaggedTensorSpec(
+                    shape=[None, None, None, None], dtype=tf.float32)
+        },
+        'labels': tf.TensorSpec([None], dtype=tf.float32)
+    }
+    got_specs = util.infer_tensor_specs(
+        util.to_tensorflow_tensors(tensor_values))
+    self.assertDictEqual(expected_specs, got_specs)
+
   def testRecordBatchToTensorValues(self):
     record_batch = pa.record_batch(
         [pa.array([[1], [2], [3]]),

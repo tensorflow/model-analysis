@@ -189,6 +189,31 @@ def to_tensorflow_tensors(
   return to_tensors(values, specs, [])
 
 
+def infer_tensor_specs(
+    tensors: types.TensorTypeMaybeMultiLevelDict
+) -> types.TypeSpecMaybeMultiLevelDict:
+  """Returns inferred TensorSpec types from given tensors."""
+  specs = {}
+  for name, tensor in tensors.items():
+    if isinstance(tensor, Mapping):
+      specs[name] = infer_tensor_specs(tensor)
+    else:
+      batch_dim = 1
+      if tensor.shape.rank < 1:
+        raise ValueError('Tensor must be batched.')
+      shape = (None,) + tensor.shape[batch_dim:]
+      if isinstance(tensor, tf.SparseTensor):
+        specs[name] = tf.SparseTensorSpec(shape, dtype=tensor.dtype)
+      elif isinstance(tensor, tf.RaggedTensor):
+        specs[name] = tf.RaggedTensorSpec(
+            shape, dtype=tensor.dtype, row_splits_dtype=tensor.row_splits.dtype)
+      elif isinstance(tensor, tf.Tensor):
+        specs[name] = tf.TensorSpec(shape, dtype=tensor.dtype)
+      else:
+        raise ValueError(f'Tensor type {type(tensor)} is not supported.')
+  return specs
+
+
 def record_batch_to_tensor_values(
     record_batch: pa.RecordBatch,
     tensor_representations: Optional[Mapping[

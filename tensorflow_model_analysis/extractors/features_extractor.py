@@ -160,7 +160,7 @@ def _ExtractFeatures(  # pylint: disable=invalid-name
       (record_batch, serialized_examples) = (
           _drop_unsupported_columns_and_fetch_raw_data_column(
               extracts[constants.ARROW_RECORD_BATCH_KEY]))
-      # TODO(b/178158073): Remove ARROW_RECORD_BATCH_KEY.
+      del result[constants.ARROW_RECORD_BATCH_KEY]
       features = result[
           constants.FEATURES_KEY] if constants.FEATURES_KEY in result else {}
       features.update(

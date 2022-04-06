@@ -4,6 +4,8 @@
 
 ## Major Features and Improvements
 
+*   `SqlSliceKeyExtractor` now supports slicing on transformed features.
+
 ## Bug fixes and other Changes
 
 ## Breaking Changes
