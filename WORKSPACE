@@ -16,13 +16,29 @@ http_archive(
     strip_prefix = "tensorflow-%s" % _TENSORFLOW_GIT_COMMIT,
 )
 
+# Needed by tensorboard. Because these http_archives do not handle transitive
+# dependencies, we need to unroll them here.
+http_archive(
+    name = "rules_rust",
+    sha256 = "08109dccfa5bbf674ff4dba82b15d40d85b07436b02e62ab27e0b894f45bb4a3",
+    strip_prefix = "rules_rust-d5ab4143245af8b33d1947813d411a6cae838409",
+    urls = [
+        # Master branch as of 2022-01-31
+        "http://mirror.tensorflow.org/github.com/bazelbuild/rules_rust/archive/d5ab4143245af8b33d1947813d411a6cae838409.tar.gz",
+        "https://github.com/bazelbuild/rules_rust/archive/d5ab4143245af8b33d1947813d411a6cae838409.tar.gz",
+    ],
+)
+
+load("@rules_rust//rust:repositories.bzl", "rust_repositories")
+
+rust_repositories()
+
 http_archive(
     name = "io_bazel_rules_webtesting",
-    sha256 = "5ed12bcfa923c94fb0d0654cf7ca3939491fd1513b1bdbe39eaed566e478e3a3",
-    strip_prefix = "rules_webtesting-afa8c4435ed8fd832046dab807ef998a26779ecb",
+    sha256 = "9bb461d5ef08e850025480bab185fd269242d4e533bca75bfb748001ceb343c3",
     urls = [
-        "http://mirror.tensorflow.org/github.com/bazelbuild/rules_webtesting/archive/afa8c4435ed8fd832046dab807ef998a26779ecb.zip",
-        "https://github.com/bazelbuild/rules_webtesting/archive/afa8c4435ed8fd832046dab807ef998a26779ecb.zip",  # 0.3.1
+        "http://mirror.tensorflow.org/github.com/bazelbuild/rules_webtesting/releases/download/0.3.3/rules_webtesting.tar.gz",
+        "https://github.com/bazelbuild/rules_webtesting/releases/download/0.3.3/rules_webtesting.tar.gz",
     ],
 )
 
@@ -32,11 +48,11 @@ web_test_repositories()
 
 http_archive(
     name = "io_bazel_rules_closure",
-    sha256 = "7d206c2383811f378a5ef03f4aacbcf5f47fd8650f6abbc3fa89f3a27dd8b176",
-    strip_prefix = "rules_closure-0.10.0",
+    sha256 = "6a900831c1eb8dbfc9d6879b5820fd614d4ea1db180eb5ff8aedcb75ee747c1f",
+    strip_prefix = "rules_closure-db4683a2a1836ac8e265804ca5fa31852395185b",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_closure/archive/0.10.0.tar.gz",
-        "https://github.com/bazelbuild/rules_closure/archive/0.10.0.tar.gz",
+        "http://mirror.tensorflow.org/github.com/bazelbuild/rules_closure/archive/db4683a2a1836ac8e265804ca5fa31852395185b.tar.gz",
+        "https://github.com/bazelbuild/rules_closure/archive/db4683a2a1836ac8e265804ca5fa31852395185b.tar.gz",  # 2020-01-15
     ],
 )
 
@@ -46,9 +62,9 @@ rules_closure_toolchains()
 
 http_archive(
     name = "org_tensorflow_tensorboard",
-    sha256 = "5a2cdb8cfef775e226aacac9b631b567cb994261c25f370e33854f043d6f7354",
-    strip_prefix = "tensorboard-5fc3c8cea4b5f79c738345686a218f089b58ddba",
-    urls = ["https://github.com/tensorflow/tensorboard/archive/5fc3c8cea4b5f79c738345686a218f089b58ddba.zip"],  # 1.13
+    sha256 = "60f98f6321f3851725ca73bf94ac994d88ff6d1f8a8332a16f49cefffeabcca3",
+    strip_prefix = "tensorboard-2.8.0",
+    urls = ["https://github.com/tensorflow/tensorboard/archive/refs/tags/2.8.0.zip"],
 )
 
 load("@org_tensorflow_tensorboard//third_party:workspace.bzl", "tensorboard_workspace")
