@@ -17,7 +17,7 @@ import abc
 import datetime
 import operator
 
-from typing import Any, Callable, Dict, List, MutableMapping, Optional, TypeVar, Tuple, Union, NamedTuple
+from typing import Any, Callable, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, TypeVar, Tuple, Union
 
 from apache_beam.utils import shared
 import numpy as np
@@ -49,6 +49,114 @@ class SparseTensorValue(
     indices: A np.ndarray of indices.
     dense_shape: A np.ndarray representing the dense shape.
   """
+
+
+class VarLenTensorValue(
+    NamedTuple('VarLenTensorValue', [('values', np.ndarray),
+                                     ('indices', np.ndarray),
+                                     ('dense_shape', np.ndarray)])):
+  """VarLenTensorValue encapsulates a batch of varlen dense tensor values.
+
+  Attributes:
+    values: A np.ndarray of values.
+    indices: A np.ndarray of indices.
+    dense_shape: A np.ndarray representing the dense shape of the entire tensor.
+      Note that each row (i.e. set of values sharing the same value for the
+      first / batch dimension) is considered to have its own shape based on the
+      presence of values.
+  """
+
+  def __new__(cls, values: np.ndarray, indices: np.ndarray,
+              dense_shape: np.ndarray):
+    # we keep the sparse representation despite not needing it so that we can
+    # convert back to TF sparse tensors for free.
+    if len(dense_shape) != 2:
+      raise ValueError('A VarLenTensorValue can only be used to represent a '
+                       '2D tensor in which the size of the second dimension '
+                       'varies over rows. However, the provided dense_shape '
+                       f'({dense_shape}) implies a {dense_shape.size}D tensor')
+    row_index_diffs = np.diff(indices[:, 0])
+    column_index_diffs = np.diff(indices[:, 1])
+    # Enforce row-major ordering of indices by checking that row indices are
+    # always increasing, and column indices within the same row are also always
+    # increasing.
+    bad_index_mask = ((row_index_diffs < 0) | ((row_index_diffs == 0) &
+                                               (column_index_diffs < 0)))
+    if np.any(bad_index_mask):
+      raise ValueError('The values and indices arrays must be provided in a '
+                       'row major order, and represent a set of variable '
+                       'length dense lists. However, indices['
+                       f'{np.nonzero(bad_index_mask)[0] + 1}, :] did not '
+                       'follow this pattern. The full indices array was: '
+                       f'{indices}.')
+    return super().__new__(
+        cls, values=values, indices=indices, dense_shape=dense_shape)
+
+  class DenseRowIterator():
+    """An Iterator over rows of a VarLenTensorValue as dense np.arrays.
+
+    Because the VarLenTensorValue was created from a set of variable length
+    (dense) arrays, we can invert this process to turn a VarLenTensorValue back
+    into the original dense arrays.
+    """
+
+    def __init__(self, tensor):
+      self._tensor = tensor
+      self._offset = 0
+
+    def __iter__(self):
+      return self
+
+    def __next__(self):
+      if self._offset > self._tensor.indices[-1, 0]:
+        raise StopIteration
+      row_mask = self._tensor.indices[:, 0] == self._offset
+      self._offset += 1
+      if not row_mask.any():
+        # handle empty rows
+        return np.empty(shape=(0,))
+      # we rely on slice indexing (a[start:end] rather than fancy indexing
+      # (a[mask]) to avoid making a copy of each row. For details, see:
+      # https://scipy-cookbook.readthedocs.io/items/ViewsVsCopies.html
+      row_mask_indices = np.nonzero(row_mask)[0]
+      row_start_index = row_mask_indices[0]
+      row_end = row_mask_indices[-1] + 1
+      assert (row_end - row_start_index) == len(row_mask_indices), (
+          'The values for each row in the represented tensor must be '
+          'contiguous in the values and indices arrays but found '
+          f'row_start_index: {row_start_index}, row_end: {row_end}'
+          f'len(row_mask_indices): {len(row_mask_indices)}')
+      return self._tensor.values[row_start_index:row_end]
+
+  def dense_rows(self):
+    return self.DenseRowIterator(self)
+
+  @classmethod
+  def from_dense_rows(cls,
+                      dense_rows: Iterable[List[Any]]) -> 'VarLenTensorValue':
+    """Converts a collection of variable length dense arrays into a tensor.
+
+    Args:
+      dense_rows: A sequence of possibly variable length lists.
+
+    Returns:
+      A new VarLenTensorValue containing the sparse representation of the
+      vertically stacked dense rows. The dense_shape attribute on the result
+      will be (num_rows, max_row_len).
+    """
+    index_arrays = []
+    max_row_len = 0
+    num_rows = 0
+    for i, row in enumerate(dense_rows):
+      num_rows += 1
+      max_row_len = max(max_row_len, len(row))
+      if row:
+        index_arrays.append(np.array([[i, j] for j in range(len(row))]))
+    return cls.__new__(
+        cls,
+        values=np.concatenate(dense_rows, axis=0),
+        indices=np.concatenate(index_arrays, axis=0),
+        dense_shape=np.array([num_rows, max_row_len]))
 
 
 # pylint: disable=invalid-name

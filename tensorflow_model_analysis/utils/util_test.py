@@ -780,6 +780,8 @@ class UtilTest(tf.test.TestCase):
                         values=np.array([1]),
                         indices=np.array([[0, 1]]),
                         dense_shape=np.array([1, 3])),
+                'feature_6':
+                    np.array([]),
             },
             'labels': np.array([1.0]),
             'example_weights': np.array(0.0),
@@ -809,6 +811,8 @@ class UtilTest(tf.test.TestCase):
                         values=np.array([2]),
                         indices=np.array([[0, 2]]),
                         dense_shape=np.array([1, 4])),
+                'feature_6':
+                    np.array([1.0]),
             },
             'labels': np.array([0.0]),
             'example_weights': np.array(0.5),
@@ -838,6 +842,8 @@ class UtilTest(tf.test.TestCase):
                         values=np.array([3]),
                         indices=np.array([[0, 3]]),
                         dense_shape=np.array([1, 5])),
+                'feature_6':
+                    np.array([2.0, 3.0]),
             },
             'labels': np.array([1.0]),
             'example_weights': np.array(1.0),
@@ -878,6 +884,11 @@ class UtilTest(tf.test.TestCase):
                     values=np.array([1, 2, 3]),
                     indices=np.array([[0, 0, 1], [1, 0, 2], [2, 0, 3]]),
                     dense_shape=np.array([3, 1, 5])),
+            'feature_6':
+                types.VarLenTensorValue(
+                    values=np.array([1.0, 2.0, 3.0]),
+                    indices=np.array([[1, 0], [2, 0], [2, 1]]),
+                    dense_shape=np.array([3, 2]))
         },
         'labels': np.array([1.0, 0.0, 1.0]),
         'example_weights': np.array([0.0, 0.5, 1.0]),
@@ -914,7 +925,12 @@ class UtilTest(tf.test.TestCase):
                             0, 4, 4, 7, 8, 8, 12, 12, 15, 16, 16, 20, 20, 23,
                             24, 24
                         ])
-                    ])
+                    ]),
+            'feature_5':
+                types.VarLenTensorValue(
+                    values=np.array([1, 2, 3, 3, 3]),
+                    indices=np.array([[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]]),
+                    dense_shape=np.array([3, 3])),
         },
         'labels': np.array([1.0, 0.0, 1.0]),
         'example_weights': np.array([0.0, 0.5, 1.0]),
@@ -947,7 +963,9 @@ class UtilTest(tf.test.TestCase):
                 'feature_4':
                     types.RaggedTensorValue(
                         values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])])
+                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
+                'feature_5':
+                    np.array([1.0])
             },
             'labels': np.array([1.0]),
             'example_weights': np.array([0.0]),
@@ -971,7 +989,9 @@ class UtilTest(tf.test.TestCase):
                 'feature_4':
                     types.RaggedTensorValue(
                         values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])])
+                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
+                'feature_5':
+                    np.array([2.0])
             },
             'labels': np.array([0.0]),
             'example_weights': np.array([0.5]),
@@ -995,7 +1015,9 @@ class UtilTest(tf.test.TestCase):
                 'feature_4':
                     types.RaggedTensorValue(
                         values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])])
+                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
+                'feature_5':
+                    np.array([3.0, 3.0, 3.0])
             },
             'labels': np.array([1.0]),
             'example_weights': np.array([1.0]),

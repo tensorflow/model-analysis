@@ -1112,12 +1112,17 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
           name: "label"
           type: FLOAT
         }
+        feature {
+          name: "varlen"
+          type: INT
+        }
         """, schema_pb2.Schema())
     examples = [
-        self._makeExample(age=3.0, language='english', label=1.0),
-        self._makeExample(age=5.0, language='chinese', label=0.0),
-        self._makeExample(age=3.0, language='english', label=0.0),
-        self._makeExample(age=5.0, language='chinese', label=1.0)
+        self._makeExample(age=3.0, language='english', label=1.0, varlen=[0]),
+        self._makeExample(age=5.0, language='chinese', label=0.0, varlen=[1]),
+        self._makeExample(age=3.0, language='english', label=0.0, varlen=[2]),
+        self._makeExample(
+            age=5.0, language='chinese', label=1.0, varlen=[3, 4])
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config_pb2.SlicingSpec()]

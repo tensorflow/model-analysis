@@ -69,6 +69,15 @@ def to_sparse_tensor_value(
       to_numpy(sparse_tensor.dense_shape))
 
 
+def to_varlen_sparse_tensor_value(
+    sparse_tensor: Union[tf.SparseTensor, tf.compat.v1.SparseTensorValue]
+) -> types.VarLenTensorValue:
+  """Converts sparse tensor to VarLenTensorValue."""
+  return types.VarLenTensorValue(
+      to_numpy(sparse_tensor.values), to_numpy(sparse_tensor.indices),
+      to_numpy(sparse_tensor.dense_shape))
+
+
 def to_ragged_tensor_value(
     ragged_tensor: tf.RaggedTensor) -> types.RaggedTensorValue:
   """Converts ragged tensor to RaggedTensorValue."""
@@ -81,6 +90,8 @@ def to_ragged_tensor_value(
 
 def to_tensor_value(tensor: Any) -> types.TensorValue:
   """Converts tensor to a tensor value."""
+  if isinstance(tensor, types.VarLenTensorValue):
+    return tensor
   if isinstance(tensor, types.SparseTensorValue):
     return tensor
   elif isinstance(tensor, tf.SparseTensor):
@@ -285,7 +296,14 @@ def record_batch_to_tensor_values(
         if isinstance(v, tf.compat.v1.ragged.RaggedTensorValue):
           features[k] = to_ragged_tensor_value(v)
         elif isinstance(v, tf.compat.v1.SparseTensorValue):
-          features[k] = to_sparse_tensor_value(v)
+          kind = updated_tensor_representations[k].WhichOneof('kind')
+          if kind == 'sparse_tensor':
+            features[k] = to_sparse_tensor_value(v)
+          elif kind == 'varlen_sparse_tensor':
+            features[k] = to_varlen_sparse_tensor_value(v)
+          else:
+            raise ValueError(f'Unexpected tensor representation kind ({kind}) '
+                             f'for tensor of type: {type(v)}')
         else:
           features[k] = v
     except Exception as e:
@@ -737,6 +755,8 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
       t = tf.concat(
           [tf.expand_dims(to_tensorflow_tensor(t), 0) for t in target], 0)
       return to_tensor_value(t)
+    elif len({np.array(t).shape for t in target}) > 1:
+      return types.VarLenTensorValue.from_dense_rows(target)
     else:
       arr = np.array(target)
       # Flatten values that were originally single item lists into a single list
@@ -769,6 +789,11 @@ def _split_sparse_batch(
     element_mask = batch_indices == i
     split_batch_indices = sparse_batch.indices[element_mask, :]
     split_indices = split_batch_indices[:, 1:]
+    # Note that this style of indexing will create a copy rather than a view of
+    # the underlying array. Consider updating SparseTensorValues to be more
+    # strict about the layout of values, and use simple indexing (a[start:end])
+    # to extract contiguous ranges of values and indices, similar to how
+    # VarLenTensorValue.dense_rows() is implemented.
     split_values = sparse_batch.values[element_mask]
     result.append(
         types.SparseTensorValue(
@@ -787,9 +812,11 @@ def split_extracts(extracts: types.Extracts,
     if values is None:
       empty.append(keys)
       return
-    # Use TF to split SparseTensor and RaggedTensorValue
-    if isinstance(values, types.SparseTensorValue):
+    if isinstance(values, types.VarLenTensorValue):
+      values = list(values.dense_rows())
+    elif isinstance(values, types.SparseTensorValue):
       values = _split_sparse_batch(values)
+    # Use TF to split RaggedTensorValue
     elif isinstance(values, types.RaggedTensorValue):
       values = to_tensorflow_tensor(values)
     size = len(values) if hasattr(values, '__len__') else values.shape[0]

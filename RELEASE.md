@@ -16,7 +16,7 @@
 
 ## Major Features and Improvements
 
-*   N/A
+*   Creates a VarLenTensorValue for storing batched, variable length extracts.
 
 ## Bug fixes and other Changes
 
