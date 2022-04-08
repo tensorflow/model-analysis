@@ -108,7 +108,8 @@ class VarLenTensorValue(
       return self
 
     def __next__(self):
-      if self._offset > self._tensor.indices[-1, 0]:
+      if (not self._tensor.indices.size or
+          self._offset > self._tensor.indices[-1, 0]):
         raise StopIteration
       row_mask = self._tensor.indices[:, 0] == self._offset
       self._offset += 1
