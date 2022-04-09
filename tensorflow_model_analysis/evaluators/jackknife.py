@@ -241,9 +241,13 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
   # List[PCollection[Tuple[slicer.SliceKeyType, SampleMetrics]]]
   delete_d_samples = []
   for sample_id in range(num_jackknife_samples):
-    # TODO(b/194732335): push filter and Flatten into _ComputeJackknifeSample
+    # TODO(b/194732335): Push filter and Flatten into _ComputeJackknifeSample.
+    # TODO(katsiapis): Replace the 'ExcludePartition' step with for-loop
+    # exclusion after cl/435922775 (or equivalent) is submitted.
     sample_accumulators = [
-        acc for i, acc in enumerate(partition_accumulators) if i != sample_id
+        acc | f'ExcludePartition[{sample_id}]' >> beam.Filter(lambda _: False)
+        if i == sample_id else acc
+        for i, acc in enumerate(partition_accumulators)
     ]
     delete_d_samples.append(
         sample_accumulators
