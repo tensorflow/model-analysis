@@ -15,10 +15,11 @@
 
 import copy
 import functools
-from typing import List
+from typing import List, Mapping
 
 import apache_beam as beam
 import pyarrow as pa
+import tensorflow as tf
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
@@ -28,6 +29,8 @@ from tensorflow_model_analysis.utils import util
 
 from tfx_bsl.arrow import sql_util
 from tfx_bsl.tfxio import tensor_to_arrow
+
+_TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 
 _SQL_SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSqlSliceKeys'
 
@@ -100,9 +103,28 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
         for spec in reversed(self._eval_config.model_specs):
           if spec.name in transformed_features:
             features.update(transformed_features[spec.name])
+
     tensors = util.to_tensorflow_tensors(features)
-    converter = tensor_to_arrow.TensorsToRecordBatchConverter(
-        util.infer_tensor_specs(tensors))
+    tensor_specs = util.infer_tensor_specs(tensors)
+
+    if _TF_MAJOR_VERSION < 2:
+      # TODO(b/228456048): TFX-BSL doesn't support passing tensorflow tensors
+      # for non-sparse/ragged values in TF 1.x (i.e. it only accepts np.ndarray
+      # for dense) so we need to convert dense tensors to numpy.
+      sess = tf.compat.v1.Session()
+
+      def _convert_dense_to_numpy(values):  # pylint: disable=invalid-name
+        if isinstance(values, Mapping):
+          for k, v in values.items():
+            if isinstance(v, Mapping):
+              values[k] = _convert_dense_to_numpy(v)
+            elif isinstance(v, tf.Tensor):
+              values[k] = v.eval(session=sess)
+        return values
+
+      tensors = _convert_dense_to_numpy(tensors)
+
+    converter = tensor_to_arrow.TensorsToRecordBatchConverter(tensor_specs)
     record_batch = converter.convert(tensors)
     sql_slice_keys = [[] for _ in range(record_batch.num_rows)]
 
