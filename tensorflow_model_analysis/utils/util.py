@@ -830,7 +830,7 @@ def split_extracts(extracts: types.Extracts,
         if key not in parent:
           parent[key] = {}
         parent = parent[key]
-      # In order avoid loosing type information, expand the dims if values shape
+      # In order avoid losing type information, expand the dims if values shape
       # is (n,). For example, np.array([a, ...]) will become np.array([[a], ...)
       # Without this step, to_tensor_value would be passed 'a' instead of
       # np.array([a]) and a new np.array with default dtype would be created.
