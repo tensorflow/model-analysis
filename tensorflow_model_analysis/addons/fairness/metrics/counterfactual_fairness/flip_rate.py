@@ -13,8 +13,11 @@
 # limitations under the License.
 """Flip Rate Metrics."""
 
-from typing import Dict, Optional, Sequence
+import random
 
+from typing import Dict, Optional, Sequence, Union
+
+import numpy as np
 from tensorflow_model_analysis.addons.fairness.metrics.counterfactual_fairness import flip_count
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -29,6 +32,7 @@ _METRICS_LIST = [
     'overall',
     'positive_to_negative',
     'positive_to_negative_examples_ids',
+    'sample_examples_ids',
 ]
 
 
@@ -39,8 +43,8 @@ class FlipRate(metric_types.Metric):
   positive) to number of examples.
   It calculates:
   - Total Flip Count / Total Example Count
-  - Positive to Negative Flip Count / Positive Examples Count
-  - Negative to Positive Flip Count / Negative Examples Count
+  - Positive to Negative Flip Count / Total Example Count
+  - Negative to Positive Flip Count / Total Example Count
 
   """
 
@@ -101,9 +105,34 @@ def _flip_rate(
       thresholds, flip_count.METRICS_LIST, flip_count.FLIP_COUNT_NAME,
       model_name, output_name, example_weighted)
 
+  def pick_overall_flip_examples(ntp_examples: np.ndarray,
+                                 ptn_examples: np.ndarray, ntp_count: int,
+                                 ptn_count: int) -> np.ndarray:
+    total_flips = ntp_count + ptn_count
+    output = []
+    ntp_examples = ntp_examples.tolist()
+    ptn_examples = ptn_examples.tolist()
+    assert len(ntp_examples) <= ntp_count
+    assert len(ptn_examples) <= ptn_count
+    output_size = min(example_ids_count, len(ntp_examples) + len(ptn_examples))
+    for _ in range(0, output_size):
+      if random.randrange(total_flips) < ntp_count:
+        element_to_remove = random.randrange(len(ntp_examples))
+        output.append(ntp_examples[element_to_remove])
+        del ntp_examples[element_to_remove]
+        ntp_count = ntp_count - 1
+      else:
+        element_to_remove = random.randrange(len(ptn_examples))
+        output.append(ptn_examples[element_to_remove])
+        del ptn_examples[element_to_remove]
+        ptn_count = ptn_count - 1
+      total_flips = total_flips - 1
+
+    return np.array(output)
+
   def result(
-      metrics: Dict[metric_types.MetricKey, float]
-  ) -> Dict[metric_types.MetricKey, float]:
+      metrics: Dict[metric_types.MetricKey, Union[float, np.ndarray]]
+  ) -> Dict[metric_types.MetricKey, Union[float, np.ndarray]]:
     """Returns flip rate metrics values."""
     output = {}
     for threshold in thresholds:
@@ -124,14 +153,23 @@ def _flip_rate(
                  (metrics[pos] + metrics[neg]) or float('NaN'))
       output[metric_key_by_name_by_threshold[threshold]
              ['positive_to_negative']] = metrics[ptn] / (
-                 metrics[pos] or float('NaN'))
+                 (metrics[pos] + metrics[neg]) or float('NaN'))
       output[metric_key_by_name_by_threshold[threshold]
              ['negative_to_positive']] = metrics[ntp] / (
-                 metrics[neg] or float('NaN'))
+                 (metrics[pos] + metrics[neg]) or float('NaN'))
       output[metric_key_by_name_by_threshold[threshold]
              ['positive_to_negative_examples_ids']] = metrics[pos_examples]
       output[metric_key_by_name_by_threshold[threshold]
              ['negative_to_positive_examples_ids']] = metrics[neg_examples]
+      if not example_weighted:
+        assert isinstance(metrics[neg_examples], np.ndarray)
+        assert isinstance(metrics[pos_examples], np.ndarray)
+        output[metric_key_by_name_by_threshold[threshold]
+               ['sample_examples_ids']] = pick_overall_flip_examples(
+                   ntp_examples=metrics[neg_examples],
+                   ptn_examples=metrics[pos_examples],
+                   ntp_count=int(metrics[ntp]),
+                   ptn_count=int(metrics[ptn]))
 
     return output
 
