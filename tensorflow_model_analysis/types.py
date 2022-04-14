@@ -109,13 +109,13 @@ class VarLenTensorValue(
 
     def __next__(self):
       if (not self._tensor.indices.size or
-          self._offset > self._tensor.indices[-1, 0]):
+          self._offset >= self._tensor.dense_shape[0]):
         raise StopIteration
       row_mask = self._tensor.indices[:, 0] == self._offset
       self._offset += 1
       if not row_mask.any():
         # handle empty rows
-        return np.empty(shape=(0,))
+        return np.array([])
       # we rely on slice indexing (a[start:end] rather than fancy indexing
       # (a[mask]) to avoid making a copy of each row. For details, see:
       # https://scipy-cookbook.readthedocs.io/items/ViewsVsCopies.html
@@ -153,11 +153,16 @@ class VarLenTensorValue(
       max_row_len = max(max_row_len, len(row))
       if row:
         index_arrays.append(np.array([[i, j] for j in range(len(row))]))
+    if index_arrays:
+      values = np.concatenate(dense_rows, axis=0)
+      indices = np.concatenate(index_arrays, axis=0)
+    else:
+      # empty case
+      values = np.array([])
+      indices = np.empty((0, 2))
+    dense_shape = np.array([num_rows, max_row_len])
     return cls.__new__(
-        cls,
-        values=np.concatenate(dense_rows, axis=0),
-        indices=np.concatenate(index_arrays, axis=0),
-        dense_shape=np.array([num_rows, max_row_len]))
+        cls, values=values, indices=indices, dense_shape=dense_shape)
 
 
 # pylint: disable=invalid-name
