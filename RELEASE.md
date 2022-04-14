@@ -10,6 +10,11 @@
 
 ## Breaking Changes
 
+*   Update to support using classify API with multiple string labels. In this
+    case we match the class returned from the classify API with the set of
+    labels provided. If the class exists in the set of labels then we treat it
+    as a positive match (1.0) otherwise as a negative (0.0).
+
 ## Deprecations
 
 # Version 0.38.0

@@ -313,7 +313,30 @@ class UtilTest(tf.test.TestCase):
           got_pred, np.array([expected_prediction]), atol=0, rtol=0)
       self.assertAllClose(got_example_weight, np.array([1.0]), atol=0, rtol=0)
 
-  def testStandardMetricInputsWithMissingStringLabel(self):
+  def testStandardMetricInputsWithMultipleStringLabels(self):
+    example = metric_types.StandardMetricInputs(
+        label=np.array([b'test1', b'test2', b'test3', b'test4', b'test5'],
+                       dtype=object),
+        prediction={
+            'scores':
+                np.array([
+                    0.03913539, 0.02491892, 0.02150059, 0.01971633, 0.01703192
+                ]),
+            'classes':
+                np.array([b'test4', b'UNK', b'UNK', b'test2', b'UNK'],
+                         dtype=np.object)
+        },
+        example_weight=np.array([1.0]))
+    iterator = metric_util.to_label_prediction_example_weight(
+        example, sub_key=metric_types.SubKey(top_k=4), fractional_labels=True)
+    for expected_label, expected_prediction in zip(
+        (1.0, 0.0, 0.0, 1.0), (0.03913539, 0.02491892, 0.02150059, 0.01971633)):
+      got_label, got_pred, got_example_weight = next(iterator)
+      self.assertAllClose(got_label, np.array([expected_label]))
+      self.assertAllClose(got_pred, np.array([expected_prediction]))
+      self.assertAllClose(got_example_weight, np.array([1.0]))
+
+  def testStandardMetricInputsWithSingleMissingStringLabel(self):
     example = metric_types.StandardMetricInputs(
         label=np.array(['d']),
         prediction={
@@ -564,15 +587,12 @@ class UtilTest(tf.test.TestCase):
 
   def testPrepareMultipleLabelsAndPredictions(self):
     labels = np.array(['b', 'c', 'a'])
-    preds = {
-        'scores': np.array([0.2, 0.7, 0.1]),
-        'classes': np.array(['a', 'b', 'c'])
-    }
+    preds = {'scores': np.array([0.2, 0.7]), 'classes': np.array(['a', 'd'])}
     got_labels, got_preds = metric_util.prepare_labels_and_predictions(
         labels, preds)
 
-    self.assertAllClose(got_labels, np.array([1, 2, 0]))
-    self.assertAllClose(got_preds, np.array([0.2, 0.7, 0.1]))
+    self.assertAllClose(got_labels, np.array([1.0, 0.0]))
+    self.assertAllClose(got_preds, np.array([0.2, 0.7]))
 
   def testPrepareMultipleLabelsAndPredictionsPythonList(self):
     labels = ['b', 'c', 'a']
