@@ -25,6 +25,7 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflow_model_analysis.utils import util
 
 from tfx_bsl.arrow import sql_util
@@ -135,12 +136,19 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
       #           []
       #          ]
       result = query.Execute(record_batch)
-      for row_index in range(len(result)):
-        sql_slice_keys[row_index].extend([tuple(s) for s in result[row_index]])
+      for row_index, row_result in enumerate(result):
+        sql_slice_keys[row_index].extend([tuple(s) for s in row_result])
+
+    # convert sql_slice_keys into a VarLenTensorValue where each row has dtype
+    # object.
+    dense_rows = []
+    for row_slice_keys in sql_slice_keys:
+      dense_rows.append(slicer_lib.slice_keys_to_numpy_array(row_slice_keys))
+    varlen_sql_slice_keys = types.VarLenTensorValue.from_dense_rows(dense_rows)
 
     # Make a a shallow copy, so we don't mutate the original.
     batched_extract_copy = copy.copy(batched_extract)
-    batched_extract_copy[constants.SLICE_KEY_TYPES_KEY] = sql_slice_keys
+    batched_extract_copy[constants.SLICE_KEY_TYPES_KEY] = varlen_sql_slice_keys
 
     self._sql_slicer_num_record_batch_schemas.update(
         self._cached_queries.cache_info().currsize)

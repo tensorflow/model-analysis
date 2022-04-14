@@ -123,7 +123,8 @@ class ExtractSliceKeysFn(beam.DoFn):
     # Make a a shallow copy, so we don't mutate the original.
     element_copy = copy.copy(element)
 
-    element_copy[constants.SLICE_KEY_TYPES_KEY] = unique_slice_keys
+    element_copy[constants.SLICE_KEY_TYPES_KEY] = (
+        slicer.slice_keys_to_numpy_array(unique_slice_keys))
     # Add a list of stringified slice keys to be materialized to output table.
     if self._materialize:
       element_copy[constants.SLICE_KEYS_KEY] = types.MaterializedColumn(

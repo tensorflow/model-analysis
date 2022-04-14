@@ -19,11 +19,13 @@ import numpy as np
 import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import sql_slice_key_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.slicer import slicer_lib
 from tfx_bsl.tfxio import tf_example_record
 
 from google.protobuf import text_format
@@ -94,9 +96,15 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertEqual(got[0][constants.SLICE_KEY_TYPES_KEY],
-                           [[(('fixed_string', 'fixed_string1'),)],
-                            [(('fixed_string', 'fixed_string2'),)], []])
+          np.testing.assert_equal(
+              got[0][constants.SLICE_KEY_TYPES_KEY],
+              types.VarLenTensorValue.from_dense_rows([
+                  slicer_lib.slice_keys_to_numpy_array([(('fixed_string',
+                                                          'fixed_string1'),)]),
+                  slicer_lib.slice_keys_to_numpy_array([(('fixed_string',
+                                                          'fixed_string2'),)]),
+                  np.array([])
+              ]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -158,9 +166,15 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertEqual(got[0][constants.SLICE_KEY_TYPES_KEY],
-                           [[(('fixed_string', 'fixed_string1'),)],
-                            [(('fixed_string', 'fixed_string2'),)], []])
+          np.testing.assert_equal(
+              got[0][constants.SLICE_KEY_TYPES_KEY],
+              types.VarLenTensorValue.from_dense_rows([
+                  slicer_lib.slice_keys_to_numpy_array([(('fixed_string',
+                                                          'fixed_string1'),)]),
+                  slicer_lib.slice_keys_to_numpy_array([(('fixed_string',
+                                                          'fixed_string2'),)]),
+                  np.array([])
+              ]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -213,9 +227,17 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertEqual(got[0][constants.SLICE_KEY_TYPES_KEY], [[
-              (('fixed_string', 'fixed_string1'), ('fixed_int', '1'))
-          ], [(('fixed_string', 'fixed_string2'), ('fixed_int', '1'))], []])
+          np.testing.assert_equal(
+              got[0][constants.SLICE_KEY_TYPES_KEY],
+              types.VarLenTensorValue.from_dense_rows([
+                  slicer_lib.slice_keys_to_numpy_array([
+                      (('fixed_string', 'fixed_string1'), ('fixed_int', '1'))
+                  ]),
+                  slicer_lib.slice_keys_to_numpy_array([
+                      (('fixed_string', 'fixed_string2'), ('fixed_int', '1'))
+                  ]),
+                  np.array([])
+              ]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -259,7 +281,11 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertEqual(got[0][constants.SLICE_KEY_TYPES_KEY], [[], [], []])
+          np.testing.assert_equal(
+              got[0][constants.SLICE_KEY_TYPES_KEY],
+              types.VarLenTensorValue.from_dense_rows(
+                  [np.array([]), np.array([]),
+                   np.array([])]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -312,12 +338,24 @@ class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
       def check_result(got):
         try:
           self.assertLen(got, 2)
-          self.assertEqual(got[0][constants.SLICE_KEY_TYPES_KEY],
-                           [[(('fixed_string', 'fixed_string1'),)],
-                            [(('fixed_string', 'fixed_string2'),)], []])
-          self.assertEqual(got[1][constants.SLICE_KEY_TYPES_KEY],
-                           [[(('fixed_string', 'fixed_string1'),)],
-                            [(('fixed_string', 'fixed_string2'),)], []])
+          np.testing.assert_equal(
+              got[0][constants.SLICE_KEY_TYPES_KEY],
+              types.VarLenTensorValue.from_dense_rows([
+                  slicer_lib.slice_keys_to_numpy_array([(('fixed_string',
+                                                          'fixed_string1'),)]),
+                  slicer_lib.slice_keys_to_numpy_array([(('fixed_string',
+                                                          'fixed_string2'),)]),
+                  np.array([])
+              ]))
+          np.testing.assert_equal(
+              got[1][constants.SLICE_KEY_TYPES_KEY],
+              types.VarLenTensorValue.from_dense_rows([
+                  slicer_lib.slice_keys_to_numpy_array([(('fixed_string',
+                                                          'fixed_string1'),)]),
+                  slicer_lib.slice_keys_to_numpy_array([(('fixed_string',
+                                                          'fixed_string2'),)]),
+                  np.array([])
+              ]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

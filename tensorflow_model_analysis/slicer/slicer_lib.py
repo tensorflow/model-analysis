@@ -473,6 +473,24 @@ def stringify_slice_key(slice_key: SliceKeyType) -> str:
           separator.join([u'{}'.format(value) for value in values]))
 
 
+def slice_keys_to_numpy_array(slice_keys: List[SliceKeyType]) -> np.ndarray:
+  """Converts a list of slice keys into a numpy array.
+
+  This must be done in a special way to avoid numpy treating the slice key
+  tuples as additional dimensions in the numpy array.
+
+  Args:
+    slice_keys: A list of SliceKeyTypes
+
+  Returns:
+    A numpy array with dtype=object where individual values are tuples.
+  """
+  result = np.empty(len(slice_keys), dtype=object)
+  for i, slice_key in enumerate(slice_keys):
+    result[i] = slice_key
+  return result
+
+
 def is_cross_slice_applicable(
     cross_slice_key: CrossSliceKeyType,
     cross_slicing_spec: config_pb2.CrossSlicingSpec) -> bool:
@@ -549,16 +567,6 @@ def is_cross_slice_key(
   return get_slice_key_type(slice_key) == CrossSliceKeyType
 
 
-def _is_multi_dim_keys(slice_keys: SliceKeyType) -> bool:
-  """Returns true if slice_keys are multi dimensional."""
-  if isinstance(slice_keys, np.ndarray):
-    return True
-  if (isinstance(slice_keys, list) and slice_keys and
-      isinstance(slice_keys[0], list)):
-    return True
-  return False
-
-
 def slice_key_matches_slice_specs(
     slice_key: SliceKeyType, slice_specs: Iterable[SingleSliceSpec]) -> bool:
   """Checks whether a slice key matches any slice spec.
@@ -598,19 +606,15 @@ class _FanoutSlicesDoFn(beam.DoFn):
     key_filter_fn = self._key_filter_fn  # Local cache.
     filtered = {k: v for k, v in element.items() if key_filter_fn(k)}
     slice_keys = element.get(constants.SLICE_KEY_TYPES_KEY)
-    # The query based evaluator will group slices into a multi-dimentional array
-    # with an extra dimension representing the examples matching the query key.
-    # We need to flatten and dedup the slice keys.
-    if _is_multi_dim_keys(slice_keys):
-      arr = np.array(slice_keys)
-      unique_keys = set()
-      for k in arr.flatten():
-        unique_keys.add(k)
-      if not unique_keys and arr.shape:
-        # If only the empty overall slice is in array, it is removed by flatten
-        unique_keys.add(())
-      slice_keys = unique_keys
-    result = [(slice_key, filtered) for slice_key in slice_keys]
+    # The query based evaluator will group slices from multiple examples, so we
+    # deduplicate to avoid overcounting. Depending on whether the rows within a
+    # batch have a variable or fixed length, either a VarLenTensorValue or a 2D
+    # np.ndarray will be created.
+    if isinstance(slice_keys, types.VarLenTensorValue):
+      slice_keys = slice_keys.values
+    elif isinstance(slice_keys, np.ndarray) and len(slice_keys.shape) == 2:
+      slice_keys = slice_keys.flatten()
+    result = [(slice_key, filtered) for slice_key in set(slice_keys)]
     self._num_slices_generated_per_instance.update(len(result))
     self._post_slice_num_instances.inc(len(result))
     return result

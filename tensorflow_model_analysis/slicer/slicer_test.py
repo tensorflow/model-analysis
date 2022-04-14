@@ -342,6 +342,22 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       self.assertEqual(
           stringified_key, slicer.stringify_slice_key(slice_key), msg=name)
 
+  @parameterized.named_parameters(('empty_slice_keys', [], np.array([])),
+                                  ('specific_and_overall_slice_key', [
+                                      ('f', 1), ()
+                                  ], np.array([('f', 1), ()], dtype=object)))
+  def testSliceKeysToNumpy(self, slice_keys_tuples, expected_slice_keys_array):
+    np.testing.assert_array_equal(
+        slicer.slice_keys_to_numpy_array(slice_keys_tuples),
+        expected_slice_keys_array)
+
+  def testSliceKeysToNumpyOverall(self):
+    actual = slicer.slice_keys_to_numpy_array([()])
+    self.assertIsInstance(actual, np.ndarray)
+    self.assertEqual(actual.dtype, object)
+    self.assertEqual(actual.shape, (1,))
+    self.assertEqual(actual[0], ())
+
   def testIsCrossSliceApplicable(self):
     test_cases = [
         (True, 'overall pass', ((), (('b', 2),)), config_pb2.CrossSlicingSpec(
@@ -557,7 +573,10 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
         'predictions': [[1], [1]],
         'labels': [[0], [0]],
         constants.SLICE_KEY_TYPES_KEY:
-            np.array([[(), (('gender', 'f'),)], [(), (('gender', 'f'),)]])
+            np.array([
+                slicer.slice_keys_to_numpy_array([(), (('gender', 'f'),)]),
+                slicer.slice_keys_to_numpy_array([(), (('gender', 'f'),)])
+            ])
     }, {
         'features': {
             'gender': [['f'], ['m']],
@@ -566,8 +585,11 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
         },
         'predictions': [[1], [1]],
         'labels': [[0], [0]],
-        constants.SLICE_KEY_TYPES_KEY: [[(), (('gender', 'f'),)],
-                                        [(), (('gender', 'm'),)]]
+        constants.SLICE_KEY_TYPES_KEY:
+            np.array([
+                slicer.slice_keys_to_numpy_array([(), (('gender', 'f'),)]),
+                slicer.slice_keys_to_numpy_array([(), (('gender', 'm'),)])
+            ])
     }]
 
     with beam.Pipeline() as pipeline:
@@ -595,11 +617,22 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       util.assert_that(result, check_result)
 
   def testMultidimOverallSlices(self):
-    data = [{
-        constants.SLICE_KEY_TYPES_KEY: np.array([[()], [()]])
-    }, {
-        constants.SLICE_KEY_TYPES_KEY: np.array([[()], [()]])
-    }]
+    data = [
+        {
+            constants.SLICE_KEY_TYPES_KEY:  # variable length batch case
+                types.VarLenTensorValue.from_dense_rows([
+                    slicer.slice_keys_to_numpy_array([(('gender', 'f'),), ()]),
+                    slicer.slice_keys_to_numpy_array([()])
+                ])
+        },
+        {
+            constants.SLICE_KEY_TYPES_KEY:  # fixed length batch case
+                np.array([
+                    slicer.slice_keys_to_numpy_array([()]),
+                    slicer.slice_keys_to_numpy_array([()])
+                ])
+        }
+    ]
 
     with beam.Pipeline() as pipeline:
       result = (
@@ -609,10 +642,10 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
       def check_result(got):
         try:
-          self.assertLen(got, 2)
           del data[0][constants.SLICE_KEY_TYPES_KEY]
           del data[1][constants.SLICE_KEY_TYPES_KEY]
           expected_result = [
+              ((('gender', 'f'),), data[0]),
               ((), data[0]),
               ((), data[1]),
           ]

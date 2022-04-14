@@ -19,6 +19,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflow_model_analysis.utils import util
 
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -783,13 +784,16 @@ class UtilTest(tf.test.TestCase):
                 'feature_6':
                     np.array([]),
             },
-            'labels': np.array([1.0]),
-            'example_weights': np.array(0.0),
+            'labels':
+                np.array([1.0]),
+            'example_weights':
+                np.array(0.0),
             'predictions': {
                 'model1': np.array([0.1, 0.2]),
                 'model2': np.array([0.1, 0.2])
             },
-            '_slice_key_types': [()]
+            '_slice_key_types':
+                slicer_lib.slice_keys_to_numpy_array([('gender', 'm'), ()])
         },
         {
             'features': {
@@ -812,7 +816,7 @@ class UtilTest(tf.test.TestCase):
                         indices=np.array([[0, 2]]),
                         dense_shape=np.array([1, 4])),
                 'feature_6':
-                    np.array([1.0]),
+                    np.array([]),
             },
             'labels': np.array([0.0]),
             'example_weights': np.array(0.5),
@@ -820,7 +824,7 @@ class UtilTest(tf.test.TestCase):
                 'model1': np.array([0.3, 0.4]),
                 'model2': np.array([0.3, 0.4])
             },
-            '_slice_key_types': [()]
+            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()])
         },
         {
             'features': {
@@ -851,7 +855,7 @@ class UtilTest(tf.test.TestCase):
                 'model1': np.array([0.5, 0.6]),
                 'model2': np.array([0.5, 0.6])
             },
-            '_slice_key_types': [()]
+            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()])
         },
     ]
 
@@ -886,20 +890,26 @@ class UtilTest(tf.test.TestCase):
                     dense_shape=np.array([3, 1, 5])),
             'feature_6':
                 types.VarLenTensorValue(
-                    values=np.array([1.0, 2.0, 3.0]),
-                    indices=np.array([[1, 0], [2, 0], [2, 1]]),
+                    values=np.array([2.0, 3.0]),
+                    indices=np.array([[2, 0], [2, 1]]),
                     dense_shape=np.array([3, 2]))
         },
-        'labels': np.array([1.0, 0.0, 1.0]),
-        'example_weights': np.array([0.0, 0.5, 1.0]),
+        'labels':
+            np.array([1.0, 0.0, 1.0]),
+        'example_weights':
+            np.array([0.0, 0.5, 1.0]),
         'predictions': {
             'model1': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]),
             'model2': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
         },
-        '_slice_key_types': np.array([(), (), ()])
+        '_slice_key_types':
+            types.VarLenTensorValue(
+                values=slicer_lib.slice_keys_to_numpy_array([('gender', 'm'),
+                                                             (), (), ()]),
+                indices=np.array([[0, 0], [0, 1], [1, 0], [2, 0]]),
+                dense_shape=np.array([3, 2]))
     }
-
-    self.assertAllClose(util.merge_extracts(extracts), expected)
+    np.testing.assert_equal(util.merge_extracts(extracts), expected)
 
   def testSplitExtracts(self):
     extracts = {
@@ -931,21 +941,34 @@ class UtilTest(tf.test.TestCase):
                     values=np.array([1, 2, 3, 3, 3]),
                     indices=np.array([[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]]),
                     dense_shape=np.array([3, 3])),
+            'feature_6':
+                types.VarLenTensorValue(
+                    values=np.array([1, 3, 3, 3]),
+                    indices=np.array([[0, 0], [2, 0], [2, 1], [2, 2]]),
+                    dense_shape=np.array([3, 3])),
         },
-        'labels': np.array([1.0, 0.0, 1.0]),
-        'example_weights': np.array([0.0, 0.5, 1.0]),
+        'labels':
+            np.array([1.0, 0.0, 1.0]),
+        'example_weights':
+            np.array([0.0, 0.5, 1.0]),
         'predictions': {
             'model1': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]),
             'model2': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
         },
-        'empty': None,
+        'empty':
+            None,
         'multi_level_empty': {
             'empty': None,
             'next_level': {
                 'empty': None
             },
         },
-        '_slice_key_types': np.array([(), (), ()])
+        '_slice_key_types':
+            types.VarLenTensorValue.from_dense_rows([
+                slicer_lib.slice_keys_to_numpy_array([(('gender', 'm'),), ()]),
+                slicer_lib.slice_keys_to_numpy_array([()]),
+                slicer_lib.slice_keys_to_numpy_array([()])
+            ])
     }
 
     expected = [
@@ -965,7 +988,9 @@ class UtilTest(tf.test.TestCase):
                         values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
                         nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
                 'feature_5':
-                    np.array([1.0])
+                    np.array([1.0]),
+                'feature_6':
+                    np.array([1.0]),
             },
             'labels': np.array([1.0]),
             'example_weights': np.array([0.0]),
@@ -973,7 +998,14 @@ class UtilTest(tf.test.TestCase):
                 'model1': np.array([0.1, 0.2]),
                 'model2': np.array([0.1, 0.2])
             },
-            '_slice_key_types': np.array([()])
+            'empty': None,
+            'multi_level_empty': {
+                'empty': None,
+                'next_level': {
+                    'empty': None
+                },
+            },
+            '_slice_key_types': np.array([(('gender', 'm'),), ()], dtype=object)
         },
         {
             'features': {
@@ -991,7 +1023,9 @@ class UtilTest(tf.test.TestCase):
                         values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
                         nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
                 'feature_5':
-                    np.array([2.0])
+                    np.array([2.0]),
+                'feature_6':
+                    np.array([]),
             },
             'labels': np.array([0.0]),
             'example_weights': np.array([0.5]),
@@ -999,7 +1033,14 @@ class UtilTest(tf.test.TestCase):
                 'model1': np.array([0.3, 0.4]),
                 'model2': np.array([0.3, 0.4])
             },
-            '_slice_key_types': np.array([()])
+            'empty': None,
+            'multi_level_empty': {
+                'empty': None,
+                'next_level': {
+                    'empty': None
+                },
+            },
+            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()])
         },
         {
             'features': {
@@ -1017,6 +1058,8 @@ class UtilTest(tf.test.TestCase):
                         values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
                         nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
                 'feature_5':
+                    np.array([3.0, 3.0, 3.0]),
+                'feature_6':
                     np.array([3.0, 3.0, 3.0])
             },
             'labels': np.array([1.0]),
@@ -1025,25 +1068,17 @@ class UtilTest(tf.test.TestCase):
                 'model1': np.array([0.5, 0.6]),
                 'model2': np.array([0.5, 0.6])
             },
-            '_slice_key_types': np.array([()])
+            'empty': None,
+            'multi_level_empty': {
+                'empty': None,
+                'next_level': {
+                    'empty': None
+                },
+            },
+            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()])
         },
     ]
-
-    splits = util.split_extracts(extracts)
-    self.assertLen(splits, 3)
-    # Verify empty and delete since None can't be compared with assertAllClose
-    for i in range(3):
-      self.assertIn('empty', splits[i])
-      self.assertIsNone(splits[i]['empty'])
-      del splits[i]['empty']
-      self.assertIn('multi_level_empty', splits[i])
-      self.assertIn('empty', splits[i]['multi_level_empty'])
-      self.assertIsNone(splits[i]['multi_level_empty']['empty'])
-      self.assertIn('next_level', splits[i]['multi_level_empty'])
-      self.assertIn('empty', splits[i]['multi_level_empty']['next_level'])
-      self.assertIsNone(splits[i]['multi_level_empty']['next_level']['empty'])
-      del splits[i]['multi_level_empty']
-    self.assertAllClose(splits, expected)
+    np.testing.assert_equal(util.split_extracts(extracts), expected)
 
 
 if __name__ == '__main__':

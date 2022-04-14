@@ -729,8 +729,6 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
     else:
       if key not in target:
         target[key] = []
-      if isinstance(value, np.ndarray):
-        value = value.tolist()
       target[key].append(value)
 
   def merge_lists(target: types.Extracts) -> types.Extracts:
@@ -755,7 +753,8 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
       t = tf.concat(
           [tf.expand_dims(to_tensorflow_tensor(t), 0) for t in target], 0)
       return to_tensor_value(t)
-    elif len({np.array(t).shape for t in target}) > 1:
+    elif (all(isinstance(t, np.ndarray) for t in target) and
+          len({t.shape for t in target}) > 1):
       return types.VarLenTensorValue.from_dense_rows(target)
     else:
       arr = np.array(target)
@@ -763,13 +762,7 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
       # e.g. [[1], [2], [3]] -> [1, 2, 3]
       if len(arr.shape) == 2 and arr.shape[1] == 1:
         return arr.squeeze(axis=1)
-      # Special case for empty slice arrays since numpy treats empty tuples as
-      # arrays with dimension 0.
-      # e.g. [[()], [()], [()]] -> [(), (), ()]
-      elif len(arr.shape) == 3 and arr.shape[1] == 1 and arr.shape[2] == 0:
-        return arr.squeeze(axis=1)
-      else:
-        return arr
+      return arr
 
   result = {}
   for x in extracts:
@@ -838,10 +831,8 @@ def split_extracts(extracts: types.Extracts,
         values = np.expand_dims(values, 1)
       value = to_tensor_value(values[i])
       # Scalars should be in array form (e.g. np.array([0.0]) vs np.array(0.0)).
-      # The overall slice '()' also needs special handling since numpy encodes
-      # it as dimension of 0 size (e.g. compare np.array([()]) vs np.array([0]))
       if (isinstance(value, np.ndarray) and
-          (not value.shape or value.shape == (0,))):
+          (not value.shape or (value.size and value.shape == (0,)))):
         value = np.expand_dims(value, 0)
       # Add a batch dimension of size 1.
       if keep_batch_dim and isinstance(value, np.ndarray):

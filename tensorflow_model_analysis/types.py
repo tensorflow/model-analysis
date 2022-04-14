@@ -134,11 +134,11 @@ class VarLenTensorValue(
 
   @classmethod
   def from_dense_rows(cls,
-                      dense_rows: Iterable[List[Any]]) -> 'VarLenTensorValue':
+                      dense_rows: Iterable[np.ndarray]) -> 'VarLenTensorValue':
     """Converts a collection of variable length dense arrays into a tensor.
 
     Args:
-      dense_rows: A sequence of possibly variable length lists.
+      dense_rows: A sequence of possibly variable length 1D arrays.
 
     Returns:
       A new VarLenTensorValue containing the sparse representation of the
@@ -151,7 +151,7 @@ class VarLenTensorValue(
     for i, row in enumerate(dense_rows):
       num_rows += 1
       max_row_len = max(max_row_len, len(row))
-      if row:
+      if row.size:
         index_arrays.append(np.array([[i, j] for j in range(len(row))]))
     if index_arrays:
       values = np.concatenate(dense_rows, axis=0)
