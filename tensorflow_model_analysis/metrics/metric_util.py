@@ -665,33 +665,8 @@ def prepare_labels_and_predictions(
         # CLASSES contains the full vocabulary. The check for scores is needed
         # here to avoid matching CLASSES in the eval case (scores are not used
         # in eval).
-        classify_classes = util.to_numpy(
+        label_vocabulary = util.to_numpy(
             predictions[tf.saved_model.CLASSIFY_OUTPUT_CLASSES])
-        # If there are multiple labels and they are strings, then assume the
-        # classify API is being used to output class names for a larger
-        # (unknown) label vocab (e.g. a prediction and class name for the next
-        # video to watch). In this case we want to know if the predicted class
-        # name matches one of the labels that were passed (e.g. is the next
-        # video to watch one of the videos listed in the set of passed labels).
-        # All of our metrics are based on float comparisons and not string
-        # matching, so convert to float labels by looking up each class in the
-        # existing labels.
-        #
-        # Example:
-        #  In:
-        #   labels = ['a', 'b', 'c', 'd', 'e']
-        #   predictions = {
-        #     'scores': [0.1, 0.2, 0.4]
-        #     'classes': ['a', 'unknown', 'b']
-        #   }
-        #  Out:
-        #   # a in labels, 'unknown' not in labels, 'b' in labels
-        #   labels = [1.0, 0.0, 1.0]
-        #   predictions = [0.1, 0.2, 0.4]
-        if labels.dtype.kind in ('U', 'S', 'O'):
-          labels = np.array([float(l in labels) for l in classify_classes])
-        else:
-          label_vocabulary = classify_classes
       if label_vocabulary is not None:
         while len(label_vocabulary.shape) > 1:
           label_vocabulary = label_vocabulary[0]  # Remove the bach dimensions
