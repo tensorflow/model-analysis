@@ -185,17 +185,17 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             labels=np.array([0.0]),
             predictions=np.array([1.0]),
             example_weights=np.array([0.5]),
-            input=self._makeExample(output=1.0).SerializeToString()),
+            features={'output': np.array([1.0])}),
         metric_types.StandardMetricInputs(
             labels=np.array([1.0]),
             predictions=np.array([0.7]),
             example_weights=np.array([0.7]),
-            input=self._makeExample(output=0.7).SerializeToString()),
+            features={'output': np.array([0.7])}),
         metric_types.StandardMetricInputs(
             labels=np.array([0.0]),
             predictions=np.array([0.5]),
             example_weights=np.array([0.9]),
-            input=self._makeExample(output=0.5).SerializeToString())
+            features={'output': np.array([0.5])})
     ]
 
     expected_values = {
@@ -282,8 +282,10 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.5]),
                 'output_2': np.array([0.1]),
             },
-            input=self._makeExample(output_1=1.0,
-                                    output_2=0.0).SerializeToString()),
+            features={
+                'output_1': np.array([1.0]),
+                'output_2': np.array([0.0])
+            }),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([1.0]),
@@ -297,8 +299,10 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.7]),
                 'output_2': np.array([0.4]),
             },
-            input=self._makeExample(output_1=0.7,
-                                    output_2=0.3).SerializeToString()),
+            features={
+                'output_1': np.array([0.7]),
+                'output_2': np.array([0.3])
+            }),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([0.0]),
@@ -312,8 +316,10 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.9]),
                 'output_2': np.array([0.7]),
             },
-            input=self._makeExample(output_1=0.5,
-                                    output_2=0.8).SerializeToString())
+            features={
+                'output_1': np.array([0.5]),
+                'output_2': np.array([0.8])
+            })
     ]
 
     expected_values = {
@@ -422,26 +428,30 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             labels=np.array([0, 0, 1, 0, 0]),
             predictions=np.array([0.1, 0.2, 0.1, 0.25, 0.35]),
             example_weights=np.array([0.5]),
-            input=self._makeExample(
-                output=[0.1, 0.2, 0.1, 0.25, 0.35]).SerializeToString()),
+            features={
+                'output': np.array([0.1, 0.2, 0.1, 0.25, 0.35]),
+            }),
         metric_types.StandardMetricInputs(
             labels=np.array([0, 1, 0, 0, 0]),
             predictions=np.array([0.2, 0.3, 0.05, 0.15, 0.3]),
             example_weights=np.array([0.7]),
-            input=self._makeExample(
-                output=[0.2, 0.3, 0.05, 0.15, 0.3]).SerializeToString()),
+            features={
+                'output': np.array([0.2, 0.3, 0.05, 0.15, 0.3]),
+            }),
         metric_types.StandardMetricInputs(
             labels=np.array([0, 0, 0, 1, 0]),
             predictions=np.array([0.01, 0.2, 0.09, 0.5, 0.2]),
             example_weights=np.array([0.9]),
-            input=self._makeExample(
-                output=[0.01, 0.2, 0.09, 0.5, 0.2]).SerializeToString()),
+            features={
+                'output': np.array([0.01, 0.2, 0.09, 0.5, 0.2]),
+            }),
         metric_types.StandardMetricInputs(
             labels=np.array([0, 1, 0, 0, 0]),
             predictions=np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
             example_weights=np.array([0.3]),
-            input=self._makeExample(
-                output=[0.3, 0.2, 0.05, 0.4, 0.05]).SerializeToString())
+            features={
+                'output': np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
+            })
     ]
 
     # Unweighted:
@@ -536,9 +546,14 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.5]),
                 'output_2': np.array([0.5]),
             },
-            input=self._makeExample(
-                output_1=[0.1, 0.2, 0.1, 0.25, 0.35],
-                output_2=[0.1, 0.2, 0.1, 0.25, 0.35]).SerializeToString()),
+            features={
+                'output_1': np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
+                'output_2': np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+            },
+            transformed_features={
+                'output_1': np.array([0.1, 0.2, 0.1, 0.25, 0.35]),
+                'output_2': np.array([0.1, 0.2, 0.1, 0.25, 0.35])
+            }),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([0, 1, 0, 0, 0]),
@@ -552,9 +567,10 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.7]),
                 'output_2': np.array([0.7]),
             },
-            input=self._makeExample(
-                output_1=[0.2, 0.3, 0.05, 0.15, 0.3],
-                output_2=[0.2, 0.3, 0.05, 0.15, 0.3]).SerializeToString()),
+            features={
+                'output_1': np.array([0.2, 0.3, 0.05, 0.15, 0.3]),
+                'output_2': np.array([0.2, 0.3, 0.05, 0.15, 0.3])
+            }),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([0, 0, 0, 1, 0]),
@@ -568,9 +584,10 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.9]),
                 'output_2': np.array([0.9]),
             },
-            input=self._makeExample(
-                output_1=[0.01, 0.2, 0.09, 0.5, 0.2],
-                output_2=[0.01, 0.2, 0.09, 0.5, 0.2]).SerializeToString()),
+            features={
+                'output_1': np.array([0.01, 0.2, 0.09, 0.5, 0.2]),
+                'output_2': np.array([0.01, 0.2, 0.09, 0.5, 0.2])
+            }),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([0, 1, 0, 0, 0]),
@@ -584,9 +601,10 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.3]),
                 'output_2': np.array([0.3]),
             },
-            input=self._makeExample(
-                output_1=[0.3, 0.2, 0.05, 0.4, 0.05],
-                output_2=[0.3, 0.2, 0.05, 0.4, 0.05]).SerializeToString())
+            features={
+                'output_1': np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
+                'output_2': np.array([0.3, 0.2, 0.05, 0.4, 0.05])
+            })
     ]
 
     # Unweighted:

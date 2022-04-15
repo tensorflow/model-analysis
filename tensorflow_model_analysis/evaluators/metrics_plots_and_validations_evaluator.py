@@ -38,7 +38,6 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.utils import util
-from tfx_bsl.tfxio import tensor_adapter
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 SliceKeyTypeVar = TypeVar('SliceKeyTypeVar', slicer.SliceKeyType,
@@ -66,9 +65,7 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
     attributions_key: str = constants.ATTRIBUTIONS_KEY,
     run_after: str = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     schema: Optional[schema_pb2.Schema] = None,
-    random_seed_for_testing: Optional[int] = None,
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
-) -> evaluator.Evaluator:
+    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -82,12 +79,6 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
     run_after: Extractor to run after (None means before any extractors).
     schema: A schema to use for customizing metrics and plots.
     random_seed_for_testing: Seed to use for unit testing.
-    tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. The model's signature will be invoked
-      with those tensors (matched by names). If None, an attempt will be made to
-      create an adapter based on the model's input signature otherwise the model
-      will be invoked with raw examples (assuming a  signature of a single 1-D
-      string tensor).
 
   Returns:
     Evaluator for evaluating metrics and plots. The output will be stored under
@@ -109,8 +100,7 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
           plots_key=plots_key,
           attributions_key=attributions_key,
           schema=schema,
-          random_seed_for_testing=random_seed_for_testing,
-          tensor_adapter_config=tensor_adapter_config))
+          random_seed_for_testing=random_seed_for_testing))
 
 
 MetricComputations = NamedTuple('MetricComputations', [
@@ -324,6 +314,7 @@ class _PreprocessorDoFn(beam.DoFn):
       extracts = copy.copy(extracts)
       # DoFn.process should return an Iterable but we only want a single value.
       extracts = next(iter(preprocessor.process(extracts)))
+      # TODO(b/229267982): Consider removing include flags.
       default_combiner_input = metric_util.to_standard_metric_inputs(
           extracts,
           include_labels=constants.LABELS_KEY in preprocessor.include_filter,
@@ -331,8 +322,6 @@ class _PreprocessorDoFn(beam.DoFn):
                                in preprocessor.include_filter),
           include_features=(constants.FEATURES_KEY
                             in preprocessor.include_filter),
-          include_transformed_features=(constants.TRANSFORMED_FEATURES_KEY
-                                        in preprocessor.include_filter),
           include_attributions=(constants.ATTRIBUTIONS_KEY
                                 in preprocessor.include_filter))
       output[_DEFAULT_COMBINER_INPUT_KEY] = default_combiner_input
@@ -669,9 +658,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     plots_key: str = constants.PLOTS_KEY,
     attributions_key: str = constants.ATTRIBUTIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
-    random_seed_for_testing: Optional[int] = None,
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
-) -> evaluator.Evaluation:
+    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
   """Computes metrics and plots.
 
   Args:
@@ -687,12 +674,6 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     attributions_key: Name to use for attributions key in Evaluation output.
     schema: A schema to use for customizing metrics and plots.
     random_seed_for_testing: Seed to use for unit testing.
-    tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. The model's signature will be invoked
-      with those tensors (matched by names). If None, an attempt will be made to
-      create an adapter based on the model's input signature otherwise the model
-      will be invoked with raw examples (assuming a  signature of a single 1-D
-      string tensor).
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
@@ -715,8 +696,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       if eval_shared_model.model_type == constants.TF_KERAS:
         computations.extend(
             keras_util.metric_computations_using_keras_saved_model(
-                model_name, eval_shared_model.model_loader, eval_config,
-                tensor_adapter_config))
+                model_name, eval_shared_model.model_loader, eval_config))
       elif (eval_shared_model.model_type == constants.TF_ESTIMATOR and
             eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags):
         computations.extend(
@@ -866,9 +846,7 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     attributions_key: str = constants.ATTRIBUTIONS_KEY,
     validations_key: str = constants.VALIDATIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
-    random_seed_for_testing: Optional[int] = None,
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
-) -> evaluator.Evaluation:
+    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
   """Evaluates metrics, plots, and validations.
 
   Args:
@@ -888,12 +866,6 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     validations_key: Name to use for validation key in Evaluation output.
     schema: A schema to use for customizing metrics and plots.
     random_seed_for_testing: Seed to use for unit testing.
-    tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. The model's signature will be invoked
-      with those tensors (matched by names). If None, an attempt will be made to
-      create an adapter based on the model's input signature otherwise the model
-      will be invoked with raw examples (assuming a  signature of a single 1-D
-      string tensor).
 
   Returns:
     Evaluation containing dict of PCollections of (slice_key, results_dict)
@@ -943,8 +915,7 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
             plots_key=plots_key,
             attributions_key=attributions_key,
             schema=schema,
-            random_seed_for_testing=random_seed_for_testing,
-            tensor_adapter_config=tensor_adapter_config))
+            random_seed_for_testing=random_seed_for_testing))
 
     for k, v in evaluation.items():
       if k not in evaluations:

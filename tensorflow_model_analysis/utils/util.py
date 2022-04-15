@@ -540,7 +540,7 @@ def include_filter(
   result = {}
   for key, subkeys in include.items():
     if key in target:
-      if subkeys:
+      if subkeys and target[key] is not None:
         result[key] = include_filter(subkeys, target[key])
       else:
         result[key] = target[key]

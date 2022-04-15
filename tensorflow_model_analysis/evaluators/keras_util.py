@@ -29,15 +29,12 @@ from tensorflow_model_analysis.metrics import tf_metric_accumulators
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.utils import util
-from tfx_bsl.coders import example_coder
-from tfx_bsl.tfxio import tensor_adapter
 
 
 def metric_computations_using_keras_saved_model(
     model_name: str,
     model_loader: types.ModelLoader,
     eval_config: Optional[config_pb2.EvalConfig],
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
     batch_size: Optional[int] = None) -> metric_types.MetricComputations:
   """Returns computations for computing metrics natively using keras.
 
@@ -46,8 +43,6 @@ def metric_computations_using_keras_saved_model(
     model_loader: Loader for shared model containing keras saved model to use
       for metric computations.
     eval_config: Eval config.
-    tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch.
     batch_size: Batch size to use during evaluation (testing only).
   """
   model = model_loader.load()
@@ -82,16 +77,19 @@ def metric_computations_using_keras_saved_model(
     else:
       output_names = []
     keys = _metric_keys(model.metrics, model_name, output_names)
+    specs = model_util.get_input_specs(model_name, signature_name=None)
+    feature_keys = list(specs.keys()) if specs else []
     return [
         metric_types.MetricComputation(
             keys=keys,
-            # TODO(b/178158073): By using inputs instead of batched features we
-            # incur the cost of having to parse the inputs a second time. In
-            # addition, transformed features (i.e. TFT, KPL) are not supported.
-            preprocessor=metric_types.InputPreprocessor(),
+            preprocessor=metric_types.StandardMetricInputsPreprocessorList([
+                metric_types.FeaturePreprocessor(
+                    feature_keys=feature_keys, model_names=[model_name]),
+                metric_types.TransformedFeaturePreprocessor(
+                    feature_keys=feature_keys, model_names=[model_name])
+            ]),
             combiner=_KerasEvaluateCombiner(keys, model_name, model_loader,
-                                            eval_config, tensor_adapter_config,
-                                            batch_size))
+                                            eval_config, batch_size))
     ]
 
 
@@ -372,25 +370,9 @@ class _KerasEvaluateCombiner(_KerasCombiner):
                model_name: str,
                model_loader: types.ModelLoader,
                eval_config: Optional[config_pb2.EvalConfig],
-               tensor_adapter_config: Optional[
-                   tensor_adapter.TensorAdapterConfig] = None,
                desired_batch_size: Optional[int] = None):
     super().__init__(keys, model_name, model_loader, eval_config,
                      desired_batch_size, 'keras_evaluate_combine')
-    self._tensor_adapter_config = tensor_adapter_config
-    self._tensor_adapter = None
-    self._decoder = None
-
-  def setup(self):
-    super().setup()
-    # TODO(b/180125126): Re-enable use of passed in TensorAdapter after bug
-    # requiring matching schema's is fixed.
-    # if self._tensor_adapter is None and
-    #    self._tensor_adapter_config is not None:
-    #   self._tensor_adapter = tensor_adapter.TensorAdapter(
-    #       self._tensor_adapter_config)
-    if self._decoder is None:
-      self._decoder = example_coder.ExamplesToRecordBatchDecoder()
 
   def _metrics(self) -> Iterable[tf.keras.metrics.Metric]:
     return self._model.metrics
@@ -424,20 +406,29 @@ class _KerasEvaluateCombiner(_KerasCombiner):
                 output_name,
                 flatten=False,
                 example_weighted=True))
-      accumulator.add_input(i, element.inputs if i == 0 else None, labels,
-                            example_weights)
+
+      if i == 0:
+        if element.transformed_features:
+          features = {}
+          features.update(element.features)
+          features.update(element.transformed_features)
+        else:
+          features = element.features
+      else:
+        features = None
+      accumulator.add_input(i, features, labels, example_weights)
 
     return accumulator
 
   def _update_state(self,
                     accumulator: tf_metric_accumulators.TFMetricsAccumulator):
-    serialized_examples = None
+    features = {}
     labels = {}
     example_weights = {}
     for i, output_name in enumerate(self._output_names):
-      e, l, w = accumulator.get_inputs(i)
+      f, l, w = accumulator.get_inputs(i)
       if i == 0:
-        serialized_examples = e
+        features = util.merge_extracts(f)
       if not output_name and len(self._output_names) > 1:
         # The empty output_name for multi-output models is not used for inputs.
         continue
@@ -451,25 +442,14 @@ class _KerasEvaluateCombiner(_KerasCombiner):
       # Single-output models don't use dicts.
       labels = next(iter(labels.values()))
       example_weights = next(iter(example_weights.values()))
-    # TODO(b/178158073): Remove record batch and use features directly.
-    # Serialized examples may be encoded as [np.array(['...']), ...], this will
-    # convert them to a list of strings.
-    record_batch = self._decoder.DecodeBatch(
-        np.array(serialized_examples, dtype=object).squeeze().tolist())
-    tensor_representations = None
-    if self._tensor_adapter:
-      tensor_representations = self._tensor_adapter.tensor_representations
-    tensor_values = util.record_batch_to_tensor_values(record_batch,
-                                                       tensor_representations)
     input_specs = model_util.get_input_specs(self._model, signature_name=None)
-    inputs = model_util.get_inputs(tensor_values, input_specs)
+    inputs = model_util.get_inputs(features, input_specs)
     if inputs is None:
       raise ValueError('unable to prepare inputs for evaluation: '
-                       'input_specs={}, record_batch={}'.format(
-                           input_specs, record_batch))
+                       f'input_specs={input_specs}, features={features}')
     self._model.evaluate(
         x=inputs,
         y=labels,
-        batch_size=record_batch.num_rows,
+        batch_size=util.batch_size(features),
         verbose=0,
         sample_weight=example_weights)

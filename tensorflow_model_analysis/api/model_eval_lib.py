@@ -645,9 +645,7 @@ def default_evaluators(  # pylint: disable=invalid-name
     min_slice_size: int = 1,
     serialize: bool = False,
     random_seed_for_testing: Optional[int] = None,
-    config_version: Optional[int] = None,
-    tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None
-) -> List[evaluator.Evaluator]:
+    config_version: Optional[int] = None) -> List[evaluator.Evaluator]:
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
@@ -664,9 +662,6 @@ def default_evaluators(  # pylint: disable=invalid-name
       be explicitly set by users. It is only intended to be used in cases where
       the provided eval_config was generated internally, and thus not a reliable
       indicator of user intent.
-    tensor_adapter_config: Tensor adapter config which specifies how to obtain
-      tensors from the Arrow RecordBatch. If None, an attempt will be made to
-      create the tensors using default TensorRepresentations.
   """
   disabled_outputs = []
   if eval_config:
@@ -717,8 +712,7 @@ def default_evaluators(  # pylint: disable=invalid-name
             eval_config=eval_config,
             eval_shared_model=eval_shared_model,
             schema=schema,
-            random_seed_for_testing=random_seed_for_testing,
-            tensor_adapter_config=tensor_adapter_config)
+            random_seed_for_testing=random_seed_for_testing)
     ]
 
 
@@ -1141,8 +1135,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         eval_shared_model=eval_shared_model,
         random_seed_for_testing=random_seed_for_testing,
         schema=schema,
-        config_version=config_version,
-        tensor_adapter_config=tensor_adapter_config)
+        config_version=config_version)
 
   for v in evaluators:
     evaluator.verify_evaluator(v, extractors)
