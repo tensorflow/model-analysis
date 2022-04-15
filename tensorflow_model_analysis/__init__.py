@@ -134,6 +134,7 @@ try:
   from tensorflow_model_analysis.types import TensorType
   from tensorflow_model_analysis.types import TensorTypeMaybeDict
   from tensorflow_model_analysis.types import TensorValue
+  from tensorflow_model_analysis.types import VarLenTensorValue
 
   # Import VERSION as __version__ for compatibility with other TFX components.
   from tensorflow_model_analysis.version import VERSION as __version__
