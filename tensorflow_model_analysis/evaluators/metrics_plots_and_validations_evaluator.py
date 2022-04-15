@@ -543,6 +543,9 @@ def _AddDerivedCrossSliceAndDiffMetrics(  # pylint: disable=invalid-name
       for k, v in result.items():
         if _is_private_metrics(k):
           continue
+        if k.is_diff:
+          # For metrics which directly produce diff metrics, we skip this step
+          continue
         if k.model_name != baseline_model_name and k.make_baseline_key(
             baseline_model_name) in result:
           # Check if metric is diffable, skip plots and non-numerical values.
