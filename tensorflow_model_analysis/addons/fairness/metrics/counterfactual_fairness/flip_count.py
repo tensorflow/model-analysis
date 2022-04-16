@@ -15,13 +15,14 @@
 
 import collections
 
-from typing import Dict, Optional, Any, Iterator, Sequence, Tuple, List
+from typing import Any, Dict, List, Optional, Iterator, Sequence, Tuple
 
 import numpy as np
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.utils import util
 
 FLIP_COUNT_NAME = 'flip_count'
@@ -58,7 +59,7 @@ class FlipCount(metric_types.Metric):
   """
 
   def __init__(self,
-               counterfactual_prediction_key: str,
+               counterfactual_prediction_key: Optional[str] = None,
                example_id_key: Optional[str] = None,
                example_ids_count: int = DEFAULT_NUM_EXAMPLE_IDS,
                name: str = FLIP_COUNT_NAME,
@@ -67,14 +68,15 @@ class FlipCount(metric_types.Metric):
 
     Args:
       counterfactual_prediction_key: Prediction label key for counterfactual
-        example to be used to measure the flip count.
+        example to be used to measure the flip count if the counterfactual
+        example is contained within features. Otherwise the baseline model
+        prediction will be used as the counterfactual.
       example_id_key: Feature key containing example id.
       example_ids_count: Max number of example ids to be extracted for false
         positives and false negatives.
       name: Metric name.
       thresholds: Thresholds to be used to measure flips.
     """
-
     super().__init__(
         metric_util.merge_per_key_computations(flip_count),
         name=name,
@@ -125,7 +127,7 @@ def create_metric_keys(
 
 
 def flip_count(
-    counterfactual_prediction_key: str,
+    counterfactual_prediction_key: Optional[str] = None,
     example_id_key: Optional[str] = None,
     example_ids_count: int = DEFAULT_NUM_EXAMPLE_IDS,
     name: str = FLIP_COUNT_NAME,
@@ -191,19 +193,43 @@ def flip_count(
       Tuple of (label, prediction, example_weight).
 
     Raises:
-      Value error if counterfactual prediction key is absent / none or
-        prediction key is none or counterfactual prediction and prediction key
-        sizes are different.
+      ValueError: If counterfactual prediction key is not found within either
+        the features or predictions.
+      ValueError: If predictions is None or empty.
     """
     del (sub_key, aggregation_type, class_weights, fractional_labels, flatten
         )  # unused
 
-    if counterfactual_prediction_key not in inputs.features:
+    # TODO(sokeefe): Look into removing the options to pass counterfactual
+    # predictions in a feature and instead as a baseline model.
+    if (counterfactual_prediction_key is not None and
+        counterfactual_prediction_key in inputs.features):
+      counterfactual_prediction = inputs.features[counterfactual_prediction_key]
+    elif eval_config is not None:
+      counterfactual_model_spec = model_util.get_baseline_model_spec(
+          eval_config)
+      if counterfactual_model_spec is not None:
+        _, counterfactual_prediction, _ = next(
+            metric_util.to_label_prediction_example_weight(
+                inputs,
+                eval_config=eval_config,
+                model_name=counterfactual_model_spec.name,
+                output_name=output_name,
+                example_weighted=example_weighted,
+                fractional_labels=False,  # Labels are ignored for flip counts.
+                flatten=False,  # Flattened below
+                allow_none=True,  # Allow None labels
+                require_single_example_weight=True))
+      else:
+        raise ValueError('The Counterfactual model must be listed with '
+                         f'`is_baseline` equal to `True`. Found: {eval_config}')
+    else:
       raise ValueError(
-          '%s feature key not found (required for FlipCount metric)' %
-          counterfactual_prediction_key)
-
-    counterfactual_prediction = inputs.features[counterfactual_prediction_key]
+          '`counterfactual_prediction` was not found within the provided '
+          'inputs. It must be included as either a feature key or within the '
+          'predictions. Found:\n'
+          f'`counterfactual_prediction_key`: {counterfactual_prediction_key}\n'
+          f'`inputs.prediction`:{inputs.prediction}')
 
     if counterfactual_prediction is None:
       raise ValueError(

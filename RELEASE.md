@@ -27,6 +27,8 @@
 *   Update variable name to respectful terminology, rebuild JS
 *   Fixes issues preventing standard preprocessors from being applied.
 *   Allow merging extracts including sparse tensors with different dense shapes.
+*   Allow counterfactual metrics to be calculated from predictions instead of
+    only features.
 
 ## Breaking Changes
 
