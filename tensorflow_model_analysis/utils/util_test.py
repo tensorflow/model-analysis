@@ -155,7 +155,12 @@ class UtilTest(tf.test.TestCase):
                         np.array([0, 3, 6]),
                         np.array([0, 2, 3, 4, 5, 5, 8]),
                         np.array([0, 2, 3, 3, 6, 9, 10, 11, 13])
-                    ])
+                    ]),
+            'feature_4':
+                types.VarLenTensorValue(
+                    values=np.array([1, 2, 3]),
+                    indices=np.array([[0, 0], [0, 1], [1, 0]]),
+                    dense_shape=np.array([2, 2]))
         },
         'labels': np.array([1])
     }

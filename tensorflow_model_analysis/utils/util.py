@@ -135,8 +135,17 @@ def to_tensorflow_tensor(tensor_value: types.TensorValue) -> types.TensorType:
         values=tensor_value.values,
         indices=tensor_value.indices,
         dense_shape=tensor_value.dense_shape)
+  elif isinstance(tensor_value, types.VarLenTensorValue):
+    return tf.SparseTensor(
+        values=tensor_value.values,
+        indices=tensor_value.indices,
+        dense_shape=tensor_value.dense_shape)
   else:
-    return tf.convert_to_tensor(tensor_value)
+    try:
+      return tf.convert_to_tensor(tensor_value)
+    except Exception as e:
+      raise RuntimeError(f'Failed to convert tensor_value: {tensor_value} of '
+                         f'type {type(tensor_value)}') from e
 
 
 def to_tensorflow_tensors(
