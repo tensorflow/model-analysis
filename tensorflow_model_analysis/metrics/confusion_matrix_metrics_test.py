@@ -32,6 +32,7 @@ _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
                                  parameterized.TestCase):
 
+  # LINT.IfChange(tfma_confusion_matrix_metrics_tests)
   @parameterized.named_parameters(
       ('auc', confusion_matrix_metrics.AUC(), 0.26),
       ('auc_precision_recall', confusion_matrix_metrics.AUCPrecisionRecall(),
@@ -325,6 +326,7 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+  # LINT.ThenChange(../google/sql:uda_auc_tests)
 
   @parameterized.named_parameters(
       ('auc', confusion_matrix_metrics.AUC(), 0.8571428),
