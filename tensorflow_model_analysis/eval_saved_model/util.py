@@ -17,6 +17,7 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.utils import util
 
@@ -483,7 +484,7 @@ def export_legacy_eval_savedmodel(
     export_dir_base: str,
     eval_input_receiver_fn: Callable[[], Any],
     serving_input_receiver_fn: Optional[Callable[
-        [], tf.estimator.export.ServingInputReceiver]] = None,
+        [], tf_estimator.export.ServingInputReceiver]] = None,
     checkpoint_path: Optional[str] = None) -> Optional[bytes]:
   """Exports a legacy EvalSavedModel for the given estimator.
 
@@ -517,7 +518,7 @@ def export_legacy_eval_savedmodel(
 def legacy_export_strategy(
     eval_input_receiver_fn: Callable[[], Any],
     serving_input_receiver_fn: Optional[Callable[
-        [], tf.estimator.export.ServingInputReceiver]] = None,
+        [], tf_estimator.export.ServingInputReceiver]] = None,
     exports_to_keep: Optional[int] = 5,
     export_eval_savedmodel_fn: Optional[Callable[..., Any]] = None) -> Any:
   """Creates legacy export strategy using the given export_fn."""
