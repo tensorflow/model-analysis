@@ -310,7 +310,7 @@ def convert_metric_value_to_proto(
 def convert_slice_metrics_to_proto(
     metrics: Tuple[slicer.SliceKeyOrCrossSliceKeyType,
                    metric_types.MetricsDict],
-    add_metrics_callbacks: List[types.AddMetricsCallbackType]
+    add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]]
 ) -> metrics_for_slice_pb2.MetricsForSlice:
   """Converts the given slice metrics into serialized proto MetricsForSlice.
 
@@ -411,7 +411,7 @@ def convert_slice_metrics_to_proto(
 
 def convert_slice_plots_to_proto(
     plots: Tuple[slicer.SliceKeyOrCrossSliceKeyType, Dict[Any, Any]],
-    add_metrics_callbacks: List[types.AddMetricsCallbackType]
+    add_metrics_callbacks: Optional[List[types.AddMetricsCallbackType]]
 ) -> metrics_for_slice_pb2.PlotsForSlice:
   """Converts the given slice plots into PlotsForSlice proto.
 
