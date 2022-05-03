@@ -17,6 +17,7 @@
 ## Major Features and Improvements
 
 *   Creates a VarLenTensorValue for storing batched, variable length extracts.
+*   Adds a load_metrics_as_dataframe util to load metrics file as dataframe.
 
 ## Bug fixes and other Changes
 
