@@ -81,9 +81,13 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
 
     def _GenerateQueries(
         schema: pa.Schema) -> List[sql_util.RecordBatchSQLSliceQuery]:
-      return [
-          sql_util.RecordBatchSQLSliceQuery(sql, schema) for sql in self._sqls
-      ]
+      result = []
+      for sql in self._sqls:
+        try:
+          result.append(sql_util.RecordBatchSQLSliceQuery(sql, schema))
+        except Exception as e:
+          raise RuntimeError(f'Failed to parse sql:\n\n{sql}') from e
+      return result
 
     # A cache for compiled sql queries, keyed by record batch schemas.
     # This way the extractor can work with record batches of different schemas,
