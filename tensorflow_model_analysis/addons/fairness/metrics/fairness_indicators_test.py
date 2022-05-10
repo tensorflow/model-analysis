@@ -72,8 +72,7 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-          self.assertLen(got_metrics, 16)  # 2 thresholds * 8 metrics
-          self.assertDictElementsAlmostEqual(
+          np.testing.assert_equal(
               got_metrics, {
                   metric_types.MetricKey(
                       name='fairness_indicators_metrics/false_positive_rate@0.3'
@@ -106,6 +105,12 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
                   ):
                       0.0,
                   metric_types.MetricKey(
+                      name='fairness_indicators_metrics/precision@0.3'):
+                      2.0 / 3.0,
+                  metric_types.MetricKey(
+                      name='fairness_indicators_metrics/recall@0.3'):
+                      1.0,
+                  metric_types.MetricKey(
                       name='fairness_indicators_metrics/false_positive_rate@0.7'
                   ):
                       0.0,
@@ -134,7 +139,13 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
                   metric_types.MetricKey(
                       name='fairness_indicators_metrics/false_omission_rate@0.7'
                   ):
-                      1.0 / 3.0
+                      1.0 / 3.0,
+                  metric_types.MetricKey(
+                      name='fairness_indicators_metrics/precision@0.7'):
+                      1.0,
+                  metric_types.MetricKey(
+                      name='fairness_indicators_metrics/recall@0.7'):
+                      0.5
               })
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -176,7 +187,7 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-          self.assertLen(got_metrics, 8)  # 1 threshold * 8 metrics
+          self.assertLen(got_metrics, 10)  # 1 threshold * 10 metrics
           self.assertTrue(
               math.isnan(got_metrics[metric_types.MetricKey(
                   name='fairness_indicators_metrics/false_negative_rate@0.5')]))
@@ -190,10 +201,10 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   @parameterized.named_parameters(
-      ('_default_threshold', {}, 72, ()),
+      ('_default_threshold', {}, 90, ()),
       ('_thresholds_with_different_digits', {
           'thresholds': [0.1, 0.22, 0.333]
-      }, 24, (metric_types.MetricKey(
+      }, 30, (metric_types.MetricKey(
           name='fairness_indicators_metrics/false_positive_rate@0.100',
           example_weighted=True),
               metric_types.MetricKey(
@@ -277,6 +288,14 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
           example_weighted=True):
           0.25,
       metric_types.MetricKey(
+          name='fairness_indicators_metrics/false_negative_rate@0.5',
+          example_weighted=True):
+          float('nan'),
+      metric_types.MetricKey(
+          name='fairness_indicators_metrics/true_positive_rate@0.5',
+          example_weighted=True):
+          float('nan'),
+      metric_types.MetricKey(
           name='fairness_indicators_metrics/false_positive_rate@0.5',
           example_weighted=True):
           0.75,
@@ -284,6 +303,17 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
           name='fairness_indicators_metrics/false_discovery_rate@0.5',
           example_weighted=True):
           1.0,
+      metric_types.MetricKey(
+          name='fairness_indicators_metrics/false_omission_rate@0.5',
+          example_weighted=True):
+          0.0,
+      metric_types.MetricKey(
+          name='fairness_indicators_metrics/precision@0.5',
+          example_weighted=True):
+          0.0,
+      metric_types.MetricKey(
+          name='fairness_indicators_metrics/recall@0.5', example_weighted=True):
+          float('nan'),
   }), ('_has_model_name', [{
       'labels': np.array([0.0]),
       'predictions': {
@@ -316,6 +346,16 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
           example_weighted=True):
           0.25,
       metric_types.MetricKey(
+          name='fairness_indicators_metrics/false_negative_rate@0.5',
+          model_name='model1',
+          example_weighted=True):
+          float('nan'),
+      metric_types.MetricKey(
+          name='fairness_indicators_metrics/true_positive_rate@0.5',
+          model_name='model1',
+          example_weighted=True):
+          float('nan'),
+      metric_types.MetricKey(
           name='fairness_indicators_metrics/false_positive_rate@0.5',
           model_name='model1',
           example_weighted=True):
@@ -325,6 +365,21 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
           model_name='model1',
           example_weighted=True):
           1.0,
+      metric_types.MetricKey(
+          name='fairness_indicators_metrics/false_omission_rate@0.5',
+          model_name='model1',
+          example_weighted=True):
+          0.0,
+      metric_types.MetricKey(
+          name='fairness_indicators_metrics/precision@0.5',
+          model_name='model1',
+          example_weighted=True):
+          0.0,
+      metric_types.MetricKey(
+          name='fairness_indicators_metrics/recall@0.5',
+          model_name='model1',
+          example_weighted=True):
+          float('nan'),
   }))
   def testFairessIndicatorsMetricsWithInput(self, input_examples,
                                             computations_kwargs,
@@ -360,10 +415,7 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-          self.assertLen(got_metrics, 8)  # 1 threshold * 8 metrics
-          for metrics_key in expected_result:
-            self.assertEqual(got_metrics[metrics_key],
-                             expected_result[metrics_key])
+          np.testing.assert_equal(got_metrics, expected_result)
         except AssertionError as err:
           raise util.BeamAssertException(err)
 

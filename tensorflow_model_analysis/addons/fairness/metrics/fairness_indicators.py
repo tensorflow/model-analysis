@@ -26,7 +26,7 @@ FAIRNESS_INDICATORS_SUB_METRICS = ('false_positive_rate', 'false_negative_rate',
                                    'true_positive_rate', 'true_negative_rate',
                                    'positive_rate', 'negative_rate',
                                    'false_discovery_rate',
-                                   'false_omission_rate')
+                                   'false_omission_rate', 'precision', 'recall')
 
 DEFAULT_THRESHOLDS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
@@ -113,6 +113,8 @@ def _fairness_indicators_metrics_at_thresholds(
           (num_positives + num_negatives) or float('nan'))
       nr = (metric.tn[i] + metric.fn[i]) / (
           (num_positives + num_negatives) or float('nan'))
+      precision = metric.tp[i] / ((metric.tp[i] + metric.fp[i]) or float('nan'))
+      recall = metric.tp[i] / ((metric.tp[i] + metric.fn[i]) or float('nan'))
 
       fdr = metric.fp[i] / ((metric.fp[i] + metric.tp[i]) or float('nan'))
       fomr = metric.fn[i] / ((metric.fn[i] + metric.tn[i]) or float('nan'))
@@ -131,6 +133,9 @@ def _fairness_indicators_metrics_at_thresholds(
              ['false_discovery_rate']] = fdr
       output[metric_key_by_name_by_threshold[threshold]
              ['false_omission_rate']] = fomr
+      output[metric_key_by_name_by_threshold[threshold]['precision']] = (
+          precision)
+      output[metric_key_by_name_by_threshold[threshold]['recall']] = recall
 
     return output
 
