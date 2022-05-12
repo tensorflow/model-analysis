@@ -537,7 +537,7 @@
     following command:
 
     ```
-    pip install -i https://pypi-nightly.tensorflow.org/simple tensorflow-model-analysis
+    pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple tensorflow-model-analysis
     ```
 
     Note: These nightly packages are unstable and breakages are likely to
