@@ -291,7 +291,7 @@ setup_args = {
     'install_requires': [
         # Sort alphabetically
         'absl-py>=0.9,<2.0.0',
-        'apache-beam[gcp]>=2.36,<3',
+        'apache-beam[gcp]>=2.38,<3',
         'ipython>=7,<8',
         'ipywidgets>=7,<8',
         'numpy>=1.16,<2',

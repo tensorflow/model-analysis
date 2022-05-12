@@ -5,6 +5,7 @@
 ## Major Features and Improvements
 
 *   `SqlSliceKeyExtractor` now supports slicing on transformed features.
+*   Depends on `apache-beam[gcp]>=2.38,<3`.
 
 ## Bug fixes and other Changes
 
@@ -16,18 +17,23 @@
 
 ## Major Features and Improvements
 
-*   Creates a VarLenTensorValue for storing batched, variable length extracts.
-*   Adds a load_metrics_as_dataframe util to load metrics file as dataframe.
+*   Creates a VarLenTensorValue for storing batched, variable length extracts.*
+    Adds a load_metrics_as_dataframe util to load metrics file as dataframe.
 
-## Bug fixes and other Changes
+    ## Bug fixes and other Changes
 
 *   Fixes issue attempting to parse metrics, plots, and attributions without a
     format suffix.
+
 *   Fixes the non-deterministic key ordering caused by proto string
     serialization in metrics validator.
+
 *   Update variable name to respectful terminology, rebuild JS
+
 *   Fixes issues preventing standard preprocessors from being applied.
+
 *   Allow merging extracts including sparse tensors with different dense shapes.
+
 *   Allow counterfactual metrics to be calculated from predictions instead of
     only features.
 
