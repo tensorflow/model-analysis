@@ -4,14 +4,31 @@
 
 ## Major Features and Improvements
 
-*   `SqlSliceKeyExtractor` now supports slicing on transformed features.
-*   Depends on `apache-beam[gcp]>=2.38,<3`.
-
 ## Bug fixes and other Changes
 
 ## Breaking Changes
 
 ## Deprecations
+
+# Version 0.39.0
+
+## Major Features and Improvements
+
+*   `SqlSliceKeyExtractor` now supports slicing on transformed features.
+
+## Bug fixes and other Changes
+
+*   Depends on `tfx-bsl>=1.8.0,<1.9.0`.
+*   Depends on `tensorflow-metadata>=1.8.0,<1.9.0`.
+*   Depends on `apache-beam[gcp]>=2.38,<3`.
+
+## Breaking Changes
+
+*   N/A
+
+## Deprecations
+
+*   N/A
 
 # Version 0.38.0
 
@@ -20,7 +37,7 @@
 *   Creates a VarLenTensorValue for storing batched, variable length extracts.*
     Adds a load_metrics_as_dataframe util to load metrics file as dataframe.
 
-    ## Bug fixes and other Changes
+## Bug fixes and other Changes
 
 *   Fixes issue attempting to parse metrics, plots, and attributions without a
     format suffix.
