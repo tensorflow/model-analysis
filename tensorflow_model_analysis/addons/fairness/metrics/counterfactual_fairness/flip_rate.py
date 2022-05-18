@@ -13,6 +13,8 @@
 # limitations under the License.
 """Flip Rate Metrics."""
 
+import random
+
 from typing import Dict, Optional, Sequence, Union
 
 import numpy as np
@@ -57,7 +59,7 @@ class FlipRate(metric_types.Metric):
 
   def __init__(
       self,
-      counterfactual_prediction_key: Optional[str] = None,
+      counterfactual_prediction_key: str,
       name: str = FLIP_RATE_NAME,
       thresholds: Sequence[float] = flip_count.DEFAULT_THRESHOLDS,
       example_id_key: Optional[str] = None,
@@ -115,10 +117,46 @@ def _flip_rate(
       model_name, output_name, example_weighted)
 
   def pick_overall_flip_examples(ntp_examples: np.ndarray,
-                                 ptn_examples: np.ndarray) -> np.ndarray:
-    output_size = min(example_ids_count, ntp_examples.size + ptn_examples.size)
-    examples = np.vstack([ntp_examples, ptn_examples])
-    return np.random.choice(examples.flatten(), size=output_size, replace=False)
+                                 ptn_examples: np.ndarray, ntp_count: int,
+                                 ptn_count: int) -> np.ndarray:
+    """Combine samples of flips in both sides to make samples of overall flips.
+
+    Note that what this function does is different of simply combining the
+    samples and uniformly picking from it. Imagine there are 1M pos-to-neg flips
+    and 1k neg-to-pos flips. An correct uniform sampling of overall flips would
+    almost certainly contain only pos-to-neg flips, since they are
+    overwhelmingly more common.
+
+    Args:
+      ntp_examples: Pos-to-neg examples.
+      ptn_examples: Neg-to-pos examples.
+      ntp_count: Total number of neg-to-pos flips.
+      ptn_count: Total number of pos-to-neg flips.
+
+    Returns:
+      array with samples.
+    """
+    total_flips = ntp_count + ptn_count
+    output = []
+    ntp_examples = ntp_examples.tolist()
+    ptn_examples = ptn_examples.tolist()
+    assert len(ntp_examples) <= ntp_count
+    assert len(ptn_examples) <= ptn_count
+    output_size = min(example_ids_count, len(ntp_examples) + len(ptn_examples))
+    for _ in range(0, output_size):
+      if random.randrange(total_flips) < ntp_count:
+        element_to_remove = random.randrange(len(ntp_examples))
+        output.append(ntp_examples[element_to_remove])
+        del ntp_examples[element_to_remove]
+        ntp_count = ntp_count - 1
+      else:
+        element_to_remove = random.randrange(len(ptn_examples))
+        output.append(ptn_examples[element_to_remove])
+        del ptn_examples[element_to_remove]
+        ptn_count = ptn_count - 1
+      total_flips = total_flips - 1
+
+    return np.array(output)
 
   def result(
       metrics: Dict[metric_types.MetricKey, Union[float, np.ndarray]]
@@ -158,7 +196,9 @@ def _flip_rate(
         output[metric_key_by_name_by_threshold[threshold]
                [_SAMPLE_EXAMPLES_IDS]] = pick_overall_flip_examples(
                    ntp_examples=metrics[neg_examples],
-                   ptn_examples=metrics[pos_examples])
+                   ptn_examples=metrics[pos_examples],
+                   ntp_count=int(metrics[ntp]),
+                   ptn_count=int(metrics[ptn]))
 
     return output
 
