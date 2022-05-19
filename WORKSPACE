@@ -5,7 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 # TF 1.15.2
 # LINT.IfChange(tf_commit)
 _TENSORFLOW_GIT_COMMIT = "5d80e1e8e6ee999be7db39461e0e79c90403a2e4"
-# LINT.ThenChange(:io_bazel_rules_clousure)
+# LINT.ThenChange(:io_bazel_rules_closure)
 http_archive(
     name = "org_tensorflow",
     sha256 = "7e3c893995c221276e17ddbd3a1ff177593d00fc57805da56dcc30fdc4299632",
@@ -46,13 +46,16 @@ load("@io_bazel_rules_webtesting//web:repositories.bzl", "web_test_repositories"
 
 web_test_repositories()
 
+# LINT.IfChange(io_bazel_rules_closure)
+_RULES_CLOSURE_GIT_COMMIT = "db4683a2a1836ac8e265804ca5fa31852395185b"
+# LINT.ThenChange(:tf_commit)
 http_archive(
     name = "io_bazel_rules_closure",
     sha256 = "6a900831c1eb8dbfc9d6879b5820fd614d4ea1db180eb5ff8aedcb75ee747c1f",
-    strip_prefix = "rules_closure-db4683a2a1836ac8e265804ca5fa31852395185b",
+    strip_prefix = "rules_closure-%s" % _RULES_CLOSURE_GIT_COMMIT,
     urls = [
-        "http://mirror.tensorflow.org/github.com/bazelbuild/rules_closure/archive/db4683a2a1836ac8e265804ca5fa31852395185b.tar.gz",
-        "https://github.com/bazelbuild/rules_closure/archive/db4683a2a1836ac8e265804ca5fa31852395185b.tar.gz",  # 2020-01-15
+        "http://mirror.tensorflow.org/github.com/bazelbuild/rules_closure/archive/%s.tar.gz" % _RULES_CLOSURE_GIT_COMMIT,
+        "https://github.com/bazelbuild/rules_closure/archive/%s.tar.gz" % _RULES_CLOSURE_GIT_COMMIT,  # 2020-01-15
     ],
 )
 
