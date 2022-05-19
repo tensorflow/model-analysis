@@ -15,11 +15,12 @@ The pipeline is made up of four main components:
 
 These components make use of two primary types: `tfma.Extracts` and
 `tfma.evaluators.Evaluation`. The type `tfma.Extracts` represents data that is
-extracted during pipeline processing whereas the type
-`tfma.evaluators.Evaluation` represents the output from evaluating the extracts
-at various points during the process of extraction. In order to provide a
-flexible API, these types are just dicts where the keys are defined (reserved
-for use) by different implementations. The types are defined as follows:
+extracted during pipeline processing and may correspond to one or more examples
+for the model. `tfma.evaluators.Evaluation` represents the output from
+evaluating the extracts at various points during the process of extraction. In
+order to provide a flexible API, these types are just dicts where the keys are
+defined (reserved for use) by different implementations. The types are defined
+as follows:
 
 ```python
 # Extracts represent data extracted during pipeline processing.
@@ -74,10 +75,6 @@ Extractor = NamedTuple('Extractor', [
     ('stage_name', Text),
     ('ptransform', beam.PTransform)])  # Extracts -> Extracts
 ```
-
-Note that outside of very special cases, it is almost always the case that one
-`tfma.Extracts` in a `beam.pvalue.PCollection` will correspond to one example
-from the model.
 
 ### InputExtractor
 
@@ -172,21 +169,21 @@ the writers contains the output for all of the evaluators combined, a
 `ptransform` implementations to select the appropriate `beam.PCollection`s based
 on an output key (see below for an example).
 
-# Customization
+## Customization
 
 The `tfma.run_model_analysis` method takes `extractors`, `evaluators`, and
 `writers` arguments for customing the extractors, evaluators, and writers used
 by the pipeline. If no arguments are provided then `tfma.default_extractors`,
 `tfma.default_evaluators`, and `tfma.default_writers` are used by default.
 
-## Custom Extractors
+### Custom Extractors
 
 To create a custom extractor, create a `tfma.extractors.Extractor` type that
 wraps a `beam.PTransform` taking `tfma.Extracts` as input and returning
 `tfma.Extracts` as output. Examples of extractors are available under
 `tfma.extractors`.
 
-## Custom Evaluators
+### Custom Evaluators
 
 To create a custom evaluator, create a `tfma.evaluators.Evaluator` type that
 wraps a `beam.PTransform` taking `tfma.Extracts` as input and returning
@@ -194,13 +191,13 @@ wraps a `beam.PTransform` taking `tfma.Extracts` as input and returning
 the incoming `tfma.Extracts` and output them for storing in a table. This is
 exactly what the `tfma.evaluators.AnalysisTableEvaluator` does. A more
 complicated evaluator might perform additional processing and data aggregation.
-See the `tfma.evaluators.MetricsAndPlotsEvaluator` as an example..
+See the `tfma.evaluators.MetricsAndPlotsEvaluator` as an example.
 
 Note that the `tfma.evaluators.MetricsAndPlotsEvaluator` itself can be
 customized to support custom metrics (see [metrics](metrics.md) for more
 details).
 
-## Custom Writers
+### Custom Writers
 
 To create a custom writer, create a `tfma.writers.Writer` type that wraps a
 `beam.PTransform` taking `tfma.evaluators.Evaluation` as input and returning
@@ -224,7 +221,7 @@ above example, the output is a serialized proto produced by the
 Note that a writer is associated with the output of an evaluator via the output
 key used (e.g. `tfma.METRICS_KEY`, `tfma.ANALYSIS_KEY`, etc).
 
-# Step by Step Example
+## Step by Step Example
 
 The following is an example of the steps involved in the extraction and
 evaluation pipeline when both the `tfma.evaluators.MetricsAndPlotsEvaluator` and
