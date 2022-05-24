@@ -47,9 +47,6 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
   Returns:
     PCollection of (slice key, dict of metrics).
   """
-  # TODO(b/123516222): Remove this workaround per discussions in CL/227944001
-  slice_result.element_type = beam.typehints.Any
-
   return (
       slice_result
       | 'CombinePerSlice' >> beam.CombinePerKey(
