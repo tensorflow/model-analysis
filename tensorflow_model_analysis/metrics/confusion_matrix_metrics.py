@@ -563,6 +563,15 @@ class AUCPrecisionRecall(AUC):
         top_k=top_k,
         class_id=class_id)
 
+  def get_config(self) -> Dict[str, Any]:
+    """Returns serializable config."""
+    # Remove the irrelevant 'curve' keyword inherited from parent class AUC().
+    # This is needed when the __init__ of the child class has a different set of
+    # kwargs than that of its parent class.
+    result = super().get_config()
+    del result['curve']
+    return result
+
   def _default_name(self) -> str:
     return AUC_PRECISION_RECALL_NAME
 
