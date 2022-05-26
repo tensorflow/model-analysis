@@ -273,7 +273,10 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
     return result
 
   def compact(self, accumulator: _AggState) -> _AggState:
-    self._maybe_do_batch(accumulator, force=True)  # Guaranteed compaction.
+    # We want to compact before a flush except in the case of a single input,
+    # because we may have compacted size much larger than input size. See
+    # b/233412507 for context.
+    self._maybe_do_batch(accumulator, force=len(accumulator.inputs) > 1)
     self._num_compacts.inc(1)
     return accumulator
 
