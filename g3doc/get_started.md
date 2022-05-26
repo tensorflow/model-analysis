@@ -296,4 +296,4 @@ frontend components included in TFMA. For example:
 *   [Visualizations](visualizations.md)
 *   [Architecture](architecture.md)
 *   [FAQ](faq.md)
-*   [API Reference](https://www.tensorflow.org/tfx/model_analysis/api_docs)
+*   [API Reference](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma)
