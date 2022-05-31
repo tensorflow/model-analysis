@@ -284,8 +284,9 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
       self, accumulator: _AggState) -> Optional[types.MetricVariablesType]:
     # It's possible that the accumulator has not been fully flushed, if it was
     # not produced by a call to compact (which is not guaranteed across all Beam
-    # Runners), so we defensively flush it here again, before we extract data
-    # from it, to ensure correctness.
+    # Runners), or if compact was called on an accumulator with only one value,
+    # so we defensively flush it here again, before we extract data from it, to
+    # ensure correctness.
     self._maybe_do_batch(accumulator, force=True)
     return accumulator.metric_variables
 
