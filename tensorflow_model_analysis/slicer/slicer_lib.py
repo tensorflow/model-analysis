@@ -548,7 +548,7 @@ def get_slice_key_type(
     return SliceKeyType
 
   try:
-    baseline_slice, comparison_slice = slice_key
+    baseline_slice, comparison_slice = slice_key  # pytype: disable=bad-unpacking
   except ValueError:
     raise TypeError('Unrecognized slice type. Neither SliceKeyType nor'
                     ' CrossSliceKeyType.')
