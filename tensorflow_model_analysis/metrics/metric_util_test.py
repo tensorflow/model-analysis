@@ -539,6 +539,18 @@ class UtilTest(tf.test.TestCase):
     self.assertAllClose(got_labels, np.array([0]))
     self.assertAllClose(got_preds, np.array([0.8]))
 
+  def testPrepareLabelsAndPredictionsClassNotFound(self):
+    labels = ['d']
+    preds = {
+        'scores': np.array([0.2, 0.7, 0.1]),
+        'all_classes': np.array(['a', 'b', 'c'])
+    }
+    got_labels, got_preds = metric_util.prepare_labels_and_predictions(
+        labels, preds)
+
+    self.assertAllClose(got_labels, np.array([0, 0, 0]))
+    self.assertAllClose(got_preds, np.array([0.2, 0.7, 0.1]))
+
   def testPrepareLabelsAndPredictionsBatched(self):
     labels = [['b']]
     preds = {

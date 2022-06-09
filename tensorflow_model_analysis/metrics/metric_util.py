@@ -531,12 +531,6 @@ def to_label_prediction_example_weight(
           for i in range(flatten_size)
       ])
 
-    # String lookups that fail result in a -1 label value. Most metrics won't
-    # accept this as a valid value so we convert to a one_hot value to ensure
-    # that we are only working with 0's (i.e. -1 maps to all 0's in one-hot).
-    if label.size and np.all(label == -1):
-      label = one_hot(label, prediction)
-
     def yield_results(label, prediction, example_weight):
       if (not flatten or (label.size == 0 and prediction.size == 0) or
           (label.size == 1 and prediction.size == 1 and
@@ -697,6 +691,15 @@ def prepare_labels_and_predictions(
   if predictions is not None:
     predictions = util.to_numpy(predictions)
 
+  def _maybe_convert_labels_to_one_hot(labels, predictions):
+    # String lookups that fail result in a -1 label value. Most metrics
+    # won't accept this as a valid value so we convert to a one_hot value to
+    # ensure that we are only working with 0's (i.e. -1 maps to all 0's in
+    # one-hot).
+    if labels.size and np.all(labels == -1):
+      return one_hot(labels, predictions)
+    return labels
+
   if labels is not None:
     if (isinstance(labels, types.SparseTensorValue) or
         isinstance(labels, tf.compat.v1.SparseTensorValue)):
@@ -714,12 +717,14 @@ def prepare_labels_and_predictions(
         # proper offsets in the resulting multi-hot vector.
         labels = _to_dense_tensor(
             np.ones(values.shape), values, predictions.shape)
+        labels = _maybe_convert_labels_to_one_hot(labels, predictions)
       else:
         labels = _to_dense_tensor(values, indices, predictions.shape)
     else:
       labels = util.to_numpy(labels)
       if label_vocabulary is not None and labels.dtype.kind in ('U', 'S', 'O'):
         labels = _string_labels_to_class_ids(label_vocabulary, labels)
+        labels = _maybe_convert_labels_to_one_hot(labels, predictions)
 
   return (labels, predictions)
 

@@ -7,8 +7,8 @@
 ## Bug fixes and other Changes
 
 *   Depends on `tensorflow>=1.15.5,<2` or `tensorflow>=2.9,<3`
-*   Support feature values of type bytes for TFJS predictor.
-
+*   Fix issue where labels with -1 values are one-hot encoded when they
+    shouldn't be
 ## Breaking Changes
 
 ## Deprecations
