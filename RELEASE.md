@@ -7,6 +7,7 @@
 ## Bug fixes and other Changes
 
 *   Depends on `tensorflow>=1.15.5,<2` or `tensorflow>=2.9,<3`
+*   Support feature values of type bytes for TFJS predictor.
 
 ## Breaking Changes
 

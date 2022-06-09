@@ -19,7 +19,7 @@ import json
 import os
 import subprocess
 import tempfile
-from typing import Dict, Union, Sequence
+from typing import Dict, NamedTuple, List, Union, Sequence
 
 import uuid
 
@@ -45,6 +45,16 @@ _DATA_JSON = 'data.json'
 _DTYPE_JSON = 'dtype.json'
 _SHAPE_JSON = 'shape.json'
 _TF_INPUT_NAME_JSON = 'tf_input_name.json'
+
+
+class _InputSpec(
+    NamedTuple('_InputSpec', [('dim', List[int]), ('dtype', str)])):
+  """_InputSpec encapsulates the processed input spec from TFJS model.
+
+  Attributes:
+    dim: The expected dim of the input.
+    dtype: The expected dtype of the input.
+  """
 
 
 # TODO(b/149981535) Determine if we should merge with RunInference.
@@ -79,7 +89,8 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
           model_signature = model_json['signature']
         model_inputs = {}
         for k, v in model_signature['inputs'].items():
-          model_inputs[k] = [int(i['size']) for i in v['tensorShape']['dim']]
+          model_inputs[k] = _InputSpec(
+              [int(d['size']) for d in v['tensorShape']['dim']], v['dtype'])
 
         model_outputs = {}
         for k, v in model_signature['outputs'].items():
@@ -127,7 +138,7 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
         if k_name not in batched_features:
           raise ValueError('model requires feature "{}" not available in '
                            'input.'.format(k_name))
-        dim = self._model_properties[model_name]['inputs'][k]
+        dim = self._model_properties[model_name]['inputs'][k].dim
         elems = []
         for i in batched_features[k_name]:
           if np.ndim(i) > len(dim):
@@ -142,8 +153,16 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
 
       batched_entries = collections.defaultdict(list)
       for feature, value in model_features.items():
+        if (self._model_properties[model_name]['inputs'][feature].dtype ==
+            'DT_STRING'):
+          # For numpy array, even we cast it to string, we cannot get 'string'
+          # by directly calling str(value.tdype).
+          value = value.astype(str)
+          dtype_str = 'string'
+        else:
+          dtype_str = str(value.dtype)
         batched_entries[_DATA_JSON].append(value.tolist())
-        batched_entries[_DTYPE_JSON].append(str(value.dtype))
+        batched_entries[_DTYPE_JSON].append(dtype_str)
         batched_entries[_SHAPE_JSON].append(value.shape)
         batched_entries[_TF_INPUT_NAME_JSON].append(feature)
 
@@ -182,10 +201,12 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
           dtype = json.load(f)
         with tf.io.gfile.GFile(os.path.join(cur_output_path, _SHAPE_JSON)) as f:
           shape = json.load(f)
-      except FileNotFoundError as e:
+      except (FileNotFoundError, tf.errors.NotFoundError) as e:
         raise FileNotFoundError(
             'Unable to find files containing inference result. This likely '
-            'means that inference did not succeed. Error {}'.format(e))
+            'means that inference did not succeed. Error {}.\n Inference failed'
+            ' with status {}\nstdout:\n{}\nstderr:\n{}'.format(
+                e, popen.returncode, stdout, stderr))
 
       name = [
           n.split(':')[0]
