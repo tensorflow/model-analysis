@@ -32,7 +32,6 @@ Writer = NamedTuple(
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(Any)
-@beam.typehints.with_output_types(beam.pvalue.PDone)
 def Write(evaluation_or_validation: Union[evaluator.Evaluation,
                                           validator.Validation], key: str,
           ptransform: beam.PTransform) -> beam.pvalue.PDone:

@@ -150,7 +150,6 @@ def EvalConfigWriter(  # pylint: disable=invalid-name
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(Any)
-@beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteEvalConfig(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation, eval_config: config_pb2.EvalConfig,
     output_path: str, output_file_format: str, data_location: str,

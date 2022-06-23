@@ -931,7 +931,6 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
 
 @beam.ptransform_fn
 # TODO(b/157600974): Add input typehint.
-@beam.typehints.with_output_types(beam.pvalue.PDone)
 def WriteResults(  # pylint: disable=invalid-name
     evaluation_or_validation: Union[evaluator.Evaluation, validator.Validation],
     writers: List[writer.Writer]) -> beam.pvalue.PDone:
@@ -1004,7 +1003,6 @@ def is_batched_input(eval_shared_model: Optional[
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(Any)
-@beam.typehints.with_output_types(beam.pvalue.PDone)
 def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     examples: beam.pvalue.PCollection,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,

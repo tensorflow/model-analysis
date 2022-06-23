@@ -680,7 +680,6 @@ class CombineValidations(beam.CombineFn):
 
 @beam.ptransform_fn
 # TODO(b/157600974): Add typehint.
-@beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation,
     output_paths: Dict[str, str],
