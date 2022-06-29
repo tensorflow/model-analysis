@@ -301,8 +301,10 @@ class _PreprocessorDoFn(beam.DoFn):
         combiner_inputs.append(None)
         standard_preprocessors.append(computation.preprocessor)
       else:
-        combiner_inputs.append(
-            next(iter(computation.preprocessor.process(extracts))))
+        # The combiner accepts the list of outputs from preprocessors. It allows
+        # all the following combiners to share the same work without
+        # duplication.
+        combiner_inputs.append(list(computation.preprocessor.process(extracts)))
 
     output = {
         constants.SLICE_KEY_TYPES_KEY: extracts[constants.SLICE_KEY_TYPES_KEY],
@@ -312,18 +314,20 @@ class _PreprocessorDoFn(beam.DoFn):
       preprocessor = metric_types.StandardMetricInputsPreprocessorList(
           standard_preprocessors)
       extracts = copy.copy(extracts)
-      # DoFn.process should return an Iterable but we only want a single value.
-      extracts = next(iter(preprocessor.process(extracts)))
       # TODO(b/229267982): Consider removing include flags.
-      default_combiner_input = metric_util.to_standard_metric_inputs(
-          extracts,
-          include_labels=constants.LABELS_KEY in preprocessor.include_filter,
-          include_predictions=(constants.PREDICTIONS_KEY
-                               in preprocessor.include_filter),
-          include_features=(constants.FEATURES_KEY
-                            in preprocessor.include_filter),
-          include_attributions=(constants.ATTRIBUTIONS_KEY
-                                in preprocessor.include_filter))
+      default_combiner_input = []
+      for extracts in preprocessor.process(extracts):
+        default_combiner_input.append(
+            metric_util.to_standard_metric_inputs(
+                extracts,
+                include_labels=constants.LABELS_KEY
+                in preprocessor.include_filter,
+                include_predictions=(constants.PREDICTIONS_KEY
+                                     in preprocessor.include_filter),
+                include_features=(constants.FEATURES_KEY
+                                  in preprocessor.include_filter),
+                include_attributions=(constants.ATTRIBUTIONS_KEY
+                                      in preprocessor.include_filter)))
       output[_DEFAULT_COMBINER_INPUT_KEY] = default_combiner_input
     yield output
 
@@ -354,10 +358,9 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
       if item is None:
         item = element[_DEFAULT_COMBINER_INPUT_KEY]
       return item
-
     results = []
     for i, (c, a) in enumerate(zip(self._combiners, accumulator)):
-      result = c.add_input(a, get_combiner_input(element, i))
+      result = c.add_inputs(a, get_combiner_input(element, i))
       results.append(result)
     return tuple(results)
 
