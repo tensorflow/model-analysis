@@ -13,7 +13,7 @@
 # limitations under the License.
 """Writer types."""
 
-from typing import Any, NamedTuple, Union
+from typing import NamedTuple, Optional, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis.evaluators import evaluator
@@ -25,16 +25,15 @@ Writer = NamedTuple(
     'Writer',
     [
         ('stage_name', str),
-        # PTransform Evaluation -> PDone or Validation -> PDone
+        # PTransform (Evaluation|Validation) -> Beam write result
         ('ptransform', beam.PTransform)
     ])
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Any)
 def Write(evaluation_or_validation: Union[evaluator.Evaluation,
                                           validator.Validation], key: str,
-          ptransform: beam.PTransform) -> beam.pvalue.PDone:
+          ptransform: beam.PTransform) -> Optional[beam.PCollection]:
   """Writes given Evaluation or Validation data using given writer PTransform.
 
   Args:
@@ -48,10 +47,12 @@ def Write(evaluation_or_validation: Union[evaluator.Evaluation,
       exist in the Evaluation or Validation, but the dict must not be empty.
 
   Returns:
-    beam.pvalue.PDone.
+    The result of the underlying beam write PTransform. This makes it possible
+    for interactive environments to execute your writer, as well as for
+    downstream Beam stages to make use of the files that are written.
   """
   if not evaluation_or_validation:
     raise ValueError('Evaluations and Validations cannot be empty')
   if key in evaluation_or_validation:
     return evaluation_or_validation[key] | ptransform
-  return beam.pvalue.PDone(list(evaluation_or_validation.values())[0].pipeline)
+  return None

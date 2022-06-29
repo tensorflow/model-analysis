@@ -933,7 +933,7 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
 # TODO(b/157600974): Add input typehint.
 def WriteResults(  # pylint: disable=invalid-name
     evaluation_or_validation: Union[evaluator.Evaluation, validator.Validation],
-    writers: List[writer.Writer]) -> beam.pvalue.PDone:
+    writers: List[writer.Writer]) -> Dict[str, beam.PCollection]:
   """Writes Evaluation or Validation results using given writers.
 
   Args:
@@ -944,13 +944,15 @@ def WriteResults(  # pylint: disable=invalid-name
     ValueError: If Evaluation or Validation is empty.
 
   Returns:
-    beam.pvalue.PDone.
+    A dict of writer results keyed by the writer stage name.
   """
   if not evaluation_or_validation:
     raise ValueError('Evaluations and Validations cannot be empty')
+  result = {}
   for w in writers:
-    _ = evaluation_or_validation | w.stage_name >> w.ptransform
-  return beam.pvalue.PDone(list(evaluation_or_validation.values())[0].pipeline)
+    result[w.stage_name] = (
+        evaluation_or_validation | w.stage_name >> w.ptransform)
+  return result
 
 
 def is_legacy_estimator(
@@ -1002,9 +1004,8 @@ def is_batched_input(eval_shared_model: Optional[
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Any)
 def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
-    examples: beam.pvalue.PCollection,
+    examples: beam.PCollection,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
     extractors: Optional[List[extractor.Extractor]] = None,
@@ -1020,7 +1021,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     random_seed_for_testing: Optional[int] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
     schema: Optional[schema_pb2.Schema] = None,
-    config_version: Optional[int] = None) -> beam.pvalue.PDone:
+    config_version: Optional[int] = None) -> Dict[str, beam.PCollection]:
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -1103,7 +1104,7 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
       Evaluator.
 
   Returns:
-    PDone.
+    A dict of writer results keyed by the writer stage name.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model)
@@ -1154,13 +1155,10 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
   else:
     extracts = (examples | 'InputsToExtracts' >> InputsToExtracts())
 
-  _ = (
-      extracts
-      | 'ExtractAndEvaluate' >> ExtractAndEvaluate(
-          extractors=extractors, evaluators=evaluators)
-      | 'WriteResults' >> WriteResults(writers=writers))
-
-  return beam.pvalue.PDone(examples.pipeline)
+  return (extracts
+          | 'ExtractAndEvaluate' >> ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators)
+          | 'WriteResults' >> WriteResults(writers=writers))
 
 
 def run_model_analysis(

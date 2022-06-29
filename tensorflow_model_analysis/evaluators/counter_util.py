@@ -36,7 +36,8 @@ def _IncrementMetricsCounters(metric_name: str, version: str, model_type: str):
 # @beam.typehints.with_input_types(beam.Pipeline)
 def IncrementMetricsCallbacksCounters(
     pipeline: beam.Pipeline,
-    metrics_callbacks: List[types.AddMetricsCallbackType], model_type: str):
+    metrics_callbacks: List[types.AddMetricsCallbackType],
+    model_type: str) -> beam.PCollection[None]:
   """To track count of all the metrics being computed using TFMA."""
 
   def _MakeAndIncrementCounters(_):
@@ -52,7 +53,8 @@ def IncrementMetricsCallbacksCounters(
 @beam.ptransform_fn
 # TODO(b/148788775): These type hints fail Beam type checking.
 # @beam.typehints.with_input_types(beam.Pipeline)
-def IncrementSliceSpecCounters(pipeline: beam.Pipeline):
+def IncrementSliceSpecCounters(
+    pipeline: beam.Pipeline) -> beam.PCollection[None]:
   """To track count of all slicing spec computed using TFMA."""
 
   def _MakeAndIncrementCounters(slice_list):
@@ -72,9 +74,9 @@ def IncrementSliceSpecCounters(pipeline: beam.Pipeline):
 @beam.ptransform_fn
 # TODO(b/148788775): These type hints fail Beam type checking.
 # @beam.typehints.with_input_types(beam.Pipeline)
-def IncrementMetricsSpecsCounters(pipeline: beam.Pipeline,
-                                  metrics_specs: List[config_pb2.MetricsSpec],
-                                  model_types: Set[str]):
+def IncrementMetricsSpecsCounters(
+    pipeline: beam.Pipeline, metrics_specs: List[config_pb2.MetricsSpec],
+    model_types: Set[str]) -> beam.PCollection[None]:
   """To track count of all metrics specs in TFMA."""
 
   def _MakeAndIncrementCounters(_):

@@ -39,6 +39,7 @@ from tensorflow_model_analysis.writers import writer
 
 from google.protobuf import wrappers_pb2
 
+
 METRICS_PLOTS_AND_VALIDATIONS_WRITER_STAGE_NAME = 'WriteMetricsAndPlots'
 
 _PARQUET_FORMAT = 'parquet'
@@ -690,7 +691,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     attributions_key: str,
     validations_key: str,
     output_file_format: str,
-    rubber_stamp: bool = False) -> beam.pvalue.PDone:
+    rubber_stamp: bool = False) -> Dict[str, beam.PCollection]:
   """PTransform to write metrics and plots."""
 
   if output_file_format not in _SUPPORTED_FORMATS:
@@ -720,6 +721,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
             value.SerializeToString()
     }
 
+  result = {}
   if metrics_key in evaluation and constants.METRICS_KEY in output_paths:
     metrics = (
         evaluation[metrics_key] | 'ConvertSliceMetricsToProto' >> beam.Map(
@@ -728,7 +730,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
 
     file_path_prefix = output_paths[constants.METRICS_KEY]
     if output_file_format == _PARQUET_FORMAT:
-      _ = (
+      result[constants.METRICS_KEY] = (
           metrics
           | 'ConvertToParquetColumns' >> beam.Map(convert_to_parquet_columns)
           | 'WriteMetricsToParquet' >> beam.io.WriteToParquet(
@@ -736,12 +738,14 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
               schema=_SLICED_PARQUET_SCHEMA,
               file_name_suffix='.' + output_file_format))
     elif output_file_format == _TFRECORD_FORMAT:
-      _ = metrics | 'WriteMetrics' >> beam.io.WriteToTFRecord(
-          file_path_prefix=file_path_prefix,
-          shard_name_template=None if output_file_format else '',
-          file_name_suffix=('.' +
-                            output_file_format if output_file_format else ''),
-          coder=beam.coders.ProtoCoder(metrics_for_slice_pb2.MetricsForSlice))
+      result[constants.
+             METRICS_KEY] = metrics | 'WriteMetrics' >> beam.io.WriteToTFRecord(
+                 file_path_prefix=file_path_prefix,
+                 shard_name_template=None if output_file_format else '',
+                 file_name_suffix=('.' + output_file_format
+                                   if output_file_format else ''),
+                 coder=beam.coders.ProtoCoder(
+                     metrics_for_slice_pb2.MetricsForSlice))
     else:
       raise ValueError(f'Unsupported output file format: {output_file_format}.')
 
@@ -753,7 +757,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
 
     file_path_prefix = output_paths[constants.PLOTS_KEY]
     if output_file_format == _PARQUET_FORMAT:
-      _ = (
+      result[constants.PLOTS_KEY] = (
           plots
           |
           'ConvertPlotsToParquetColumns' >> beam.Map(convert_to_parquet_columns)
@@ -762,12 +766,14 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
               schema=_SLICED_PARQUET_SCHEMA,
               file_name_suffix='.' + output_file_format))
     elif output_file_format == _TFRECORD_FORMAT:
-      _ = plots | 'WritePlotsToTFRecord' >> beam.io.WriteToTFRecord(
-          file_path_prefix=file_path_prefix,
-          shard_name_template=None if output_file_format else '',
-          file_name_suffix=('.' +
-                            output_file_format if output_file_format else ''),
-          coder=beam.coders.ProtoCoder(metrics_for_slice_pb2.PlotsForSlice))
+      result[constants.PLOTS_KEY] = (
+          plots | 'WritePlotsToTFRecord' >> beam.io.WriteToTFRecord(
+              file_path_prefix=file_path_prefix,
+              shard_name_template=None if output_file_format else '',
+              file_name_suffix=('.' + output_file_format
+                                if output_file_format else ''),
+              coder=beam.coders.ProtoCoder(metrics_for_slice_pb2.PlotsForSlice))
+      )
     else:
       raise ValueError(f'Unsupported output file format: {output_file_format}.')
 
@@ -779,7 +785,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
 
     file_path_prefix = output_paths[constants.ATTRIBUTIONS_KEY]
     if output_file_format == _PARQUET_FORMAT:
-      _ = (
+      result[constants.ATTRIBUTIONS_KEY] = (
           attributions
           | 'ConvertAttributionsToParquetColumns' >>
           beam.Map(convert_to_parquet_columns)
@@ -788,13 +794,15 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
               schema=_SLICED_PARQUET_SCHEMA,
               file_name_suffix='.' + output_file_format))
     elif output_file_format == _TFRECORD_FORMAT:
-      _ = attributions | 'WriteAttributionsToTFRecord' >> beam.io.WriteToTFRecord(
-          file_path_prefix=file_path_prefix,
-          shard_name_template=None if output_file_format else '',
-          file_name_suffix=('.' +
-                            output_file_format if output_file_format else ''),
-          coder=beam.coders.ProtoCoder(
-              metrics_for_slice_pb2.AttributionsForSlice))
+      result[constants.ATTRIBUTIONS_KEY] = (
+          attributions
+          | 'WriteAttributionsToTFRecord' >> beam.io.WriteToTFRecord(
+              file_path_prefix=file_path_prefix,
+              shard_name_template=None if output_file_format else '',
+              file_name_suffix=('.' + output_file_format
+                                if output_file_format else ''),
+              coder=beam.coders.ProtoCoder(
+                  metrics_for_slice_pb2.AttributionsForSlice)))
     else:
       raise ValueError(f'Unsupported output file format: {output_file_format}.')
 
@@ -810,7 +818,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     # values. Setting the shard_name_template to the empty string forces this.
     shard_name_template = ''
     if output_file_format == _PARQUET_FORMAT:
-      _ = (
+      result[constants.VALIDATIONS_KEY] = (
           validations
           | 'ConvertValidationsToParquetColumns' >> beam.Map(
               lambda v:  # pylint: disable=g-long-lambda
@@ -821,7 +829,7 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
               schema=_UNSLICED_PARQUET_SCHEMA,
               file_name_suffix='.' + output_file_format))
     elif output_file_format == _TFRECORD_FORMAT:
-      _ = (
+      result[constants.VALIDATIONS_KEY] = (
           validations
           | 'WriteValidationsToTFRecord' >> beam.io.WriteToTFRecord(
               file_path_prefix=file_path_prefix,
@@ -833,4 +841,4 @@ def _WriteMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     else:
       raise ValueError(f'Unsupported output file format: {output_file_format}.')
 
-  return beam.pvalue.PDone(list(evaluation.values())[0].pipeline)
+  return result

@@ -154,7 +154,7 @@ def _WriteEvalConfig(  # pylint: disable=invalid-name
     evaluation: evaluator.Evaluation, eval_config: config_pb2.EvalConfig,
     output_path: str, output_file_format: str, data_location: str,
     data_file_format: str, model_locations: Dict[str, str],
-    filename: str) -> beam.pvalue.PDone:
+    filename: str) -> Optional[beam.PCollection[str]]:
   """Writes EvalConfig to file.
 
   Args:
@@ -168,13 +168,14 @@ def _WriteEvalConfig(  # pylint: disable=invalid-name
     filename: Name of file to store the config as.
 
   Returns:
-    beam.pvalue.PDone.
+    A PCollection of the filename that was written or None, if no file was
+    written.
   """
   pipeline = list(evaluation.values())[0].pipeline
 
   # Skip writing file if its output is disabled
   if EVAL_CONFIG_FILE in eval_config.options.disabled_outputs.values:
-    return beam.pvalue.PDone(pipeline)
+    return None
 
   if output_file_format and output_file_format != EVAL_CONFIG_FILE_FORMAT:
     raise ValueError(
