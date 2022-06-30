@@ -40,6 +40,29 @@ _LOSS_FUNCTION_WRAPPER = 'LossFunctionWrapper'
 _EPSILON = 1e-7
 
 
+def generate_private_name_from_arguments(
+    name: str, arguments: Optional[List[Tuple[str, Any]]]) -> str:
+  """Generate names for used metrics.
+
+  Args:
+    name: The name user defined for this metric.
+    arguments: (Optional) The list of arguments with their corresponding names
+      and values.
+
+  Returns:
+    A name for the metric, generated from the specified arguments.
+  """
+  if not name.startswith('_'):
+    # tfma treats metrics starting with '_' as private and does not show it to
+    # users.
+    name = '_' + name
+  # sort the arguments in alphabetical order so that it generates the same name
+  # for the same group of arguments.
+  if arguments is not None:
+    name = name + ':' + ','.join(k + '=' + str(v) for k, v in sorted(arguments))
+  return name
+
+
 def within_interval(value: float, left: float, right: float) -> bool:
   """Returns true if value is within [left, right]."""
   # EPSILON is used to handle rounding errors that may occur if the value was
