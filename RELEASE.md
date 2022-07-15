@@ -14,7 +14,9 @@
 
 ## Major Features and Improvements
 
-*   Add object detection related utilities.
+*   Add COCO object detection metrics, object detection related utilities,
+    objection detection opitons in binary confusion matrix, PrecisionAtRecall,
+    Recall, and AUC. Add MaxRecall metric.
 
 ## Bug fixes and other Changes
 

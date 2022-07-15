@@ -198,8 +198,9 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 1)
           key = metrics.keys[0]
-          self.assertDictElementsAlmostEqual(
-              got_metrics, {key: expected_value}, places=5)
+          self.assertIn(key, got_metrics)
+          np.testing.assert_almost_equal(
+              np.array(got_metrics[key]), np.array(expected_value), decimal=5)
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
@@ -319,8 +320,9 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           key = metric_types.MetricKey(name=metric.name, example_weighted=True)
-          self.assertDictElementsAlmostEqual(
-              got_metrics, {key: expected_value}, places=5)
+          self.assertIn(key, got_metrics)
+          np.testing.assert_almost_equal(
+              np.array(got_metrics[key]), np.array(expected_value), decimal=5)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -693,6 +695,87 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
                   tn=[1.0, 2.0, 2.0],
                   fp=[1.0, 0.0, 0.0],
                   fn=[1.0, 1.0, 1.0]), got_metric)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  @parameterized.named_parameters(('MaxRecall',
+                                   confusion_matrix_metrics.MaxRecall(
+                                       use_object_detection=True,
+                                       iou_threshold=0.5,
+                                       object_class_id=0), 2 / 3))
+  def testMetricsInObjectDetection(self, metric, expected_result):
+    extracts = [
+        # The match at iou_threshold = 0.5 is
+        # gt_matches: [[0]] dt_matches: [[0, -1]]
+        # Results after preprocess:
+        #   'labels': np.asarray([1., 0.]),
+        #   'predictions': np.asarray([0.7, 0.3])
+        {
+            'labels':
+                np.asarray([[30, 100, 70, 300, 0], [50, 100, 80, 200, 1]]),
+            'predictions':
+                np.asarray([[20, 130, 60, 290, 0, 0.7],
+                            [30, 100, 70, 300, 0, 0.3],
+                            [500, 100, 800, 300, 1, 0.1]])
+        },
+        # This is a binary classification case, the iou matrix should be:
+        # [[0., 2/3], [0., 4/11]]
+        # The match at iou_threshold = 0.5 is
+        # gt_matches: [[-1, 0]] dt_matches: [[1, -1]]
+        # Results after preprocess:
+        #   'labels': np.asarray([1., 1., 0.]),
+        #   'predictions': np.asarray([0., 0.4, 0.3])
+        {
+            'labels':
+                np.asarray([[30, 100, 70, 400, 0], [10, 200, 80, 300, 0]]),
+            'predictions':
+                np.asarray([[100, 130, 160, 290, 0, 0.4],
+                            [30, 100, 70, 300, 0, 0.3]])
+        }
+
+        #    thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+        #    tp=[3.0, 1.0, 0.0],
+        #    fp=[2.0, 0.0, 0.0],
+        #    tn=[0.0, 2.0, 2.0],
+        #    fn=[0.0, 2.0, 3.0])
+        # Precision: [3/5, 1.0, 'nan']
+        # Recall: [1.0, 1/3, 0.0]
+    ]
+
+    computations = metric.computations()
+    histogram = computations[0]
+    matrices = computations[1]
+    derived_metric1 = computations[2]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter, g-long-lambda
+      result = (
+          pipeline
+          | 'Create' >> beam.Create(extracts)
+          | 'Process' >> beam.ParDo(histogram.preprocessor)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
+          | 'ComputeMatrices' >> beam.Map(
+              lambda x: (x[0], matrices.result(x[1])))  # pyformat: ignore
+          | 'DeriveMetrics1' >> beam.Map(lambda x:
+                                         (x[0], derived_metric1.result(x[1])))
+      )  # pyformat: ignore
+
+      # pylint: enable=no-value-for-parameter, g-long-lambda
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertLen(got_metrics, 1)
+          key = metric_types.MetricKey(name='max_recall')
+          self.assertIn(key, got_metrics)
+          got_metric = got_metrics[key]
+          self.assertAlmostEqual(expected_result, got_metric, places=5)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

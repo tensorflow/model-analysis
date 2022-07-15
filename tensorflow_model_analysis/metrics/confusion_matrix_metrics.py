@@ -17,8 +17,7 @@ import abc
 import copy
 import enum
 import math
-
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, overload
 
 import numpy as np
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
@@ -69,6 +68,8 @@ NEGATIVE_LIKELIHOOD_RATIO_NAME = 'negative_likelihood_ratio'
 DIAGNOSTIC_ODDS_RATIO_NAME = 'diagnostic_odds_ratio'
 PREDICTED_POSITIVE_RATE_NAME = 'predicted_positive_rate'
 CONFUSION_MATRIX_AT_THRESHOLDS_NAME = 'confusion_matrix_at_thresholds'
+AVERAGE_PRECISION_NAME = 'average_precision'
+MAX_RECALL_NAME = 'max_recall'
 
 
 class AUCCurve(enum.Enum):
@@ -90,9 +91,13 @@ def _pos_sqrt(value: float) -> float:
 
 
 def _validate_and_update_sub_key(
-    metric_name: str, model_name: str, output_name: str,
-    sub_key: metric_types.SubKey, top_k: Optional[int],
-    class_id: Optional[int]) -> metric_types.SubKey:
+    metric_name: str,
+    model_name: str,
+    output_name: str,
+    sub_key: metric_types.SubKey,
+    top_k: Optional[int],
+    class_id: Optional[int],
+    use_object_detection=False) -> metric_types.SubKey:
   """Validates and updates sub key.
 
   This function validates that the top_k and class_id settings that are
@@ -106,6 +111,8 @@ def _validate_and_update_sub_key(
     sub_key: Sub key (from MetricsSpec).
     top_k: Top k setting (from MetricConfig).
     class_id: Class ID setting (from MetricConfig).
+    use_object_detection: If the metric is configured for object detection,
+     should not use sub_key, class_id, top_k.
 
   Returns:
     Updated sub-key if top_k or class_id params are used.
@@ -113,6 +120,17 @@ def _validate_and_update_sub_key(
   Raises:
     ValueError: If validation fails.
   """
+  if use_object_detection:
+    if class_id is not None:
+      raise ValueError('Metric configured to use_object_detection should not'
+                       ' use class_id, use object_class_id instead.')
+    if top_k is not None:
+      raise ValueError('Metric configured to use_object_detection should not '
+                       'use top_k.')
+    if sub_key is not None:
+      raise ValueError(
+          'Metric configured to use_object_detection should not use sub_key.')
+
   if top_k and class_id:
     raise ValueError(
         f'Metric {metric_name} is configured with both class_id={class_id} and '
@@ -146,7 +164,19 @@ def _validate_and_update_sub_key(
   return sub_key
 
 
-def _find_max_under_constraint(constrained, dependent, value):
+@overload
+def _find_max_under_constraint(constrained: np.ndarray, dependent: np.ndarray,
+                               values: float) -> float:
+  ...
+
+
+@overload
+def _find_max_under_constraint(constrained: np.ndarray, dependent: np.ndarray,
+                               values: List[float]) -> np.ndarray:
+  ...
+
+
+def _find_max_under_constraint(constrained, dependent, values):
   """Returns the maximum of dependent that satisfies contrained >= value.
 
   Args:
@@ -156,17 +186,25 @@ def _find_max_under_constraint(constrained, dependent, value):
       selected. Values in this array and in `constrained` are linked by having
       the same threshold at each position, hence this array must have the same
       shape.
-    value: The lower bound where contrained >= value.
+    values: A list of the lower bound where contrained >= value.
 
   Returns:
     Maximal dependent value, if no value satiesfies the constraint 0.0.
   """
-  feasible = np.where(constrained >= value)
-  gathered = np.take(dependent, feasible)
-  if gathered.size > 0:
-    return float(np.where(np.size(feasible) > 0, np.nanmax(gathered), 0.0))
-  # If the gathered is empty, return 0.0 assuming all NaNs are 0.0
-  return 0.0
+  result = []
+  for value in np.array([values] if isinstance(values, float) else values):
+    feasible = np.where(constrained >= value)
+    gathered = np.take(dependent, feasible)
+    if gathered.size > 0:
+      result.append(
+          float(np.where(np.size(feasible) > 0, np.nanmax(gathered), 0.0)))
+    else:
+      # If the gathered is empty, return 0.0 assuming all NaNs are 0.0
+      result.append(0.0)
+  if isinstance(values, float):
+    return result[0]
+  else:
+    return np.array(result)
 
 
 class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
@@ -178,6 +216,12 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
                top_k: Optional[int] = None,
                class_id: Optional[int] = None,
                name: Optional[str] = None,
+               use_object_detection: Optional[bool] = None,
+               iou_threshold: Optional[float] = None,
+               object_class_id: Optional[int] = None,
+               object_class_weight: Optional[float] = None,
+               area_range: Optional[Tuple[float, float]] = None,
+               max_num_detections: Optional[int] = None,
                **kwargs):
     """Initializes confusion matrix metric.
 
@@ -197,6 +241,22 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
       name: (Optional) Metric name.
+      use_object_detection: whether this problem is object detection or not. If
+        it is, then we are expecting object_class_id(required), iou_thresholds,
+        and area_range arguments.
+      iou_threshold: (Optional) Used for object detection, thresholds for a
+        detection and ground truth pair with specific iou to be considered as a
+        match. Default to 0.5
+      object_class_id: (Optional) Used for object detection, the class id for
+        calculating metrics. It must be provided if use_object_detection is
+        True.
+      object_class_weight: (Optional) Used for object detection, the weight
+        associated with the object class id.
+      area_range: (Optional) Used for object detection, a tuple (inclusive)
+        representing the area-range for objects to be considered for metrics.
+        Default to (0, inf).
+      max_num_detections: (Optional) Used for object detection, the maximum
+        number of detections for a single image. Default to unlimited.
       **kwargs: (Optional) Additional args to pass along to init (and eventually
         on to _metric_computation and _metric_value)
     """
@@ -204,6 +264,12 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
         metric_util.merge_per_key_computations(self._metric_computations),
         thresholds=thresholds,
         num_thresholds=num_thresholds,
+        use_object_detection=use_object_detection,
+        iou_threshold=iou_threshold,
+        object_class_id=object_class_id,
+        object_class_weight=object_class_weight,
+        area_range=area_range,
+        max_num_detections=max_num_detections,
         top_k=top_k,
         class_id=class_id,
         name=name,
@@ -220,9 +286,13 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
     # where an unsupported parameter is passed to the subclass, filter out any
     # parameters that are None.
     kwargs = copy.copy(self.kwargs)
-    for arg in ('thresholds', 'num_thresholds', 'top_k', 'class_id'):
+    for arg in ('thresholds', 'num_thresholds', 'top_k', 'class_id',
+                'iou_threshold', 'object_class_id', 'object_class_weight',
+                'area_range', 'max_num_detections'):
       if kwargs[arg] is None:
         del kwargs[arg]
+    if not kwargs['use_object_detection']:
+      del kwargs['use_object_detection']
     return kwargs
 
   @abc.abstractmethod
@@ -244,6 +314,12 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
                            thresholds: Optional[Union[float,
                                                       List[float]]] = None,
                            num_thresholds: Optional[int] = None,
+                           use_object_detection: Optional[bool] = None,
+                           iou_threshold: Optional[float] = None,
+                           object_class_id: Optional[int] = None,
+                           object_class_weight: Optional[float] = None,
+                           area_range: Optional[Tuple[float, float]] = None,
+                           max_num_detections: Optional[int] = None,
                            top_k: Optional[int] = None,
                            class_id: Optional[int] = None,
                            name: Optional[str] = None,
@@ -258,7 +334,8 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
                            **kwargs) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
     sub_key = _validate_and_update_sub_key(name, model_name, output_name,
-                                           sub_key, top_k, class_id)
+                                           sub_key, top_k, class_id,
+                                           use_object_detection)
 
     key = metric_types.MetricKey(
         name=name,
@@ -281,6 +358,12 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
     matrices_computations = binary_confusion_matrices.binary_confusion_matrices(
         num_thresholds=num_thresholds,
         thresholds=thresholds,
+        use_object_detection=use_object_detection,
+        iou_threshold=iou_threshold,
+        object_class_id=object_class_id,
+        object_class_weight=object_class_weight,
+        area_range=area_range,
+        max_num_detections=max_num_detections,
         eval_config=eval_config,
         model_name=model_name,
         output_name=output_name,
@@ -313,6 +396,12 @@ class ConfusionMatrixMetric(ConfusionMatrixMetricBase):
                top_k: Optional[int] = None,
                class_id: Optional[int] = None,
                name: Optional[str] = None,
+               use_object_detection: Optional[bool] = False,
+               iou_threshold: Optional[float] = None,
+               object_class_id: Optional[int] = None,
+               object_class_weight: Optional[float] = None,
+               area_range: Optional[Tuple[float, float]] = None,
+               max_num_detections: Optional[int] = None,
                **kwargs):
     """Initializes confusion matrix metric.
 
@@ -332,6 +421,22 @@ class ConfusionMatrixMetric(ConfusionMatrixMetricBase):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
       name: (Optional) Metric name.
+      use_object_detection: whether this problem is object detection or not. If
+        it is, then we are expecting object_class_id(required), iou_thresholds,
+        and area_range arguments.
+      iou_threshold: (Optional) Used for object detection, thresholds for a
+        detection and ground truth pair with specific iou to be considered as a
+        match. Default to 0.5
+      object_class_id: (Optional) Used for object detection, the class id for
+        calculating metrics. It must be provided if use_object_detection is
+        True.
+      object_class_weight: (Optional) Used for object detection, the weight
+        associated with the object class id.
+      area_range: (Optional) Used for object detection, a tuple (inclusive)
+        representing the area-range for objects to be considered for metrics.
+        Default to (0, inf).
+      max_num_detections: (Optional) Used for object detection, the maximum
+        number of detections for a single image. Default to None.
       **kwargs: (Optional) Additional args to pass along to init (and eventually
         on to _metric_computation and _metric_value)
     """
@@ -341,6 +446,12 @@ class ConfusionMatrixMetric(ConfusionMatrixMetricBase):
         top_k=top_k,
         class_id=class_id,
         name=name,
+        use_object_detection=use_object_detection,
+        iou_threshold=iou_threshold,
+        object_class_id=object_class_id,
+        object_class_weight=object_class_weight,
+        area_range=area_range,
+        max_num_detections=max_num_detections,
         **kwargs)
 
   def _default_threshold(self) -> float:
@@ -413,14 +524,22 @@ class AUC(ConfusionMatrixMetricBase):
   Use `sample_weight` of 0 to mask values.
   """
 
-  def __init__(self,
-               num_thresholds: Optional[int] = None,
-               curve: str = 'ROC',
-               summation_method: str = 'interpolation',
-               name: Optional[str] = None,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+  def __init__(
+      self,
+      num_thresholds: Optional[int] = None,
+      curve: str = 'ROC',
+      summation_method: str = 'interpolation',
+      name: Optional[str] = None,
+      thresholds: Optional[Union[float, List[float]]] = None,
+      top_k: Optional[int] = None,
+      class_id: Optional[int] = None,
+      use_object_detection: Optional[bool] = False,
+      iou_threshold: Optional[float] = None,
+      object_class_id: Optional[int] = None,
+      object_class_weight: Optional[float] = None,
+      area_range: Optional[Tuple[float, float]] = None,
+      max_num_detections: Optional[int] = None,
+  ):
     """Initializes AUC metric.
 
     Args:
@@ -452,10 +571,32 @@ class AUC(ConfusionMatrixMetricBase):
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
+      use_object_detection: whether this problem is object detection or not. If
+        it is, then we are expecting object_class_id(required), iou_thresholds,
+        and area_range arguments.
+      iou_threshold: (Optional) Used for object detection, thresholds for a
+        detection and ground truth pair with specific iou to be considered as a
+        match. Default to 0.5
+      object_class_id: (Optional) Used for object detection, the class id for
+        calculating metrics. It must be provided if use_object_detection is
+        True.
+      object_class_weight: (Optional) Used for object detection, the weight
+        associated with the object class id.
+      area_range: (Optional) Used for object detection, a tuple (inclusive)
+        representing the area-range for objects to be considered for metrics.
+        Default to (0, inf).
+      max_num_detections: (Optional) Used for object detection, the maximum
+        number of detections for a single image. Default to None.
     """
     super().__init__(
         num_thresholds=num_thresholds,
         thresholds=thresholds,
+        use_object_detection=use_object_detection,
+        iou_threshold=iou_threshold,
+        object_class_id=object_class_id,
+        object_class_weight=object_class_weight,
+        area_range=area_range,
+        max_num_detections=max_num_detections,
         curve=curve,
         summation_method=summation_method,
         name=name,
@@ -518,13 +659,21 @@ metric_types.register_metric(AUC)
 class AUCPrecisionRecall(AUC):
   """Alias for AUC(curve='PR')."""
 
-  def __init__(self,
-               num_thresholds: Optional[int] = None,
-               summation_method: str = 'interpolation',
-               name: Optional[str] = None,
-               thresholds: Optional[Union[float, List[float]]] = None,
-               top_k: Optional[int] = None,
-               class_id: Optional[int] = None):
+  def __init__(
+      self,
+      num_thresholds: Optional[int] = None,
+      summation_method: str = 'interpolation',
+      name: Optional[str] = None,
+      thresholds: Optional[Union[float, List[float]]] = None,
+      top_k: Optional[int] = None,
+      class_id: Optional[int] = None,
+      use_object_detection: Optional[bool] = False,
+      iou_threshold: Optional[float] = None,
+      object_class_id: Optional[int] = None,
+      object_class_weight: Optional[float] = None,
+      area_range: Optional[Tuple[float, float]] = None,
+      max_num_detections: Optional[int] = None,
+  ):
     """Initializes AUCPrecisionRecall metric.
 
     Args:
@@ -553,6 +702,22 @@ class AUCPrecisionRecall(AUC):
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
+      use_object_detection: whether this problem is object detection or not. If
+        it is, then we are expecting object_class_id(required), iou_thresholds,
+        and area_range arguments.
+      iou_threshold: (Optional) Used for object detection, thresholds for a
+        detection and ground truth pair with specific iou to be considered as a
+        match. Default to 0.5
+      object_class_id: (Optional) Used for object detection, the class id for
+        calculating metrics. It must be provided if use_object_detection is
+        True.
+      object_class_weight: (Optional) Used for object detection, the weight
+        associated with the object class id.
+      area_range: (Optional) Used for object detection, a tuple (inclusive)
+        representing the area-range for objects to be considered for metrics.
+        Default to (0, inf).
+      max_num_detections: (Optional) Used for object detection, the maximum
+        number of detections for a single image. Default to None.
     """
     super().__init__(
         num_thresholds=num_thresholds,
@@ -561,7 +726,14 @@ class AUCPrecisionRecall(AUC):
         summation_method=summation_method,
         name=name,
         top_k=top_k,
-        class_id=class_id)
+        class_id=class_id,
+        use_object_detection=use_object_detection,
+        iou_threshold=iou_threshold,
+        object_class_id=object_class_id,
+        object_class_weight=object_class_weight,
+        area_range=area_range,
+        max_num_detections=max_num_detections,
+    )
 
   def get_config(self) -> Dict[str, Any]:
     """Returns serializable config."""
@@ -598,7 +770,7 @@ class SensitivityAtSpecificity(ConfusionMatrixMetricBase):
   """
 
   def __init__(self,
-               specificity: float,
+               specificity: Union[float, List[float]],
                num_thresholds: Optional[int] = None,
                class_id: Optional[int] = None,
                name: Optional[str] = None,
@@ -632,8 +804,9 @@ class SensitivityAtSpecificity(ConfusionMatrixMetricBase):
   def _default_name(self) -> str:
     return SENSITIVITY_AT_SPECIFICITY_NAME
 
-  def _metric_value(self, specificity: float, key: metric_types.MetricKey,
-                    matrices: binary_confusion_matrices.Matrices) -> float:
+  def _metric_value(
+      self, specificity: Union[float, List[float]], key: metric_types.MetricKey,
+      matrices: binary_confusion_matrices.Matrices) -> Union[float, np.ndarray]:
     del key
     tp, tn = np.array(matrices.tp), np.array(matrices.tn)
     fp, fn = np.array(matrices.fp), np.array(matrices.fn)
@@ -673,7 +846,7 @@ class SpecificityAtSensitivity(ConfusionMatrixMetricBase):
 
 
     Args:
-      sensitivity: A scalar value in range `[0, 1]`.
+      sensitivity: A scalar value or a list of scalar value in range `[0, 1]`.
       num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
         use for matching the given sensitivity.
       class_id: (Optional) Used with a multi-class model to specify which class
@@ -698,8 +871,9 @@ class SpecificityAtSensitivity(ConfusionMatrixMetricBase):
   def _default_name(self) -> str:
     return SPECIFICITY_AT_SENSITIVITY_NAME
 
-  def _metric_value(self, sensitivity: float, key: metric_types.MetricKey,
-                    matrices: binary_confusion_matrices.Matrices) -> float:
+  def _metric_value(
+      self, sensitivity: Union[float, List[float]], key: metric_types.MetricKey,
+      matrices: binary_confusion_matrices.Matrices) -> Union[float, np.ndarray]:
     del key
     tp, tn = np.array(matrices.tp), np.array(matrices.tn)
     fp, fn = np.array(matrices.fp), np.array(matrices.fn)
@@ -721,17 +895,28 @@ class PrecisionAtRecall(ConfusionMatrixMetricBase):
   Use `sample_weight` of 0 to mask values.
   """
 
-  def __init__(self,
-               recall: float,
-               num_thresholds: Optional[int] = None,
-               class_id: Optional[int] = None,
-               name: Optional[str] = None,
-               top_k: Optional[int] = None):
+  def __init__(
+      self,
+      recall: Union[float, List[float]],
+      thresholds: Optional[List[float]] = None,
+      num_thresholds: Optional[int] = None,
+      class_id: Optional[int] = None,
+      name: Optional[str] = None,
+      top_k: Optional[int] = None,
+      use_object_detection: Optional[bool] = False,
+      iou_threshold: Optional[float] = None,
+      object_class_id: Optional[int] = None,
+      object_class_weight: Optional[float] = None,
+      area_range: Optional[Tuple[float, float]] = None,
+      max_num_detections: Optional[int] = None,
+  ):
     """Initializes PrecisionAtRecall metric.
 
 
     Args:
-      recall: A scalar value in range `[0, 1]`.
+      recall: A scalar or a list of scalar values in range `[0, 1]`.
+      thresholds: (Optional) Thresholds to use for calculating the matrices. Use
+        one of either thresholds or num_thresholds.
       num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
         use for matching the given recall.
       class_id: (Optional) Used with a multi-class model to specify which class
@@ -745,22 +930,50 @@ class PrecisionAtRecall(ConfusionMatrixMetricBase):
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
         one of class_id or top_k should be configured.
+      use_object_detection: whether this problem is object detection or not. If
+        it is, then we are expecting object_class_id(required), iou_thresholds,
+        and area_range arguments.
+      iou_threshold: (Optional) Used for object detection, thresholds for a
+        detection and ground truth pair with specific iou to be considered as a
+        match. Default to 0.5
+      object_class_id: (Optional) Used for object detection, the class id for
+        calculating metrics. It must be provided if use_object_detection is
+        True.
+      object_class_weight: (Optional) Used for object detection, the weight
+        associated with the object class id.
+      area_range: (Optional) Used for object detection, a tuple (inclusive)
+        representing the area-range for objects to be considered for metrics.
+        Default to (0, inf).
+      max_num_detections: (Optional) Used for object detection, the maximum
+        number of detections for a single image. Default to None.
     """
-    if recall < 0 or recall > 1:
-      raise ValueError('Argument `recall` must be in the range [0, 1]. '
-                       f'Received: recall={recall}')
+    if isinstance(recall, float):
+      recall = [recall]
+    for r in recall:
+      if r < 0 or r > 1:
+        raise ValueError('Argument `recall` must be in the range [0, 1]. '
+                         f'Received: recall={r}')
+
     super().__init__(
+        thresholds=thresholds,
         num_thresholds=num_thresholds,
         recall=recall,
         class_id=class_id,
         name=name,
-        top_k=top_k)
+        top_k=top_k,
+        use_object_detection=use_object_detection,
+        iou_threshold=iou_threshold,
+        object_class_id=object_class_id,
+        object_class_weight=object_class_weight,
+        area_range=area_range,
+        max_num_detections=max_num_detections)
 
   def _default_name(self) -> str:
     return PRECISION_AT_RECALL_NAME
 
-  def _metric_value(self, recall: float, key: metric_types.MetricKey,
-                    matrices: binary_confusion_matrices.Matrices) -> float:
+  def _metric_value(
+      self, recall: Union[float, List[float]], key: metric_types.MetricKey,
+      matrices: binary_confusion_matrices.Matrices) -> Union[float, np.ndarray]:
     del key
     tp = np.array(matrices.tp)
     fp, fn = np.array(matrices.fp), np.array(matrices.fn)
@@ -825,8 +1038,9 @@ class RecallAtPrecision(ConfusionMatrixMetricBase):
   def _default_name(self) -> str:
     return RECALL_AT_PRECISION_NAME
 
-  def _metric_value(self, precision: float, key: metric_types.MetricKey,
-                    matrices: binary_confusion_matrices.Matrices) -> float:
+  def _metric_value(
+      self, precision: Union[float, List[float]], key: metric_types.MetricKey,
+      matrices: binary_confusion_matrices.Matrices) -> Union[float, np.ndarray]:
     del key
     tp = np.array(matrices.tp)
     fp, fn = np.array(matrices.fp), np.array(matrices.fn)
@@ -1245,7 +1459,13 @@ class Recall(ConfusionMatrixMetric):
                thresholds: Optional[Union[float, List[float]]] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[str] = None):
+               name: Optional[str] = None,
+               use_object_detection: Optional[bool] = False,
+               iou_threshold: Optional[float] = None,
+               object_class_id: Optional[int] = None,
+               object_class_weight: Optional[float] = None,
+               area_range: Optional[Tuple[float, float]] = None,
+               max_num_detections: Optional[int] = None):
     """Initializes Recall metric.
 
     Args:
@@ -1266,9 +1486,34 @@ class Recall(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
       name: (Optional) string name of the metric instance.
+      use_object_detection: whether this problem is object detection or not. If
+        it is, then we are expecting object_class_id(required), iou_thresholds,
+        and area_range arguments.
+      iou_threshold: (Optional) Used for object detection, thresholds for a
+        detection and ground truth pair with specific iou to be considered as a
+        match. Default to 0.5
+      object_class_id: (Optional) Used for object detection, the class id for
+        calculating metrics. It must be provided if use_object_detection is
+        True.
+      object_class_weight: (Optional) Used for object detection, the weight
+        associated with the object class id.
+      area_range: (Optional) Used for object detection, a tuple (inclusive)
+        representing the area-range for objects to be considered for metrics.
+        Default to (0, inf).
+      max_num_detections: (Optional) Used for object detection, the maximum
+        number of detections for a single image. Default to None.
     """
     super().__init__(
-        thresholds=thresholds, top_k=top_k, class_id=class_id, name=name)
+        thresholds=thresholds,
+        top_k=top_k,
+        class_id=class_id,
+        name=name,
+        use_object_detection=use_object_detection,
+        iou_threshold=iou_threshold,
+        object_class_id=object_class_id,
+        object_class_weight=object_class_weight,
+        area_range=area_range,
+        max_num_detections=max_num_detections)
 
   def _default_name(self) -> str:
     return RECALL_NAME
@@ -2277,3 +2522,80 @@ class ConfusionMatrixAtThresholds(metric_types.Metric):
 
 
 metric_types.register_metric(ConfusionMatrixAtThresholds)
+
+_DEFAULT_THRESHOLD_FOR_MAX_RECALL = 1.0e-12
+
+
+class MaxRecall(Recall):
+  """Computes the max recall of the predictions with respect to the labels.
+
+  The metric uses true positives and false negatives to compute recall by
+  dividing the true positives by the sum of true positives and false negatives.
+
+  Effectively the recall at threshold = epsilon(1.0e-12). It is equilvalent
+  to the recall defined in COCO metrics.
+
+  If `sample_weight` is `None`, weights default to 1.
+  Use `sample_weight` of 0 to mask values.
+  """
+
+  def __init__(
+      self,
+      top_k: Optional[int] = None,
+      class_id: Optional[int] = None,
+      name: Optional[str] = None,
+      use_object_detection: Optional[bool] = False,
+      iou_threshold: Optional[float] = None,
+      object_class_id: Optional[int] = None,
+      object_class_weight: Optional[float] = None,
+      area_range: Optional[Tuple[float, float]] = None,
+      max_num_detections: Optional[int] = None,
+  ):
+    """Initializes MaxRecall metrics, it calculates the maximum recall.
+
+    Args:
+      top_k: (Optional) Used with a multi-class model to specify that the top-k
+        values should be used to compute the confusion matrix. The net effect is
+        that the non-top-k values are set to -inf and the matrix is then
+        constructed from the average TP, FP, TN, FN across the classes. When
+        top_k is used, metrics_specs.binarize settings must not be present. Only
+        one of class_id or top_k should be configured.
+      class_id: (Optional) Used with a multi-class model to specify which class
+        to compute the confusion matrix for. When class_id is used,
+        metrics_specs.binarize settings must not be present. Only one of
+        class_id or top_k should be configured.
+      name: (Optional) string name of the metric instance.
+      use_object_detection: whether this problem is object detection or not. If
+        it is, then we are expecting object_class_id(required), iou_thresholds,
+        and area_range arguments.
+      iou_threshold: (Optional) Used for object detection, thresholds for a
+        detection and ground truth pair with specific iou to be considered as a
+        match. Default to 0.5
+      object_class_id: (Optional) Used for object detection, the class id for
+        calculating metrics. It must be provided if use_object_detection is
+        True.
+      object_class_weight: (Optional) Used for object detection, the weight
+        associated with the object class id.
+      area_range: (Optional) Used for object detection, a tuple (inclusive)
+        representing the area-range for objects to be considered for metrics.
+        Default to (0, inf).
+      max_num_detections: (Optional) Used for object detection, the maximum
+        number of detections for a single image. Default to None.
+    """
+    super().__init__(
+        thresholds=_DEFAULT_THRESHOLD_FOR_MAX_RECALL,
+        top_k=top_k,
+        class_id=class_id,
+        name=name,
+        use_object_detection=use_object_detection,
+        iou_threshold=iou_threshold,
+        object_class_id=object_class_id,
+        object_class_weight=object_class_weight,
+        area_range=area_range,
+        max_num_detections=max_num_detections)
+
+  def _default_name(self) -> str:
+    return MAX_RECALL_NAME
+
+
+metric_types.register_metric(MaxRecall)

@@ -40,14 +40,13 @@ _LOSS_FUNCTION_WRAPPER = 'LossFunctionWrapper'
 _EPSILON = 1e-7
 
 
-def generate_private_name_from_arguments(
-    name: str, arguments: Optional[List[Tuple[str, Any]]]) -> str:
+def generate_private_name_from_arguments(name: str, **kwargs) -> str:
   """Generate names for used metrics.
 
   Args:
     name: The name user defined for this metric.
-    arguments: (Optional) The list of arguments with their corresponding names
-      and values.
+    **kwargs: (Optional) The dict of arguments with their corresponding names
+      and values. If the argument value is None, it will be obmitted.
 
   Returns:
     A name for the metric, generated from the specified arguments.
@@ -58,8 +57,10 @@ def generate_private_name_from_arguments(
     name = '_' + name
   # sort the arguments in alphabetical order so that it generates the same name
   # for the same group of arguments.
-  if arguments is not None:
-    name = name + ':' + ','.join(k + '=' + str(v) for k, v in sorted(arguments))
+  if kwargs is not None:
+    name = name + ':' + ','.join(k + '=' + str(kwargs[k])
+                                 for k in sorted(kwargs)
+                                 if kwargs[k] is not None)
   return name
 
 

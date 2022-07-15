@@ -26,16 +26,16 @@ class UtilTest(tf.test.TestCase):
   def testNameGeneratorFromArguments(self):
     # Basic usage
     self.assertEqual(
-        metric_util.generate_private_name_from_arguments(
-            '', [('threshold', [0.5])]), '_:threshold=[0.5]')
+        metric_util.generate_private_name_from_arguments('', threshold=[0.5]),
+        '_:threshold=[0.5]')
     # Private case with private name
     self.assertEqual(
         metric_util.generate_private_name_from_arguments(
-            '_private', [('threshold', [0.5])]), '_private:threshold=[0.5]')
+            '_private', threshold=[0.5]), '_private:threshold=[0.5]')
     # Multiple arguments
     self.assertEqual(
         metric_util.generate_private_name_from_arguments(
-            '_private', [('threshold', [0.5]), ('class_id', [0])]),
+            '_private', threshold=[0.5], class_id=[0], class_type=None),
         '_private:class_id=[0],threshold=[0.5]')
 
   def testToScalar(self):

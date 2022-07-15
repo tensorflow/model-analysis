@@ -55,6 +55,7 @@ def calibration_histogram(
     eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: str = '',
     output_name: str = '',
+    preprocessor: Optional[beam.DoFn] = None,
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -73,6 +74,7 @@ def calibration_histogram(
     eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
+    preprocessor: A tfma component for preprocessing data.
     sub_key: Optional sub key.
     aggregation_type: Optional aggregation type.
     class_weights: Optional class weights to apply to multi-class / multi-label
@@ -112,7 +114,7 @@ def calibration_histogram(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=None,
+          preprocessor=preprocessor,
           combiner=_CalibrationHistogramCombiner(
               key=key,
               eval_config=eval_config,

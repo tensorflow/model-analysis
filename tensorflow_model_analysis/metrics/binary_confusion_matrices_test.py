@@ -22,6 +22,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.metrics.cv import object_detection_preprocessor
 
 
 class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
@@ -239,10 +240,19 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 1)
-          name = '{}_{}'.format(
+          name_args = {'example_id_key': None, 'example_ids_count': None}
+          if 'num_thresholds' in kwargs:
+            thresholds = binary_confusion_matrices._interpolated_thresholds(
+                kwargs['num_thresholds'])
+            name_args['num_thresholds'] = kwargs['num_thresholds']
+          else:
+            thresholds = kwargs['thresholds']
+            name_args['thresholds'] = thresholds
+
+          name = metric_util.generate_private_name_from_arguments(
               binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME,
-              kwargs['num_thresholds']
-              if 'num_thresholds' in kwargs else kwargs['thresholds'])
+              **name_args)
+
           matrices_key = metric_types.MetricKey(name=name)
           self.assertIn(matrices_key, got_metrics)
           got_matrices = got_metrics[matrices_key]
@@ -371,19 +381,28 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 2)
-          thresholds_name_part = (
-              kwargs['num_thresholds']
-              if 'num_thresholds' in kwargs else kwargs['thresholds'])
-          name = '{}_{}'.format(
+          name_args = {
+              'example_id_key': kwargs.get('example_id_key'),
+              'example_ids_count': kwargs.get('example_ids_count')
+          }
+          if 'num_thresholds' in kwargs:
+            thresholds = binary_confusion_matrices._interpolated_thresholds(
+                kwargs['num_thresholds'])
+            name_args['num_thresholds'] = kwargs['num_thresholds']
+          else:
+            thresholds = kwargs['thresholds']
+            name_args['thresholds'] = thresholds
+
+          name = metric_util.generate_private_name_from_arguments(
               binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME,
-              thresholds_name_part)
+              **name_args)
+          examples_name = metric_util.generate_private_name_from_arguments(
+              binary_confusion_matrices.BINARY_CONFUSION_EXAMPLES_NAME,
+              **name_args)
           matrices_key = metric_types.MetricKey(name=name)
           self.assertIn(matrices_key, got_metrics)
           got_matrices = got_metrics[matrices_key]
           self.assertEqual(got_matrices, expected_matrices)
-          examples_name = '{}_{}'.format(
-              binary_confusion_matrices.BINARY_CONFUSION_EXAMPLES_NAME,
-              thresholds_name_part)
           examples_key = metric_types.MetricKey(name=examples_name)
           self.assertIn(examples_key, got_metrics)
           got_examples = got_metrics[examples_key]
@@ -443,10 +462,14 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, 1)
+          thresholds = [float('-inf')]
+          name = metric_util.generate_private_name_from_arguments(
+              binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME,
+              thresholds=thresholds,
+              example_id_key=None,
+              example_ids_count=None)
           key = metric_types.MetricKey(
-              name='{}_[-inf]'.format(
-                  binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME),
-              sub_key=metric_types.SubKey(top_k=3))
+              name=name, sub_key=metric_types.SubKey(top_k=3))
           self.assertIn(key, got_metrics)
           got_matrices = got_metrics[key]
           self.assertEqual(
@@ -463,6 +486,177 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='not_use_histogram',
+          metric_config={
+              'num_thresholds': 3,
+              'use_histogram': False,
+              'use_object_detection': True,
+              'object_class_id': 0,
+          },
+          num_metrics=2,
+          # This is a binary classification case, the iou matrix should be:
+          # [[0.5, 7 / 87], [1., 2/9], [0., 0.]]
+          # The match at iou_threshold = 0.5 is
+          # gt_matches: [[0, -1]] dt_matches: [[0, -1, -1]]
+          # Results after preprocess:
+          #   'labels': np.asarray([1., 1., 0., 0.]),
+          #   'predictions': np.asarray([0.7, 0., 0.3, 0.1])
+          extracts=[{
+              'labels':
+                  np.asarray([[30, 100, 70, 300, 0], [50, 100, 80, 200, 0]]),
+              'predictions':
+                  np.asarray([[20, 130, 60, 290, 0, 0.7],
+                              [30, 100, 70, 300, 0, 0.3],
+                              [500, 100, 800, 300, 0, 0.1]])
+          }],
+          expected_results=binary_confusion_matrices.Matrices(
+              thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+              tp=[2.0, 1.0, 0.0],
+              fp=[2.0, 0.0, 0.0],
+              tn=[0.0, 2.0, 2.0],
+              fn=[0.0, 1.0, 2.0])),
+      dict(
+          testcase_name='use_histogram',
+          metric_config={
+              'num_thresholds': 3,
+              'use_histogram': True,
+              'use_object_detection': True,
+              'object_class_id': 0,
+          },
+          num_metrics=1,
+          extracts=[{
+              'labels':
+                  np.asarray([[30, 100, 70, 300, 0], [50, 100, 80, 200, 0]]),
+              'predictions':
+                  np.asarray([[20, 130, 60, 290, 0, 0.7],
+                              [30, 100, 70, 300, 0, 0.3],
+                              [500, 100, 800, 300, 0, 0.1]])
+          }],
+          expected_results=binary_confusion_matrices.Matrices(
+              thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+              tp=[2.0, 1.0, 0.0],
+              fp=[2.0, 0.0, 0.0],
+              tn=[0.0, 2.0, 2.0],
+              fn=[0.0, 1.0, 2.0])),
+      dict(
+          testcase_name='not_use_histogram_filtered_class',
+          metric_config={
+              'num_thresholds': 3,
+              'use_histogram': False,
+              'use_object_detection': True,
+              'object_class_id': 0,
+          },
+          num_metrics=2,
+          # Same as the last case but has some class 1, which is filtered
+          # The match at iou_threshold = 0.5 is
+          # gt_matches: [[0]] dt_matches: [[0, -1]]
+          # Results after preprocess:
+          #   'labels': np.asarray([1., 0.]),
+          #   'predictions': np.asarray([0.7, 0.3])
+          extracts=[{
+              'labels':
+                  np.asarray([[30, 100, 70, 300, 0], [50, 100, 80, 200, 1]]),
+              'predictions':
+                  np.asarray([[20, 130, 60, 290, 0, 0.7],
+                              [30, 100, 70, 300, 0, 0.3],
+                              [500, 100, 800, 300, 1, 0.1]])
+          }],
+          expected_results=binary_confusion_matrices.Matrices(
+              thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+              tp=[1.0, 1.0, 0.0],
+              fp=[1.0, 0.0, 0.0],
+              tn=[0.0, 1.0, 1.0],
+              fn=[0.0, 0.0, 1.0])),
+      dict(
+          testcase_name='two_images',
+          metric_config={
+              'num_thresholds': 3,
+              'use_histogram': True,
+              'use_object_detection': True,
+              'object_class_id': 0,
+          },
+          num_metrics=1,
+          extracts=[
+              {
+                  'labels':
+                      np.asarray([[30, 100, 70, 300, 0], [50, 100, 80, 200,
+                                                          1]]),
+                  'predictions':
+                      np.asarray([[20, 130, 60, 290, 0, 0.7],
+                                  [30, 100, 70, 300, 0, 0.3],
+                                  [500, 100, 800, 300, 1, 0.1]])
+              },
+              # This is a binary classification case, the iou matrix is:
+              # [[0., 2/3], [0., 4/11]]
+              # The match at iou_threshold = 0.5 is
+              # gt_matches: [[-1, 0]] dt_matches: [[1, -1]]
+              # Results after preprocess:
+              #   'labels': np.asarray([1., 1., 0.]),
+              #   'predictions': np.asarray([0., 0.4, 0.3])
+              {
+                  'labels':
+                      np.asarray([[30, 100, 70, 400, 0], [10, 200, 80, 300,
+                                                          0]]),
+                  'predictions':
+                      np.asarray([[100, 130, 160, 290, 0, 0.4],
+                                  [30, 100, 70, 300, 0, 0.3]])
+              }
+          ],
+          expected_results=binary_confusion_matrices.Matrices(
+              thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+              tp=[3.0, 1.0, 0.0],
+              fp=[2.0, 0.0, 0.0],
+              tn=[0.0, 2.0, 2.0],
+              fn=[0.0, 2.0, 3.0])))
+  def testBinaryConfusionMatricesObjectDetection(self, metric_config,
+                                                 num_metrics, extracts,
+                                                 expected_results):
+
+    computations = binary_confusion_matrices.binary_confusion_matrices(
+        **metric_config)
+    histogram = computations[0]
+    matrices = computations[1]
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create(extracts)
+          | 'Process' >> beam.ParDo(
+              object_detection_preprocessor.BoundingBoxMatchPreprocessor(
+                  class_id=0, iou_threshold=0.5))
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
+          |
+          'ComputeMatrices' >> beam.Map(lambda x: (x[0], matrices.result(x[1])))
+      )  # pyformat: ignore
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertLen(got_metrics, num_metrics)
+          name = metric_util.generate_private_name_from_arguments(
+              binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME,
+              num_thresholds=3,
+              iou_threshold=0.5,
+              object_class_id=metric_config['object_class_id'],
+              object_class_weight=None,
+              area_range=(0, float('inf')),
+              max_num_detections=None,
+              example_id_key=None,
+              example_ids_count=None)
+          matrices_key = metric_types.MetricKey(name=name)
+          self.assertIn(matrices_key, got_metrics)
+          got_matrices = got_metrics[matrices_key]
+          self.assertEqual(got_matrices, expected_results)
+        except AssertionError as err:
+          raise util.BeamAssertException(err) from err
+
+      util.assert_that(result, check_result, label='result')
 
 if __name__ == '__main__':
   tf.test.main()

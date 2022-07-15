@@ -20,11 +20,15 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.metrics.cv import object_detection_preprocessor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 DEFAULT_NUM_THRESHOLDS = calibration_histogram.DEFAULT_NUM_BUCKETS
 _KERAS_DEFAULT_NUM_THRESHOLDS = 200
+# default values for object detection settings
+_DEFAULT_IOU_THRESHOLD = 0.5
+_DEFAULT_AREA_RANGE = (0, float('inf'))
 
 DEFAULT_NUM_EXAMPLE_IDS = 100
 
@@ -168,7 +172,14 @@ def binary_confusion_matrices(
     examples_name: Optional[str] = None,
     example_id_key: Optional[str] = None,
     example_ids_count: Optional[int] = None,
-    fractional_labels: float = True) -> metric_types.MetricComputations:
+    fractional_labels: float = True,
+    use_object_detection: Optional[bool] = False,
+    iou_threshold: Optional[Union[float, List[float]]] = None,
+    object_class_id: Optional[int] = None,
+    object_class_weight: Optional[float] = None,
+    area_range: Optional[Tuple[float, float]] = None,
+    max_num_detections: Optional[int] = None
+) -> metric_types.MetricComputations:
   """Returns metric computations for computing binary confusion matrices.
 
   Args:
@@ -215,6 +226,21 @@ def binary_confusion_matrices(
         implementation is such that tuples associated with a weight of zero are
         not yielded. This means it is safe to enable fractional_labels even when
         the labels only take on the values of 0.0 or 1.0.
+    use_object_detection: whether this problem is object detection or not. If
+        it is, then we are expecting object_class_id(required), iou_thresholds,
+        and area_range arguments.
+    iou_threshold: (Optional) Used for object detection, thresholds for a
+      detection and ground truth pair with specific iou to be considered as a
+      match.
+    object_class_id: (Optional) Used for object detection, the class id for
+      calculating metrics. It must be provided if use_object_detection is
+      True.
+    object_class_weight: (Optional) Used for object detection, the weight
+      associated with the object class id.
+    area_range: (Optional) Used for object detection, the area-range for
+      objects to be considered for metrics.
+    max_num_detections: (Optional) Used for object detection, the maximum
+      number of detections for a single image.
 
   Raises:
     ValueError: If both num_thresholds and thresholds are set at the same time.
@@ -234,7 +260,7 @@ def binary_confusion_matrices(
   if num_thresholds is not None and thresholds is not None:
     raise ValueError(
         'only one of thresholds or num_thresholds can be set at a time: '
-        f'num_thesholds={num_thresholds}, thresholds={thresholds}, '
+        f'num_thresholds={num_thresholds}, thresholds={thresholds}, '
         f'len(thresholds)={len(thresholds)})')
   if num_thresholds is None and thresholds is None:
     num_thresholds = DEFAULT_NUM_THRESHOLDS
@@ -243,9 +269,25 @@ def binary_confusion_matrices(
       raise ValueError('num_thresholds must be > 1')
     # The interpolation strategy used here matches that used by keras for AUC.
     thresholds = _interpolated_thresholds(num_thresholds)
-    thresholds_name_part = str(num_thresholds)
-  else:
-    thresholds_name_part = str(list(thresholds))
+
+  if use_object_detection:
+    if preprocessor:
+      raise ValueError('Trying to build a object detection preprocessor,'
+                       'which could not be merged with another preprocessor.')
+    else:
+      if iou_threshold is None:
+        iou_threshold = _DEFAULT_IOU_THRESHOLD
+      if object_class_id is None:
+        raise ValueError('Missing object_class_id for object detection related'
+                         f'metrics: {name or BINARY_CONFUSION_MATRICES_NAME}.')
+      if area_range is None:
+        area_range = _DEFAULT_AREA_RANGE
+      preprocessor = object_detection_preprocessor.BoundingBoxMatchPreprocessor(
+          iou_threshold=iou_threshold,
+          class_id=object_class_id,
+          class_weight=object_class_weight,
+          area_range=area_range,
+          max_num_detections=max_num_detections)
 
   if use_histogram is None:
     use_histogram = (
@@ -270,9 +312,28 @@ def binary_confusion_matrices(
                      f'example_ids_count: {example_ids_count}')
 
   if name is None:
-    name = f'{BINARY_CONFUSION_MATRICES_NAME}_{thresholds_name_part}'
-  if examples_name is None:
-    examples_name = f'{BINARY_CONFUSION_EXAMPLES_NAME}_{thresholds_name_part}'
+    name_args = {
+        'example_id_key': example_id_key,
+        'example_ids_count': example_ids_count
+    }
+    if num_thresholds:
+      name_args['num_thresholds'] = num_thresholds
+    else:
+      name_args['thresholds'] = thresholds
+    if use_object_detection:
+      name_args.update({
+          'iou_threshold': iou_threshold,
+          'object_class_id': object_class_id,
+          'object_class_weight': object_class_weight,
+          'area_range': area_range,
+          'max_num_detections': max_num_detections
+      })
+
+    name = metric_util.generate_private_name_from_arguments(
+        BINARY_CONFUSION_MATRICES_NAME, **name_args)
+    examples_name = metric_util.generate_private_name_from_arguments(
+        BINARY_CONFUSION_EXAMPLES_NAME, **name_args)
+
   matrices_key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
@@ -295,22 +356,40 @@ def binary_confusion_matrices(
     # also required to get accurate counts at the threshold boundaries. If this
     # becomes an issue, then calibration histogram can be updated to support
     # non-linear boundaries.
+    # If used for object_detection, to distinguish between histograms with
+    # different specs, we generate a unique name for it.
+
+    # For precision/recall_at_k were a single large negative threshold
+    # is used, we only need one bucket. Note that the histogram will
+    # actually have 2 buckets: one that we set (which handles
+    # predictions > -1.0) and a default catch-all bucket (i.e. bucket 0)
+    # that the histogram creates for large negative predictions (i.e.
+    # predictions <= -1.0).
+    num_buckets = 1 if len(thresholds) == 1 and thresholds[0] <= 0 else None
+    if use_object_detection:
+      calibration_histogram_name = (
+          metric_util.generate_private_name_from_arguments(
+              calibration_histogram.CALIBRATION_HISTOGRAM_NAME,
+              num_buckets=num_buckets,
+              iou_threshold=iou_threshold,
+              object_class_id=object_class_id,
+              object_class_weight=object_class_weight,
+              area_range=area_range,
+              max_num_detections=max_num_detections))
+    else:
+      calibration_histogram_name = None
+
     computations = calibration_histogram.calibration_histogram(
         eval_config=eval_config,
-        num_buckets=(
-            # For precision/recall_at_k were a single large negative threshold
-            # is used, we only need one bucket. Note that the histogram will
-            # actually have 2 buckets: one that we set (which handles
-            # predictions > -1.0) and a default catch-all bucket (i.e. bucket 0)
-            # that the histogram creates for large negative predictions (i.e.
-            # predictions <= -1.0).
-            1 if len(thresholds) == 1 and thresholds[0] <= 0 else None),
+        num_buckets=num_buckets,
         model_name=model_name,
         output_name=output_name,
+        preprocessor=preprocessor,
         sub_key=sub_key,
         aggregation_type=aggregation_type,
         class_weights=class_weights,
-        example_weighted=example_weighted)
+        example_weighted=example_weighted,
+        name=calibration_histogram_name)
     input_metric_key = computations[-1].keys[-1]
     output_metric_keys = [matrices_key]
   else:
@@ -320,6 +399,7 @@ def binary_confusion_matrices(
                        f'example_ids_count: {example_ids_count}.')
     computations = _binary_confusion_matrix_computation(
         eval_config=eval_config,
+        name=name,
         thresholds=thresholds,
         model_name=model_name,
         output_name=output_name,
@@ -462,11 +542,6 @@ def _binary_confusion_matrix_computation(
   """Returns metric computations for computing binary confusion matrix."""
   if example_ids_count is None:
     example_ids_count = DEFAULT_NUM_EXAMPLE_IDS
-
-  # To generate unique name for each computation
-  if name is None:
-    name = (f'{_BINARY_CONFUSION_MATRIX_NAME}_{list(thresholds)}_'
-            f'{example_id_key}_{example_ids_count}')
 
   key = metric_types.MetricKey(
       name=name,
