@@ -947,9 +947,7 @@ class PrecisionAtRecall(ConfusionMatrixMetricBase):
       max_num_detections: (Optional) Used for object detection, the maximum
         number of detections for a single image. Default to None.
     """
-    if isinstance(recall, float):
-      recall = [recall]
-    for r in recall:
+    for r in [recall] if isinstance(recall, float) else recall:
       if r < 0 or r > 1:
         raise ValueError('Argument `recall` must be in the range [0, 1]. '
                          f'Received: recall={r}')
