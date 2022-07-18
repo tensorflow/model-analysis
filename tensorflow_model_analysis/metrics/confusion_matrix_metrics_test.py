@@ -34,9 +34,9 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
   # LINT.IfChange(tfma_confusion_matrix_metrics_tests)
   @parameterized.named_parameters(
-      ('auc', confusion_matrix_metrics.AUC(), 0.26),
+      ('auc', confusion_matrix_metrics.AUC(), np.float64(0.26)),
       ('auc_precision_recall', confusion_matrix_metrics.AUCPrecisionRecall(),
-       0.36205),
+       np.float64(0.36205)),
       ('specificity_at_sensitivity',
        confusion_matrix_metrics.SpecificityAtSensitivity(0.5), 0.2),
       ('sensitivity_at_specificity',
@@ -199,17 +199,20 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got_metrics, 1)
           key = metrics.keys[0]
           self.assertIn(key, got_metrics)
+          # np.testing utils automatically cast floats to arrays which fails
+          # to catch type mismatches.
+          self.assertEqual(type(expected_value), type(got_metrics[key]))
           np.testing.assert_almost_equal(
-              np.array(got_metrics[key]), np.array(expected_value), decimal=5)
+              got_metrics[key], expected_value, decimal=5)
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
 
   @parameterized.named_parameters(
-      ('auc', confusion_matrix_metrics.AUC(), 0.64286),
+      ('auc', confusion_matrix_metrics.AUC(), np.float64(0.64286)),
       ('auc_precision_recall', confusion_matrix_metrics.AUCPrecisionRecall(),
-       0.37467),
+       np.float64(0.37467)),
       ('specificity_at_sensitivity',
        confusion_matrix_metrics.SpecificityAtSensitivity(0.5), 0.642857),
       ('sensitivity_at_specificity',
@@ -321,6 +324,9 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
           key = metric_types.MetricKey(name=metric.name, example_weighted=True)
           self.assertIn(key, got_metrics)
+          # np.testing utils automatically cast floats to arrays which fails
+          # to catch type mismatches.
+          self.assertEqual(type(expected_value), type(got_metrics[key]))
           np.testing.assert_almost_equal(
               np.array(got_metrics[key]), np.array(expected_value), decimal=5)
 
