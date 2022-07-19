@@ -97,18 +97,15 @@ def to_base64_encoded_json(obj) -> str:
   return base64.b64encode(json_string.encode('utf-8')).decode('utf-8')
 
 
-def render_tfma_component(
+def generate_html_for_tfma_component(
     component_name: str,
     data: Union[List[Dict[str, Union[Dict[str, Any], str]]],
                 Dict[str, List[Union[str, float, List[float]]]]],
     config: Dict[str, Union[Dict[str, Dict[str, str]], str, bool]],
     trusted_html_for_vulcanized_tfma_js: str,
     event_handlers: Optional[PythonEventHandlersMap] = None,
-) -> None:
-  """Renders the specified TFMA component in Colab.
-
-  Colab requires custom visualization to be rendered in a sandbox so we cannot
-  use Jupyter widget.
+) -> str:
+  """Generates HTML for TFMA component.
 
   Args:
     component_name: The name of the TFMA web component to render.
@@ -118,6 +115,9 @@ def render_tfma_component(
       rendered unescaped.  This can be a script tag referencing a trusted
       external JS file or a script tag with trusted JS inline.
     event_handlers: Handlers for events on the js side.
+
+  Returns:
+    HTML content of the rendered TFMA component.
   """
 
   if component_name not in _TRUSTED_TFMA_COMPONENT_NAMES:
@@ -143,4 +143,33 @@ def render_tfma_component(
       trusted_html_for_vulcanized_tfma_js=trusted_html_for_vulcanized_tfma_js,
       trusted_event_handler_js=make_trusted_event_handler_js(event_handlers),
       base64_encoded_json_payload=to_base64_encoded_json(ui_payload))
+  return html
+
+
+def render_tfma_component(
+    component_name: str,
+    data: Union[List[Dict[str, Union[Dict[str, Any], str]]],
+                Dict[str, List[Union[str, float, List[float]]]]],
+    config: Dict[str, Union[Dict[str, Dict[str, str]], str, bool]],
+    trusted_html_for_vulcanized_tfma_js: str,
+    event_handlers: Optional[PythonEventHandlersMap] = None,
+) -> None:
+  """Renders the specified TFMA component in Colab.
+
+  Colab requires custom visualization to be rendered in a sandbox so we cannot
+  use Jupyter widget.
+
+  Args:
+    component_name: The name of the TFMA web component to render.
+    data: A dictionary containing data for visualization.
+    config: A dictionary containing the configuration.
+    trusted_html_for_vulcanized_tfma_js: Optional string of trusted HTML that is
+      rendered unescaped.  This can be a script tag referencing a trusted
+      external JS file or a script tag with trusted JS inline.
+    event_handlers: Handlers for events on the js side.
+  """
+
+  html = generate_html_for_tfma_component(component_name, data, config,
+                                          trusted_html_for_vulcanized_tfma_js,
+                                          event_handlers)
   display.display(display.HTML(html))
