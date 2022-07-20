@@ -25,6 +25,7 @@
     shouldn't be ## Breaking Changes
 *   Depends on `tfx-bsl>=1.9.0,<1.10.0`.
 *   Depends on `tensorflow-metadata>=1.9.0,<1.10.0`.
+*   Add score_distribution_plot.
 
 ## Breaking Changes
 
@@ -151,8 +152,8 @@
 ## Breaking Changes
 
 *   Removes register_metric from public API, as it is not intended to be public
-    facing. To use a custom metric, provide the module name in which the
-    metric is defined in the MetricConfig message, instead.
+    facing. To use a custom metric, provide the module name in which the metric
+    is defined in the MetricConfig message, instead.
 
 ## Deprecations
 
