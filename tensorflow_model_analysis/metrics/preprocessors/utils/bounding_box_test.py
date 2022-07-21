@@ -16,7 +16,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 
-from tensorflow_model_analysis.metrics.cv.utils import bounding_box
+from tensorflow_model_analysis.metrics.preprocessors.utils import bounding_box
 
 # indices for the inputs, it should be arranged in the following format:
 # [LEFT, RIGHT, TOP, BOTTOM, CLASS_ID, CONFIDENCE]

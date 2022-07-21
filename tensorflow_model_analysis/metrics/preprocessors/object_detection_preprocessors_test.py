@@ -19,7 +19,7 @@ import apache_beam as beam
 from apache_beam.testing import util as beam_testing_util
 import numpy as np
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.metrics.cv import object_detection_preprocessor
+from tensorflow_model_analysis.metrics.preprocessors import object_detection_preprocessors
 
 # Initialize test data
 
@@ -64,7 +64,7 @@ class ObjectDetectionPreprocessorTest(parameterized.TestCase):
       updated_pcoll = (
           p | 'Create' >> beam.Create([extracts])
           | 'Preprocess' >> beam.ParDo(
-              object_detection_preprocessor.BoundingBoxMatchPreprocessor(
+              object_detection_preprocessors.BoundingBoxMatchPreprocessor(
                   class_id=class_id, iou_threshold=iou_threshold)))
 
       def check_result(result):

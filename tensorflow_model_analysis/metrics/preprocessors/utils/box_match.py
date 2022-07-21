@@ -19,7 +19,7 @@ It includes functions for pairwise iou calculations and box matching utilities.
 from typing import Iterable, Union, Tuple, Optional
 import numpy as np
 
-from tensorflow_model_analysis.metrics.cv.utils import bounding_box
+from tensorflow_model_analysis.metrics.preprocessors.utils import bounding_box
 
 # indices for the inputs, it should be arranged in the following format:
 LEFT, TOP, RIGHT, BOTTOM, CLASS, CONFIDENCE = range(6)

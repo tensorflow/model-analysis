@@ -25,8 +25,8 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.metrics.cv.utils import bounding_box
-from tensorflow_model_analysis.metrics.cv.utils import box_match
+from tensorflow_model_analysis.metrics.preprocessors.utils import bounding_box
+from tensorflow_model_analysis.metrics.preprocessors.utils import box_match
 
 # indices for the inputs, it should be arranged in the following format:
 LEFT, TOP, RIGHT, BOTTOM, CLASS, CONFIDENCE = range(6)

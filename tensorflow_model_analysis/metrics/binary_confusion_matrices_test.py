@@ -22,7 +22,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.metrics.cv import object_detection_preprocessor
+from tensorflow_model_analysis.metrics.preprocessors import object_detection_preprocessors
 
 
 class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
@@ -625,7 +625,7 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create(extracts)
           | 'Process' >> beam.ParDo(
-              object_detection_preprocessor.BoundingBoxMatchPreprocessor(
+              object_detection_preprocessors.BoundingBoxMatchPreprocessor(
                   class_id=0, iou_threshold=0.5))
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)

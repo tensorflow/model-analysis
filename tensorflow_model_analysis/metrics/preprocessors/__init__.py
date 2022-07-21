@@ -11,6 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Init module for TensorFlow Model Analysis CV related utilities."""
-from tensorflow_model_analysis.metrics.cv.utils import bounding_box
-from tensorflow_model_analysis.metrics.cv.utils import box_match
+"""Init module for TensorFlow Model Analysis related preprocssors."""
+from tensorflow_model_analysis.metrics.preprocessors import utils
+from tensorflow_model_analysis.metrics.preprocessors.object_detection_preprocessors import BoundingBoxMatchPreprocessor

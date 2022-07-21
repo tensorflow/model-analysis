@@ -20,7 +20,7 @@ from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.metrics.cv import object_detection_preprocessor
+from tensorflow_model_analysis.metrics.preprocessors import object_detection_preprocessors
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
@@ -282,7 +282,7 @@ def binary_confusion_matrices(
                          f'metrics: {name or BINARY_CONFUSION_MATRICES_NAME}.')
       if area_range is None:
         area_range = _DEFAULT_AREA_RANGE
-      preprocessor = object_detection_preprocessor.BoundingBoxMatchPreprocessor(
+      preprocessor = object_detection_preprocessors.BoundingBoxMatchPreprocessor(
           iou_threshold=iou_threshold,
           class_id=object_class_id,
           class_weight=object_class_weight,

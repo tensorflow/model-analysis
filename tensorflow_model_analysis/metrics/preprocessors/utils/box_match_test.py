@@ -15,7 +15,7 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-from tensorflow_model_analysis.metrics.cv.utils import box_match
+from tensorflow_model_analysis.metrics.preprocessors.utils import box_match
 
 
 class IouTest(parameterized.TestCase):
