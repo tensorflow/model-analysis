@@ -6,6 +6,8 @@
 
 ## Bug fixes and other Changes
 
+*   Separate the PredictionsExtractor into two extractors.
+
 ## Breaking Changes
 
 ## Deprecations

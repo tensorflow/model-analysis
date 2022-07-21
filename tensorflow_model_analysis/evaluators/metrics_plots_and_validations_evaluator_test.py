@@ -33,6 +33,7 @@ from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import labels_extractor
 from tensorflow_model_analysis.extractors import legacy_predict_extractor
+from tensorflow_model_analysis.extractors import materialized_predictions_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
@@ -2784,7 +2785,8 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         features_extractor.FeaturesExtractor(eval_config),
         labels_extractor.LabelsExtractor(eval_config),
         example_weights_extractor.ExampleWeightsExtractor(eval_config),
-        predictions_extractor.PredictionsExtractor(eval_config),
+        materialized_predictions_extractor.MaterializedPredictionsExtractor(
+            eval_config),
         unbatch_extractor.UnbatchExtractor(),
         slice_key_extractor.SliceKeyExtractor(eval_config=eval_config)
     ]

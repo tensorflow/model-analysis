@@ -11,11 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Batched predict extractor."""
+"""Batched predictions extractor."""
 
-import copy
-
-from typing import Dict, Optional
+from typing import Dict
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -29,13 +27,9 @@ _PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
 def PredictionsExtractor(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None
+    eval_shared_model: types.MaybeMultipleEvalSharedModels
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions over a batch.
-
-  The extractor runs in two modes:
-
-  1) If one or more EvalSharedModels are provided
 
   The extractor's PTransform loads and runs the serving saved_model(s) against
   every extract yielding a copy of the incoming extracts with an additional
@@ -44,16 +38,8 @@ def PredictionsExtractor(
   (if tfma.FEATURES_KEY is not set or the model is non-keras). If multiple
   models are used the predictions will be stored in a dict keyed by model name.
 
-  2) If no EvalSharedModels are provided
-
-  The extractor's PTransform uses the config's ModelSpec.prediction_key(s)
-  to lookup the associated prediction values stored as features under the
-  tfma.FEATURES_KEY in extracts. The resulting values are then added to the
-  extracts under the key tfma.PREDICTIONS_KEY.
-
-  Note that the use of a prediction_key in the ModelSpecs serve two use cases:
-    (a) as a key into the dict of predictions output (option 1)
-    (b) as the key for a pre-computed prediction stored as a feature (option 2)
+  Note that the prediction_key in the ModelSpecs also serves as a key into the
+  dict of the prediction's output.
 
   Args:
     eval_config: Eval config.
@@ -66,14 +52,17 @@ def PredictionsExtractor(
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model)
-  if eval_shared_models:
-    eval_shared_models = {m.model_name: m for m in eval_shared_models}
+  if not eval_shared_models:
+    raise ValueError('No valid model(s) were provided. Please ensure that '
+                     'EvalConfig.ModelSpec is correctly configured to enable '
+                     'using the PredictionsExtractor.')
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_PREDICTIONS_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractPredictions(
-          eval_config=eval_config, eval_shared_models=eval_shared_models))
+          eval_config=eval_config,
+          eval_shared_models={m.model_name: m for m in eval_shared_models}))
 
 
 @beam.ptransform_fn
@@ -81,8 +70,8 @@ def PredictionsExtractor(
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractPredictions(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Optional[Dict[str, types.EvalSharedModel]]
-) -> beam.pvalue.PCollection:
+    eval_shared_models: Dict[str,
+                             types.EvalSharedModel]) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
   Args:
@@ -90,37 +79,20 @@ def _ExtractPredictions(  # pylint: disable=invalid-name
       tfma.FEATURES_KEY (if model inputs are named) or tfma.INPUTS_KEY (if model
       takes raw tf.Examples as input).
     eval_config: Eval config.
-    eval_shared_models: Shared model parameters keyed by model name or None.
+    eval_shared_models: Shared model parameters keyed by model name.
 
   Returns:
     PCollection of Extracts updated with the predictions.
   """
+  signature_names = {}
+  for spec in eval_config.model_specs:
+    model_name = '' if len(eval_config.model_specs) == 1 else spec.name
+    signature_names[model_name] = [spec.signature_name]
 
-  if eval_shared_models:
-    signature_names = {}
-    for spec in eval_config.model_specs:
-      model_name = '' if len(eval_config.model_specs) == 1 else spec.name
-      signature_names[model_name] = [spec.signature_name]
-
-    return (
-        extracts
-        | 'Predict' >> beam.ParDo(
-            model_util.ModelSignaturesDoFn(
-                eval_config=eval_config,
-                eval_shared_models=eval_shared_models,
-                signature_names={constants.PREDICTIONS_KEY: signature_names},
-                prefer_dict_outputs=False)))
-  else:
-
-    def extract_predictions(  # pylint: disable=invalid-name
-        batched_extracts: types.Extracts) -> types.Extracts:
-      """Extract predictions from extracts containing features."""
-      result = copy.copy(batched_extracts)
-      predictions = model_util.get_feature_values_for_model_spec_field(
-          list(eval_config.model_specs), 'prediction_key', 'prediction_keys',
-          result)
-      if predictions is not None:
-        result[constants.PREDICTIONS_KEY] = predictions
-      return result
-
-    return extracts | 'ExtractPredictions' >> beam.Map(extract_predictions)
+  return (extracts
+          | 'Inference' >> beam.ParDo(
+              model_util.ModelSignaturesDoFn(
+                  eval_config=eval_config,
+                  eval_shared_models=eval_shared_models,
+                  signature_names={constants.PREDICTIONS_KEY: signature_names},
+                  prefer_dict_outputs=False)))

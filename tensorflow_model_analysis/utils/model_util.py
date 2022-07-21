@@ -208,7 +208,7 @@ def verify_and_update_eval_shared_models(
       models keyed by model name.
 
   Returns:
-    A list of models.
+    A list of models or None.
 
   Raises:
     ValueError if dict is passed and keys don't match model names or a

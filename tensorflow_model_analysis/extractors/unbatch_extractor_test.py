@@ -23,7 +23,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import labels_extractor
-from tensorflow_model_analysis.extractors import predictions_extractor
+from tensorflow_model_analysis.extractors import materialized_predictions_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import test_util
@@ -63,7 +63,8 @@ class UnbatchExtractorTest(testutil.TensorflowModelAnalysisTest):
     label_extractor = labels_extractor.LabelsExtractor(eval_config)
     example_weight_extractor = (
         example_weights_extractor.ExampleWeightsExtractor(eval_config))
-    predict_extractor = predictions_extractor.PredictionsExtractor(eval_config)
+    predict_extractor = materialized_predictions_extractor.MaterializedPredictionsExtractor(
+        eval_config)
     unbatch_inputs_extractor = unbatch_extractor.UnbatchExtractor()
 
     schema = text_format.Parse(
@@ -181,7 +182,8 @@ class UnbatchExtractorTest(testutil.TensorflowModelAnalysisTest):
     label_extractor = labels_extractor.LabelsExtractor(eval_config)
     example_weight_extractor = (
         example_weights_extractor.ExampleWeightsExtractor(eval_config))
-    predict_extractor = predictions_extractor.PredictionsExtractor(eval_config)
+    predict_extractor = materialized_predictions_extractor.MaterializedPredictionsExtractor(
+        eval_config)
     unbatch_inputs_extractor = unbatch_extractor.UnbatchExtractor()
 
     schema = text_format.Parse(
@@ -319,7 +321,8 @@ class UnbatchExtractorTest(testutil.TensorflowModelAnalysisTest):
     label_extractor = labels_extractor.LabelsExtractor(eval_config)
     example_weight_extractor = (
         example_weights_extractor.ExampleWeightsExtractor(eval_config))
-    predict_extractor = predictions_extractor.PredictionsExtractor(eval_config)
+    predict_extractor = materialized_predictions_extractor.MaterializedPredictionsExtractor(
+        eval_config)
     unbatch_inputs_extractor = unbatch_extractor.UnbatchExtractor()
 
     schema = text_format.Parse(
