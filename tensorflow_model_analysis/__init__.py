@@ -27,6 +27,8 @@
 # pylint: disable=g-statement-before-imports
 # See b/148667210 for why the ImportError is ignored.
 try:
+  from tensorflow_model_analysis.sdk import *
+
   # Allow api module types to be imported at the top-level since they are the
   # main public interface to using TFMA.
   from tensorflow_model_analysis.api import tfma_unit as test
@@ -58,59 +60,6 @@ try:
   from tensorflow_model_analysis.api.model_eval_lib import ValidationResult
   from tensorflow_model_analysis.api.verifier_lib import Validate
 
-  # Allow proto types to be imported at the top-level since proto's live in
-  # the tensorflow_model_analysis namespace.
-  # pylint: disable=g-importing-member
-  from tensorflow_model_analysis.proto.config_pb2 import AggregationOptions
-  from tensorflow_model_analysis.proto.config_pb2 import BinarizationOptions
-  from tensorflow_model_analysis.proto.config_pb2 import ConfidenceIntervalOptions
-  from tensorflow_model_analysis.proto.config_pb2 import CrossSliceMetricThreshold
-  from tensorflow_model_analysis.proto.config_pb2 import CrossSliceMetricThresholds
-  from tensorflow_model_analysis.proto.config_pb2 import CrossSlicingSpec
-  from tensorflow_model_analysis.proto.config_pb2 import EvalConfig
-  from tensorflow_model_analysis.proto.config_pb2 import ExampleWeightOptions
-  from tensorflow_model_analysis.proto.config_pb2 import GenericChangeThreshold
-  from tensorflow_model_analysis.proto.config_pb2 import GenericValueThreshold
-  from tensorflow_model_analysis.proto.config_pb2 import MetricConfig
-  from tensorflow_model_analysis.proto.config_pb2 import MetricDirection
-  from tensorflow_model_analysis.proto.config_pb2 import MetricsSpec
-  from tensorflow_model_analysis.proto.config_pb2 import MetricThreshold
-  from tensorflow_model_analysis.proto.config_pb2 import ModelSpec
-  from tensorflow_model_analysis.proto.config_pb2 import Options
-  from tensorflow_model_analysis.proto.config_pb2 import PaddingOptions
-  from tensorflow_model_analysis.proto.config_pb2 import PerSliceMetricThreshold
-  from tensorflow_model_analysis.proto.config_pb2 import PerSliceMetricThresholds
-  from tensorflow_model_analysis.proto.config_pb2 import SlicingSpec
-  # pylint: enable=g-importing-member
-
-  # Allow constants to be imported at the top-level since they live in root dir.
-  from tensorflow_model_analysis.constants import ANALYSIS_KEY
-  from tensorflow_model_analysis.constants import ARROW_INPUT_COLUMN
-  from tensorflow_model_analysis.constants import ARROW_RECORD_BATCH_KEY
-  from tensorflow_model_analysis.constants import ATTRIBUTIONS_KEY
-  from tensorflow_model_analysis.constants import BASELINE_KEY
-  from tensorflow_model_analysis.constants import BASELINE_SCORE_KEY
-  from tensorflow_model_analysis.constants import CANDIDATE_KEY
-  from tensorflow_model_analysis.constants import DATA_CENTRIC_MODE
-  from tensorflow_model_analysis.constants import EXAMPLE_SCORE_KEY
-  from tensorflow_model_analysis.constants import EXAMPLE_WEIGHTS_KEY
-  # TODO(b/120222218): Remove after passing of native FPL supported.
-  from tensorflow_model_analysis.constants import FEATURES_PREDICTIONS_LABELS_KEY
-  from tensorflow_model_analysis.constants import FEATURES_KEY
-  from tensorflow_model_analysis.constants import INPUT_KEY
-  from tensorflow_model_analysis.constants import LABELS_KEY
-  from tensorflow_model_analysis.constants import METRICS_KEY
-  from tensorflow_model_analysis.constants import MODEL_CENTRIC_MODE
-  from tensorflow_model_analysis.constants import PLOTS_KEY
-  from tensorflow_model_analysis.constants import PREDICTIONS_KEY
-  from tensorflow_model_analysis.constants import SLICE_KEY_TYPES_KEY
-  from tensorflow_model_analysis.constants import TF_GENERIC
-  from tensorflow_model_analysis.constants import TF_ESTIMATOR
-  from tensorflow_model_analysis.constants import TF_JS
-  from tensorflow_model_analysis.constants import TF_LITE
-  from tensorflow_model_analysis.constants import TF_KERAS
-  from tensorflow_model_analysis.constants import VALIDATIONS_KEY
-
   # TODO(b/171992041): Remove these imports in the future.
   # For backwards compatibility allow eval_metrics_graph and exporter to be
   # accessed from top-level model. These will be deprecated in the future.
@@ -118,28 +67,6 @@ try:
   from tensorflow_model_analysis.eval_saved_model import export
   from tensorflow_model_analysis.eval_saved_model import exporter
   from tensorflow_model_analysis.post_export_metrics import post_export_metrics
-
-  # Allow types to be imported at the top-level since they live in root dir.
-  from tensorflow_model_analysis.types import AddMetricsCallbackType
-  from tensorflow_model_analysis.types import EvalSharedModel
-  from tensorflow_model_analysis.types import Extracts
-  # TODO(b/120222218): Remove after passing of native FPL supported.
-  from tensorflow_model_analysis.types import FeaturesPredictionsLabels
-  # TODO(b/120222218): Remove after passing of native FPL supported.
-  from tensorflow_model_analysis.types import MaterializedColumn
-  from tensorflow_model_analysis.types import MaybeMultipleEvalSharedModels
-  from tensorflow_model_analysis.types import ModelLoader
-  from tensorflow_model_analysis.types import RaggedTensorValue
-  from tensorflow_model_analysis.types import SparseTensorValue
-  from tensorflow_model_analysis.types import TensorType
-  from tensorflow_model_analysis.types import TensorTypeMaybeDict
-  from tensorflow_model_analysis.types import TensorValue
-  from tensorflow_model_analysis.types import VarLenTensorValue
-
-  # Import VERSION as __version__ for compatibility with other TFX components.
-  from tensorflow_model_analysis.version import VERSION as __version__
-  # Import VERSION as VERSION_STRING for backwards compatibility.
-  from tensorflow_model_analysis.version import VERSION as VERSION_STRING  # pylint: disable=reimported
 
   # TODO(b/73882264): The orders should be kept in order to make benchmark on
   # DataFlow work. We need to look into why the import orders matters for the
@@ -158,6 +85,23 @@ try:
 
   # TODO(b/171992041): Deprecate use of EvalResult in the future.
   from tensorflow_model_analysis.view.view_types import EvalResult
+
+  # Allow types to be imported at the top-level since they live in root dir.
+  from tensorflow_model_analysis.types import AddMetricsCallbackType
+  from tensorflow_model_analysis.types import EvalSharedModel
+  from tensorflow_model_analysis.types import Extracts
+  # TODO(b/120222218): Remove after passing of native FPL supported.
+  from tensorflow_model_analysis.types import FeaturesPredictionsLabels
+  # TODO(b/120222218): Remove after passing of native FPL supported.
+  from tensorflow_model_analysis.types import MaterializedColumn
+  from tensorflow_model_analysis.types import MaybeMultipleEvalSharedModels
+  from tensorflow_model_analysis.types import ModelLoader
+  from tensorflow_model_analysis.types import RaggedTensorValue
+  from tensorflow_model_analysis.types import SparseTensorValue
+  from tensorflow_model_analysis.types import TensorType
+  from tensorflow_model_analysis.types import TensorTypeMaybeDict
+  from tensorflow_model_analysis.types import TensorValue
+  from tensorflow_model_analysis.types import VarLenTensorValue
 
 except ImportError as err:
   import sys
