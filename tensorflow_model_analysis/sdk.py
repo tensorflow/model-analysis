@@ -75,6 +75,8 @@ from tensorflow_model_analysis.proto.config_pb2 import Options
 from tensorflow_model_analysis.proto.config_pb2 import PaddingOptions
 from tensorflow_model_analysis.proto.config_pb2 import PerSliceMetricThreshold
 from tensorflow_model_analysis.proto.config_pb2 import PerSliceMetricThresholds
+from tensorflow_model_analysis.proto.config_pb2 import RepeatedInt32Value
+from tensorflow_model_analysis.proto.config_pb2 import RepeatedStringValue
 from tensorflow_model_analysis.proto.config_pb2 import SlicingSpec
 # pylint: enable=g-importing-member
 
