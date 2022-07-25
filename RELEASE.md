@@ -4,9 +4,14 @@
 
 ## Major Features and Improvements
 
+*   Add COCO object detection metrics, object detection related utilities,
+    objection detection opitons in binary confusion matrix, PrecisionAtRecall,
+    Recall, and AUC. Add MaxRecall metric.
+
 ## Bug fixes and other Changes
 
 *   Separate the PredictionsExtractor into two extractors.
+*   Add score_distribution_plot.
 
 ## Breaking Changes
 
@@ -16,9 +21,7 @@
 
 ## Major Features and Improvements
 
-*   Add COCO object detection metrics, object detection related utilities,
-    objection detection opitons in binary confusion matrix, PrecisionAtRecall,
-    Recall, and AUC. Add MaxRecall metric.
+*   Add object detection related utilities.
 
 ## Bug fixes and other Changes
 
@@ -27,7 +30,6 @@
     shouldn't be ## Breaking Changes
 *   Depends on `tfx-bsl>=1.9.0,<1.10.0`.
 *   Depends on `tensorflow-metadata>=1.9.0,<1.10.0`.
-*   Add score_distribution_plot.
 
 ## Breaking Changes
 
