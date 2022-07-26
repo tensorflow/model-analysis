@@ -10,8 +10,10 @@
 
 ## Bug fixes and other Changes
 
-*   Separate the PredictionsExtractor into two extractors.
 *   Add score_distribution_plot.
+*   Separate the PredictionsExtractor into two extractors.
+*   Update PredictionsExtractor to support backwards compatibility with the
+    MaterializedPredictionsExtractor.
 
 ## Breaking Changes
 

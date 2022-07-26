@@ -13,12 +13,14 @@
 # limitations under the License.
 """Batched predictions extractor."""
 
-from typing import Dict
+from typing import Dict, Optional
+from absl import logging
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.extractors import materialized_predictions_extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 
@@ -27,7 +29,7 @@ _PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
 def PredictionsExtractor(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: types.MaybeMultipleEvalSharedModels
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions over a batch.
 
@@ -50,8 +52,24 @@ def PredictionsExtractor(
   Returns:
     Extractor for extracting predictions.
   """
+  # TODO(b/239975835): Remove this Optional support for version 1.0.
+  if eval_shared_model is None:
+    logging.warning(
+        'Calling the PredictionsExtractor with eval_shared_model=None is '
+        'deprecated and no longer supported. This will break in version 1.0. '
+        'Please update your implementation to call '
+        'MaterializedPredictionsExtractor directly.')
+    _, ptransform = materialized_predictions_extractor.MaterializedPredictionsExtractor(
+        eval_config)
+    # Note we are changing the stage name here for backwards compatibility. Old
+    # clients expect these code paths to have the same stage name. New clients
+    # should never reference the private stage name.
+    return extractor.Extractor(
+        stage_name=_PREDICTIONS_EXTRACTOR_STAGE_NAME, ptransform=ptransform)
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model)
+  # This should never happen, but verify_and_update_eval_shared_models can
+  # theoretically return None or empty iterables.
   if not eval_shared_models:
     raise ValueError('No valid model(s) were provided. Please ensure that '
                      'EvalConfig.ModelSpec is correctly configured to enable '
