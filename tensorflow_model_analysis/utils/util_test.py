@@ -289,6 +289,39 @@ class UtilTest(tf.test.TestCase):
     }
     self.assertAllClose(actual, expected)
 
+  def testRecordBatchToTensorValuesWithSparseTensorRepresentation(self):
+    record_batch = pa.record_batch([
+        pa.array([[0], [2, 3], [9, 10]]),
+        pa.array([[0], [0.2, 0.3], [0.5, 0.6]])
+    ], ['sparse_indices', 'sparse_values'])
+    tensor_representation = schema_pb2.TensorRepresentation()
+    tensor_representation.sparse_tensor.dense_shape.dim.append(
+        schema_pb2.FixedShape.Dim(size=10))
+    tensor_representation.sparse_tensor.index_column_names.append(
+        'sparse_indices')
+    tensor_representation.sparse_tensor.value_column_name = 'sparse_values'
+    actual = util.record_batch_to_tensor_values(
+        record_batch, {'sparse_feature': tensor_representation})
+    expected = {
+        'sparse_indices':
+            types.VarLenTensorValue(
+                values=np.array([0, 2, 3, 9, 10]),
+                indices=np.array([[0, 0], [1, 0], [1, 1], [2, 0], [2, 1]]),
+                dense_shape=np.array([3, 2])),
+        'sparse_values':
+            types.VarLenTensorValue(
+                values=np.array([0, 0.2, 0.3, 0.5, 0.6]),
+                indices=np.array([[0, 0], [1, 0], [1, 1], [2, 0], [2, 1]]),
+                dense_shape=np.array([3, 2])),
+        'sparse_feature':
+            types.SparseTensorValue(
+                indices=np.array([[0, 0], [1, 2], [1, 3], [2, 9], [2, 10]]),
+                values=np.array([0, 0.2, 0.3, 0.5, 0.6]),
+                dense_shape=np.array([3, 10]))
+    }
+    np.testing.assert_equal(
+        actual, expected, err_msg=f'actual:{actual}\nexpected:{expected}')
+
   def testBatchSizeWithTensorValues(self):
     tensor_values = {
         'feature_1':

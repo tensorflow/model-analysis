@@ -257,6 +257,10 @@ def record_batch_to_tensor_values(
   """
   if tensor_representations is None:
     tensor_representations = {}
+  else:
+    # make a mutable copy of tensor_representations so that we can keep track of
+    # non-matching columns, below.
+    tensor_representations = dict(tensor_representations)
 
   def _shape(value: Any) -> List[int]:
     """Returns the shape associated with given value."""
@@ -270,7 +274,7 @@ def record_batch_to_tensor_values(
   for i, col in enumerate(record_batch.schema):
     if col.name in tensor_representations:
       updated_tensor_representations[col.name] = (
-          tensor_representations[col.name])
+          tensor_representations.pop(col.name))
     else:
       col_sizes = record_batch.column(i).value_lengths().unique()
       if len(col_sizes) != 1:
@@ -294,6 +298,17 @@ def record_batch_to_tensor_values(
             tensor_representation.dense_tensor.shape.dim.append(
                 schema_pb2.FixedShape.Dim(size=dim))
         updated_tensor_representations[col.name] = tensor_representation
+  for col, rep in tensor_representations.items():
+    # Add sparse tensor representations as long as all of the required fields
+    # are present.
+    if rep.WhichOneof('kind') == 'sparse_tensor':
+      for component_name in list(rep.sparse_tensor.index_column_names) + [
+          rep.sparse_tensor.value_column_name
+      ]:
+        if component_name not in record_batch.schema.names:
+          break
+      else:
+        updated_tensor_representations[col] = rep
   if updated_tensor_representations:
     adapter = tensor_adapter.TensorAdapter(
         tensor_adapter.TensorAdapterConfig(
