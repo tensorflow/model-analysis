@@ -16,6 +16,7 @@
 *   Separate the PredictionsExtractor into two extractors.
 *   Update PredictionsExtractor to support backwards compatibility with the
     MaterializedPredictionsExtractor.
+*   Depends on `apache-beam[gcp]>=2.40,<3`.
 
 ## Breaking Changes
 
