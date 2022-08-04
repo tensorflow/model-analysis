@@ -122,8 +122,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         try:
           self.assertLen(got, 1)
           self.assertIn(constants.PREDICTIONS_KEY, got[0])
-          expected_preds = np.array([[0.2], [0.8], [0.5]])
-          self.assertAllClose(got[0][constants.PREDICTIONS_KEY], expected_preds)
+          self.assertAllClose(
+              np.array([[0.2], [0.8], [0.5]]),
+              got[0][constants.PREDICTIONS_KEY])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -915,12 +916,14 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 1)
           for model_name in ('model1', 'model2'):
             self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY])
-          self.assertAllClose(got[0][constants.PREDICTIONS_KEY]['model1'],
-                              np.array([1.0, 1.0]))
-          self.assertAllClose(got[0][constants.PREDICTIONS_KEY]['model2'], {
-              'output1': np.array([1.0, 1.0]),
-              'output2': np.array([0.0, 1.0])
-          })
+          self.assertAllClose(
+              np.array([1.0, 1.0]), got[0][constants.PREDICTIONS_KEY]['model1'])
+
+          self.assertAllClose(
+              {
+                  'output1': np.array([1.0, 1.0]),
+                  'output2': np.array([0.0, 1.0])
+              }, got[0][constants.PREDICTIONS_KEY]['model2'])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
