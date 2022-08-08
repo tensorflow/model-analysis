@@ -178,7 +178,7 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
       raise ValueError('Query ID feature "%s" should have exactly 1 value, but '
                        'found %d instead. Values were: %s' %
                        (query_id, feature_value.size(), feature_value))
-    yield ('{}'.format(np.asscalar(feature_value)), extract)
+    yield ('{}'.format(feature_value.item()), extract)
 
   def merge_dictionaries(
       dictionaries: Tuple[Dict[str, Any], ...]) -> Dict[str, Any]:
