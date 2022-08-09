@@ -42,8 +42,11 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
   def testTFlitePredictExtractorWithKerasModel(self, multi_model, multi_output):
     input1 = tf.keras.layers.Input(shape=(1,), name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), name='input2')
-    inputs = [input1, input2]
-    input_layer = tf.keras.layers.concatenate(inputs)
+    input3 = tf.keras.layers.Input(shape=(1,), name='input3', dtype=tf.string)
+    inputs = [input1, input2, input3]
+    input_layer = tf.keras.layers.concatenate(
+        [inputs[0], inputs[1],
+         tf.cast(inputs[2] == 'a', tf.float32)])
     output_layers = {}
     output_layers['output1'] = (
         tf.keras.layers.Dense(1, activation=tf.nn.sigmoid,
@@ -59,7 +62,11 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
         loss=tf.keras.losses.binary_crossentropy,
         metrics=['accuracy'])
 
-    train_features = {'input1': [[0.0], [1.0]], 'input2': [[1.0], [0.0]]}
+    train_features = {
+        'input1': [[0.0], [1.0]],
+        'input2': [[1.0], [0.0]],
+        'input3': [[b'a'], [b'b']]
+    }
     labels = {'output1': [[1], [0]]}
     if multi_output:
       labels['output2'] = [[1], [0]]
@@ -105,6 +112,14 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
           type: FLOAT
         }
         feature {
+          name: "input2"
+          type: FLOAT
+        }
+        feature {
+          name: "input3"
+          type: BYTES
+        }
+        feature {
           name: "non_model_feature"
           type: INT
         }
@@ -116,8 +131,10 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
         eval_config=eval_config, eval_shared_model=eval_shared_models)
 
     examples = [
-        self._makeExample(input1=0.0, non_model_feature=0),
-        self._makeExample(input1=1.0, non_model_feature=1),
+        self._makeExample(
+            input1=0.0, input2=1.0, input3=b'a', non_model_feature=0),
+        self._makeExample(
+            input1=1.0, input2=0.0, input3=b'b', non_model_feature=1),
     ]
 
     with beam.Pipeline() as pipeline:

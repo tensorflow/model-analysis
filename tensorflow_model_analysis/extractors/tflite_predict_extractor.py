@@ -120,7 +120,9 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
           else:
             value = np.reshape(value, input_shape)
           input_features[input_name].append(value)
-        input_features[input_name] = tf.concat(
+        # Concatenate with numpy to avoid implicit conversion to tf.Tensor
+        # which causes byte-string inputs to fail the set_tensor call.
+        input_features[input_name] = np.concatenate(
             input_features[input_name], axis=0)
         if np.shape(input_features[input_name]) != tuple(i['shape']):
           interpreter.resize_tensor_input(i['index'],
