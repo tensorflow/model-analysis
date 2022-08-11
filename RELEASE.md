@@ -17,6 +17,7 @@
 *   Update PredictionsExtractor to support backwards compatibility with the
     MaterializedPredictionsExtractor.
 *   Depends on `apache-beam[gcp]>=2.40,<3`.
+*   Depends on `pyarrow>=6,<7`.
 
 ## Breaking Changes
 
