@@ -838,7 +838,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
       util.assert_that(predict_extracts, check_result, label='result')
 
   # TODO(b/239975835): Remove this test for version 1.0.
-  def test_rekey_predictions_in_features(self):
+  def testRekeyPredictionsInFeaturesForPrematerializedPredictions(self):
     model_spec1 = config_pb2.ModelSpec(
         name='model1', prediction_key='prediction')
     model_spec2 = config_pb2.ModelSpec(
