@@ -13,4 +13,5 @@
 # limitations under the License.
 """Init module for experimental."""
 
+from tensorflow_model_analysis.experimental import dataframe
 from tensorflow_model_analysis.experimental import preprocessing_functions

@@ -21,6 +21,8 @@
 
 ## Breaking Changes
 
+*   Adds multi-index columns for view.experimental.metrics_as_dataframe util.
+
 ## Deprecations
 
 # Version 0.40.0
@@ -70,8 +72,8 @@
 
 ## Major Features and Improvements
 
-*   Creates a VarLenTensorValue for storing batched, variable length extracts.*
-    Adds a load_metrics_as_dataframe util to load metrics file as dataframe.
+*   Creates a VarLenTensorValue for storing batched, variable length extracts.
+*   Adds a load_metrics_as_dataframe util to load metrics file as dataframe.
 
 ## Bug fixes and other Changes
 
@@ -1443,8 +1445,8 @@
     `tfma.post_export_metrics`. They should now be accessed via
     `tfma.post_export_metrics.auc` instead of
     `tfma.post_export_metrics.post_export_metrics.auc` as they were before.
-*   Separated extraction from evaluation. `EvaluteAndWriteResults` is now called
-    `ExtractEvaluateAndWriteResults`.
+*   Separated extraction from evaluation. `EvaluateAndWriteResults` is now
+    called `ExtractEvaluateAndWriteResults`.
 *   Added `EvalSharedModel` type to encapsulate `model_path` and
     `add_metrics_callbacks` along with a handle to a shared model instance.
 
