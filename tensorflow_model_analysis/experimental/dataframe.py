@@ -17,7 +17,7 @@ import collections
 import itertools
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
-import attrs
+import attr
 import pandas as pd
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
@@ -37,17 +37,17 @@ _METRIC_KEYS = 'metric_keys'
 _PLOT_KEYS = 'plot_keys'
 
 
-@attrs.define
+@attr.define
 class _ColumnData:
-  metric_keys: Dict[str, List[Tuple[Any, int]]] = attrs.Factory(
+  metric_keys: Dict[str, List[Tuple[Any, int]]] = attr.Factory(
       lambda: collections.defaultdict(list))
-  values: Dict[str, List[Tuple[Any, int]]] = attrs.Factory(
+  values: Dict[str, List[Tuple[Any, int]]] = attr.Factory(
       lambda: collections.defaultdict(list))
-  slices: Dict[str, List[Tuple[Any, int]]] = attrs.Factory(
+  slices: Dict[str, List[Tuple[Any, int]]] = attr.Factory(
       lambda: collections.defaultdict(list))
 
 
-@attrs.frozen
+@attr.frozen
 class MetricsDataFrames:
   double_value: Optional[pd.DataFrame] = None
   confusion_matrix_at_thresholds: Optional[pd.DataFrame] = None
@@ -56,7 +56,7 @@ class MetricsDataFrames:
   array_value: Optional[pd.DataFrame] = None
 
 
-@attrs.frozen
+@attr.frozen
 class PlotsDataFrames:
   calibration_histogram_buckets: pd.DataFrame = None
   confusion_matrix_at_thresholds: pd.DataFrame = None
@@ -65,7 +65,7 @@ class PlotsDataFrames:
   debug_message: pd.DataFrame = None
 
 
-@attrs.frozen
+@attr.frozen
 class _ColumnPrefixes:
   slices: str
   metric_keys: str

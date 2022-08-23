@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import attrs
+import attr
 import pandas as pd
 import tensorflow as tf
 from tensorflow_model_analysis.experimental import dataframe
@@ -134,7 +134,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
          """, metrics_for_slice_pb2.MetricsForSlice()),
     ]
     dfs = dataframe.metrics_as_dataframes(metrics_for_slices)
-    self.assertTrue(all(d is None for d in attrs.astuple(dfs)))
+    self.assertTrue(all(d is None for d in attr.astuple(dfs)))
 
   def testAutoPivot_MetricsDataFrame(self):
     df = pd.DataFrame({
