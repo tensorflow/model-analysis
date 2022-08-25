@@ -18,6 +18,8 @@
     MaterializedPredictionsExtractor.
 *   Depends on `apache-beam[gcp]>=2.40,<3`.
 *   Depends on `pyarrow>=6,<7`.
+*   Update merge_extracts with an option to skip squeezing one-dim arrays.
+    Update split_extracts with an option to expand zero-dim arrays.
 
 ## Breaking Changes
 

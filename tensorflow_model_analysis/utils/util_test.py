@@ -949,6 +949,35 @@ class UtilTest(tf.test.TestCase):
     }
     np.testing.assert_equal(util.merge_extracts(extracts), expected)
 
+  def testMergeExtractsFlattensTwoDimmVector(self):
+    extracts = [{
+        'predictions': np.array([0.1], dtype=np.float64),
+    }, {
+        'predictions': np.array([0.3], dtype=np.float64),
+    }, {
+        'predictions': np.array([0.5], dtype=np.float64),
+    }]
+
+    expected = {
+        'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
+    }
+    np.testing.assert_equal(util.merge_extracts(extracts), expected)
+
+  def testMergeExtractsMaintainsTwoDimmVectorResult(self):
+    extracts = [{
+        'predictions': np.array([0.1], dtype=np.float64),
+    }, {
+        'predictions': np.array([0.3], dtype=np.float64),
+    }, {
+        'predictions': np.array([0.5], dtype=np.float64),
+    }]
+
+    expected = {
+        'predictions': np.array([[0.1], [0.3], [0.5]], dtype=np.float64),
+    }
+    np.testing.assert_equal(
+        util.merge_extracts(extracts, squeeze_two_dim_vector=False), expected)
+
   def testSplitExtracts(self):
     extracts = {
         'features': {
@@ -1117,6 +1146,90 @@ class UtilTest(tf.test.TestCase):
         },
     ]
     np.testing.assert_equal(util.split_extracts(extracts), expected)
+
+  def testSplitExtractsProducesNumpyScalars(self):
+    extract = {
+        'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
+    }
+    expected = [{
+        'predictions': np.array(0.1, dtype=np.float64),
+    }, {
+        'predictions': np.array(0.3, dtype=np.float64),
+    }, {
+        'predictions': np.array(0.5, dtype=np.float64),
+    }]
+    got = util.split_extracts(extract, expand_zero_dims=False)
+    np.testing.assert_equal(got, expected)
+    for extract in got:
+      # Assert we are receiving scalars.
+      self.assertEqual(extract['predictions'].shape, ())
+      # Assert we maintain dtype.
+      self.assertEqual(extract['predictions'].dtype, np.float64)
+
+  def testSplitExtractsProducesVectorLenOne(self):
+    extract = {
+        'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
+    }
+    expected = [{
+        'predictions': np.array([0.1], dtype=np.float64),
+    }, {
+        'predictions': np.array([0.3], dtype=np.float64),
+    }, {
+        'predictions': np.array([0.5], dtype=np.float64),
+    }]
+    got = util.split_extracts(extract)
+    np.testing.assert_equal(got, expected)
+    for extract in got:
+      # Assert we are receiving 1d vectors.
+      self.assertEqual(extract['predictions'].shape, (1,))
+      # Assert we maintain dtype.
+      self.assertEqual(extract['predictions'].dtype, np.float64)
+
+  def testSplitThenMergeAllowingScalars(self):
+    extract = {
+        'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
+        'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64),
+        'array_scalar': np.array([0.1], dtype=np.float64),
+    }
+    split_got = util.split_extracts(extract, expand_zero_dims=False)
+    remerged_got = util.merge_extracts(split_got, squeeze_two_dim_vector=False)
+    np.testing.assert_equal(remerged_got, extract)
+    # Assert vector shape. Numpy assertions will succeed for different shapes as
+    # long as the arrays have equal values (e.g.
+    # np.testing.asser_equal(1, np.array([1,1]))). Numpy will also attempt to
+    # compare different numeric types as equal, so we directly assert the dtype
+    # (e.g. np.testing.assert_equal(1, np.array([1,1], dtype=np.float64))).
+    self.assertEqual(remerged_got['predictions'].shape, (3,))
+    self.assertEqual(remerged_got['labels'].shape, (3, 1))
+    self.assertEqual(remerged_got['array_scalar'].shape, (1,))
+    # Assert we maintain dtype.
+    self.assertEqual(remerged_got['predictions'].dtype, np.float64)
+    self.assertEqual(remerged_got['labels'].dtype, np.float64)
+    self.assertEqual(remerged_got['array_scalar'].dtype, np.float64)
+
+  def testSplitThenMergeDisallowingScalars(self):
+    extract = {
+        'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
+        'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64),
+        'array_scalar': np.array([0.1], dtype=np.float64),
+    }
+    expected_extract = {
+        'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
+        # Note this value differes in shape from the original extract.
+        'labels': np.array([0.1, 0.3, 0.5], dtype=np.float64),
+        'array_scalar': np.array([0.1], dtype=np.float64),
+    }
+    split_got = util.split_extracts(extract)
+    remerged_got = util.merge_extracts(split_got)
+    np.testing.assert_equal(remerged_got, expected_extract)
+    # Assert we are receiving 1d vectors.
+    self.assertEqual(remerged_got['predictions'].shape, (3,))
+    self.assertEqual(remerged_got['labels'].shape, (3,))
+    self.assertEqual(remerged_got['array_scalar'].shape, (1,))
+    # Assert we maintain dtype.
+    self.assertEqual(remerged_got['predictions'].dtype, np.float64)
+    self.assertEqual(remerged_got['labels'].dtype, np.float64)
+    self.assertEqual(remerged_got['array_scalar'].dtype, np.float64)
 
 
 if __name__ == '__main__':

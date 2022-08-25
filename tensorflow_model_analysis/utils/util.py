@@ -739,8 +739,25 @@ def get_features_from_extracts(
   return features
 
 
-def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
-  """Merges list of extracts into single extract with multi-dimentional data."""
+def merge_extracts(extracts: List[types.Extracts],
+                   squeeze_two_dim_vector: bool = True) -> types.Extracts:
+  """Merges list of extracts into a single extract with multidimensional data.
+
+  Note: Running split_extracts followed by merge extracts with default options
+    will not reproduce the exact shape of the original extracts. Arrays in shape
+    (x,1) will be flattened to (x,). To maintain the original shape of extract
+    values of array shape (x,1), you must run with these options:
+    split_extracts(extracts, avoid_scalar_values=False)
+    merge_extracts(extracts, squeeze_two_dim_vector=False)
+  Args:
+    extracts: Batched TFMA Extracts.
+    squeeze_two_dim_vector: Determines how the function will handle arrays of
+      shape (x,1). If flatten_two_dim_vector is True, the array will be squeezed
+      to shape (x,).
+
+  Returns:
+    A single Extracts whose values have been grouped into batches.
+  """
 
   def merge_with_lists(target: types.Extracts, key: str, value: Any):
     """Merges key and value into the target extracts as a list of values."""
@@ -784,7 +801,7 @@ def merge_extracts(extracts: List[types.Extracts]) -> types.Extracts:
       arr = np.array(target)
       # Flatten values that were originally single item lists into a single list
       # e.g. [[1], [2], [3]] -> [1, 2, 3]
-      if len(arr.shape) == 2 and arr.shape[1] == 1:
+      if squeeze_two_dim_vector and len(arr.shape) == 2 and arr.shape[1] == 1:
         return arr.squeeze(axis=1)
       return arr
 
@@ -820,8 +837,28 @@ def _split_sparse_batch(
 
 
 def split_extracts(extracts: types.Extracts,
-                   keep_batch_dim: bool = False) -> List[types.Extracts]:
-  """Splits extracts into a list of extracts along the batch dimension."""
+                   keep_batch_dim: bool = False,
+                   expand_zero_dims: bool = True) -> List[types.Extracts]:
+  """Splits extracts into a list of extracts along the batch dimension.
+
+  Note: Running split_extracts followed by merge extracts with default options
+    will not reproduce the exact shape of the original extracts. Arrays in shape
+    (x,1) will be flattened to (x,). To maintain the original shape of extract
+    values of array shape (x,1), you must run with these options:
+    split_extracts(extracts, avoid_scalar_values=False)
+    merge_extracts(extracts, flatten_two_dim_vector=False)
+
+  Args:
+    extracts: Batched TFMA Extracts.
+    keep_batch_dim: After splitting an extract into individual examples, adds an
+      additional dimmension to maintain the batch dimmension.
+    expand_zero_dims: Determines how the function will handle arrays that are
+      split into scalar values. Scalars will either be converted to 1d arrays
+      (if True) or 0d arrays (if False).
+
+  Returns:
+    List of extracts that represent one example each.
+  """
   results = []
   empty = []  # List of list of keys to values that are None
 
@@ -852,10 +889,17 @@ def split_extracts(extracts: types.Extracts,
       # Without this step, to_tensor_value would be passed 'a' instead of
       # np.array([a]) and a new np.array with default dtype would be created.
       if isinstance(values, np.ndarray) and len(values.shape) == 1:
-        values = np.expand_dims(values, 1)
-      value = to_tensor_value(values[i])
+        if expand_zero_dims:
+          values = np.expand_dims(values, 1)
+          value = to_tensor_value(values[i])
+        else:
+          # Note create a zero-dimm array to maintain dtype and match the shape
+          # of the orginal scalar.
+          value = np.array(values[i], dtype=values.dtype)
+      else:
+        value = to_tensor_value(values[i])
       # Scalars should be in array form (e.g. np.array([0.0]) vs np.array(0.0)).
-      if (isinstance(value, np.ndarray) and
+      if (expand_zero_dims and isinstance(value, np.ndarray) and
           (not value.shape or (value.size and value.shape == (0,)))):
         value = np.expand_dims(value, 0)
       # Add a batch dimension of size 1.
