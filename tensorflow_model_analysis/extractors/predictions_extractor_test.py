@@ -15,6 +15,7 @@
 
 import os
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -36,12 +37,16 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
+class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
+                               parameterized.TestCase):
 
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
 
-  def testPredictionsExtractorWithRegressionModel(self):
+  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
+                                  ('TFXBSLBulkInference', True))
+  def testPredictionsExtractorWithRegressionModel(self,
+                                                  experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
     export_dir, _ = (
         fixed_prediction_estimator_extra_fields
@@ -81,8 +86,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     feature_extractor = features_extractor.FeaturesExtractor(
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(
@@ -104,6 +107,17 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
             fixed_float=1.0,
             fixed_string='fixed_string3')
     ]
+    num_examples = len(examples)
+
+    if experimental_bulk_inference:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          experimental_bulk_inference=True,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -111,7 +125,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
                                     reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)

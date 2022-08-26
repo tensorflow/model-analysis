@@ -20,6 +20,8 @@
 *   Depends on `pyarrow>=6,<7`.
 *   Update merge_extracts with an option to skip squeezing one-dim arrays.
     Update split_extracts with an option to expand zero-dim arrays.
+*   Added experimental bulk inference implementation to PredictionsExtractor.
+    Currently only supports the RegressionAPI.
 
 ## Breaking Changes
 
