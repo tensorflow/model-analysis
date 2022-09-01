@@ -69,7 +69,7 @@ they can be disabled via the `include_default_metrics` setting in
 Note: To run with an `EvalSavedModel`, just set `signature_name: "eval"` in the
 model spec.
 
-See [FAQ](faq.md) for more information no how to setup and configure these
+See [FAQ](faq.md) for more information on how to setup and configure these
 different model types.
 
 ## Setup
@@ -116,7 +116,7 @@ eval_config = text_format.Parse("""
   }
   ## Post export metric information
   metrics_specs {
-    # This adds AUC and as a post training metric. If the model has built in
+    # This adds AUC as a post training metric. If the model has built in
     # training metrics which also contains AUC, this metric will replace it.
     metrics { class_name: "AUC" }
     # ... other post training metrics ...
@@ -296,4 +296,4 @@ frontend components included in TFMA. For example:
 *   [Visualizations](visualizations.md)
 *   [Architecture](architecture.md)
 *   [FAQ](faq.md)
-*   [API Reference](https://www.tensorflow.org/tfx/model_analysis/api_docs)
+*   [API Reference](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma)
