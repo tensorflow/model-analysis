@@ -14,7 +14,7 @@
 # ==============================================================================
 """`Exporter` class represents different flavors of model export."""
 
-import collections
+from collections import abc
 import contextlib
 import os
 import types
@@ -273,7 +273,7 @@ def _remove_metrics(estimator: tf_estimator.Estimator,
     if mode == tf_estimator.ModeKeys.EVAL:
       filtered_eval_metric_ops = {}
       for k, v in result.eval_metric_ops.items():
-        if isinstance(metrics_to_remove, collections.Iterable):
+        if isinstance(metrics_to_remove, abc.Iterable):
           if k in metrics_to_remove:
             continue
         elif callable(metrics_to_remove):
