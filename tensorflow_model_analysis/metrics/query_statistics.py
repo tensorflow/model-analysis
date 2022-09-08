@@ -98,7 +98,7 @@ def _query_statistics(
               total_queries_key, total_documents_key, min_documents_key,
               max_documents_key
           ],
-          preprocessor=None,
+          preprocessors=None,
           combiner=_QueryStatisticsCombiner(total_queries_key,
                                             total_documents_key,
                                             min_documents_key,

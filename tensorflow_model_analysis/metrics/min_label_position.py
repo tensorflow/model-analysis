@@ -69,9 +69,9 @@ def _min_label_position(name: str = MIN_LABEL_POSITION_NAME,
     output_names = ['']
   keys = []
   computations = []
-  preprocessor = None
+  preprocessors = None
   if label_key:
-    preprocessor = metric_types.FeaturePreprocessor(feature_keys=[label_key])
+    preprocessors = [metric_types.FeaturePreprocessor(feature_keys=[label_key])]
   for model_name in model_names:
     for output_name in output_names:
       key = metric_types.MetricKey(
@@ -83,7 +83,7 @@ def _min_label_position(name: str = MIN_LABEL_POSITION_NAME,
       computations.append(
           metric_types.MetricComputation(
               keys=[key],
-              preprocessor=preprocessor,
+              preprocessors=preprocessors,
               combiner=_MinLabelPositionCombiner(key, eval_config,
                                                  example_weighted, label_key)))
   return computations

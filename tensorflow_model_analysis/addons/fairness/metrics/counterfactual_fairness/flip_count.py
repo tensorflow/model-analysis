@@ -176,13 +176,12 @@ def flip_count(
       fractional_labels: If true, each incoming tuple of (label, prediction,
         example weight) will be split into two tuples as follows (where l, p, w
         represent the resulting label, prediction, and example weight values):
-          (1) l = 0.0, p = prediction, and w = example_weight * (1.0 - label)
-          (2) l = 1.0, p = prediction, and w = example_weight * label If
-          enabled, an exception will be raised if labels are not within [0, 1].
-          The implementation is such that tuples associated with a weight of
-          zero are not yielded. This means it is safe to enable
-          fractional_labels even when the labels only take on the values of 0.0
-          or 1.0. (unused)
+        (1) l = 0.0, p = prediction, and w = example_weight * (1.0 - label) (2)
+        l = 1.0, p = prediction, and w = example_weight * label If enabled, an
+        exception will be raised if labels are not within [0, 1]. The
+        implementation is such that tuples associated with a weight of zero are
+        not yielded. This means it is safe to enable fractional_labels even when
+        the labels only take on the values of 0.0 or 1.0. (unused)
       flatten: True to flatten the final label and prediction outputs so that
         the yielded values are always arrays of size 1. For example, multi-class
         /multi-label outputs would be converted into label and prediction pairs
@@ -287,7 +286,9 @@ def flip_count(
       output_name=output_name,
       example_weighted=example_weighted,
       extract_label_prediction_and_weight=extract_label_prediction_and_weight,
-      preprocessor=metric_types.FeaturePreprocessor(feature_keys=feature_keys),
+      preprocessors=[
+          metric_types.FeaturePreprocessor(feature_keys=feature_keys)
+      ],
       example_id_key=example_id_key,
       example_ids_count=example_ids_count,
       fractional_labels=False)

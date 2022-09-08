@@ -59,7 +59,7 @@ def _squared_pearson_correlation(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=None,
+          preprocessors=None,
           combiner=_SquaredPearsonCorrelationCombiner(key, eval_config,
                                                       aggregation_type,
                                                       class_weights,

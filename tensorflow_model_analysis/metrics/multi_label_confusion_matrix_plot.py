@@ -127,7 +127,7 @@ def _multi_label_confusion_matrix_plot(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=None,
+          preprocessors=None,
           combiner=_MultiLabelConfusionMatrixPlotCombiner(
               key=key,
               eval_config=eval_config,

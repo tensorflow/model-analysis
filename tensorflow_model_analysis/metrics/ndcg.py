@@ -99,8 +99,10 @@ def _ndcg(gain_key: str,
       computations.append(
           metric_types.MetricComputation(
               keys=keys,
-              preprocessor=metric_types.FeaturePreprocessor(
-                  feature_keys=[query_key, gain_key]),
+              preprocessors=[
+                  metric_types.FeaturePreprocessor(
+                      feature_keys=[query_key, gain_key])
+              ],
               combiner=_NDCGCombiner(
                   metric_keys=keys,
                   eval_config=eval_config,

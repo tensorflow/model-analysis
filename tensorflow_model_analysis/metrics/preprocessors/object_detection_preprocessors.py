@@ -20,7 +20,6 @@ The following preprocssors are included:
 
 from typing import Iterator, Tuple, Optional
 
-import apache_beam as beam
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.metrics import metric_types
@@ -31,8 +30,10 @@ from tensorflow_model_analysis.metrics.preprocessors.utils import box_match
 # indices for the inputs, it should be arranged in the following format:
 LEFT, TOP, RIGHT, BOTTOM, CLASS, CONFIDENCE = range(6)
 
+_DEFAULT_BOUNDING_BOX_MATCH_PREPROCESSOR_NAME = 'bounding_box_match_preprocessor'
 
-class BoundingBoxMatchPreprocessor(beam.DoFn):
+
+class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
   """Computes label and prediction pairs for object detection."""
 
   def __init__(self,
@@ -40,7 +41,8 @@ class BoundingBoxMatchPreprocessor(beam.DoFn):
                iou_threshold: float,
                area_range: Tuple[float, float] = (0, float('inf')),
                max_num_detections: Optional[int] = None,
-               class_weight: Optional[float] = None):
+               class_weight: Optional[float] = None,
+               name: Optional[str] = None):
     """Initialize the preprocessor for bounding box match.
 
     Args:
@@ -55,6 +57,8 @@ class BoundingBoxMatchPreprocessor(beam.DoFn):
         number of detections for a single image.
       class_weight: (Optional) Used for object detection, the weight associated
         with the object class id.
+      name: Optional preprocessor name. Used to distinguish with other
+        preprocessors.
     """
     super().__init__()
     self._threshold = iou_threshold
@@ -62,6 +66,10 @@ class BoundingBoxMatchPreprocessor(beam.DoFn):
     self._area_range = area_range
     self._max_num_detections = max_num_detections
     self._class_weight = class_weight
+    self._name = name or self._default_name()
+
+  def _default_name(self) -> str:
+    return _DEFAULT_BOUNDING_BOX_MATCH_PREPROCESSOR_NAME
 
   def process(
       self,

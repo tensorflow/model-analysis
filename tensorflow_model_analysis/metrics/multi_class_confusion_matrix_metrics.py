@@ -155,7 +155,7 @@ def multi_class_confusion_matrices(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=None,
+          preprocessors=None,
           combiner=_MultiClassConfusionMatrixCombiner(
               key=key,
               eval_config=eval_config,

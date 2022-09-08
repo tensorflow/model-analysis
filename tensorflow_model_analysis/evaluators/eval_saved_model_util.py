@@ -43,7 +43,7 @@ def metric_computations_using_eval_saved_model(
   return [
       metric_types.MetricComputation(
           keys=[],
-          preprocessor=metric_types.InputPreprocessor(),
+          preprocessors=[metric_types.InputPreprocessor()],
           combiner=_EvalSavedModelCombiner(model_name, model_loader,
                                            batch_size))
   ]

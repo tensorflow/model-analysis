@@ -168,7 +168,7 @@ def binary_confusion_matrices(
     use_histogram: Optional[bool] = None,
     extract_label_prediction_and_weight: Optional[Callable[
         ..., Any]] = metric_util.to_label_prediction_example_weight,
-    preprocessor: Optional[Callable[..., Any]] = None,
+    preprocessors: Optional[List[metric_types.Preprocessor]] = None,
     examples_name: Optional[str] = None,
     example_id_key: Optional[str] = None,
     example_ids_count: Optional[int] = None,
@@ -206,7 +206,7 @@ def binary_confusion_matrices(
     extract_label_prediction_and_weight: User-provided function argument that
       yields label, prediction, and example weights for use in calculations
       (relevant only when use_histogram flag is not true).
-    preprocessor: User-provided preprocessor for including additional extracts
+    preprocessors: User-provided preprocessor for including additional extracts
       in StandardMetricInputs (relevant only when use_histogram flag is not
       true).
     examples_name: Metric name containing binary_confusion_matrices.Examples.
@@ -220,27 +220,26 @@ def binary_confusion_matrices(
     fractional_labels: If true, each incoming tuple of (label, prediction, and
       example weight) will be split into two tuples as follows (where l, p, w
       represent the resulting label, prediction, and example weight values): (1)
-        l = 0.0, p = prediction, and w = example_weight * (1.0 - label) (2) l =
-        1.0, p = prediction, and w = example_weight * label If enabled, an
-        exception will be raised if labels are not within [0, 1]. The
-        implementation is such that tuples associated with a weight of zero are
-        not yielded. This means it is safe to enable fractional_labels even when
-        the labels only take on the values of 0.0 or 1.0.
-    use_object_detection: whether this problem is object detection or not. If
-        it is, then we are expecting object_class_id(required), iou_thresholds,
-        and area_range arguments.
+      l = 0.0, p = prediction, and w = example_weight * (1.0 - label) (2) l =
+      1.0, p = prediction, and w = example_weight * label If enabled, an
+      exception will be raised if labels are not within [0, 1]. The
+      implementation is such that tuples associated with a weight of zero are
+      not yielded. This means it is safe to enable fractional_labels even when
+      the labels only take on the values of 0.0 or 1.0.
+    use_object_detection: whether this problem is object detection or not. If it
+      is, then we are expecting object_class_id(required), iou_thresholds, and
+      area_range arguments.
     iou_threshold: (Optional) Used for object detection, thresholds for a
       detection and ground truth pair with specific iou to be considered as a
       match.
     object_class_id: (Optional) Used for object detection, the class id for
-      calculating metrics. It must be provided if use_object_detection is
-      True.
+      calculating metrics. It must be provided if use_object_detection is True.
     object_class_weight: (Optional) Used for object detection, the weight
       associated with the object class id.
-    area_range: (Optional) Used for object detection, the area-range for
-      objects to be considered for metrics.
-    max_num_detections: (Optional) Used for object detection, the maximum
-      number of detections for a single image.
+    area_range: (Optional) Used for object detection, the area-range for objects
+      to be considered for metrics.
+    max_num_detections: (Optional) Used for object detection, the maximum number
+      of detections for a single image.
 
   Raises:
     ValueError: If both num_thresholds and thresholds are set at the same time.
@@ -271,7 +270,7 @@ def binary_confusion_matrices(
     thresholds = _interpolated_thresholds(num_thresholds)
 
   if use_object_detection:
-    if preprocessor:
+    if preprocessors:
       raise ValueError('Trying to build a object detection preprocessor,'
                        'which could not be merged with another preprocessor.')
     else:
@@ -282,12 +281,14 @@ def binary_confusion_matrices(
                          f'metrics: {name or BINARY_CONFUSION_MATRICES_NAME}.')
       if area_range is None:
         area_range = _DEFAULT_AREA_RANGE
-      preprocessor = object_detection_preprocessors.BoundingBoxMatchPreprocessor(
-          iou_threshold=iou_threshold,
-          class_id=object_class_id,
-          class_weight=object_class_weight,
-          area_range=area_range,
-          max_num_detections=max_num_detections)
+      preprocessors = [
+          object_detection_preprocessors.BoundingBoxMatchPreprocessor(
+              iou_threshold=iou_threshold,
+              class_id=object_class_id,
+              class_weight=object_class_weight,
+              area_range=area_range,
+              max_num_detections=max_num_detections)
+      ]
 
   if use_histogram is None:
     use_histogram = (
@@ -384,7 +385,7 @@ def binary_confusion_matrices(
         num_buckets=num_buckets,
         model_name=model_name,
         output_name=output_name,
-        preprocessor=preprocessor,
+        preprocessors=preprocessors,
         sub_key=sub_key,
         aggregation_type=aggregation_type,
         class_weights=class_weights,
@@ -405,7 +406,7 @@ def binary_confusion_matrices(
         output_name=output_name,
         sub_key=sub_key,
         extract_label_prediction_and_weight=extract_label_prediction_and_weight,
-        preprocessor=preprocessor,
+        preprocessors=preprocessors,
         example_id_key=example_id_key,
         example_ids_count=example_ids_count,
         aggregation_type=aggregation_type,
@@ -532,7 +533,7 @@ def _binary_confusion_matrix_computation(
     sub_key: Optional[metric_types.SubKey] = None,
     extract_label_prediction_and_weight: Optional[Callable[
         ..., Any]] = metric_util.to_label_prediction_example_weight,
-    preprocessor: Optional[Callable[..., Any]] = None,
+    preprocessors: Optional[List[metric_types.Preprocessor]] = None,
     example_id_key: Optional[str] = None,
     example_ids_count: Optional[int] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
@@ -553,7 +554,7 @@ def _binary_confusion_matrix_computation(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=preprocessor,
+          preprocessors=preprocessors,
           combiner=_BinaryConfusionMatrixCombiner(
               key=key,
               eval_config=eval_config,

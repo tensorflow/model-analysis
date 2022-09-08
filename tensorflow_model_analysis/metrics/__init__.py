@@ -85,6 +85,7 @@ from tensorflow_model_analysis.metrics.metric_types import MetricComputations
 from tensorflow_model_analysis.metrics.metric_types import MetricKey
 from tensorflow_model_analysis.metrics.metric_types import MetricsDict
 from tensorflow_model_analysis.metrics.metric_types import PlotKey
+from tensorflow_model_analysis.metrics.metric_types import Preprocessor
 from tensorflow_model_analysis.metrics.metric_types import StandardMetricInputs
 from tensorflow_model_analysis.metrics.metric_types import SubKey
 from tensorflow_model_analysis.metrics.metric_util import merge_per_key_computations

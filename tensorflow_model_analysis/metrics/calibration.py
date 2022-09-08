@@ -247,7 +247,7 @@ def _weighted_labels_predictions_examples(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=None,  # Use default
+          preprocessors=None,  # Use default
           combiner=_WeightedLabelsPredictionsExamplesCombiner(
               key,
               eval_config=eval_config,

@@ -81,7 +81,7 @@ def symmetric_prediction_difference_computations(
         computations.append(
             metric_types.MetricComputation(
                 keys=[key],
-                preprocessor=None,
+                preprocessors=None,
                 combiner=_SymmetricPredictionDifferenceCombiner(
                     eval_config, baseline_model_name, model_name, output_name,
                     key, example_weighted)))

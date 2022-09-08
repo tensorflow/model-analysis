@@ -82,7 +82,7 @@ def example_count(
       computations.append(
           metric_types.MetricComputation(
               keys=keys,
-              preprocessor=None,
+              preprocessors=None,
               combiner=_ExampleCountCombiner(model_name, output_name, keys,
                                              example_weighted)))
   return computations

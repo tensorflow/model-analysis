@@ -334,6 +334,7 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
   # LINT.ThenChange(../google/sql:uda_auc_tests)
 
   @parameterized.named_parameters(
@@ -761,7 +762,7 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       result = (
           pipeline
           | 'Create' >> beam.Create(extracts)
-          | 'Process' >> beam.ParDo(histogram.preprocessor)
+          | 'Process' >> beam.ParDo(histogram.preprocessors[0])
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
           | 'ComputeMatrices' >> beam.Map(

@@ -388,22 +388,66 @@ class AttributionsKey(MetricKey):
         is_diff=pb.is_diff)
 
 
+class Preprocessor(beam.DoFn):
+  """Preprocessor wrapper for preprocessing data in the metric computation.
+
+  The preprocessor is a beam.DoFn that takes a extracts (or a list of extracts)
+  as input (which typically will contain labels, predictions, example weights,
+  and optionally features) and should return the initial state that the combiner
+  will use as input. The output of a processor should only contain
+  information needed by the combiner. Note that if a query_key is used the
+  preprocessor will be passed a list of extracts as input representing the
+  extracts that matched the query_key. The special FeaturePreprocessor can
+  be used to add additional features to the default standard metric inputs.
+
+  Attributes:
+    name: The name of the preprocessor. It should only be accessed by a property
+      function. It is a read only attribute, and is used to distinguish
+      different preprocessors.
+  """
+
+  def __init__(self, name: Optional[str] = None, **kwargs):
+    super().__init__(**kwargs)
+    self._name = name
+
+  @property
+  def name(self) -> str:
+    # if name is not specified, it returns the class name instead.
+    return self._name or self.__class__.__name__
+
+  @property
+  def preprocessor_id(self):
+    # TODO(b/243206889) develop a more robust hash id for deduplication of
+    # preprocessors. The name is used as the preprocessor_id to distinguish
+    # preprocessors. However, it could be brittle.
+    return self.name
+
+  def __eq__(self, other):
+    if isinstance(other, Preprocessor):
+      return self.preprocessor_id == other.preprocessor_id
+    else:
+      return False
+
+  def __hash__(self):
+    return hash(self._preprocessor_id())
+
+
 # LINT.ThenChange(../proto/metrics_for_slice.proto)
 
 
 class MetricComputation(
     NamedTuple('MetricComputation', [('keys', List[MetricKey]),
-                                     ('preprocessor', beam.DoFn),
+                                     ('preprocessors', List[Preprocessor]),
                                      ('combiner', beam.CombineFn)])):
   """MetricComputation represents one or more metric computations.
 
-  The preprocessor is called with a PCollection of extracts (or list of extracts
-  if query_key is used) to compute the initial combiner input state which is
-  then passed to the combiner. This needs to be done in two steps because
-  slicing happens between the call to the preprocessor and the combiner and this
-  state may end up in multiple slices so we want the representation to be as
-  efficient as possible. If the preprocessor is None, then StandardMetricInputs
-  will be passed.
+  The preprocessors are called with a PCollection of extracts (or list of
+  extracts if query_key is used) to compute the initial combiner input state
+  which is then passed to the combiner. This needs to be done in two steps
+  because slicing happens between the call to the preprocessors and the combiner
+  and this state may end up in multiple slices so we want the representation to
+  be as efficient as possible. If the preprocessors are None, then
+  StandardMetricInputs will be passed.
 
   A MetricComputation is uniquely identified by the combination of the
   combiner's name and the keys. Duplicate computations will be removed
@@ -414,22 +458,21 @@ class MetricComputation(
       defined as part of the computation then this may be empty in which case
       only the combiner name will be used for identifying computation
       uniqueness.
-    preprocessor: Takes a extracts (or a list of extracts) as input (which
+    preprocessors: Takes a extracts (or a list of extracts) as input (which
       typically will contain labels, predictions, example weights, and
       optionally features) and should return the initial state that the combiner
       will use as input. The output of a processor should only contain
-      information needed by the combiner. Note that if a query_key is used the
-      preprocessor will be passed a list of extracts as input representing the
-      extracts that matched the query_key.  The special FeaturePreprocessor can
-      be used to add additional features to the default standard metric inputs.
+      information needed by the combiner.
     combiner: Takes preprocessor output as input and outputs a tuple: (slice,
       metric results). The metric results should be a dict from MetricKey to
       value (float, int, distribution, ...).
   """
 
-  def __new__(cls, keys: List[MetricKey], preprocessor: beam.DoFn,
+  def __new__(cls, keys: List[MetricKey],
+              preprocessors: Optional[List[Preprocessor]],
               combiner: beam.CombineFn):
-    return super(MetricComputation, cls).__new__(cls, keys, preprocessor,
+    # if preprocessors are passed as None, it will be initialized as []
+    return super(MetricComputation, cls).__new__(cls, keys, preprocessors or [],
                                                  combiner)
 
   def _computation_id(self):
@@ -437,7 +480,8 @@ class MetricComputation(
     # is complete. In these cases the keys will be empty so we also distinguish
     # based on the combiner name used. We don't use __class__ since classes may
     # be defined inline which wouldn't compare equal.
-    return (self.combiner.__class__.__name__, tuple(sorted(self.keys or [])))
+    return (self.combiner.__class__.__name__, tuple(sorted(self.keys or [])),
+            tuple(p.preprocessor_id for p in self.preprocessors or []))
 
   def __eq__(self, other):
     if isinstance(other, MetricComputation):
@@ -567,6 +611,7 @@ class CIDerivedMetricComputation(DerivedMetricComputation):
       computation uniqueness.
     result: Function called to perform compute the metrics.
   """
+
 
 # MetricComputations is a list of derived and non-derived computations used to
 # calculate one or more metric values. Derived metrics should come after the
@@ -778,7 +823,15 @@ class StandardMetricInputs(util.StandardExtracts):
     return super().get_by_key(key, model_name, output_name)
 
 
-class StandardMetricInputsPreprocessor(beam.DoFn):
+_DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_NAME = 'standard_metric_input_preprocessor'
+_DEFAULT_INPUT_PREPROCESSOR_NAME = 'input_preprocessor'
+_DEFAULT_FEATURE_PREPROCESSOR_NAME = 'feature_preprocessor'
+_DEFAULT_TRANSFORMED_FEATURE_PREPROCESSOR_NAME = 'transformed_feature_preprocessor'
+_DEFAULT_ATTRIBUTION_PREPROCESSOR_NAME = 'attribution_preprocessor'
+_DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_LIST_NAME = 'standard_metric_input_preprocessor_list'
+
+
+class StandardMetricInputsPreprocessor(Preprocessor):
   """Preprocessor for filtering the extracts used in StandardMetricInputs."""
 
   def __init__(self,
@@ -786,7 +839,8 @@ class StandardMetricInputsPreprocessor(beam.DoFn):
                                                                   Any]]] = None,
                include_default_inputs: bool = True,
                model_names: Optional[Iterable[str]] = None,
-               output_names: Optional[Iterable[str]] = None):
+               output_names: Optional[Iterable[str]] = None,
+               name: Optional[str] = None):
     """Initializes preprocessor.
 
     Args:
@@ -803,7 +857,15 @@ class StandardMetricInputsPreprocessor(beam.DoFn):
         True. If unset all models will be included with the default inputs.
       output_names: Optional output names. Only used if include_default_inputs
         is True. If unset all outputs will be included with the default inputs.
+      name: Optional preprocessor name. Used to distinguish with other
+        preprocessors.
     """
+    super().__init__(
+        include_filter=include_filter,
+        include_default_inputs=include_default_inputs,
+        model_names=model_names,
+        output_names=output_names,
+        name=name)
     if include_filter is None:
       include_filter = {}
     if not isinstance(include_filter, MutableMapping):
@@ -826,6 +888,9 @@ class StandardMetricInputsPreprocessor(beam.DoFn):
       })
     self.include_filter = include_filter
 
+  def _default_name(self) -> str:
+    return _DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_NAME
+
   def process(self, extracts: types.Extracts) -> Iterator[types.Extracts]:
     if not self.include_filter:
       yield {}
@@ -842,7 +907,8 @@ def InputPreprocessor(  # pylint: disable=invalid-name
   """
   return StandardMetricInputsPreprocessor(
       include_filter={constants.INPUT_KEY: {}},
-      include_default_inputs=include_default_inputs)
+      include_default_inputs=include_default_inputs,
+      name=_DEFAULT_INPUT_PREPROCESSOR_NAME)
 
 
 def FeaturePreprocessor(  # pylint: disable=invalid-name
@@ -870,7 +936,8 @@ def FeaturePreprocessor(  # pylint: disable=invalid-name
       include_filter={constants.FEATURES_KEY: include_features},
       include_default_inputs=include_default_inputs,
       model_names=model_names,
-      output_names=output_names)
+      output_names=output_names,
+      name=_DEFAULT_FEATURE_PREPROCESSOR_NAME)
 
 
 def TransformedFeaturePreprocessor(  # pylint: disable=invalid-name
@@ -900,7 +967,8 @@ def TransformedFeaturePreprocessor(  # pylint: disable=invalid-name
       include_filter={constants.TRANSFORMED_FEATURES_KEY: include_features},
       include_default_inputs=include_default_inputs,
       model_names=model_names,
-      output_names=output_names)
+      output_names=output_names,
+      name=_DEFAULT_TRANSFORMED_FEATURE_PREPROCESSOR_NAME)
 
 
 def AttributionPreprocessor(  # pylint: disable=invalid-name
@@ -931,7 +999,8 @@ def AttributionPreprocessor(  # pylint: disable=invalid-name
       include_filter={constants.ATTRIBUTIONS_KEY: include_features},
       include_default_inputs=include_default_inputs,
       model_names=model_names,
-      output_names=output_names)
+      output_names=output_names,
+      name=_DEFAULT_ATTRIBUTION_PREPROCESSOR_NAME)
 
 
 def StandardMetricInputsPreprocessorList(  # pylint: disable=invalid-name
@@ -954,4 +1023,6 @@ def StandardMetricInputsPreprocessorList(  # pylint: disable=invalid-name
     else:
       include_filter = util.merge_filters(include_filter, p.include_filter)
   return StandardMetricInputsPreprocessor(
-      include_filter=include_filter, include_default_inputs=False)
+      include_filter=include_filter,
+      include_default_inputs=False,
+      name=_DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_LIST_NAME)

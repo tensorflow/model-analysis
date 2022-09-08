@@ -66,7 +66,7 @@ def metric_computations_using_keras_saved_model(
     return [
         metric_types.MetricComputation(
             keys=keys,
-            preprocessor=None,
+            preprocessors=None,
             combiner=_KerasCompiledMetricsCombiner(keys, model_name,
                                                    model_loader, eval_config,
                                                    batch_size))
@@ -82,12 +82,14 @@ def metric_computations_using_keras_saved_model(
     return [
         metric_types.MetricComputation(
             keys=keys,
-            preprocessor=metric_types.StandardMetricInputsPreprocessorList([
-                metric_types.FeaturePreprocessor(
-                    feature_keys=feature_keys, model_names=[model_name]),
-                metric_types.TransformedFeaturePreprocessor(
-                    feature_keys=feature_keys, model_names=[model_name])
-            ]),
+            preprocessors=[
+                metric_types.StandardMetricInputsPreprocessorList([
+                    metric_types.FeaturePreprocessor(
+                        feature_keys=feature_keys, model_names=[model_name]),
+                    metric_types.TransformedFeaturePreprocessor(
+                        feature_keys=feature_keys, model_names=[model_name])
+                ])
+            ],
             combiner=_KerasEvaluateCombiner(keys, model_name, model_loader,
                                             eval_config, batch_size))
     ]

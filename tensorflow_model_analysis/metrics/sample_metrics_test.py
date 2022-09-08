@@ -44,7 +44,7 @@ class SampleTest(absltest.TestCase):
       result = (
           pipeline
           | 'Create' >> beam.Create(examples, reshuffle=False)
-          | 'PreProcess' >> beam.ParDo(metric.preprocessor)
+          | 'PreProcess' >> beam.ParDo(metric.preprocessors[0])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeMetric' >> beam.CombinePerKey(metric.combiner))
@@ -87,7 +87,7 @@ class SampleTest(absltest.TestCase):
       result = (
           pipeline
           | 'Create' >> beam.Create(examples, reshuffle=False)
-          # | 'Process' >> beam.ParDo(metric.preprocessor)
+          # | 'Process' >> beam.ParDo(metric.preprocessors[0])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeMetric' >> beam.CombinePerKey(metric.combiner))

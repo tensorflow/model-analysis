@@ -15,11 +15,12 @@
 
 import copy
 import datetime
+import itertools
 import numbers
 from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Type, TypeVar, Union
+
 import apache_beam as beam
 import numpy as np
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
@@ -38,6 +39,7 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.utils import util
+
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 SliceKeyTypeVar = TypeVar('SliceKeyTypeVar', slicer.SliceKeyType,
@@ -250,23 +252,27 @@ class _PreprocessorDoFn(beam.DoFn):
 
   def setup(self):
     for computation in self._computations:
-      if computation.preprocessor is not None:
-        computation.preprocessor.setup()
+      if computation.preprocessors:
+        for preprocessor in computation.preprocessors:
+          preprocessor.setup()
 
   def start_bundle(self):
     for computation in self._computations:
-      if computation.preprocessor is not None:
-        computation.preprocessor.start_bundle()
+      if computation.preprocessors:
+        for preprocessor in computation.preprocessors:
+          preprocessor.start_bundle()
 
   def finish_bundle(self):
     for computation in self._computations:
-      if computation.preprocessor is not None:
-        computation.preprocessor.finish_bundle()
+      if computation.preprocessors:
+        for preprocessor in computation.preprocessors:
+          preprocessor.finish_bundle()
 
   def teardown(self):
     for computation in self._computations:
-      if computation.preprocessor is not None:
-        computation.preprocessor.teardown()
+      if computation.preprocessors:
+        for preprocessor in computation.preprocessors:
+          preprocessor.teardown()
 
   def process(self, extracts: types.Extracts) -> Iterable[Any]:
     start_time = datetime.datetime.now()
@@ -284,7 +290,7 @@ class _PreprocessorDoFn(beam.DoFn):
     standard_preprocessors = []
     added_default_standard_preprocessor = False
     for computation in self._computations:
-      if computation.preprocessor is None:
+      if not computation.preprocessors:
         # In this case, the combiner is requesting to be passed the default
         # StandardMetricInputs (i.e. labels, predictions, and example weights).
         combiner_inputs.append(None)
@@ -292,19 +298,31 @@ class _PreprocessorDoFn(beam.DoFn):
           standard_preprocessors.append(
               metric_types.StandardMetricInputsPreprocessor())
           added_default_standard_preprocessor = True
-      elif (type(computation.preprocessor) ==  # pylint: disable=unidiomatic-typecheck
+      elif (len(computation.preprocessors) == 1 and
+            type(computation.preprocessors[0]) ==  # pylint: disable=unidiomatic-typecheck
             metric_types.StandardMetricInputsPreprocessor):
         # In this case a custom filter was used, but it is still part of the
         # StandardMetricInputs. This will be merged into a single preprocessor
         # for efficiency later, but we still use None to indicate that the
         # shared StandardMetricInputs value should be passed to the combiner.
         combiner_inputs.append(None)
-        standard_preprocessors.append(computation.preprocessor)
+        standard_preprocessors.append(computation.preprocessors[0])
       else:
         # The combiner accepts the list of outputs from preprocessors. It allows
         # all the following combiners to share the same work without
         # duplication.
-        combiner_inputs.append(list(computation.preprocessor.process(extracts)))
+        preprocessed_extracts = [copy.copy(extracts)]
+        for preprocessor in computation.preprocessors:
+          # For each of the extract, it is processed to becomes
+          # a iterator of extracts. They are flattened through the chain
+          # operations.
+          preprocessed_extracts = list(
+              itertools.chain.from_iterable([
+                  list(preprocessor.process(extract))
+                  for extract in preprocessed_extracts
+              ]))
+        # Combiner inputs appends a list of processed extracts
+        combiner_inputs.append(preprocessed_extracts)
 
     output = {
         constants.SLICE_KEY_TYPES_KEY: extracts[constants.SLICE_KEY_TYPES_KEY],
@@ -358,6 +376,7 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
       if item is None:
         item = element[_DEFAULT_COMBINER_INPUT_KEY]
       return item
+
     results = []
     for i, (c, a) in enumerate(zip(self._combiners, accumulator)):
       result = c.add_inputs(a, get_combiner_input(element, i))

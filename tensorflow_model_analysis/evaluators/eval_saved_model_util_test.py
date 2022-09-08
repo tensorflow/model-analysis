@@ -59,7 +59,7 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
       result = (
           pipeline
           | 'Create' >> beam.Create(extracts)
-          | 'Process' >> beam.ParDo(computation.preprocessor)
+          | 'Process' >> beam.ParDo(computation.preprocessors[0])
           | 'ToStandardMetricInputs' >> beam.Map(
               metric_types.StandardMetricInputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
@@ -140,7 +140,7 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
       result = (
           pipeline
           | 'Create' >> beam.Create(extracts)
-          | 'Process' >> beam.ParDo(computation.preprocessor)
+          | 'Process' >> beam.ParDo(computation.preprocessors[0])
           | 'ToStandardMetricInputs' >> beam.Map(
               metric_types.StandardMetricInputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))

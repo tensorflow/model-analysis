@@ -81,8 +81,9 @@ def _fixed_size_sample(
   return [
       metric_types.MetricComputation(
           keys=keys,
-          preprocessor=metric_types.FeaturePreprocessor(
-              feature_keys=[sampled_key]),
+          preprocessors=[
+              metric_types.FeaturePreprocessor(feature_keys=[sampled_key])
+          ],
           combiner=_FixedSizeSampleCombineFn(
               metric_keys=keys,
               sampled_key=sampled_key,

@@ -248,7 +248,7 @@ def _total_attributions_computations(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=metric_types.AttributionPreprocessor(feature_keys={}),
+          preprocessors=[metric_types.AttributionPreprocessor(feature_keys={})],
           combiner=_TotalAttributionsCombiner(key, eval_config, absolute))
   ]
 

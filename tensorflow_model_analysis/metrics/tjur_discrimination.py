@@ -201,7 +201,7 @@ def _tjur_discrimination(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=None,
+          preprocessors=None,
           combiner=_TJURDiscriminationCombiner(key, eval_config,
                                                aggregation_type, class_weights,
                                                example_weighted))

@@ -280,7 +280,7 @@ def _class_weights_from_labels(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=None,  # Use default
+          preprocessors=None,  # Use default
           combiner=_ClassWeightsFromLabelsCombiner(
               key,
               eval_config=eval_config,

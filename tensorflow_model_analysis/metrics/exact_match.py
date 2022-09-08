@@ -70,7 +70,7 @@ def _exact_match(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessor=None,
+          preprocessors=None,
           combiner=_ExactMatchCombiner(key, eval_config, aggregation_type,
                                        class_weights, example_weighted,
                                        convert_to))

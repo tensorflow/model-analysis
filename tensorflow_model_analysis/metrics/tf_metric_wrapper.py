@@ -68,8 +68,8 @@ def tf_metric_computations(
       labels and predictions. This should only be used when the aggregation_type
       is set.
     example_weighted: True if example weights should be applied.
-    desired_batch_size: Batch size to use when calling TF metrics
-      (testing only).
+    desired_batch_size: Batch size to use when calling TF metrics (testing
+      only).
 
   Returns:
     Metric computations.
@@ -127,7 +127,7 @@ def tf_metric_computations(
       computations.append(
           metric_types.MetricComputation(
               keys=keys,
-              preprocessor=None,
+              preprocessors=None,
               combiner=_CompilableMetricsCombiner(
                   metric_configs[sub_key],
                   loss_configs[sub_key],

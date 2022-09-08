@@ -135,7 +135,7 @@ class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
     ]
 
     if label_key:
-      self.assertIsNotNone(metric.preprocessor)
+      self.assertIsNotNone(metric.preprocessors)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
