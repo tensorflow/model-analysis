@@ -4,26 +4,34 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other Changes
+
+## Breaking Changes
+
+## Deprecations
+
+# Version 0.41.0
+
+## Major Features and Improvements
+
 *   Add COCO object detection metrics, object detection related utilities,
-    objection detection opitons in binary confusion matrix, PrecisionAtRecall,
-    Recall, and AUC. Add MaxRecall metric.
+    objection detection opitons in binary confusion matrix, Precision At Recall,
+    and AUC. Add MaxRecall metric.
 *   Add support for parsing sparse tensors with explicit tensor representations
     via TFXIO.
 
 ## Bug fixes and other Changes
 
 *   Add score_distribution_plot.
-*   Separate the PredictionsExtractor into two extractors.
+*   Separate the Predictions Extractor into two extractors.
 *   Update PredictionsExtractor to support backwards compatibility with the
-    MaterializedPredictionsExtractor.
+    Materialized Predictions Extractor.
 *   Depends on `apache-beam[gcp]>=2.40,<3`.
 *   Depends on `pyarrow>=6,<7`.
 *   Update merge_extracts with an option to skip squeezing one-dim arrays.
     Update split_extracts with an option to expand zero-dim arrays.
 *   Added experimental bulk inference implementation to PredictionsExtractor.
     Currently only supports the RegressionAPI.
-*   Fixes issue when computing confidence intervals when some per-sample
-    -partion metric values are numeric but others are not.
 
 ## Breaking Changes
 
@@ -31,6 +39,8 @@
 *   Changes SymmetricPredictionDifference output type from array to scalar.
 
 ## Deprecations
+
+*   N/A
 
 # Version 0.40.0
 
