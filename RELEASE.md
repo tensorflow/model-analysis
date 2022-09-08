@@ -22,6 +22,8 @@
     Update split_extracts with an option to expand zero-dim arrays.
 *   Added experimental bulk inference implementation to PredictionsExtractor.
     Currently only supports the RegressionAPI.
+*   Fixes issue when computing confidence intervals when some per-sample
+    -partion metric values are numeric but others are not.
 
 ## Breaking Changes
 

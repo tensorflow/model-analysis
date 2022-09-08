@@ -92,6 +92,7 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
     missing_sample_metric_key = metric_types.MetricKey('missing_metric')
     non_numeric_metric_key = metric_types.MetricKey('non_numeric_metric')
     non_numeric_array_metric_key = metric_types.MetricKey('non_numeric_array')
+    mixed_type_array_metric_key = metric_types.MetricKey('mixed_type_array')
     skipped_metric_key = metric_types.MetricKey('skipped_metric')
     slice_key1 = (('slice_feature', 1),)
     slice_key2 = (('slice_feature', 2),)
@@ -107,31 +108,38 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
                  missing_sample_metric_key: 3,
                  non_numeric_metric_key: 'a',
                  non_numeric_array_metric_key: np.array(['a', 'aaa']),
+                 mixed_type_array_metric_key: np.array(['a']),
                  skipped_metric_key: 16
              })),
         # sample values for slice 1
-        (slice_key1,
-         confidence_intervals_util.SampleMetrics(
-             sample_id=0,
-             metrics={
-                 metric_key: 1,
-                 array_metric_key: np.array([2, 3]),
-                 missing_sample_metric_key: 2,
-                 non_numeric_metric_key: 'b',
-                 non_numeric_array_metric_key: np.array(['a', 'aaa']),
-                 skipped_metric_key: 7
-             })),
+        (
+            slice_key1,
+            confidence_intervals_util.SampleMetrics(
+                sample_id=0,
+                metrics={
+                    metric_key: 1,
+                    array_metric_key: np.array([2, 3]),
+                    missing_sample_metric_key: 2,
+                    non_numeric_metric_key: 'b',
+                    non_numeric_array_metric_key: np.array(['a', 'aaa']),
+                    # one sample is an empty float array
+                    mixed_type_array_metric_key: np.array([], dtype=float),
+                    skipped_metric_key: 7
+                })),
         # sample values for slice 1 missing missing_sample_metric_key
-        (slice_key1,
-         confidence_intervals_util.SampleMetrics(
-             sample_id=1,
-             metrics={
-                 metric_key: 2,
-                 array_metric_key: np.array([0, 1]),
-                 non_numeric_metric_key: 'c',
-                 non_numeric_array_metric_key: np.array(['a', 'aaa']),
-                 skipped_metric_key: 8
-             })),
+        (
+            slice_key1,
+            confidence_intervals_util.SampleMetrics(
+                sample_id=1,
+                metrics={
+                    metric_key: 2,
+                    array_metric_key: np.array([0, 1]),
+                    non_numeric_metric_key: 'c',
+                    non_numeric_array_metric_key: np.array(['a', 'aaa']),
+                    # one sample is a unicode array
+                    mixed_type_array_metric_key: np.array(['a']),
+                    skipped_metric_key: 8
+                })),
         # unsampled value for slice 2
         (slice_key2,
          confidence_intervals_util.SampleMetrics(
@@ -142,6 +150,7 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
                  missing_sample_metric_key: 6,
                  non_numeric_metric_key: 'd',
                  non_numeric_array_metric_key: np.array(['a', 'aaa']),
+                 mixed_type_array_metric_key: np.array(['a']),
                  skipped_metric_key: 10000
              })),
         # Only 1 sample value (missing sample ID 1) for slice 2
@@ -154,6 +163,7 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
                  missing_sample_metric_key: 12,
                  non_numeric_metric_key: 'd',
                  non_numeric_array_metric_key: np.array(['a', 'aaa']),
+                 mixed_type_array_metric_key: np.array(['a']),
                  skipped_metric_key: 5000
              })),
     ]
@@ -195,6 +205,10 @@ class ConfidenceIntervalsUtilTest(parameterized.TestCase):
         self.assertIn(non_numeric_array_metric_key,
                       slice1_accumulator.point_estimates)
         self.assertNotIn(non_numeric_array_metric_key,
+                         slice1_accumulator.metric_samples)
+        self.assertIn(mixed_type_array_metric_key,
+                      slice1_accumulator.point_estimates)
+        self.assertNotIn(mixed_type_array_metric_key,
                          slice1_accumulator.metric_samples)
         # check that single metric missing samples generates error
         error_key = metric_types.MetricKey('__ERROR__')

@@ -116,7 +116,11 @@ class SampleCombineFn(beam.CombineFn):
                             (numbers.Number, types.StructuredMetricValue)) or
                  (isinstance(value, np.ndarray) and
                   np.issubdtype(value.dtype, np.number)))):
-          # skip non-numeric values
+          # A value must be a number, a StructuredMetricValue, or a numeric
+          # NumPy array. If none of those matches, skip. The absence of any
+          # sample for a specific metric_key will cause _validate_accumulator to
+          # remove all samples, which will result in no CI computation for that
+          # metric key.
           continue
         if (self._skip_ci_metric_keys and
             metric_key in self._skip_ci_metric_keys):
@@ -157,6 +161,9 @@ class SampleCombineFn(beam.CombineFn):
       if metric_key in accumulator.metric_samples:
         actual_num_samples = len(accumulator.metric_samples[metric_key])
         if actual_num_samples != self._num_samples:
+          # If we are missing a per-metric sample, clear samples for tha metric
+          # as it is unusable.
+          del accumulator.metric_samples[metric_key]
           metric_incorrect_sample_counts[metric_key] = actual_num_samples
     if metric_incorrect_sample_counts:
       accumulator.point_estimates[error_metric_key] = (
