@@ -19,6 +19,7 @@ import {template} from './fairness-bounded-value-bar-chart-template.html.js';
 
 const D3DataObject = goog.require('tensorflow_model_analysis.addons.fairness.frontend.fairness_bounded_value_bar_chart.D3DataObject');
 const Util = goog.require('tensorflow_model_analysis.addons.fairness.frontend.Util');
+const lit = goog.require('lit');
 
 const HEIGHT = 360;
 const WIDTH = 600;
@@ -52,41 +53,36 @@ const TOOLTIP_Y_OFFSET = 20;
 /**
  * Tooltip text for a bar.
  * @param {!Object} d Slice data for a bar.
- * @return {string}
+ * @return {!lit.TemplateResult}
  * @private
  */
 function tooltipText_(d) {
-  const sliceRow = '<td>Slice</td><td>$(fullSliceName)</td>'.replace(
-      '$(fullSliceName)', d.fullSliceName);
-  const evalRow = d.evalName ?
-      '<td>Eval</td><td>$(evalName)</td>'.replace('$(evalName)', d.evalName) :
-      '';
-  const metricRow = '<td>Metric</td><td>$(metric)</td>'.replace(
-      '$(metric)', Util.removeMetricNamePrefix(d.metricName));
-  const valueRow = '<td>Value</td><td>$(value)</td>'.replace(
-      '$(value)', d.value.toFixed(NUM_DECIMAL_PLACES));
+  const sliceRow = lit.html`<td>Slice</td><td>${d.fullSliceName}</td>`;
+  const evalRow =
+      d.evalName ? lit.html`<td>Eval</td><td>${d.evalName}</td>` : '';
+  const metricRow = lit.html`<td>Metric</td><td>${
+      Util.removeMetricNamePrefix(d.metricName)}</td>`;
+  const valueRow =
+      lit.html`<td>Value</td><td>${d.value.toFixed(NUM_DECIMAL_PLACES)}</td>`;
 
   const confInt = (upperBound, lowerBound) => ' (' +
       d.upperBound.toFixed(NUM_DECIMAL_PLACES) + ', ' +
       d.lowerBound.toFixed(NUM_DECIMAL_PLACES) + ')';
   const confIntRow = (d.upperBound && d.lowerBound) ?
-      '<td>Confidence Interval</td><td>$(confInt)</td>'.replace(
-          '$(confInt)', confInt(d.upperBound, d.lowerBound)) :
+      lit.html`<td>Confidence Interval</td><td>${
+          confInt(d.upperBound, d.lowerBound)}</td>` :
       '';
 
   const exampleCountRow = d.exampleCount ?
-      '<td>Example Count</td><td>$(exampleCount)</td>'.replace(
-          '$(exampleCount)', d.exampleCount) :
+      lit.html`<td>Example Count</td><td>${d.exampleCount}</td>` :
       '';
 
   const rows =
       [sliceRow, evalRow, metricRow, valueRow, confIntRow, exampleCountRow];
 
-  const tablestart = '<table><tbody>';
-  const tablerows = rows.map((row) => '<tr>' + row + '</tr>').join('');
-  const tablestop = '</table></tbody>';
+  const tablerows = rows.map((row) => lit.html`<tr>${row}</tr>`);
 
-  return tablestart + tablerows + tablestop;
+  return lit.html`<table><tbody>${tablerows}</table></tbody>`;
 }
 
 /**
@@ -394,7 +390,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
   drawGraph_(d3Data, baseline, graphConfig) {
 
     const svg = d3.select(this.$['bar-chart']);
-    svg.html('');
+    svg.text('');
     // Create a group of bars for every cluster
     const bars =
         svg.append('g')
@@ -410,7 +406,10 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     const tooltip = d3.select(this.$['tooltip']);
 
     const mouseover = function(d) {
-      tooltip.html(tooltipText_(d))
+      tooltip
+          .each(function(d) {
+            lit.render(tooltipText_(d), this);
+          })
           .style('display', 'inline')
           .style('left', d3.event.clientX + 'px')
           .style('top', (d3.event.clientY + TOOLTIP_Y_OFFSET) + 'px')
@@ -418,7 +417,7 @@ export class FairnessBoundedValueBarChart extends PolymerElement {
     };
 
     const mouseout = function(d) {
-      tooltip.html('').style('display', 'none').style('position', 'static');
+      tooltip.text('').style('display', 'none').style('position', 'static');
     };
 
     // Negative and positive bars are projected into pixel space differently
