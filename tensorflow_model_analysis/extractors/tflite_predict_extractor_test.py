@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tflite predict extractor."""
 
+import itertools
 import os
 import tempfile
 
@@ -31,22 +32,32 @@ from tfx_bsl.tfxio import test_util
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+_TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
+
+_MULTI_MODEL_CASES = [False, True]
+_MULTI_OUTPUT_CASES = [False, True]
+# Equality op not supported in TF1. See b/242088810
+_BYTES_FEATURE_CASES = [False] if _TF_MAJOR_VERSION < 2 else [False, True]
+
 
 class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
                                  parameterized.TestCase):
 
-  @parameterized.named_parameters(('single_model_single_output', False, False),
-                                  ('single_model_multi_output', False, True),
-                                  ('multi_model_single_output', True, False),
-                                  ('multi_model_multi_output', True, True))
-  def testTFlitePredictExtractorWithKerasModel(self, multi_model, multi_output):
+  @parameterized.parameters(
+      itertools.product(_MULTI_MODEL_CASES, _MULTI_OUTPUT_CASES,
+                        _BYTES_FEATURE_CASES))
+  def testTFlitePredictExtractorWithKerasModel(self, multi_model, multi_output,
+                                               use_bytes_feature):
     input1 = tf.keras.layers.Input(shape=(1,), name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), name='input2')
     input3 = tf.keras.layers.Input(shape=(1,), name='input3', dtype=tf.string)
     inputs = [input1, input2, input3]
-    input_layer = tf.keras.layers.concatenate(
-        [inputs[0], inputs[1],
-         tf.cast(inputs[2] == 'a', tf.float32)])
+    if use_bytes_feature:
+      input_layer = tf.keras.layers.concatenate(
+          [inputs[0], inputs[1],
+           tf.cast(inputs[2] == 'a', tf.float32)])
+    else:
+      input_layer = tf.keras.layers.concatenate([inputs[0], inputs[1]])
     output_layers = {}
     output_layers['output1'] = (
         tf.keras.layers.Dense(1, activation=tf.nn.sigmoid,
