@@ -20,6 +20,7 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import prediction_difference_metrics
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 
 from google.protobuf import text_format
 
@@ -85,6 +86,14 @@ class SymmetricPredictionDifferenceTest(absltest.TestCase):
       def check_result(got):
         try:
           self.assertLen(got, 1)
+          got_proto = (
+              metrics_plots_and_validations_writer
+              .convert_slice_metrics_to_proto(
+                  got[0], add_metrics_callbacks=None))
+          self.assertLen(got_proto.metric_keys_and_values, 1)
+          got_kv_proto = got_proto.metric_keys_and_values[0]
+          self.assertEqual(
+              got_kv_proto.value.WhichOneof('type'), 'double_value')
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           pd_key = metric_types.MetricKey(
@@ -95,9 +104,8 @@ class SymmetricPredictionDifferenceTest(absltest.TestCase):
               example_weighted=True,
               is_diff=True)
           self.assertIn(pd_key, got_metrics)
-          self.assertLen(got_metrics[pd_key], 1)
           self.assertAlmostEqual(
-              got_metrics[pd_key][0],
+              got_metrics[pd_key],
               (2 * 0.1 / 0.3 * 1 + 2 * 0.1 / 0.5 * 2 + 2 * 0.1 / 1.7 * 3) / 6)
 
         except AssertionError as err:
@@ -160,8 +168,7 @@ class SymmetricPredictionDifferenceTest(absltest.TestCase):
               example_weighted=True,
               is_diff=True)
           self.assertIn(pd_key, got_metrics)
-          self.assertLen(got_metrics[pd_key], 1)
-          self.assertAlmostEqual(got_metrics[pd_key][0], 0.0)
+          self.assertAlmostEqual(got_metrics[pd_key], 0.0)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

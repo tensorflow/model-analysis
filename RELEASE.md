@@ -28,6 +28,7 @@
 ## Breaking Changes
 
 *   Adds multi-index columns for view.experimental.metrics_as_dataframe util.
+*   Changes SymmetricPredictionDifference output type from array to scalar.
 
 ## Deprecations
 

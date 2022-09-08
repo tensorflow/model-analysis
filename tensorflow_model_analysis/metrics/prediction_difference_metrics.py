@@ -136,14 +136,14 @@ class _SymmetricPredictionDifferenceCombiner(beam.CombineFn):
             output_name=self._output_name,
             flatten=True,
             example_weighted=self._example_weighted))
-
+    base_example_weight = base_example_weight.item()
     accumulator.num_weighted_examples += base_example_weight
     numerator = 2 * abs(base_prediction - model_prediction)
     denominator = abs(base_prediction + model_prediction)
     if numerator < _K_EPSILON and denominator < _K_EPSILON:
       sym_pd = 0.0
     else:
-      sym_pd = numerator / denominator
+      sym_pd = (numerator / denominator).item()
     accumulator.total_pointwise_sym_diff += sym_pd * base_example_weight
     return accumulator
 
