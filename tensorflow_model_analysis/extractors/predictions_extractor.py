@@ -173,7 +173,22 @@ def _parse_prediction_log_to_tensor_value(  # pylint: disable=invalid-name
   """
   log_type = prediction_log.WhichOneof('log_type')
   if log_type == 'classify_log':
-    raise NotImplementedError('ClassifyLog processing not implemented yet.')
+    assert len(
+        prediction_log.classify_log.response.result.classifications) == 1, (
+            'We expecth the number of classifications per PredictionLog to be '
+            'one because TFX-BSL RunInference expects single input/output and '
+            'handles batching entirely internally.')
+    classes = np.array([
+        c.label for c in
+        prediction_log.classify_log.response.result.classifications[0].classes
+    ],
+                       dtype=object)
+    scores = np.array([
+        c.score for c in
+        prediction_log.classify_log.response.result.classifications[0].classes
+    ],
+                      dtype=np.float32)
+    return {'classes': classes, 'scores': scores}
   elif log_type == 'regress_log':
     return np.array([
         regression.value

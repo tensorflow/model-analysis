@@ -145,16 +145,25 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
-  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
-                                  ('TFXBSLBulkInference', True))
+  @parameterized.named_parameters(
+      ('ModelSignaturesDoFnInferenceUnspecifiedSignature', False, ''),
+      ('ModelSignaturesDoFnInferencePredictSignature', False, 'predict'),
+      ('ModelSignaturesDoFnInferenceServingDefaultSignature', False,
+       'serving_default'),
+      ('ModelSignaturesDoFnInferenceClassificationSignature', False,
+       'classification'), ('TFXBSLBulkInferenceUnspecifiedSignature', True, ''),
+      ('TFXBSLBulkInferencePredictSignature', True, 'predict'),
+      ('TFXBSLBulkInferenceServingDefaultSignature', True, 'serving_default'),
+      ('TFXBSLBulkInferenceClassificationSignature', True, 'classification'))
   def testPredictionsExtractorWithBinaryClassificationModel(
-      self, experimental_bulk_inference):
+      self, experimental_bulk_inference, signature_name):
     temp_export_dir = self._getExportDir()
     num_classes = 2
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
         temp_export_dir, None, n_classes=num_classes)
 
-    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -216,27 +225,48 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
           self.assertIn(constants.PREDICTIONS_KEY, got[0])
-          for pred_key in ('logistic', 'probabilities', 'all_classes'):
-            self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
-          self.assertEqual(
-              (num_examples, num_classes),
-              got[0][constants.PREDICTIONS_KEY]['probabilities'].shape)
+          # Prediction API cases. We default '' to 'predict'.
+          if signature_name in ('', 'predict'):
+            for pred_key in ('logistic', 'probabilities', 'all_classes'):
+              self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
+            self.assertEqual(
+                (num_examples, num_classes),
+                got[0][constants.PREDICTIONS_KEY]['probabilities'].shape)
+          # Classification API cases. The classification signature is also the
+          # 'serving_default' signature for this model.
+          if signature_name in ('serving_default', 'classification'):
+            for pred_key in ('classes', 'scores'):
+              self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
+            self.assertEqual((num_examples, num_classes),
+                             got[0][constants.PREDICTIONS_KEY]['classes'].shape)
+            self.assertEqual((num_examples, num_classes),
+                             got[0][constants.PREDICTIONS_KEY]['scores'].shape)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
 
-  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
-                                  ('TFXBSLBulkInference', True))
+  @parameterized.named_parameters(
+      ('ModelSignaturesDoFnInferenceUnspecifiedSignature', False, ''),
+      ('ModelSignaturesDoFnInferencePredictSignature', False, 'predict'),
+      ('ModelSignaturesDoFnInferenceServingDefaultSignature', False,
+       'serving_default'),
+      ('ModelSignaturesDoFnInferenceClassificationSignature', False,
+       'classification'), ('TFXBSLBulkInferenceUnspecifiedSignature', True, ''),
+      ('TFXBSLBulkInferencePredictSignature', True, 'predict'),
+      ('TFXBSLBulkInferenceServingDefaultSignature', True, 'serving_default'),
+      ('TFXBSLBulkInferenceClassificationSignature', True, 'classification'))
   def testPredictionsExtractorWithMultiClassModel(self,
-                                                  experimental_bulk_inference):
+                                                  experimental_bulk_inference,
+                                                  signature_name):
     temp_export_dir = self._getExportDir()
     num_classes = 3
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
         temp_export_dir, None, n_classes=num_classes)
 
-    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -299,11 +329,22 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
           self.assertIn(constants.PREDICTIONS_KEY, got[0])
-          for pred_key in ('probabilities', 'all_classes'):
-            self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
-          self.assertEqual(
-              (num_examples, num_classes),
-              got[0][constants.PREDICTIONS_KEY]['probabilities'].shape)
+          # Prediction API cases. We default '' to 'predict'.
+          if signature_name in ('', 'predict'):
+            for pred_key in ('probabilities', 'all_classes'):
+              self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
+            self.assertEqual(
+                (num_examples, num_classes),
+                got[0][constants.PREDICTIONS_KEY]['probabilities'].shape)
+          # Classification API cases. The classification signature is also the
+          # 'serving_default' signature for this model.
+          if signature_name in ('serving_default', 'classification'):
+            for pred_key in ('classes', 'scores'):
+              self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
+            self.assertEqual((num_examples, num_classes),
+                             got[0][constants.PREDICTIONS_KEY]['classes'].shape)
+            self.assertEqual((num_examples, num_classes),
+                             got[0][constants.PREDICTIONS_KEY]['scores'].shape)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
