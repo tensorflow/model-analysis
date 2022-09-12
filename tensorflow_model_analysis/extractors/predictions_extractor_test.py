@@ -145,10 +145,14 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictionsExtractorWithBinaryClassificationModel(self):
+  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
+                                  ('TFXBSLBulkInference', True))
+  def testPredictionsExtractorWithBinaryClassificationModel(
+      self, experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
+    num_classes = 2
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
-        temp_export_dir, None, n_classes=2)
+        temp_export_dir, None, n_classes=num_classes)
 
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
@@ -176,14 +180,23 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     feature_extractor = features_extractor.FeaturesExtractor(
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
         self._makeExample(age=2.0, language='chinese', label=1),
         self._makeExample(age=3.0, language='chinese', label=0),
     ]
+    num_examples = len(examples)
+
+    if experimental_bulk_inference:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          experimental_bulk_inference=True,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -191,7 +204,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
                                     reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
@@ -202,20 +215,26 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         try:
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
-          for item in got:
-            self.assertIn(constants.PREDICTIONS_KEY, item)
-            for pred_key in ('logistic', 'probabilities', 'all_classes'):
-              self.assertIn(pred_key, item[constants.PREDICTIONS_KEY])
+          self.assertIn(constants.PREDICTIONS_KEY, got[0])
+          for pred_key in ('logistic', 'probabilities', 'all_classes'):
+            self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
+          self.assertEqual(
+              (num_examples, num_classes),
+              got[0][constants.PREDICTIONS_KEY]['probabilities'].shape)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictionsExtractorWithMultiClassModel(self):
+  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
+                                  ('TFXBSLBulkInference', True))
+  def testPredictionsExtractorWithMultiClassModel(self,
+                                                  experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
+    num_classes = 3
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
-        temp_export_dir, None, n_classes=3)
+        temp_export_dir, None, n_classes=num_classes)
 
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
@@ -243,8 +262,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     feature_extractor = features_extractor.FeaturesExtractor(
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
@@ -252,6 +269,17 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=3.0, language='english', label=2),
         self._makeExample(age=4.0, language='chinese', label=1),
     ]
+    num_examples = len(examples)
+
+    if experimental_bulk_inference:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          experimental_bulk_inference=True,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -259,7 +287,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
                                     reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=4)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
@@ -270,10 +298,12 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         try:
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
-          for item in got:
-            self.assertIn(constants.PREDICTIONS_KEY, item)
-            for pred_key in ('probabilities', 'all_classes'):
-              self.assertIn(pred_key, item[constants.PREDICTIONS_KEY])
+          self.assertIn(constants.PREDICTIONS_KEY, got[0])
+          for pred_key in ('probabilities', 'all_classes'):
+            self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
+          self.assertEqual(
+              (num_examples, num_classes),
+              got[0][constants.PREDICTIONS_KEY]['probabilities'].shape)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

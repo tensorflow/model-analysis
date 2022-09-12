@@ -14,11 +14,12 @@
 """Batched predictions extractor."""
 
 import copy
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 from absl import logging
 import apache_beam as beam
 import numpy as np
+import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
@@ -158,7 +159,8 @@ def _create_inference_input_tuple(  # pylint: disable=invalid-name
 
 
 def _parse_prediction_log_to_tensor_value(  # pylint: disable=invalid-name
-    prediction_log: prediction_log_pb2.PredictionLog) -> np.ndarray:
+    prediction_log: prediction_log_pb2.PredictionLog
+) -> Union[np.ndarray, Dict[str, np.ndarray]]:
   """Parses the model inference values from a PredictionLog.
 
   Args:
@@ -179,7 +181,10 @@ def _parse_prediction_log_to_tensor_value(  # pylint: disable=invalid-name
     ],
                     dtype=float)
   elif log_type == 'predict_log':
-    raise NotImplementedError('PredictLog processing not implemented yet.')
+    return {
+        k: np.squeeze(tf.make_ndarray(v), axis=0)
+        for k, v in prediction_log.predict_log.response.outputs.items()
+    }
   elif log_type == 'multi_inference_log':
     raise NotImplementedError(
         'MultiInferenceLog processing not implemented yet.')
@@ -257,6 +262,15 @@ def _ExtractPredictionsOSS(
       inference_spec_type.saved_model_spec.signature_name[:] = [
           model_spec.signature_name
       ]
+    else:
+      # Select a default signature. Note that this may differ from the
+      # 'serving_default' signature.
+      # TODO(b/245994746): Consider loading just the SavedModel proto instead of
+      # the entire model. SavedModel.meta_graphs.signature_def might suffice
+      # here.
+      inference_spec_type.saved_model_spec.signature_name.append(
+          model_util.get_default_signature_name(
+              eval_shared_model.model_loader.load()))
     model_name_and_inference_spec_type_tuples.append(
         (model_spec.name, inference_spec_type))
 
