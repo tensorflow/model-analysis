@@ -64,7 +64,9 @@ export const SelectEventMixin = (baseClass) => class extends baseClass {
    * @private
    */
   handleSelect_(selectEvent) {
-    const eventSource = selectEvent['path'] && selectEvent['path'][0];
+    const path = selectEvent.path ||
+        (selectEvent.composedPath && selectEvent.composedPath());
+    const eventSource = path && path[0];
     if (eventSource) {
       let selectedSlice;
       if (eventSource.tagName == 'TFMA-METRICS-TABLE') {
