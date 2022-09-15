@@ -212,14 +212,14 @@ def _parse_prediction_log_to_tensor_value(  # pylint: disable=invalid-name
 def _insert_predictions_into_extracts(  # pylint: disable=invalid-name
     inference_tuple: Tuple[types.Extracts,
                            Tuple[prediction_log_pb2.PredictionLog, ...]],
-    output_keys: Tuple[str]) -> types.Extracts:
+    output_keys: Tuple[str, ...]) -> types.Extracts:
   """Inserts tensor values from PredictionLogs into the Extracts.
 
   Args:
     inference_tuple: Tuple consisting of the Extracts and a nested tuple of
       predicition logs.
-    output_keys: List of strings that will be used to create out output tensor
-      dict value in PREDICTIONS_KEY.
+    output_keys: List of strings that will be used to create output tensor dict
+      value in PREDICTIONS_KEY.
 
   Returns:
     Extracts with the PREDICTIONS_KEY populated. Note: By convention,

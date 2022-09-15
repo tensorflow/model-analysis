@@ -5,10 +5,13 @@
 ## Major Features and Improvements
 
 ## Bug fixes and other Changes
+
 *   Add support for parsing the Predict API prediction log output to the
     experimental TFX-BSL PredictionsExtractor implementation.
 *   Add support for parsing the Classification API prediction log output to the
     experimental TFX-BSL PredictionsExtractor implementation.
+*   Update remaining predictions_extractor_test.py tests to cover
+    PredictionsExtractorOSS. Fixes a pytype bug related to multi tensor output.
 
 *   Depends on `tensorflow>=1.15.5,<2` or `tensorflow>=2.10,<3`
 *   Apply changes in the latest Chrome browser

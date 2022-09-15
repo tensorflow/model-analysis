@@ -351,7 +351,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictionsExtractorWithMultiOutputModel(self):
+  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
+                                  ('TFXBSLBulkInference', True))
+  def testPredictionsExtractorWithMultiOutputModel(self,
+                                                   experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
     export_dir, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
@@ -389,8 +392,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     feature_extractor = features_extractor.FeaturesExtractor(
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     examples = [
         self._makeExample(
@@ -418,6 +419,17 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
             chinese_label=1.0,
             other_label=1.0)
     ]
+    num_examples = len(examples)
+
+    if experimental_bulk_inference:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          experimental_bulk_inference=True,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -425,7 +437,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
                                     reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=4)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
@@ -436,19 +448,21 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         try:
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
-          for item in got:
-            self.assertIn(constants.PREDICTIONS_KEY, item)
-            for output_name in ('chinese_head', 'english_head', 'other_head'):
-              for pred_key in ('logistic', 'probabilities', 'all_classes'):
-                self.assertIn(output_name + '/' + pred_key,
-                              item[constants.PREDICTIONS_KEY])
+          self.assertIn(constants.PREDICTIONS_KEY, got[0])
+          for output_name in ('chinese_head', 'english_head', 'other_head'):
+            for pred_key in ('logistic', 'probabilities', 'all_classes'):
+              self.assertIn(output_name + '/' + pred_key,
+                            got[0][constants.PREDICTIONS_KEY])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictionsExtractorWithMultiModels(self):
+  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
+                                  ('TFXBSLBulkInference', True))
+  def testPredictionsExtractorWithMultiModels(self,
+                                              experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
     export_dir1, _ = multi_head.simple_multi_head(temp_export_dir, None)
     export_dir2, _ = multi_head.simple_multi_head(temp_export_dir, None)
@@ -492,12 +506,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     feature_extractor = features_extractor.FeaturesExtractor(
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model={
-            'model1': eval_shared_model1,
-            'model2': eval_shared_model2
-        })
 
     examples = [
         self._makeExample(
@@ -525,6 +533,24 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
             chinese_label=1.0,
             other_label=1.0)
     ]
+    num_examples = len(examples)
+
+    if experimental_bulk_inference:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model={
+              'model1': eval_shared_model1,
+              'model2': eval_shared_model2
+          },
+          experimental_bulk_inference=True,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model={
+              'model1': eval_shared_model1,
+              'model2': eval_shared_model2
+          })
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -532,7 +558,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
                                     reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=4)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
@@ -542,22 +568,29 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          for item in got:
-            # We can't verify the actual predictions, but we can verify the keys
-            self.assertIn(constants.PREDICTIONS_KEY, item)
-            for model_name in ('model1', 'model2'):
-              self.assertIn(model_name, item[constants.PREDICTIONS_KEY])
-              for output_name in ('chinese_head', 'english_head', 'other_head'):
-                for pred_key in ('logistic', 'probabilities', 'all_classes'):
-                  self.assertIn(output_name + '/' + pred_key,
-                                item[constants.PREDICTIONS_KEY][model_name])
+          # We can't verify the actual predictions, but we can verify the keys
+          self.assertIn(constants.PREDICTIONS_KEY, got[0])
+          for model_name in ('model1', 'model2'):
+            self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY])
+            for output_name in ('chinese_head', 'english_head', 'other_head'):
+              for pred_key in ('logistic', 'probabilities', 'all_classes'):
+                self.assertIn(output_name + '/' + pred_key,
+                              got[0][constants.PREDICTIONS_KEY][model_name])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictionsExtractorWithKerasModel(self):
+  # Note: The funtionality covered in this unit test is not supported by
+  # PredictionExtractorOSS. This Keras model accepts multiple input tensors,
+  # and does not include a signature that # accepts serialized input
+  # (i.e. string). This is a requirement for using the bulk inference APIs which
+  # only support serialized input right now.
+  @parameterized.named_parameters(
+      ('ModelSignaturesDoFnInferenceCallableModel', ''),
+      ('ModelSignaturesDoFnInferenceServingDefault', 'serving_default'))
+  def testPredictionsExtractorWithKerasModel(self, signature_name):
     input1 = tf.keras.layers.Input(shape=(2,), name='input1')
     input2 = tf.keras.layers.Input(shape=(2,), name='input2')
     inputs = [input1, input2]
@@ -585,7 +618,8 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
 
-    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -645,6 +679,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
             input1=[1.0, 1.0], input2=[0.0, 0.0],
             non_model_feature=1),  # should be ignored by model
     ]
+    num_examples = len(examples)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -652,7 +687,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
                                     reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
@@ -663,15 +698,21 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         try:
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
-          for item in got:
-            self.assertIn(constants.PREDICTIONS_KEY, item)
+          self.assertIn(constants.PREDICTIONS_KEY, got[0])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
 
-  def testPredictionsExtractorWithSequentialKerasModel(self):
+  # Note: The funtionality covered in this unit test is not supported by
+  # PredictionExtractorOSS. This Keras model does not include a signature that
+  # accepts serialized input (i.e. string). This is a requirement for using the
+  # bulk inference APIs which only support serialized input right now.
+  @parameterized.named_parameters(
+      ('ModelSignaturesDoFnInferenceCallableModel', ''),
+      ('ModelSignaturesDoFnInferenceServingDefault', 'serving_default'))
+  def testPredictionsExtractorWithSequentialKerasModel(self, signature_name):
     # Note that the input will be called 'test_input'
     model = tf.keras.models.Sequential([
         tf.keras.layers.Dense(
@@ -693,7 +734,8 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
 
-    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     schema = text_format.Parse(
@@ -740,6 +782,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(test=[1.0, 1.0],
                           non_model_feature=1),  # should be ignored by model
     ]
+    num_examples = len(examples)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -747,7 +790,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
                                     reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
@@ -758,14 +801,18 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         try:
           self.assertLen(got, 1)
           # We can't verify the actual predictions, but we can verify the keys.
-          for item in got:
-            self.assertIn(constants.PREDICTIONS_KEY, item)
+          self.assertIn(constants.PREDICTIONS_KEY, got[0])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
 
+  # Note: The funtionality covered in this unit test is not supported by
+  # PredictionExtractorOSS. This Keras model accepts multiple input tensors,
+  # and does not include a signature that # accepts serialized input
+  # (i.e. string). This is a requirement for using the bulk inference APIs which
+  # only support serialized input right now.
   def testBatchSizeLimitWithKerasModel(self):
     input1 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input2')
@@ -849,7 +896,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
 
-      # pylint: enable=no-value-for-parameter
       def check_result(got):
         try:
           self.assertLen(got, 4)
@@ -862,6 +908,11 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(predict_extracts, check_result, label='result')
 
+  # Note this test is not supported by the new PredictionsExtractorOSS because
+  # the estimator model it uses has only one classification API signature which
+  # does not conform to the output shape expectations of the classification API.
+  # (i.e. the shape of the return is (1,) a 1 dim, single class return.
+  # Expectation is a 2 dim shape of (batch_size, num_classes) output.)
   def testBatchSizeLimit(self):
     temp_export_dir = self._getExportDir()
     _, export_dir = batch_size_limited_classifier.simple_batch_size_limited_classifier(
@@ -923,7 +974,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(predict_extracts, check_result, label='result')
 
   # TODO(b/239975835): Remove this test for version 1.0.
-  def testRekeyPredictionsInFeaturesForPrematerializedPredictions(self):
+  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
+                                  ('TFXBSLBulkInference', True))
+  def testRekeyPredictionsInFeaturesForPrematerializedPredictions(
+      self, experimental_bulk_inference):
     model_spec1 = config_pb2.ModelSpec(
         name='model1', prediction_key='prediction')
     model_spec2 = config_pb2.ModelSpec(
@@ -973,8 +1027,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     feature_extractor = features_extractor.FeaturesExtractor(
         eval_config=eval_config,
         tensor_representations=tensor_adapter_config.tensor_representations)
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=None)
 
     examples = [
         self._makeExample(
@@ -982,6 +1034,17 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(
             prediction=1.0, prediction1=1.0, prediction2=1.0, fixed_int=1)
     ]
+    num_examples = len(examples)
+
+    if experimental_bulk_inference:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model=None,
+          experimental_bulk_inference=True,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config, eval_shared_model=None)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -989,7 +1052,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
                                     reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
