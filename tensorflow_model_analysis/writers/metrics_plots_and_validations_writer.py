@@ -303,8 +303,8 @@ def convert_metric_value_to_proto(
     try:
       result.double_value.value = float(value)
     except (TypeError, ValueError) as e:
-      result.unknown_type.value = str(value)
-      result.unknown_type.error = e.message  # pytype: disable=attribute-error
+      result.unknown_type.value = str(value).encode('utf8')
+      result.unknown_type.error = str(e)
   return result
 
 
