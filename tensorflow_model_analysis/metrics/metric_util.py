@@ -133,6 +133,7 @@ def to_standard_metric_inputs(
     include_predictions: bool = True,
     include_features: bool = False,
     include_transformed_features: bool = False,
+    include_any_feature: bool = False,
     include_attributions: bool = False) -> metric_types.StandardMetricInputs:
   """Verifies extract keys and converts extracts to StandardMetricInputs."""
   if include_labels and constants.LABELS_KEY not in extracts:
@@ -156,6 +157,13 @@ def to_standard_metric_inputs(
                      'extracts. Check that the proper extractor has been '
                      'configured to extract the transformed features from the '
                      f'inputs. Existing keys: {extracts.keys()}')
+  if (include_any_feature and constants.FEATURES_KEY not in extracts and
+      constants.TRANSFORMED_FEATURES_KEY not in extracts):
+    raise ValueError(
+        f'"{constants.FEATURES_KEY}" or {constants.TRANSFORMED_FEATURES_KEY} '
+        'key not found in extracts. Check that the proper extractor has been '
+        'configured to extract the attributions from the inputs.'
+        f'Existing keys: {extracts.keys()}')
   if (include_attributions and constants.ATTRIBUTIONS_KEY not in extracts):
     raise ValueError(f'"{constants.ATTRIBUTIONS_KEY}" key not found in '
                      'extracts. Check that the proper extractor has been '
@@ -377,13 +385,13 @@ def to_label_prediction_example_weight(
     example_weighted: True if example weights should be applied.
     fractional_labels: If true, each incoming tuple of (label, prediction, and
       example weight) will be split into two tuples as follows (where l, p, w
-      represent the resulting label, prediction, and example weight values):
-        (1) l = 0.0, p = prediction, and w = example_weight * (1.0 - label)
-        (2) l = 1.0, p = prediction, and w = example_weight * label
-      If enabled, an exception will be raised if labels are not within [0, 1].
-      The implementation is such that tuples associated with a weight of zero
-      are not yielded. This means it is safe to enable fractional_labels even
-      when the labels only take on the values of 0.0 or 1.0.
+      represent the resulting label, prediction, and example weight values): (1)
+      l = 0.0, p = prediction, and w = example_weight * (1.0 - label) (2) l =
+      1.0, p = prediction, and w = example_weight * label If enabled, an
+      exception will be raised if labels are not within [0, 1]. The
+      implementation is such that tuples associated with a weight of zero are
+      not yielded. This means it is safe to enable fractional_labels even when
+      the labels only take on the values of 0.0 or 1.0.
     flatten: True to flatten the final label and prediction outputs so that the
       yielded values are always arrays of size 1. For example, multi-class /
       multi-label outputs would be converted into label and prediction pairs
@@ -931,8 +939,7 @@ def one_hot(tensor: np.ndarray, target: np.ndarray) -> np.ndarray:
     return tensor.reshape(target.shape)
   except IndexError as e:
     raise ValueError(
-        f'invalid inputs to one_hot: tensor={tensor}, target={target}, '
-        f'error={e}')
+        f'invalid inputs to one_hot: tensor={tensor}, target={target}') from e
 
 
 def merge_per_key_computations(

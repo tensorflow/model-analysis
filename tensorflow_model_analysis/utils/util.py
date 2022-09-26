@@ -1081,6 +1081,24 @@ class StandardExtracts(collections.abc.MutableMapping):
 
   transformed_features = property(get_transformed_features)
 
+  def get_combined_features(self,
+                            model_name: Optional[str] = None
+                           ) -> Mapping[str, Any]:
+    """Returns a combined extract of transformed features and features.
+
+    In case of name collision, transformed features is looked up first and
+    the value is returned when found.
+
+    Args:
+      model_name: Optionally, the model name assosicated to the transformed
+        feature. This has no effect on the raw features extract.
+    """
+    return collections.ChainMap(
+        self.get_transformed_features(model_name) or {},
+        self.get_features() or {})
+
+  combined_features = property(get_combined_features)
+
   def get_attributions(
       self,
       model_name: Optional[str] = None,

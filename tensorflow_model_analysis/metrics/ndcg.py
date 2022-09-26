@@ -100,7 +100,7 @@ def _ndcg(gain_key: str,
           metric_types.MetricComputation(
               keys=keys,
               preprocessors=[
-                  metric_types.FeaturePreprocessor(
+                  metric_types.CombinedFeaturePreprocessor(
                       feature_keys=[query_key, gain_key])
               ],
               combiner=_NDCGCombiner(
@@ -152,7 +152,8 @@ class _NDCGCombiner(beam.CombineFn):
   def _query(
       self,
       element: metric_types.StandardMetricInputs) -> Union[float, int, str]:
-    query = util.get_by_keys(element.features, [self._query_key]).flatten()
+    query = util.get_by_keys(element.combined_features,
+                             [self._query_key]).flatten()
     if query.size == 0 or not np.all(query == query[0]):
       raise ValueError(
           'missing query value or not all values are the same: value={}, '
@@ -173,7 +174,7 @@ class _NDCGCombiner(beam.CombineFn):
             example_weighted=self._example_weighted,
             flatten=False,
             require_single_example_weight=True))  # pytype: disable=wrong-arg-types
-    gains = util.get_by_keys(element.features, [self._gain_key])
+    gains = util.get_by_keys(element.combined_features, [self._gain_key])
     if gains.size != predictions.size:
       raise ValueError('expected {} to be same size as predictions {} != {}: '
                        'gains={}, metric_keys={}, '

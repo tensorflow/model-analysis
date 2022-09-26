@@ -342,8 +342,10 @@ class _PreprocessorDoFn(beam.DoFn):
                 in preprocessor.include_filter,
                 include_predictions=(constants.PREDICTIONS_KEY
                                      in preprocessor.include_filter),
-                include_features=(constants.FEATURES_KEY
-                                  in preprocessor.include_filter),
+                include_any_feature=((constants.FEATURES_KEY
+                                      in preprocessor.include_filter) or
+                                     (constants.TRANSFORMED_FEATURES_KEY
+                                      in preprocessor.include_filter)),
                 include_attributions=(constants.ATTRIBUTIONS_KEY
                                       in preprocessor.include_filter)))
       output[_DEFAULT_COMBINER_INPUT_KEY] = default_combiner_input

@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for NDCG metric."""
 
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -24,9 +25,13 @@ from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.utils import util as tfma_util
 
 
-class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
+class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest,
+                      parameterized.TestCase):
 
-  def testNDCG(self):
+  @parameterized.named_parameters(
+      ('feature_key', 'features'),
+      ('transformed_features_key', 'transformed_features'))
+  def testNDCG(self, feature_key):
     # SubKeys will be a merger of top_k_list and sub_keys.
     metric = ndcg.NDCG(
         gain_key='gain', top_k_list=[1, 2]).computations(
@@ -42,7 +47,7 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
         'labels': np.array([1.0]),
         'predictions': np.array([0.2]),
         'example_weights': np.array([1.0]),
-        'features': {
+        feature_key: {
             'query': np.array(['query1']),
             'gain': np.array([1.0])
         }
@@ -51,7 +56,7 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
         'labels': np.array([0.0]),
         'predictions': np.array([0.8]),
         'example_weights': np.array([1.0]),
-        'features': {
+        feature_key: {
             'query': np.array(['query1']),
             'gain': np.array([0.5])
         }
@@ -60,7 +65,7 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
         'labels': np.array([0.0]),
         'predictions': np.array([0.5]),
         'example_weights': np.array([2.0]),
-        'features': {
+        feature_key: {
             'query': np.array(['query2']),
             'gain': np.array([0.5])
         }
@@ -69,7 +74,7 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
         'labels': np.array([1.0]),
         'predictions': np.array([0.9]),
         'example_weights': np.array([2.0]),
-        'features': {
+        feature_key: {
             'query': np.array(['query2']),
             'gain': np.array([1.0])
         }
@@ -78,7 +83,7 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
         'labels': np.array([0.0]),
         'predictions': np.array([0.1]),
         'example_weights': np.array([2.0]),
-        'features': {
+        feature_key: {
             'query': np.array(['query2']),
             'gain': np.array([0.1])
         }
@@ -87,7 +92,7 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
         'labels': np.array([1.0]),
         'predictions': np.array([0.9]),
         'example_weights': np.array([3.0]),
-        'features': {
+        feature_key: {
             'query': np.array(['query3']),
             'gain': np.array([1.0])
         }
@@ -96,7 +101,7 @@ class NDCGMetricsTest(testutil.TensorflowModelAnalysisTest):
         'labels': np.array([1.0]),
         'predictions': np.array([0.9]),
         'example_weights': np.array([3.0]),
-        'features': {
+        feature_key: {
             'query': np.array(['query4']),
             'gain':
                 np.array([0.0])  # 0 gain is ignored

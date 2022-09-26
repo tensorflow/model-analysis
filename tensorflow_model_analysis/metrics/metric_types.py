@@ -827,6 +827,7 @@ _DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_NAME = 'standard_metric_input_prepro
 _DEFAULT_INPUT_PREPROCESSOR_NAME = 'input_preprocessor'
 _DEFAULT_FEATURE_PREPROCESSOR_NAME = 'feature_preprocessor'
 _DEFAULT_TRANSFORMED_FEATURE_PREPROCESSOR_NAME = 'transformed_feature_preprocessor'
+_DEFAULT_COMBINED_FEATURE_PREPROCESSOR_NAME = 'combined_feature_preprocessor'
 _DEFAULT_ATTRIBUTION_PREPROCESSOR_NAME = 'attribution_preprocessor'
 _DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_LIST_NAME = 'standard_metric_input_preprocessor_list'
 
@@ -894,7 +895,8 @@ class StandardMetricInputsPreprocessor(Preprocessor):
   def process(self, extracts: types.Extracts) -> Iterator[types.Extracts]:
     if not self.include_filter:
       yield {}
-    yield util.include_filter(self.include_filter, extracts)
+    result = util.include_filter(self.include_filter, extracts)
+    yield result
 
 
 def InputPreprocessor(  # pylint: disable=invalid-name
@@ -969,6 +971,40 @@ def TransformedFeaturePreprocessor(  # pylint: disable=invalid-name
       model_names=model_names,
       output_names=output_names,
       name=_DEFAULT_TRANSFORMED_FEATURE_PREPROCESSOR_NAME)
+
+
+def CombinedFeaturePreprocessor(  # pylint: disable=invalid-name
+    feature_keys: Iterable[str],
+    include_default_inputs: bool = True,
+    model_names: Optional[Iterable[str]] = None,
+    output_names: Optional[Iterable[str]] = None,
+) -> StandardMetricInputsPreprocessor:
+  """Returns preprocessor for incl combined features in StandardMetricInputs.
+
+  Args:
+    feature_keys: List of feature keys. An empty list means all.
+    include_default_inputs: True to include default inputs (labels, predictions,
+      example weights) in addition to the transformed features.
+    model_names: Optional model names (required if transformed_features used
+      with multi-model evaluations).
+    output_names: Optional output names. Only used if include_default_inputs is
+      True. If unset all outputs will be included with the default inputs.
+  """
+  if feature_keys:
+    include_features = {k: {} for k in feature_keys}
+  else:
+    include_features = {}
+  if model_names:
+    include_features = {name: include_features for name in model_names}
+  return StandardMetricInputsPreprocessor(
+      include_filter={
+          constants.TRANSFORMED_FEATURES_KEY: include_features,
+          constants.FEATURES_KEY: include_features
+      },
+      include_default_inputs=include_default_inputs,
+      model_names=model_names,
+      output_names=output_names,
+      name=_DEFAULT_COMBINED_FEATURE_PREPROCESSOR_NAME)
 
 
 def AttributionPreprocessor(  # pylint: disable=invalid-name
