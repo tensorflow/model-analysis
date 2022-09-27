@@ -28,6 +28,7 @@ from google.protobuf import message
 MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice
 PlotsForSlice = metrics_for_slice_pb2.PlotsForSlice
 
+_OVERALL = 'Overall'
 # DataFrame output columns.
 _METRIC_VALUES = 'metric_values'
 _PLOT_DATA = 'plot_data'
@@ -224,9 +225,13 @@ def _to_dataframes(
               (v, i) for i in range(index, index_end)
           ])
         # Insert each slice
-        for slice_name, slice_value in slices:
-          column_data[metric_type].slices[slice_name].extend(
-              [slice_value, i] for i in range(index, index_end))
+        if slices:
+          for slice_name, slice_value in slices:
+            column_data[metric_type].slices[slice_name].extend(
+                [slice_value, i] for i in range(index, index_end))
+        else:
+          column_data[metric_type].slices[_OVERALL].extend(
+              ['', i] for i in range(index, index_end))
         index = index_end
   dfs = {}
   for metric_type, data in column_data.items():
@@ -443,10 +448,9 @@ def _stringify_slices(df: pd.DataFrame,
   """
 
   def _concatenate(x):
-    res = '; '.join(
+    return '; '.join(
         f'{col}:{val}' for col, val in zip(df[slice_key_name].columns, x)
         if pd.notnull(val))
-    return 'Overall' if not res else res
 
   t = df.slices.agg(_concatenate, axis=1)
   df = df.drop(slice_key_name, axis=1, level=0) if drop_slices else df.copy()

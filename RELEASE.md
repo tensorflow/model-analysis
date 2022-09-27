@@ -21,6 +21,8 @@
 
 *   Deprecate BoundedValue and TDistribution in ConfusionMatrixAtThresholds.
 
+*   Fix a bug that dataframe auto_pivot fails if there is only Overall slice.
+
 ## Breaking Changes
 
 ## Deprecations
