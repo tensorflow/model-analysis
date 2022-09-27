@@ -144,11 +144,8 @@ message ValueAtCutoffs {
   message ValueCutoffPair {
     int32 cutoff = 1;
     double value = 2;
-    // Bounded Value representation of the data. Populate both values. See
-    // comments in ConfusionMatrixAtThresholds for migration plan details.
-    BoundedValue bounded_value = 3;
-
-    TDistributionValue t_distribution_value = 4;
+    BoundedValue bounded_value = 3 [deprecated = true];
+    TDistributionValue t_distribution_value = 4 [deprecated = true];
   }
   repeated ValueCutoffPair values = 1;
 }
@@ -164,25 +161,19 @@ message ConfusionMatrixAtThresholds {
     double precision = 6;
     double recall = 7;
 
-    // Bounded values. These will be provided if
-    // 1. the values (fn, tn, ...) are calculated with sampling AND
-    // 2. the confidence level is provided (it's hard coded as 0.95 currently).
-    // We have plan to deprecate BoundedValue in favor of TDistributionValue.
-    BoundedValue bounded_false_negatives = 8;
-    BoundedValue bounded_true_negatives = 9;
-    BoundedValue bounded_false_positives = 10;
-    BoundedValue bounded_true_positives = 11;
-    BoundedValue bounded_precision = 12;
-    BoundedValue bounded_recall = 13;
+    BoundedValue bounded_false_negatives = 8 [deprecated = true];
+    BoundedValue bounded_true_negatives = 9 [deprecated = true];
+    BoundedValue bounded_false_positives = 10 [deprecated = true];
+    BoundedValue bounded_true_positives = 11 [deprecated = true];
+    BoundedValue bounded_precision = 12 [deprecated = true];
+    BoundedValue bounded_recall = 13 [deprecated = true];
 
-    // The t-distribution value. These will be provided if the
-    // values (fn, tn, ...) are calculated with sampling.
-    TDistributionValue t_distribution_false_negatives = 14;
-    TDistributionValue t_distribution_true_negatives = 15;
-    TDistributionValue t_distribution_false_positives = 16;
-    TDistributionValue t_distribution_true_positives = 17;
-    TDistributionValue t_distribution_precision = 18;
-    TDistributionValue t_distribution_recall = 19;
+    TDistributionValue t_distribution_false_negatives = 14 [deprecated = true];
+    TDistributionValue t_distribution_true_negatives = 15 [deprecated = true];
+    TDistributionValue t_distribution_false_positives = 16 [deprecated = true];
+    TDistributionValue t_distribution_true_positives = 17 [deprecated = true];
+    TDistributionValue t_distribution_precision = 18 [deprecated = true];
+    TDistributionValue t_distribution_recall = 19 [deprecated = true];
   }
 
   // Matrices has different types of value representations: bounded,
@@ -225,13 +216,9 @@ message ArrayValue {
 // how to visualize the values based on the types.
 message MetricValue {
   oneof type {
-    // Since BoundedValue can represent a point estimate without intervals it
-    // makes sense to use that in all non-plot cases in the future.
-    // Migration plan is to proceed as follows:
-    // - modify callers to always populate both fields
-    // - update frontend to preferentially look at the new bounded fields
-    // - stop populating the old fields
     google.protobuf.DoubleValue double_value = 1;
+    // bounded_value is deprecated for use as a confidence interval container.
+    // Only use to encode non-CI bounds, such as approximation bounds.
     BoundedValue bounded_value = 2;
     TDistributionValue t_distribution_value = 9 [deprecated = true];
     ValueAtCutoffs value_at_cutoffs = 4;

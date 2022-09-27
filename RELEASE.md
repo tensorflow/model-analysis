@@ -19,6 +19,8 @@
 
 *   Add transformed features lookup for NDCG metrics query key and gain key.
 
+*   Deprecate BoundedValue and TDistribution in ConfusionMatrixAtThresholds.
+
 ## Breaking Changes
 
 ## Deprecations
