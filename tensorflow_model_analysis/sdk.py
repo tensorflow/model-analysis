@@ -80,7 +80,5 @@ from tensorflow_model_analysis.proto.config_pb2 import RepeatedStringValue
 from tensorflow_model_analysis.proto.config_pb2 import SlicingSpec
 # pylint: enable=g-importing-member
 
-# Import VERSION as __version__ for compatibility with other TFX components.
-from tensorflow_model_analysis.version import VERSION as __version__
 # Import VERSION as VERSION_STRING for backwards compatibility.
-from tensorflow_model_analysis.version import VERSION as VERSION_STRING  # pylint: disable=reimported
+from tensorflow_model_analysis.version import VERSION as VERSION_STRING
