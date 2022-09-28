@@ -418,7 +418,8 @@ def binary_confusion_matrices(
     #   1) used this computation as an input for a derived computation
     #   2) only accessed the matrix counts
     #   3) used computations[-1].keys[-1] to access the input key
-    output_metric_keys = [examples_key, matrices_key]
+    output_metric_keys = ([matrices_key] if not example_id_key else
+                          [examples_key, matrices_key])
 
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
@@ -455,7 +456,10 @@ def binary_confusion_matrices(
     else:
       matrices, examples = _accumulator_to_matrices_and_examples(
           thresholds, metrics[input_metric_key])
-      return {matrices_key: matrices, examples_key: examples}
+      result = {matrices_key: matrices}
+      if example_id_key:
+        result[examples_key] = examples
+      return result
 
   derived_computation = metric_types.DerivedMetricComputation(
       keys=output_metric_keys, result=result)
