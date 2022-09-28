@@ -140,6 +140,7 @@ message ModelSpec {
   reserved 1, 4;
 }
 
+// LINT.IfChange
 // Slicing specification.
 message SlicingSpec {
   // Feature keys to slice on.
@@ -216,6 +217,7 @@ message SlicingSpec {
   //   - the slice key and value will be: (bpsn, male)
   string slice_keys_sql = 3;
 }
+// LINT.ThenChange(//tfx_bsl/public/proto/slicing_spec.proto)
 
 // Cross slicing specification.
 message CrossSlicingSpec {
