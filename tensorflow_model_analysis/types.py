@@ -152,6 +152,9 @@ class VarLenTensorValue(
       num_rows += 1
       max_row_len = max(max_row_len, len(row))
       if row.size:
+        if row.ndim != 1:
+          raise ValueError('Each non-empty dense row should be 1D but found '
+                           f'row with shape {row.shape}.')
         index_arrays.append(np.array([[i, j] for j in range(len(row))]))
     if index_arrays:
       values = np.concatenate(dense_rows, axis=0)
