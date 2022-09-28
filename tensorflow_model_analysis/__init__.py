@@ -103,6 +103,9 @@ try:
   from tensorflow_model_analysis.types import TensorValue
   from tensorflow_model_analysis.types import VarLenTensorValue
 
+  # Import VERSION as __version__ for compatibility with other TFX components.
+  from tensorflow_model_analysis.version import VERSION as __version__
+
 except ImportError as err:
   import sys
   sys.stderr.write('Error importing: {}'.format(err))
