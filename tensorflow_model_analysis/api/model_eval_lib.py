@@ -341,7 +341,7 @@ def load_eval_result(output_path: str,
     model_location = list(model_locations.values())[0]
   else:
     model_location = model_locations[model_name]
-  return view_types.EvalResult(
+  return view_types.EvalResult(  # pytype: disable=wrong-arg-types
       slicing_metrics=metrics_list,
       plots=plots_list,
       attributions=attributions_list,
