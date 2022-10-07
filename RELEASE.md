@@ -10,6 +10,24 @@
 
 ## Deprecations
 
+# Version 0.41.1
+
+## Major Features and Improvements
+
+*   N/A
+
+## Bug fixes and other Changes
+
+*   Move the version to top of init.py since the original "from tensorflow_model_analysis.sdk import *" will not import private symbol.
+
+## Breaking Changes
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
 # Version 0.41.0
 
 ## Major Features and Improvements
