@@ -21,41 +21,12 @@ import numpy as np
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.metrics import object_detection_confusion_matrix_metrics
 
 AVERAGE_RECALL_NAME = 'average_recall'
 AVERAGE_PRECISION_NAME = 'average_precision'
 MEAN_AVERAGE_PRECISION_NAME = 'mean_average_precision'
 MEAN_AVERAGE_RECALL_NAME = 'mean_average_recall'
-
-
-def _validate_object_detection_arguments(
-    object_class_id: Optional[Union[int, List[int]]],
-    object_class_weight: Optional[Union[float, List[float]]],
-    area_range: Optional[Tuple[float, float]] = None,
-    max_num_detections: Optional[int] = None) -> None:
-  """Validate the arguments for object detection related functions."""
-  if object_class_id is None:
-    raise ValueError('object_class_id must be provided if use object'
-                     ' detection.')
-  if isinstance(object_class_id, int):
-    object_class_id = [object_class_id]
-  if object_class_weight is not None:
-    if isinstance(object_class_weight, float):
-      object_class_weight = [object_class_weight]
-    for weight in object_class_weight:
-      if weight < 0:
-        raise ValueError(f'object_class_weight = {object_class_weight} must '
-                         'not be negative.')
-    if len(object_class_id) != len(object_class_weight):
-      raise ValueError('Mismatch of length between object_class_id = '
-                       f'{object_class_id} and object_class_weight = '
-                       f'{object_class_weight}.')
-  if area_range is not None:
-    if len(area_range) != 2 or area_range[0] > area_range[1]:
-      raise ValueError(f'area_range = {area_range} must be a valid interval.')
-  if max_num_detections is not None and max_num_detections <= 0:
-    raise ValueError(f'max_num_detections = {max_num_detections} must be '
-                     'positive.')
 
 
 class COCOAveragePrecision(metric_types.Metric):
@@ -68,18 +39,28 @@ class COCOAveragePrecision(metric_types.Metric):
   def __init__(self,
                num_thresholds: Optional[int] = None,
                iou_threshold: Optional[float] = None,
-               object_class_id: Optional[int] = None,
-               object_class_weight: Optional[float] = None,
+               class_id: Optional[int] = None,
+               class_weight: Optional[float] = None,
                area_range: Optional[Tuple[float, float]] = None,
                max_num_detections: Optional[int] = None,
                recalls: Optional[List[float]] = None,
                num_recalls: Optional[int] = None,
-               name: Optional[str] = None):
+               name: Optional[str] = None,
+               labels_to_stack: Optional[List[str]] = None,
+               predictions_to_stack: Optional[List[str]] = None,
+               num_detections_key: Optional[str] = None):
     """Initialize average precision metric.
 
-    This metric is only used in object-detection setting. use_object_detection
-    is by default set to be True. It does not support sub_key parameters due to
-    the matching algorithm of bounding boxes.
+    This metric is only used in object-detection setting. It does not support
+    sub_key parameters due to the matching algorithm of bounding boxes.
+
+    The metric supports using multiple outputs to form the labels/predictions if
+    the user specifies the label/predcition keys to stack. In this case, the
+    metric is not expected to work with multi-outputs. The metric only supports
+    multi outputs if the output of model is already pre-stacked in the expected
+    format, i.e. ['xmin', 'ymin', 'xmax', 'ymax', 'class_id'] for labels and
+    ['xmin', 'ymin', 'xmax', 'ymax', 'class_id', 'confidence scores'] for
+    predictions.
 
     Args:
       num_thresholds: (Optional) Number of thresholds to use for calculating the
@@ -87,11 +68,10 @@ class COCOAveragePrecision(metric_types.Metric):
       iou_threshold: (Optional) Used for object detection, threholds for a
         detection and ground truth pair with specific iou to be considered as a
         match.
-      object_class_id: (Optional) Used for object detection, the class id for
-        calculating metrics. It must be provided if use_object_detection is
-        True.
-      object_class_weight: (Optional) Used for object detection, the weight
-        associated with the object class id.
+      class_id: (Optional) Used for object detection, the class id for
+        calculating metrics.
+      class_weight: (Optional) Used for object detection, the weight associated
+        with the object class id.
       area_range: (Optional) Used for object detection, the area-range for
         objects to be considered for metrics.
       max_num_detections: (Optional) Used for object detection, the maximum
@@ -101,6 +81,21 @@ class COCOAveragePrecision(metric_types.Metric):
         for calculating average precision, it equally generates points bewteen 0
         and 1. (Only one of recalls and num_recalls should be used).
       name: (Optional) string name of the metric instance.
+      labels_to_stack: (Optional) Keys for columns to be stacked as a single
+        numpy array as the labels. It is searched under the key labels, features
+        and transformed features. The desired format is [left bounadary, top
+        boudnary, right boundary, bottom boundary, class id]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id']
+      predictions_to_stack: (Optional) Output names for columns to be stacked as
+        a single numpy array as the prediction. It should be the model's output
+        names. The desired format is [left bounadary, top boudnary, right
+        boundary, bottom boundary, class id, confidence score]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id', 'scores']
+      num_detections_key: (Optional) An output name in which to find the number
+        of detections to use for evaluation for a given example. It does nothing
+        if predictions_to_stack is not set. The value for this output should be
+        a scalar value or a single-value tensor. The stacked predicitions will
+        be truncated with the specified number of detections.
     """
     if recalls is not None:
       recall_thresholds = recalls
@@ -113,14 +108,16 @@ class COCOAveragePrecision(metric_types.Metric):
     super().__init__(
         metric_util.merge_per_key_computations(self._metric_computations),
         num_thresholds=num_thresholds,
-        use_object_detection=True,
         iou_threshold=iou_threshold,
-        object_class_id=object_class_id,
-        object_class_weight=object_class_weight,
+        class_id=class_id,
+        class_weight=class_weight,
         area_range=area_range,
         max_num_detections=max_num_detections,
         recall_thresholds=recall_thresholds,
-        name=name)
+        name=name,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        num_detections_key=num_detections_key)
 
   def _default_name(self) -> str:
     return AVERAGE_PRECISION_NAME
@@ -128,23 +125,29 @@ class COCOAveragePrecision(metric_types.Metric):
   def _metric_computations(
       self,
       num_thresholds: Optional[int] = None,
-      use_object_detection: Optional[bool] = True,
       iou_threshold: Optional[float] = None,
-      object_class_id: Optional[int] = None,
-      object_class_weight: Optional[float] = None,
+      class_id: Optional[int] = None,
+      class_weight: Optional[float] = None,
       max_num_detections: Optional[int] = None,
       area_range: Optional[Tuple[float, float]] = None,
       recall_thresholds: Optional[List[float]] = None,
       name: Optional[str] = None,
       model_name: str = '',
       output_name: str = '',
-      example_weighted: bool = False) -> metric_types.MetricComputations:
+      example_weighted: bool = False,
+      labels_to_stack: Optional[List[str]] = None,
+      predictions_to_stack: Optional[List[str]] = None,
+      num_detections_key: Optional[str] = None
+  ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
-    _validate_object_detection_arguments(
-        object_class_id=object_class_id,
-        object_class_weight=object_class_weight,
+    object_detection_confusion_matrix_metrics.validate_object_detection_arguments(
+        class_id=class_id,
+        class_weight=class_weight,
         area_range=area_range,
-        max_num_detections=max_num_detections)
+        max_num_detections=max_num_detections,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        output_name=output_name)
 
     key = metric_types.MetricKey(
         name=name,
@@ -170,22 +173,27 @@ class COCOAveragePrecision(metric_types.Metric):
         recall=recall_thresholds,
         num_thresholds=num_thresholds,
         iou_threshold=iou_threshold,
-        object_class_id=object_class_id,
-        object_class_weight=object_class_weight,
+        class_id=class_id,
+        class_weight=class_weight,
         area_range=area_range,
         max_num_detections=max_num_detections)
 
-    pr = confusion_matrix_metrics.PrecisionAtRecall(
-        recall=recall_thresholds,
-        thresholds=thresholds,
-        use_object_detection=use_object_detection,
-        iou_threshold=iou_threshold,
-        object_class_id=object_class_id,
-        object_class_weight=object_class_weight,
-        area_range=area_range,
-        max_num_detections=max_num_detections,
-        name=precision_at_recall_name)
-    computations = pr.computations()
+    pr = (
+        object_detection_confusion_matrix_metrics
+        .ObjectDetectionPrecisionAtRecall(
+            recall=recall_thresholds,
+            thresholds=thresholds,
+            iou_threshold=iou_threshold,
+            class_id=class_id,
+            class_weight=class_weight,
+            area_range=area_range,
+            max_num_detections=max_num_detections,
+            name=precision_at_recall_name,
+            labels_to_stack=labels_to_stack,
+            predictions_to_stack=predictions_to_stack,
+            num_detections_key=num_detections_key))
+    computations = pr.computations(
+        model_names=[model_name], output_names=[output_name])
     precisions_key = computations[-1].keys[-1]
 
     def result(
@@ -213,18 +221,28 @@ class COCOMeanAveragePrecision(metric_types.Metric):
   def __init__(self,
                num_thresholds: Optional[int] = None,
                iou_thresholds: Optional[List[float]] = None,
-               object_class_ids: Optional[List[int]] = None,
-               object_class_weights: Optional[List[float]] = None,
+               class_ids: Optional[List[int]] = None,
+               class_weights: Optional[List[float]] = None,
                area_range: Optional[Tuple[float, float]] = None,
                max_num_detections: Optional[int] = None,
                recalls: Optional[List[float]] = None,
                num_recalls: Optional[int] = None,
-               name: Optional[str] = None):
+               name: Optional[str] = None,
+               labels_to_stack: Optional[List[str]] = None,
+               predictions_to_stack: Optional[List[str]] = None,
+               num_detections_key: Optional[str] = None):
     """Initializes mean average precision metric.
 
-    This metric is only used in object-detection setting. use_object_detection
-    is by default set to be Ture. It does not support sub_key parameters due to
-    the matching algorithm of bounding boxes.
+    This metric is only used in object-detection setting. It does not support
+    sub_key parameters due to the matching algorithm of bounding boxes.
+
+    The metric supports using multiple outputs to form the labels/predictions if
+    the user specifies the label/predcition keys to stack. In this case, the
+    metric is not expected to work with multi-outputs. The metric only supports
+    multi outputs if the output of model is already pre-stacked in the expected
+    format, i.e. ['xmin', 'ymin', 'xmax', 'ymax', 'class_id'] for labels and
+    ['xmin', 'ymin', 'xmax', 'ymax', 'class_id', 'confidence scores'] for
+    predictions.
 
     Args:
       num_thresholds: (Optional) Number of thresholds to use for calculating the
@@ -232,12 +250,11 @@ class COCOMeanAveragePrecision(metric_types.Metric):
       iou_thresholds: (Optional) Used for object detection, threholds for a
         detection and ground truth pair with specific iou to be considered as a
         match.
-      object_class_ids: (Optional) Used for object detection, the class ids for
-        calculating metrics. It must be provided if use_object_detection is
-        True.
-      object_class_weights: (Optional) Used for object detection, the weight
-        associated with the object class ids. If it is provided, it should have
-        the same length as object_class_ids.
+      class_ids: (Optional) Used for object detection, the class ids for
+        calculating metrics.
+      class_weights: (Optional) Used for object detection, the weight associated
+        with the object class ids. If it is provided, it should have the same
+        length as class_ids.
       area_range: (Optional) Used for object detection, the area-range for
         objects to be considered for metrics.
       max_num_detections: (Optional) Used for object detection, the maximum
@@ -247,30 +264,46 @@ class COCOMeanAveragePrecision(metric_types.Metric):
         for calculating average precision, it equally generates points bewteen 0
         and 1. (Only one of recalls and num_recalls should be used).
       name: (Optional) Metric name.
+      labels_to_stack: (Optional) Keys for columns to be stacked as a single
+        numpy array as the labels. It is searched under the key labels, features
+        and transformed features. The desired format is [left bounadary, top
+        boudnary, right boundary, bottom boundary, class id]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id']
+      predictions_to_stack: (Optional) Output names for columns to be stacked as
+        a single numpy array as the prediction. It should be the model's output
+        names. The desired format is [left bounadary, top boudnary, right
+        boundary, bottom boundary, class id, confidence score]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id', 'scores']
+      num_detections_key: (Optional) An output name in which to find the number
+        of detections to use for evaluation for a given example. It does nothing
+        if predictions_to_stack is not set. The value for this output should be
+        a scalar value or a single-value tensor. The stacked predicitions will
+        be truncated with the specified number of detections.
     """
 
     super().__init__(
         metric_util.merge_per_key_computations(self._metric_computations),
         num_thresholds=num_thresholds,
-        use_object_detection=True,
         iou_thresholds=iou_thresholds,
-        object_class_ids=object_class_ids,
-        object_class_weights=object_class_weights,
+        class_ids=class_ids,
+        class_weights=class_weights,
         area_range=area_range,
         max_num_detections=max_num_detections,
         recalls=recalls,
         num_recalls=num_recalls,
-        name=name)
+        name=name,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        num_detections_key=num_detections_key)
 
   def _default_name(self) -> str:
     return MEAN_AVERAGE_PRECISION_NAME
 
   def _metric_computations(self,
                            num_thresholds: Optional[int] = None,
-                           use_object_detection: Optional[bool] = True,
                            iou_thresholds: Optional[List[float]] = None,
-                           object_class_ids: Optional[List[int]] = None,
-                           object_class_weights: Optional[List[float]] = None,
+                           class_ids: Optional[List[int]] = None,
+                           class_weights: Optional[List[float]] = None,
                            max_num_detections: Optional[int] = None,
                            area_range: Optional[Tuple[float, float]] = None,
                            recalls: Optional[List[float]] = None,
@@ -279,20 +312,26 @@ class COCOMeanAveragePrecision(metric_types.Metric):
                            model_name: str = '',
                            output_name: str = '',
                            example_weighted: bool = False,
+                           labels_to_stack: Optional[List[str]] = None,
+                           predictions_to_stack: Optional[List[str]] = None,
+                           num_detections_key: Optional[str] = None,
                            **kwargs) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
 
-    _validate_object_detection_arguments(
-        object_class_id=object_class_ids,
-        object_class_weight=object_class_weights,
+    object_detection_confusion_matrix_metrics.validate_object_detection_arguments(
+        class_id=class_ids,
+        class_weight=class_weights,
         area_range=area_range,
-        max_num_detections=max_num_detections)
+        max_num_detections=max_num_detections,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        output_name=output_name)
 
     # set default value according to COCO metrics
     if iou_thresholds is None:
       iou_thresholds = np.linspace(0.5, 0.95, 10)
-    if object_class_weights is None:
-      object_class_weights = [1.0] * len(object_class_ids)
+    if class_weights is None:
+      class_weights = [1.0] * len(class_ids)
 
     key = metric_types.MetricKey(
         name=name,
@@ -305,8 +344,7 @@ class COCOMeanAveragePrecision(metric_types.Metric):
     computations = []
     precisions_keys = []
     for iou_threshold in iou_thresholds:
-      for object_class_id, object_class_weight in zip(object_class_ids,
-                                                      object_class_weights):
+      for class_id, class_weight in zip(class_ids, class_weights):
 
         average_precision_name = (
             metric_util.generate_private_name_from_arguments(
@@ -315,22 +353,27 @@ class COCOMeanAveragePrecision(metric_types.Metric):
                 num_recalls=num_recalls,
                 num_thresholds=num_thresholds,
                 iou_threshold=iou_threshold,
-                object_class_id=object_class_id,
-                object_class_weight=object_class_weight,
+                class_id=class_id,
+                class_weight=class_weight,
                 area_range=area_range,
                 max_num_detections=max_num_detections))
 
         ap = COCOAveragePrecision(
             num_thresholds=num_thresholds,
             iou_threshold=iou_threshold,
-            object_class_id=object_class_id,
-            object_class_weight=object_class_weight,
+            class_id=class_id,
+            class_weight=class_weight,
             area_range=area_range,
             max_num_detections=max_num_detections,
             recalls=recalls,
             num_recalls=num_recalls,
-            name=average_precision_name)
-        computations.extend(ap.computations())
+            name=average_precision_name,
+            labels_to_stack=labels_to_stack,
+            predictions_to_stack=predictions_to_stack,
+            num_detections_key=num_detections_key)
+        computations.extend(
+            ap.computations(
+                model_names=[model_name], output_names=[output_name]))
         precisions_keys.append(computations[-1].keys[-1])
 
     def result(
@@ -360,72 +403,104 @@ class COCOAverageRecall(metric_types.Metric):
 
   def __init__(self,
                iou_thresholds: Optional[List[float]] = None,
-               object_class_id: Optional[int] = None,
-               object_class_weight: Optional[float] = None,
+               class_id: Optional[int] = None,
+               class_weight: Optional[float] = None,
                area_range: Optional[Tuple[float, float]] = None,
                max_num_detections: Optional[int] = None,
-               name: Optional[str] = None):
+               name: Optional[str] = None,
+               labels_to_stack: Optional[List[str]] = None,
+               predictions_to_stack: Optional[List[str]] = None,
+               num_detections_key: Optional[str] = None):
     """Initializes average recall metric.
 
-    This metric is only used in object-detection setting. use_object_detection
-    is by default set to be Ture. It does not support sub_key parameters due to
-    the matching algorithm of bounding boxes.
+    This metric is only used in object-detection setting. It does not support
+    sub_key parameters due to the matching algorithm of bounding boxes.
+
+    The metric supports using multiple outputs to form the labels/predictions if
+    the user specifies the label/predcition keys to stack. In this case, the
+    metric is not expected to work with multi-outputs. The metric only supports
+    multi outputs if the output of model is already pre-stacked in the expected
+    format, i.e. ['xmin', 'ymin', 'xmax', 'ymax', 'class_id'] for labels and
+    ['xmin', 'ymin', 'xmax', 'ymax', 'class_id', 'confidence scores'] for
+    predictions.
 
     Args:
       iou_thresholds: (Optional) Used for object detection, threholds for a
         detection and ground truth pair with specific iou to be considered as a
         match.
-      object_class_id: (Optional) Used for object detection, the class ids for
-        calculating metrics. It must be provided if use_object_detection is
-        True.
-      object_class_weight: (Optional) Used for object detection, the weight
-        associated with the object class ids. If it is provided, it should have
-        the same length as object_class_ids.
+      class_id: (Optional) Used for object detection, the class ids for
+        calculating metrics.
+      class_weight: (Optional) Used for object detection, the weight associated
+        with the object class ids. If it is provided, it should have the same
+        length as class_ids.
       area_range: (Optional) Used for object detection, the area-range for
         objects to be considered for metrics.
       max_num_detections: (Optional) Used for object detection, the maximum
         number of detections for a single image.
       name: (Optional) Metric name.
+      labels_to_stack: (Optional) Keys for columns to be stacked as a single
+        numpy array as the labels. It is searched under the key labels, features
+        and transformed features. The desired format is [left bounadary, top
+        boudnary, right boundary, bottom boundary, class id]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id']
+      predictions_to_stack: (Optional) Output names for columns to be stacked as
+        a single numpy array as the prediction. It should be the model's output
+        names. The desired format is [left bounadary, top boudnary, right
+        boundary, bottom boundary, class id, confidence score]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id', 'scores']
+      num_detections_key: (Optional) An output name in which to find the number
+        of detections to use for evaluation for a given example. It does nothing
+        if predictions_to_stack is not set. The value for this output should be
+        a scalar value or a single-value tensor. The stacked predicitions will
+        be truncated with the specified number of detections.
     """
 
     super().__init__(
         metric_util.merge_per_key_computations(self._metric_computations),
-        use_object_detection=True,
         iou_thresholds=iou_thresholds,
-        object_class_id=object_class_id,
-        object_class_weight=object_class_weight,
+        class_id=class_id,
+        class_weight=class_weight,
         area_range=area_range,
         max_num_detections=max_num_detections,
-        name=name)
+        name=name,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        num_detections_key=num_detections_key)
 
   def _default_name(self) -> str:
     return AVERAGE_RECALL_NAME
 
   def _metric_computations(
       self,
-      use_object_detection: Optional[bool] = True,
       iou_thresholds: Optional[Union[float, List[float]]] = None,
-      object_class_id: Optional[int] = None,
-      object_class_weight: Optional[float] = None,
+      class_id: Optional[int] = None,
+      class_weight: Optional[float] = None,
       max_num_detections: Optional[int] = None,
       area_range: Optional[Tuple[float, float]] = None,
       name: Optional[str] = None,
       model_name: str = '',
       output_name: str = '',
-      example_weighted: bool = False) -> metric_types.MetricComputations:
+      example_weighted: bool = False,
+      labels_to_stack: Optional[List[str]] = None,
+      predictions_to_stack: Optional[List[str]] = None,
+      num_detections_key: Optional[str] = None
+  ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
 
-    _validate_object_detection_arguments(
-        object_class_id=object_class_id,
-        object_class_weight=object_class_weight,
+    object_detection_confusion_matrix_metrics.validate_object_detection_arguments(
+        class_id=class_id,
+        class_weight=class_weight,
         area_range=area_range,
-        max_num_detections=max_num_detections)
+        max_num_detections=max_num_detections,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        output_name=output_name)
 
     # set default value according to COCO metrics
     if iou_thresholds is None:
       iou_thresholds = np.linspace(0.5, 0.95, 10)
-    if object_class_weight is None:
-      object_class_weight = 1.0
+    if class_weight is None:
+      class_weight = 1.0
 
     key = metric_types.MetricKey(
         name=name,
@@ -441,20 +516,23 @@ class COCOAverageRecall(metric_types.Metric):
       max_recall_name = metric_util.generate_private_name_from_arguments(
           confusion_matrix_metrics.MAX_RECALL_NAME,
           iou_threshold=iou_threshold,
-          object_class_id=object_class_id,
-          object_class_weight=object_class_weight,
+          class_id=class_id,
+          class_weight=class_weight,
           area_range=area_range,
           max_num_detections=max_num_detections)
 
-      mr = confusion_matrix_metrics.MaxRecall(
-          use_object_detection=use_object_detection,
+      mr = object_detection_confusion_matrix_metrics.ObjectDetectionMaxRecall(
           iou_threshold=iou_threshold,
-          object_class_id=object_class_id,
-          object_class_weight=object_class_weight,
+          class_id=class_id,
+          class_weight=class_weight,
           area_range=area_range,
           max_num_detections=max_num_detections,
-          name=max_recall_name)
-      computations.extend(mr.computations())
+          name=max_recall_name,
+          labels_to_stack=labels_to_stack,
+          predictions_to_stack=predictions_to_stack,
+          num_detections_key=num_detections_key)
+      computations.extend(
+          mr.computations(model_names=[model_name], output_names=[output_name]))
       recalls_keys.append(computations[-1].keys[-1])
 
     def result(
@@ -487,69 +565,101 @@ class COCOMeanAverageRecall(metric_types.Metric):
 
   def __init__(self,
                iou_thresholds: Optional[List[float]] = None,
-               object_class_ids: Optional[List[int]] = None,
-               object_class_weights: Optional[List[float]] = None,
+               class_ids: Optional[List[int]] = None,
+               class_weights: Optional[List[float]] = None,
                area_range: Optional[Tuple[float, float]] = None,
                max_num_detections: Optional[int] = None,
-               name: Optional[str] = None):
+               name: Optional[str] = None,
+               labels_to_stack: Optional[List[str]] = None,
+               predictions_to_stack: Optional[List[str]] = None,
+               num_detections_key: Optional[str] = None):
     """Initializes average recall metric.
 
-    This metric is only used in object-detection setting. use_object_detection
-    is by default set to be Ture. It does not support sub_key parameters due to
-    the matching algorithm of bounding boxes.
+    This metric is only used in object-detection setting. It does not support
+    sub_key parameters due to the matching algorithm of bounding boxes.
+
+    The metric supports using multiple outputs to form the labels/predictions if
+    the user specifies the label/predcition keys to stack. In this case, the
+    metric is not expected to work with multi-outputs. The metric only supports
+    multi outputs if the output of model is already pre-stacked in the expected
+    format, i.e. ['xmin', 'ymin', 'xmax', 'ymax', 'class_id'] for labels and
+    ['xmin', 'ymin', 'xmax', 'ymax', 'class_id', 'confidence scores'] for
+    predictions.
 
     Args:
       iou_thresholds: (Optional) Used for object detection, threholds for a
         detection and ground truth pair with specific iou to be considered as a
         match.
-      object_class_ids: (Optional) Used for object detection, the class ids for
-        calculating metrics. It must be provided if use_object_detection is
-        True.
-      object_class_weights: (Optional) Used for object detection, the weight
-        associated with the object class ids. If it is provided, it should have
-        the same length as object_class_ids.
+      class_ids: (Optional) Used for object detection, the class ids for
+        calculating metrics.
+      class_weights: (Optional) Used for object detection, the weight associated
+        with the object class ids. If it is provided, it should have the same
+        length as class_ids.
       area_range: (Optional) Used for object detection, the area-range for
         objects to be considered for metrics.
       max_num_detections: (Optional) Used for object detection, the maximum
         number of detections for a single image.
       name: (Optional) Metric name.
+      labels_to_stack: (Optional) Keys for columns to be stacked as a single
+        numpy array as the labels. It is searched under the key labels, features
+        and transformed features. The desired format is [left bounadary, top
+        boudnary, right boundary, bottom boundary, class id]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id']
+      predictions_to_stack: (Optional) Output names for columns to be stacked as
+        a single numpy array as the prediction. It should be the model's output
+        names. The desired format is [left bounadary, top boudnary, right
+        boundary, bottom boundary, class id, confidence score]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id', 'scores']
+      num_detections_key: (Optional) An output name in which to find the number
+        of detections to use for evaluation for a given example. It does nothing
+        if predictions_to_stack is not set. The value for this output should be
+        a scalar value or a single-value tensor. The stacked predicitions will
+        be truncated with the specified number of detections.
     """
 
     super().__init__(
         metric_util.merge_per_key_computations(self._metric_computations),
-        use_object_detection=True,
         iou_thresholds=iou_thresholds,
-        object_class_ids=object_class_ids,
-        object_class_weights=object_class_weights,
+        class_ids=class_ids,
+        class_weights=class_weights,
         area_range=area_range,
         max_num_detections=max_num_detections,
-        name=name)
+        name=name,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        num_detections_key=num_detections_key)
 
   def _default_name(self) -> str:
     return MEAN_AVERAGE_RECALL_NAME
 
   def _metric_computations(
       self,
-      use_object_detection: Optional[bool] = True,
       iou_thresholds: Optional[List[float]] = None,
-      object_class_ids: Optional[Union[int, List[int]]] = None,
-      object_class_weights: Optional[Union[float, List[float]]] = None,
+      class_ids: Optional[Union[int, List[int]]] = None,
+      class_weights: Optional[Union[float, List[float]]] = None,
       max_num_detections: Optional[int] = None,
       area_range: Optional[Tuple[float, float]] = None,
       name: Optional[str] = None,
       model_name: str = '',
       output_name: str = '',
-      example_weighted: bool = False) -> metric_types.MetricComputations:
+      example_weighted: bool = False,
+      labels_to_stack: Optional[List[str]] = None,
+      predictions_to_stack: Optional[List[str]] = None,
+      num_detections_key: Optional[str] = None
+  ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
 
-    _validate_object_detection_arguments(
-        object_class_id=object_class_ids,
-        object_class_weight=object_class_weights,
+    object_detection_confusion_matrix_metrics.validate_object_detection_arguments(
+        class_id=class_ids,
+        class_weight=class_weights,
         area_range=area_range,
-        max_num_detections=max_num_detections)
+        max_num_detections=max_num_detections,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        output_name=output_name)
 
-    if object_class_weights is None:
-      object_class_weights = [1.0] * len(object_class_ids)
+    if class_weights is None:
+      class_weights = [1.0] * len(class_ids)
 
     key = metric_types.MetricKey(
         name=name,
@@ -561,24 +671,27 @@ class COCOMeanAverageRecall(metric_types.Metric):
 
     computations = []
     recalls_keys = []
-    for object_class_id, object_class_weight in zip(object_class_ids,
-                                                    object_class_weights):
+    for class_id, class_weight in zip(class_ids, class_weights):
       max_recall_name = metric_util.generate_private_name_from_arguments(
           AVERAGE_RECALL_NAME,
           iou_thresholds=iou_thresholds,
-          object_class_id=object_class_id,
-          object_class_weight=object_class_weight,
+          class_id=class_id,
+          class_weight=class_weight,
           area_range=area_range,
           max_num_detections=max_num_detections)
 
       mr = COCOAverageRecall(
           iou_thresholds=iou_thresholds,
-          object_class_id=object_class_id,
-          object_class_weight=object_class_weight,
+          class_id=class_id,
+          class_weight=class_weight,
           area_range=area_range,
           max_num_detections=max_num_detections,
-          name=max_recall_name)
-      computations.extend(mr.computations())
+          name=max_recall_name,
+          labels_to_stack=labels_to_stack,
+          predictions_to_stack=predictions_to_stack,
+          num_detections_key=num_detections_key)
+      computations.extend(
+          mr.computations(model_names=[model_name], output_names=[output_name]))
       recalls_keys.append(computations[-1].keys[-1])
 
     def result(

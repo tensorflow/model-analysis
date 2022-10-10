@@ -105,6 +105,8 @@ def calibration_histogram(
     fractional_labels = (left == 0.0 and right == 1.0)
   if name is None:
     name = f'{CALIBRATION_HISTOGRAM_NAME}_{num_buckets}'
+    if preprocessors:
+      name = f'{name}_{tuple(p.name for p in preprocessors)}'
   key = metric_types.PlotKey(
       name=name,
       model_name=model_name,

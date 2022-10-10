@@ -18,7 +18,7 @@ The following preprocssors are included:
   detections to a list of label prediction pair for binary classifiction.
 """
 
-from typing import Iterator, Tuple, Optional
+from typing import Iterator, List, Optional, Tuple
 
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
@@ -26,11 +26,15 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics.preprocessors.utils import bounding_box
 from tensorflow_model_analysis.metrics.preprocessors.utils import box_match
+from tensorflow_model_analysis.metrics.preprocessors.utils import object_detection_format
+from tensorflow_model_analysis.utils import util
 
 # indices for the inputs, it should be arranged in the following format:
 LEFT, TOP, RIGHT, BOTTOM, CLASS, CONFIDENCE = range(6)
 
 _DEFAULT_BOUNDING_BOX_MATCH_PREPROCESSOR_NAME = 'bounding_box_match_preprocessor'
+_DEFAULT_IOU_THRESHOLD = 0.5
+_DEFAULT_AREA_RANGE = (0, float('inf'))
 
 
 class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
@@ -38,11 +42,15 @@ class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
 
   def __init__(self,
                class_id: int,
-               iou_threshold: float,
+               iou_threshold: Optional[float] = 0.5,
                area_range: Tuple[float, float] = (0, float('inf')),
                max_num_detections: Optional[int] = None,
                class_weight: Optional[float] = None,
-               name: Optional[str] = None):
+               name: Optional[str] = None,
+               labels_to_stack: Optional[List[str]] = None,
+               predictions_to_stack: Optional[List[str]] = None,
+               num_detections_key: Optional[str] = None,
+               model_name=''):
     """Initialize the preprocessor for bounding box match.
 
     Args:
@@ -57,23 +65,65 @@ class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
         number of detections for a single image.
       class_weight: (Optional) Used for object detection, the weight associated
         with the object class id.
-      name: Optional preprocessor name. Used to distinguish with other
-        preprocessors.
+      name: (Optional) name for the preprocessor.
+      labels_to_stack: (Optional) Keys for columns to be stacked as a single
+        numpy array as the labels. It is searched under the key labels, features
+        and transformed features. The desired format is [left bounadary, top
+        boudnary, right boundary, bottom boundary, class id]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id']
+      predictions_to_stack: (Optional) Keys for columns to be stacked as a
+        single numpy array as the prediction. It should be the model's output
+        names. The desired format is [left bounadary, top boudnary, right
+        boundary, bottom boundary, class id, confidence score]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id', 'scores']
+      num_detections_key: (Optional) Number of detections in each column except
+        the paddings.
+      model_name: Optional model name (if multi-model evaluation).
     """
-    super().__init__()
+    if not name:
+      name = metric_util.generate_private_name_from_arguments(
+          _DEFAULT_BOUNDING_BOX_MATCH_PREPROCESSOR_NAME,
+          class_id=class_id,
+          iou_threshold=iou_threshold,
+          area_range=area_range,
+          max_num_detections=max_num_detections,
+          class_weight=class_weight)
+    if not area_range:
+      area_range = _DEFAULT_AREA_RANGE
+    if iou_threshold is None:
+      iou_threshold = _DEFAULT_IOU_THRESHOLD
+    super().__init__(name=name)
     self._threshold = iou_threshold
     self._class_id = class_id
     self._area_range = area_range
     self._max_num_detections = max_num_detections
     self._class_weight = class_weight
-    self._name = name or self._default_name()
-
-  def _default_name(self) -> str:
-    return _DEFAULT_BOUNDING_BOX_MATCH_PREPROCESSOR_NAME
+    self._labels_to_stack = labels_to_stack
+    self._predictions_to_stack = predictions_to_stack
+    self._num_detections_key = num_detections_key
+    self._model_name = model_name
 
   def process(
       self,
       extracts: types.Extracts) -> Iterator[metric_types.StandardMetricInputs]:
+    # stack all the columns of labels and predictions(e.g. xmin, xmax, ymin,
+    # ymax, and class_id of bounding boxes) into one single numpy array
+    extracts = util.StandardExtracts(extracts)
+    if self._labels_to_stack:
+      extracts[constants.LABELS_KEY] = object_detection_format.stack_labels(
+          extracts, self._labels_to_stack, model_name=self._model_name)
+    if self._predictions_to_stack:
+      predictions = object_detection_format.stack_predictions(
+          extracts, self._predictions_to_stack, model_name=self._model_name)
+    else:
+      predictions = extracts.get_predictions(model_name=self._model_name)
+    if self._num_detections_key:
+      predictions = (
+          object_detection_format.truncate_by_num_detections(
+              extracts, self._num_detections_key, predictions,
+              self._model_name))
+    extracts[constants.PREDICTIONS_KEY] = predictions
+
     if extracts[constants.LABELS_KEY].ndim != 2 or extracts[
         constants.LABELS_KEY].shape[1] <= 4:
       raise ValueError('Raw data of ground truth should be a 2d array of shape '
@@ -102,6 +152,7 @@ class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
             max_num_detections=self._max_num_detections,
             class_weight=self._class_weight,
             weight=weight))
+
     for l, p, w in zip(labels, predictions, weights):
       result = {}
       result[constants.LABELS_KEY] = [l]

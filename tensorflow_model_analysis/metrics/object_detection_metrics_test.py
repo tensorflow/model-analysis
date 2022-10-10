@@ -55,7 +55,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
         metrics_specs {
           metrics {
             class_name: "COCOMeanAveragePrecision"
-            config:'"iou_thresholds":[0.5], "object_class_ids":[1, 2], '
+            config:'"iou_thresholds":[0.5], "class_ids":[1,2],'
                    '"max_num_detections":100, "name":"iou0.5"'
           }
         }
@@ -63,145 +63,145 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                                   ('_average_precision_iou0.75',
                                    text_format.Parse(
                                        """
-        model_specs {
-          signature_name: "serving_default"
-          prediction_key: "predictions" # placeholder
-          label_key: "labels" # placeholder
-        }
-        slicing_specs {
-        }
-        metrics_specs {
-          metrics {
-            class_name: "COCOMeanAveragePrecision"
-            config:'"iou_thresholds":[0.75], "object_class_ids":[1, 2], '
-                   '"max_num_detections":100, "name":"iou0.75"'
-          }
-        }
-        """, tfma.EvalConfig()), ['iou0.75'], [0.416]),
+       model_specs {
+         signature_name: "serving_default"
+         prediction_key: "predictions" # placeholder
+         label_key: "labels" # placeholder
+       }
+       slicing_specs {
+       }
+       metrics_specs {
+         metrics {
+           class_name: "COCOMeanAveragePrecision"
+           config:'"iou_thresholds":[0.75], "class_ids":[1, 2], '
+                  '"max_num_detections":100, "name":"iou0.75"'
+         }
+       }
+       """, tfma.EvalConfig()), ['iou0.75'], [0.416]),
                                   ('_average_precision_ave',
                                    text_format.Parse(
                                        """
-        model_specs {
-          signature_name: "serving_default"
-          prediction_key: "predictions" # placeholder
-          label_key: "labels" # placeholder
-        }
-        slicing_specs {
-        }
-        metrics_specs {
-          metrics {
-            class_name: "COCOMeanAveragePrecision"
-            config:'"iou_thresholds":[0.5, 0.75], "object_class_ids":[1, 2], '
-                   '"max_num_detections":100, "name":"iouave"'
-          }
-        }
-        """, tfma.EvalConfig()), ['iouave'], [0.666]), ('_average_recall_mdet1',
-                                                        text_format.Parse(
-                                                            """
-        model_specs {
-          signature_name: "serving_default"
-          prediction_key: "predictions" # placeholder
-          label_key: "labels" # placeholder
-        }
-        slicing_specs {
-        }
-        metrics_specs {
-          metrics {
-            class_name: "COCOMeanAverageRecall"
-            config:'"object_class_ids":[1, 2], "max_num_detections":1, '
-                   '"name":"mdet1"'
-          }
-        }
-        """, tfma.EvalConfig()), ['mdet1'], [0.375]), ('_average_recall_mdet10',
+       model_specs {
+         signature_name: "serving_default"
+         prediction_key: "predictions" # placeholder
+         label_key: "labels" # placeholder
+       }
+       slicing_specs {
+       }
+       metrics_specs {
+         metrics {
+           class_name: "COCOMeanAveragePrecision"
+           config:'"iou_thresholds":[0.5, 0.75], "class_ids":[1, 2], '
+                  '"max_num_detections":100, "name":"iouave"'
+         }
+       }
+       """, tfma.EvalConfig()), ['iouave'], [0.666]), ('_average_recall_mdet1',
                                                        text_format.Parse(
                                                            """
-        model_specs {
-          signature_name: "serving_default"
-          prediction_key: "predictions" # placeholder
-          label_key: "labels" # placeholder
-        }
-        slicing_specs {
-        }
-        metrics_specs {
-          metrics {
-            class_name: "COCOMeanAverageRecall"
-            config:'"object_class_ids":[1, 2], "max_num_detections":10, '
-                   '"name":"mdet10"'
-          }
-        }
-        """, tfma.EvalConfig()), ['mdet10'], [0.533]),
+       model_specs {
+         signature_name: "serving_default"
+         prediction_key: "predictions" # placeholder
+         label_key: "labels" # placeholder
+       }
+       slicing_specs {
+       }
+       metrics_specs {
+         metrics {
+           class_name: "COCOMeanAverageRecall"
+           config:'"class_ids":[1, 2], "max_num_detections":1, '
+                  '"name":"mdet1"'
+         }
+       }
+       """, tfma.EvalConfig()), ['mdet1'], [0.375]), ('_average_recall_mdet10',
+                                                      text_format.Parse(
+                                                          """
+       model_specs {
+         signature_name: "serving_default"
+         prediction_key: "predictions" # placeholder
+         label_key: "labels" # placeholder
+       }
+       slicing_specs {
+       }
+       metrics_specs {
+         metrics {
+           class_name: "COCOMeanAverageRecall"
+           config:'"class_ids":[1, 2], "max_num_detections":10, '
+                  '"name":"mdet10"'
+         }
+       }
+       """, tfma.EvalConfig()), ['mdet10'], [0.533]),
                                   ('_average_recall_mdet100',
                                    text_format.Parse(
                                        """
-        model_specs {
-          signature_name: "serving_default"
-          prediction_key: "predictions" # placeholder
-          label_key: "labels" # placeholder
-        }
-        slicing_specs {
-        }
-        metrics_specs {
-          metrics {
-            class_name: "COCOMeanAverageRecall"
-            config:'"object_class_ids":[1, 2], "max_num_detections":100, '
-                   '"name":"mdet100"'
-          }
-        }
-        """, tfma.EvalConfig()), ['mdet100'], [0.533]),
+       model_specs {
+         signature_name: "serving_default"
+         prediction_key: "predictions" # placeholder
+         label_key: "labels" # placeholder
+       }
+       slicing_specs {
+       }
+       metrics_specs {
+         metrics {
+           class_name: "COCOMeanAverageRecall"
+           config:'"class_ids":[1, 2], "max_num_detections":100, '
+                  '"name":"mdet100"'
+         }
+       }
+       """, tfma.EvalConfig()), ['mdet100'], [0.533]),
                                   ('_average_recall_arsmall',
                                    text_format.Parse(
                                        """
-        model_specs {
-          signature_name: "serving_default"
-          prediction_key: "predictions" # placeholder
-          label_key: "labels" # placeholder
-        }
-        slicing_specs {
-        }
-        metrics_specs {
-          metrics {
-            class_name: "COCOMeanAverageRecall"
-            config:'"object_class_ids":[1, 2], "area_range":[0, 1024], '
-                   '"max_num_detections":100, "name":"arsmall"'
-          }
-        }
-        """, tfma.EvalConfig()), ['arsmall'], [0.500]),
+       model_specs {
+         signature_name: "serving_default"
+         prediction_key: "predictions" # placeholder
+         label_key: "labels" # placeholder
+       }
+       slicing_specs {
+       }
+       metrics_specs {
+         metrics {
+           class_name: "COCOMeanAverageRecall"
+           config:'"class_ids":[1, 2], "area_range":[0, 1024], '
+                  '"max_num_detections":100, "name":"arsmall"'
+         }
+       }
+       """, tfma.EvalConfig()), ['arsmall'], [0.500]),
                                   ('_average_recall_armedium',
                                    text_format.Parse(
                                        """
-        model_specs {
-          signature_name: "serving_default"
-          prediction_key: "predictions" # placeholder
-          label_key: "labels" # placeholder
-        }
-        slicing_specs {
-        }
-        metrics_specs {
-          metrics {
-            class_name: "COCOMeanAverageRecall"
-            config:'"object_class_ids":[1, 2], "area_range":[1024, 9216], '
-                   '"max_num_detections":100, "name":"armedium"'
-          }
-        }
-        """, tfma.EvalConfig()), ['armedium'], [0.300]),
+       model_specs {
+         signature_name: "serving_default"
+         prediction_key: "predictions" # placeholder
+         label_key: "labels" # placeholder
+       }
+       slicing_specs {
+       }
+       metrics_specs {
+         metrics {
+           class_name: "COCOMeanAverageRecall"
+           config:'"class_ids":[1, 2], "area_range":[1024, 9216], '
+                  '"max_num_detections":100, "name":"armedium"'
+         }
+       }
+       """, tfma.EvalConfig()), ['armedium'], [0.300]),
                                   ('_average_recall_arlarge',
                                    text_format.Parse(
                                        """
-        model_specs {
-          signature_name: "serving_default"
-          prediction_key: "predictions" # placeholder
-          label_key: "labels" # placeholder
-        }
-        slicing_specs {
-        }
-        metrics_specs {
-          metrics {
-            class_name: "COCOMeanAverageRecall"
-            config:'"object_class_ids":[1, 2], "area_range":[9216, 99999], '
-                   '"max_num_detections":100, "name":"arlarge"'
-          }
-        }
-        """, tfma.EvalConfig()), ['arlarge'], [0.700]))
+       model_specs {
+         signature_name: "serving_default"
+         prediction_key: "predictions" # placeholder
+         label_key: "labels" # placeholder
+       }
+       slicing_specs {
+       }
+       metrics_specs {
+         metrics {
+           class_name: "COCOMeanAverageRecall"
+           config:'"class_ids":[1, 2], "area_range":[9216, 99999], '
+                  '"max_num_detections":100, "name":"arlarge"'
+         }
+       }
+       """, tfma.EvalConfig()), ['arlarge'], [0.700]))
   def testMetricValuesWithLargerData(self, eval_config, name_list,
                                      expected_results):
 
@@ -228,6 +228,105 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                            [198.53, 242.14, 263.93, 427.51, 2., 0.95],
                            [-32.86, 505.75, 338.82, 619.66, 2., 0.17],
                            [201.59, 299.39, 258.4, 452.88, 1., 0.05]]])
+        }
+    }]
+
+    evaluators = tfma.default_evaluators(eval_config=eval_config)
+    extractors = tfma.default_extractors(
+        eval_shared_model=None, eval_config=eval_config)
+
+    with beam.Pipeline() as p:
+      result = (
+          p | 'LoadData' >> beam.Create(extracts)
+          | 'ExtractEval' >> tfma.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertLen(got_metrics, len(name_list))
+          for name, expected_result in zip(name_list, expected_results):
+            key = metric_types.MetricKey(name=name)
+            self.assertIn(key, got_metrics)
+            got_metric = got_metrics[key]
+            np.testing.assert_allclose(
+                expected_result,
+                got_metric,
+                rtol=1e-3,
+                err_msg=f'This {name} metric fails.')
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      self.assertIn('metrics', result)
+      util.assert_that(result['metrics'], check_result, label='result')
+
+  @parameterized.named_parameters(('_average_precision_iou0.5',
+                                   text_format.Parse(
+                                       """
+       model_specs {
+         signature_name: "serving_default"
+         prediction_key: "predictions" # placeholder
+         label_key: "labels" # placeholder
+       }
+       slicing_specs {
+       }
+       metrics_specs {
+         metrics {
+           class_name: "COCOMeanAveragePrecision"
+           config:'"iou_thresholds":[0.5], "class_ids":[1,2], "num_thresholds":3,'
+                  '"max_num_detections":100, "name":"iou0.5", '
+                  '"labels_to_stack":["xmin", "ymin", "xmax", "ymax", "class_id"], '
+                  '"predictions_to_stack":["bbox", "class_id", "scores"]'
+         }
+       }
+       """, tfma.EvalConfig()), ['iou0.5'], [0.916]))
+  def testMetricValuesWithSplittedData(self, eval_config, name_list,
+                                       expected_results):
+
+    extracts = [{
+        'features': {
+            'labels': {
+                'xmin': np.array([[272.1, 181.23, 174.74]]),
+                'ymin': np.array([[200.23, 86.28, 0.]]),
+                'xmax': np.array([[424.07, 208.67, 435.78]]),
+                'ymax': np.array([[480., 159.81, 220.79]]),
+                'class_id': np.array([[2., 2., 2.]]),
+            },
+            'predictions': {
+                'bbox':
+                    np.array([[[271.2, 178.86, 429.52, 459.57],
+                               [178.53, 92.57, 206.39, 159.71],
+                               [167.96, 9.97, 442.79, 235.07]]]),
+                'class_id':
+                    np.array([[2., 2., 2.]]),
+                'scores':
+                    np.array([[0.64, 0.38, 0.95]]),
+            }
+        }
+    }, {
+        'features': {
+            'labels': {
+                'xmin': np.array([[473.07, 204.01, 0.43, 204.42]]),
+                'ymin': np.array([[395.93, 235.08, 499.79, 304.1]]),
+                'xmax': np.array([[503.07, 264.85, 340.22, 256.93]]),
+                'ymax': np.array([[424.6, 412.44, 606.24, 456.86]]),
+                'class_id': np.array([[1., 2., 2., 2.]]),
+            },
+            'predictions': {
+                'bbox':
+                    np.array([[[471.15, 398.57, 502.29, 428.26],
+                               [198.53, 242.14, 263.93, 427.51],
+                               [-32.86, 505.75, 338.82, 619.66],
+                               [201.59, 299.39, 258.4, 452.88]]]),
+                'class_id':
+                    np.array([[1., 2., 2., 1.]]),
+                'scores':
+                    np.array([[0.54, 0.95, 0.17, 0.05]]),
+            }
         }
     }]
 
