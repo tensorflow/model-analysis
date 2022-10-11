@@ -1613,7 +1613,7 @@ class _PrecisionRecallAtK(_PostExportMetric):
       # If no classes were found and ALL_CLASSES is used in the classes_keys
       # then default to using class IDs as the classes. The intended use case is
       # keras model_to_estimator which does not output any classes.
-      classes = tf.as_string(_class_ids(scores))
+      classes = tf.as_string(_class_ids(scores))  # pytype: disable=wrong-arg-types
 
     # To support canned Estimators which right now only expose the argmax class
     # id, if labels are ints then then the classes are likely class_ids in
@@ -1623,7 +1623,7 @@ class _PrecisionRecallAtK(_PostExportMetric):
       classes = tf.case(
           # Match only when classes has a single item (i.e. argmax).
           [(tf.equal(tf.shape(input=classes)[-1],
-                     1), lambda: tf.as_string(_class_ids(scores)))],
+                     1), lambda: tf.as_string(_class_ids(scores)))],  # pytype: disable=wrong-arg-types
           default=lambda: classes)
 
     if classes is None:
@@ -1635,8 +1635,8 @@ class _PrecisionRecallAtK(_PostExportMetric):
     labels = _cast_or_convert(labels, classes.dtype)
 
     if self._metric_name == metric_keys.PRECISION_AT_K:
-      metric_ops = metrics.precision_at_k(classes, scores, labels,
-                                          self._cutoffs, squeezed_weights)
+      metric_ops = metrics.precision_at_k(  # pytype: disable=wrong-arg-types
+          classes, scores, labels, self._cutoffs, squeezed_weights)
     else:
       metric_ops = metrics.recall_at_k(classes, scores, labels, self._cutoffs,
                                        squeezed_weights)
