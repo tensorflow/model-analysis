@@ -113,7 +113,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model=eval_shared_model,
-          experimental_bulk_inference=True,
+          inference_implementation=predictions_extractor.TfxBslInferenceWrapper,
           batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
@@ -201,7 +201,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model=eval_shared_model,
-          experimental_bulk_inference=True,
+          inference_implementation=predictions_extractor.TfxBslInferenceWrapper,
           batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
@@ -305,7 +305,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model=eval_shared_model,
-          experimental_bulk_inference=True,
+          inference_implementation=predictions_extractor.TfxBslInferenceWrapper,
           batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
@@ -425,7 +425,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model=eval_shared_model,
-          experimental_bulk_inference=True,
+          inference_implementation=predictions_extractor.TfxBslInferenceWrapper,
           batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
@@ -542,7 +542,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
               'model1': eval_shared_model1,
               'model2': eval_shared_model2
           },
-          experimental_bulk_inference=True,
+          inference_implementation=predictions_extractor.TfxBslInferenceWrapper,
           batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
@@ -1040,7 +1040,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model=None,
-          experimental_bulk_inference=True,
+          inference_implementation=predictions_extractor.TfxBslInferenceWrapper,
           batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(

@@ -14,7 +14,7 @@
 """Batched predictions extractor."""
 
 import copy
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 from absl import logging
 import apache_beam as beam
@@ -36,10 +36,48 @@ from tensorflow_serving.apis import prediction_log_pb2
 _PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
 
+class TfxBslInferenceWrapper(beam.PTransform):
+  """Wrapper for TFX-BSL bulk inference implementation."""
+
+  def __init__(self, model_specs: List[config_pb2.ModelSpec],
+               name_to_eval_shared_model: Dict[str, types.EvalSharedModel]):
+    """Converts TFMA config into library-specific configuration."""
+    super().__init__()
+    model_names = []
+    inference_specs = []
+    for model_spec in model_specs:
+      try:
+        eval_shared_model = name_to_eval_shared_model[model_spec.name]
+      except KeyError as e:
+        raise ValueError(
+            'ModelSpec.name should match EvalSharedModel.model_name.') from e
+      inference_spec_type = model_spec_pb2.InferenceSpecType()
+      inference_spec_type.saved_model_spec.model_path = eval_shared_model.model_path
+      inference_spec_type.saved_model_spec.tag[:] = eval_shared_model.model_loader.tags
+      inference_spec_type.saved_model_spec.signature_name[:] = [
+          model_spec.signature_name
+      ]
+      model_names.append(model_spec.name)
+      inference_specs.append(inference_spec_type)
+    self._aligned_model_names = tuple(model_names)
+    self._aligned_inference_specs = tuple(inference_specs)
+
+  def expand(self, pcoll: beam.PCollection):
+    # TODO(b/241022420): Set load_override_fn here to avoid loading the model
+    # twice.
+    return (
+        pcoll
+        | 'TfxBslBulkInference' >> run_inference.RunInferencePerModel(
+            inference_spec_types=self._aligned_inference_specs)
+        | 'CreateModelNameToPredictionLog' >>
+        beam.MapTuple(lambda extracts, logs:  # pylint: disable=g-long-lambda
+                      (extracts, dict(zip(self._aligned_model_names, logs)))))
+
+
 def PredictionsExtractor(
     eval_config: config_pb2.EvalConfig,
     eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    experimental_bulk_inference: bool = False,
+    inference_implementation: Optional[Type[beam.PTransform]] = None,
     batch_size: Optional[int] = None) -> extractor.Extractor:
   """Creates an extractor for performing predictions over a batch.
 
@@ -58,9 +96,11 @@ def PredictionsExtractor(
     eval_shared_model: Shared model (single-model evaluation) or list of shared
       models (multi-model evaluation) or None (predictions obtained from
       features).
-    experimental_bulk_inference: Controls which inference implementation will
-      be used. If True, will use the experimental TFX-BSL Bulk Inference
-      implementation.
+    inference_implementation: The inference implementation used by the
+      PredictionsExtractor. This allows users to inject different bulk inference
+      implementations (e.g. a cloud-friendly OSS implementation or an
+      internal-specific implementation). If this is None, then the TFMA-based
+      implementation will be used.
     batch_size: For testing only. Allows users to set a static batch size in
       unit tests.
 
@@ -90,16 +130,31 @@ def PredictionsExtractor(
                      'EvalConfig.ModelSpec is correctly configured to enable '
                      'using the PredictionsExtractor.')
 
-  if experimental_bulk_inference:
+  name_to_eval_shared_model = {m.model_name: m for m in eval_shared_models}
+  if inference_implementation:
+    model_specs = []
+    for model_spec in eval_config.model_specs:
+      if not model_spec.signature_name:
+        # Select a default signature. Note that this may differ from the
+        # 'serving_default' signature.
+        # TODO(b/245994746): Consider loading just the SavedModel proto instead
+        # of the entire model. SavedModel.meta_graphs.signature_def might
+        # suffice here.
+        eval_shared_model = name_to_eval_shared_model[model_spec.name]
+        model_spec = copy.copy(model_spec)
+        model_spec.signature_name = model_util.get_default_signature_name(
+            eval_shared_model.model_loader.load())
+      model_specs.append(model_spec)
+
+    inference_ptransform = inference_implementation(model_specs,
+                                                    name_to_eval_shared_model)
     # pylint: disable=no-value-for-parameter
-    ptransform = _ExtractPredictionsOSS(
-        eval_config=eval_config,
-        eval_shared_models={m.model_name: m for m in eval_shared_models},
-        batch_size=batch_size)
+    ptransform = _RunInference(
+        inference_ptransform=inference_ptransform, batch_size=batch_size)
   else:
     ptransform = _ExtractPredictions(  # pylint: disable=no-value-for-parameter
         eval_config=eval_config,
-        eval_shared_models={m.model_name: m for m in eval_shared_models})
+        eval_shared_models=name_to_eval_shared_model)
   return extractor.Extractor(
       stage_name=_PREDICTIONS_EXTRACTOR_STAGE_NAME, ptransform=ptransform)
 
@@ -211,88 +266,54 @@ def _parse_prediction_log_to_tensor_value(  # pylint: disable=invalid-name
 
 def _insert_predictions_into_extracts(  # pylint: disable=invalid-name
     inference_tuple: Tuple[types.Extracts,
-                           Tuple[prediction_log_pb2.PredictionLog, ...]],
-    output_keys: Tuple[str, ...]) -> types.Extracts:
+                           Dict[str, prediction_log_pb2.PredictionLog]]
+) -> types.Extracts:
   """Inserts tensor values from PredictionLogs into the Extracts.
 
   Args:
-    inference_tuple: Tuple consisting of the Extracts and a nested tuple of
-      predicition logs.
-    output_keys: List of strings that will be used to create output tensor dict
-      value in PREDICTIONS_KEY.
+    inference_tuple: This is the output of inference. It includes the key
+      forwarded extracts and a dict of model name to predicition logs.
 
   Returns:
     Extracts with the PREDICTIONS_KEY populated. Note: By convention,
-    PREDICTIONS_KEY will point to a dictionary if there are multiple prediction
-    logs and a single value if there is only one prediction log.
+    PREDICTIONS_KEY will point to a dictionary if there are multiple
+    prediction logs and a single value if there is only one prediction log.
   """
   extracts = copy.copy(inference_tuple[0])
-  prediction_logs = inference_tuple[1]
-  tensor_values = [
-      _parse_prediction_log_to_tensor_value(log) for log in prediction_logs
-  ]
-  if len(tensor_values) == 1:
-    extracts[constants.PREDICTIONS_KEY] = tensor_values[0]
+  model_names_to_prediction_logs = inference_tuple[1]
+  model_name_to_tensors = {
+      name: _parse_prediction_log_to_tensor_value(log)
+      for name, log in model_names_to_prediction_logs.items()
+  }
+  if len(model_name_to_tensors) == 1:
+    extracts[constants.PREDICTIONS_KEY] = list(
+        model_name_to_tensors.values())[0]
   else:
-    if len(output_keys) != len(tensor_values):
-      raise ValueError('Each key must correspond to a tensor value. Length of '
-                       f'output_keys: {len(output_keys)}. Length of '
-                       f'tensor_values: {len(tensor_values)}.')
-    extracts[constants.PREDICTIONS_KEY] = dict(zip(output_keys, tensor_values))
+    extracts[constants.PREDICTIONS_KEY] = model_name_to_tensors
   return extracts
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-def _ExtractPredictionsOSS(
-    extracts: beam.pvalue.PCollection,
-    eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Dict[str, types.EvalSharedModel],
-    batch_size: Optional[int] = None) -> beam.pvalue.PCollection:
+def _RunInference(extracts: beam.pvalue.PCollection,
+                  inference_ptransform: beam.PTransform,
+                  batch_size: Optional[int] = None) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to Extracts.
 
   Args:
     extracts: PCollection of Extracts containing model inputs keyed by
       tfma.FEATURES_KEY (if model inputs are named) or tfma.INPUTS_KEY (if model
       takes raw tf.Examples as input).
-    eval_config: Eval config.
-    eval_shared_models: Shared model parameters keyed by model name.
+    inference_ptransform: The inference implementation used by the
+      PredictionsExtractor. This allows users to inject different bulk inference
+      implementations (e.g. a cloud-friendly OSS implementation or an
+      internal-specific implementation).
     batch_size: Allows overriding dynamic batch size.
 
   Returns:
     PCollection of Extracts updated with the predictions.
   """
-  model_name_and_inference_spec_type_tuples = []
-  for model_spec in eval_config.model_specs:
-    try:
-      eval_shared_model = eval_shared_models[model_spec.name]
-    except KeyError as e:
-      raise ValueError(
-          'ModelSpec.name should match EvalSharedModel.model_name.') from e
-    inference_spec_type = model_spec_pb2.InferenceSpecType()
-    inference_spec_type.saved_model_spec.model_path = eval_shared_model.model_path
-    inference_spec_type.saved_model_spec.tag[:] = eval_shared_model.model_loader.tags
-    if model_spec.signature_name:
-      inference_spec_type.saved_model_spec.signature_name[:] = [
-          model_spec.signature_name
-      ]
-    else:
-      # Select a default signature. Note that this may differ from the
-      # 'serving_default' signature.
-      # TODO(b/245994746): Consider loading just the SavedModel proto instead of
-      # the entire model. SavedModel.meta_graphs.signature_def might suffice
-      # here.
-      inference_spec_type.saved_model_spec.signature_name.append(
-          model_util.get_default_signature_name(
-              eval_shared_model.model_loader.load()))
-    model_name_and_inference_spec_type_tuples.append(
-        (model_spec.name, inference_spec_type))
-
-  # The output of RunInferencePerModel will align with this ordering. Output
-  # order is determined by the ordering of the inference_spec_types parameter.
-  aligned_model_names, aligned_inference_spec_types = zip(
-      *model_name_and_inference_spec_type_tuples)
   extracts = (
       extracts
       # Extracts are fed in pre-batched, but BulkInference has specific
@@ -304,13 +325,10 @@ def _ExtractPredictionsOSS(
       # The BulkInference API allows for key forwarding. To avoid a join
       # after running inference, we forward the unbatched Extracts as a key.
       | 'CreateInferenceInputTuple' >> beam.Map(_create_inference_input_tuple)
-      # TODO(b/241022420): Set load_override_fn here to avoid loading the
-      # model twice.
-      | 'RunInferencePerModel' >> run_inference.RunInferencePerModel(
-          inference_spec_types=aligned_inference_spec_types)
+      | 'RunInferencePerModel' >> inference_ptransform
       # Combine predictions back into the original Extracts.
-      | 'InsertPredictionsIntoExtracts' >> beam.Map(
-          _insert_predictions_into_extracts, output_keys=aligned_model_names))
+      | 'InsertPredictionsIntoExtracts' >>
+      beam.Map(_insert_predictions_into_extracts))
   # Beam batch will group single Extracts into a batch. Then
   # merge_extracts will flatten the batch into a single "batched"
   # extract.

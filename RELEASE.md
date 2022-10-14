@@ -19,6 +19,7 @@
     PredictionsExtractorOSS. Fixes a pytype bug related to multi tensor output.
 *   Depends on `tensorflow>=1.15.5,<2` or `tensorflow>=2.10,<3`
 *   Apply changes in the latest Chrome browser
+*   Add InferneceInterface to experimental PredictionsExtractor implementation.
 *   Stop returning empty example_ids metric from binary_confusion_matrices
     derived computations when example_id_key is not set but use_histrogam is
     true.
