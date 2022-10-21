@@ -27,6 +27,7 @@ _DEFAULT_AREA_RANGE = (0, float('inf'))
 OBJECT_DETECTION_MAX_RECALL_NAME = 'object_detection_max_recall'
 OBJECT_DETECTION_PRECISION_AT_RECALL_NAME = 'object_detection_precision_at_recall'
 OBJECT_DETECTION_RECALL_NAME = 'object_detection_recall'
+OBJECT_DETECTION_THRESHOLD_AT_RECALL_NAME = 'object_detection_threshold_at_recall'
 
 
 def validate_object_detection_arguments(
@@ -460,3 +461,141 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
 
 
 metric_types.register_metric(ObjectDetectionMaxRecall)
+
+
+class ObjectDetectionThresholdAtRecall(
+    confusion_matrix_metrics.ThresholdAtRecall):
+  """Computes maximum threshold where recall is >= specified value.
+
+  If `sample_weight` is `None`, weights default to 1.
+  Use `sample_weight` of 0 to mask values.
+  """
+
+  def __init__(self,
+               recall: Union[float, List[float]],
+               thresholds: Optional[List[float]] = None,
+               num_thresholds: Optional[int] = None,
+               name: Optional[str] = None,
+               iou_threshold: Optional[float] = None,
+               class_id: Optional[int] = None,
+               class_weight: Optional[float] = None,
+               area_range: Optional[Tuple[float, float]] = None,
+               max_num_detections: Optional[int] = None,
+               labels_to_stack: Optional[List[str]] = None,
+               predictions_to_stack: Optional[List[str]] = None,
+               num_detections_key: Optional[str] = None):
+    """Initializes ThresholdAtRecall metric.
+
+    The metric supports using multiple outputs to form the labels/predictions if
+    the user specifies the label/predcition keys to stack. In this case, the
+    metric is not expected to work with multi-outputs. The metric only supports
+    multi outputs if the output of model is already pre-stacked in the expected
+    format, i.e. ['xmin', 'ymin', 'xmax', 'ymax', 'class_id'] for labels and
+    ['xmin', 'ymin', 'xmax', 'ymax', 'class_id', 'confidence scores'] for
+    predictions.
+
+    Args:
+      recall: A scalar or a list of scalar values in range `[0, 1]`.
+      thresholds: (Optional) Thresholds to use for calculating the matrices. Use
+        one of either thresholds or num_thresholds.
+      num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
+        use for matching the given recall.
+      name: (Optional) string name of the metric instance.
+      iou_threshold: (Optional) Used for object detection, thresholds for a
+        detection and ground truth pair with specific iou to be considered as a
+        match. Default to 0.5
+      class_id: (Optional) Used for object detection, the class id for
+        calculating metrics.
+      class_weight: (Optional) Used for object detection, the weight associated
+        with the object class id.
+      area_range: (Optional) Used for object detection, a tuple (inclusive)
+        representing the area-range for objects to be considered for metrics.
+        Default to (0, inf).
+      max_num_detections: (Optional) Used for object detection, the maximum
+        number of detections for a single image. Default to None.
+      labels_to_stack: (Optional) Keys for columns to be stacked as a single
+        numpy array as the labels. It is searched under the key labels, features
+        and transformed features. The desired format is [left bounadary, top
+        boudnary, right boundary, bottom boundary, class id]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id']
+      predictions_to_stack: (Optional) Output names for columns to be stacked as
+        a single numpy array as the prediction. It should be the model's output
+        names. The desired format is [left bounadary, top boudnary, right
+        boundary, bottom boundary, class id, confidence score]. e.g. ['xmin',
+        'ymin', 'xmax', 'ymax', 'class_id', 'scores']
+      num_detections_key: (Optional) An output name in which to find the number
+        of detections to use for evaluation for a given example. It does nothing
+        if predictions_to_stack is not set. The value for this output should be
+        a scalar value or a single-value tensor. The stacked predicitions will
+        be truncated with the specified number of detections.
+    """
+    for r in [recall] if isinstance(recall, float) else recall:
+      if r < 0 or r > 1:
+        raise ValueError('Argument `recall` must be in the range [0, 1]. '
+                         f'Received: recall={r}')
+
+    super().__init__(
+        thresholds=thresholds,
+        num_thresholds=num_thresholds,
+        recall=recall,
+        name=name,
+        class_id=class_id,
+        iou_threshold=iou_threshold,
+        area_range=area_range,
+        max_num_detections=max_num_detections,
+        class_weight=class_weight,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        num_detections_key=num_detections_key)
+
+  def _default_name(self) -> str:
+    return OBJECT_DETECTION_THRESHOLD_AT_RECALL_NAME
+
+  def _metric_computations(self,
+                           thresholds: Optional[Union[float,
+                                                      List[float]]] = None,
+                           num_thresholds: Optional[int] = None,
+                           iou_threshold: Optional[float] = None,
+                           class_id: Optional[int] = None,
+                           class_weight: Optional[float] = None,
+                           area_range: Optional[Tuple[float, float]] = None,
+                           max_num_detections: Optional[int] = None,
+                           name: Optional[str] = None,
+                           eval_config: Optional[config_pb2.EvalConfig] = None,
+                           model_name: str = '',
+                           output_name: str = '',
+                           labels_to_stack: Optional[List[str]] = None,
+                           predictions_to_stack: Optional[List[str]] = None,
+                           num_detections_key: Optional[str] = None,
+                           **kwargs) -> metric_types.MetricComputations:
+    validate_object_detection_arguments(
+        class_id=class_id,
+        class_weight=class_weight,
+        area_range=area_range,
+        max_num_detections=max_num_detections,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        output_name=output_name)
+
+    preprocessor = preprocessors.BoundingBoxMatchPreprocessor(
+        class_id=class_id,
+        iou_threshold=iou_threshold,
+        area_range=area_range,
+        max_num_detections=max_num_detections,
+        class_weight=class_weight,
+        labels_to_stack=labels_to_stack,
+        predictions_to_stack=predictions_to_stack,
+        num_detections_key=num_detections_key,
+        model_name=model_name)
+    return super()._metric_computations(
+        thresholds=thresholds,
+        num_thresholds=num_thresholds,
+        name=name,
+        eval_config=eval_config,
+        model_name=model_name,
+        output_name=output_name,
+        preprocessors=[preprocessor],
+        **kwargs)
+
+
+metric_types.register_metric(ObjectDetectionThresholdAtRecall)

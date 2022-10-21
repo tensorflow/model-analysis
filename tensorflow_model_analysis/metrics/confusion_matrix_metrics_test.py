@@ -106,6 +106,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       ('predicted_positive_rate',
        confusion_matrix_metrics.PredictedPositiveRate(),
        (1.0 + 3.0) / (1.0 + 2.0 + 3.0 + 4.0)),
+      ('threshold_at_recall', confusion_matrix_metrics.ThresholdAtRecall(0.5),
+       0.29993),
   )
   def testConfusionMatrixMetrics(self, metric, expected_value):
     if (_TF_MAJOR_VERSION < 2 and metric.__class__.__name__

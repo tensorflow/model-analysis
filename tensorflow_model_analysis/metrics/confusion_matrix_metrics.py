@@ -70,6 +70,7 @@ PREDICTED_POSITIVE_RATE_NAME = 'predicted_positive_rate'
 CONFUSION_MATRIX_AT_THRESHOLDS_NAME = 'confusion_matrix_at_thresholds'
 AVERAGE_PRECISION_NAME = 'average_precision'
 MAX_RECALL_NAME = 'max_recall'
+THRESHOLD_AT_RECALL_NAME = 'threshold_at_recall'
 
 
 class AUCCurve(enum.Enum):
@@ -2376,3 +2377,71 @@ class MaxRecall(Recall):
 
 
 metric_types.register_metric(MaxRecall)
+
+
+class ThresholdAtRecall(ConfusionMatrixMetricBase):
+  """Computes the maximum threshold where recall is >= specified value.
+
+  If `sample_weight` is `None`, weights default to 1.
+  Use `sample_weight` of 0 to mask values.
+  """
+
+  def __init__(self,
+               recall: Union[float, List[float]],
+               thresholds: Optional[List[float]] = None,
+               num_thresholds: Optional[int] = None,
+               class_id: Optional[int] = None,
+               name: Optional[str] = None,
+               top_k: Optional[int] = None,
+               **kwargs):
+    """Initializes ThresholdAtRecall metric.
+
+    Args:
+      recall: A scalar or a list of scalar values in range `[0, 1]`.
+      thresholds: (Optional) Thresholds to use for calculating the matrices. Use
+        one of either thresholds or num_thresholds.
+      num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
+        use for matching the given recall.
+      class_id: (Optional) Used with a multi-class model to specify which class
+        to compute the confusion matrix for. When class_id is used,
+        metrics_specs.binarize settings must not be present. Only one of
+        class_id or top_k should be configured.
+      name: (Optional) string name of the metric instance.
+      top_k: (Optional) Used with a multi-class model to specify that the top-k
+        values should be used to compute the confusion matrix. The net effect is
+        that the non-top-k values are set to -inf and the matrix is then
+        constructed from the average TP, FP, TN, FN across the classes. When
+        top_k is used, metrics_specs.binarize settings must not be present. Only
+        one of class_id or top_k should be configured.
+      **kwargs: (Optional) Additional args to pass along to init (and eventually
+        on to _metric_computation and _metric_value)
+    """
+    for r in [recall] if isinstance(recall, float) else recall:
+      if r < 0 or r > 1:
+        raise ValueError('Argument `recall` must be in the range [0, 1]. '
+                         f'Received: recall={r}')
+
+    super().__init__(
+        thresholds=thresholds,
+        num_thresholds=num_thresholds,
+        recall=recall,
+        class_id=class_id,
+        name=name,
+        top_k=top_k,
+        **kwargs)
+
+  def _default_name(self) -> str:
+    return THRESHOLD_AT_RECALL_NAME
+
+  def _metric_value(
+      self, recall: Union[float, List[float]], key: metric_types.MetricKey,
+      matrices: binary_confusion_matrices.Matrices) -> Union[float, np.ndarray]:
+    del key
+    tp = np.array(matrices.tp)
+    fn = np.array(matrices.fn)
+    recalls = tp / (tp + fn)
+    thresholds = np.array(matrices.thresholds)
+    return _find_max_under_constraint(recalls, thresholds, recall)
+
+
+metric_types.register_metric(ThresholdAtRecall)

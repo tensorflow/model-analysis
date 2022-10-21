@@ -77,7 +77,24 @@ class ObjectDetectionConfusionMatrixMetricsTest(parameterized.TestCase):
                    '"max_num_detections":100, "name":"recall"'
           }
         }
-        """, tfma.EvalConfig()), ['recall'], [2 / 3]))
+        """, tfma.EvalConfig()), ['recall'], [2 / 3]), ('_threshold_at_recall',
+                                                        text_format.Parse(
+                                                            """
+        model_specs {
+          signature_name: "serving_default"
+          prediction_key: "predictions" # placeholder
+          label_key: "labels" # placeholder
+        }
+        slicing_specs {
+        }
+        metrics_specs {
+          metrics {
+            class_name: "ObjectDetectionThresholdAtRecall"
+            config:'"recall":[0.4], "class_id":0, '
+                   '"max_num_detections":100, "name":"thresholdatrecall"'
+          }
+        }
+        """, tfma.EvalConfig()), ['thresholdatrecall'], [0.3]))
   def testObjectDetectionMetrics(self, eval_config, name_list,
                                  expected_results):
 
