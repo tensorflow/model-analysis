@@ -1638,8 +1638,8 @@ class _PrecisionRecallAtK(_PostExportMetric):
       metric_ops = metrics.precision_at_k(  # pytype: disable=wrong-arg-types
           classes, scores, labels, self._cutoffs, squeezed_weights)
     else:
-      metric_ops = metrics.recall_at_k(classes, scores, labels, self._cutoffs,
-                                       squeezed_weights)
+      metric_ops = metrics.recall_at_k(  # pytype: disable=wrong-arg-types
+          classes, scores, labels, self._cutoffs, squeezed_weights)
 
     return {self._metric_key(self._metric_name): metric_ops}
 
