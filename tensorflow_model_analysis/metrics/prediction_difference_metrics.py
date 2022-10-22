@@ -36,13 +36,13 @@ class SymmetricPredictionDifference(metric_types.Metric):
       name: Metric name.
     """
 
-    super().__init__(symmetric_prediction_difference_computations, name=name)
+    super().__init__(_symmetric_prediction_difference_computations, name=name)
 
 
 metric_types.register_metric(SymmetricPredictionDifference)
 
 
-def symmetric_prediction_difference_computations(
+def _symmetric_prediction_difference_computations(
     name: str = SYMMETRIC_PREDICITON_DIFFERENCE_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
     model_names: Optional[List[str]] = None,
@@ -89,11 +89,11 @@ def symmetric_prediction_difference_computations(
 
 
 @dataclasses.dataclass
-class SymmetricPredictionDifferenceAccumulator:
+class _SymmetricPredictionDifferenceAccumulator:
   num_weighted_examples: float = 0.0
   total_pointwise_sym_diff: float = 0.0
 
-  def merge(self, other: 'SymmetricPredictionDifferenceAccumulator'):
+  def merge(self, other: '_SymmetricPredictionDifferenceAccumulator'):
     self.num_weighted_examples += other.num_weighted_examples
     self.total_pointwise_sym_diff += other.total_pointwise_sym_diff
 
@@ -111,13 +111,13 @@ class _SymmetricPredictionDifferenceCombiner(beam.CombineFn):
     self._key = key
     self._example_weighted = example_weighted
 
-  def create_accumulator(self) -> SymmetricPredictionDifferenceAccumulator:
-    return SymmetricPredictionDifferenceAccumulator()
+  def create_accumulator(self) -> _SymmetricPredictionDifferenceAccumulator:
+    return _SymmetricPredictionDifferenceAccumulator()
 
   def add_input(
-      self, accumulator: SymmetricPredictionDifferenceAccumulator,
+      self, accumulator: _SymmetricPredictionDifferenceAccumulator,
       element: metric_types.StandardMetricInputs
-  ) -> SymmetricPredictionDifferenceAccumulator:
+  ) -> _SymmetricPredictionDifferenceAccumulator:
 
     _, base_prediction, base_example_weight = next(
         metric_util.to_label_prediction_example_weight(
@@ -132,7 +132,7 @@ class _SymmetricPredictionDifferenceCombiner(beam.CombineFn):
         metric_util.to_label_prediction_example_weight(
             element,
             eval_config=self._eval_config,
-            model_name=self._key.model_name,
+            model_name=self._model_name,
             output_name=self._output_name,
             flatten=True,
             example_weighted=self._example_weighted))
@@ -148,15 +148,15 @@ class _SymmetricPredictionDifferenceCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: Iterable[SymmetricPredictionDifferenceAccumulator]
-  ) -> SymmetricPredictionDifferenceAccumulator:
+      self, accumulators: Iterable[_SymmetricPredictionDifferenceAccumulator]
+  ) -> _SymmetricPredictionDifferenceAccumulator:
     result = next(iter(accumulators))
     for accumulator in accumulators:
       result.merge(accumulator)
     return result
 
   def extract_output(
-      self, accumulator: SymmetricPredictionDifferenceAccumulator
+      self, accumulator: _SymmetricPredictionDifferenceAccumulator
   ) -> Dict[metric_types.MetricKey, float]:
     return {
         self._key:

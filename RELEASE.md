@@ -6,6 +6,8 @@
     will be removed in the next version. Please check the
     [TF2 migration guide](https://www.tensorflow.org/guide/migrate) to migrate
     to TF2.
+*   Add BooleanFlipRate metric for comparing thresholded predictions between
+    multiple models.
 
 ## Major Features and Improvements
 
