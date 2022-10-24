@@ -17,56 +17,68 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
+import tensorflow_model_analysis as tfma  # pylint: disable=unused-import
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
-from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.metrics import score_distribution_plot
+from tensorflow_model_analysis.proto import config_pb2
+from google.protobuf import text_format
 
 
 class ScoreDistributionPlotTest(testutil.TensorflowModelAnalysisTest):
 
   def testScoreDistributionPlot(self):
-    computations = score_distribution_plot.ScoreDistributionPlot(
-        num_thresholds=4).computations()
-    histogram = computations[0]
-    matrices = computations[1]
-    plot = computations[2]
 
-    example1 = {
-        'labels': np.array([0.0]),
-        'predictions': np.array([0.0]),
-        'example_weights': np.array([1.0]),
-    }
-    example2 = {
-        'labels': np.array([0.0]),
-        'predictions': np.array([0.5]),
-        'example_weights': np.array([1.0]),
-    }
-    example3 = {
-        'labels': np.array([0.0]),
-        'predictions': np.array([0.3]),
-        'example_weights': np.array([1.0]),
-    }
-    example4 = {
-        'labels': np.array([0.0]),
-        'predictions': np.array([0.9]),
-        'example_weights': np.array([1.0]),
-    }
+    extracts = [{
+        'features': {
+            'my_predictions': np.array([0.0]),
+            'my_weights': np.array([1.0]),
+        }
+    }, {
+        'features': {
+            'my_predictions': np.array([0.5]),
+            'my_weights': np.array([1.0]),
+        }
+    }, {
+        'features': {
+            'my_predictions': np.array([0.3]),
+            'my_weights': np.array([1.0]),
+        }
+    }, {
+        'features': {
+            'my_predictions': np.array([0.9]),
+            'my_weights': np.array([1.0]),
+        }
+    }]
+
+    eval_config = text_format.Parse(
+        """
+        model_specs {
+          name: "baseline"
+          prediction_key: "my_predictions"
+          is_baseline: true
+        }
+        metrics_specs {
+          metrics {
+            class_name: "ScoreDistributionPlot"
+            config: '"num_thresholds": 4'
+          }
+        }
+        options {
+          compute_confidence_intervals {
+          }
+        }""", config_pb2.EvalConfig())
+
+    evaluators = model_eval_lib.default_evaluators(eval_config=eval_config)
+    extractors = model_eval_lib.default_extractors(
+        eval_shared_model=None, eval_config=eval_config)
 
     with beam.Pipeline() as pipeline:
-      # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([example1, example2, example3, example4])
-          | 'Process' >> beam.Map(
-              metric_util.to_standard_metric_inputs, include_labels=False)
-          | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeMatrices' >> beam.Map(
-              lambda x: (x[0], matrices.result(x[1])))  # pyformat: ignore
-          | 'ComputePlot' >> beam.Map(lambda x: (x[0], plot.result(x[1]))))
-
-      # pylint: enable=no-value-for-parameter
+          | 'LoadData' >> beam.Create(extracts)
+          | 'ExtractEval' >> model_eval_lib.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators))
 
       def check_result(got):
         try:
@@ -111,7 +123,7 @@ class ScoreDistributionPlotTest(testutil.TensorflowModelAnalysisTest):
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(result, check_result, label='result')
+      util.assert_that(result['plots'], check_result, label='result')
 
 
 if __name__ == '__main__':

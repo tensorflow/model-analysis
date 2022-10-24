@@ -15,8 +15,9 @@
 
 import copy
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, Optional, Tuple
 
+import numpy as np
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
@@ -48,6 +49,18 @@ class ScoreDistributionPlot(metric_types.Metric):
 
 
 metric_types.register_metric(ScoreDistributionPlot)
+
+
+def _extract_prediction_and_weight(
+    inputs: metric_types.StandardMetricInputs,
+    **kwargs) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+  if 'predictions' in inputs:
+    modified_inputs = copy.deepcopy(inputs)
+    modified_inputs['labels'] = modified_inputs['predictions']
+  else:
+    modified_inputs = inputs
+  return metric_util.to_label_prediction_example_weight(modified_inputs,
+                                                        **kwargs)
 
 
 def _confusion_matrix_plot(
@@ -98,6 +111,7 @@ def _confusion_matrix_plot(
       name=(binary_confusion_matrices.BINARY_CONFUSION_MATRICES_NAME + '_' +
             name),
       eval_config=modified_eval_config,
+      extract_label_prediction_and_weight=_extract_prediction_and_weight,
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
