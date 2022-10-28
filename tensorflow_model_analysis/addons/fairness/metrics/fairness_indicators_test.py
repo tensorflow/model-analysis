@@ -14,15 +14,20 @@
 """Tests for fairness indicators metrics."""
 
 import math
+
 from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.metrics import fairness_indicators
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.proto import config_pb2
+
 
 
 class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
@@ -420,6 +425,7 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest,
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
 
 
 # Todo(b/147497357): Add counter test once we have counter setup.

@@ -21,6 +21,8 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
 
+from tensorflow_metadata.proto.v0 import schema_pb2
+
 FAIRNESS_INDICATORS_METRICS_NAME = 'fairness_indicators_metrics'
 FAIRNESS_INDICATORS_SUB_METRICS = ('false_positive_rate', 'false_negative_rate',
                                    'true_positive_rate', 'true_negative_rate',
@@ -34,6 +36,29 @@ DEFAULT_THRESHOLDS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 class FairnessIndicators(metric_types.Metric):
   """Fairness indicators metrics."""
 
+  def computations_with_logging(self):
+    """Add streamz logging for fairness indicators."""
+
+    computations_fn = metric_util.merge_per_key_computations(
+        _fairness_indicators_metrics_at_thresholds)
+
+    def merge_and_log_computations_fn(
+        eval_config: Optional[config_pb2.EvalConfig] = None,
+        schema: Optional[schema_pb2.Schema] = None,
+        model_names: Optional[List[str]] = None,
+        output_names: Optional[List[str]] = None,
+        sub_keys: Optional[List[Optional[metric_types.SubKey]]] = None,
+        aggregation_type: Optional[metric_types.AggregationType] = None,
+        class_weights: Optional[Dict[int, float]] = None,
+        example_weighted: bool = False,
+        query_key: Optional[str] = None,
+        **kwargs):
+      return computations_fn(eval_config, schema, model_names, output_names,
+                             sub_keys, aggregation_type, class_weights,
+                             example_weighted, query_key, **kwargs)
+
+    return merge_and_log_computations_fn
+
   def __init__(self,
                thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
                name: str = FAIRNESS_INDICATORS_METRICS_NAME):
@@ -44,10 +69,7 @@ class FairnessIndicators(metric_types.Metric):
       name: Metric name.
     """
     super().__init__(
-        metric_util.merge_per_key_computations(
-            _fairness_indicators_metrics_at_thresholds),
-        thresholds=thresholds,
-        name=name)
+        self.computations_with_logging(), thresholds=thresholds, name=name)
 
 
 def calculate_digits(thresholds):
