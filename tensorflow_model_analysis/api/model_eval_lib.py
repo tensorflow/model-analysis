@@ -1495,7 +1495,7 @@ def analyze_raw_data(
     output_path = tempfile.mkdtemp()
 
   arrow_data = table_util.CanonicalizeRecordBatch(
-      table_util.DataFrameToRecordBatch(data))
+      pa.RecordBatch.from_pandas(data))
   beam_data = beam.Create([arrow_data])
 
   writers = default_writers(
