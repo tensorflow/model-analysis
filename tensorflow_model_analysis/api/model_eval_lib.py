@@ -1396,6 +1396,9 @@ def analyze_raw_data(
     data: pd.DataFrame,
     eval_config: Optional[config_pb2.EvalConfig] = None,
     output_path: Optional[str] = None,
+    extractors: Optional[List[extractor.Extractor]] = None,
+    evaluators: Optional[List[evaluator.Evaluator]] = None,
+    writers: Optional[List[writer.Writer]] = None,
     add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None
 ) -> view_types.EvalResult:
   """Runs TensorFlow model analysis on a pandas.DataFrame.
@@ -1467,6 +1470,16 @@ def analyze_raw_data(
     eval_config: A `tfma.EvalConfig`, which contains various configuration
       parameters including metrics, slices, and label/prediction column names.
     output_path: Path to write EvalResult to.
+    extractors: Optional list of Extractors to apply to Extracts. Typically
+      these will be added by calling the default_extractors function. If no
+      extractors are provided, default_extractors (non-materialized) will be
+      used.
+    evaluators: Optional list of Evaluators for evaluating Extracts. Typically
+      these will be added by calling the default_evaluators function. If no
+      evaluators are provided, default_evaluators will be used.
+    writers: Optional list of Writers for writing Evaluation output. Typically
+      these will be added by calling the default_writers function. If no writers
+      are provided, default_writers with `add_metric_callbacks` will be used.
     add_metric_callbacks: Optional list of metric callbacks (if used).
 
   Returns:
@@ -1498,16 +1511,19 @@ def analyze_raw_data(
       pa.RecordBatch.from_pandas(data))
   beam_data = beam.Create([arrow_data])
 
-  writers = default_writers(
-      output_path,
-      eval_config=eval_config,
-      add_metric_callbacks=add_metric_callbacks)
+  if not writers:
+    writers = default_writers(
+        output_path,
+        eval_config=eval_config,
+        add_metric_callbacks=add_metric_callbacks)
 
   with beam.Pipeline() as p:
     _ = (
         p
         | beam_data
         | 'ExtractEvaluateAndWriteResults' >> ExtractEvaluateAndWriteResults(  # pylint: disable=no-value-for-parameter
+            extractors=extractors,
+            evaluators=evaluators,
             writers=writers,
             eval_config=eval_config,
             output_path=output_path))
