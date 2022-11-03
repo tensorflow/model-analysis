@@ -77,9 +77,26 @@ class ObjectDetectionConfusionMatrixMetricsTest(parameterized.TestCase):
                    '"max_num_detections":100, "name":"recall"'
           }
         }
-        """, tfma.EvalConfig()), ['recall'], [2 / 3]), ('_threshold_at_recall',
+        """, tfma.EvalConfig()), ['recall'], [2 / 3]), ('_precision',
                                                         text_format.Parse(
                                                             """
+        model_specs {
+          signature_name: "serving_default"
+          prediction_key: "predictions" # placeholder
+          label_key: "labels" # placeholder
+        }
+        slicing_specs {
+        }
+        metrics_specs {
+          metrics {
+            class_name: "ObjectDetectionPrecision"
+            config:'"class_id":0, "thresholds":0.1, '
+                   '"max_num_detections":100, "name":"precision"'
+          }
+        }
+        """, tfma.EvalConfig()), ['precision'], [0.5]), ('_threshold_at_recall',
+                                                         text_format.Parse(
+                                                             """
         model_specs {
           signature_name: "serving_default"
           prediction_key: "predictions" # placeholder

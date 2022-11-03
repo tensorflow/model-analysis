@@ -1214,7 +1214,8 @@ class Precision(ConfusionMatrixMetric):
                thresholds: Optional[Union[float, List[float]]] = None,
                top_k: Optional[int] = None,
                class_id: Optional[int] = None,
-               name: Optional[str] = None):
+               name: Optional[str] = None,
+               **kwargs):
     """Initializes Precision metric.
 
     Args:
@@ -1235,9 +1236,15 @@ class Precision(ConfusionMatrixMetric):
         metrics_specs.binarize settings must not be present. Only one of
         class_id or top_k should be configured.
       name: (Optional) string name of the metric instance.
+      **kwargs: (Optional) Additional args to pass along to init (and eventually
+        on to _metric_computation and _metric_value).
     """
     super().__init__(
-        thresholds=thresholds, top_k=top_k, class_id=class_id, name=name)
+        thresholds=thresholds,
+        top_k=top_k,
+        class_id=class_id,
+        name=name,
+        **kwargs)
 
   def _default_name(self) -> str:
     return PRECISION_NAME
