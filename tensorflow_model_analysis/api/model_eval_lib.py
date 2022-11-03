@@ -161,7 +161,7 @@ def _update_eval_config_with_defaults(
   """Returns updated eval config with default values."""
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model)
-  has_baseline = eval_shared_models and len(eval_shared_models) == 2
+  has_baseline = eval_shared_models and len(eval_shared_models) > 1
   return config_util.update_eval_config_with_defaults(
       eval_config=eval_config,
       has_baseline=has_baseline,
