@@ -31,6 +31,9 @@
 
 *   Fix a bug that dataframe auto_pivot fails if there is only Overall slice.
 
+*   Reduce clutter in the multi-index columns and index in the experimental
+    dataframe auto_pivot util.
+
 ## Breaking Changes
 
 ## Deprecations

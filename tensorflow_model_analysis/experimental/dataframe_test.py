@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import attr
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tensorflow_model_analysis.experimental import dataframe
@@ -222,9 +223,33 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         [[0.3, None], [0.1, 0.02]],
         columns=mux,
     )
-    expected.insert(0, ('slices', 'stringified_slices'),
-                    ['', "age:38.0; sex:b'Female'"])
-    expected = expected.set_index(('slices', 'stringified_slices'))
+    expected.insert(0, 'slices', ['', "age:38.0; sex:b'Female'"])
+    expected = expected.set_index('slices')
+    pd.testing.assert_frame_equal(expected, df)
+
+  def testAutoPivot_MetricsDataFrameCollapseColumnNames(self):
+    df = pd.DataFrame({
+        ('slices', 'age'): [38.0, 38.0, None],
+        ('metric_keys', 'name'): [
+            'mean_absolute_error', 'mean_squared_logarithmic_error',
+            'mean_absolute_error'
+        ],
+        ('metric_keys', 'model_name'): ['', '', ''],
+        ('metric_keys', 'output_name'): ['', '', ''],
+        ('metric_keys', 'example_weighted'): [False, False, None],
+        ('metric_keys', 'is_diff'): [False, False, False],
+        ('metric_values', 'double_value'): [0.1, 0.02, 0.3],
+    })
+    df = dataframe.auto_pivot(
+        df, stringify_slices=False, collapse_column_names=True)
+    mux = pd.Index(('mean_absolute_error', 'mean_squared_logarithmic_error'),
+                   name=('metric_keys', 'name'))
+    expected = pd.DataFrame(
+        [[0.3, None], [0.1, 0.02]],
+        columns=mux,
+    )
+    expected = expected.set_index(
+        pd.Index([np.nan, 38.0], name=('slices', 'age')))
     pd.testing.assert_frame_equal(expected, df)
 
   def testAutoPivot_MetricsDataFrameOverallSliceOnly(self):
@@ -374,6 +399,34 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
                 ('plot_data', 'recall')])
     pd.testing.assert_frame_equal(expected, df)
 
+  def testAutoPivot_PlotsDataFrameCollapseColumnNames(self):
+    dfs = dataframe.plots_as_dataframes(self.plots_for_slice)
+    df = dataframe.auto_pivot(
+        dfs.confusion_matrix_at_thresholds,
+        stringify_slices=False,
+        collapse_column_names=True)
+    expected = pd.DataFrame({
+        ('slices', 'age'): [38.0, 38.0],
+        ('slices', 'sex'): [b'Female', b'Female'],
+        ('plot_keys', 'model_name'): ['', ''],
+        ('plot_keys', 'output_name'): ['', ''],
+        ('plot_keys', 'example_weighted'): [False, False],
+        ('plot_data', 'threshold'): [0.5, 0.5],
+        ('plot_data', 'false_negatives'): [10.0, 10.0],
+        ('plot_data', 'true_negatives'): [10.0, 10.0],
+        ('plot_data', 'false_positives'): [10.0, 10.0],
+        ('plot_data', 'true_positives'): [10.0, 10.0],
+        ('plot_data', 'precision'): [0.9, 0.9],
+        ('plot_data', 'recall'): [0.8, 0.8],
+    }).pivot(
+        index=[('slices', 'age'), ('slices', 'sex')],
+        columns=[],
+        values=[('plot_data', 'threshold'), ('plot_data', 'false_negatives'),
+                ('plot_data', 'true_negatives'),
+                ('plot_data', 'false_positives'),
+                ('plot_data', 'true_positives'), ('plot_data', 'precision'),
+                ('plot_data', 'recall')])
+    pd.testing.assert_frame_equal(expected, df)
 
 if __name__ == '__main__':
   tf.test.main()

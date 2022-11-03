@@ -427,6 +427,12 @@ def plots_as_dataframes(
   return PlotsDataFrames(**dfs)
 
 
+def _collapse_column_names(columns: pd.MultiIndex) -> pd.Index:
+  """Reduce multi-index column names by removing layers with the same value."""
+  dropables = [i for i, x in enumerate(zip(*columns)) if len(set(x)) == 1]
+  return columns.droplevel(dropables)
+
+
 def _stringify_slices(df: pd.DataFrame,
                       slice_key_name: str = _SLICES,
                       drop_slices: bool = True) -> pd.DataFrame:
@@ -458,9 +464,9 @@ def _stringify_slices(df: pd.DataFrame,
   return df.sort_values((slice_key_name, _SLICE_STR))
 
 
-def _auto_pivot(df: pd.DataFrame,
-                column_prefixes: _ColumnPrefixes,
-                stringify_slices: bool = True) -> pd.DataFrame:
+def _auto_pivot(df: pd.DataFrame, column_prefixes: _ColumnPrefixes,
+                stringify_slices: bool,
+                collapse_column_names: bool) -> pd.DataFrame:
   """Implements auto_pivot."""
   df = _stringify_slices(df, column_prefixes.slices) if stringify_slices else df
   df_unique = df[column_prefixes.metric_keys].nunique().sort_values(
@@ -474,11 +480,18 @@ def _auto_pivot(df: pd.DataFrame,
       (column_prefixes.metric_values, c) for c in metric_value_columns
   ]
   index_columns = [(column_prefixes.slices, c) for c in slice_columns]
-  return df.pivot(
+  result = df.pivot(
       index=index_columns, columns=pivot_columns, values=value_columns)
+  if stringify_slices:
+    result.index.name = column_prefixes.slices
+  if collapse_column_names and isinstance(result.columns, pd.MultiIndex):
+    result.columns = _collapse_column_names(result.columns)
+  return result
 
 
-def auto_pivot(df: pd.DataFrame, stringify_slices: bool = True) -> pd.DataFrame:
+def auto_pivot(df: pd.DataFrame,
+               stringify_slices: bool = True,
+               collapse_column_names: bool = False) -> pd.DataFrame:
   """Automatically pivots a metric or plots DataFrame.
 
   Given a DataFrame provided by metrics/plots_as_dataframes, one can
@@ -495,8 +508,7 @@ def auto_pivot(df: pd.DataFrame, stringify_slices: bool = True) -> pd.DataFrame:
   Since the only non-unique metric_key column is metric_keys.name, auto_pivot
   with stringify_slices set to True will generates the following DataFrame:
 
-                                            ('metric_values', 'double_value') |
-  |                | 'mean_absolute_error' | 'mean_squared_logarithmic_error' |
+  |    slices      | 'mean_absolute_error' | 'mean_squared_logarithmic_error' |
   |:---------------|---------------------------------------------------------:|
   |Overall         |                   0.1 |                              nan |
   |sex:male; age:38|                   nan |                             0.02 |
@@ -505,15 +517,25 @@ def auto_pivot(df: pd.DataFrame, stringify_slices: bool = True) -> pd.DataFrame:
     df: a DataFrame from one of the MetricsDataFrames or PlotsDataFrames.
     stringify_slices: stringify all the slice columns and collapse them into one
       column by concatenating the corresponding strings.
+    collapse_column_names: collapsing the multi-index column names by removing
+      layer(s) with only the same string.
 
   Returns:
     A DataFrame that pivoted from the metrics DataFrame or plots DataFrame.
   """
-  if hasattr(df, _SLICES):
-    if hasattr(df, _PLOT_KEYS) and hasattr(df, _PLOT_DATA):
-      return _auto_pivot(df, _plot_columns, stringify_slices=stringify_slices)
-    elif hasattr(df, _METRIC_KEYS) and hasattr(df, _METRIC_VALUES):
-      return _auto_pivot(df, _metric_columns, stringify_slices=stringify_slices)
+  if _SLICES in df:
+    if _PLOT_KEYS in df and _PLOT_DATA in df:
+      return _auto_pivot(
+          df,
+          _plot_columns,
+          stringify_slices=stringify_slices,
+          collapse_column_names=collapse_column_names)
+    elif _METRIC_KEYS in df and _METRIC_VALUES in df:
+      return _auto_pivot(
+          df,
+          _metric_columns,
+          stringify_slices=stringify_slices,
+          collapse_column_names=collapse_column_names)
 
   raise NotImplementedError(
       'Only a metrics or a plots DataFrame is supported. This DataFrame has'
