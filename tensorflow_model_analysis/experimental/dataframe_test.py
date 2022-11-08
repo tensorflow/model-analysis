@@ -197,7 +197,8 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         index=[('slices', 'age'), ('slices', 'sex')],
         columns=[('metric_keys', 'name')],
         values=[('metric_values', 'double_value')])
-    df = dataframe.auto_pivot(df, stringify_slices=False)
+    df = dataframe.auto_pivot(
+        df, stringify_slices=False, collapse_column_names=False)
     pd.testing.assert_frame_equal(expected, df)
 
   def testAutoPivot_MetricsDataFrameStringifySlices(self):
@@ -214,7 +215,8 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         ('metric_keys', 'is_diff'): [False, False, False],
         ('metric_values', 'double_value'): [0.1, 0.02, 0.3],
     })
-    df = dataframe.auto_pivot(df, stringify_slices=True)
+    df = dataframe.auto_pivot(
+        df, stringify_slices=True, collapse_column_names=False)
     mux = pd.MultiIndex.from_tuples(
         [(('metric_values', 'double_value'), 'mean_absolute_error'),
          (('metric_values', 'double_value'), 'mean_squared_logarithmic_error')],
@@ -262,7 +264,8 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         ],
         columns=[('metric_keys', 'name')],
         values=[('metric_values', 'double_value')])
-    df = dataframe.auto_pivot(df, stringify_slices=False)
+    df = dataframe.auto_pivot(
+        df, stringify_slices=False, collapse_column_names=False)
     pd.testing.assert_frame_equal(expected, df)
 
 

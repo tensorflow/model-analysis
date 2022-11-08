@@ -491,7 +491,7 @@ def _auto_pivot(df: pd.DataFrame, column_prefixes: _ColumnPrefixes,
 
 def auto_pivot(df: pd.DataFrame,
                stringify_slices: bool = True,
-               collapse_column_names: bool = False) -> pd.DataFrame:
+               collapse_column_names: bool = True) -> pd.DataFrame:
   """Automatically pivots a metric or plots DataFrame.
 
   Given a DataFrame provided by metrics/plots_as_dataframes, one can
@@ -516,10 +516,10 @@ def auto_pivot(df: pd.DataFrame,
   Args:
     df: a DataFrame from one of the MetricsDataFrames or PlotsDataFrames.
     stringify_slices: stringify all the slice columns and collapse them into one
-      column by concatenating the corresponding strings.
+      column by concatenating the corresponding strings. This is turned on by
+      default.
     collapse_column_names: collapsing the multi-index column names by removing
-      layer(s) with only the same string.
-
+      layer(s) with only the same string. This is turned on by default.
   Returns:
     A DataFrame that pivoted from the metrics DataFrame or plots DataFrame.
   """
