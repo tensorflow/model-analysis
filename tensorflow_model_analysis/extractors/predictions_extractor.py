@@ -30,6 +30,7 @@ from tensorflow_model_analysis.utils import util
 from tfx_bsl.public.beam import run_inference
 from tfx_bsl.public.proto import model_spec_pb2
 
+from tensorflow.python.saved_model import loader_impl  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_serving.apis import prediction_log_pb2
 
 
@@ -135,15 +136,13 @@ def PredictionsExtractor(
     model_specs = []
     for model_spec in eval_config.model_specs:
       if not model_spec.signature_name:
-        # Select a default signature. Note that this may differ from the
-        # 'serving_default' signature.
-        # TODO(b/245994746): Consider loading just the SavedModel proto instead
-        # of the entire model. SavedModel.meta_graphs.signature_def might
-        # suffice here.
         eval_shared_model = name_to_eval_shared_model[model_spec.name]
         model_spec = copy.copy(model_spec)
-        model_spec.signature_name = model_util.get_default_signature_name(
-            eval_shared_model.model_loader.load())
+        # Select a default signature. Note that this may differ from the
+        # 'serving_default' signature.
+        model_spec.signature_name = (
+            model_util.get_default_signature_name_from_saved_model_proto(
+                loader_impl.parse_saved_model(eval_shared_model.model_path)))
       model_specs.append(model_spec)
 
     inference_ptransform = inference_implementation(model_specs,

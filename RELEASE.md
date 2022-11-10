@@ -26,10 +26,10 @@
     derived computations when example_id_key is not set but use_histrogam is
     true.
 *   Add transformed features lookup for NDCG metrics query key and gain key.
-
 *   Deprecate BoundedValue and TDistribution in ConfusionMatrixAtThresholds.
-
 *   Fix a bug that dataframe auto_pivot fails if there is only Overall slice.
+*   Use SavedModel PB to determine default signature instead of loading the
+    model.
 
 *   Reduce clutter in the multi-index columns and index in the experimental
     dataframe auto_pivot util.

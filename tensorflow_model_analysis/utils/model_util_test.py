@@ -29,6 +29,7 @@ from tensorflow_model_analysis.utils import util as tfma_util
 from tfx_bsl.tfxio import tf_example_record
 
 from google.protobuf import text_format
+from tensorflow.core.protobuf import saved_model_pb2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
@@ -876,6 +877,135 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
     self.assertFalse(model_util.has_rubber_stamp([candidate_nr]))
     self.assertFalse(
         model_util.has_rubber_stamp([baseline, candidate, candidate_nr]))
+
+  def testGetDefaultModelSignatureFromSavedModelProtoWithServingDefault(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+        signature_def: {
+          key: "foo"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape { dim { size: 1 } }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    self.assertEqual(
+        tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY,
+        model_util.get_default_signature_name_from_saved_model_proto(
+            saved_model_proto))
+
+  def testGetDefaultModelSignatureFromSavedModelProtoWithPredict(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+        signature_def: {
+          key: "foo"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape { dim { size: 1 } }
+              }
+            }
+          }
+        }
+      }
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+          tags: "gpu"
+        }
+        signature_def: {
+          key: "predict"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    self.assertEqual(
+        model_util._PREDICT_SIGNATURE_DEF_KEY,
+        model_util.get_default_signature_name_from_saved_model_proto(
+            saved_model_proto))
 
 
 if __name__ == '__main__':

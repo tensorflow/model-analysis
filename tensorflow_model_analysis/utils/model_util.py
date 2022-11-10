@@ -32,6 +32,7 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import util
 from tfx_bsl.tfxio import tensor_adapter
 
+from tensorflow.core.protobuf import saved_model_pb2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 # TODO(b/162075791): Need to load tensorflow_ranking, tensorflow_text,
@@ -333,6 +334,25 @@ def get_default_signature_name(model: Any) -> str:
       _PREDICT_SIGNATURE_DEF_KEY in model.signatures):
     return _PREDICT_SIGNATURE_DEF_KEY
   return tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
+
+
+def get_default_signature_name_from_saved_model_proto(
+    saved_model: saved_model_pb2.SavedModel) -> str:
+  """Returns default signature name for given SavedModel proto."""
+  # First try 'predict' then try 'serving_default'. The estimator output
+  # for the 'serving_default' key does not include all the heads in a
+  # multi-head model. However, keras only uses the 'serving_default' for
+  # its outputs. Note that the 'predict' key only exists for estimators
+  # for multi-head models, for single-head models only 'serving_default'
+  # is used.
+  signature_names = set()
+  for meta_graph in saved_model.meta_graphs:
+    for signature_name, _ in meta_graph.signature_def.items():
+      signature_names.add(signature_name)
+  if _PREDICT_SIGNATURE_DEF_KEY in signature_names:
+    return _PREDICT_SIGNATURE_DEF_KEY
+  else:
+    return tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
 
 
 # TODO(b/175357313): Remove _get_save_spec check when the save_spec changes
