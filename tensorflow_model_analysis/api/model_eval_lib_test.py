@@ -728,8 +728,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         feature {
           name: "label"
           type: FLOAT
+          shape: { dim { size: 10 } }
+          presence: { min_fraction: 1 }
         }
         """, schema_pb2.Schema())
+    # TODO(b/73109633): Remove when field is removed or its default changes to
+    # False.
+    if hasattr(schema, 'generate_legacy_feature_spec'):
+      schema.generate_legacy_feature_spec = False
 
     metrics_spec = config_pb2.MetricsSpec()
     for metric in (confusion_matrix_metrics.AUC(name='auc'),):

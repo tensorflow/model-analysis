@@ -61,20 +61,30 @@ class MaterializedPredictionsExtractorTest(
         feature {
           name: "prediction"
           type: FLOAT
+          shape: { }
+          presence: { min_fraction: 1 }
         }
         feature {
           name: "prediction1"
           type: FLOAT
+          shape: { }
+          presence: { min_fraction: 1 }
         }
         feature {
           name: "prediction2"
           type: FLOAT
+          shape: { }
+          presence: { min_fraction: 1 }
         }
         feature {
           name: "fixed_int"
           type: INT
         }
         """, schema_pb2.Schema())
+    # TODO(b/73109633): Remove when field is removed or its default changes to
+    # False.
+    if hasattr(schema, 'generate_legacy_feature_spec'):
+      schema.generate_legacy_feature_spec = False
     tfx_io = test_util.InMemoryTFExampleRecord(
         schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
