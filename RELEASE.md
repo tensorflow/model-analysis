@@ -8,6 +8,8 @@
     to TF2.
 *   Add BooleanFlipRate metric for comparing thresholded predictions between
     multiple models.
+*   Add CounterfactualPredictionsExtractor for computing predictions on modified
+    inputs.
 
 ## Major Features and Improvements
 
@@ -46,7 +48,8 @@
 
 ## Bug fixes and other Changes
 
-*   Move the version to top of init.py since the original "from tensorflow_model_analysis.sdk import *" will not import private symbol.
+*   Move the version to top of init.py since the original "from
+    tensorflow_model_analysis.sdk import *" will not import private symbol.
 
 ## Breaking Changes
 

@@ -227,7 +227,8 @@ def verify_and_update_eval_shared_models(
         v = v._replace(model_name=k)
       eval_shared_models.append(v)
   elif isinstance(eval_shared_model, list):
-    eval_shared_models = eval_shared_model
+    # Ensure we don't modify the input list when updating model_name, below.
+    eval_shared_models = eval_shared_model.copy()
   else:
     eval_shared_models = [eval_shared_model]
   if len(eval_shared_models) > 1:
