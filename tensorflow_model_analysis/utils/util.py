@@ -747,12 +747,12 @@ def merge_extracts(extracts: List[types.Extracts],
     will not reproduce the exact shape of the original extracts. Arrays in shape
     (x,1) will be flattened to (x,). To maintain the original shape of extract
     values of array shape (x,1), you must run with these options:
-    split_extracts(extracts, avoid_scalar_values=False)
+    split_extracts(extracts, expand_zero_dims=False)
     merge_extracts(extracts, squeeze_two_dim_vector=False)
   Args:
     extracts: Batched TFMA Extracts.
     squeeze_two_dim_vector: Determines how the function will handle arrays of
-      shape (x,1). If flatten_two_dim_vector is True, the array will be squeezed
+      shape (x,1). If squeeze_two_dim_vector is True, the array will be squeezed
       to shape (x,).
 
   Returns:
@@ -845,8 +845,8 @@ def split_extracts(extracts: types.Extracts,
     will not reproduce the exact shape of the original extracts. Arrays in shape
     (x,1) will be flattened to (x,). To maintain the original shape of extract
     values of array shape (x,1), you must run with these options:
-    split_extracts(extracts, avoid_scalar_values=False)
-    merge_extracts(extracts, flatten_two_dim_vector=False)
+    split_extracts(extracts, expand_zero_dims=False)
+    merge_extracts(extracts, squeeze_two_dim_vector=False)
 
   Args:
     extracts: Batched TFMA Extracts.
