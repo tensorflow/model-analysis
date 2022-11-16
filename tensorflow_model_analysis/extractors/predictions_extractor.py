@@ -331,11 +331,12 @@ def _RunInference(extracts: beam.pvalue.PCollection,
   # Beam batch will group single Extracts into a batch. Then
   # merge_extracts will flatten the batch into a single "batched"
   # extract.
-  batch_extracts_stage_name = 'BatchSingleExampleExtracts'
   if batch_size is not None:
-    extracts |= batch_extracts_stage_name >> beam.BatchElements(
-        min_batch_size=batch_size, max_batch_size=batch_size)
+    batch_kwargs = {'min_batch_size': batch_size, 'max_batch_size': batch_size}
   else:
-    extracts |= batch_extracts_stage_name >> beam.BatchElements()
-  return extracts | 'MergeExtracts' >> beam.Map(
-      util.merge_extracts, squeeze_two_dim_vector=False)
+    # Default batch parameters.
+    batch_kwargs = {}
+  return (extracts
+          | 'BatchSingleExampleExtracts' >> beam.BatchElements(**batch_kwargs)
+          | 'MergeExtracts' >> beam.Map(
+              util.merge_extracts, squeeze_two_dim_vector=False))
