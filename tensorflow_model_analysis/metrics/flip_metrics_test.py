@@ -98,7 +98,7 @@ class FlipRateMetricsTest(absltest.TestCase):
                   got[0], add_metrics_callbacks=None))
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-          self.assertLen(got_proto.metric_keys_and_values, 3)
+          self.assertLen(got_proto.metric_keys_and_values, 5)
 
           fr_key = metric_types.MetricKey(
               name=flip_metrics.FLIP_RATE_NAME,
@@ -110,6 +110,17 @@ class FlipRateMetricsTest(absltest.TestCase):
           # verify that metric is not a 0-D np.ndarray
           self.assertIsInstance(got_metrics[fr_key], float)
           self.assertAlmostEqual(got_metrics[fr_key], 3 / 10)
+
+          n2n_fr_key = metric_types.MetricKey(
+              name=flip_metrics.NEG_TO_NEG_FLIP_RATE_NAME,
+              model_name=candidate_model_name,
+              output_name='',
+              example_weighted=True,
+              is_diff=True)
+          self.assertIn(n2n_fr_key, got_metrics)
+          # verify that metric is not a 0-D np.ndarray
+          self.assertIsInstance(got_metrics[n2n_fr_key], float)
+          self.assertAlmostEqual(got_metrics[n2n_fr_key], 3 / 10)
 
           n2p_fr_key = metric_types.MetricKey(
               name=flip_metrics.NEG_TO_POS_FLIP_RATE_NAME,
@@ -132,6 +143,17 @@ class FlipRateMetricsTest(absltest.TestCase):
           # verify that metric is not a 0-D np.ndarray
           self.assertIsInstance(got_metrics[p2n_fr_key], float)
           self.assertAlmostEqual(got_metrics[p2n_fr_key], 2 / 10)
+
+          p2p_fr_key = metric_types.MetricKey(
+              name=flip_metrics.POS_TO_POS_FLIP_RATE_NAME,
+              model_name=candidate_model_name,
+              output_name='',
+              example_weighted=True,
+              is_diff=True)
+          self.assertIn(p2p_fr_key, got_metrics)
+          # verify that metric is not a 0-D np.ndarray
+          self.assertIsInstance(got_metrics[p2p_fr_key], float)
+          self.assertAlmostEqual(got_metrics[p2p_fr_key], 4 / 10)
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

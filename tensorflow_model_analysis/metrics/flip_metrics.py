@@ -23,8 +23,10 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 
 FLIP_RATE_NAME = 'flip_rate'
+NEG_TO_NEG_FLIP_RATE_NAME = 'neg_to_neg_flip_rate'
 NEG_TO_POS_FLIP_RATE_NAME = 'neg_to_pos_flip_rate'
 POS_TO_NEG_FLIP_RATE_NAME = 'pos_to_neg_flip_rate'
+POS_TO_POS_FLIP_RATE_NAME = 'pos_to_pos_flip_rate'
 
 _DEFAULT_FLIP_RATE_THRESHOLD = 0.5
 
@@ -47,17 +49,23 @@ class BooleanFlipRates(metric_types.Metric):
   def __init__(self,
                threshold: float = _DEFAULT_FLIP_RATE_THRESHOLD,
                flip_rate_name: str = FLIP_RATE_NAME,
+               neg_to_neg_flip_rate_name: str = NEG_TO_NEG_FLIP_RATE_NAME,
                neg_to_pos_flip_rate_name: str = NEG_TO_POS_FLIP_RATE_NAME,
-               pos_to_neg_flip_rate_name: str = POS_TO_NEG_FLIP_RATE_NAME):
+               pos_to_neg_flip_rate_name: str = POS_TO_NEG_FLIP_RATE_NAME,
+               pos_to_pos_flip_rate_name: str = POS_TO_POS_FLIP_RATE_NAME):
     """Initializes FlipRate metric.
 
     Args:
       threshold: The threshold to use for converting the model prediction into a
         boolean value that can be used for comparison between models.
       flip_rate_name: Metric name for symmetric flip rate.
+      neg_to_neg_flip_rate_name: Metric name for the negative-to-negative flip
+        rate.
       neg_to_pos_flip_rate_name: Metric name for the negative-to-positive flip
         rate.
       pos_to_neg_flip_rate_name: Metric name for the positive-to-negative flip
+        rate.
+      pos_to_pos_flip_rate_name: Metric name for the positive-to-positive flip
         rate.
     """
 
@@ -65,8 +73,10 @@ class BooleanFlipRates(metric_types.Metric):
         _boolean_flip_rates_computations,
         threshold=threshold,
         flip_rate_name=flip_rate_name,
+        neg_to_neg_flip_rate_name=neg_to_neg_flip_rate_name,
         neg_to_pos_flip_rate_name=neg_to_pos_flip_rate_name,
-        pos_to_neg_flip_rate_name=pos_to_neg_flip_rate_name)
+        pos_to_neg_flip_rate_name=pos_to_neg_flip_rate_name,
+        pos_to_pos_flip_rate_name=pos_to_pos_flip_rate_name)
 
 
 metric_types.register_metric(BooleanFlipRates)
@@ -75,8 +85,10 @@ metric_types.register_metric(BooleanFlipRates)
 def _boolean_flip_rates_computations(
     threshold: float,
     flip_rate_name: str,
+    neg_to_neg_flip_rate_name: str,
     neg_to_pos_flip_rate_name: str,
     pos_to_neg_flip_rate_name: str,
+    pos_to_pos_flip_rate_name: str,
     eval_config: Optional[config_pb2.EvalConfig],
     model_names: Optional[List[str]],
     output_names: Optional[List[str]] = None,
@@ -92,9 +104,13 @@ def _boolean_flip_rates_computations(
     threshold: The threshold to use for converting both the baseline and
       candidate predictions into boolean values that can be compared.
     flip_rate_name: Metric name for symmetric flip rate.
+    neg_to_neg_flip_rate_name: Metric name for the negative-to-negative flip
+      rate.
     neg_to_pos_flip_rate_name: Metric name for the negative-to-positive flip
       rate.
     pos_to_neg_flip_rate_name: Metric name for the positive-to-negative flip
+      rate.
+    pos_to_pos_flip_rate_name: Metric name for the positive-to-positive flip
       rate.
     eval_config: The EvalConfig for this TFMA evaluation. This is used to
       identify which model is the baseline.
@@ -118,6 +134,13 @@ def _boolean_flip_rates_computations(
             sub_key=sub_key,
             example_weighted=example_weighted,
             is_diff=True)
+        neg_to_neg_key = metric_types.MetricKey(
+            name=neg_to_neg_flip_rate_name,
+            model_name=model_name,
+            output_name=output_name,
+            sub_key=sub_key,
+            example_weighted=example_weighted,
+            is_diff=True)
         neg_to_pos_key = metric_types.MetricKey(
             name=neg_to_pos_flip_rate_name,
             model_name=model_name,
@@ -132,14 +155,24 @@ def _boolean_flip_rates_computations(
             sub_key=sub_key,
             example_weighted=example_weighted,
             is_diff=True)
+        pos_to_pos_key = metric_types.MetricKey(
+            name=pos_to_pos_flip_rate_name,
+            model_name=model_name,
+            output_name=output_name,
+            sub_key=sub_key,
+            example_weighted=example_weighted,
+            is_diff=True)
         computations.append(
             metric_types.MetricComputation(
-                keys=[flip_rate_key, neg_to_pos_key, pos_to_neg_key],
+                keys=[
+                    flip_rate_key, neg_to_neg_key, neg_to_pos_key,
+                    pos_to_neg_key, pos_to_pos_key
+                ],
                 preprocessors=None,
                 combiner=_BooleanFlipRatesCombiner(
                     threshold, eval_config, baseline_model_name, model_name,
-                    output_name, flip_rate_key, neg_to_pos_key, pos_to_neg_key,
-                    example_weighted)))
+                    output_name, flip_rate_key, neg_to_neg_key, neg_to_pos_key,
+                    pos_to_neg_key, pos_to_pos_key, example_weighted)))
   return computations
 
 
@@ -147,13 +180,17 @@ def _boolean_flip_rates_computations(
 class _BooleanFlipRatesAccumulator:
   """Accumulator for computing BooleanFlipRates."""
   num_weighted_examples: float = 0.0
+  num_weighted_neg_to_neg: float = 0.0
   num_weighted_neg_to_pos: float = 0.0
   num_weighted_pos_to_neg: float = 0.0
+  num_weighted_pos_to_pos: float = 0.0
 
   def merge(self, other: '_BooleanFlipRatesAccumulator'):
     self.num_weighted_examples += other.num_weighted_examples
+    self.num_weighted_neg_to_neg += other.num_weighted_neg_to_neg
     self.num_weighted_neg_to_pos += other.num_weighted_neg_to_pos
     self.num_weighted_pos_to_neg += other.num_weighted_pos_to_neg
+    self.num_weighted_pos_to_pos += other.num_weighted_pos_to_pos
 
 
 class _BooleanFlipRatesCombiner(beam.CombineFn):
@@ -162,16 +199,20 @@ class _BooleanFlipRatesCombiner(beam.CombineFn):
   def __init__(self, threshold: float, eval_config: config_pb2.EvalConfig,
                baseline_model_name: str, model_name: str, output_name: str,
                flip_rate_key: metric_types.MetricKey,
+               neg_to_neg_key: metric_types.MetricKey,
                neg_to_pos_key: metric_types.MetricKey,
-               pos_to_neg_key: metric_types.MetricKey, example_weighted: bool):
+               pos_to_neg_key: metric_types.MetricKey,
+               pos_to_pos_key: metric_types.MetricKey, example_weighted: bool):
     self._threshold = threshold
     self._eval_config = eval_config
     self._baseline_model_name = baseline_model_name
     self._model_name = model_name
     self._output_name = output_name
     self._flip_rate_key = flip_rate_key
+    self._neg_to_neg_key = neg_to_neg_key
     self._neg_to_pos_key = neg_to_pos_key
     self._pos_to_neg_key = pos_to_neg_key
+    self._pos_to_pos_key = pos_to_pos_key
     self._example_weighted = example_weighted
 
   def create_accumulator(self) -> _BooleanFlipRatesAccumulator:
@@ -202,10 +243,14 @@ class _BooleanFlipRatesCombiner(beam.CombineFn):
     accumulator.num_weighted_examples += base_example_weight
     base_prediciton_bool = base_prediction > self._threshold
     model_prediction_bool = model_prediction > self._threshold
+    accumulator.num_weighted_neg_to_neg += base_example_weight * int(
+        not base_prediciton_bool and not model_prediction_bool)
     accumulator.num_weighted_neg_to_pos += base_example_weight * int(
         not base_prediciton_bool and model_prediction_bool)
     accumulator.num_weighted_pos_to_neg += base_example_weight * int(
         base_prediciton_bool and not model_prediction_bool)
+    accumulator.num_weighted_pos_to_pos += base_example_weight * int(
+        base_prediciton_bool and model_prediction_bool)
     return accumulator
 
   def merge_accumulators(
@@ -223,8 +268,12 @@ class _BooleanFlipRatesCombiner(beam.CombineFn):
         self._flip_rate_key: (accumulator.num_weighted_neg_to_pos +
                               accumulator.num_weighted_pos_to_neg) /
                              accumulator.num_weighted_examples,
+        self._neg_to_neg_key: (accumulator.num_weighted_neg_to_neg /
+                               accumulator.num_weighted_examples),
         self._neg_to_pos_key: (accumulator.num_weighted_neg_to_pos /
                                accumulator.num_weighted_examples),
         self._pos_to_neg_key: (accumulator.num_weighted_pos_to_neg /
-                               accumulator.num_weighted_examples)
+                               accumulator.num_weighted_examples),
+        self._pos_to_pos_key: (accumulator.num_weighted_pos_to_pos /
+                               accumulator.num_weighted_examples),
     }
