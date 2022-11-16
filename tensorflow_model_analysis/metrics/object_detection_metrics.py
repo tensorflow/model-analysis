@@ -65,17 +65,14 @@ class COCOAveragePrecision(metric_types.Metric):
     Args:
       num_thresholds: (Optional) Number of thresholds to use for calculating the
         matrices and finding the precision at given recall.
-      iou_threshold: (Optional) Used for object detection, threholds for a
-        detection and ground truth pair with specific iou to be considered as a
-        match.
-      class_id: (Optional) Used for object detection, the class id for
-        calculating metrics.
-      class_weight: (Optional) Used for object detection, the weight associated
-        with the object class id.
-      area_range: (Optional) Used for object detection, the area-range for
-        objects to be considered for metrics.
-      max_num_detections: (Optional) Used for object detection, the maximum
-        number of detections for a single image.
+      iou_threshold: (Optional) Threholds for a detection and ground truth pair
+        with specific iou to be considered as a match.
+      class_id: (Optional) The class id for calculating metrics.
+      class_weight: (Optional) The weight associated with the object class id.
+      area_range: (Optional) The area-range for objects to be considered for
+        metrics.
+      max_num_detections: (Optional) The maximum number of detections for a
+        single image.
       recalls: (Optional) recalls at which precisions will be calculated.
       num_recalls: (Optional) Used for objecth detection, the number of recalls
         for calculating average precision, it equally generates points bewteen 0
@@ -140,7 +137,7 @@ class COCOAveragePrecision(metric_types.Metric):
       num_detections_key: Optional[str] = None
   ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
-    object_detection_confusion_matrix_metrics.validate_object_detection_arguments(
+    metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
         area_range=area_range,
@@ -247,18 +244,15 @@ class COCOMeanAveragePrecision(metric_types.Metric):
     Args:
       num_thresholds: (Optional) Number of thresholds to use for calculating the
         matrices and finding the precision at given recall.
-      iou_thresholds: (Optional) Used for object detection, threholds for a
-        detection and ground truth pair with specific iou to be considered as a
-        match.
-      class_ids: (Optional) Used for object detection, the class ids for
-        calculating metrics.
-      class_weights: (Optional) Used for object detection, the weight associated
-        with the object class ids. If it is provided, it should have the same
-        length as class_ids.
-      area_range: (Optional) Used for object detection, the area-range for
-        objects to be considered for metrics.
-      max_num_detections: (Optional) Used for object detection, the maximum
-        number of detections for a single image.
+      iou_thresholds: (Optional) Threholds for a detection and ground truth pair
+        with specific iou to be considered as a match.
+      class_ids: (Optional) The class ids for calculating metrics.
+      class_weights: (Optional) The weight associated with the object class ids.
+        If it is provided, it should have the same length as class_ids.
+      area_range: (Optional) The area-range for objects to be considered for
+        metrics.
+      max_num_detections: (Optional) The maximum number of detections for a
+        single image.
       recalls: (Optional) recalls at which precisions will be calculated.
       num_recalls: (Optional) Used for objecth detection, the number of recalls
         for calculating average precision, it equally generates points bewteen 0
@@ -318,7 +312,7 @@ class COCOMeanAveragePrecision(metric_types.Metric):
                            **kwargs) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
 
-    object_detection_confusion_matrix_metrics.validate_object_detection_arguments(
+    metric_util.validate_object_detection_arguments(
         class_id=class_ids,
         class_weight=class_weights,
         area_range=area_range,
@@ -425,18 +419,15 @@ class COCOAverageRecall(metric_types.Metric):
     predictions.
 
     Args:
-      iou_thresholds: (Optional) Used for object detection, threholds for a
-        detection and ground truth pair with specific iou to be considered as a
-        match.
-      class_id: (Optional) Used for object detection, the class ids for
-        calculating metrics.
-      class_weight: (Optional) Used for object detection, the weight associated
-        with the object class ids. If it is provided, it should have the same
-        length as class_ids.
-      area_range: (Optional) Used for object detection, the area-range for
-        objects to be considered for metrics.
-      max_num_detections: (Optional) Used for object detection, the maximum
-        number of detections for a single image.
+      iou_thresholds: (Optional) Threholds for a detection and ground truth pair
+        with specific iou to be considered as a match.
+      class_id: (Optional) The class ids for calculating metrics.
+      class_weight: (Optional) The weight associated with the object class ids.
+        If it is provided, it should have the same length as class_ids.
+      area_range: (Optional) The area-range for objects to be considered for
+        metrics.
+      max_num_detections: (Optional) The maximum number of detections for a
+        single image.
       name: (Optional) Metric name.
       labels_to_stack: (Optional) Keys for columns to be stacked as a single
         numpy array as the labels. It is searched under the key labels, features
@@ -487,7 +478,7 @@ class COCOAverageRecall(metric_types.Metric):
   ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
 
-    object_detection_confusion_matrix_metrics.validate_object_detection_arguments(
+    metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
         area_range=area_range,
@@ -587,18 +578,15 @@ class COCOMeanAverageRecall(metric_types.Metric):
     predictions.
 
     Args:
-      iou_thresholds: (Optional) Used for object detection, threholds for a
-        detection and ground truth pair with specific iou to be considered as a
-        match.
-      class_ids: (Optional) Used for object detection, the class ids for
-        calculating metrics.
-      class_weights: (Optional) Used for object detection, the weight associated
-        with the object class ids. If it is provided, it should have the same
-        length as class_ids.
-      area_range: (Optional) Used for object detection, the area-range for
-        objects to be considered for metrics.
-      max_num_detections: (Optional) Used for object detection, the maximum
-        number of detections for a single image.
+      iou_thresholds: (Optional) Threholds for a detection and ground truth pair
+        with specific iou to be considered as a match.
+      class_ids: (Optional) The class ids for calculating metrics.
+      class_weights: (Optional) The weight associated with the object class ids.
+        If it is provided, it should have the same length as class_ids.
+      area_range: (Optional) The area-range for objects to be considered for
+        metrics.
+      max_num_detections: (Optional) The maximum number of detections for a
+        single image.
       name: (Optional) Metric name.
       labels_to_stack: (Optional) Keys for columns to be stacked as a single
         numpy array as the labels. It is searched under the key labels, features
@@ -649,7 +637,7 @@ class COCOMeanAverageRecall(metric_types.Metric):
   ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
 
-    object_detection_confusion_matrix_metrics.validate_object_detection_arguments(
+    metric_util.validate_object_detection_arguments(
         class_id=class_ids,
         class_weight=class_weights,
         area_range=area_range,

@@ -17,6 +17,7 @@ from typing import List, Optional, Tuple, Union
 
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import preprocessors
 from tensorflow_model_analysis.proto import config_pb2
 
@@ -29,41 +30,6 @@ OBJECT_DETECTION_PRECISION_AT_RECALL_NAME = 'object_detection_precision_at_recal
 OBJECT_DETECTION_RECALL_NAME = 'object_detection_recall'
 OBJECT_DETECTION_PRECISION_NAME = 'object_detection_precision'
 OBJECT_DETECTION_THRESHOLD_AT_RECALL_NAME = 'object_detection_threshold_at_recall'
-
-
-def validate_object_detection_arguments(
-    class_id: Optional[Union[int, List[int]]],
-    class_weight: Optional[Union[float, List[float]]],
-    area_range: Optional[Tuple[float, float]] = None,
-    max_num_detections: Optional[int] = None,
-    labels_to_stack: Optional[List[str]] = None,
-    predictions_to_stack: Optional[List[str]] = None,
-    output_name: Optional[str] = None) -> None:
-  """Validate the arguments for object detection related functions."""
-  if class_id is None:
-    raise ValueError('class_id must be provided if use object' ' detection.')
-  if isinstance(class_id, int):
-    class_id = [class_id]
-  if class_weight is not None:
-    if isinstance(class_weight, float):
-      class_weight = [class_weight]
-    for weight in class_weight:
-      if weight < 0:
-        raise ValueError(f'class_weight = {class_weight} must '
-                         'not be negative.')
-    if len(class_id) != len(class_weight):
-      raise ValueError('Mismatch of length between class_id = '
-                       f'{class_id} and class_weight = '
-                       f'{class_weight}.')
-  if area_range is not None:
-    if len(area_range) != 2 or area_range[0] > area_range[1]:
-      raise ValueError(f'area_range = {area_range} must be a valid interval.')
-  if max_num_detections is not None and max_num_detections <= 0:
-    raise ValueError(f'max_num_detections = {max_num_detections} must be '
-                     'positive.')
-  if output_name and (labels_to_stack or predictions_to_stack):
-    raise ValueError('The metric does not support specifying the output name'
-                     ' when there are keys/outputs specified to be stacked.')
 
 
 class ObjectDetectionPrecisionAtRecall(
@@ -107,18 +73,14 @@ class ObjectDetectionPrecisionAtRecall(
       num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
         use for matching the given recall.
       name: (Optional) string name of the metric instance.
-      iou_threshold: (Optional) Used for object detection, thresholds for a
-        detection and ground truth pair with specific iou to be considered as a
-        match. Default to 0.5
-      class_id: (Optional) Used for object detection, the class id for
-        calculating metrics.
-      class_weight: (Optional) Used for object detection, the weight associated
-        with the object class id.
-      area_range: (Optional) Used for object detection, a tuple (inclusive)
-        representing the area-range for objects to be considered for metrics.
-        Default to (0, inf).
-      max_num_detections: (Optional) Used for object detection, the maximum
-        number of detections for a single image. Default to None.
+      iou_threshold: (Optional) Thresholds for a detection and ground truth pair
+        with specific iou to be considered as a match. Default to 0.5
+      class_id: (Optional) The class id for calculating metrics.
+      class_weight: (Optional) The weight associated with the object class id.
+      area_range: (Optional) A tuple (inclusive) representing the area-range for
+        objects to be considered for metrics. Default to (0, inf).
+      max_num_detections: (Optional) The maximum number of detections for a
+        single image. Default to None.
       labels_to_stack: (Optional) Keys for columns to be stacked as a single
         numpy array as the labels. It is searched under the key labels, features
         and transformed features. The desired format is [left bounadary, top
@@ -174,7 +136,7 @@ class ObjectDetectionPrecisionAtRecall(
                            predictions_to_stack: Optional[List[str]] = None,
                            num_detections_key: Optional[str] = None,
                            **kwargs) -> metric_types.MetricComputations:
-    validate_object_detection_arguments(
+    metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
         area_range=area_range,
@@ -246,18 +208,14 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
         for each threshold value. The default is to calculate recall with
         `thresholds=0.5`.
       name: (Optional) string name of the metric instance.
-      iou_threshold: (Optional) Used for object detection, thresholds for a
-        detection and ground truth pair with specific iou to be considered as a
-        match. Default to 0.5
-      class_id: (Optional) Used for object detection, the class id for
-        calculating metrics.
-      class_weight: (Optional) Used for object detection, the weight associated
-        with the object class id.
-      area_range: (Optional) Used for object detection, a tuple (inclusive)
-        representing the area-range for objects to be considered for metrics.
-        Default to (0, inf).
-      max_num_detections: (Optional) Used for object detection, the maximum
-        number of detections for a single image. Default to None.
+      iou_threshold: (Optional) Thresholds for a detection and ground truth pair
+        with specific iou to be considered as a match. Default to 0.5
+      class_id: (Optional) The class id for calculating metrics.
+      class_weight: (Optional) The weight associated with the object class id.
+      area_range: (Optional) A tuple (inclusive) representing the area-range for
+        objects to be considered for metrics. Default to (0, inf).
+      max_num_detections: (Optional) The maximum number of detections for a
+        single image. Default to None.
       labels_to_stack: (Optional) Keys for columns to be stacked as a single
         numpy array as the labels. It is searched under the key labels, features
         and transformed features. The desired format is [left bounadary, top
@@ -307,7 +265,7 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
       num_detections_key: Optional[str] = None,
       **kwargs,
   ) -> metric_types.MetricComputations:
-    validate_object_detection_arguments(
+    metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
         area_range=area_range,
@@ -378,18 +336,14 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
         for each threshold value. The default is to calculate precision with
         `thresholds=0.5`.
       name: (Optional) string name of the metric instance.
-      iou_threshold: (Optional) Used for object detection, thresholds for a
-        detection and ground truth pair with specific iou to be considered as a
-        match. Default to 0.5
-      class_id: (Optional) Used for object detection, the class id for
-        calculating metrics.
-      class_weight: (Optional) Used for object detection, the weight associated
-        with the object class id.
-      area_range: (Optional) Used for object detection, a tuple (inclusive)
-        representing the area-range for objects to be considered for metrics.
-        Default to (0, inf).
-      max_num_detections: (Optional) Used for object detection, the maximum
-        number of detections for a single image. Default to None.
+      iou_threshold: (Optional) Thresholds for a detection and ground truth pair
+        with specific iou to be considered as a match. Default to 0.5
+      class_id: (Optional) The class id for calculating metrics.
+      class_weight: (Optional) The weight associated with the object class id.
+      area_range: (Optional) A tuple (inclusive) representing the area-range for
+        objects to be considered for metrics. Default to (0, inf).
+      max_num_detections: (Optional) The maximum number of detections for a
+        single image. Default to None.
       labels_to_stack: (Optional) Keys for columns to be stacked as a single
         numpy array as the labels. It is searched under the key labels, features
         and transformed features. The desired format is [left bounadary, top
@@ -439,7 +393,7 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
       num_detections_key: Optional[str] = None,
       **kwargs,
   ) -> metric_types.MetricComputations:
-    validate_object_detection_arguments(
+    metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
         area_range=area_range,
@@ -506,18 +460,14 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
 
     Args:
       name: (Optional) string name of the metric instance.
-      iou_threshold: (Optional) Used for object detection, thresholds for a
-        detection and ground truth pair with specific iou to be considered as a
-        match. Default to 0.5
-      class_id: (Optional) Used for object detection, the class id for
-        calculating metrics.
-      class_weight: (Optional) Used for object detection, the weight associated
-        with the object class id.
-      area_range: (Optional) Used for object detection, a tuple (inclusive)
-        representing the area-range for objects to be considered for metrics.
-        Default to (0, inf).
-      max_num_detections: (Optional) Used for object detection, the maximum
-        number of detections for a single image. Default to None.
+      iou_threshold: (Optional) Thresholds for a detection and ground truth pair
+        with specific iou to be considered as a match. Default to 0.5
+      class_id: (Optional) The class id for calculating metrics.
+      class_weight: (Optional) The weight associated with the object class id.
+      area_range: (Optional) A tuple (inclusive) representing the area-range for
+        objects to be considered for metrics. Default to (0, inf).
+      max_num_detections: (Optional) The maximum number of detections for a
+        single image. Default to None.
       labels_to_stack: (Optional) Keys for columns to be stacked as a single
         numpy array as the labels. It is searched under the key labels, features
         and transformed features. The desired format is [left bounadary, top
@@ -565,7 +515,7 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
                            predictions_to_stack: Optional[List[str]] = None,
                            num_detections_key: Optional[str] = None,
                            **kwargs) -> metric_types.MetricComputations:
-    validate_object_detection_arguments(
+    metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
         area_range=area_range,
@@ -634,18 +584,14 @@ class ObjectDetectionThresholdAtRecall(
       num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
         use for matching the given recall.
       name: (Optional) string name of the metric instance.
-      iou_threshold: (Optional) Used for object detection, thresholds for a
-        detection and ground truth pair with specific iou to be considered as a
-        match. Default to 0.5
-      class_id: (Optional) Used for object detection, the class id for
-        calculating metrics.
-      class_weight: (Optional) Used for object detection, the weight associated
-        with the object class id.
-      area_range: (Optional) Used for object detection, a tuple (inclusive)
-        representing the area-range for objects to be considered for metrics.
-        Default to (0, inf).
-      max_num_detections: (Optional) Used for object detection, the maximum
-        number of detections for a single image. Default to None.
+      iou_threshold: (Optional) Thresholds for a detection and ground truth pair
+        with specific iou to be considered as a match. Default to 0.5
+      class_id: (Optional) The class id for calculating metrics.
+      class_weight: (Optional) The weight associated with the object class id.
+      area_range: (Optional) A tuple (inclusive) representing the area-range for
+        objects to be considered for metrics. Default to (0, inf).
+      max_num_detections: (Optional) The maximum number of detections for a
+        single image. Default to None.
       labels_to_stack: (Optional) Keys for columns to be stacked as a single
         numpy array as the labels. It is searched under the key labels, features
         and transformed features. The desired format is [left bounadary, top
@@ -701,7 +647,7 @@ class ObjectDetectionThresholdAtRecall(
                            predictions_to_stack: Optional[List[str]] = None,
                            num_detections_key: Optional[str] = None,
                            **kwargs) -> metric_types.MetricComputations:
-    validate_object_detection_arguments(
+    metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
         area_range=area_range,

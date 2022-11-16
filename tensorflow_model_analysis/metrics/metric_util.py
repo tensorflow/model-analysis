@@ -40,6 +40,41 @@ _LOSS_FUNCTION_WRAPPER = 'LossFunctionWrapper'
 _EPSILON = 1e-7
 
 
+def validate_object_detection_arguments(
+    class_id: Optional[Union[int, List[int]]],
+    class_weight: Optional[Union[float, List[float]]],
+    area_range: Optional[Tuple[float, float]] = None,
+    max_num_detections: Optional[int] = None,
+    labels_to_stack: Optional[List[str]] = None,
+    predictions_to_stack: Optional[List[str]] = None,
+    output_name: Optional[str] = None) -> None:
+  """Validate the arguments for object detection related functions."""
+  if class_id is None:
+    raise ValueError('class_id must be provided if use object' ' detection.')
+  if isinstance(class_id, int):
+    class_id = [class_id]
+  if class_weight is not None:
+    if isinstance(class_weight, float):
+      class_weight = [class_weight]
+    for weight in class_weight:
+      if weight < 0:
+        raise ValueError(f'class_weight = {class_weight} must '
+                         'not be negative.')
+    if len(class_id) != len(class_weight):
+      raise ValueError('Mismatch of length between class_id = '
+                       f'{class_id} and class_weight = '
+                       f'{class_weight}.')
+  if area_range is not None:
+    if len(area_range) != 2 or area_range[0] > area_range[1]:
+      raise ValueError(f'area_range = {area_range} must be a valid interval.')
+  if max_num_detections is not None and max_num_detections <= 0:
+    raise ValueError(f'max_num_detections = {max_num_detections} must be '
+                     'positive.')
+  if output_name and (labels_to_stack or predictions_to_stack):
+    raise ValueError('The metric does not support specifying the output name'
+                     ' when there are keys/outputs specified to be stacked.')
+
+
 def generate_private_name_from_arguments(name: str, **kwargs) -> str:
   """Generate names for used metrics.
 
