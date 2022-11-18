@@ -43,9 +43,10 @@
 *   Fix a bug that dataframe auto_pivot fails if there is only Overall slice.
 *   Use SavedModel PB to determine default signature instead of loading the
     model.
-
 *   Reduce clutter in the multi-index columns and index in the experimental
     dataframe auto_pivot util.
+*   Minor predictions_extractor_test.py refactor with readability improvements
+    and improved test coverage.
 
 ## Breaking Changes
 

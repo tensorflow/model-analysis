@@ -43,6 +43,19 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
 
+  def _create_tfxio_and_feature_extractor(self,
+                                          eval_config: config_pb2.EvalConfig,
+                                          schema: schema_pb2.Schema):
+    tfx_io = test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+        arrow_schema=tfx_io.ArrowSchema(),
+        tensor_representations=tfx_io.TensorRepresentations())
+    feature_extractor = features_extractor.FeaturesExtractor(
+        eval_config=eval_config,
+        tensor_representations=tensor_adapter_config.tensor_representations)
+    return tfx_io, feature_extractor
+
   @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
                                   ('TFXBSLBulkInference', True))
   def testPredictionsExtractorWithRegressionModel(self,
@@ -55,8 +68,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    schema = text_format.Parse(
-        """
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
         feature {
           name: "prediction"
           type: FLOAT
@@ -77,15 +92,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "fixed_string"
           type: BYTES
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        """, schema_pb2.Schema()))
 
     examples = [
         self._makeExample(
@@ -129,7 +136,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -143,7 +149,89 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(result, check_result, label='result')
+      util.assert_that(result, check_result)
+
+  def testPredictionsExtractorNoDefinedBatchSize(self):
+    """Simple test to cover batch_size=None code path."""
+    temp_export_dir = self._getExportDir()
+    export_dir, _ = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(temp_export_dir, None))
+
+    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
+        feature {
+          name: "prediction"
+          type: FLOAT
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        feature {
+          name: "fixed_int"
+          type: INT
+        }
+        feature {
+          name: "fixed_float"
+          type: FLOAT
+        }
+        feature {
+          name: "fixed_string"
+          type: BYTES
+        }
+        """, schema_pb2.Schema()))
+
+    examples = [
+        self._makeExample(
+            prediction=0.2,
+            label=1.0,
+            fixed_int=1,
+            fixed_float=1.0,
+            fixed_string='fixed_string1'),
+        self._makeExample(
+            prediction=0.8,
+            label=0.0,
+            fixed_int=1,
+            fixed_float=1.0,
+            fixed_string='fixed_string2'),
+        self._makeExample(
+            prediction=0.5,
+            label=0.0,
+            fixed_int=2,
+            fixed_float=1.0,
+            fixed_string='fixed_string3')
+    ]
+
+    prediction_extractor = predictions_extractor.PredictionsExtractor(
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model,
+        inference_implementation=predictions_extractor.TfxBslInferenceWrapper)
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
+                                    reshuffle=False)
+          | 'BatchExamples' >> tfx_io.BeamSource()
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform
+          | beam.FlatMap(lambda extracts: extracts[constants.PREDICTIONS_KEY]))
+      # pylint: enable=no-value-for-parameter
+
+      util.assert_that(
+          result,
+          util.equal_to(
+              [np.array([.2]), np.array([.8]),
+               np.array([.5])],
+              equals_fn=np.isclose))
 
   @parameterized.named_parameters(
       ('ModelSignaturesDoFnInferenceUnspecifiedSignature', False, ''),
@@ -166,8 +254,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    schema = text_format.Parse(
-        """
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
         feature {
           name: "age"
           type: FLOAT
@@ -180,15 +270,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "label"
           type: INT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        """, schema_pb2.Schema()))
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
@@ -217,7 +299,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -245,7 +326,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(result, check_result, label='result')
+      util.assert_that(result, check_result)
 
   @parameterized.named_parameters(
       ('ModelSignaturesDoFnInferenceUnspecifiedSignature', False, ''),
@@ -269,8 +350,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    schema = text_format.Parse(
-        """
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
         feature {
           name: "age"
           type: FLOAT
@@ -283,15 +366,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "label"
           type: INT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        """, schema_pb2.Schema()))
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
@@ -321,7 +396,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -349,7 +423,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(result, check_result, label='result')
+      util.assert_that(result, check_result)
 
   @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
                                   ('TFXBSLBulkInference', True))
@@ -361,8 +435,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    schema = text_format.Parse(
-        """
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
         feature {
           name: "age"
           type: FLOAT
@@ -383,15 +459,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "other_label"
           type: FLOAT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        """, schema_pb2.Schema()))
 
     examples = [
         self._makeExample(
@@ -441,7 +509,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -457,7 +524,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(result, check_result, label='result')
+      util.assert_that(result, check_result)
 
   @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
                                   ('TFXBSLBulkInference', True))
@@ -475,8 +542,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         eval_saved_model_path=export_dir1, tags=[tf.saved_model.SERVING])
     eval_shared_model2 = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir2, tags=[tf.saved_model.SERVING])
-    schema = text_format.Parse(
-        """
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
         feature {
           name: "age"
           type: FLOAT
@@ -497,15 +566,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "other_label"
           type: FLOAT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        """, schema_pb2.Schema()))
 
     examples = [
         self._makeExample(
@@ -562,7 +623,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -580,7 +640,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(result, check_result, label='result')
+      util.assert_that(result, check_result)
 
   # Note: The funtionality covered in this unit test is not supported by
   # PredictionExtractorOSS. This Keras model accepts multiple input tensors,
@@ -622,8 +682,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    schema = text_format.Parse(
-        """
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
         tensor_representation_group {
           key: ""
           value {
@@ -659,15 +721,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "non_model_feature"
           type: INT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        """, schema_pb2.Schema()))
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config, eval_shared_model=eval_shared_model)
 
@@ -691,7 +745,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -703,7 +756,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(result, check_result, label='result')
+      util.assert_that(result, check_result)
 
   # Note: The funtionality covered in this unit test is not supported by
   # PredictionExtractorOSS. This Keras model does not include a signature that
@@ -738,8 +791,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    schema = text_format.Parse(
-        """
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
         tensor_representation_group {
           key: ""
           value {
@@ -762,15 +817,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "non_model_feature"
           type: INT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        """, schema_pb2.Schema()))
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config, eval_shared_model=eval_shared_model)
 
@@ -794,7 +841,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -806,7 +852,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(result, check_result, label='result')
+      util.assert_that(result, check_result)
 
   # Note: The funtionality covered in this unit test is not supported by
   # PredictionExtractorOSS. This Keras model accepts multiple input tensors,
@@ -837,8 +883,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    schema = text_format.Parse(
-        """
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
         tensor_representation_group {
           key: ""
           value {
@@ -870,15 +918,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "input2"
           type: FLOAT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        """, schema_pb2.Schema()))
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config, eval_shared_model=eval_shared_model)
 
@@ -906,7 +946,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(predict_extracts, check_result, label='result')
+      util.assert_that(predict_extracts, check_result)
 
   # Note this test is not supported by the new PredictionsExtractorOSS because
   # the estimator model it uses has only one classification API signature which
@@ -920,8 +960,10 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
-    schema = text_format.Parse(
-        """
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
         feature {
           name: "classes"
           type: BYTES
@@ -934,15 +976,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "labels"
           type: BYTES
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        """, schema_pb2.Schema()))
     prediction_extractor = predictions_extractor.PredictionsExtractor(
         eval_config=eval_config, eval_shared_model=eval_shared_model)
 
@@ -971,7 +1005,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(predict_extracts, check_result, label='result')
+      util.assert_that(predict_extracts, check_result)
 
   # TODO(b/239975835): Remove this test for version 1.0.
   @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
@@ -1029,14 +1063,8 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     # False.
     if hasattr(schema, 'generate_legacy_feature_spec'):
       schema.generate_legacy_feature_spec = False
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config, schema)
 
     examples = [
         self._makeExample(
@@ -1066,7 +1094,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -1086,7 +1113,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
-      util.assert_that(result, check_result, label='result')
+      util.assert_that(result, check_result)
 
 
 if __name__ == '__main__':
