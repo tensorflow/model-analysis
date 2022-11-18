@@ -50,7 +50,8 @@ class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
                num_detections_key: Optional[str] = None,
-               model_name=''):
+               allow_missing_key: bool = False,
+               model_name: str = ''):
     """Initialize the preprocessor for bounding box match.
 
     Args:
@@ -78,6 +79,8 @@ class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
         'ymin', 'xmax', 'ymax', 'class_id', 'scores']
       num_detections_key: (Optional) Number of detections in each column except
         the paddings.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
       model_name: Optional model name (if multi-model evaluation).
     """
     if not name:
@@ -101,6 +104,7 @@ class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
     self._labels_to_stack = labels_to_stack
     self._predictions_to_stack = predictions_to_stack
     self._num_detections_key = num_detections_key
+    self._allow_missing_key = allow_missing_key
     self._model_name = model_name
 
   def process(
@@ -111,17 +115,28 @@ class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
     extracts = util.StandardExtracts(extracts)
     if self._labels_to_stack:
       extracts[constants.LABELS_KEY] = object_detection_format.stack_labels(
-          extracts, self._labels_to_stack, model_name=self._model_name)
+          extracts=extracts,
+          col_names=self._labels_to_stack,
+          model_name=self._model_name,
+          allow_missing_key=self._allow_missing_key)
     if self._predictions_to_stack:
       predictions = object_detection_format.stack_predictions(
-          extracts, self._predictions_to_stack, model_name=self._model_name)
+          extracts=extracts,
+          col_names=self._predictions_to_stack,
+          model_name=self._model_name,
+          allow_missing_key=self._allow_missing_key)
     else:
       predictions = extracts.get_predictions(model_name=self._model_name)
-    if self._num_detections_key:
+
+    if self._num_detections_key and predictions.size:
       predictions = (
           object_detection_format.truncate_by_num_detections(
-              extracts, self._num_detections_key, predictions,
-              self._model_name))
+              extracts=extracts,
+              num_rows_key=self._num_detections_key,
+              array_to_truncate=predictions,
+              model_name=self._model_name,
+              allow_missing_key=self._allow_missing_key))
+
     extracts[constants.PREDICTIONS_KEY] = predictions
 
     if extracts[constants.LABELS_KEY].ndim != 2 or extracts[

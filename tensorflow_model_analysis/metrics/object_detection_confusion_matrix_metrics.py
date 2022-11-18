@@ -55,7 +55,8 @@ class ObjectDetectionPrecisionAtRecall(
                max_num_detections: Optional[int] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initializes PrecisionAtRecall metric.
 
     The metric supports using multiple outputs to form the labels/predictions if
@@ -96,6 +97,8 @@ class ObjectDetectionPrecisionAtRecall(
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
     for r in [recall] if isinstance(recall, float) else recall:
       if r < 0 or r > 1:
@@ -114,7 +117,8 @@ class ObjectDetectionPrecisionAtRecall(
         class_weight=class_weight,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _default_name(self) -> str:
     return OBJECT_DETECTION_PRECISION_AT_RECALL_NAME
@@ -135,6 +139,7 @@ class ObjectDetectionPrecisionAtRecall(
                            labels_to_stack: Optional[List[str]] = None,
                            predictions_to_stack: Optional[List[str]] = None,
                            num_detections_key: Optional[str] = None,
+                           allow_missing_key: bool = False,
                            **kwargs) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
         class_id=class_id,
@@ -154,6 +159,7 @@ class ObjectDetectionPrecisionAtRecall(
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key,
         model_name=model_name)
     return super()._metric_computations(
         thresholds=thresholds,
@@ -189,7 +195,8 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
                max_num_detections: Optional[int] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initializes Recall metric.
 
     The metric supports using multiple outputs to form the labels/predictions if
@@ -231,6 +238,8 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
     super().__init__(
         thresholds=thresholds,
@@ -242,7 +251,8 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
         class_weight=class_weight,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _default_name(self) -> str:
     return OBJECT_DETECTION_RECALL_NAME
@@ -263,6 +273,7 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
       labels_to_stack: Optional[List[str]] = None,
       predictions_to_stack: Optional[List[str]] = None,
       num_detections_key: Optional[str] = None,
+      allow_missing_key: bool = False,
       **kwargs,
   ) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
@@ -283,6 +294,7 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key,
         model_name=model_name)
     return super()._metric_computations(
         thresholds=thresholds,
@@ -317,7 +329,8 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
                max_num_detections: Optional[int] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initializes Recall metric.
 
     The metric supports using multiple outputs to form the labels/predictions if
@@ -359,6 +372,8 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
     super().__init__(
         thresholds=thresholds,
@@ -370,7 +385,8 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
         class_weight=class_weight,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _default_name(self) -> str:
     return OBJECT_DETECTION_PRECISION_NAME
@@ -391,6 +407,7 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
       labels_to_stack: Optional[List[str]] = None,
       predictions_to_stack: Optional[List[str]] = None,
       num_detections_key: Optional[str] = None,
+      allow_missing_key: bool = False,
       **kwargs,
   ) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
@@ -411,6 +428,7 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key,
         model_name=model_name)
     return super()._metric_computations(
         thresholds=thresholds,
@@ -447,7 +465,8 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
                max_num_detections: Optional[int] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initializes MaxRecall metrics, it calculates the maximum recall.
 
     The metric supports using multiple outputs to form the labels/predictions if
@@ -483,6 +502,8 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
     super().__init__(
         name=name,
@@ -493,7 +514,8 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
         class_weight=class_weight,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _default_name(self) -> str:
     return OBJECT_DETECTION_MAX_RECALL_NAME
@@ -514,6 +536,7 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
                            labels_to_stack: Optional[List[str]] = None,
                            predictions_to_stack: Optional[List[str]] = None,
                            num_detections_key: Optional[str] = None,
+                           allow_missing_key: bool = False,
                            **kwargs) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
         class_id=class_id,
@@ -531,6 +554,7 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key,
         model_name=model_name)
     return super()._metric_computations(
         thresholds=thresholds,
@@ -566,7 +590,8 @@ class ObjectDetectionThresholdAtRecall(
                max_num_detections: Optional[int] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initializes ThresholdAtRecall metric.
 
     The metric supports using multiple outputs to form the labels/predictions if
@@ -607,6 +632,8 @@ class ObjectDetectionThresholdAtRecall(
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
     for r in [recall] if isinstance(recall, float) else recall:
       if r < 0 or r > 1:
@@ -625,7 +652,8 @@ class ObjectDetectionThresholdAtRecall(
         class_weight=class_weight,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _default_name(self) -> str:
     return OBJECT_DETECTION_THRESHOLD_AT_RECALL_NAME
@@ -646,6 +674,7 @@ class ObjectDetectionThresholdAtRecall(
                            labels_to_stack: Optional[List[str]] = None,
                            predictions_to_stack: Optional[List[str]] = None,
                            num_detections_key: Optional[str] = None,
+                           allow_missing_key: bool = False,
                            **kwargs) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
         class_id=class_id,
@@ -665,6 +694,7 @@ class ObjectDetectionThresholdAtRecall(
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key,
         model_name=model_name)
     return super()._metric_computations(
         thresholds=thresholds,

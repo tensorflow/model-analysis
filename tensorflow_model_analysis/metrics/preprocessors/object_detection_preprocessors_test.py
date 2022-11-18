@@ -146,6 +146,35 @@ _BOXMATCH_CASE1_RESULT = [{
     constants.EXAMPLE_WEIGHTS_KEY: np.array([1.])
 }]
 
+_BOXMATCH_CASE2_PREDICT_NOT_FOUND = util.StandardExtracts({
+    constants.LABELS_KEY: {
+        'xmin': np.array([30, 50]),
+        'ymin': np.array([100, 100]),
+        'xmax': np.array([70, 80]),
+        'ymax': np.array([300, 200]),
+        'class_id': np.array([0, 0])
+    },
+    # Searching labels in tranformed features
+    constants.TRANSFORMED_FEATURES_KEY: {},
+    constants.PREDICTIONS_KEY: {
+        'xmin': np.array([20, 30, 500]),
+        'ymin': np.array([130, 100, 100]),
+        'ymax': np.array([290, 300, 300]),
+        'class_id': np.array([0, 0, 0]),
+        'score': np.array([0.5, 0.3, 0.1])
+    },
+})
+
+_BOXMATCH_CASE2_PREDICT_NOT_FOUND_RESULT = [{
+    constants.LABELS_KEY: np.array([1.]),
+    constants.PREDICTIONS_KEY: np.array([0]),
+    constants.EXAMPLE_WEIGHTS_KEY: np.array([1.])
+}, {
+    constants.LABELS_KEY: np.array([1.]),
+    constants.PREDICTIONS_KEY: np.array([0]),
+    constants.EXAMPLE_WEIGHTS_KEY: np.array([1.])
+}]
+
 
 class ObjectDetectionPreprocessorTest(parameterized.TestCase):
 
@@ -245,6 +274,45 @@ class ObjectDetectionPreprocessorTest(parameterized.TestCase):
       def check_result(result):
         # Only single extract case is tested
         self.assertLen(result, 4)
+        for updated_extracts, expected_input in zip(result, expected_inputs):
+          self.assertIn(constants.PREDICTIONS_KEY, updated_extracts)
+          np.testing.assert_allclose(
+              updated_extracts[constants.PREDICTIONS_KEY],
+              expected_input[constants.PREDICTIONS_KEY])
+          self.assertIn(constants.LABELS_KEY, updated_extracts)
+          np.testing.assert_allclose(updated_extracts[constants.LABELS_KEY],
+                                     expected_input[constants.LABELS_KEY])
+          self.assertIn(constants.EXAMPLE_WEIGHTS_KEY, updated_extracts)
+          np.testing.assert_allclose(
+              updated_extracts[constants.EXAMPLE_WEIGHTS_KEY],
+              expected_input[constants.EXAMPLE_WEIGHTS_KEY])
+
+      beam_testing_util.assert_that(updated_pcoll, check_result)
+
+  @parameterized.named_parameters(
+      ('not_found', _BOXMATCH_CASE2_PREDICT_NOT_FOUND, 0, 0.5,
+       ['xmin', 'ymin', 'xmax', 'ymax',
+        'class_id'], ['xmin', 'ymin', 'xmax', 'ymax', 'class_id',
+                      'score'], _BOXMATCH_CASE2_PREDICT_NOT_FOUND_RESULT))
+  def testBoundingBoxMatchPreprocessorWithKeyNotFound(self, extracts, class_id,
+                                                      iou_threshold,
+                                                      labels_stack,
+                                                      predictions_stack,
+                                                      expected_inputs):
+    with beam.Pipeline() as p:
+      updated_pcoll = (
+          p | 'Create' >> beam.Create([extracts])
+          | 'Preprocess' >> beam.ParDo(
+              object_detection_preprocessors.BoundingBoxMatchPreprocessor(
+                  class_id=class_id,
+                  iou_threshold=iou_threshold,
+                  labels_to_stack=labels_stack,
+                  predictions_to_stack=predictions_stack,
+                  allow_missing_key=True)))
+
+      def check_result(result):
+        # Only single extract case is tested
+        self.assertLen(result, 2)
         for updated_extracts, expected_input in zip(result, expected_inputs):
           self.assertIn(constants.PREDICTIONS_KEY, updated_extracts)
           np.testing.assert_allclose(
