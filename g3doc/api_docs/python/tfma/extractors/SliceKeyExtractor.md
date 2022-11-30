@@ -26,7 +26,7 @@ the PredictExtractor.
 The extractor's PTransform yields a copy of the Extracts input with an
 additional extract pointing at the list of SliceKeyType values keyed by
 tfma.SLICE_KEY_TYPES_KEY. If materialize is True then a materialized version of
-the slice keys will be added under the key tfma.MATERIALZED_SLICE_KEYS_KEY.
+the slice keys will be added under the key tfma.SLICE_KEYS_KEY.
 
 #### Args:
 
