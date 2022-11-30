@@ -35,7 +35,7 @@ function loadVulcanizedTemplate() {
     if (jupyterConfigData) {
       const configData = JSON.parse(jupyterConfigData.textContent || '');
       if (configData) {
-        baseUrl = configMap['baseUrl'] || '/';
+        baseUrl = configData['baseUrl'] || '/';
       }
     }
 
