@@ -241,7 +241,7 @@ def verify_and_update_eval_shared_models(
   # always use '' as the model name regardless of whether a name is passed.
   elif len(eval_shared_models) == 1 and eval_shared_models[0].model_name:
     eval_shared_models[0] = eval_shared_models[0]._replace(model_name='')
-  return eval_shared_models
+  return eval_shared_models  # pytype: disable=bad-return-type  # py310-upgrade
 
 
 def get_feature_values_for_model_spec_field(
