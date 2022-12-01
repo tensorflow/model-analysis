@@ -930,6 +930,60 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
         model_util.get_default_signature_name_from_saved_model_proto(
             saved_model_proto))
 
+  def testGetDefaultModelSignatureFromModelPath(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+        signature_def: {
+          key: "foo"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape { dim { size: 1 } }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    temp_dir = self.create_tempdir()
+    temp_dir.create_file(
+        'saved_model.pb', content=saved_model_proto.SerializeToString())
+    self.assertEqual(
+        tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY,
+        model_util.get_default_signature_name_from_model_path(temp_dir))
+
   def testGetDefaultModelSignatureFromSavedModelProtoWithPredict(self):
     saved_model_proto = text_format.Parse(
         """

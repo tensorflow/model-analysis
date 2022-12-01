@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test for batched predict extractor."""
+"""Tests for Tfx-Bsl Predictions Extractor."""
 
 import os
 
@@ -23,12 +23,12 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.eval_saved_model.example_trainers import batch_size_limited_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import dnn_classifier
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
+from tensorflow_model_analysis.extractors import tfx_bsl_predictions_extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
@@ -37,8 +37,8 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
-                               parameterized.TestCase):
+class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
+                                     parameterized.TestCase):
 
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
@@ -56,7 +56,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
         tensor_representations=tensor_adapter_config.tensor_representations)
     return tfx_io, feature_extractor
 
-  def testPredictionsExtractorWithRegressionModel(self):
+  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
+                                  ('TFXBSLBulkInference', True))
+  def testRegressionModel(self, experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
     export_dir, _ = (
         fixed_prediction_estimator_extra_fields
@@ -113,8 +115,14 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     ]
     num_examples = len(examples)
 
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+    if experimental_bulk_inference:
+      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -141,7 +149,7 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result)
 
-  def testPredictionsExtractorNoDefinedBatchSize(self):
+  def testNoDefinedBatchSize(self):
     """Simple test to cover batch_size=None code path."""
     temp_export_dir = self._getExportDir()
     export_dir, _ = (
@@ -198,8 +206,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
             fixed_string='fixed_string3')
     ]
 
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+    prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+        eval_config=eval_config,
+        eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -222,13 +231,17 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
               equals_fn=np.isclose))
 
   @parameterized.named_parameters(
-      ('ModelSignaturesDoFnInferenceUnspecifiedSignature', ''),
-      ('ModelSignaturesDoFnInferencePredictSignature', 'predict'),
-      ('ModelSignaturesDoFnInferenceServingDefaultSignature',
+      ('ModelSignaturesDoFnInferenceUnspecifiedSignature', False, ''),
+      ('ModelSignaturesDoFnInferencePredictSignature', False, 'predict'),
+      ('ModelSignaturesDoFnInferenceServingDefaultSignature', False,
        'serving_default'),
-      ('ModelSignaturesDoFnInferenceClassificationSignature', 'classification'))
-  def testPredictionsExtractorWithBinaryClassificationModel(
-      self, signature_name):
+      ('ModelSignaturesDoFnInferenceClassificationSignature', False,
+       'classification'), ('TFXBSLBulkInferenceUnspecifiedSignature', True, ''),
+      ('TFXBSLBulkInferencePredictSignature', True, 'predict'),
+      ('TFXBSLBulkInferenceServingDefaultSignature', True, 'serving_default'),
+      ('TFXBSLBulkInferenceClassificationSignature', True, 'classification'))
+  def testBinaryClassificationModel(
+      self, experimental_bulk_inference, signature_name):
     temp_export_dir = self._getExportDir()
     num_classes = 2
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
@@ -263,8 +276,14 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     ]
     num_examples = len(examples)
 
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+    if experimental_bulk_inference:
+      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -306,12 +325,16 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result)
 
   @parameterized.named_parameters(
-      ('ModelSignaturesDoFnInferenceUnspecifiedSignature', ''),
-      ('ModelSignaturesDoFnInferencePredictSignature', 'predict'),
-      ('ModelSignaturesDoFnInferenceServingDefaultSignature',
+      ('ModelSignaturesDoFnInferenceUnspecifiedSignature', False, ''),
+      ('ModelSignaturesDoFnInferencePredictSignature', False, 'predict'),
+      ('ModelSignaturesDoFnInferenceServingDefaultSignature', False,
        'serving_default'),
-      ('ModelSignaturesDoFnInferenceClassificationSignature', 'classification'))
-  def testPredictionsExtractorWithMultiClassModel(self, signature_name):
+      ('ModelSignaturesDoFnInferenceClassificationSignature', False,
+       'classification'), ('TFXBSLBulkInferenceUnspecifiedSignature', True, ''),
+      ('TFXBSLBulkInferencePredictSignature', True, 'predict'),
+      ('TFXBSLBulkInferenceServingDefaultSignature', True, 'serving_default'),
+      ('TFXBSLBulkInferenceClassificationSignature', True, 'classification'))
+  def testMultiClassModel(self, experimental_bulk_inference, signature_name):
     temp_export_dir = self._getExportDir()
     num_classes = 3
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
@@ -347,8 +370,14 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     ]
     num_examples = len(examples)
 
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+    if experimental_bulk_inference:
+      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -389,7 +418,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result)
 
-  def testPredictionsExtractorWithMultiOutputModel(self):
+  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
+                                  ('TFXBSLBulkInference', True))
+  def testMultiOutputModel(self, experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
     export_dir, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
@@ -450,8 +481,14 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     ]
     num_examples = len(examples)
 
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+    if experimental_bulk_inference:
+      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config, eval_shared_model=eval_shared_model)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -480,7 +517,9 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result)
 
-  def testPredictionsExtractorWithMultiModels(self):
+  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
+                                  ('TFXBSLBulkInference', True))
+  def testMultiModels(self, experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
     export_dir1, _ = multi_head.simple_multi_head(temp_export_dir, None)
     export_dir2, _ = multi_head.simple_multi_head(temp_export_dir, None)
@@ -547,12 +586,21 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     ]
     num_examples = len(examples)
 
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model={
-            'model1': eval_shared_model1,
-            'model2': eval_shared_model2
-        })
+    if experimental_bulk_inference:
+      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model={
+              'model1': eval_shared_model1,
+              'model2': eval_shared_model2
+          },
+          batch_size=num_examples)
+    else:
+      prediction_extractor = predictions_extractor.PredictionsExtractor(
+          eval_config=eval_config,
+          eval_shared_model={
+              'model1': eval_shared_model1,
+              'model2': eval_shared_model2
+          })
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -577,469 +625,6 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
               for pred_key in ('logistic', 'probabilities', 'all_classes'):
                 self.assertIn(output_name + '/' + pred_key,
                               got[0][constants.PREDICTIONS_KEY][model_name])
-
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
-
-      util.assert_that(result, check_result)
-
-  # Note: The funtionality covered in this unit test is not supported by
-  # PredictionExtractorOSS. This Keras model accepts multiple input tensors,
-  # and does not include a signature that # accepts serialized input
-  # (i.e. string). This is a requirement for using the bulk inference APIs which
-  # only support serialized input right now.
-  @parameterized.named_parameters(
-      ('ModelSignaturesDoFnInferenceCallableModel', ''),
-      ('ModelSignaturesDoFnInferenceServingDefault', 'serving_default'))
-  def testPredictionsExtractorWithKerasModel(self, signature_name):
-    input1 = tf.keras.layers.Input(shape=(2,), name='input1')
-    input2 = tf.keras.layers.Input(shape=(2,), name='input2')
-    inputs = [input1, input2]
-    input_layer = tf.keras.layers.concatenate(inputs)
-    output_layer = tf.keras.layers.Dense(
-        1, activation=tf.nn.sigmoid, name='output')(
-            input_layer)
-    model = tf.keras.models.Model(inputs, output_layer)
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy'])
-
-    train_features = {
-        'input1': [[0.0, 0.0], [1.0, 1.0]],
-        'input2': [[1.0, 1.0], [0.0, 0.0]]
-    }
-    labels = [[1], [0]]
-    example_weights = [1.0, 0.5]
-    dataset = tf.data.Dataset.from_tensor_slices(
-        (train_features, labels, example_weights))
-    dataset = dataset.shuffle(buffer_size=1).repeat().batch(2)
-    model.fit(dataset, steps_per_epoch=1)
-
-    export_dir = self._getExportDir()
-    model.save(export_dir, save_format='tf')
-
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
-    eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
-        eval_config,
-        text_format.Parse(
-            """
-        tensor_representation_group {
-          key: ""
-          value {
-            tensor_representation {
-              key: "input1"
-              value {
-                dense_tensor {
-                  column_name: "input1"
-                  shape { dim { size: 2 } }
-                }
-              }
-            }
-            tensor_representation {
-              key: "input2"
-              value {
-                dense_tensor {
-                  column_name: "input2"
-                  shape { dim { size: 2 } }
-                }
-              }
-            }
-          }
-        }
-        feature {
-          name: "input1"
-          type: FLOAT
-        }
-        feature {
-          name: "input2"
-          type: FLOAT
-        }
-        feature {
-          name: "non_model_feature"
-          type: INT
-        }
-        """, schema_pb2.Schema()))
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
-
-    examples = [
-        self._makeExample(
-            input1=[0.0, 0.0], input2=[1.0, 1.0],
-            non_model_feature=0),  # should be ignored by model
-        self._makeExample(
-            input1=[1.0, 1.0], input2=[0.0, 0.0],
-            non_model_feature=1),  # should be ignored by model
-    ]
-    num_examples = len(examples)
-
-    with beam.Pipeline() as pipeline:
-      # pylint: disable=no-value-for-parameter
-      result = (
-          pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
-          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-      # pylint: enable=no-value-for-parameter
-
-      def check_result(got):
-        try:
-          self.assertLen(got, 1)
-          # We can't verify the actual predictions, but we can verify the keys.
-          self.assertIn(constants.PREDICTIONS_KEY, got[0])
-
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
-
-      util.assert_that(result, check_result)
-
-  # Note: The funtionality covered in this unit test is not supported by
-  # PredictionExtractorOSS. This Keras model does not include a signature that
-  # accepts serialized input (i.e. string). This is a requirement for using the
-  # bulk inference APIs which only support serialized input right now.
-  @parameterized.named_parameters(
-      ('ModelSignaturesDoFnInferenceCallableModel', ''),
-      ('ModelSignaturesDoFnInferenceServingDefault', 'serving_default'))
-  def testPredictionsExtractorWithSequentialKerasModel(self, signature_name):
-    # Note that the input will be called 'test_input'
-    model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(
-            1, activation=tf.nn.sigmoid, input_shape=(2,), name='test')
-    ])
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy'])
-
-    train_features = {'test_input': [[0.0, 0.0], [1.0, 1.0]]}
-    labels = [[1], [0]]
-    example_weights = [1.0, 0.5]
-    dataset = tf.data.Dataset.from_tensor_slices(
-        (train_features, labels, example_weights))
-    dataset = dataset.shuffle(buffer_size=1).repeat().batch(2)
-    model.fit(dataset, steps_per_epoch=1)
-
-    export_dir = self._getExportDir()
-    model.save(export_dir, save_format='tf')
-
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
-    eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
-        eval_config,
-        text_format.Parse(
-            """
-        tensor_representation_group {
-          key: ""
-          value {
-            tensor_representation {
-              key: "test"
-              value {
-                dense_tensor {
-                  column_name: "test"
-                  shape { dim { size: 2 } }
-                }
-              }
-            }
-          }
-        }
-        feature {
-          name: "test"
-          type: FLOAT
-        }
-        feature {
-          name: "non_model_feature"
-          type: INT
-        }
-        """, schema_pb2.Schema()))
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
-
-    # Notice that the features are 'test' but the model expects 'test_input'.
-    # This tests that the PredictExtractor properly handles this case.
-    examples = [
-        self._makeExample(test=[0.0, 0.0],
-                          non_model_feature=0),  # should be ignored by model
-        self._makeExample(test=[1.0, 1.0],
-                          non_model_feature=1),  # should be ignored by model
-    ]
-    num_examples = len(examples)
-
-    with beam.Pipeline() as pipeline:
-      # pylint: disable=no-value-for-parameter
-      result = (
-          pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
-          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-      # pylint: enable=no-value-for-parameter
-
-      def check_result(got):
-        try:
-          self.assertLen(got, 1)
-          # We can't verify the actual predictions, but we can verify the keys.
-          self.assertIn(constants.PREDICTIONS_KEY, got[0])
-
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
-
-      util.assert_that(result, check_result)
-
-  # Note: The funtionality covered in this unit test is not supported by
-  # PredictionExtractorOSS. This Keras model accepts multiple input tensors,
-  # and does not include a signature that # accepts serialized input
-  # (i.e. string). This is a requirement for using the bulk inference APIs which
-  # only support serialized input right now.
-  def testBatchSizeLimitWithKerasModel(self):
-    input1 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input1')
-    input2 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input2')
-
-    inputs = [input1, input2]
-    input_layer = tf.keras.layers.concatenate(inputs)
-
-    def add_1(tensor):
-      return tf.add_n([tensor, tf.constant(1.0, shape=(1, 2))])
-
-    assert_layer = tf.keras.layers.Lambda(add_1)(input_layer)
-
-    model = tf.keras.models.Model(inputs, assert_layer)
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy'])
-
-    export_dir = self._getExportDir()
-    model.save(export_dir, save_format='tf')
-
-    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
-    eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
-        eval_config,
-        text_format.Parse(
-            """
-        tensor_representation_group {
-          key: ""
-          value {
-            tensor_representation {
-              key: "input1"
-              value {
-                dense_tensor {
-                  column_name: "input1"
-                  shape { dim { size: 1 } }
-                }
-              }
-            }
-            tensor_representation {
-              key: "input2"
-              value {
-                dense_tensor {
-                  column_name: "input2"
-                  shape { dim { size: 1 } }
-                }
-              }
-            }
-          }
-        }
-        feature {
-          name: "input1"
-          type: FLOAT
-        }
-        feature {
-          name: "input2"
-          type: FLOAT
-        }
-        """, schema_pb2.Schema()))
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
-
-    examples = []
-    for _ in range(4):
-      examples.append(self._makeExample(input1=0.0, input2=1.0))
-
-    with beam.Pipeline() as pipeline:
-      predict_extracts = (
-          pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=1)
-          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
-      def check_result(got):
-        try:
-          self.assertLen(got, 4)
-          # We can't verify the actual predictions, but we can verify the keys.
-          for item in got:
-            self.assertIn(constants.PREDICTIONS_KEY, item)
-
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
-
-      util.assert_that(predict_extracts, check_result)
-
-  # Note this test is not supported by the new PredictionsExtractorOSS because
-  # the estimator model it uses has only one classification API signature which
-  # does not conform to the output shape expectations of the classification API.
-  # (i.e. the shape of the return is (1,) a 1 dim, single class return.
-  # Expectation is a 2 dim shape of (batch_size, num_classes) output.)
-  def testBatchSizeLimit(self):
-    temp_export_dir = self._getExportDir()
-    _, export_dir = batch_size_limited_classifier.simple_batch_size_limited_classifier(
-        None, temp_export_dir)
-    eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
-    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
-    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
-        eval_config,
-        text_format.Parse(
-            """
-        feature {
-          name: "classes"
-          type: BYTES
-        }
-        feature {
-          name: "scores"
-          type: FLOAT
-        }
-        feature {
-          name: "labels"
-          type: BYTES
-        }
-        """, schema_pb2.Schema()))
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
-
-    examples = []
-    for _ in range(4):
-      examples.append(
-          self._makeExample(classes='first', scores=0.0, labels='third'))
-
-    with beam.Pipeline() as pipeline:
-      predict_extracts = (
-          pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=1)
-          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-
-      def check_result(got):
-        try:
-          self.assertLen(got, 4)
-          # We can't verify the actual predictions, but we can verify the keys.
-          for item in got:
-            self.assertIn(constants.PREDICTIONS_KEY, item)
-
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
-
-      util.assert_that(predict_extracts, check_result)
-
-  # TODO(b/239975835): Remove this test for version 1.0.
-  def testRekeyPredictionsInFeaturesForPrematerializedPredictions(self):
-    model_spec1 = config_pb2.ModelSpec(
-        name='model1', prediction_key='prediction')
-    model_spec2 = config_pb2.ModelSpec(
-        name='model2',
-        prediction_keys={
-            'output1': 'prediction1',
-            'output2': 'prediction2'
-        })
-    eval_config = config_pb2.EvalConfig(model_specs=[model_spec1, model_spec2])
-    schema = text_format.Parse(
-        """
-        tensor_representation_group {
-          key: ""
-          value {
-            tensor_representation {
-              key: "fixed_int"
-              value {
-                dense_tensor {
-                  column_name: "fixed_int"
-                }
-              }
-            }
-          }
-        }
-        feature {
-          name: "prediction"
-          type: FLOAT
-          shape: { }
-          presence: { min_fraction: 1 }
-        }
-        feature {
-          name: "prediction1"
-          type: FLOAT
-          shape: { }
-          presence: { min_fraction: 1 }
-        }
-        feature {
-          name: "prediction2"
-          type: FLOAT
-          shape: { }
-          presence: { min_fraction: 1 }
-        }
-        feature {
-          name: "fixed_int"
-          type: INT
-        }
-        """, schema_pb2.Schema())
-    # TODO(b/73109633): Remove when field is removed or its default changes to
-    # False.
-    if hasattr(schema, 'generate_legacy_feature_spec'):
-      schema.generate_legacy_feature_spec = False
-    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
-        eval_config, schema)
-
-    examples = [
-        self._makeExample(
-            prediction=1.0, prediction1=1.0, prediction2=0.0, fixed_int=1),
-        self._makeExample(
-            prediction=1.0, prediction1=1.0, prediction2=1.0, fixed_int=1)
-    ]
-    num_examples = len(examples)
-
-    prediction_extractor = predictions_extractor.PredictionsExtractor(
-        eval_config=eval_config, eval_shared_model=None)
-
-    with beam.Pipeline() as pipeline:
-      # pylint: disable=no-value-for-parameter
-      result = (
-          pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
-          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
-          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
-      # pylint: enable=no-value-for-parameter
-
-      def check_result(got):
-        try:
-          self.assertLen(got, 1)
-          for model_name in ('model1', 'model2'):
-            self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY])
-          self.assertAllClose(
-              np.array([1.0, 1.0]), got[0][constants.PREDICTIONS_KEY]['model1'])
-
-          self.assertAllClose(
-              {
-                  'output1': np.array([1.0, 1.0]),
-                  'output2': np.array([0.0, 1.0])
-              }, got[0][constants.PREDICTIONS_KEY]['model2'])
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

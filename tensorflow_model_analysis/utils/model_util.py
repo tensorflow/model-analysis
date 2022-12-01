@@ -33,6 +33,7 @@ from tensorflow_model_analysis.utils import util
 from tfx_bsl.tfxio import tensor_adapter
 
 from tensorflow.core.protobuf import saved_model_pb2  # pylint: disable=g-direct-tensorflow-import
+from tensorflow.python.saved_model import loader_impl  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 # TODO(b/162075791): Need to load tensorflow_ranking, tensorflow_text,
@@ -323,7 +324,7 @@ def get_feature_values_for_model_spec_field(
   return values
 
 
-def get_default_signature_name(model: Any) -> str:
+def get_default_signature_name_from_model(model: Any) -> str:
   """Returns default signature name for given model."""
   # First try 'predict' then try 'serving_default'. The estimator output
   # for the 'serving_default' key does not include all the heads in a
@@ -335,6 +336,11 @@ def get_default_signature_name(model: Any) -> str:
       _PREDICT_SIGNATURE_DEF_KEY in model.signatures):
     return _PREDICT_SIGNATURE_DEF_KEY
   return tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
+
+
+def get_default_signature_name_from_model_path(model_path: str) -> str:
+  return get_default_signature_name_from_saved_model_proto(
+      loader_impl.parse_saved_model(model_path))
 
 
 def get_default_signature_name_from_saved_model_proto(
@@ -416,7 +422,7 @@ def get_callable(model: Any,
   if not signature_name:
     if is_callable_fn(model):
       return model
-    signature_name = get_default_signature_name(model)
+    signature_name = get_default_signature_name_from_model(model)
 
   if signature_name not in model.signatures:
     if hasattr(model, signature_name):
@@ -474,7 +480,7 @@ def get_input_specs(model: Any,
     # Special support for keras-based models.
     if is_callable_fn(model):
       return get_callable_input_specs(model)
-    signature_name = get_default_signature_name(model)
+    signature_name = get_default_signature_name_from_model(model)
 
   if signature_name in model.signatures:
     signature = model.signatures[signature_name]
@@ -935,7 +941,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
             # If a signature name was not provided, default to using the serving
             # signature since parsing normally will be done outside model.
             if not signature_name:
-              signature_name = get_default_signature_name(model)
+              signature_name = get_default_signature_name_from_model(model)
 
           signature = signature or get_callable(model, signature_name, required)
           if signature is None:
