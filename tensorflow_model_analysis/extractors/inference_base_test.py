@@ -24,6 +24,7 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
@@ -143,3 +144,31 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result)
+
+  def testGetEvalSharedModelTwoModelCase(self):
+    model_name = 'model_1'
+    name_to_eval_shared_model = {
+        model_name: types.EvalSharedModel(model_name=model_name),
+        'model_2': types.EvalSharedModel(model_name='model_2')
+    }
+    returned_model = inference_base.get_eval_shared_model(
+        model_name, name_to_eval_shared_model)
+    self.assertEqual(model_name, returned_model.model_name)
+
+  def testGetEvalSharedModelOneModelCase(self):
+    model_name = 'model_1'
+    name_to_eval_shared_model = {
+        '': types.EvalSharedModel(model_name=model_name)
+    }
+    returned_model = inference_base.get_eval_shared_model(
+        model_name, name_to_eval_shared_model)
+    self.assertEqual(model_name, returned_model.model_name)
+
+  def testGetEvalSharedModelRaisesKeyError(self):
+    model_name = 'model_1'
+    name_to_eval_shared_model = {
+        'not_model_1': types.EvalSharedModel(model_name=model_name)
+    }
+    with self.assertRaises(ValueError):
+      inference_base.get_eval_shared_model(model_name,
+                                           name_to_eval_shared_model)

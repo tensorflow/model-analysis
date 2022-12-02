@@ -56,11 +56,8 @@ class TfxBslInferenceWrapper(beam.PTransform):
     model_names = []
     inference_specs = []
     for model_spec in model_specs:
-      try:
-        eval_shared_model = name_to_eval_shared_model[model_spec.name]
-      except KeyError as e:
-        raise ValueError(
-            'ModelSpec.name should match EvalSharedModel.model_name.') from e
+      eval_shared_model = inference_base.get_eval_shared_model(
+          model_spec.name, name_to_eval_shared_model)
       inference_spec_type = model_spec_pb2.InferenceSpecType()
       inference_spec_type.saved_model_spec.model_path = eval_shared_model.model_path
       inference_spec_type.saved_model_spec.tag[:] = eval_shared_model.model_loader.tags

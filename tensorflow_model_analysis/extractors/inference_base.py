@@ -26,6 +26,21 @@ from tensorflow_model_analysis.utils import util
 from tensorflow_serving.apis import prediction_log_pb2
 
 
+def get_eval_shared_model(
+    model_name: str, name_to_eval_shared_model: Dict[str, types.EvalSharedModel]
+) -> types.EvalSharedModel:
+  """Retrieves matching eval_shared_model based on model_name."""
+  if model_name in name_to_eval_shared_model:
+    eval_shared_model = name_to_eval_shared_model[model_name]
+  elif len(name_to_eval_shared_model) == 1 and '' in name_to_eval_shared_model:
+    # Attempt to recover by checking for a common case where the model_name is
+    # cleared when only one value is present.
+    eval_shared_model = name_to_eval_shared_model['']
+  else:
+    raise ValueError('ModelSpec.name should match EvalSharedModel.model_name.')
+  return eval_shared_model
+
+
 def _create_inference_input_tuple(
     extracts: types.Extracts) -> Tuple[types.Extracts, bytes]:
   """Creates a tuple containing the Extracts and input to the model."""
