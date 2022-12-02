@@ -13,7 +13,7 @@
 # limitations under the License.
 """Multi-class confusion matrix metrics at thresholds."""
 
-from typing import Callable, Dict, Iterable, List, Optional, NamedTuple
+from typing import Any, Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple
 
 import apache_beam as beam
 import numpy as np
@@ -113,6 +113,9 @@ def multi_class_confusion_matrices(
     thresholds: Optional[List[float]] = None,
     num_thresholds: Optional[int] = None,
     name: str = MULTI_CLASS_CONFUSION_MATRICES,
+    extract_label_prediction_and_weight: Optional[Callable[..., Iterator[Tuple[
+        np.ndarray, np.ndarray,
+        np.ndarray]]]] = metric_util.to_label_prediction_example_weight,
     eval_config: Optional[config_pb2.EvalConfig] = None,
     model_name: str = '',
     output_name: str = '',
@@ -128,6 +131,8 @@ def multi_class_confusion_matrices(
       bondardaries at -epsilon and 1.0+epsilon. Values must be > 0. Only one of
       num_thresholds or thresholds should be used.
     name: Metric name.
+    extract_label_prediction_and_weight: User-provided function argument that
+      yields label, prediction, and example weights for use in calculations.
     eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
@@ -160,7 +165,9 @@ def multi_class_confusion_matrices(
               key=key,
               eval_config=eval_config,
               example_weighted=example_weighted,
-              thresholds=thresholds))
+              thresholds=thresholds,
+              extract_label_prediction_and_weight=extract_label_prediction_and_weight
+          ))
   ]
 
 
@@ -229,11 +236,15 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
 
   def __init__(self, key: metric_types.MetricKey,
                eval_config: Optional[config_pb2.EvalConfig],
-               example_weighted: bool, thresholds: List[float]):
+               example_weighted: bool, thresholds: List[float],
+               extract_label_prediction_and_weight: Optional[Callable[...,
+                                                                      Any]]):
     self._key = key
     self._eval_config = eval_config
     self._example_weighted = example_weighted
     self._thresholds = thresholds if thresholds else [0.0]
+    self._extract_label_prediction_and_weight = (
+        extract_label_prediction_and_weight)
 
   def create_accumulator(self) -> Matrices:
     return Matrices()
@@ -241,7 +252,7 @@ class _MultiClassConfusionMatrixCombiner(beam.CombineFn):
   def add_input(self, accumulator: Matrices,
                 element: metric_types.StandardMetricInputs) -> Matrices:
     label, predictions, example_weight = next(
-        metric_util.to_label_prediction_example_weight(
+        self._extract_label_prediction_and_weight(
             element,
             eval_config=self._eval_config,
             model_name=self._key.model_name,
