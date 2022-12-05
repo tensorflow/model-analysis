@@ -1185,11 +1185,12 @@ class UtilTest(tf.test.TestCase):
       # Assert we maintain dtype.
       self.assertEqual(extract['predictions'].dtype, np.float64)
 
-  def testSplitThenMergeAllowingScalars(self):
+  def testSplitThenMergeAllowingScalarNumpyArray(self):
     extract = {
         'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
         'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64),
         'array_scalar': np.array([0.1], dtype=np.float64),
+        'objects': np.array([b'sun', b'moon', b'call'], dtype=object),
     }
     split_got = util.split_extracts(extract, expand_zero_dims=False)
     remerged_got = util.merge_extracts(split_got, squeeze_two_dim_vector=False)
@@ -1202,10 +1203,12 @@ class UtilTest(tf.test.TestCase):
     self.assertEqual(remerged_got['predictions'].shape, (3,))
     self.assertEqual(remerged_got['labels'].shape, (3, 1))
     self.assertEqual(remerged_got['array_scalar'].shape, (1,))
+    self.assertEqual(remerged_got['objects'].shape, (3,))
     # Assert we maintain dtype.
     self.assertEqual(remerged_got['predictions'].dtype, np.float64)
     self.assertEqual(remerged_got['labels'].dtype, np.float64)
     self.assertEqual(remerged_got['array_scalar'].dtype, np.float64)
+    self.assertEqual(remerged_got['objects'].dtype, np.object)
 
   def testSplitThenMergeDisallowingScalars(self):
     extract = {

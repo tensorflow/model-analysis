@@ -794,9 +794,14 @@ def merge_extracts(extracts: List[types.Extracts],
       t = tf.concat(
           [tf.expand_dims(to_tensorflow_tensor(t), 0) for t in target], 0)
       return to_tensor_value(t)
-    elif (all(isinstance(t, np.ndarray) for t in target) and
-          len({t.shape for t in target}) > 1):
+    elif all(isinstance(t, np.ndarray)
+             for t in target) and len({t.shape for t in target}) > 1:
       return types.VarLenTensorValue.from_dense_rows(target)
+    # If all value in the target are scalar numpy array, we stack them.
+    # This is to avoid np.array([np.array(b'abc'), np.array(b'abcd')])
+    # and stack to np.array([b'abc', b'abcd'])
+    elif all(isinstance(t, np.ndarray) and t.shape == () for t in target):  # pylint: disable=g-explicit-bool-comparison
+      return np.stack(target)
     else:
       arr = np.array(target)
       # Flatten values that were originally single item lists into a single list
