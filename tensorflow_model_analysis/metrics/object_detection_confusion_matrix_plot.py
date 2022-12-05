@@ -40,7 +40,8 @@ class ObjectDetectionConfusionMatrixPlot(
                max_num_detections: Optional[int] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initializes confusion matrix plot for object detection.
 
     The metric supports using multiple outputs to form the labels/predictions if
@@ -78,6 +79,8 @@ class ObjectDetectionConfusionMatrixPlot(
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
     super().__init__(
         num_thresholds=num_thresholds,
@@ -89,7 +92,8 @@ class ObjectDetectionConfusionMatrixPlot(
         class_weight=class_weight,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _confusion_matrix_plot(self,
                              num_thresholds: int = DEFAULT_NUM_THRESHOLDS,
@@ -106,6 +110,7 @@ class ObjectDetectionConfusionMatrixPlot(
                              labels_to_stack: Optional[List[str]] = None,
                              predictions_to_stack: Optional[List[str]] = None,
                              num_detections_key: Optional[str] = None,
+                             allow_missing_key: bool = False,
                              **kwargs) -> metric_types.MetricComputations:
 
     metric_util.validate_object_detection_arguments(
@@ -126,6 +131,7 @@ class ObjectDetectionConfusionMatrixPlot(
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key,
         model_name=model_name)
 
     return super()._confusion_matrix_plot(
