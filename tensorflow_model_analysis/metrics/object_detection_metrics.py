@@ -48,7 +48,8 @@ class COCOAveragePrecision(metric_types.Metric):
                name: Optional[str] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initialize average precision metric.
 
     This metric is only used in object-detection setting. It does not support
@@ -93,6 +94,8 @@ class COCOAveragePrecision(metric_types.Metric):
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
     if recalls is not None:
       recall_thresholds = recalls
@@ -114,7 +117,8 @@ class COCOAveragePrecision(metric_types.Metric):
         name=name,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _default_name(self) -> str:
     return AVERAGE_PRECISION_NAME
@@ -134,7 +138,8 @@ class COCOAveragePrecision(metric_types.Metric):
       example_weighted: bool = False,
       labels_to_stack: Optional[List[str]] = None,
       predictions_to_stack: Optional[List[str]] = None,
-      num_detections_key: Optional[str] = None
+      num_detections_key: Optional[str] = None,
+      allow_missing_key: bool = False,
   ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
     metric_util.validate_object_detection_arguments(
@@ -173,7 +178,8 @@ class COCOAveragePrecision(metric_types.Metric):
         class_id=class_id,
         class_weight=class_weight,
         area_range=area_range,
-        max_num_detections=max_num_detections)
+        max_num_detections=max_num_detections,
+        allow_missing_key=allow_missing_key)
 
     pr = (
         object_detection_confusion_matrix_metrics
@@ -188,7 +194,8 @@ class COCOAveragePrecision(metric_types.Metric):
             name=precision_at_recall_name,
             labels_to_stack=labels_to_stack,
             predictions_to_stack=predictions_to_stack,
-            num_detections_key=num_detections_key))
+            num_detections_key=num_detections_key,
+            allow_missing_key=allow_missing_key))
     computations = pr.computations(
         model_names=[model_name], output_names=[output_name])
     precisions_key = computations[-1].keys[-1]
@@ -227,7 +234,8 @@ class COCOMeanAveragePrecision(metric_types.Metric):
                name: Optional[str] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initializes mean average precision metric.
 
     This metric is only used in object-detection setting. It does not support
@@ -273,6 +281,8 @@ class COCOMeanAveragePrecision(metric_types.Metric):
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
 
     super().__init__(
@@ -288,7 +298,8 @@ class COCOMeanAveragePrecision(metric_types.Metric):
         name=name,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _default_name(self) -> str:
     return MEAN_AVERAGE_PRECISION_NAME
@@ -309,6 +320,7 @@ class COCOMeanAveragePrecision(metric_types.Metric):
                            labels_to_stack: Optional[List[str]] = None,
                            predictions_to_stack: Optional[List[str]] = None,
                            num_detections_key: Optional[str] = None,
+                           allow_missing_key: bool = False,
                            **kwargs) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
 
@@ -350,7 +362,8 @@ class COCOMeanAveragePrecision(metric_types.Metric):
                 class_id=class_id,
                 class_weight=class_weight,
                 area_range=area_range,
-                max_num_detections=max_num_detections))
+                max_num_detections=max_num_detections,
+                allow_missing_key=allow_missing_key))
 
         ap = COCOAveragePrecision(
             num_thresholds=num_thresholds,
@@ -364,7 +377,8 @@ class COCOMeanAveragePrecision(metric_types.Metric):
             name=average_precision_name,
             labels_to_stack=labels_to_stack,
             predictions_to_stack=predictions_to_stack,
-            num_detections_key=num_detections_key)
+            num_detections_key=num_detections_key,
+            allow_missing_key=allow_missing_key)
         computations.extend(
             ap.computations(
                 model_names=[model_name], output_names=[output_name]))
@@ -404,7 +418,8 @@ class COCOAverageRecall(metric_types.Metric):
                name: Optional[str] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initializes average recall metric.
 
     This metric is only used in object-detection setting. It does not support
@@ -444,6 +459,8 @@ class COCOAverageRecall(metric_types.Metric):
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
 
     super().__init__(
@@ -456,7 +473,8 @@ class COCOAverageRecall(metric_types.Metric):
         name=name,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _default_name(self) -> str:
     return AVERAGE_RECALL_NAME
@@ -474,7 +492,8 @@ class COCOAverageRecall(metric_types.Metric):
       example_weighted: bool = False,
       labels_to_stack: Optional[List[str]] = None,
       predictions_to_stack: Optional[List[str]] = None,
-      num_detections_key: Optional[str] = None
+      num_detections_key: Optional[str] = None,
+      allow_missing_key: bool = False,
   ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
 
@@ -510,7 +529,8 @@ class COCOAverageRecall(metric_types.Metric):
           class_id=class_id,
           class_weight=class_weight,
           area_range=area_range,
-          max_num_detections=max_num_detections)
+          max_num_detections=max_num_detections,
+          allow_missing_key=allow_missing_key)
 
       mr = object_detection_confusion_matrix_metrics.ObjectDetectionMaxRecall(
           iou_threshold=iou_threshold,
@@ -521,7 +541,8 @@ class COCOAverageRecall(metric_types.Metric):
           name=max_recall_name,
           labels_to_stack=labels_to_stack,
           predictions_to_stack=predictions_to_stack,
-          num_detections_key=num_detections_key)
+          num_detections_key=num_detections_key,
+          allow_missing_key=allow_missing_key)
       computations.extend(
           mr.computations(model_names=[model_name], output_names=[output_name]))
       recalls_keys.append(computations[-1].keys[-1])
@@ -563,7 +584,8 @@ class COCOMeanAverageRecall(metric_types.Metric):
                name: Optional[str] = None,
                labels_to_stack: Optional[List[str]] = None,
                predictions_to_stack: Optional[List[str]] = None,
-               num_detections_key: Optional[str] = None):
+               num_detections_key: Optional[str] = None,
+               allow_missing_key: bool = False):
     """Initializes average recall metric.
 
     This metric is only used in object-detection setting. It does not support
@@ -603,6 +625,8 @@ class COCOMeanAverageRecall(metric_types.Metric):
         if predictions_to_stack is not set. The value for this output should be
         a scalar value or a single-value tensor. The stacked predicitions will
         be truncated with the specified number of detections.
+      allow_missing_key: (Optional) If true, the preprocessor will return empty
+        array instead of raising errors.
     """
 
     super().__init__(
@@ -615,7 +639,8 @@ class COCOMeanAverageRecall(metric_types.Metric):
         name=name,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        num_detections_key=num_detections_key)
+        num_detections_key=num_detections_key,
+        allow_missing_key=allow_missing_key)
 
   def _default_name(self) -> str:
     return MEAN_AVERAGE_RECALL_NAME
@@ -633,7 +658,8 @@ class COCOMeanAverageRecall(metric_types.Metric):
       example_weighted: bool = False,
       labels_to_stack: Optional[List[str]] = None,
       predictions_to_stack: Optional[List[str]] = None,
-      num_detections_key: Optional[str] = None
+      num_detections_key: Optional[str] = None,
+      allow_missing_key: bool = False,
   ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
 
@@ -666,7 +692,8 @@ class COCOMeanAverageRecall(metric_types.Metric):
           class_id=class_id,
           class_weight=class_weight,
           area_range=area_range,
-          max_num_detections=max_num_detections)
+          max_num_detections=max_num_detections,
+          allow_missing_key=allow_missing_key)
 
       mr = COCOAverageRecall(
           iou_thresholds=iou_thresholds,
@@ -677,7 +704,8 @@ class COCOMeanAverageRecall(metric_types.Metric):
           name=max_recall_name,
           labels_to_stack=labels_to_stack,
           predictions_to_stack=predictions_to_stack,
-          num_detections_key=num_detections_key)
+          num_detections_key=num_detections_key,
+          allow_missing_key=allow_missing_key)
       computations.extend(
           mr.computations(model_names=[model_name], output_names=[output_name]))
       recalls_keys.append(computations[-1].keys[-1])
