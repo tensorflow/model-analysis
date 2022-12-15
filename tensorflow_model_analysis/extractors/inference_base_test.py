@@ -24,7 +24,6 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
@@ -36,6 +35,7 @@ from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 
 from google.protobuf import text_format
+from tensorflow.core.protobuf import saved_model_pb2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
@@ -145,30 +145,289 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
 
       util.assert_that(result, check_result)
 
-  def testGetEvalSharedModelTwoModelCase(self):
-    model_name = 'model_1'
-    name_to_eval_shared_model = {
-        model_name: types.EvalSharedModel(model_name=model_name),
-        'model_2': types.EvalSharedModel(model_name='model_2')
-    }
-    returned_model = inference_base.get_eval_shared_model(
-        model_name, name_to_eval_shared_model)
-    self.assertEqual(model_name, returned_model.model_name)
+  def testIsValidConfigForBulkInferencePass(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value {
+                dtype: DT_STRING
+                name: "input_node:0"
+              }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    temp_dir = self.create_tempdir()
+    temp_dir.create_file(
+        'saved_model.pb', content=saved_model_proto.SerializeToString())
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
+    ])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=temp_dir,
+        model_name='model_1',
+        model_type=constants.TF_GENERIC)
+    self.assertTrue(
+        inference_base.is_valid_config_for_bulk_inference(
+            eval_config, eval_shared_model))
 
-  def testGetEvalSharedModelOneModelCase(self):
-    model_name = 'model_1'
-    name_to_eval_shared_model = {
-        '': types.EvalSharedModel(model_name=model_name)
-    }
-    returned_model = inference_base.get_eval_shared_model(
-        model_name, name_to_eval_shared_model)
-    self.assertEqual(model_name, returned_model.model_name)
+  def testIsValidConfigForBulkInferencePassDefaultSignatureLookUp(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value {
+                dtype: DT_STRING
+                name: "input_node:0"
+              }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    temp_dir = self.create_tempdir()
+    temp_dir.create_file(
+        'saved_model.pb', content=saved_model_proto.SerializeToString())
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[config_pb2.ModelSpec(name='model_1')])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=temp_dir,
+        model_name='model_1',
+        model_type=constants.TF_GENERIC)
+    self.assertTrue(
+        inference_base.is_valid_config_for_bulk_inference(
+            eval_config, eval_shared_model))
 
-  def testGetEvalSharedModelRaisesKeyError(self):
-    model_name = 'model_1'
-    name_to_eval_shared_model = {
-        'not_model_1': types.EvalSharedModel(model_name=model_name)
-    }
-    with self.assertRaises(ValueError):
-      inference_base.get_eval_shared_model(model_name,
-                                           name_to_eval_shared_model)
+  def testIsValidConfigForBulkInferenceFailNoSignatureFound(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value {
+                dtype: DT_STRING
+                name: "input_node:0"
+              }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    temp_dir = self.create_tempdir()
+    temp_dir.create_file(
+        'saved_model.pb', content=saved_model_proto.SerializeToString())
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(name='model_1', signature_name='not_found')
+    ])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=temp_dir,
+        model_name='model_1',
+        model_type=constants.TF_GENERIC)
+    self.assertFalse(
+        inference_base.is_valid_config_for_bulk_inference(
+            eval_config, eval_shared_model))
+
+  def testIsValidConfigForBulkInferenceFailKerasModel(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value {
+                dtype: DT_STRING
+                name: "input_node:0"
+              }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    temp_dir = self.create_tempdir()
+    temp_dir.create_file(
+        'saved_model.pb', content=saved_model_proto.SerializeToString())
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
+    ])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=temp_dir,
+        model_name='model_1',
+        model_type=constants.TF_KERAS)
+    self.assertFalse(
+        inference_base.is_valid_config_for_bulk_inference(
+            eval_config, eval_shared_model))
+
+  def testIsValidConfigForBulkInferenceFailMoreThanOneInput(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value {
+                dtype: DT_STRING
+                name: "input_node:0"
+              }
+              inputs: {
+                key: "inputs"
+                value {
+                  dtype: DT_STRING
+                  name: "input_node:0"
+                }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    temp_dir = self.create_tempdir()
+    temp_dir.create_file(
+        'saved_model.pb', content=saved_model_proto.SerializeToString())
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
+    ])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=temp_dir,
+        model_name='model_1',
+        model_type=constants.TF_GENERIC)
+    self.assertFalse(
+        inference_base.is_valid_config_for_bulk_inference(
+            eval_config, eval_shared_model))
+
+  def testIsValidConfigForBulkInferenceFailWrongInputType(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value {
+                dtype: DT_FLOAT
+                name: "input_node:0"
+              }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    temp_dir = self.create_tempdir()
+    temp_dir.create_file(
+        'saved_model.pb', content=saved_model_proto.SerializeToString())
+    eval_config = config_pb2.EvalConfig(model_specs=[
+        config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
+    ])
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=temp_dir,
+        model_name='model_1',
+        model_type=constants.TF_GENERIC)
+    self.assertFalse(
+        inference_base.is_valid_config_for_bulk_inference(
+            eval_config, eval_shared_model))

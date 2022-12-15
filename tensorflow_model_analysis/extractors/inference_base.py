@@ -16,29 +16,66 @@
 import copy
 from typing import Dict, Optional, Tuple, Union
 
+from absl import logging
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import types
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.utils import util
 
+from tensorflow.python.saved_model import loader_impl  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_serving.apis import prediction_log_pb2
 
 
-def get_eval_shared_model(
-    model_name: str, name_to_eval_shared_model: Dict[str, types.EvalSharedModel]
-) -> types.EvalSharedModel:
-  """Retrieves matching eval_shared_model based on model_name."""
-  if model_name in name_to_eval_shared_model:
-    eval_shared_model = name_to_eval_shared_model[model_name]
-  elif len(name_to_eval_shared_model) == 1 and '' in name_to_eval_shared_model:
-    # Attempt to recover by checking for a common case where the model_name is
-    # cleared when only one value is present.
-    eval_shared_model = name_to_eval_shared_model['']
-  else:
-    raise ValueError('ModelSpec.name should match EvalSharedModel.model_name.')
-  return eval_shared_model
+def is_valid_config_for_bulk_inference(
+    eval_config: config_pb2.EvalConfig,
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None
+) -> bool:
+  """Validates config for use with Tfx-Bsl and ServoBeam Bulk Inference."""
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model)
+  if eval_shared_models is None:
+    logging.warning('Invalid Bulk Inference Config: There must be at least one '
+                    'eval_shared_model to run servo/tfx-bsl bulk inference.')
+    return False
+  for eval_shared_model in eval_shared_models:
+    if eval_shared_model.model_type not in (constants.TF_GENERIC,
+                                            constants.TF_ESTIMATOR):
+      logging.warning('Invalid Bulk Inference Config: Only TF2 and TF '
+                      'Estimator models are supported for servo/tfx-bsl bulk '
+                      'inference')
+      return False
+  name_to_eval_shared_model = {m.model_name: m for m in eval_shared_models}
+  for model_spec in eval_config.model_specs:
+    eval_shared_model = model_util.get_eval_shared_model(
+        model_spec.name, name_to_eval_shared_model)
+    saved_model = loader_impl.parse_saved_model(eval_shared_model.model_path)
+    if model_spec.signature_name:
+      signature_name = model_spec.signature_name
+    else:
+      signature_name = (
+          model_util.get_default_signature_name_from_saved_model_proto(
+              saved_model))
+    try:
+      signature_def = model_util.get_signature_def_from_saved_model_proto(
+          signature_name, saved_model)
+    except ValueError:
+      logging.warning('Invalid Bulk Inference Config: models must have a '
+                      'signature to run servo/tfx-bsl bulk inference. Consider '
+                      'setting the signature explicitly in the ModelSpec.')
+      return False
+    if len(signature_def.inputs) != 1:
+      logging.warning('Invalid Bulk Inference Config: signature must accept '
+                      'only one input for servo/tfx-bsl bulk inference.')
+      return False
+    if list(signature_def.inputs.values())[0].dtype != tf.string:
+      logging.warning('Invalid Bulk Inference Config: signature must accept '
+                      'string input to run servo/tfx-bsl bulk inference.')
+      return False
+  return True
 
 
 def _create_inference_input_tuple(

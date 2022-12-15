@@ -56,7 +56,7 @@ class TfxBslInferenceWrapper(beam.PTransform):
     model_names = []
     inference_specs = []
     for model_spec in model_specs:
-      eval_shared_model = inference_base.get_eval_shared_model(
+      eval_shared_model = model_util.get_eval_shared_model(
           model_spec.name, name_to_eval_shared_model)
       inference_spec_type = model_spec_pb2.InferenceSpecType()
       inference_spec_type.saved_model_spec.model_path = eval_shared_model.model_path
@@ -124,7 +124,8 @@ def TfxBslPredictionsExtractor(
   model_specs = []
   for model_spec in eval_config.model_specs:
     if not model_spec.signature_name:
-      eval_shared_model = name_to_eval_shared_model[model_spec.name]
+      eval_shared_model = model_util.get_eval_shared_model(
+          model_spec.name, name_to_eval_shared_model)
       model_spec = copy.copy(model_spec)
       # Select a default signature. Note that this may differ from the
       # 'serving_default' signature.

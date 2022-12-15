@@ -32,6 +32,7 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import util
 from tfx_bsl.tfxio import tensor_adapter
 
+from tensorflow.core.protobuf import meta_graph_pb2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow.core.protobuf import saved_model_pb2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.saved_model import loader_impl  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -242,7 +243,7 @@ def verify_and_update_eval_shared_models(
   # always use '' as the model name regardless of whether a name is passed.
   elif len(eval_shared_models) == 1 and eval_shared_models[0].model_name:
     eval_shared_models[0] = eval_shared_models[0]._replace(model_name='')
-  return eval_shared_models  # pytype: disable=bad-return-type  # py310-upgrade
+  return eval_shared_models
 
 
 def get_feature_values_for_model_spec_field(
@@ -360,6 +361,17 @@ def get_default_signature_name_from_saved_model_proto(
     return _PREDICT_SIGNATURE_DEF_KEY
   else:
     return tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
+
+
+def get_signature_def_from_saved_model_proto(
+    signature_name: str,
+    saved_model: saved_model_pb2.SavedModel) -> meta_graph_pb2.SignatureDef:
+  """Returns SignatureDef for a signature_name in the SavedModel proto."""
+  for meta_graph in saved_model.meta_graphs:
+    for graph_signature_name, signature_def in meta_graph.signature_def.items():
+      if signature_name == graph_signature_name:
+        return signature_def
+  raise ValueError('signature_name was not found in the SavedModel.')
 
 
 # TODO(b/175357313): Remove _get_save_spec check when the save_spec changes
@@ -1039,3 +1051,18 @@ def has_rubber_stamp(eval_shared_model: Optional[List[types.EvalSharedModel]]):
                for m in eval_shared_model)
   raise ValueError('Not supported eval_shared_model type: {}'.format(
       type(eval_shared_model)))
+
+
+def get_eval_shared_model(
+    model_name: str, name_to_eval_shared_model: Dict[str, types.EvalSharedModel]
+) -> types.EvalSharedModel:
+  """Retrieves matching eval_shared_model based on model_name."""
+  if model_name in name_to_eval_shared_model:
+    eval_shared_model = name_to_eval_shared_model[model_name]
+  elif len(name_to_eval_shared_model) == 1 and '' in name_to_eval_shared_model:
+    # Attempt to recover by checking for a common case where the model_name is
+    # cleared when only one value is present.
+    eval_shared_model = name_to_eval_shared_model['']
+  else:
+    raise ValueError('ModelSpec.name should match EvalSharedModel.model_name.')
+  return eval_shared_model

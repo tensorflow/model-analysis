@@ -22,6 +22,7 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
@@ -1060,6 +1061,135 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
         model_util._PREDICT_SIGNATURE_DEF_KEY,
         model_util.get_default_signature_name_from_saved_model_proto(
             saved_model_proto))
+
+  def testGetEvalSharedModelTwoModelCase(self):
+    model_name = 'model_1'
+    name_to_eval_shared_model = {
+        model_name: types.EvalSharedModel(model_name=model_name),
+        'model_2': types.EvalSharedModel(model_name='model_2')
+    }
+    returned_model = model_util.get_eval_shared_model(
+        model_name, name_to_eval_shared_model)
+    self.assertEqual(model_name, returned_model.model_name)
+
+  def testGetEvalSharedModelOneModelCase(self):
+    model_name = 'model_1'
+    name_to_eval_shared_model = {
+        '': types.EvalSharedModel(model_name=model_name)
+    }
+    returned_model = model_util.get_eval_shared_model(
+        model_name, name_to_eval_shared_model)
+    self.assertEqual(model_name, returned_model.model_name)
+
+  def testGetEvalSharedModelRaisesKeyError(self):
+    model_name = 'model_1'
+    name_to_eval_shared_model = {
+        'not_model_1': types.EvalSharedModel(model_name=model_name)
+    }
+    with self.assertRaises(ValueError):
+      model_util.get_eval_shared_model(model_name, name_to_eval_shared_model)
+
+  def testGetSignatureDefFromSavedModelProto(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "serving_default"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+        signature_def: {
+          key: "foo"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "foo"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape { dim { size: 1 } }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    signature_def = model_util.get_signature_def_from_saved_model_proto(
+        'serving_default', saved_model_proto)
+    self.assertEqual(signature_def.method_name, 'serving_default')
+
+  def testGetSignatureDefFromSavedModelProtoRaisesErrorOnNotFound(self):
+    saved_model_proto = text_format.Parse(
+        """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+        signature_def: {
+          key: "foo"
+          value: {
+            inputs: {
+              key: "inputs"
+              value { name: "input_node:0" }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape { dim { size: 1 } }
+              }
+            }
+          }
+        }
+      }
+      """, saved_model_pb2.SavedModel())
+    with self.assertRaises(ValueError):
+      _ = model_util.get_signature_def_from_saved_model_proto(
+          'non_existing_signature_name', saved_model_proto)
 
 
 if __name__ == '__main__':
