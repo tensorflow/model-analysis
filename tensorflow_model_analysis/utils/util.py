@@ -802,6 +802,8 @@ def merge_extracts(extracts: List[types.Extracts],
     # and stack to np.array([b'abc', b'abcd'])
     elif all(isinstance(t, np.ndarray) and t.shape == () for t in target):  # pylint: disable=g-explicit-bool-comparison
       return np.stack(target)
+    elif all(t is None for t in target):
+      return None
     else:
       arr = np.array(target)
       # Flatten values that were originally single item lists into a single list

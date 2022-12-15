@@ -822,6 +822,8 @@ class UtilTest(tf.test.TestCase):
                 'feature_6':
                     np.array([]),
             },
+            'transformed_features':
+                None,
             'labels':
                 np.array([1.0]),
             'example_weights':
@@ -856,6 +858,7 @@ class UtilTest(tf.test.TestCase):
                 'feature_6':
                     np.array([]),
             },
+            'transformed_features': None,
             'labels': np.array([0.0]),
             'example_weights': np.array(0.5),
             'predictions': {
@@ -887,6 +890,7 @@ class UtilTest(tf.test.TestCase):
                 'feature_6':
                     np.array([2.0, 3.0]),
             },
+            'transformed_features': None,
             'labels': np.array([1.0]),
             'example_weights': np.array(1.0),
             'predictions': {
@@ -932,6 +936,8 @@ class UtilTest(tf.test.TestCase):
                     indices=np.array([[2, 0], [2, 1]]),
                     dense_shape=np.array([3, 2]))
         },
+        'transformed_features':
+            None,
         'labels':
             np.array([1.0, 0.0, 1.0]),
         'example_weights':
@@ -1014,6 +1020,8 @@ class UtilTest(tf.test.TestCase):
                     indices=np.array([[0, 0], [2, 0], [2, 1], [2, 2]]),
                     dense_shape=np.array([3, 3])),
         },
+        'transformed_features':
+            None,
         'labels':
             np.array([1.0, 0.0, 1.0]),
         'example_weights':
@@ -1059,6 +1067,7 @@ class UtilTest(tf.test.TestCase):
                 'feature_6':
                     np.array([1.0]),
             },
+            'transformed_features': None,
             'labels': np.array([1.0]),
             'example_weights': np.array([0.0]),
             'predictions': {
@@ -1094,6 +1103,7 @@ class UtilTest(tf.test.TestCase):
                 'feature_6':
                     np.array([]),
             },
+            'transformed_features': None,
             'labels': np.array([0.0]),
             'example_weights': np.array([0.5]),
             'predictions': {
@@ -1129,6 +1139,7 @@ class UtilTest(tf.test.TestCase):
                 'feature_6':
                     np.array([3.0, 3.0, 3.0])
             },
+            'transformed_features': None,
             'labels': np.array([1.0]),
             'example_weights': np.array([1.0]),
             'predictions': {
