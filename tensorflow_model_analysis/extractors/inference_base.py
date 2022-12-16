@@ -137,10 +137,16 @@ def _parse_prediction_log_to_tensor_value(
     ],
                     dtype=float)
   elif log_type == 'predict_log':
-    return {
+    output_tensor_name_to_tensor = {
         k: np.squeeze(tf.make_ndarray(v), axis=0)
         for k, v in prediction_log.predict_log.response.outputs.items()
     }
+    # If there is only one tensor (i.e. one dictionary item), we remove the
+    # tensor from the dict and return it directly. Generally, TFMA will not
+    # return a dictionary with a single value.
+    if len(output_tensor_name_to_tensor) == 1:
+      return list(output_tensor_name_to_tensor.values())[0]
+    return output_tensor_name_to_tensor
   elif log_type == 'multi_inference_log':
     raise NotImplementedError(
         'MultiInferenceLog processing not implemented yet.')
