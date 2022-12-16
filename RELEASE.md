@@ -6,6 +6,8 @@
 
 ## Bug fixes and other Changes
 
+*  Fix for jupiter notebook
+
 ## Breaking Changes
 
 ## Deprecations
