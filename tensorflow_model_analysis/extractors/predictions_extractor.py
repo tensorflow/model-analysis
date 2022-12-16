@@ -25,7 +25,7 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 
 
-_PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
+PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
 
 def PredictionsExtractor(
@@ -66,10 +66,10 @@ def PredictionsExtractor(
     # clients expect these code paths to have the same stage name. New clients
     # should never reference the private stage name.
     return extractor.Extractor(
-        stage_name=_PREDICTIONS_EXTRACTOR_STAGE_NAME, ptransform=ptransform)
+        stage_name=PREDICTIONS_EXTRACTOR_STAGE_NAME, ptransform=ptransform)
 
   return extractor.Extractor(
-      stage_name=_PREDICTIONS_EXTRACTOR_STAGE_NAME,
+      stage_name=PREDICTIONS_EXTRACTOR_STAGE_NAME,
       ptransform=_ModelSignaturesInferenceWrapper(  # pylint: disable=no-value-for-parameter
           eval_config=eval_config,
           eval_shared_model=eval_shared_model))

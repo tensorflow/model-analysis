@@ -21,6 +21,7 @@ import tensorflow as tf
 from tensorflow_model_analysis import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import inference_base
+from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 from tfx_bsl.public.beam import run_inference
@@ -34,9 +35,6 @@ PossibleInputTypes = Union[tf.train.Example, bytes]
 KeyAndOutput = Tuple[_K, PossibleInputTypes]
 MapModelNameToOutput = Dict[str, prediction_log_pb2.PredictionLog]
 KeyAndOutputMap = Tuple[_K, MapModelNameToOutput]
-
-
-_TFX_BSL_PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractTfxBslPredictions'
 
 
 class TfxBslInferenceWrapper(beam.PTransform):
@@ -141,5 +139,5 @@ def TfxBslPredictionsExtractor(
       batch_size=batch_size)
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
-      stage_name=_TFX_BSL_PREDICTIONS_EXTRACTOR_STAGE_NAME,
+      stage_name=predictions_extractor.PREDICTIONS_EXTRACTOR_STAGE_NAME,
       ptransform=tfx_bsl_inference_ptransform)
