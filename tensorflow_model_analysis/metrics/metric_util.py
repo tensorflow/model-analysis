@@ -456,9 +456,14 @@ def to_label_prediction_example_weight(
             f'squeeze={squeeze}, allow_none={allow_none})')
 
   def optionally_get_by_keys(value: Any, keys: List[str]) -> Any:
+
+    class NotFound(object):
+      pass
+
     if isinstance(value, Mapping):
-      new_value = util.get_by_keys(value, keys, optional=True)
-      if new_value is not None:
+      new_value = util.get_by_keys(value, keys, default_value=NotFound())
+      if not isinstance(new_value, NotFound):
+        # Might be None if that's what is in the dict
         return new_value
     return value
 
