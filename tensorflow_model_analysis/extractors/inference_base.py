@@ -171,12 +171,16 @@ def _insert_predictions_into_extracts(
     PREDICTIONS_KEY will point to a dictionary if there are multiple
     prediction logs and a single value if there is only one prediction log.
   """
-  extracts = copy.copy(inference_tuple[0])
-  model_names_to_prediction_logs = inference_tuple[1]
+  extracts, model_names_to_prediction_logs = inference_tuple
+  extracts = copy.copy(extracts)
   model_name_to_tensors = {
       name: _parse_prediction_log_to_tensor_value(log)
       for name, log in model_names_to_prediction_logs.items()
   }
+  # If there is only one model (i.e. one dictionary item), we remove the model
+  # output from the dict and store it directly under the PREDICTIONS_KEY. This
+  # is in line with the general TFMA pattern of not storing one-item
+  # dictionaries.
   if len(model_name_to_tensors) == 1:
     extracts[constants.PREDICTIONS_KEY] = list(
         model_name_to_tensors.values())[0]
