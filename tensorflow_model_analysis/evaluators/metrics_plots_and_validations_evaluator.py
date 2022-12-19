@@ -381,7 +381,12 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
 
     results = []
     for i, (c, a) in enumerate(zip(self._combiners, accumulator)):
-      result = c.add_inputs(a, get_combiner_input(element, i))
+      try:
+        combiner_input = get_combiner_input(element, i)
+        result = c.add_inputs(a, combiner_input)
+      except Exception as e:
+        raise RuntimeError(
+            f'add_input failed on "{c}" with inputs:\n{combiner_input}') from e
       results.append(result)
     return tuple(results)
 
