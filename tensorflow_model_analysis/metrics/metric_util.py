@@ -307,64 +307,6 @@ def select_indices(
                               'arr={}, indices={}'.format(arr, indices))
 
 
-def to_label_prediction_example_weight_regression(
-    inputs: metric_types.StandardMetricInputs,
-    eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: str = '',
-    output_name: str = '',
-    sub_key: Optional[metric_types.SubKey] = None,
-    aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None,
-    example_weighted: bool = False,
-) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
-  """Yields label, prediction, and example weights for regression metrics."""
-  if sub_key or aggregation_type or class_weights:
-    yield from to_label_prediction_example_weight(
-        inputs=inputs,
-        eval_config=eval_config,
-        model_name=model_name,
-        output_name=output_name,
-        aggregation_type=aggregation_type,
-        class_weights=class_weights,
-        example_weighted=example_weighted,
-        sub_key=sub_key,
-    )
-    return
-
-  label = inputs.get_labels(model_name, output_name)
-  prediction = inputs.get_predictions(model_name, output_name)
-  example_weight = inputs.get_example_weights(model_name, output_name)
-
-  if label is None:
-    label = np.array([])
-  if prediction is None:
-    prediction = np.array([])
-
-  if not example_weighted or example_weight is None:
-    example_weight = np.ones(len(label), dtype=np.float32)
-  else:
-    example_weight = np.array(example_weight)
-    if len(example_weight) != len(label):
-      if len(example_weight) == 1:
-        example_weight = example_weight[0] * np.ones(
-            len(label), dtype=np.float32)
-      else:
-        raise ValueError('Can not broadcast example weights to labels because '
-                         'of the mismatch of the shape of example weight '
-                         f'{example_weight.shape} with the shape of labels '
-                         f'{label.shape}')
-  try:
-    # TODO(matrixzhou) use strict=true when we drop support for python versions
-    # below 3.10 with a link to this PEP: https://peps.python.org/pep-0618
-    for l, p, w in zip(label, prediction, example_weight):
-      yield np.array([l]), np.array([p]), np.array([w])
-  except Exception as e:
-    raise ValueError('unable to pair labels, predictions, and example weights: '
-                     f'label={label}, prediction={prediction}, '
-                     f'example_weight={example_weight}\n'
-                     f'This is most likely a configuration error') from e
-
-
 def to_label_prediction_example_weight(
     inputs: metric_types.StandardMetricInputs,
     eval_config: Optional[config_pb2.EvalConfig] = None,

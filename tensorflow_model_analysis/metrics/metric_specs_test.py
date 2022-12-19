@@ -17,9 +17,6 @@ import json
 import tensorflow as tf
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
-# This module should be included as the tests involves replacement of keras
-# mean squared error and mean absolute error with native TFMA metrics.x
-from tensorflow_model_analysis.metrics import mean_regression_error  # pylint: disable=unused-import
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import config_pb2
@@ -89,11 +86,14 @@ class MetricSpecsTest(tf.test.TestCase):
                     class_name='MeanSquaredError',
                     config=json.dumps({
                         'name': 'mse',
+                        'dtype': 'float32',
                     },
                                       sort_keys=True)),
                 config_pb2.MetricConfig(
                     class_name='MeanAbsoluteError',
+                    module=metric_specs._TF_LOSSES_MODULE,
                     config=json.dumps({
+                        'reduction': 'auto',
                         'name': 'mae'
                     },
                                       sort_keys=True))

@@ -61,12 +61,6 @@ _UNSUPPORTED_TF_SETTINGS = {
         'num_labels': [None],
         'label_weights': [None],
         'from_logits': [False]
-    },
-    'MeanAbsoluteError': {
-        'reduction': ['auto']
-    },
-    'MeanSquaredError': {
-        'reduction': ['auto']
     }
 }
 
@@ -80,12 +74,7 @@ def config_from_metric(
     else:
       return _serialize_tf_metric(metric)
   elif isinstance(metric, tf.keras.losses.Loss):
-    # For loss like MeanAbsoluteError, TFMA provides native support.
-    # The support should be checked here.
-    if _is_supported_tf_metric(metric):
-      return _remove_unsupported_tf_settings(_serialize_tf_metric(metric))
-    else:
-      return _serialize_tf_loss(metric)
+    return _serialize_tf_loss(metric)
   elif isinstance(metric, metric_types.Metric):
     return _serialize_tfma_metric(metric)
   else:
