@@ -703,7 +703,7 @@ class UtilTest(tf.test.TestCase):
     self.assertAllClose(got_preds, np.array([0.2, 0.8]))
 
   def testPrepareLabelsAndPredictionsWithVocabUsingObjectType(self):
-    labels = np.array(['e', 'f'], dtype=np.object)
+    labels = np.array(['e', 'f'], dtype=object)
     preds = {'probabilities': [0.2, 0.8], 'all_classes': ['a', 'b', 'c']}
     got_labels, got_preds = metric_util.prepare_labels_and_predictions(
         labels, preds, label_vocabulary=['e', 'f'])

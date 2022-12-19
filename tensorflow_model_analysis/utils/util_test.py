@@ -1219,7 +1219,7 @@ class UtilTest(tf.test.TestCase):
     self.assertEqual(remerged_got['predictions'].dtype, np.float64)
     self.assertEqual(remerged_got['labels'].dtype, np.float64)
     self.assertEqual(remerged_got['array_scalar'].dtype, np.float64)
-    self.assertEqual(remerged_got['objects'].dtype, np.object)
+    self.assertEqual(remerged_got['objects'].dtype, object)
 
   def testSplitThenMergeDisallowingScalars(self):
     extract = {

@@ -90,19 +90,19 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
     expected_language = [
         tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 0]]),
-            values=np.array([b'english'], dtype=np.object),
+            values=np.array([b'english'], dtype=object),
             dense_shape=np.array([1, 1])),
         tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 0]]),
-            values=np.array([b'chinese'], dtype=np.object),
+            values=np.array([b'chinese'], dtype=object),
             dense_shape=np.array([1, 1])),
         tf.compat.v1.SparseTensorValue(
             indices=np.array([], dtype=np.int64).reshape([0, 2]),
-            values=np.array([], dtype=np.object),
+            values=np.array([], dtype=object),
             dense_shape=np.array([1, 0])),
         tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 0]]),
-            values=np.array([b'chinese'], dtype=np.object),
+            values=np.array([b'chinese'], dtype=object),
             dense_shape=np.array([1, 1]))
     ]
     expected_probabilities = [

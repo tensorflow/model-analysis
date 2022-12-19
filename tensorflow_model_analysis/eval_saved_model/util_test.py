@@ -141,25 +141,24 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
     split_tensor_values = util.split_tensor_value(
         tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 0], [0, 1], [2, 0], [3, 1]]),
-            values=np.array(['zero0', 'zero1', 'two0', 'three1'],
-                            dtype=np.object),
+            values=np.array(['zero0', 'zero1', 'two0', 'three1'], dtype=object),
             dense_shape=np.array([4, 3])))
     expected_sparse_tensor_values = [
         tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 0], [0, 1]]),
-            values=np.array(['zero0', 'zero1'], dtype=np.object),
+            values=np.array(['zero0', 'zero1'], dtype=object),
             dense_shape=np.array([1, 2])),
         tf.compat.v1.SparseTensorValue(
             indices=np.zeros([0, 2], dtype=np.int64),
-            values=np.zeros([0], dtype=np.object),
+            values=np.zeros([0], dtype=object),
             dense_shape=np.array([1, 0])),
         tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 0]]),
-            values=np.array(['two0'], dtype=np.object),
+            values=np.array(['two0'], dtype=object),
             dense_shape=np.array([1, 1])),
         tf.compat.v1.SparseTensorValue(
             indices=np.array([[0, 1]]),
-            values=np.array(['three1'], dtype=np.object),
+            values=np.array(['three1'], dtype=object),
             dense_shape=np.array([1, 2])),
     ]
     for expected_sparse_tensor_value, got_sparse_tensor_value in zip(

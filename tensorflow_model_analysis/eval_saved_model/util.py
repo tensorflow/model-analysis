@@ -200,7 +200,7 @@ def _dense_concat_rows(arrays: List[np.ndarray]) -> np.ndarray:
     raise ValueError('arrays must be a non-empty list.')
 
   shape_max = np.amax(np.array([a.shape for a in arrays]), axis=0)
-  if arrays[0].dtype == np.object:
+  if arrays[0].dtype == object:
     # Assume if the dtype is object then the array contains strings.
     padding_value = ''
   else:

@@ -178,19 +178,19 @@ class IntegrationTest(testutil.TensorflowModelAnalysisTest):
 
     # Check that SparseFeatures were correctly populated.
     self.assertAllEqual(
-        np.array([b'cat'], dtype=np.object),
+        np.array([b'cat'], dtype=object),
         features_predictions_labels_list[0].features['animals'][
             encoding.NODE_SUFFIX].values)
     self.assertAllEqual(
-        np.array([b'dog'], dtype=np.object),
+        np.array([b'dog'], dtype=object),
         features_predictions_labels_list[1].features['animals'][
             encoding.NODE_SUFFIX].values)
     self.assertAllEqual(
-        np.array([b'cat', b'dog'], dtype=np.object),
+        np.array([b'cat', b'dog'], dtype=object),
         features_predictions_labels_list[2].features['animals'][
             encoding.NODE_SUFFIX].values)
     self.assertAllEqual(
-        np.array([], dtype=np.object),
+        np.array([], dtype=object),
         features_predictions_labels_list[3].features['animals'][
             encoding.NODE_SUFFIX].values)
 
