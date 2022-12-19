@@ -99,7 +99,7 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
             self.assertIsNone(got[0][constants.LABELS_KEY])
           else:
             self.assertAllClose(got[0][constants.LABELS_KEY],
-                                np.array([1.0, 0.0, 0.0]))
+                                np.array([[1.0], [0.0], [0.0]]))
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -159,10 +159,11 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
           self.assertIn('output3', got[0][constants.LABELS_KEY])
           self.assertIsNone(got[0][constants.LABELS_KEY]['output3'])
           del got[0][constants.LABELS_KEY]['output3']
-          self.assertAllClose(got[0][constants.LABELS_KEY], {
-              'output1': np.array([1.0, 1.0]),
-              'output2': np.array([0.0, 1.0])
-          })
+          self.assertAllClose(
+              got[0][constants.LABELS_KEY], {
+                  'output1': np.array([[1.0], [1.0]]),
+                  'output2': np.array([[0.0], [1.0]])
+              })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -226,11 +227,12 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
           for model_name in ('model1', 'model2'):
             self.assertIn(model_name, got[0][constants.LABELS_KEY])
           self.assertAllClose(got[0][constants.LABELS_KEY]['model1'],
-                              np.array([1.0, 1.0]))
-          self.assertAllClose(got[0][constants.LABELS_KEY]['model2'], {
-              'output1': np.array([1.0, 1.0]),
-              'output2': np.array([0.0, 1.0])
-          })
+                              np.array([[1.0], [1.0]]))
+          self.assertAllClose(
+              got[0][constants.LABELS_KEY]['model2'], {
+                  'output1': np.array([[1.0], [1.0]]),
+                  'output2': np.array([[0.0], [1.0]])
+              })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

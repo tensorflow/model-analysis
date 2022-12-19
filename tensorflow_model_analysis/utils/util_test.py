@@ -268,8 +268,8 @@ class UtilTest(tf.test.TestCase):
          pa.array([[0], [1], [1]])], ['feature_1', 'feature_2'])
     actual = util.record_batch_to_tensor_values(record_batch)
     expected = {
-        'feature_1': np.array([1, 2, 3]),
-        'feature_2': np.array([0, 1, 1])
+        'feature_1': np.array([[1], [2], [3]]),
+        'feature_2': np.array([[0], [1], [1]])
     }
     self.assertAllClose(actual, expected)
 
@@ -285,7 +285,7 @@ class UtilTest(tf.test.TestCase):
         record_batch, {'feature_1': tensor_representation})
     expected = {
         'feature_1': np.array([[1, 2], [2, 3], [3, 4]]),
-        'feature_2': np.array([0, 1, 1])
+        'feature_2': np.array([[0], [1], [1]])
     }
     self.assertAllClose(actual, expected)
 

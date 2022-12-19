@@ -290,9 +290,6 @@ def record_batch_to_tensor_values(
         tensor_representation = schema_pb2.TensorRepresentation()
         tensor_representation.dense_tensor.column_name = col.name
         dims = _shape(record_batch[i])
-        # Convert dims of the form (..., n, 1) to (..., n).
-        if len(dims) > 1 and dims[-1] == 1:
-          dims = dims[:-1]
         if len(dims) > 1:
           for dim in dims[1:]:  # Skip batch dimension
             tensor_representation.dense_tensor.shape.dim.append(

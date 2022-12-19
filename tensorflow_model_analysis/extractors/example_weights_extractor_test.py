@@ -99,7 +99,7 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           if example_weight:
             self.assertAllClose(got[0][constants.EXAMPLE_WEIGHTS_KEY],
-                                np.array([0.5, 0.0, 1.0]))
+                                np.array([[0.5], [0.0], [1.0]]))
           else:
             self.assertNotIn(constants.EXAMPLE_WEIGHTS_KEY, got[0])
 
@@ -162,10 +162,11 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          self.assertAllClose(got[0][constants.EXAMPLE_WEIGHTS_KEY], {
-              'output1': np.array([0.5, 0.0]),
-              'output2': np.array([0.5, 1.0]),
-          })
+          self.assertAllClose(
+              got[0][constants.EXAMPLE_WEIGHTS_KEY], {
+                  'output1': np.array([[0.5], [0.0]]),
+                  'output2': np.array([[0.5], [1.0]]),
+              })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -241,11 +242,12 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
           for model_name in ('model1', 'model2'):
             self.assertIn(model_name, got[0][constants.EXAMPLE_WEIGHTS_KEY])
           self.assertAllClose(got[0][constants.EXAMPLE_WEIGHTS_KEY]['model1'],
-                              np.array([0.5, 0.0]))
-          self.assertAllClose(got[0][constants.EXAMPLE_WEIGHTS_KEY]['model2'], {
-              'output1': np.array([0.5, 0.0]),
-              'output2': np.array([0.5, 1.0])
-          })
+                              np.array([[0.5], [0.0]]))
+          self.assertAllClose(
+              got[0][constants.EXAMPLE_WEIGHTS_KEY]['model2'], {
+                  'output1': np.array([[0.5], [0.0]]),
+                  'output2': np.array([[0.5], [1.0]])
+              })
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

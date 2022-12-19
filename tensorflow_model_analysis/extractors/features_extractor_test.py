@@ -132,15 +132,15 @@ class FeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
               [None, None, None])
           self.assertIn('fixed_int', got[0][constants.FEATURES_KEY])
           self.assertAllClose(got[0][constants.FEATURES_KEY]['fixed_int'],
-                              np.array([1, 1, 2]))
+                              np.array([[1], [1], [2]]))
           self.assertIn('fixed_float', got[0][constants.FEATURES_KEY])
           self.assertAllClose(got[0][constants.FEATURES_KEY]['fixed_float'],
-                              np.array([1.0, 1.0, 0.0]))
+                              np.array([[1.0], [1.0], [0.0]]))
           self.assertIn('fixed_string', got[0][constants.FEATURES_KEY])
           # Arrays of type np.object won't compare with assertAllClose
           self.assertEqual(
               got[0][constants.FEATURES_KEY]['fixed_string'].tolist(),
-              [b'fixed_string1', b'fixed_string2', b'fixed_string3'])
+              [[b'fixed_string1'], [b'fixed_string2'], [b'fixed_string3']])
           self.assertIn(constants.INPUT_KEY, got[0])
           self.assertLen(got[0][constants.INPUT_KEY], 3)  # 3 examples
 
