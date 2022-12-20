@@ -756,18 +756,31 @@ def merge_extracts(extracts: List[types.Extracts],
     A single Extracts whose values have been grouped into batches.
   """
 
-  def merge_with_lists(target: types.Extracts, key: str, value: Any):
-    """Merges key and value into the target extracts as a list of values."""
+  def merge_with_lists(target: types.Extracts, index: int, key: str, value: Any,
+                       num_extracts: int):
+    """Merges key and value into the target extracts as a list of values.
+
+    Args:
+     target: The extract to store all merged all the data.
+     index: The index at which the value should be stored. It is in accordance
+       with the order of extracts in the batch.
+     key: The key of the key-value pair to store in the target.
+     value: The value of the key-value pair to store in the target.
+     num_extracts: The total number of extracts to be merged in this target.
+    """
     if isinstance(value, Mapping):
       if key not in target:
         target[key] = {}
       target = target[key]
       for k, v in value.items():
-        merge_with_lists(target, k, v)
+        merge_with_lists(target, index, k, v, num_extracts)
     else:
+      # If key is newly found, we create a list with length of extracts,
+      # so that every value of the i th extracts will go to the i th position.
+      # And the extracts without this key will have value np.array([]).
       if key not in target:
-        target[key] = []
-      target[key].append(value)
+        target[key] = [np.array([])] * num_extracts
+      target[key][index] = value
 
   def merge_lists(target: types.Extracts) -> types.Extracts:
     """Converts target's leaves which are lists to batched np.array's, etc."""
@@ -778,16 +791,21 @@ def merge_extracts(extracts: List[types.Extracts],
           result[key] = merge_lists(value)
         except Exception as e:
           raise RuntimeError(
-              'Failed to convert value for key "{}"'.format(key)) from e
+              f'Failed to convert value for key: {key} and value: {value}'
+          ) from e
       return {k: merge_lists(v) for k, v in target.items()}
-    elif target and (isinstance(target[0], tf.compat.v1.SparseTensorValue) or
-                     isinstance(target[0], types.SparseTensorValue)):
+    elif (
+        target and
+        np.any([isinstance(t, tf.compat.v1.SparseTensorValue) for t in target])
+        or np.any(
+            [isinstance(target[0], types.SparseTensorValue) for t in target])):
       t = tf.compat.v1.sparse_concat(
           0,
           [tf.sparse.expand_dims(to_tensorflow_tensor(t), 0) for t in target],
           expand_nonconcat_dim=True)
       return to_tensor_value(t)
-    elif target and isinstance(target[0], types.RaggedTensorValue):
+    elif target and np.any(
+        [isinstance(t, types.RaggedTensorValue) for t in target]):
       t = tf.concat(
           [tf.expand_dims(to_tensorflow_tensor(t), 0) for t in target], 0)
       return to_tensor_value(t)
@@ -810,10 +828,11 @@ def merge_extracts(extracts: List[types.Extracts],
       return arr
 
   result = {}
-  for x in extracts:
+  num_extracts = len(extracts)
+  for i, x in enumerate(extracts):
     if x:
       for k, v in x.items():
-        merge_with_lists(result, k, v)
+        merge_with_lists(result, i, k, v, num_extracts)
   return merge_lists(result)
 
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 """Simple tests for util."""
 
+from absl.testing import parameterized
 import numpy as np
 import pyarrow as pa
 import tensorflow as tf
@@ -25,7 +26,7 @@ from tensorflow_model_analysis.utils import util
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class UtilTest(tf.test.TestCase):
+class UtilTest(tf.test.TestCase, parameterized.TestCase):
 
   def testToTensorValueFromTFSparseTensor(self):
     original = tf.SparseTensor(
@@ -1196,54 +1197,133 @@ class UtilTest(tf.test.TestCase):
       # Assert we maintain dtype.
       self.assertEqual(extract['predictions'].dtype, np.float64)
 
-  def testSplitThenMergeAllowingScalarNumpyArray(self):
-    extract = {
-        'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
-        'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64),
-        'array_scalar': np.array([0.1], dtype=np.float64),
-        'objects': np.array([b'sun', b'moon', b'call'], dtype=object),
-    }
-    split_got = util.split_extracts(extract, expand_zero_dims=False)
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='_list',
+          extracts=[{
+              'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64)
+          }],
+          expected_extract={
+              'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64)
+          },
+          key='predictions',
+          shape=(3,),
+          dtype=np.float64),
+      dict(
+          testcase_name='_2d_list',
+          extracts=[{
+              'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64)
+          }],
+          expected_extract={
+              'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64)
+          },
+          key='labels',
+          shape=(3, 1),
+          dtype=np.float64),
+      dict(
+          testcase_name='_array_scalar',
+          extracts=[{
+              'array_scalar': np.array([0.1], dtype=np.float64)
+          }],
+          expected_extract={'array_scalar': np.array([0.1], dtype=np.float64)},
+          key='array_scalar',
+          shape=(1,),
+          dtype=np.float64),
+      dict(
+          testcase_name='_objects',
+          extracts=[{
+              'objects': np.array([b'sun', b'moon', b'call'], dtype=object)
+          }],
+          expected_extract={
+              'objects': np.array([b'sun', b'moon', b'call'], dtype=object)
+          },
+          key='objects',
+          shape=(3,),
+          dtype=np.object),
+      dict(
+          testcase_name='_batch_extracts',
+          extracts=[
+              {
+                  'objects': np.array([b'sun', b'moon'], dtype=object)
+              },
+              {
+                  'objects': np.array([b'call'], dtype=object)
+              },
+          ],
+          expected_extract={
+              'objects': np.array([b'sun', b'moon', b'call'], dtype=object)
+          },
+          key='objects',
+          shape=(3,),
+          dtype=np.object),
+      dict(
+          testcase_name='_batch_extracts_with_empty_extract',
+          extracts=[{}, {
+              'objects': np.array([b'sun', b'moon'], dtype=object)
+          }],
+          expected_extract={
+              'objects': np.array([b'sun', b'moon'], dtype=object)
+          },
+          key='objects',
+          shape=(2,),
+          dtype=np.object),
+  )
+  def testSplitThenMergeAllowingScalarNumpyArray(self, extracts,
+                                                 expected_extract, key, shape,
+                                                 dtype):
+    split_got = []
+    for extract in extracts:
+      split_got.extend(util.split_extracts(extract, expand_zero_dims=False))
     remerged_got = util.merge_extracts(split_got, squeeze_two_dim_vector=False)
-    np.testing.assert_equal(remerged_got, extract)
+    np.testing.assert_equal(remerged_got, expected_extract)
     # Assert vector shape. Numpy assertions will succeed for different shapes as
     # long as the arrays have equal values (e.g.
     # np.testing.asser_equal(1, np.array([1,1]))). Numpy will also attempt to
     # compare different numeric types as equal, so we directly assert the dtype
     # (e.g. np.testing.assert_equal(1, np.array([1,1], dtype=np.float64))).
-    self.assertEqual(remerged_got['predictions'].shape, (3,))
-    self.assertEqual(remerged_got['labels'].shape, (3, 1))
-    self.assertEqual(remerged_got['array_scalar'].shape, (1,))
-    self.assertEqual(remerged_got['objects'].shape, (3,))
+    self.assertEqual(remerged_got[key].shape, shape)
     # Assert we maintain dtype.
-    self.assertEqual(remerged_got['predictions'].dtype, np.float64)
-    self.assertEqual(remerged_got['labels'].dtype, np.float64)
-    self.assertEqual(remerged_got['array_scalar'].dtype, np.float64)
-    self.assertEqual(remerged_got['objects'].dtype, object)
+    self.assertEqual(remerged_got[key].dtype, dtype)
 
-  def testSplitThenMergeDisallowingScalars(self):
-    extract = {
-        'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
-        'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64),
-        'array_scalar': np.array([0.1], dtype=np.float64),
-    }
+  def testMergeBatchExtractsWithMissingKeys(self):
+    extracts = [
+        {
+            'labels': np.array([0.1, 0.3], dtype=np.float64)
+        },
+        {},
+    ]
     expected_extract = {
-        'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64),
-        # Note this value differes in shape from the original extract.
-        'labels': np.array([0.1, 0.3, 0.5], dtype=np.float64),
-        'array_scalar': np.array([0.1], dtype=np.float64),
+        'labels':
+            types.VarLenTensorValue(
+                values=np.array([0.1, 0.3]),
+                indices=np.array([[0, 0], [0, 1]]),
+                dense_shape=np.array([2, 2]))
     }
+    merged_got = util.merge_extracts(extracts, squeeze_two_dim_vector=False)
+    np.testing.assert_equal(merged_got, expected_extract)
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='_predictions',
+          extract={'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64)},
+          expected_extract={
+              'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64)
+          }),
+      dict(
+          testcase_name='_labels',
+          extract={'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64)},
+          expected_extract={
+              'labels': np.array([0.1, 0.3, 0.5], dtype=np.float64)
+          }),
+      dict(
+          testcase_name='_array_scalar',
+          extract={'array_scalar': np.array([0.1], dtype=np.float64)},
+          expected_extract={'array_scalar': np.array([0.1], dtype=np.float64)}))
+  def testSplitThenMergeDisallowingScalars(self, extract, expected_extract):
     split_got = util.split_extracts(extract)
     remerged_got = util.merge_extracts(split_got)
+    # Assert that the remerged extracts are the same as the original.
     np.testing.assert_equal(remerged_got, expected_extract)
-    # Assert we are receiving 1d vectors.
-    self.assertEqual(remerged_got['predictions'].shape, (3,))
-    self.assertEqual(remerged_got['labels'].shape, (3,))
-    self.assertEqual(remerged_got['array_scalar'].shape, (1,))
-    # Assert we maintain dtype.
-    self.assertEqual(remerged_got['predictions'].dtype, np.float64)
-    self.assertEqual(remerged_got['labels'].dtype, np.float64)
-    self.assertEqual(remerged_got['array_scalar'].dtype, np.float64)
 
 
 if __name__ == '__main__':

@@ -6,7 +6,9 @@
 
 ## Bug fixes and other Changes
 
-*  Fix for jupiter notebook
+*   Fix for jupiter notebook
+*   Fix element dimension inconsistency when some of the extracts have missing
+    key.
 
 ## Breaking Changes
 
