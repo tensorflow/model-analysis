@@ -46,7 +46,7 @@
     multiple models.
 *   Add CounterfactualPredictionsExtractor for computing predictions on modified
     inputs.
-
+*   Add MeanAbsoluteError and MeanSquaredError
 
 ## Bug fixes and other Changes
 
