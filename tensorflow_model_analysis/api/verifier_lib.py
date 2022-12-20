@@ -16,7 +16,7 @@
 from typing import Any, Dict, List
 
 import apache_beam as beam
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.validators import validator
 
 

@@ -19,8 +19,8 @@ import numpy as np
 import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import sql_slice_key_extractor

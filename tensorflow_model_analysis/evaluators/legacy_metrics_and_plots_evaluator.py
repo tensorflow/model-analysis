@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import legacy_aggregate

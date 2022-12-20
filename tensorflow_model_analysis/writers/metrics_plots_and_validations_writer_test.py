@@ -23,8 +23,8 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator

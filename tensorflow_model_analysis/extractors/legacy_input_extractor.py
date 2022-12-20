@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.coders import example_coder

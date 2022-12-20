@@ -22,7 +22,7 @@ import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_accumulators

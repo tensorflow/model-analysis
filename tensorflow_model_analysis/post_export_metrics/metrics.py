@@ -17,7 +17,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 
 
 def total(values: types.TensorType

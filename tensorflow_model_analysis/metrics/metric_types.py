@@ -20,7 +20,7 @@ from typing import Any, Callable, Dict, Iterable, Iterator, List, MutableMapping
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.utils import util

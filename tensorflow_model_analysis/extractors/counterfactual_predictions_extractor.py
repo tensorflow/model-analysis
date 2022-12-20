@@ -13,13 +13,13 @@
 # limitations under the License.
 """Counterfactual predictions extractor."""
 
-from typing import Dict, Iterable, Optional, Mapping, Sequence
+from typing import Dict, Iterable, Mapping, Optional, Sequence
 
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.proto import config_pb2

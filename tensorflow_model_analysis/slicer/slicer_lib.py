@@ -19,13 +19,13 @@ Use this library for generating slices from a specification
 
 import itertools
 
-from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Union, NamedTuple
+from typing import Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slice_accessor

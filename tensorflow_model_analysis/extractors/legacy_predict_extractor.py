@@ -23,7 +23,7 @@ import numpy as np
 import pyarrow as pa
 
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import legacy_feature_extractor

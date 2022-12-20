@@ -16,7 +16,7 @@
 from typing import Any, Dict, Iterable, NamedTuple, Optional, Union
 
 import apache_beam as beam
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.utils import util
 
 # Tag for the last extractor in list of extractors.

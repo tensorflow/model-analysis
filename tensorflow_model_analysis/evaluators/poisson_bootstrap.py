@@ -18,7 +18,7 @@ from typing import Any, Optional, Set, Tuple, TypeVar
 import apache_beam as beam
 import numpy as np
 
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.evaluators import confidence_intervals_util
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.slicer import slicer_lib as slicer

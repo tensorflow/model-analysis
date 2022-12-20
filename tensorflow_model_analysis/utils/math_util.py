@@ -14,7 +14,7 @@
 """Math utilities."""
 
 from scipy import stats
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 
 
 def calculate_confidence_interval(

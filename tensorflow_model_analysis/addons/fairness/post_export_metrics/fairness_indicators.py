@@ -21,7 +21,7 @@ parameter of Evaluate to compute them.
 from typing import Any, Dict, List, Optional, Tuple
 
 import tensorflow as tf
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2

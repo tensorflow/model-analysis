@@ -18,7 +18,7 @@ import numpy as np
 import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflow_model_analysis.utils import util

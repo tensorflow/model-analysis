@@ -16,7 +16,7 @@
 import math
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.utils import math_util
 

@@ -25,7 +25,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import encoding
 
 

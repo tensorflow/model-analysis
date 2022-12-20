@@ -24,7 +24,7 @@ from typing import List, Optional  # pytype: disable=not-supported-yet
 
 import tensorflow as tf
 
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict
 

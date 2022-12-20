@@ -23,7 +23,7 @@ import six
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
 import tensorflow_model_analysis as tfma
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.utils import util as tfma_util
 
 from tensorflow.python.feature_column import feature_column_v2  # pylint: disable=g-direct-tensorflow-import

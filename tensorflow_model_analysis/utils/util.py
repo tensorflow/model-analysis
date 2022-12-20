@@ -26,7 +26,7 @@ import pyarrow as pa
 import six
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tensor_adapter
 

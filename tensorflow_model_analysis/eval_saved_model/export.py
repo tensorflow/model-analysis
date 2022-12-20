@@ -19,8 +19,8 @@ from typing import Any, Callable, Dict, Optional, Union
 
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis import version
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util

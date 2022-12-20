@@ -82,26 +82,29 @@ try:
   from tensorflow_model_analysis import writers
   from tensorflow_model_analysis import view
   from tensorflow_model_analysis import model_agnostic_eval
+  # TODO(b/228406044): Stop exposing tfma.types and migrate all internal users
+  # to use the top-level symbols exported below (e.g. tfma.Extracts).
+  from tensorflow_model_analysis.api import types
 
   # TODO(b/171992041): Deprecate use of EvalResult in the future.
   from tensorflow_model_analysis.view.view_types import EvalResult
 
   # Allow types to be imported at the top-level since they live in root dir.
-  from tensorflow_model_analysis.types import AddMetricsCallbackType
-  from tensorflow_model_analysis.types import EvalSharedModel
-  from tensorflow_model_analysis.types import Extracts
+  from tensorflow_model_analysis.api.types import AddMetricsCallbackType
+  from tensorflow_model_analysis.api.types import EvalSharedModel
+  from tensorflow_model_analysis.api.types import Extracts
   # TODO(b/120222218): Remove after passing of native FPL supported.
-  from tensorflow_model_analysis.types import FeaturesPredictionsLabels
+  from tensorflow_model_analysis.api.types import FeaturesPredictionsLabels
   # TODO(b/120222218): Remove after passing of native FPL supported.
-  from tensorflow_model_analysis.types import MaterializedColumn
-  from tensorflow_model_analysis.types import MaybeMultipleEvalSharedModels
-  from tensorflow_model_analysis.types import ModelLoader
-  from tensorflow_model_analysis.types import RaggedTensorValue
-  from tensorflow_model_analysis.types import SparseTensorValue
-  from tensorflow_model_analysis.types import TensorType
-  from tensorflow_model_analysis.types import TensorTypeMaybeDict
-  from tensorflow_model_analysis.types import TensorValue
-  from tensorflow_model_analysis.types import VarLenTensorValue
+  from tensorflow_model_analysis.api.types import MaterializedColumn
+  from tensorflow_model_analysis.api.types import MaybeMultipleEvalSharedModels
+  from tensorflow_model_analysis.api.types import ModelLoader
+  from tensorflow_model_analysis.api.types import RaggedTensorValue
+  from tensorflow_model_analysis.api.types import SparseTensorValue
+  from tensorflow_model_analysis.api.types import TensorType
+  from tensorflow_model_analysis.api.types import TensorTypeMaybeDict
+  from tensorflow_model_analysis.api.types import TensorValue
+  from tensorflow_model_analysis.api.types import VarLenTensorValue
 
   # Import VERSION as __version__ for compatibility with other TFX components.
   from tensorflow_model_analysis.version import VERSION as __version__

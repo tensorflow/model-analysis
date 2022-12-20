@@ -34,7 +34,7 @@ from typing import Any, Dict, List, NamedTuple, Tuple
 import apache_beam as beam
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.utils import util as general_util

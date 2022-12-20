@@ -16,8 +16,8 @@
 from typing import Any, List, Optional
 
 import apache_beam as beam
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.evaluators import analysis_table_evaluator
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor

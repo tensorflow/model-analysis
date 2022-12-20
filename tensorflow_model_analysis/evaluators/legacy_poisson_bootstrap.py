@@ -18,7 +18,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type, U
 import apache_beam as beam
 import numpy as np
 
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 from google.protobuf import message

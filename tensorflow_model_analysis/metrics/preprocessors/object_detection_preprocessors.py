@@ -21,7 +21,7 @@ The following preprocssors are included:
 from typing import Iterator, List, Optional, Tuple
 
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics.preprocessors.utils import bounding_box

@@ -62,7 +62,7 @@ Then the expected output is:
 from typing import Any, Dict, List, NamedTuple  # pytype: disable=not-supported-yet
 
 import tensorflow as tf
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.utils import util as general_util

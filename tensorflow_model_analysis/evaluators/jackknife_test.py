@@ -19,7 +19,7 @@ from absl.testing import absltest
 import apache_beam as beam
 from apache_beam.testing import util
 
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.evaluators import confidence_intervals_util
 from tensorflow_model_analysis.evaluators import jackknife
 from tensorflow_model_analysis.metrics import binary_confusion_matrices

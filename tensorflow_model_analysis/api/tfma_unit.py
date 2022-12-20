@@ -55,14 +55,14 @@ different weights each time and have different metric values. As such, we
 recommend that you use BoundedValue with loose bounds to avoid flaky tests.
 """
 
-from typing import Any, List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import apache_beam as beam
 from apache_beam.testing import util as beam_util
 
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
 from tensorflow_model_analysis.api import model_eval_lib
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator

@@ -15,11 +15,11 @@
 
 import collections
 import numbers
-from typing import Iterable, NamedTuple, Optional, Set, Sequence, Tuple
+from typing import Iterable, NamedTuple, Optional, Sequence, Set, Tuple
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 

@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
 import apache_beam as beam
 import tensorflow as tf
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import inference_base
 from tensorflow_model_analysis.extractors import predictions_extractor

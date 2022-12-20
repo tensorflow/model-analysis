@@ -18,7 +18,7 @@ from typing import Optional
 from absl import logging
 import apache_beam as beam
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import materialized_predictions_extractor
 from tensorflow_model_analysis.proto import config_pb2

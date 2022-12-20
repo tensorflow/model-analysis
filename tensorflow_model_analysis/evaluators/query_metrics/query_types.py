@@ -15,7 +15,7 @@
 
 from typing import Dict, List, NamedTuple
 
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 
 # Should contain features, predictions, labels
 FPL = Dict[str, types.DictOfTensorValue]

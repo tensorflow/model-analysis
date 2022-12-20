@@ -18,7 +18,7 @@ from typing import Sequence
 import apache_beam as beam
 import pandas as pd
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.utils import util
 

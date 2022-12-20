@@ -17,7 +17,7 @@ from typing import Any, Dict, Iterable, Optional, Union
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor
 

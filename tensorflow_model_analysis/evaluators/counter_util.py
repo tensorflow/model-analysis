@@ -18,7 +18,7 @@ from typing import List, Set
 import apache_beam as beam
 
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.proto import config_pb2
 
 

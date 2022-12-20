@@ -15,7 +15,7 @@
 
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.evaluators import legacy_poisson_bootstrap as poisson_bootstrap
 
 

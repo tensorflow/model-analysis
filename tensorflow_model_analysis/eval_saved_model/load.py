@@ -17,7 +17,7 @@ from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Unio
 
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding

@@ -16,7 +16,7 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_validator
 from tensorflow_model_analysis.metrics import metric_types

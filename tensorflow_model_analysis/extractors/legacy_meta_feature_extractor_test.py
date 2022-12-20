@@ -18,7 +18,7 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import legacy_meta_feature_extractor as meta_feature_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor

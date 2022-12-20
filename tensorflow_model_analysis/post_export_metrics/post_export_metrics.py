@@ -18,11 +18,11 @@ parameter of Evaluate to compute them.
 """
 
 import abc
-from typing import cast, Any, Dict, List, Optional, Tuple, Type, Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, cast
 import numpy as np
 import tensorflow as tf
 from tensorflow import math
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import metrics
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2 as metrics_pb2

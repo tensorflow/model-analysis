@@ -21,7 +21,7 @@ from typing import Iterable, List, Optional, Union
 import numpy as np
 import pyarrow as pa
 import tensorflow as tf
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 
 
 class SliceAccessor:

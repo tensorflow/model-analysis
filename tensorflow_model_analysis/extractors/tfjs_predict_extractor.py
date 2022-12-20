@@ -19,7 +19,7 @@ import json
 import os
 import subprocess
 import tempfile
-from typing import Dict, NamedTuple, List, Union, Sequence
+from typing import Dict, List, NamedTuple, Sequence, Union
 
 import uuid
 
@@ -27,7 +27,7 @@ import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors.tfjs_predict_extractor_util import get_tfjs_binary
 from tensorflow_model_analysis.proto import config_pb2

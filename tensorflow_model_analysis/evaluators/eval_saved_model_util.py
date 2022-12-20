@@ -17,7 +17,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.utils import model_util

@@ -16,7 +16,7 @@
 from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 import apache_beam as beam
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util

@@ -14,7 +14,7 @@
 """Library for encoding and decoding keys, Tensors, etc in EvalSavedModel."""
 
 import tensorflow as tf
-from tensorflow_model_analysis import types
+from tensorflow_model_analysis.api import types
 
 from google.protobuf import any_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
