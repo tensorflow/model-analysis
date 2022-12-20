@@ -9,6 +9,7 @@
 *   Fix for jupiter notebook
 *   Fix element dimension inconsistency when some of the extracts have missing
     key.
+*. Add public visibility to the servo beam extractor.
 
 ## Breaking Changes
 
