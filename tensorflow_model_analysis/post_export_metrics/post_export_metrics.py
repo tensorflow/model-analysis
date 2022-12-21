@@ -1843,12 +1843,11 @@ class _TFMetricBaseClass(_PostExportMetric):
     _check_feature_present(features_dict, self._example_weight_key)
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
-  def get_metric_ops(
+  def get_metric_ops(  # pytype: disable=signature-mismatch  # overriding-return-type-checks
       self, features_dict: types.TensorTypeMaybeDict,
       predictions_dict: types.TensorTypeMaybeDict,
-      labels_dict: types.TensorTypeMaybeDict
-  ) -> Dict[str, Tuple[types.TensorOrOperationType,
-                       types.TensorOrOperationType]]:
+      labels_dict: types.TensorTypeMaybeDict) -> Dict[str, Tuple[
+          types.TensorOrOperationType, types.TensorOrOperationType]]:
     predictions, labels = self._get_labels_and_predictions(
         predictions_dict, labels_dict)
     prediction_tensor = _flatten_to_one_dim(tf.cast(predictions, tf.float64))

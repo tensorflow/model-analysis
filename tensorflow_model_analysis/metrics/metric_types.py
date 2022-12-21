@@ -318,7 +318,7 @@ MetricsDict = Dict[MetricKey, types.MetricValueType]
 class PlotKey(MetricKey):
   """A PlotKey is a metric key that uniquely identifies a plot."""
 
-  def to_proto(self) -> metrics_for_slice_pb2.PlotKey:
+  def to_proto(self) -> metrics_for_slice_pb2.PlotKey:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     """Converts key to proto."""
     plot_key = metrics_for_slice_pb2.PlotKey()
     if self.name:
@@ -355,7 +355,7 @@ class PlotKey(MetricKey):
 class AttributionsKey(MetricKey):
   """An AttributionsKey is a metric key uniquely identifying attributions."""
 
-  def to_proto(self) -> metrics_for_slice_pb2.AttributionsKey:
+  def to_proto(self) -> metrics_for_slice_pb2.AttributionsKey:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     """Converts key to proto."""
     attribution_key = metrics_for_slice_pb2.AttributionsKey()
     if self.name:
