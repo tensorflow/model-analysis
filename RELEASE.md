@@ -4,12 +4,14 @@
 
 ## Major Features and Improvements
 
+*   Add MeanAbsolutePercentageError and MeanSquaredLogarithmicError
+
 ## Bug fixes and other Changes
 
 *   Fix for jupiter notebook
 *   Fix element dimension inconsistency when some of the extracts have missing
     key.
-*. Add public visibility to the servo beam extractor.
+*   Add public visibility to the servo beam extractor.
 
 ## Breaking Changes
 

@@ -67,6 +67,12 @@ _UNSUPPORTED_TF_SETTINGS = {
     },
     'MeanSquaredError': {
         'reduction': ['auto']
+    },
+    'MeanAbsolutePercentageError': {
+        'reduction': ['auto']
+    },
+    'MeanSqauredLogarithmicError': {
+        'reduction': ['auto']
     }
 }
 

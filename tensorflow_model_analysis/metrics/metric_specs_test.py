@@ -139,9 +139,7 @@ class MetricSpecsTest(tf.test.TestCase):
                     }, sort_keys=True)),
                 config_pb2.MetricConfig(
                     class_name='MeanAbsolutePercentageError',
-                    module=metric_specs._TF_LOSSES_MODULE,
                     config=json.dumps({
-                        'reduction': 'auto',
                         'name': 'mape'
                     },
                                       sort_keys=True)),

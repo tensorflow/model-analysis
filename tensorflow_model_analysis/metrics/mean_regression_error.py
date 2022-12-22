@@ -23,12 +23,19 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
 
+# To avoid divide by zero, a small epsilon is added to the denominator.
+_EPSILON = 1e-6
+
 MEAN_ABSOLUTE_ERROR_NAME = 'mean_absolute_error'
 MEAN_SQUARED_ERROR_NAME = 'mean_squared_error'
+MEAN_ABSOLUTE_PERCENTAGE_ERROR_NAME = 'mean_absolute_percentage_error'
+MEAN_SQUARED_LOGARITHMIC_ERROR_NAME = 'mean_squared_logarithmic_error'
 
 
 class MeanAbsoluteError(metric_types.Metric):
   """Calculates the mean of absolute error between labels and predictions.
+
+  Formula: error = abs(label - prediction)
 
   The metric computes the mean of absolute error between labels and
   predictions. The labels and predictions should be floats.
@@ -57,8 +64,6 @@ def _mean_absolute_error_computations(
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean absolute error computations.
-
-  Subclasses must override this method.
 
   Args:
     name: The name of the metric.
@@ -98,12 +103,85 @@ def _mean_absolute_error_computations(
 metric_types.register_metric(MeanAbsoluteError)
 
 
+class MeanAbsolutePercentageError(metric_types.Metric):
+  """Calculates the mean of absolute percentage error.
+
+  Formula: error = 100 * abs( (label - prediction) / label )
+
+  The metric computes the mean of absolute percentage error between labels and
+  predictions. The labels and predictions should be floats.
+  """
+
+  def __init__(self, name: str = MEAN_ABSOLUTE_PERCENTAGE_ERROR_NAME):
+    """Initializes mean regression error metric.
+
+    Args:
+      name: The name of the metric.
+    """
+    super().__init__(
+        metric_util.merge_per_key_computations(
+            _mean_absolute_percentage_error_computations),
+        name=name)
+
+
+def _mean_absolute_percentage_error_computations(
+    name: Optional[str] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
+    model_name: Optional[str] = None,
+    output_name: Optional[str] = None,
+    example_weighted: bool = False,
+    sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
+    class_weights: Optional[Dict[int, float]] = None
+) -> metric_types.MetricComputations:
+  """Returns metric computations for mean absolute percentage error.
+
+  Args:
+    name: The name of the metric.
+    eval_config: The configurations for TFMA pipeline.
+    model_name: The name of the model to get predictions from.
+    output_name: The name of the output under the model to get predictions from.
+    example_weighted: Whether the examples have specified weights.
+    sub_key: The key includes class, top-k, k information. It should only be in
+      classfication problems.
+    aggregation_type: The method to aggregate over classes. It should only be in
+      classfication problems.
+    class_weights: The weight of classes. It should only be in classfication
+      problems.
+  """
+  key = metric_types.MetricKey(
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key,
+      example_weighted=example_weighted)
+  return [
+      metric_types.MetricComputation(
+          keys=[key],
+          preprocessors=None,
+          combiner=_MeanAbsolutePercentageErrorCombiner(
+              eval_config=eval_config,
+              model_name=model_name,
+              output_name=output_name,
+              metric_key=key,
+              class_weights=class_weights,
+              aggregation_type=aggregation_type,
+              example_weighted=example_weighted,
+          ))
+  ]
+
+
+metric_types.register_metric(MeanAbsolutePercentageError)
+
+
 class MeanSquaredError(metric_types.Metric):
   """Calculates the mean of squared error between labels and predictions.
 
+  Formula: error = L2_norm(label - prediction)**2
+
   The metric computes the mean of squared error (square of L2 norm) between
-  labels and predictions. The labels and predictions could be scalars, vectors
-  or matrices (np.arrays). Their dimension should match.
+  labels and predictions. The labels and predictions could be arrays of
+  arbitrary dimensions. Their dimension should match.
   """
 
   def __init__(self, name: str = MEAN_SQUARED_ERROR_NAME):
@@ -129,8 +207,6 @@ def _mean_squared_error_computations(
     class_weights: Optional[Dict[int, float]] = None
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean squared error computations.
-
-  Subclasses must override this method.
 
   Args:
     name: The name of the metric.
@@ -168,6 +244,80 @@ def _mean_squared_error_computations(
 
 
 metric_types.register_metric(MeanSquaredError)
+
+
+class MeanSquaredLogarithmicError(metric_types.Metric):
+  """Calculates the mean of squared logarithmic error.
+
+  Formula: error = L2_norm(log(label + 1) - log(prediction + 1))**2
+  Note: log of an array will be elementwise,
+    i.e. log([x1, x2]) = [log(x1), log(x2)]
+
+  The metric computes the mean of squared logarithmic error (square of L2 norm)
+  between labels and predictions. The labels and predictions could be arrays of
+  arbitrary dimensions. Their dimension should match.
+  """
+
+  def __init__(self, name: str = MEAN_SQUARED_LOGARITHMIC_ERROR_NAME):
+    """Initializes mean regression error metric.
+
+    Args:
+      name: The name of the metric.
+    """
+    super().__init__(
+        metric_util.merge_per_key_computations(
+            _mean_squared_logarithmic_error_computations),
+        name=name)
+
+
+def _mean_squared_logarithmic_error_computations(
+    name: Optional[str] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
+    model_name: Optional[str] = None,
+    output_name: Optional[str] = None,
+    example_weighted: bool = False,
+    sub_key: Optional[metric_types.SubKey] = None,
+    aggregation_type: Optional[metric_types.AggregationType] = None,
+    class_weights: Optional[Dict[int, float]] = None
+) -> metric_types.MetricComputations:
+  """Returns metric computations for mean squared logarithmic error.
+
+  Args:
+    name: The name of the metric.
+    eval_config: The configurations for TFMA pipeline.
+    model_name: The name of the model to get predictions from.
+    output_name: The name of the output under the model to get predictions from.
+    example_weighted: Whether the examples have specified weights.
+    sub_key: The key includes class, top-k, k information. It should only be in
+      classfication problems.
+    aggregation_type: The method to aggregate over classes. It should only be in
+      classfication problems.
+    class_weights: The weight of classes. It should only be in classfication
+      problems.
+  """
+  key = metric_types.MetricKey(
+      name=name,
+      model_name=model_name,
+      output_name=output_name,
+      sub_key=sub_key,
+      example_weighted=example_weighted)
+  return [
+      metric_types.MetricComputation(
+          keys=[key],
+          preprocessors=None,
+          combiner=_MeanSquaredLogarithmicErrorCombiner(
+              eval_config=eval_config,
+              model_name=model_name,
+              output_name=output_name,
+              metric_key=key,
+              example_weighted=example_weighted,
+              aggregation_type=aggregation_type,
+              class_weights=class_weights,
+          ))
+  ]
+
+
+metric_types.register_metric(MeanSquaredLogarithmicError)
 
 
 @dataclasses.dataclass
@@ -232,9 +382,10 @@ class _MeanRegressionErrorCombiner(beam.CombineFn, metaclass=abc.ABCMeta):
     for label, prediction, example_weight in lpe_iterator:
       # The np.item method makes sure the result is a one element numpy array
       # and returns the single element as a float.
-      accumulator.total_regression_error += self._regression_error(
-          label, prediction) * example_weight.item()
-      accumulator.total_example_weights += example_weight.item()
+      error = self._regression_error(label, prediction)
+      if not np.isnan(error):
+        accumulator.total_regression_error += error * example_weight.item()
+        accumulator.total_example_weights += example_weight.item()
 
     return accumulator
 
@@ -252,7 +403,7 @@ class _MeanRegressionErrorCombiner(beam.CombineFn, metaclass=abc.ABCMeta):
     if accumulator.total_example_weights != 0.0:
       result = accumulator.total_regression_error / accumulator.total_example_weights
     else:
-      result = 0.0
+      result = float('nan')
     return {self._metric_key: result}
 
 
@@ -274,3 +425,26 @@ class _MeanSquaredErrorCombiner(_MeanRegressionErrorCombiner):
     # The np.item method makes sure the result is a one element numpy array and
     # returns the single element as a float.
     return np.linalg.norm(label - prediction).item()**2
+
+
+class _MeanAbsolutePercentageErrorCombiner(_MeanRegressionErrorCombiner):
+  """A combiner which computes metrics averaging absolute percentage errors."""
+
+  def _regression_error(self, label: np.ndarray,
+                        prediction: np.ndarray) -> float:
+    # The np.item method makes sure the result is a one element numpy array and
+    # returns the single element as a float.
+    # The error also requires the label to be a one element numpy array.
+    if label.item() == 0:
+      return float('nan')
+    return 100 * np.absolute((label - prediction) / label).item()
+
+
+class _MeanSquaredLogarithmicErrorCombiner(_MeanRegressionErrorCombiner):
+  """A combiner which computes metrics averaging squared logarithmic errors."""
+
+  def _regression_error(self, label: np.ndarray,
+                        prediction: np.ndarray) -> float:
+    # The np.item method makes sure the result is a one element numpy array and
+    # returns the single element as a float.
+    return np.linalg.norm(np.log(label + 1) - np.log(prediction + 1)).item()**2

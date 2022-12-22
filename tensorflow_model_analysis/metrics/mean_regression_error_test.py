@@ -38,6 +38,21 @@ class MeanRegressionErrorTest(parameterized.TestCase):
       # average error: (2.376 + 5.25 + 4) / 5.6 = 2.07607
       ('_mean_squared_error', mean_regression_error.MeanSquaredError(), 2.07607
       ),
+      # example1 is 100 * (|0.1 - 1| / 0.1 * 0.1 + |0.3 - 0| / 0.3 * 0.5 +
+      # |0.5 - 2| / 0.5 * 1) = 440
+      # example2 is 100 * (|1 - 0.5| / 1 + |2 - 1| / 2 + |3 - 5| / 3) = 166.66
+      # example3 is 100 * (|3 - 5| / 3) = 66.66
+      # average error: (440 + 166.66 + 66.66) / 5.6 = 120.238095
+      ('_mean_absolute_percentage_error',
+       mean_regression_error.MeanAbsolutePercentageError(), 120.238095),
+      # example1 is |log(0.1+1) - log(1+1)|^2 * 0.1 +
+      # |log(0.3+1) - log(0+1)|^2 * 0.5 + |log(0.5+1) - log(2+1)|^2 * 1 =0.55061
+      # example2 is |log(1+1) - log(0.5+1)|^2 + |log(2+1) - log(1+1)|^2
+      # + |log(3+1) - log(5+1)|^2 = 0.41156
+      # example3 is |log(3+1) - log(5+1)|^2 = 0.16440
+      # average error: (0.55061 + 0.41156 + 0.16440) / 5.6 = 0.20117
+      ('_mean_squared_logarithmic_error',
+       mean_regression_error.MeanSquaredLogarithmicError(), 0.20117),
   )
   def testRegressionErrorWithWeights(self, metric, expected_value):
     computations = metric.computations(example_weighted=True)
