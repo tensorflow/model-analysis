@@ -119,7 +119,7 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model=eval_shared_model,
-          output_batch_size=num_examples)
+          batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config, eval_shared_model=eval_shared_model)
@@ -280,7 +280,7 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model=eval_shared_model,
-          output_batch_size=num_examples)
+          batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config, eval_shared_model=eval_shared_model)
@@ -374,7 +374,7 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model=eval_shared_model,
-          output_batch_size=num_examples)
+          batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config, eval_shared_model=eval_shared_model)
@@ -485,7 +485,7 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model=eval_shared_model,
-          output_batch_size=num_examples)
+          batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config, eval_shared_model=eval_shared_model)
@@ -593,7 +593,7 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
               'model1': eval_shared_model1,
               'model2': eval_shared_model2
           },
-          output_batch_size=num_examples)
+          batch_size=num_examples)
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config,

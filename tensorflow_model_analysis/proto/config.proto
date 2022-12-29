@@ -137,12 +137,6 @@ message ModelSpec {
   // the configured values.
   PaddingOptions padding_options = 14;
 
-  // Batch size used by the inference implementation. This batch size is only
-  // used for inference with this model. It does not affect the batch size of
-  // other models, and it does not affect the batch size used in the rest of the
-  // pipeline.
-  int32 inference_batch_size = 15;
-
   reserved 1, 4;
 }
 

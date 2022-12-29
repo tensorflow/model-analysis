@@ -117,7 +117,7 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     tfx_bsl_inference_ptransform = inference_base.RunInference(
         tfx_bsl_predictions_extractor.TfxBslInferenceWrapper(
             eval_config.model_specs, {'': eval_shared_model}),
-        output_batch_size=num_examples)
+        batch_size=num_examples)
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
