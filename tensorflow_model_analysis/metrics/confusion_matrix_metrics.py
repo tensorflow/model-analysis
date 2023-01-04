@@ -215,7 +215,8 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -354,7 +355,8 @@ class ConfusionMatrixMetric(ConfusionMatrixMetricBase):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -475,7 +477,8 @@ class AUC(ConfusionMatrixMetricBase):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -576,7 +579,8 @@ class AUCPrecisionRecall(AUC):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -648,7 +652,8 @@ class SensitivityAtSpecificity(ConfusionMatrixMetricBase):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
     """
     super().__init__(
         num_thresholds=num_thresholds,
@@ -715,7 +720,8 @@ class SpecificityAtSensitivity(ConfusionMatrixMetricBase):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
     """
     super().__init__(
         num_thresholds=num_thresholds,
@@ -778,7 +784,8 @@ class PrecisionAtRecall(ConfusionMatrixMetricBase):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       **kwargs: (Optional) Additional args to pass along to init (and eventually
         on to _metric_computation and _metric_value)
     """
@@ -851,7 +858,8 @@ class RecallAtPrecision(ConfusionMatrixMetricBase):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
     """
     if precision < 0 or precision > 1:
       raise ValueError('Argument `precision` must be in the range [0, 1]. '
@@ -910,7 +918,8 @@ class TruePositives(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -977,7 +986,8 @@ class TrueNegatives(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1044,7 +1054,8 @@ class FalsePositives(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1111,7 +1122,8 @@ class FalseNegatives(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1176,7 +1188,8 @@ class BinaryAccuracy(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1230,7 +1243,8 @@ class Precision(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1310,7 +1324,8 @@ class Recall(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1379,7 +1394,8 @@ class Specificity(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1440,7 +1456,8 @@ class FallOut(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1501,7 +1518,8 @@ class MissRate(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1562,7 +1580,8 @@ class NegativePredictiveValue(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1623,7 +1642,8 @@ class FalseDiscoveryRate(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1665,7 +1685,8 @@ class FalseOmissionRate(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1707,7 +1728,8 @@ class Prevalence(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1748,7 +1770,8 @@ class PrevalenceThreshold(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1792,7 +1815,8 @@ class ThreatScore(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1834,7 +1858,8 @@ class BalancedAccuracy(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1878,7 +1903,8 @@ class F1Score(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1923,7 +1949,8 @@ class MatthewsCorrelationCoefficient(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -1964,7 +1991,8 @@ class FowlkesMallowsIndex(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -2009,7 +2037,8 @@ class Informedness(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -2053,7 +2082,8 @@ class Markedness(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -2097,7 +2127,8 @@ class PositiveLikelihoodRatio(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -2141,7 +2172,8 @@ class NegativeLikelihoodRatio(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -2185,7 +2217,8 @@ class DiagnosticOddsRatio(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -2225,7 +2258,8 @@ class PredictedPositiveRate(ConfusionMatrixMetric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -2267,7 +2301,8 @@ class ConfusionMatrixAtThresholds(metric_types.Metric):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -2363,7 +2398,8 @@ class MaxRecall(Recall):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       class_id: (Optional) Used with a multi-class model to specify which class
         to compute the confusion matrix for. When class_id is used,
         metrics_specs.binarize settings must not be present. Only one of
@@ -2419,7 +2455,8 @@ class ThresholdAtRecall(ConfusionMatrixMetricBase):
         that the non-top-k values are set to -inf and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. Only
-        one of class_id or top_k should be configured.
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
       **kwargs: (Optional) Additional args to pass along to init (and eventually
         on to _metric_computation and _metric_value)
     """
