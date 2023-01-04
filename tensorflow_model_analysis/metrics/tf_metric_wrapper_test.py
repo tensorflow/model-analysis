@@ -55,6 +55,16 @@ class _CustomConfusionMatrixMetric(tf.keras.metrics.Precision):
     return {'name': base_config['name'], 'dtype': base_config['dtype']}
 
 
+class _CustomMeanSquaredError(tf.keras.metrics.MeanSquaredError):
+
+  def __init__(self, name, dtype=None):
+    super().__init__(name=name, dtype=dtype)
+
+  def result(self):
+    mse = super().result()
+    return {'mse': mse, 'one_minus_mse': 1 - mse}
+
+
 class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
                                  parameterized.TestCase):
 
@@ -787,6 +797,53 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
               name='mse', output_name='output_name')
           self.assertDictElementsAlmostEqual(got_metrics, {
               mse_key: 0.1875,
+          })
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  def testTFMetricWithDictResult(self):
+    computation = tf_metric_wrapper.tf_metric_computations({
+        'output_name': [_CustomMeanSquaredError(name='mse')],
+    })[0]
+
+    extracts = {
+        'labels': {
+            'output_name': [0, 0, 1, 1],
+        },
+        'predictions': {
+            'output_name': [0, 0.5, 0.3, 0.9],
+        },
+        'example_weights': {
+            'output_name': [1.0]
+        }
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([extracts])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          mse_key = metric_types.MetricKey(
+              name='mse/mse', output_name='output_name')
+          one_minus_mse_key = metric_types.MetricKey(
+              name='mse/one_minus_mse', output_name='output_name')
+          self.assertDictElementsAlmostEqual(got_metrics, {
+              mse_key: 0.1875,
+              one_minus_mse_key: 0.8125
           })
 
         except AssertionError as err:

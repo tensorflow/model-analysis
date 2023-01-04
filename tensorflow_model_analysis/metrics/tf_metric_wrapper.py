@@ -580,19 +580,30 @@ class _CompilableMetricsCombiner(beam.CombineFn):
       self, accumulator: tf_metric_accumulators.TFCompilableMetricsAccumulator
   ) -> Dict[metric_types.MetricKey, Any]:
     self._process_batch(accumulator)
+
+    def make_metric_key(metric_name, output_name):
+      return metric_types.MetricKey(
+          name=metric_name,
+          model_name=self._model_name,
+          output_name=output_name,
+          sub_key=self._sub_key,
+          example_weighted=self._example_weighted)
+
     result = {}
     for output_index, output_name in enumerate(self._output_names):
       for metric_index, metric in enumerate(self._metrics[output_name]):
-        key = metric_types.MetricKey(
-            name=metric.name,
-            model_name=self._model_name,
-            output_name=output_name,
-            sub_key=self._sub_key,
-            example_weighted=self._example_weighted)
+
         weights = accumulator.get_weights(output_index, metric_index)
         if weights is not None:
           metric.set_weights(weights)
         else:
           metric.reset_states()
-        result[key] = metric.result().numpy()
+        metric_result = metric.result()
+        if isinstance(metric_result, dict):
+          for name, value in metric_result.items():
+            key = make_metric_key(f'{metric.name}/{name}', output_name)
+            result[key] = value.numpy()
+        else:
+          key = make_metric_key(metric.name, output_name)
+          result[key] = metric_result.numpy()
     return result
