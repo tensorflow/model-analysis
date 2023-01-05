@@ -23,8 +23,6 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
 
-# To avoid divide by zero, a small epsilon is added to the denominator.
-_EPSILON = 1e-6
 
 MEAN_ABSOLUTE_ERROR_NAME = 'mean_absolute_error'
 MEAN_SQUARED_ERROR_NAME = 'mean_squared_error'
