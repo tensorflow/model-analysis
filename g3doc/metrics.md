@@ -695,18 +695,20 @@ same computations for each of these inputs separately.
 
 #### MetricComputation
 
-A `MetricComputation` is made up of a combination of a `preprocessor` and a
-`combiner`. The `preprocessor` is a `beam.DoFn` that takes extracts as its input
-and outputs the initial state that will be used by the combiner (see
-[architecture](architecture.md) for more info on what are extracts). If a
-`preprocessor` is not defined, then the combiner will be passed
+A `MetricComputation` is made up of a combination of `preprocessors` and a
+`combiner`. The `preprocessors` is a list of `preprocessor`, which is a
+`beam.DoFn` that takes extracts as its input and outputs the initial state that
+will be used by the combiner (see [architecture](architecture.md) for more info
+on what are extracts). All preprocessors will be executed sequentially in the
+order of the list. If the `preprocessors` is empty, then the combiner will be
+passed
 [StandardMetricInputs](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/metrics/StandardMetricInputs)
 (standard metric inputs contains labels, predictions, and example_weights). The
 `combiner` is a `beam.CombineFn` that takes a tuple of (slice key, preprocessor
 output) as its input and outputs a tuple of (slice_key, metric results dict) as
 its result.
 
-Note that slicing happens between the `preprocessor` and `combiner`.
+Note that slicing happens between the `preprocessors` and `combiner`.
 
 Note that if a metric computation wants to make use of both the standard metric
 inputs, but augment it with a few of the features from the `features` extracts,
@@ -735,7 +737,7 @@ def _example_count(
   return [
       tfma.metrics.MetricComputation(
           keys=[key],
-          preprocessor=_ExampleCountPreprocessor(),
+          preprocessors=[_ExampleCountPreprocessor()],
           combiner=_ExampleCountCombiner(key))
   ]
 
