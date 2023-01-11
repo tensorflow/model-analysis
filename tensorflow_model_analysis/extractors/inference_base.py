@@ -192,9 +192,10 @@ def _insert_predictions_into_extracts(
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-def RunInference(extracts: beam.pvalue.PCollection,  # pylint: disable=invalid-name
-                 inference_ptransform: beam.PTransform,
-                 batch_size: Optional[int] = None) -> beam.pvalue.PCollection:
+def RunInference(  # pylint: disable=invalid-name
+    extracts: beam.pvalue.PCollection,
+    inference_ptransform: beam.PTransform,
+    output_batch_size: Optional[int] = None) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to Extracts.
 
   Args:
@@ -208,7 +209,7 @@ def RunInference(extracts: beam.pvalue.PCollection,  # pylint: disable=invalid-n
       a pcollection consisting of tuples containing a key and a single example.
       The key may be anything and the example may be a tf.Example or serialized
       tf.Example.
-    batch_size: Sets a static output batch size.
+    output_batch_size: Sets a static output batch size.
 
   Returns:
     PCollection of Extracts updated with the predictions.
@@ -231,8 +232,11 @@ def RunInference(extracts: beam.pvalue.PCollection,  # pylint: disable=invalid-n
   # Beam batch will group single Extracts into a batch. Then
   # merge_extracts will flatten the batch into a single "batched"
   # extract.
-  if batch_size is not None:
-    batch_kwargs = {'min_batch_size': batch_size, 'max_batch_size': batch_size}
+  if output_batch_size is not None:
+    batch_kwargs = {
+        'min_batch_size': output_batch_size,
+        'max_batch_size': output_batch_size
+    }
   else:
     # Default batch parameters.
     batch_kwargs = {}
