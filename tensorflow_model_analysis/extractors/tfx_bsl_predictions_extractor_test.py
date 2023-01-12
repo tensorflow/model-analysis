@@ -149,6 +149,116 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result)
 
+  def testInferenceBatchSize(self):
+    temp_export_dir = self._getExportDir()
+    # Running pyformat results in a lint error. Formating the lint error breaks
+    # the pyformat presubmit. This style matches the other tests.
+    # pyformat: disable
+    export_dir, _ = (
+        fixed_prediction_estimator_extra_fields
+        .simple_fixed_prediction_estimator_extra_fields(temp_export_dir, None))
+    # pyformat: enable
+
+    examples = [
+        self._makeExample(
+            prediction=0.2,
+            label=1.0,
+            fixed_int=1,
+            fixed_float=1.0,
+            fixed_string='fixed_string1',
+        ),
+        self._makeExample(
+            prediction=0.8,
+            label=0.0,
+            fixed_int=1,
+            fixed_float=1.0,
+            fixed_string='fixed_string2',
+        ),
+        self._makeExample(
+            prediction=0.5,
+            label=0.0,
+            fixed_int=2,
+            fixed_float=1.0,
+            fixed_string='fixed_string3',
+        ),
+    ]
+    num_examples = len(examples)
+
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                inference_batch_size=num_examples,
+            )
+        ]
+    )
+    eval_shared_model = self.createTestEvalSharedModel(
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING]
+    )
+    tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
+        eval_config,
+        text_format.Parse(
+            """
+        feature {
+          name: "prediction"
+          type: FLOAT
+        }
+        feature {
+          name: "label"
+          type: FLOAT
+        }
+        feature {
+          name: "fixed_int"
+          type: INT
+        }
+        feature {
+          name: "fixed_float"
+          type: FLOAT
+        }
+        feature {
+          name: "fixed_string"
+          type: BYTES
+        }
+        """,
+            schema_pb2.Schema(),
+        ),
+    )
+
+    prediction_extractor = (
+        tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+            eval_config=eval_config,
+            eval_shared_model=eval_shared_model,
+            output_batch_size=num_examples,
+        )
+    )
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
+          | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
+          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform
+      )
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          self.assertIn(constants.PREDICTIONS_KEY, got[0])
+          self.assertAllClose(
+              np.array([[0.2], [0.8], [0.5]]), got[0][constants.PREDICTIONS_KEY]
+          )
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result)
+
   def testNoDefinedBatchSize(self):
     """Simple test to cover batch_size=None code path."""
     temp_export_dir = self._getExportDir()

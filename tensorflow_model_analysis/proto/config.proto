@@ -140,7 +140,8 @@ message ModelSpec {
   // Batch size used by the inference implementation. This batch size is only
   // used for inference with this model. It does not affect the batch size of
   // other models, and it does not affect the batch size used in the rest of the
-  // pipeline.
+  // pipeline. This is implemented for the ServoBeamPredictionsExtractor and
+  // TfxBslPredictionsExtractor.
   int32 inference_batch_size = 15;
 
   reserved 1, 4;

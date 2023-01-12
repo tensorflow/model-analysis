@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Predictions extractor for using Tfx-Bsl Bulk Inference."""
+"""Predictions extractor for using TFX-BSL Bulk Inference."""
 
 import copy
 from typing import Dict, List, Optional, Tuple, TypeVar, Union
@@ -46,9 +46,9 @@ class TfxBslInferenceWrapper(beam.PTransform):
     """Converts TFMA config into library-specific configuration.
 
     Args:
-      model_specs: TFMA ModelSpec config to be translated to ServoBeam Config.
+      model_specs: TFMA ModelSpec config to be translated to TFX-BSL Config.
       name_to_eval_shared_model: Map of model name to associated EvalSharedModel
-        objed.
+        object.
     """
     super().__init__()
     model_names = []
@@ -56,12 +56,17 @@ class TfxBslInferenceWrapper(beam.PTransform):
     for model_spec in model_specs:
       eval_shared_model = model_util.get_eval_shared_model(
           model_spec.name, name_to_eval_shared_model)
-      inference_spec_type = model_spec_pb2.InferenceSpecType()
-      inference_spec_type.saved_model_spec.model_path = eval_shared_model.model_path
-      inference_spec_type.saved_model_spec.tag[:] = eval_shared_model.model_loader.tags
-      inference_spec_type.saved_model_spec.signature_name[:] = [
-          model_spec.signature_name
-      ]
+      inference_spec_type = model_spec_pb2.InferenceSpecType(
+          saved_model_spec=model_spec_pb2.SavedModelSpec(
+              model_path=eval_shared_model.model_path,
+              tag=eval_shared_model.model_loader.tags,
+              signature_name=[model_spec.signature_name],
+          ),
+          batch_parameters=model_spec_pb2.BatchParameters(
+              min_batch_size=model_spec.inference_batch_size,
+              max_batch_size=model_spec.inference_batch_size,
+          ),
+      )
       model_names.append(model_spec.name)
       inference_specs.append(inference_spec_type)
     self._aligned_model_names = tuple(model_names)
@@ -103,8 +108,8 @@ def TfxBslPredictionsExtractor(
       models (multi-model evaluation) or None (predictions obtained from
       features).
     output_batch_size: Sets a static output batch size for bulk inference. Note:
-      this is not implemented for Tfx-Bsl inference and only affects the
-      rebatched output batch size.
+      this only affects the rebatched output batch size to set inference batch
+      size set ModelSpec.inference_batch_size.
 
   Returns:
     Extractor for extracting predictions.
@@ -132,8 +137,6 @@ def TfxBslPredictionsExtractor(
     model_specs.append(model_spec)
 
   tfx_bsl_inference_ptransform = inference_base.RunInference(
-      # TODO(b/260887130): TfxBsl Bulk Inference doesn't support batch_size yet,
-      # but will in the near future. See bug.
       inference_ptransform=TfxBslInferenceWrapper(model_specs,
                                                   name_to_eval_shared_model),
       output_batch_size=output_batch_size)
