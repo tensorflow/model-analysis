@@ -510,9 +510,12 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
 
 def _is_metric_diffable(metric_value: Any):
   """Check whether a metric value is a number or an ndarray of numbers."""
-  return (isinstance(metric_value, numbers.Number) or
-          (isinstance(metric_value, np.ndarray) and
-           np.issubdtype(metric_value.dtype, np.number)))
+  return isinstance(
+      metric_value, (numbers.Number, types.StructuredMetricValue)
+  ) or (
+      isinstance(metric_value, np.ndarray)
+      and np.issubdtype(metric_value.dtype, np.number)
+  )
 
 
 @beam.ptransform_fn
