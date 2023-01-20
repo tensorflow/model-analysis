@@ -820,7 +820,12 @@ def merge_extracts(extracts: List[types.Extracts],
     elif all(t is None for t in target):
       return None
     else:
-      arr = np.array(target)
+      # Compatibility shim for NumPy 1.24. See:
+      # https://numpy.org/neps/nep-0034-infer-dtype-is-object.html
+      try:
+        arr = np.array(target)
+      except ValueError:
+        arr = np.array(target, dtype=object)
       # Flatten values that were originally single item lists into a single list
       # e.g. [[1], [2], [3]] -> [1, 2, 3]
       if squeeze_two_dim_vector and len(arr.shape) == 2 and arr.shape[1] == 1:

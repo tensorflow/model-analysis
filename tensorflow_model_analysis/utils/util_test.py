@@ -1200,73 +1200,71 @@ class UtilTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       dict(
           testcase_name='_list',
-          extracts=[{
-              'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64)
-          }],
+          extracts=[
+              {'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64)}
+          ],
           expected_extract={
               'predictions': np.array([0.1, 0.3, 0.5], dtype=np.float64)
           },
           key='predictions',
           shape=(3,),
-          dtype=np.float64),
+          dtype=np.float64,
+      ),
       dict(
           testcase_name='_2d_list',
-          extracts=[{
-              'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64)
-          }],
+          extracts=[
+              {'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64)}
+          ],
           expected_extract={
               'labels': np.array([[0.1], [0.3], [0.5]], dtype=np.float64)
           },
           key='labels',
           shape=(3, 1),
-          dtype=np.float64),
+          dtype=np.float64,
+      ),
       dict(
           testcase_name='_array_scalar',
-          extracts=[{
-              'array_scalar': np.array([0.1], dtype=np.float64)
-          }],
+          extracts=[{'array_scalar': np.array([0.1], dtype=np.float64)}],
           expected_extract={'array_scalar': np.array([0.1], dtype=np.float64)},
           key='array_scalar',
           shape=(1,),
-          dtype=np.float64),
+          dtype=np.float64,
+      ),
       dict(
           testcase_name='_objects',
-          extracts=[{
-              'objects': np.array([b'sun', b'moon', b'call'], dtype=object)
-          }],
-          expected_extract={
-              'objects': np.array([b'sun', b'moon', b'call'], dtype=object)
-          },
-          key='objects',
-          shape=(3,),
-          dtype=np.object),
-      dict(
-          testcase_name='_batch_extracts',
           extracts=[
-              {
-                  'objects': np.array([b'sun', b'moon'], dtype=object)
-              },
-              {
-                  'objects': np.array([b'call'], dtype=object)
-              },
+              {'objects': np.array([b'sun', b'moon', b'call'], dtype=object)}
           ],
           expected_extract={
               'objects': np.array([b'sun', b'moon', b'call'], dtype=object)
           },
           key='objects',
           shape=(3,),
-          dtype=np.object),
+          dtype=object,
+      ),
+      dict(
+          testcase_name='_batch_extracts',
+          extracts=[
+              {'objects': np.array([b'sun', b'moon'], dtype=object)},
+              {'objects': np.array([b'call'], dtype=object)},
+          ],
+          expected_extract={
+              'objects': np.array([b'sun', b'moon', b'call'], dtype=object)
+          },
+          key='objects',
+          shape=(3,),
+          dtype=object,
+      ),
       dict(
           testcase_name='_batch_extracts_with_empty_extract',
-          extracts=[{}, {
-              'objects': np.array([b'sun', b'moon'], dtype=object)
-          }],
+          extracts=[{}, {'objects': np.array([b'sun', b'moon'], dtype=object)}],
           expected_extract={
               'objects': np.array([b'sun', b'moon'], dtype=object)
           },
           key='objects',
           shape=(2,),
-          dtype=np.object),
+          dtype=object,
+      ),
   )
   def testSplitThenMergeAllowingScalarNumpyArray(self, extracts,
                                                  expected_extract, key, shape,
