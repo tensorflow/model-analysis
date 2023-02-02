@@ -5,6 +5,7 @@
 ## Major Features and Improvements
 
 *   Add MeanAbsolutePercentageError and MeanSquaredLogarithmicError
+*   Add SetMatchPrecision and SetMatchRecall
 
 ## Bug fixes and other Changes
 
