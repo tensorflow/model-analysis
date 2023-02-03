@@ -13,6 +13,8 @@
 *   Fix element dimension inconsistency when some of the extracts have missing
     key.
 *   Add public visibility to the servo beam extractor.
+*   Fix for bug where binary_confusion_matrices with different class_weights are
+    considered identical and deduplicated.
 
 ## Breaking Changes
 

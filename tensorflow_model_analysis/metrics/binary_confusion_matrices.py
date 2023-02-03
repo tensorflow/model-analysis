@@ -277,6 +277,8 @@ def binary_confusion_matrices(
       name_args['thresholds'] = thresholds
     if preprocessors:
       name_args['preprocessors'] = tuple(p.name for p in preprocessors)
+    if class_weights:
+      name_args['class_weights'] = class_weights
 
     name = metric_util.generate_private_name_from_arguments(
         BINARY_CONFUSION_MATRICES_NAME, **name_args)
@@ -488,7 +490,9 @@ def _binary_confusion_matrix_computation(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
-      example_weighted=example_weighted)
+      aggregation_type=aggregation_type,
+      example_weighted=example_weighted,
+  )
 
   return [
       metric_types.MetricComputation(

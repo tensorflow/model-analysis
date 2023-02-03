@@ -42,10 +42,12 @@ from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_specs
+from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflow_model_analysis.view import view_types
@@ -376,6 +378,149 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
                      config_pb2.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     self.assertFalse(eval_result.plots)
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'WithHistogram',
+          'eval_config': text_format.Parse(
+              """
+              model_specs {
+                label_key: "labels"
+                prediction_key: "predictions"
+              }
+              slicing_specs {}
+              metrics_specs {
+                aggregate: {
+                    micro_average: true
+                    class_weights { key: 0 value: 1.0 }
+                    class_weights { key: 1 value: 0.0 }
+                }
+                metrics {
+                  class_name: "Recall"
+                  config: '"name": "recall_class_0", "num_thresholds": 3'
+                }
+              }
+              metrics_specs {
+                aggregate: {
+                    micro_average: true
+                    class_weights { key: 0 value: 0.0 }
+                    class_weights { key: 1 value: 1.0 }
+                }
+                metrics {
+                  class_name: "Recall"
+                  config: '"name": "recall_class_1", "num_thresholds": 3'
+                }
+              }
+              """,
+              config_pb2.EvalConfig(),
+          ),
+          'expected_class_0_recall': text_format.Parse(
+              """
+              array_value {
+                  data_type: FLOAT64
+                  shape: 3
+                  float64_values: 1.0
+                  float64_values: 1.0
+                  float64_values: 0.0
+              }
+              """,
+              metrics_for_slice_pb2.MetricValue(),
+          ),
+          'expected_class_1_recall': text_format.Parse(
+              """
+              array_value {
+                  data_type: FLOAT64
+                  shape: 3
+                  float64_values: 1.0
+                  float64_values: 0.0
+                  float64_values: 0.0
+              }
+              """,
+              metrics_for_slice_pb2.MetricValue(),
+          ),
+      },
+      {
+          'testcase_name': 'NoHistogram',
+          'eval_config': text_format.Parse(
+              """
+              model_specs {
+                label_key: "labels"
+                prediction_key: "predictions"
+              }
+              slicing_specs {}
+              metrics_specs {
+                aggregate: {
+                    micro_average: true
+                    class_weights { key: 0 value: 1.0 }
+                    class_weights { key: 1 value: 0.0 }
+                }
+                metrics {
+                  class_name: "Recall"
+                  config: '"name": "recall_class_0"'
+                }
+              }
+              metrics_specs {
+                aggregate: {
+                    micro_average: true
+                    class_weights { key: 0 value: 0.0 }
+                    class_weights { key: 1 value: 1.0 }
+                }
+                metrics {
+                  class_name: "Recall"
+                  config: '"name": "recall_class_1"'
+                }
+              }
+              """,
+              config_pb2.EvalConfig(),
+          ),
+          'expected_class_0_recall': text_format.Parse(
+              'double_value { value: 1.0 }',
+              metrics_for_slice_pb2.MetricValue(),
+          ),
+          'expected_class_1_recall': text_format.Parse(
+              'double_value { value: 0.0 }',
+              metrics_for_slice_pb2.MetricValue(),
+          ),
+      },
+  )
+  def testRunModelAnalysisMultiMicroAggregation(
+      self, eval_config, expected_class_0_recall, expected_class_1_recall
+  ):
+    # class 0 is all TPs so has recall 1.0, class 1 is all FPs so has recall 0.0
+    examples = [
+        self._makeExample(labels=[1.0, 1.0], predictions=[0.9, 0.1]),
+        self._makeExample(labels=[1.0, 1.0], predictions=[0.9, 0.1]),
+    ]
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    output_dir = self._getTempDir()
+    model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
+        data_location=data_location,
+        output_path=output_dir,
+    )
+
+    metrics_for_slice = list(model_eval_lib.load_metrics(output_dir))
+    self.assertLen(metrics_for_slice, 1)
+    metric_keys_to_values = {
+        metric_types.MetricKey.from_proto(kv.key): kv.value
+        for kv in metrics_for_slice[0].metric_keys_and_values
+    }
+    class_0_key = metric_types.MetricKey(
+        name='recall_class_0',
+        aggregation_type=metric_types.AggregationType(micro_average=True),
+    )
+    class_1_key = metric_types.MetricKey(
+        name='recall_class_1',
+        aggregation_type=metric_types.AggregationType(micro_average=True),
+    )
+    self.assertIn(class_0_key, metric_keys_to_values)
+    self.assertEqual(
+        expected_class_0_recall, metric_keys_to_values[class_0_key]
+    )
+    self.assertIn(class_1_key, metric_keys_to_values)
+    self.assertEqual(
+        expected_class_1_recall, metric_keys_to_values[class_1_key]
+    )
 
   def testRunModelAnalysisWithCustomizations(self):
     model_location = self._exportEvalSavedModel(

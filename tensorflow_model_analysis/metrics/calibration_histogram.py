@@ -104,9 +104,20 @@ def calibration_histogram(
   if fractional_labels is None:
     fractional_labels = (left == 0.0 and right == 1.0)
   if name is None:
-    name = f'{CALIBRATION_HISTOGRAM_NAME}_{num_buckets}'
+    name_args = {
+        'num_buckets': num_buckets,
+        'left': left,
+        'right': right,
+        'fractional_labels': fractional_labels,
+        'prediction_based_bucketing': prediction_based_bucketing,
+    }
     if preprocessors:
-      name = f'{name}_{tuple(p.name for p in preprocessors)}'
+      name_args['preprocessors'] = tuple(p.name for p in preprocessors)
+    if class_weights:
+      name_args['class_weights'] = class_weights
+    name = metric_util.generate_private_name_from_arguments(
+        CALIBRATION_HISTOGRAM_NAME, **name_args
+    )
   key = metric_types.PlotKey(
       name=name,
       model_name=model_name,

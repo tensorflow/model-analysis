@@ -92,7 +92,12 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
           key = metric_types.PlotKey(
-              '_calibration_histogram_10000', example_weighted=True)
+              (
+                  '_calibration_histogram:fractional_labels=True,left=0.0,'
+                  'num_buckets=10000,prediction_based_bucketing=True,right=1.0'
+              ),
+              example_weighted=True,
+          )
           self.assertIn(key, got_plots)
           got_histogram = got_plots[key]
           self.assertLen(got_histogram, 5)
@@ -203,9 +208,13 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
           key = metric_types.PlotKey(
-              name='_calibration_histogram_10000',
+              name=(
+                  '_calibration_histogram:fractional_labels=True,left=0.0,'
+                  'num_buckets=10000,prediction_based_bucketing=True,right=1.0'
+              ),
               sub_key=metric_types.SubKey(k=2),
-              example_weighted=True)
+              example_weighted=True,
+          )
           self.assertIn(key, got_plots)
           got_histogram = got_plots[key]
           self.assertLen(got_histogram, 5)
@@ -293,9 +302,13 @@ class CalibrationHistogramTest(testutil.TensorflowModelAnalysisTest):
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_plots, 1)
           key = metric_types.PlotKey(
-              name='_calibration_histogram_10000',
+              name=(
+                  '_calibration_histogram:fractional_labels=True,left=0.0,'
+                  'num_buckets=10000,prediction_based_bucketing=True,right=1.0'
+              ),
               sub_key=metric_types.SubKey(top_k=2),
-              example_weighted=True)
+              example_weighted=True,
+          )
           self.assertIn(key, got_plots)
           got_histogram = got_plots[key]
           self.assertLen(got_histogram, 5)
