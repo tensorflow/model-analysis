@@ -60,20 +60,14 @@ _UNSUPPORTED_TF_SETTINGS = {
         'multi_label': [False],
         'num_labels': [None],
         'label_weights': [None],
-        'from_logits': [False]
+        'from_logits': [False],
     },
-    'MeanAbsoluteError': {
-        'reduction': ['auto']
-    },
-    'MeanSquaredError': {
-        'reduction': ['auto']
-    },
-    'MeanAbsolutePercentageError': {
-        'reduction': ['auto']
-    },
-    'MeanSqauredLogarithmicError': {
-        'reduction': ['auto']
-    }
+    'MeanAbsoluteError': {'reduction': ['auto']},
+    'MeanSquaredError': {'reduction': ['auto']},
+    'MeanAbsolutePercentageError': {'reduction': ['auto']},
+    'MeanSqauredLogarithmicError': {'reduction': ['auto']},
+    'BinaryCrossEntropy': {'reduction': ['auto']},
+    'CategoricalCrossEntropy': {'reduction': ['auto']},
 }
 
 

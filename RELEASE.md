@@ -4,6 +4,7 @@
 
 ## Major Features and Improvements
 
+*   Add BinaryCrossEntropy and CategoricalCrossEntropy.
 *   Add MeanAbsolutePercentageError and MeanSquaredLogarithmicError
 *   Add SetMatchPrecision and SetMatchRecall
 
