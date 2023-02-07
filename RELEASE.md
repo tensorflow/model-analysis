@@ -16,6 +16,8 @@
 *   Add public visibility to the servo beam extractor.
 *   Fix for bug where binary_confusion_matrices with different class_weights are
     considered identical and deduplicated.
+*   Fixes bug where positive / negative axes labels are reversed in prediction
+    distribution plot.
 
 ## Breaking Changes
 
