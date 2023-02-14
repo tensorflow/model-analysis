@@ -1172,7 +1172,9 @@ def _deserialize_tf_metric(
   """Deserializes a tf.keras.metrics metric."""
   cls_name, cfg = _tf_class_and_config(metric_config)
   with tf.keras.utils.custom_object_scope(custom_objects):
-    return tf.keras.metrics.deserialize({'class_name': cls_name, 'config': cfg})
+    return metric_util.deserialize_metric(
+        {'class_name': cls_name, 'config': cfg}, use_legacy_format=True
+    )
 
 
 def _private_tf_metric(
@@ -1183,7 +1185,7 @@ def _private_tf_metric(
     cfg['config']['name'] = '_' + cfg['config']['name']
   with tf.keras.utils.custom_object_scope(
       {metric.__class__.__name__: metric.__class__}):
-    return tf.keras.metrics.deserialize(cfg)
+    return metric_util.deserialize_metric(cfg, use_legacy_format=True)
 
 
 def _serialize_tf_loss(loss: tf.keras.losses.Loss) -> config_pb2.MetricConfig:
@@ -1202,7 +1204,9 @@ def _deserialize_tf_loss(
   """Deserializes a tf.keras.loss metric."""
   cls_name, cfg = _tf_class_and_config(metric_config)
   with tf.keras.utils.custom_object_scope(custom_objects):
-    return tf.keras.losses.deserialize({'class_name': cls_name, 'config': cfg})
+    return metric_util.deserialize_loss(
+        {'class_name': cls_name, 'config': cfg}, use_legacy_format=True
+    )
 
 
 def _private_tf_loss(loss: tf.keras.losses.Loss) -> tf.keras.losses.Loss:
@@ -1212,13 +1216,13 @@ def _private_tf_loss(loss: tf.keras.losses.Loss) -> tf.keras.losses.Loss:
     cfg['config']['name'] = '_' + cfg['config']['name']
   with tf.keras.utils.custom_object_scope(
       {loss.__class__.__name__: loss.__class__}):
-    return tf.keras.losses.deserialize(cfg)
+    return metric_util.deserialize_loss(cfg, use_legacy_format=True)
 
 
 def _serialize_tfma_metric(
     metric: metric_types.Metric) -> config_pb2.MetricConfig:
   """Serializes TFMA metric."""
-  cfg = tf.keras.utils.serialize_keras_object(metric)
+  cfg = metric_util.serialize_keras_object(metric)
   return config_pb2.MetricConfig(
       class_name=cfg['class_name'],
       config=json.dumps(cfg['config'], sort_keys=True))
@@ -1230,17 +1234,17 @@ def _deserialize_tfma_metric(
                          Type[metric_types.Metric]]) -> metric_types.Metric:
   """Deserializes a tfma.metrics metric."""
   with tf.keras.utils.custom_object_scope(custom_objects):
-    return tf.keras.utils.deserialize_keras_object({
+    return metric_util.deserialize_keras_object({
         'class_name': metric_config.class_name,
-        'config': _metric_config(metric_config.config)
+        'config': _metric_config(metric_config.config),
     })
 
 
 def _private_tfma_metric(metric: metric_types.Metric) -> metric_types.Metric:
   """Creates a private version of given metric."""
-  cfg = tf.keras.utils.serialize_keras_object(metric)
+  cfg = metric_util.serialize_keras_object(metric)
   if not cfg['config']['name'].startswith('_'):
     cfg['config']['name'] = '_' + cfg['config']['name']
   with tf.keras.utils.custom_object_scope(
       {metric.__class__.__name__: metric.__class__}):
-    return tf.keras.utils.deserialize_keras_object(cfg)
+    return metric_util.deserialize_keras_object(cfg)

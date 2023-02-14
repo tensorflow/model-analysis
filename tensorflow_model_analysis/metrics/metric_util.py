@@ -106,9 +106,19 @@ def within_interval(value: float, left: float, right: float) -> bool:
   return value >= left - _EPSILON and value <= right + _EPSILON
 
 
-def serialize_metric(metric: tf.keras.metrics.Metric) -> Dict[str, Any]:
+def serialize_metric(
+    metric: tf.keras.metrics.Metric, use_legacy_format=False
+) -> Dict[str, Any]:
   """Serializes keras metric."""
-  cfg = tf.keras.metrics.serialize(metric)
+  if (
+      'use_legacy_format'
+      in inspect.getfullargspec(tf.keras.metrics.serialize).args
+  ):
+    cfg = tf.keras.metrics.serialize(
+        metric, use_legacy_format=use_legacy_format
+    )
+  else:
+    cfg = tf.keras.metrics.serialize(metric)
   # If a metric function (vs a class) is passed directly to compile, it
   # will be wrapped in a MeanMetricWrapper which is not deserializable.
   # If this happens, set the class name to the CamelCase from of the
@@ -119,9 +129,17 @@ def serialize_metric(metric: tf.keras.metrics.Metric) -> Dict[str, Any]:
   return cfg
 
 
-def serialize_loss(loss: tf.keras.losses.Loss) -> Dict[str, Any]:
+def serialize_loss(
+    loss: tf.keras.losses.Loss, use_legacy_format=False
+) -> Dict[str, Any]:
   """Serializes keras loss."""
-  cfg = tf.keras.losses.serialize(loss)
+  if (
+      'use_legacy_format'
+      in inspect.getfullargspec(tf.keras.losses.serialize).args
+  ):
+    cfg = tf.keras.losses.serialize(loss, use_legacy_format=use_legacy_format)
+  else:
+    cfg = tf.keras.losses.serialize(loss)
   # If a metric function (vs a class) is passed directly to compile, it
   # will be wrapped in a LossFunctionWrapper which is not deserializable.
   # If this happens, set the class name to the CamelCase from of the
@@ -130,6 +148,50 @@ def serialize_loss(loss: tf.keras.losses.Loss) -> Dict[str, Any]:
       'config' in cfg and 'name' in cfg['config']):
     cfg['class_name'] = _camel_case(cfg['config']['name'])
   return cfg
+
+
+def deserialize_metric(config, use_legacy_format=False):
+  if (
+      'use_legacy_format'
+      in inspect.getfullargspec(tf.keras.metrics.deserialize).args
+  ):
+    return tf.keras.metrics.deserialize(
+        config, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.metrics.deserialize(config)
+
+
+def deserialize_loss(config, use_legacy_format=False):
+  if (
+      'use_legacy_format'
+      in inspect.getfullargspec(tf.keras.losses.deserialize).args
+  ):
+    return tf.keras.losses.deserialize(
+        config, use_legacy_format=use_legacy_format
+    )
+  else:
+    return tf.keras.losses.deserialize(config)
+
+
+def serialize_keras_object(obj):
+  if hasattr(tf.keras.utils, 'legacy'):
+    return tf.keras.utils.legacy.serialize_keras_object(obj)
+  else:
+    return tf.keras.utils.serialize_keras_object(obj)
+
+
+def deserialize_keras_object(
+    config, module_objects=None, custom_objects=None, printable_module_name=None
+):
+  if hasattr(tf.keras.utils, 'legacy'):
+    return tf.keras.utils.legacy.deserialize_keras_object(
+        config, custom_objects, module_objects, printable_module_name
+    )
+  else:
+    return tf.keras.utils.deserialize_keras_object(
+        config, custom_objects, module_objects, printable_module_name
+    )
 
 
 def _camel_case(txt: str) -> str:

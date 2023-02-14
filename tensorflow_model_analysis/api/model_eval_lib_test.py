@@ -43,6 +43,7 @@ from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
@@ -884,7 +885,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
 
     metrics_spec = config_pb2.MetricsSpec()
     for metric in (confusion_matrix_metrics.AUC(name='auc'),):
-      cfg = tf.keras.utils.serialize_keras_object(metric)
+      cfg = metric_util.serialize_keras_object(metric)
       metrics_spec.metrics.append(
           config_pb2.MetricConfig(
               class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
@@ -1082,7 +1083,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             'output_2': 1.0
         })
     for metric in (confusion_matrix_metrics.AUC(name='auc'),):
-      cfg = tf.keras.utils.serialize_keras_object(metric)
+      cfg = metric_util.serialize_keras_object(metric)
       metrics_spec.metrics.append(
           config_pb2.MetricConfig(
               class_name=cfg['class_name'], config=json.dumps(cfg['config'])))

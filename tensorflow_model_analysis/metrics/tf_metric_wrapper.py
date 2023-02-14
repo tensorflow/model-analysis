@@ -276,12 +276,18 @@ def _metric_keys_and_configs(
 
 def _deserialize_metrics(
     metric_configs: List[Dict[str, Any]]) -> List[tf.keras.metrics.Metric]:
-  return [tf.keras.metrics.deserialize(c) for c in metric_configs]
+  return [
+      metric_util.deserialize_metric(c, use_legacy_format=True)
+      for c in metric_configs
+  ]
 
 
 def _deserialize_losses(
     loss_configs: List[Dict[str, Any]]) -> List[tf.keras.losses.Loss]:
-  return [tf.keras.losses.deserialize(c) for c in loss_configs]
+  return [
+      metric_util.deserialize_loss(c, use_legacy_format=True)
+      for c in loss_configs
+  ]
 
 
 def _custom_objects(
@@ -348,7 +354,7 @@ def _wrap_confusion_matrix_metric(
       sub_key=sub_key,
       example_weighted=example_weighted)
 
-  metric_config = tf.keras.metrics.serialize(metric)
+  metric_config = metric_util.serialize_metric(metric, use_legacy_format=True)
 
   thresholds = None
   num_thresholds = None
@@ -386,10 +392,14 @@ def _wrap_confusion_matrix_metric(
     """Returns result derived from binary confusion matrices."""
     matrices = metrics[matrices_key]
 
-    metric = tf.keras.metrics.deserialize(metric_config)
-    if (isinstance(metric, tf.keras.metrics.AUC) or
-        isinstance(metric, tf.keras.metrics.SpecificityAtSensitivity) or
-        isinstance(metric, tf.keras.metrics.SensitivityAtSpecificity)):
+    metric = metric_util.deserialize_metric(
+        metric_config, use_legacy_format=True
+    )
+    if (
+        isinstance(metric, tf.keras.metrics.AUC)
+        or isinstance(metric, tf.keras.metrics.SpecificityAtSensitivity)
+        or isinstance(metric, tf.keras.metrics.SensitivityAtSpecificity)
+    ):
       metric.true_positives.assign(np.array(matrices.tp))
       metric.true_negatives.assign(np.array(matrices.tn))
       metric.false_positives.assign(np.array(matrices.fp))
