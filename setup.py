@@ -280,12 +280,17 @@ setup_args = {
     'long_description': _LONG_DESCRIPTION,
     'long_description_content_type': 'text/markdown',
     'include_package_data': True,
-    'data_files': [('share/jupyter/nbextensions/tensorflow_model_analysis', [
-        'tensorflow_model_analysis/static/extension.js',
-        'tensorflow_model_analysis/static/index.js',
-        'tensorflow_model_analysis/static/index.js.map',
-        'tensorflow_model_analysis/static/vulcanized_tfma.js',
-    ]),],
+    'data_files': [
+        (
+            'share/jupyter/nbextensions/tensorflow_model_analysis',
+            [
+                'tensorflow_model_analysis/static/extension.js',
+                'tensorflow_model_analysis/static/index.js',
+                'tensorflow_model_analysis/static/index.js.map',
+                'tensorflow_model_analysis/static/vulcanized_tfma.js',
+            ],
+        ),
+    ],
     # Make sure to sync the versions of common dependencies (numpy, six, and
     # protobuf) with TF.
     'install_requires': [
@@ -302,19 +307,23 @@ setup_args = {
         'six>=1.12,<2',
         'attrs>=19.3.0,<22',
         'tensorflow>=2.11,<3',
-        'tensorflow-metadata' + select_constraint(
+        'tensorflow-metadata'
+        + select_constraint(
             default='>=1.12.0,<1.13.0',
             nightly='>=1.13.0.dev',
-            git_master='@git+https://github.com/tensorflow/metadata@master'),
-        'tfx-bsl' + select_constraint(
+            git_master='@git+https://github.com/tensorflow/metadata@master',
+        ),
+        'tfx-bsl'
+        + select_constraint(
             default='>=1.12.0,<1.13.0',
             nightly='>=1.13.0.dev',
-            git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
+            git_master='@git+https://github.com/tensorflow/tfx-bsl@master',
+        ),
     ],
     'extras_require': {
         'all': _make_extra_packages_tfjs(),
     },
-    'python_requires': '>=3.7,<4',
+    'python_requires': '>=3.8,<4',
     'packages': find_packages(),
     'zip_safe': False,
     'cmdclass': {
