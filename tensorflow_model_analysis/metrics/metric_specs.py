@@ -1159,7 +1159,7 @@ def _tf_class_and_config(
 def _serialize_tf_metric(
     metric: tf.keras.metrics.Metric) -> config_pb2.MetricConfig:
   """Serializes TF metric."""
-  cfg = metric_util.serialize_metric(metric)
+  cfg = metric_util.serialize_metric(metric, use_legacy_format=True)
   return config_pb2.MetricConfig(
       class_name=cfg['class_name'],
       config=json.dumps(cfg['config'], sort_keys=True))
@@ -1190,7 +1190,7 @@ def _private_tf_metric(
 
 def _serialize_tf_loss(loss: tf.keras.losses.Loss) -> config_pb2.MetricConfig:
   """Serializes TF loss."""
-  cfg = metric_util.serialize_loss(loss)
+  cfg = metric_util.serialize_loss(loss, use_legacy_format=True)
   return config_pb2.MetricConfig(
       class_name=cfg['class_name'],
       module=loss.__class__.__module__,
