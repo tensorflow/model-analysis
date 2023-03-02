@@ -739,6 +739,13 @@ class Metric:
     """Returns serializable config."""
     return self.kwargs
 
+  @classmethod
+  def from_config(cls, config: Dict[str, Any]) -> 'Metric':
+    # `fn` key is unnecessary for wrapper due to
+    # `create_computation_fn` key serialization.
+    config.pop('fn', None)
+    return cls(**config)
+
   @property
   def compute_confidence_interval(self) -> bool:
     """Whether to compute confidence intervals for this metric.

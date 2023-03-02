@@ -82,27 +82,39 @@ class MetricSpecsTest(tf.test.TestCase):
                             'name': 'precision',
                             'class_id': None,
                             'thresholds': None,
-                            'top_k': None
+                            'top_k': None,
                         },
-                        sort_keys=True)),
+                        sort_keys=True,
+                    ),
+                ),
                 config_pb2.MetricConfig(
                     class_name='MeanSquaredError',
-                    config=json.dumps({
-                        'name': 'mse',
-                    },
-                                      sort_keys=True)),
+                    config=json.dumps(
+                        {
+                            'name': 'mse',
+                        },
+                        sort_keys=True,
+                    ),
+                ),
                 config_pb2.MetricConfig(
                     class_name='MeanAbsoluteError',
-                    config=json.dumps({
-                        'name': 'mae'
-                    },
-                                      sort_keys=True))
+                    config=json.dumps(
+                        {
+                            'name': 'mae',
+                            'fn': 'mean_absolute_error',
+                        },
+                        sort_keys=True,
+                    ),
+                ),
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name1'],
             binarize=config_pb2.BinarizationOptions(
-                class_ids={'values': [0, 1]}),
-            aggregate=config_pb2.AggregationOptions(macro_average=True)))
+                class_ids={'values': [0, 1]}
+            ),
+            aggregate=config_pb2.AggregationOptions(macro_average=True),
+        ),
+    )
     self.assertProtoEquals(
         metrics_specs[3],
         config_pb2.MetricsSpec(
@@ -134,24 +146,36 @@ class MetricSpecsTest(tf.test.TestCase):
             metrics=[
                 config_pb2.MetricConfig(
                     class_name='Precision',
-                    config=json.dumps({
-                        'name': 'precision',
-                    }, sort_keys=True)),
+                    config=json.dumps(
+                        {
+                            'name': 'precision',
+                        },
+                        sort_keys=True,
+                    ),
+                ),
                 config_pb2.MetricConfig(
                     class_name='MeanAbsolutePercentageError',
-                    config=json.dumps({
-                        'name': 'mape'
-                    },
-                                      sort_keys=True)),
+                    config=json.dumps(
+                        {
+                            'name': 'mape',
+                            'fn': 'mean_absolute_percentage_error',
+                        },
+                        sort_keys=True,
+                    ),
+                ),
                 config_pb2.MetricConfig(
                     class_name='MeanPrediction',
-                    config=json.dumps({'name': 'mean_prediction'}))
+                    config=json.dumps({'name': 'mean_prediction'}),
+                ),
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name2'],
             binarize=config_pb2.BinarizationOptions(
-                class_ids={'values': [0, 1]}),
-            aggregate=config_pb2.AggregationOptions(macro_average=True)))
+                class_ids={'values': [0, 1]}
+            ),
+            aggregate=config_pb2.AggregationOptions(macro_average=True),
+        ),
+    )
     self.assertProtoEquals(
         metrics_specs[6],
         config_pb2.MetricsSpec(
