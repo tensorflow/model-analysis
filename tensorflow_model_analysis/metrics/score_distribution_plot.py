@@ -124,7 +124,7 @@ def _confusion_matrix_plot(
 
   def result(
       metrics: Dict[metric_types.MetricKey, Any]
-  ) -> Dict[metric_types.MetricKey, binary_confusion_matrices.Matrices]:
+  ) -> Dict[metric_types.MetricKey, binary_confusion_matrices.Matrices]:  # pytype: disable=signature-mismatch  # always-use-return-annotations
     confusion_matrix = metrics[matrices_key].to_proto(
     ).confusion_matrix_at_thresholds
     for value in confusion_matrix.matrices:

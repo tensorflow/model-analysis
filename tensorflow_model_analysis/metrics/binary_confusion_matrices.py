@@ -41,11 +41,19 @@ class Examples(
   """A set of examples for each binary confusion case at each threshold."""
 
 
-class Matrices(types.StructuredMetricValue,
-               NamedTuple('Matrices', [('thresholds', List[float]),
-                                       ('tp', List[float]), ('tn', List[float]),
-                                       ('fp', List[float]),
-                                       ('fn', List[float])])):
+class Matrices(  # pytype: disable=signature-mismatch  # always-use-return-annotations
+    types.StructuredMetricValue,
+    NamedTuple(
+        'Matrices',
+        [
+            ('thresholds', List[float]),
+            ('tp', List[float]),
+            ('tn', List[float]),
+            ('fp', List[float]),
+            ('fn', List[float]),
+        ],
+    ),
+):
   """A class representing a set of binary confusion matrices at thresholds.
 
   For each threshold, in addition to the count of examples per prediction and

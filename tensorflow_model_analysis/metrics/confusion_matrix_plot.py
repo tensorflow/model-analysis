@@ -97,7 +97,7 @@ class ConfusionMatrixPlot(metric_types.Metric):
 
     def result(
         metrics: Dict[metric_types.MetricKey, Any]
-    ) -> Dict[metric_types.MetricKey, binary_confusion_matrices.Matrices]:
+    ) -> Dict[metric_types.MetricKey, binary_confusion_matrices.Matrices]:  # pytype: disable=signature-mismatch  # always-use-return-annotations
       return {
           key: metrics[matrices_key].to_proto().confusion_matrix_at_thresholds
       }

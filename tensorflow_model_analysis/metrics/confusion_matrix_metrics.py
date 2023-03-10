@@ -255,8 +255,10 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def _metric_value(
-      self, key: metric_types.MetricKey,
-      matrices: binary_confusion_matrices.Matrices) -> Union[float, np.ndarray]:
+      self,
+      key: metric_types.MetricKey,
+      matrices: binary_confusion_matrices.Matrices,
+  ) -> Union[float, np.ndarray]:  # pytype: disable=signature-mismatch  # always-use-return-annotations
     """Returns metric value associated with matrices.
 
     Subclasses may override this method. Any additional kwargs passed to

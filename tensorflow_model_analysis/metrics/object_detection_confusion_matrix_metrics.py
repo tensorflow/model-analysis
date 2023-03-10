@@ -32,8 +32,9 @@ OBJECT_DETECTION_PRECISION_NAME = 'object_detection_precision'
 OBJECT_DETECTION_THRESHOLD_AT_RECALL_NAME = 'object_detection_threshold_at_recall'
 
 
-class ObjectDetectionPrecisionAtRecall(
-    confusion_matrix_metrics.PrecisionAtRecall):
+class ObjectDetectionPrecisionAtRecall(  # pytype: disable=signature-mismatch  # always-use-return-annotations
+    confusion_matrix_metrics.PrecisionAtRecall
+):
   """Computes best precision where recall is >= specified value.
 
   The threshold for the given recall value is computed and used to evaluate the
