@@ -18,6 +18,7 @@
     considered identical and deduplicated.
 *   Fixes bug where positive / negative axes labels are reversed in prediction
     distribution plot.
+*   Depends on `numpy~=1.22.0`.
 
 ## Breaking Changes
 
