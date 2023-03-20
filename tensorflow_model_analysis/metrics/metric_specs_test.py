@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for metric specs."""
-
 import json
 import tensorflow as tf
 from tensorflow_model_analysis.metrics import calibration
@@ -23,6 +22,14 @@ from tensorflow_model_analysis.metrics import mean_regression_error  # pylint: d
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import config_pb2
+
+
+# TODO(b/272542795): Remove once the Keras version has caught up.
+def _maybe_add_fn_name(kv, name):
+  # Check new Keras version behavior per b/272542795#comment17.
+  if 'fn' in tf.keras.losses.MeanAbsoluteError().get_config():
+    kv['fn'] = name
+  return kv
 
 
 class MetricSpecsTest(tf.test.TestCase):
@@ -99,10 +106,9 @@ class MetricSpecsTest(tf.test.TestCase):
                 config_pb2.MetricConfig(
                     class_name='MeanAbsoluteError',
                     config=json.dumps(
-                        {
-                            'name': 'mae',
-                            'fn': 'mean_absolute_error',
-                        },
+                        _maybe_add_fn_name(
+                            {'name': 'mae'}, 'mean_absolute_error'
+                        ),
                         sort_keys=True,
                     ),
                 ),
@@ -156,10 +162,9 @@ class MetricSpecsTest(tf.test.TestCase):
                 config_pb2.MetricConfig(
                     class_name='MeanAbsolutePercentageError',
                     config=json.dumps(
-                        {
-                            'name': 'mape',
-                            'fn': 'mean_absolute_percentage_error',
-                        },
+                        _maybe_add_fn_name(
+                            {'name': 'mape'}, 'mean_absolute_percentage_error'
+                        ),
                         sort_keys=True,
                     ),
                 ),
