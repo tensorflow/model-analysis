@@ -267,10 +267,12 @@ def _metric_keys_and_configs(
               example_weighted=example_weighted))
       if isinstance(metric, tf.keras.metrics.Metric):
         metric_configs[updated_sub_key][output_name].append(
-            metric_util.serialize_metric(metric))
+            metric_util.serialize_metric(metric, use_legacy_format=True)
+        )
       elif isinstance(metric, tf.keras.losses.Loss):
         loss_configs[updated_sub_key][output_name].append(
-            metric_util.serialize_loss(metric))
+            metric_util.serialize_loss(metric, use_legacy_format=True)
+        )
   return metric_keys, metric_configs, loss_configs
 
 
