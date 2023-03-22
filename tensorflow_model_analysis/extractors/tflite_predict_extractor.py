@@ -111,9 +111,7 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
             value = None
           if value is None or np.any(np.equal(value, None)):
             default = -1 if input_type in [np.float32, np.int64] else ''
-            value = np.empty(input_shape)
-            value.fill(default)
-            value = value.astype(input_type)
+            value = np.full(input_shape, default, dtype=input_type)
             logging.log_every_n(logging.WARNING,
                                 'Feature %s not found. Setting default value.',
                                 100, input_name)
