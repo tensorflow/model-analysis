@@ -1,3 +1,5 @@
+package(default_applicable_licenses = ["//tensorflow_model_analysis:license"])
+
 licenses(["notice"])
 
 filegroup(
