@@ -17,6 +17,7 @@ from typing import Optional, Dict, Iterable, List
 
 import apache_beam as beam
 import numpy as np
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.utils import util
 
@@ -79,20 +80,35 @@ def example_count(
       # Note: This cannot be implemented based on the weight stored in
       # calibration because weighted example count is used with multi-class, etc
       # models that do not use calibration metrics.
+      # The combiner only needs example weights in case users do not have
+      # predictions or labels.
       computations.append(
           metric_types.MetricComputation(
               keys=keys,
-              preprocessors=None,
-              combiner=_ExampleCountCombiner(model_name, output_name, keys,
-                                             example_weighted)))
+              preprocessors=[
+                  metric_types.StandardMetricInputsPreprocessor(
+                      include_filter={constants.EXAMPLE_WEIGHTS_KEY: {}},
+                      include_default_inputs=False,
+                  )
+              ],
+              combiner=_ExampleCountCombiner(
+                  model_name, output_name, keys, example_weighted
+              ),
+          )
+      )
   return computations
 
 
 class _ExampleCountCombiner(beam.CombineFn):
   """Computes example count."""
 
-  def __init__(self, model_name: str, output_name: str,
-               keys: List[metric_types.MetricKey], example_weighted):
+  def __init__(
+      self,
+      model_name: str,
+      output_name: str,
+      keys: List[metric_types.MetricKey],
+      example_weighted,
+  ):
     self._model_name = model_name
     self._output_name = output_name
     self._keys = keys

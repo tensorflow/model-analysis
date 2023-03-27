@@ -16,11 +16,15 @@
 from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
+import numpy as np
 import tensorflow as tf
+import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+
+from google.protobuf import text_format
 
 
 class ExampleCountTest(testutil.TensorflowModelAnalysisTest,
@@ -85,6 +89,74 @@ class ExampleCountTest(testutil.TensorflowModelAnalysisTest,
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
+
+class ExampleCountEnd2EndTest(parameterized.TestCase):
+
+  def testExampleCountsWithoutLabelPredictions(self):
+    eval_config = text_format.Parse(
+        """
+        model_specs {
+          signature_name: "serving_default"
+          example_weight_key: "example_weights"
+        }
+        slicing_specs {
+        }
+        metrics_specs {
+          metrics {
+            class_name: "ExampleCount"
+          }
+        }
+        """,
+        tfma.EvalConfig(),
+    )
+    name_list = ['example_count']
+    expected_results = [0.6]
+    extracts = [
+        {
+            'features': {
+                'example_weights': np.array([0.5]),
+            }
+        },
+        {'features': {}, 'example_weights': np.array([0.1])},
+    ]
+
+    evaluators = tfma.default_evaluators(eval_config=eval_config)
+    extractors = tfma.default_extractors(
+        eval_shared_model=None, eval_config=eval_config
+    )
+
+    with beam.Pipeline() as p:
+      result = (
+          p
+          | 'LoadData' >> beam.Create(extracts)
+          | 'ExtractEval'
+          >> tfma.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators
+          )
+      )
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertLen(got_metrics, len(name_list))
+          for name, expected_result in zip(name_list, expected_results):
+            key = metric_types.MetricKey(name=name, example_weighted=True)
+            self.assertIn(key, got_metrics)
+            got_metric = got_metrics[key]
+            np.testing.assert_allclose(
+                expected_result,
+                got_metric,
+                rtol=1e-3,
+                err_msg=f'This {name} metric fails.',
+            )
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      self.assertIn('metrics', result)
+      util.assert_that(result['metrics'], check_result, label='result')
 
 
 if __name__ == '__main__':

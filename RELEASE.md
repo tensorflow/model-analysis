@@ -19,6 +19,7 @@
 *   Fixes bug where positive / negative axes labels are reversed in prediction
     distribution plot.
 *   Depends on `numpy~=1.22.0`.
+*   Modify ExampleCount to not depend on labels and predictions.
 
 ## Breaking Changes
 
