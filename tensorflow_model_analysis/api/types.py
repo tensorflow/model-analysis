@@ -441,8 +441,10 @@ class EvalSharedModel(
         'EvalSharedModel',
         [
             ('model_path', str),
-            ('add_metrics_callbacks',
-             List[Callable]),  # List[AnyMetricsCallbackType]
+            (
+                'add_metrics_callbacks',
+                List[Callable],
+            ),  # List[AnyMetricsCallbackType]
             ('include_default_metrics', bool),
             ('example_weight_key', Union[str, Dict[str, str]]),
             ('additional_fetches', List[str]),
@@ -450,8 +452,11 @@ class EvalSharedModel(
             ('model_name', str),
             ('model_type', str),
             ('rubber_stamp', bool),
-            ('is_baseline', bool)
-        ])):
+            ('is_baseline', bool),
+            ('resource_hints', Optional[Dict[str, Any]]),
+        ],
+    )
+):
   # pyformat: disable
   """Shared model used during extraction and evaluation.
 
@@ -476,6 +481,9 @@ class EvalSharedModel(
     rubber_stamp: True if this model is being rubber stamped. When a
       model is rubber stamped diff thresholds will be ignored if an associated
       baseline model is not passed.
+    is_baseline: The model is the baseline for comparison or not.
+    resource_hints: The beam resource hints to apply to the PTransform which
+      runs inference for this model.
 
 
   More details on add_metrics_callbacks:
@@ -513,7 +521,9 @@ class EvalSharedModel(
       model_type: str = '',
       rubber_stamp: bool = False,
       is_baseline: bool = False,
-      construct_fn: Optional[Callable[[], Any]] = None):
+      resource_hints: Optional[Dict[str, Any]] = None,
+      construct_fn: Optional[Callable[[], Any]] = None,
+  ):
     if not add_metrics_callbacks:
       add_metrics_callbacks = []
     if model_loader and construct_fn:
@@ -525,11 +535,20 @@ class EvalSharedModel(
       model_path = six.ensure_str(model_path)
     if is_baseline and rubber_stamp:
       raise ValueError('Baseline model cannot be rubber stamped.')
-    return super(EvalSharedModel,
-                 cls).__new__(cls, model_path, add_metrics_callbacks,
-                              include_default_metrics, example_weight_key,
-                              additional_fetches, model_loader, model_name,
-                              model_type, rubber_stamp, is_baseline)
+    return super(EvalSharedModel, cls).__new__(
+        cls,
+        model_path,
+        add_metrics_callbacks,
+        include_default_metrics,
+        example_weight_key,
+        additional_fetches,
+        model_loader,
+        model_name,
+        model_type,
+        rubber_stamp,
+        is_baseline,
+        resource_hints,
+    )
 
 
 # MaybeMultipleEvalSharedModels represents a parameter that can take on a single

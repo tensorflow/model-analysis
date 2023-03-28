@@ -315,24 +315,31 @@ def load_eval_result(output_path: str,
   # provided so we support all files as being optional (the EvalResult will have
   # corresponding None values for files that are not present).
   eval_config, data_location, file_format, model_locations = (
-      eval_config_writer.load_eval_run(output_path))
+      eval_config_writer.load_eval_run(output_path)
+  )
   metrics_list = []
   for p in metrics_plots_and_validations_writer.load_and_deserialize_metrics(
-      output_path, output_file_format):
+      output_path, output_file_format
+  ):
     metrics = view_util.convert_metrics_proto_to_dict(p, model_name=model_name)
     if metrics is not None:
       metrics_list.append(metrics)
   plots_list = []
   for p in metrics_plots_and_validations_writer.load_and_deserialize_plots(
-      output_path, output_file_format):
+      output_path, output_file_format
+  ):
     plots = view_util.convert_plots_proto_to_dict(p, model_name=model_name)
     if plots is not None:
       plots_list.append(plots)
   attributions_list = []
-  for a in metrics_plots_and_validations_writer.load_and_deserialize_attributions(
-      output_path, output_file_format):
+  for (
+      a
+  ) in metrics_plots_and_validations_writer.load_and_deserialize_attributions(
+      output_path, output_file_format
+  ):
     attributions = view_util.convert_attributions_proto_to_dict(
-        a, model_name=model_name)
+        a, model_name=model_name
+    )
     if attributions is not None:
       attributions_list.append(attributions)
   if not model_locations:
@@ -362,7 +369,9 @@ def default_eval_shared_model(
     model_name: str = '',
     eval_config: Optional[config_pb2.EvalConfig] = None,
     custom_model_loader: Optional[types.ModelLoader] = None,
-    rubber_stamp: Optional[bool] = False) -> types.EvalSharedModel:
+    rubber_stamp: Optional[bool] = False,
+    resource_hints: Optional[Dict[str, Any]] = None,
+) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
 
   Args:
@@ -393,6 +402,8 @@ def default_eval_shared_model(
     custom_model_loader: Optional custom model loader for non-TF models.
     rubber_stamp: True when this run is a first run without a baseline model
       while a baseline is configured, the diff thresholds will be ignored.
+    resource_hints: The beam resource hints to apply to the PTransform which
+      runs inference for this model.
   """
   if not eval_config:
     is_baseline = False
@@ -468,7 +479,9 @@ def default_eval_shared_model(
       additional_fetches=additional_fetches,
       model_loader=model_loader,
       rubber_stamp=rubber_stamp,
-      is_baseline=is_baseline)
+      is_baseline=is_baseline,
+      resource_hints=resource_hints,
+  )
 
 
 def _has_sql_slices(eval_config: Optional[config_pb2.EvalConfig]) -> bool:
