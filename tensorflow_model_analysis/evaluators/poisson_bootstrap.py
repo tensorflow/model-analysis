@@ -141,7 +141,7 @@ class _BootstrapSampleCombineFn(confidence_intervals_util.SampleCombineFn):
             sample_standard_deviation=std_error,
             unsampled_value=point_estimate,
             sample_degrees_of_freedom=dof)
-    return result
+    return result  # pytype: disable=bad-return-type  # numpy-scalars
 
 
 @beam.ptransform_fn

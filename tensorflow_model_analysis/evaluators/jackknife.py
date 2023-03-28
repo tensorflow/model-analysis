@@ -125,7 +125,7 @@ class _JackknifeSampleCombineFn(confidence_intervals_util.SampleCombineFn):
             sample_standard_deviation=std_error,
             unsampled_value=point_estimate,
             sample_degrees_of_freedom=num_buckets - 1)
-    return result
+    return result  # pytype: disable=bad-return-type  # numpy-scalars
 
 
 def _add_sample_id(slice_key,
