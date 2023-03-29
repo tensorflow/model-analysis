@@ -190,7 +190,9 @@ def to_tensorflow_tensors(
               f'Failed at key {keys} in {all_values} and specs {all_specs}')
         result[key] = to_tensors(values[key], specs[key] if specs else None,
                                  keys + [key])
-      return result
+      return (
+          result  # pytype: disable=bad-return-type  # always-use-return-annotations
+      )
     else:
       # Try to reshape dense tensor to expected shape
       if (isinstance(specs, tf.TensorSpec) and specs.shape and

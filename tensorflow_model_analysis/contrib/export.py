@@ -401,7 +401,7 @@ def load_and_resolve_feature_metadata(eval_saved_model_path: str,
   ]
   result['features'] = {
       k: tf.compat.v1.saved_model.get_tensor_from_tensor_info(v, graph)
-      for k, v in result['features'].items()
+      for k, v in result['features'].items()  # pytype: disable=attribute-error  # always-use-return-annotations
   }
 
   return result
