@@ -154,6 +154,122 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
       self.assertIn('metrics', result)
       util.assert_that(result['metrics'], check_result, label='result')
 
+  @parameterized.named_parameters(
+      (
+          '_precision_with_class_weight',
+          text_format.Parse(
+              """
+        model_specs {
+          signature_name: "serving_default"
+          prediction_key: "predictions"
+          label_key: "labels"
+        }
+        slicing_specs {
+        }
+        metrics_specs {
+          metrics {
+            class_name: "SetMatchPrecision"
+            config:'"thresholds":[0.01], "class_key":"classes", '
+              '"weight_key":"weights"'
+          }
+        }
+        """,
+              tfma.EvalConfig(),
+          ),
+          ['set_match_precision'],
+          [0.25],
+      ),
+      (
+          '_recall_with_class_weight',
+          text_format.Parse(
+              """
+        model_specs {
+          signature_name: "serving_default"
+          prediction_key: "predictions"
+          label_key: "labels"
+        }
+        slicing_specs {
+        }
+        metrics_specs {
+          metrics {
+            class_name: "SetMatchRecall"
+            config:'"name":"recall", "thresholds":[0.01],'
+              '"weight_key":"weights"'
+          }
+        }
+        """,
+              tfma.EvalConfig(),
+          ),
+          ['recall'],
+          [0.294118],
+      ),
+  )
+  def testSetMatchMetricsWithClassWeights(
+      self, eval_config, name_list, expected_results
+  ):
+    extracts = [
+        {
+            'features': {
+                'labels': np.array([['dogs', 'cats']]),
+                'predictions': {
+                    'classes': np.array([['dogs', 'pigs']]),
+                    'scores': np.array([[0.1, 0.3]]),
+                    'weights': np.array([[0.1, 0.9]]),
+                },
+                'classes': np.array([['dogs', 'cats']]),
+                'weights': np.array([[0.5, 1.2]]),
+            }
+        },
+        {
+            'features': {
+                'labels': np.array([['birds', 'cats']]),
+                'predictions': {
+                    'classes': np.array([['dogs', 'pigs', 'birds']]),
+                    'scores': np.array([[0.1, 0.3, 0.4]]),
+                },
+                'classes': np.array([['birds', 'cats']]),
+                'weights': np.array([[0.5, 1.2]]),
+            }
+        },
+    ]
+
+    evaluators = tfma.default_evaluators(eval_config=eval_config)
+    extractors = tfma.default_extractors(
+        eval_shared_model=None, eval_config=eval_config
+    )
+
+    with beam.Pipeline() as p:
+      result = (
+          p
+          | 'LoadData' >> beam.Create(extracts)
+          | 'ExtractEval'
+          >> tfma.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators
+          )
+      )
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertLen(got_metrics, len(name_list))
+          for name, expected_result in zip(name_list, expected_results):
+            key = metric_types.MetricKey(name=name, example_weighted=True)
+            self.assertIn(key, got_metrics)
+            got_metric = got_metrics[key]
+            np.testing.assert_allclose(
+                expected_result,
+                got_metric,
+                rtol=1e-3,
+                err_msg=f'This {name} metric fails.',
+            )
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      self.assertIn('metrics', result)
+      util.assert_that(result['metrics'], check_result, label='result')
+
 
 if __name__ == '__main__':
   absltest.main()

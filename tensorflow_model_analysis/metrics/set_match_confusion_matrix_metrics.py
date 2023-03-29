@@ -13,7 +13,7 @@
 # limitations under the License.
 """set match confusion matrices."""
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_types
@@ -47,6 +47,8 @@ class SetMatchPrecision(confusion_matrix_metrics.Precision):
       name: Optional[str] = None,
       prediction_class_key: str = 'classes',
       prediction_score_key: str = 'scores',
+      class_key: Optional[str] = None,
+      weight_key: Optional[str] = None,
       **kwargs,
   ):
     """Initializes Precision metric.
@@ -67,6 +69,12 @@ class SetMatchPrecision(confusion_matrix_metrics.Precision):
       name: (Optional) string name of the metric instance.
       prediction_class_key: the key name of the classes in prediction.
       prediction_score_key: the key name of the scores in prediction.
+      class_key: (Optional) The key name of the classes in class-weight pairs.
+        If it is not provided, the classes are assumed to be the label classes.
+      weight_key: (Optional) The key name of the weights of classes in
+        class-weight pairs. The value in this key should be a numpy array of the
+        same length as the classes in class_key. The key should be stored under
+        the features key.
       **kwargs: (Optional) Additional args to pass along to init (and eventually
         on to _metric_computations and _metric_values). The args are passed to
         the precision metric, the confusion matrix metric and binary
@@ -79,6 +87,8 @@ class SetMatchPrecision(confusion_matrix_metrics.Precision):
         name=name,
         prediction_class_key=prediction_class_key,
         prediction_score_key=prediction_score_key,
+        class_key=class_key,
+        weight_key=weight_key,
         **kwargs,
     )
 
@@ -92,8 +102,14 @@ class SetMatchPrecision(confusion_matrix_metrics.Precision):
       name: Optional[str] = None,
       prediction_class_key: str = 'classes',
       prediction_score_key: str = 'scores',
+      class_key: Optional[str] = None,
+      weight_key: Optional[str] = None,
       eval_config: Optional[config_pb2.EvalConfig] = None,
       model_name: str = '',
+      sub_key: Optional[metric_types.SubKey] = None,
+      aggregation_type: Optional[metric_types.AggregationType] = None,
+      class_weights: Optional[Dict[int, float]] = None,
+      example_weighted: bool = False,
       **kwargs,
   ) -> metric_types.MetricComputations:
     preprocessor = preprocessors.SetMatchPreprocessor(
@@ -101,15 +117,29 @@ class SetMatchPrecision(confusion_matrix_metrics.Precision):
         model_name=model_name,
         prediction_class_key=prediction_class_key,
         prediction_score_key=prediction_score_key,
+        class_key=class_key,
+        weight_key=weight_key,
     )
     if top_k is not None and thresholds is None:
       thresholds = float('-inf')
+
+    if weight_key:
+      # If example_weighted is False, it will by default set the example weights
+      # to 1.0.
+      # example_weighted could only be turned on from model_specs. However, in
+      # this case, the example_weights is not provided in the models. It should
+      # be turned on when per class weights are given.
+      example_weighted = True
     return super()._metric_computations(
         thresholds=thresholds,
         name=name,
         eval_config=eval_config,
         model_name=model_name,
         preprocessors=[preprocessor],
+        sub_key=sub_key,
+        aggregation_type=aggregation_type,
+        class_weights=class_weights,
+        example_weighted=example_weighted,
         **kwargs,
     )
 
@@ -140,6 +170,8 @@ class SetMatchRecall(confusion_matrix_metrics.Recall):
       name: Optional[str] = None,
       prediction_class_key: str = 'classes',
       prediction_score_key: str = 'scores',
+      class_key: Optional[str] = None,
+      weight_key: Optional[str] = None,
       **kwargs,
   ):
     """Initializes recall metric.
@@ -160,6 +192,12 @@ class SetMatchRecall(confusion_matrix_metrics.Recall):
       name: (Optional) string name of the metric instance.
       prediction_class_key: the key name of the classes in prediction.
       prediction_score_key: the key name of the scores in prediction.
+      class_key: (Optional) The key name of the classes in class-weight pairs.
+        If it is not provided, the classes are assumed to be the label classes.
+      weight_key: (Optional) The key name of the weights of classes in
+        class-weight pairs. The value in this key should be a numpy array of the
+        same length as the classes in class_key. The key should be stored under
+        the features key.
       **kwargs: (Optional) Additional args to pass along to init (and eventually
         on to _metric_computations and _metric_values). The args are passed to
         the recall metric, the confusion matrix metric and binary classification
@@ -172,6 +210,8 @@ class SetMatchRecall(confusion_matrix_metrics.Recall):
         name=name,
         prediction_class_key=prediction_class_key,
         prediction_score_key=prediction_score_key,
+        class_key=class_key,
+        weight_key=weight_key,
         **kwargs,
     )
 
@@ -185,8 +225,14 @@ class SetMatchRecall(confusion_matrix_metrics.Recall):
       name: Optional[str] = None,
       prediction_class_key: str = 'classes',
       prediction_score_key: str = 'scores',
+      class_key: Optional[str] = None,
+      weight_key: Optional[str] = None,
       eval_config: Optional[config_pb2.EvalConfig] = None,
       model_name: str = '',
+      sub_key: Optional[metric_types.SubKey] = None,
+      aggregation_type: Optional[metric_types.AggregationType] = None,
+      class_weights: Optional[Dict[int, float]] = None,
+      example_weighted: bool = False,
       **kwargs,
   ) -> metric_types.MetricComputations:
     preprocessor = preprocessors.SetMatchPreprocessor(
@@ -194,15 +240,28 @@ class SetMatchRecall(confusion_matrix_metrics.Recall):
         model_name=model_name,
         prediction_class_key=prediction_class_key,
         prediction_score_key=prediction_score_key,
+        class_key=class_key,
+        weight_key=weight_key,
     )
     if top_k is not None and thresholds is None:
       thresholds = float('-inf')
+    if weight_key:
+      # If example_weighted is False, it will by default set the example weights
+      # to 1.0.
+      # example_weighted could only be turned on from model_specs. However, in
+      # this case, the example_weights is not provided in the models. It should
+      # be turned on when per class weights are given.
+      example_weighted = True
     return super()._metric_computations(
         thresholds=thresholds,
         name=name,
         eval_config=eval_config,
         model_name=model_name,
         preprocessors=[preprocessor],
+        sub_key=sub_key,
+        aggregation_type=aggregation_type,
+        class_weights=class_weights,
+        example_weighted=example_weighted,
         **kwargs,
     )
 

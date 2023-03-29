@@ -74,32 +74,93 @@ _SET_MATCH_RESULT_WITH_WEIGHT = [
     },
 ]
 
+_SET_MATCH_INPUT_WITH_CLASS_WEIGHT = util.StandardExtracts({
+    constants.LABELS_KEY: np.array(['cats', 'dogs']),
+    constants.FEATURES_KEY: {'class_weights': np.array([0.7, 0.2])},
+    constants.PREDICTIONS_KEY: {
+        'classes': np.array(['dogs', 'birds']),
+        'scores': np.array([0.3, 0.1]),
+    },
+    constants.EXAMPLE_WEIGHTS_KEY: np.array([0.7]),
+})
+
+_SET_MATCH_RESULT_WITH_CLASS_WEIGHT = [
+    {
+        constants.LABELS_KEY: np.array([1.0]),
+        constants.PREDICTIONS_KEY: np.array([0.3]),
+        constants.EXAMPLE_WEIGHTS_KEY: np.array([0.14]),
+    },
+    {
+        constants.LABELS_KEY: np.array([1.0]),
+        constants.PREDICTIONS_KEY: np.array([0.0]),
+        constants.EXAMPLE_WEIGHTS_KEY: np.array([0.49]),
+    },
+    {
+        constants.LABELS_KEY: np.array([0.0]),
+        constants.PREDICTIONS_KEY: np.array([0.1]),
+        constants.EXAMPLE_WEIGHTS_KEY: np.array([0.7]),
+    },
+]
+
 
 class SetMatchPreprocessorTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('two_sets', _SET_MATCH_INPUT, None, _SET_MATCH_RESULT),
       (
-          'two_sets_with_weight',
-          _SET_MATCH_INPUT_WITH_WEIGHT,
-          None,
-          _SET_MATCH_RESULT_WITH_WEIGHT,
+          'two_sets',
+          _SET_MATCH_INPUT,
+          _SET_MATCH_RESULT,
+          set_match_preprocessors.SetMatchPreprocessor(
+              class_key='',
+              weight_key='',
+              prediction_class_key='classes',
+              prediction_score_key='scores',
+              top_k=None,
+          ),
       ),
-      ('two_sets_with_top_k', _SET_MATCH_INPUT, 1, _SET_MATCH_RESULT[:2]),
+      (
+          'two_sets_with_example_weight',
+          _SET_MATCH_INPUT_WITH_WEIGHT,
+          _SET_MATCH_RESULT_WITH_WEIGHT,
+          set_match_preprocessors.SetMatchPreprocessor(
+              class_key='',
+              weight_key='',
+              prediction_class_key='classes',
+              prediction_score_key='scores',
+              top_k=None,
+          ),
+      ),
+      (
+          'two_sets_with_top_k',
+          _SET_MATCH_INPUT,
+          _SET_MATCH_RESULT[:2],
+          set_match_preprocessors.SetMatchPreprocessor(
+              class_key='',
+              weight_key='',
+              prediction_class_key='classes',
+              prediction_score_key='scores',
+              top_k=1,
+          ),
+      ),
+      (
+          'two_sets_with_class_weight',
+          _SET_MATCH_INPUT_WITH_CLASS_WEIGHT,
+          _SET_MATCH_RESULT_WITH_CLASS_WEIGHT,
+          set_match_preprocessors.SetMatchPreprocessor(
+              class_key='',
+              weight_key='class_weights',
+              prediction_class_key='classes',
+              prediction_score_key='scores',
+              top_k=None,
+          ),
+      ),
   )
-  def testSetMatchPreprocessor(self, extracts, top_k, expected_inputs):
+  def testSetMatchPreprocessor(self, extracts, expected_inputs, preprocessor):
     with beam.Pipeline() as p:
       updated_pcoll = (
           p
           | 'Create' >> beam.Create([extracts])
-          | 'Preprocess'
-          >> beam.ParDo(
-              set_match_preprocessors.SetMatchPreprocessor(
-                  prediction_class_key='classes',
-                  prediction_score_key='scores',
-                  top_k=top_k,
-              )
-          )
+          | 'Preprocess' >> beam.ParDo(preprocessor)
       )
 
       def check_result(result):
@@ -127,9 +188,88 @@ class SetMatchPreprocessorTest(parameterized.TestCase):
 
   def testName(self):
     preprocessor = set_match_preprocessors.SetMatchPreprocessor(
-        prediction_class_key='classes', prediction_score_key='scores', top_k=3
+        class_key='',
+        weight_key='',
+        prediction_class_key='classes',
+        prediction_score_key='scores',
+        top_k=3,
     )
     self.assertEqual(preprocessor.name, '_set_match_preprocessor:top_k=3')
+
+  def testClassWeightShapeMismatch(self):
+    extracts = util.StandardExtracts({
+        constants.LABELS_KEY: np.array(['cats', 'dogs']),
+        constants.FEATURES_KEY: {'class_weights': np.array([0.7])},
+        constants.PREDICTIONS_KEY: np.array(['birds', 'dogs']),
+    })
+    with self.assertRaisesRegex(
+        ValueError,
+        'Classes and weights must be of the same shape.',
+    ):
+      _ = next(
+          set_match_preprocessors.SetMatchPreprocessor(
+              class_key='',
+              weight_key='class_weights',
+              prediction_class_key='classes',
+              prediction_score_key='',
+          ).process(extracts=extracts)
+      )
+
+  def testLabelNotFoundClasses(self):
+    extracts = util.StandardExtracts({
+        constants.LABELS_KEY: np.array(['cats', 'dogs']),
+        constants.FEATURES_KEY: {'class_weights': np.array([0.7, 0.2])},
+        constants.PREDICTIONS_KEY: {
+            'classes': np.array(['birds', 'dogs']),
+            'scores': np.array([0.1, 0.3]),
+        },
+    })
+    with self.assertRaisesRegex(ValueError, 'key not found'):
+      _ = next(
+          set_match_preprocessors.SetMatchPreprocessor(
+              class_key='cla',
+              weight_key='weights',
+              prediction_class_key='classes',
+              prediction_score_key='scores',
+          ).process(extracts=extracts)
+      )
+
+  def testNotFoundClassWeights(self):
+    extracts = util.StandardExtracts({
+        constants.LABELS_KEY: np.array(['cats', 'dogs']),
+        constants.FEATURES_KEY: {'class_weights': np.array([0.7, 0.2])},
+        constants.PREDICTIONS_KEY: {
+            'classes': np.array([['birds', 'dogs']]),
+            'scores': np.array([[0.1, 0.3]]),
+        },
+    })
+    with self.assertRaisesRegex(ValueError, 'key not found'):
+      _ = next(
+          set_match_preprocessors.SetMatchPreprocessor(
+              class_key='',
+              weight_key='weigh',
+              prediction_class_key='classes',
+              prediction_score_key='score',
+          ).process(extracts=extracts)
+      )
+
+  def testNotFoundFeatures(self):
+    extracts = util.StandardExtracts({
+        constants.LABELS_KEY: np.array(['cats', 'dogs']),
+        constants.PREDICTIONS_KEY: {
+            'classes': np.array([['birds', 'dogs']]),
+            'scores': np.array([[0.1, 0.3]]),
+        },
+    })
+    with self.assertRaisesRegex(ValueError, 'features is None'):
+      _ = next(
+          set_match_preprocessors.SetMatchPreprocessor(
+              class_key='',
+              weight_key='weigh',
+              prediction_class_key='classes',
+              prediction_score_key='score',
+          ).process(extracts=extracts)
+      )
 
   def testInvalidLabel(self):
     extracts = util.StandardExtracts({
@@ -142,7 +282,8 @@ class SetMatchPreprocessorTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'Labels must be a 1d numpy array.'):
       _ = next(
           set_match_preprocessors.SetMatchPreprocessor(
-              prediction_class_key='classes', prediction_score_key='scores'
+              prediction_class_key='classes',
+              prediction_score_key='scores',
           ).process(extracts=extracts)
       )
 
@@ -160,7 +301,10 @@ class SetMatchPreprocessorTest(parameterized.TestCase):
     ):
       _ = next(
           set_match_preprocessors.SetMatchPreprocessor(
-              prediction_class_key='classes', prediction_score_key='scores'
+              class_key='',
+              weight_key='',
+              prediction_class_key='classes',
+              prediction_score_key='scores',
           ).process(extracts=extracts)
       )
 
@@ -175,7 +319,10 @@ class SetMatchPreprocessorTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'key not found'):
       _ = next(
           set_match_preprocessors.SetMatchPreprocessor(
-              prediction_class_key='clas', prediction_score_key='scores'
+              class_key='',
+              weight_key='',
+              prediction_class_key='clas',
+              prediction_score_key='scores',
           ).process(extracts=extracts)
       )
 
@@ -190,7 +337,10 @@ class SetMatchPreprocessorTest(parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'key not found'):
       _ = next(
           set_match_preprocessors.SetMatchPreprocessor(
-              prediction_class_key='classes', prediction_score_key='scor'
+              class_key='',
+              weight_key='',
+              prediction_class_key='classes',
+              prediction_score_key='scor',
           ).process(extracts=extracts)
       )
 
@@ -207,7 +357,10 @@ class SetMatchPreprocessorTest(parameterized.TestCase):
     ):
       _ = next(
           set_match_preprocessors.SetMatchPreprocessor(
-              prediction_class_key='classes', prediction_score_key='scores'
+              class_key='',
+              weight_key='',
+              prediction_class_key='classes',
+              prediction_score_key='scores',
           ).process(extracts=extracts)
       )
 
@@ -224,7 +377,10 @@ class SetMatchPreprocessorTest(parameterized.TestCase):
     ):
       _ = next(
           set_match_preprocessors.SetMatchPreprocessor(
-              prediction_class_key='classes', prediction_score_key='scores'
+              class_key='',
+              weight_key='',
+              prediction_class_key='classes',
+              prediction_score_key='scores',
           ).process(extracts=extracts)
       )
 
