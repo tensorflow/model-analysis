@@ -285,18 +285,23 @@ class ConfusionMatrixMetricBase(metric_types.Metric, metaclass=abc.ABCMeta):
       class_weights: Optional[Dict[int, float]] = None,
       example_weighted: bool = False,
       preprocessors: Optional[List[metric_types.Preprocessor]] = None,
-      **kwargs) -> metric_types.MetricComputations:
+      metric_key: Optional[metric_types.MetricKey] = None,
+      **kwargs,
+  ) -> metric_types.MetricComputations:
     """Returns computations for confusion matrix metric."""
     sub_key = _validate_and_update_sub_key(name, model_name, output_name,
                                            sub_key, top_k, class_id)
-
-    key = metric_types.MetricKey(
-        name=name,
-        model_name=model_name,
-        output_name=output_name,
-        sub_key=sub_key,
-        example_weighted=example_weighted,
-        aggregation_type=aggregation_type)
+    if metric_key:
+      key = metric_key
+    else:
+      key = metric_types.MetricKey(
+          name=name,
+          model_name=model_name,
+          output_name=output_name,
+          sub_key=sub_key,
+          example_weighted=example_weighted,
+          aggregation_type=aggregation_type,
+      )
 
     if num_thresholds is None and thresholds is None:
       # If top_k set, then use -inf as the default threshold setting.

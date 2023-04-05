@@ -124,24 +124,26 @@ class ObjectDetectionPrecisionAtRecall(  # pytype: disable=signature-mismatch  #
   def _default_name(self) -> str:
     return OBJECT_DETECTION_PRECISION_AT_RECALL_NAME
 
-  def _metric_computations(self,
-                           thresholds: Optional[Union[float,
-                                                      List[float]]] = None,
-                           num_thresholds: Optional[int] = None,
-                           iou_threshold: Optional[float] = None,
-                           class_id: Optional[int] = None,
-                           class_weight: Optional[float] = None,
-                           area_range: Optional[Tuple[float, float]] = None,
-                           max_num_detections: Optional[int] = None,
-                           name: Optional[str] = None,
-                           eval_config: Optional[config_pb2.EvalConfig] = None,
-                           model_name: str = '',
-                           output_name: str = '',
-                           labels_to_stack: Optional[List[str]] = None,
-                           predictions_to_stack: Optional[List[str]] = None,
-                           num_detections_key: Optional[str] = None,
-                           allow_missing_key: bool = False,
-                           **kwargs) -> metric_types.MetricComputations:
+  def _metric_computations(
+      self,
+      thresholds: Optional[Union[float, List[float]]] = None,
+      num_thresholds: Optional[int] = None,
+      iou_threshold: Optional[float] = None,
+      class_id: Optional[int] = None,
+      class_weight: Optional[float] = None,
+      area_range: Optional[Tuple[float, float]] = None,
+      max_num_detections: Optional[int] = None,
+      name: Optional[str] = None,
+      eval_config: Optional[config_pb2.EvalConfig] = None,
+      model_name: str = '',
+      output_name: str = '',
+      labels_to_stack: Optional[List[str]] = None,
+      predictions_to_stack: Optional[List[str]] = None,
+      num_detections_key: Optional[str] = None,
+      allow_missing_key: bool = False,
+      example_weighted: bool = False,
+      **kwargs,
+  ) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
@@ -149,7 +151,17 @@ class ObjectDetectionPrecisionAtRecall(  # pytype: disable=signature-mismatch  #
         max_num_detections=max_num_detections,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
-        output_name=output_name)
+        output_name=output_name,
+    )
+
+    key = metric_types.MetricKey(
+        name=name,
+        model_name=model_name,
+        output_name=output_name,
+        sub_key=metric_types.SubKey(class_id=class_id),
+        example_weighted=example_weighted,
+        aggregation_type=None,
+    )
 
     preprocessor = preprocessors.BoundingBoxMatchPreprocessor(
         class_id=class_id,
@@ -170,7 +182,10 @@ class ObjectDetectionPrecisionAtRecall(  # pytype: disable=signature-mismatch  #
         model_name=model_name,
         output_name=output_name,
         preprocessors=[preprocessor],
-        **kwargs)
+        metric_key=key,
+        example_weighted=example_weighted,
+        **kwargs,
+    )
 
 
 metric_types.register_metric(ObjectDetectionPrecisionAtRecall)
@@ -275,6 +290,7 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
       predictions_to_stack: Optional[List[str]] = None,
       num_detections_key: Optional[str] = None,
       allow_missing_key: bool = False,
+      example_weighted: bool = False,
       **kwargs,
   ) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
@@ -285,6 +301,15 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         output_name=output_name)
+
+    key = metric_types.MetricKey(
+        name=name,
+        model_name=model_name,
+        output_name=output_name,
+        sub_key=metric_types.SubKey(class_id=class_id),
+        example_weighted=example_weighted,
+        aggregation_type=None,
+    )
 
     preprocessor = preprocessors.BoundingBoxMatchPreprocessor(
         class_id=class_id,
@@ -304,7 +329,10 @@ class ObjectDetectionRecall(confusion_matrix_metrics.Recall):
         eval_config=eval_config,
         model_name=model_name,
         output_name=output_name,
-        preprocessors=[preprocessor])
+        preprocessors=[preprocessor],
+        metric_key=key,
+        example_weighted=example_weighted,
+    )
 
 
 metric_types.register_metric(ObjectDetectionRecall)
@@ -409,6 +437,7 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
       predictions_to_stack: Optional[List[str]] = None,
       num_detections_key: Optional[str] = None,
       allow_missing_key: bool = False,
+      example_weighted: bool = False,
       **kwargs,
   ) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
@@ -419,6 +448,15 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         output_name=output_name)
+
+    key = metric_types.MetricKey(
+        name=name,
+        model_name=model_name,
+        output_name=output_name,
+        sub_key=metric_types.SubKey(class_id=class_id),
+        example_weighted=example_weighted,
+        aggregation_type=None,
+    )
 
     preprocessor = preprocessors.BoundingBoxMatchPreprocessor(
         class_id=class_id,
@@ -438,7 +476,10 @@ class ObjectDetectionPrecision(confusion_matrix_metrics.Precision):
         eval_config=eval_config,
         model_name=model_name,
         output_name=output_name,
-        preprocessors=[preprocessor])
+        preprocessors=[preprocessor],
+        metric_key=key,
+        example_weighted=example_weighted,
+    )
 
 
 metric_types.register_metric(ObjectDetectionPrecision)
@@ -521,24 +562,26 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
   def _default_name(self) -> str:
     return OBJECT_DETECTION_MAX_RECALL_NAME
 
-  def _metric_computations(self,
-                           thresholds: Optional[Union[float,
-                                                      List[float]]] = None,
-                           num_thresholds: Optional[int] = None,
-                           iou_threshold: Optional[float] = None,
-                           class_id: Optional[int] = None,
-                           class_weight: Optional[float] = None,
-                           area_range: Optional[Tuple[float, float]] = None,
-                           max_num_detections: Optional[int] = None,
-                           name: Optional[str] = None,
-                           eval_config: Optional[config_pb2.EvalConfig] = None,
-                           model_name: str = '',
-                           output_name: str = '',
-                           labels_to_stack: Optional[List[str]] = None,
-                           predictions_to_stack: Optional[List[str]] = None,
-                           num_detections_key: Optional[str] = None,
-                           allow_missing_key: bool = False,
-                           **kwargs) -> metric_types.MetricComputations:
+  def _metric_computations(
+      self,
+      thresholds: Optional[Union[float, List[float]]] = None,
+      num_thresholds: Optional[int] = None,
+      iou_threshold: Optional[float] = None,
+      class_id: Optional[int] = None,
+      class_weight: Optional[float] = None,
+      area_range: Optional[Tuple[float, float]] = None,
+      max_num_detections: Optional[int] = None,
+      name: Optional[str] = None,
+      eval_config: Optional[config_pb2.EvalConfig] = None,
+      model_name: str = '',
+      output_name: str = '',
+      labels_to_stack: Optional[List[str]] = None,
+      predictions_to_stack: Optional[List[str]] = None,
+      num_detections_key: Optional[str] = None,
+      allow_missing_key: bool = False,
+      example_weighted: bool = False,
+      **kwargs,
+  ) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
@@ -546,6 +589,16 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
         max_num_detections=max_num_detections,
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack)
+
+    key = metric_types.MetricKey(
+        name=name,
+        model_name=model_name,
+        output_name=output_name,
+        sub_key=metric_types.SubKey(class_id=class_id),
+        example_weighted=example_weighted,
+        aggregation_type=None,
+    )
+
     preprocessor = preprocessors.BoundingBoxMatchPreprocessor(
         class_id=class_id,
         iou_threshold=iou_threshold,
@@ -565,7 +618,10 @@ class ObjectDetectionMaxRecall(confusion_matrix_metrics.MaxRecall):
         model_name=model_name,
         output_name=output_name,
         preprocessors=[preprocessor],
-        **kwargs)
+        metric_key=key,
+        example_weighted=example_weighted,
+        **kwargs,
+    )
 
 
 metric_types.register_metric(ObjectDetectionMaxRecall)
@@ -659,24 +715,26 @@ class ObjectDetectionThresholdAtRecall(
   def _default_name(self) -> str:
     return OBJECT_DETECTION_THRESHOLD_AT_RECALL_NAME
 
-  def _metric_computations(self,
-                           thresholds: Optional[Union[float,
-                                                      List[float]]] = None,
-                           num_thresholds: Optional[int] = None,
-                           iou_threshold: Optional[float] = None,
-                           class_id: Optional[int] = None,
-                           class_weight: Optional[float] = None,
-                           area_range: Optional[Tuple[float, float]] = None,
-                           max_num_detections: Optional[int] = None,
-                           name: Optional[str] = None,
-                           eval_config: Optional[config_pb2.EvalConfig] = None,
-                           model_name: str = '',
-                           output_name: str = '',
-                           labels_to_stack: Optional[List[str]] = None,
-                           predictions_to_stack: Optional[List[str]] = None,
-                           num_detections_key: Optional[str] = None,
-                           allow_missing_key: bool = False,
-                           **kwargs) -> metric_types.MetricComputations:
+  def _metric_computations(
+      self,
+      thresholds: Optional[Union[float, List[float]]] = None,
+      num_thresholds: Optional[int] = None,
+      iou_threshold: Optional[float] = None,
+      class_id: Optional[int] = None,
+      class_weight: Optional[float] = None,
+      area_range: Optional[Tuple[float, float]] = None,
+      max_num_detections: Optional[int] = None,
+      name: Optional[str] = None,
+      eval_config: Optional[config_pb2.EvalConfig] = None,
+      model_name: str = '',
+      output_name: str = '',
+      labels_to_stack: Optional[List[str]] = None,
+      predictions_to_stack: Optional[List[str]] = None,
+      num_detections_key: Optional[str] = None,
+      allow_missing_key: bool = False,
+      example_weighted: bool = False,
+      **kwargs,
+  ) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
@@ -685,6 +743,15 @@ class ObjectDetectionThresholdAtRecall(
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         output_name=output_name)
+
+    key = metric_types.MetricKey(
+        name=name,
+        model_name=model_name,
+        output_name=output_name,
+        sub_key=metric_types.SubKey(class_id=class_id),
+        example_weighted=example_weighted,
+        aggregation_type=None,
+    )
 
     preprocessor = preprocessors.BoundingBoxMatchPreprocessor(
         class_id=class_id,
@@ -705,7 +772,10 @@ class ObjectDetectionThresholdAtRecall(
         model_name=model_name,
         output_name=output_name,
         preprocessors=[preprocessor],
-        **kwargs)
+        metric_key=key,
+        example_weighted=example_weighted,
+        **kwargs,
+    )
 
 
 metric_types.register_metric(ObjectDetectionThresholdAtRecall)

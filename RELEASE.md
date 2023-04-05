@@ -20,6 +20,8 @@
     distribution plot.
 *   Depends on `numpy~=1.22.0`.
 *   Modify ExampleCount to not depend on labels and predictions.
+*   Add class_id info into sub_key in metric_key for object detection confusion
+    matrix metrics.
 
 ## Breaking Changes
 

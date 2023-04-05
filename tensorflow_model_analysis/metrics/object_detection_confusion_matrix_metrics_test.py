@@ -175,7 +175,9 @@ class ObjectDetectionConfusionMatrixMetricsTest(parameterized.TestCase):
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_metrics, len(name_list))
           for name, expected_result in zip(name_list, expected_results):
-            key = metric_types.MetricKey(name=name)
+            key = metric_types.MetricKey(
+                name=name, sub_key=metric_types.SubKey(class_id=0)
+            )
             self.assertIn(key, got_metrics)
             got_metric = got_metrics[key]
             np.testing.assert_allclose(
