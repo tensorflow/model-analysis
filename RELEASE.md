@@ -22,6 +22,8 @@
 *   Modify ExampleCount to not depend on labels and predictions.
 *   Add class_id info into sub_key in metric_key for object detection confusion
     matrix metrics.
+*   Depends on `tensorflow>=2.12.0,<2.13`.
+*   Depends on `protobuf>=3.20.3,<5`.
 
 ## Breaking Changes
 

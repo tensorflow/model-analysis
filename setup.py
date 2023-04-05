@@ -301,12 +301,12 @@ setup_args = {
         'ipywidgets>=7,<8',
         'numpy~=1.22.0',
         'pandas>=1.0,<2',
-        'protobuf>=3.13,<4',
+        'protobuf>=3.20.3,<5',
         'pyarrow>=6,<7',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
         'attrs>=19.3.0,<22',
-        'tensorflow>=2.11,<3',
+        'tensorflow>=2.12,<3',
         'tensorflow-metadata'
         + select_constraint(
             default='>=1.12.0,<1.13.0',
