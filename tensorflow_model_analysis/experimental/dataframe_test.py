@@ -193,12 +193,33 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         ('metric_keys', 'is_diff'): [False, False, False],
         ('metric_values', 'double_value'): [0.1, 0.02, 0.3],
     })
-    expected = df.pivot(
-        index=[('slices', 'age'), ('slices', 'sex')],
-        columns=[('metric_keys', 'name')],
-        values=[('metric_values', 'double_value')])
     df = dataframe.auto_pivot(
         df, stringify_slices=False, collapse_column_names=False)
+    mux = pd.MultiIndex.from_tuples(
+        [
+            (('metric_values', 'double_value'), False, 'mean_absolute_error'),
+            (
+                ('metric_values', 'double_value'),
+                False,
+                'mean_squared_logarithmic_error',
+            ),
+            (('metric_values', 'double_value'), np.nan, 'mean_absolute_error'),
+        ],
+        names=(
+            None,
+            ('metric_keys', 'example_weighted'),
+            ('metric_keys', 'name'),
+        ),
+    )
+    mix = pd.MultiIndex.from_tuples(
+        [(np.nan, np.nan), (38.0, b'Female')],
+        names=[('slices', 'age'), ('slices', 'sex')],
+    )
+    expected = pd.DataFrame(
+        [[np.nan, np.nan, 0.3], [0.1, 0.02, np.nan]],
+        index=mix,
+        columns=mux,
+    )
     pd.testing.assert_frame_equal(expected, df)
 
   def testAutoPivot_MetricsDataFrameStringifySlices(self):
@@ -218,23 +239,39 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
     df = dataframe.auto_pivot(
         df, stringify_slices=True, collapse_column_names=False)
     mux = pd.MultiIndex.from_tuples(
-        [(('metric_values', 'double_value'), 'mean_absolute_error'),
-         (('metric_values', 'double_value'), 'mean_squared_logarithmic_error')],
-        names=(None, ('metric_keys', 'name')))
+        [
+            (('metric_values', 'double_value'), np.nan, 'mean_absolute_error'),
+            (('metric_values', 'double_value'), False, 'mean_absolute_error'),
+            (
+                ('metric_values', 'double_value'),
+                False,
+                'mean_squared_logarithmic_error',
+            ),
+        ],
+        names=(
+            None,
+            ('metric_keys', 'example_weighted'),
+            ('metric_keys', 'name'),
+        ),
+    )
+    index = pd.Index(
+        ['', "age:38.0; sex:b'Female'"], dtype='object', name='slices'
+    )
     expected = pd.DataFrame(
-        [[0.3, None], [0.1, 0.02]],
+        [[0.3, np.nan, np.nan], [np.nan, 0.1, 0.02]],
+        index=index,
         columns=mux,
     )
-    expected.insert(0, 'slices', ['', "age:38.0; sex:b'Female'"])
-    expected = expected.set_index('slices')
     pd.testing.assert_frame_equal(expected, df)
 
   def testAutoPivot_MetricsDataFrameCollapseColumnNames(self):
     df = pd.DataFrame({
         ('slices', 'age'): [38.0, 38.0, None],
+        ('slices', 'sex'): [b'Female', b'Female', None],
         ('metric_keys', 'name'): [
-            'mean_absolute_error', 'mean_squared_logarithmic_error',
-            'mean_absolute_error'
+            'mean_absolute_error',
+            'mean_squared_logarithmic_error',
+            'mean_absolute_error',
         ],
         ('metric_keys', 'model_name'): ['', '', ''],
         ('metric_keys', 'output_name'): ['', '', ''],
@@ -244,14 +281,23 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
     })
     df = dataframe.auto_pivot(
         df, stringify_slices=False, collapse_column_names=True)
-    mux = pd.Index(('mean_absolute_error', 'mean_squared_logarithmic_error'),
-                   name=('metric_keys', 'name'))
+    mux = pd.MultiIndex.from_tuples(
+        [
+            (False, 'mean_absolute_error'),
+            (False, 'mean_squared_logarithmic_error'),
+            (np.nan, 'mean_absolute_error'),
+        ],
+        names=[('metric_keys', 'example_weighted'), ('metric_keys', 'name')],
+    )
+    mix = pd.MultiIndex.from_tuples(
+        [(np.nan, np.nan), (38.0, b'Female')],
+        names=[('slices', 'age'), ('slices', 'sex')],
+    )
     expected = pd.DataFrame(
-        [[0.3, None], [0.1, 0.02]],
+        [[np.nan, np.nan, 0.3], [0.1, 0.02, np.nan]],
+        index=mix,
         columns=mux,
     )
-    expected = expected.set_index(
-        pd.Index([np.nan, 38.0], name=('slices', 'age')))
     pd.testing.assert_frame_equal(expected, df)
 
   def testAutoPivot_MetricsDataFrameOverallSliceOnly(self):

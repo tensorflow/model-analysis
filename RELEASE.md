@@ -24,6 +24,8 @@
     matrix metrics.
 *   Depends on `tensorflow>=2.12.0,<2.13`.
 *   Depends on `protobuf>=3.20.3,<5`.
+*   Fix a bug that auto_pivot dropped nan when deciding which columns are
+    multivalent for pivoting.
 
 ## Breaking Changes
 

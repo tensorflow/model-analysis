@@ -18,6 +18,7 @@ import itertools
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 import attr
+import numpy as np
 import pandas as pd
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
@@ -469,8 +470,19 @@ def _auto_pivot(df: pd.DataFrame, column_prefixes: _ColumnPrefixes,
                 collapse_column_names: bool) -> pd.DataFrame:
   """Implements auto_pivot."""
   df = _stringify_slices(df, column_prefixes.slices) if stringify_slices else df
-  df_unique = df[column_prefixes.metric_keys].nunique().sort_values(
-      ascending=False)
+  # TODO(b/277280388): Use Series.sort_values after upgrading to pandas > 1.2.
+  # See https://github.com/pandas-dev/pandas/issues/35922
+  # Replace the df_unique logic with the following block.
+  # df_unique = (
+  #     df[column_prefixes.metric_keys]
+  #     .nunique(dropna=False)
+  #     .sort_index()
+  #     .sort_values(ascending=False, kind='stable')
+  # )
+  df_unique = df[column_prefixes.metric_keys].nunique(dropna=False).sort_index()
+  _, tags = np.unique(df_unique.values, return_inverse=True)
+  df_unique = df_unique.iloc[np.argsort(-tags, kind='stable')]
+
   pivot_columns = [(column_prefixes.metric_keys, column)
                    for column, nunique in df_unique.items()
                    if nunique > 1]
