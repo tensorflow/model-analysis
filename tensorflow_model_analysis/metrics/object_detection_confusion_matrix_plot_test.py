@@ -102,7 +102,9 @@ class ObjectDetectionConfusionMatrixPlotTest(
           self.assertLen(got, 1)
           got_slice_key, got_plots = got[0]
           self.assertEqual(got_slice_key, ())
-          key = metric_types.PlotKey(name='iou0.5')
+          key = metric_types.PlotKey(
+              name='iou0.5', sub_key=metric_types.SubKey(class_id=1)
+          )
           self.assertIn(key, got_plots)
           got_plot = got_plots[key]
           self.assertProtoEquals(

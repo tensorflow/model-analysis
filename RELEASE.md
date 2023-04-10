@@ -22,6 +22,8 @@
 *   Modify ExampleCount to not depend on labels and predictions.
 *   Add class_id info into sub_key in metric_key for object detection confusion
     matrix metrics.
+*   Add class_id info into sub_key in plot_key for object detection confusion
+    matrix plot.
 *   Depends on `tensorflow>=2.12.0,<2.13`.
 *   Depends on `protobuf>=3.20.3,<5`.
 *   Fix a bug that auto_pivot dropped nan when deciding which columns are

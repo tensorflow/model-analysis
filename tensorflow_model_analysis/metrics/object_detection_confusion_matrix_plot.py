@@ -95,24 +95,25 @@ class ObjectDetectionConfusionMatrixPlot(
         num_detections_key=num_detections_key,
         allow_missing_key=allow_missing_key)
 
-  def _confusion_matrix_plot(self,
-                             num_thresholds: int = DEFAULT_NUM_THRESHOLDS,
-                             name: str = CONFUSION_MATRIX_PLOT_NAME,
-                             eval_config: Optional[
-                                 config_pb2.EvalConfig] = None,
-                             model_name: str = '',
-                             output_name: str = '',
-                             iou_threshold: Optional[float] = None,
-                             class_id: Optional[int] = None,
-                             class_weight: Optional[float] = None,
-                             area_range: Optional[Tuple[float, float]] = None,
-                             max_num_detections: Optional[int] = None,
-                             labels_to_stack: Optional[List[str]] = None,
-                             predictions_to_stack: Optional[List[str]] = None,
-                             num_detections_key: Optional[str] = None,
-                             allow_missing_key: bool = False,
-                             **kwargs) -> metric_types.MetricComputations:
-
+  def _confusion_matrix_plot(
+      self,
+      num_thresholds: int = DEFAULT_NUM_THRESHOLDS,
+      name: str = CONFUSION_MATRIX_PLOT_NAME,
+      eval_config: Optional[config_pb2.EvalConfig] = None,
+      model_name: str = '',
+      output_name: str = '',
+      iou_threshold: Optional[float] = None,
+      class_id: Optional[int] = None,
+      class_weight: Optional[float] = None,
+      area_range: Optional[Tuple[float, float]] = None,
+      max_num_detections: Optional[int] = None,
+      labels_to_stack: Optional[List[str]] = None,
+      predictions_to_stack: Optional[List[str]] = None,
+      num_detections_key: Optional[str] = None,
+      allow_missing_key: bool = False,
+      example_weighted: bool = False,
+      **kwargs
+  ) -> metric_types.MetricComputations:
     metric_util.validate_object_detection_arguments(
         class_id=class_id,
         class_weight=class_weight,
@@ -121,6 +122,14 @@ class ObjectDetectionConfusionMatrixPlot(
         labels_to_stack=labels_to_stack,
         predictions_to_stack=predictions_to_stack,
         output_name=output_name)
+
+    key = metric_types.PlotKey(
+        name=name,
+        model_name=model_name,
+        output_name=output_name,
+        sub_key=metric_types.SubKey(class_id=class_id),
+        example_weighted=example_weighted,
+    )
 
     preprocessor = preprocessors.BoundingBoxMatchPreprocessor(
         class_id=class_id,
@@ -141,7 +150,10 @@ class ObjectDetectionConfusionMatrixPlot(
         model_name=model_name,
         output_name=output_name,
         preprocessors=[preprocessor],
-        **kwargs)
+        plot_key=key,
+        example_weighted=example_weighted,
+        **kwargs
+    )
 
 
 metric_types.register_metric(ObjectDetectionConfusionMatrixPlot)

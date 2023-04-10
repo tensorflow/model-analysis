@@ -60,14 +60,19 @@ class ConfusionMatrixPlot(metric_types.Metric):
       class_weights: Optional[Dict[int, float]] = None,
       example_weighted: bool = False,
       preprocessors: Optional[List[metric_types.Preprocessor]] = None,
+      plot_key: Optional[metric_types.PlotKey] = None,
   ) -> metric_types.MetricComputations:
     """Returns metric computations for confusion matrix plots."""
-    key = metric_types.PlotKey(
-        name=name,
-        model_name=model_name,
-        output_name=output_name,
-        sub_key=sub_key,
-        example_weighted=example_weighted)
+    if plot_key:
+      key = plot_key
+    else:
+      key = metric_types.PlotKey(
+          name=name,
+          model_name=model_name,
+          output_name=output_name,
+          sub_key=sub_key,
+          example_weighted=example_weighted,
+      )
 
     # The interoploation strategy used here matches how the legacy post export
     # metrics calculated its plots.
