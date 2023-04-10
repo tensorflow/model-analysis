@@ -15,7 +15,7 @@
 
 import collections
 import copy
-from typing import Dict, Sequence, Union
+from typing import Callable, Dict, Sequence, Union
 
 from absl import logging
 import apache_beam as beam
@@ -28,13 +28,14 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.utils import util
 
+_OpResolverType = tf.lite.experimental.OpResolverType
 _TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
 
 
 # TODO(b/149981535) Determine if we should merge with RunInference.
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
+class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   """A DoFn that loads tflite models and predicts."""
 
   def __init__(self, eval_config: config_pb2.EvalConfig,
@@ -47,17 +48,19 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
     self._interpreters = {}
 
     major, minor, _ = tf.version.VERSION.split('.')
+    op_resolver_type = _OpResolverType.AUTO
+    # TODO(b/207600661): drop BUILTIN_WITHOUT_DEFAULT_DELEGATES once the issue
+    # is fixed.
+    if int(major) > 2 or (int(major) == 2 and int(minor) >= 5):
+      op_resolver_type = _OpResolverType.BUILTIN_WITHOUT_DEFAULT_DELEGATES
     for model_name, model_contents in self._loaded_models.items():
-      # TODO(b/207600661): drop BUILTIN_WITHOUT_DEFAULT_DELEGATES once the issue
-      # is fixed.
-      if int(major) > 2 or (int(major) == 2 and int(minor) >= 5):
-        self._interpreters[model_name] = tf.lite.Interpreter(
-            model_content=model_contents.contents,
-            experimental_op_resolver_type=tf.lite.experimental.OpResolverType
-            .BUILTIN_WITHOUT_DEFAULT_DELEGATES)
-      else:
-        self._interpreters[model_name] = tf.lite.Interpreter(
-            model_content=model_contents.contents)
+      self._interpreters[model_name] = self._make_interpreter(
+          model_content=model_contents.contents,
+          experimental_op_resolver_type=op_resolver_type,
+      )
+
+  def _make_interpreter(self, **kwargs) -> tf.lite.Interpreter:
+    return tf.lite.Interpreter(**kwargs)
 
   def _get_input_name_from_input_detail(self, input_detail):
     """Get input name from input detail.
@@ -157,9 +160,11 @@ class _TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Dict[str,
-                             types.EvalSharedModel]) -> beam.pvalue.PCollection:
+    extracts: beam.pvalue.PCollection,
+    eval_config: config_pb2.EvalConfig,
+    eval_shared_models: Dict[str, types.EvalSharedModel],
+    do_fn: Callable[..., TFLitePredictionDoFn],
+) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
   Args:
@@ -167,21 +172,25 @@ def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
       tfma.FEATURES_KEY.
     eval_config: Eval config.
     eval_shared_models: Shared model parameters keyed by model name.
+    do_fn: Constructor for TFLitePredictionDoFn.
 
   Returns:
     PCollection of Extracts updated with the predictions.
   """
-  return (
-      extracts
-      | 'Predict' >> beam.ParDo(
-          _TFLitePredictionDoFn(
-              eval_config=eval_config, eval_shared_models=eval_shared_models)))
+  return extracts | 'Predict' >> beam.ParDo(
+      do_fn(
+          eval_config=eval_config,
+          eval_shared_models=eval_shared_models,
+      )
+  )
 
 
 def TFLitePredictExtractor(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Union[types.EvalSharedModel, Dict[str,
-                                                         types.EvalSharedModel]]
+    eval_shared_model: Union[
+        types.EvalSharedModel, Dict[str, types.EvalSharedModel]
+    ],
+    do_fn: Callable[..., TFLitePredictionDoFn] = TFLitePredictionDoFn,
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions on tflite models.
 
@@ -195,6 +204,7 @@ def TFLitePredictExtractor(
     eval_config: Eval config.
     eval_shared_model: Shared model (single-model evaluation) or dict of shared
       models keyed by model name (multi-model evaluation).
+    do_fn: Constructor for TFLitePredictionDoFn.
 
   Returns:
     Extractor for extracting predictions.
@@ -207,4 +217,7 @@ def TFLitePredictExtractor(
       stage_name=_TFLITE_PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractTFLitePredictions(
           eval_config=eval_config,
-          eval_shared_models={m.model_name: m for m in eval_shared_models}))
+          eval_shared_models={m.model_name: m for m in eval_shared_models},
+          do_fn=do_fn,
+      ),
+  )
