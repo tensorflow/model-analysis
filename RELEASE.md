@@ -4,6 +4,16 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other Changes
+
+## Breaking Changes
+
+## Deprecations
+
+# Version 0.44.0
+
+## Major Features and Improvements
+
 *   Add BinaryCrossEntropy and CategoricalCrossEntropy.
 *   Add MeanAbsolutePercentageError and MeanSquaredLogarithmicError
 *   Add SetMatchPrecision and SetMatchRecall
@@ -24,12 +34,16 @@
     matrix metrics.
 *   Add class_id info into sub_key in plot_key for object detection confusion
     matrix plot.
-*   Depends on `tensorflow>=2.12.0,<2.13`.
-*   Depends on `protobuf>=3.20.3,<5`.
 *   Fix a bug that auto_pivot dropped nan when deciding which columns are
     multivalent for pivoting.
+*   Depends on `tensorflow>=2.12.0,<2.13`.
+*   Depends on `protobuf>=3.20.3,<5`.
+*   Depends on `tfx-bsl>=1.13.0,<1.14.0`.
+*   Depends on `tensorflow-metadata>=1.13.1,<1.14.0`.
 
 ## Breaking Changes
+
+*   N/A
 
 ## Deprecations
 
