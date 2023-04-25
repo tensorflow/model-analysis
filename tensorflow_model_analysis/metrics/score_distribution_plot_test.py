@@ -94,31 +94,53 @@ class ScoreDistributionPlotTest(testutil.TensorflowModelAnalysisTest):
               matrices {
                 threshold: -1e-06
                 true_positives: 4.0
+                false_positive_rate: 1.0
+                f1: 0.5964912
+                accuracy: 0.425
+                false_omission_rate: nan
               }
               matrices {
                 true_negatives: 1.0
                 true_positives: 3.0
+                false_positive_rate: 0.5652174
+                f1: 0.7234043
+                accuracy: 0.675
               }
               matrices {
                 threshold: 0.25
                 true_negatives: 1.0
                 true_positives: 3.0
+                false_positive_rate: 0.5652174
+                f1: 0.7234043
+                accuracy: 0.675
               }
               matrices {
                 threshold: 0.5
                 true_negatives: 3.0
                 true_positives: 1.0
+                false_positive_rate: 0.0434783
+                f1: 0.6666667
+                accuracy: 0.775
+                false_omission_rate: 0.2666667
               }
               matrices {
                 threshold: 0.75
                 true_negatives: 3.0
                 true_positives: 1.0
+                false_positive_rate: 0.0434783
+                f1: 0.6666667
+                accuracy: 0.775
+                false_omission_rate: 0.2666667
               }
               matrices {
                 threshold: 1.0
                 true_negatives: 4.0
+                accuracy: 0.575
+                false_omission_rate: 0.425
               }
-          """, got_plot)
+          """,
+              got_plot,
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

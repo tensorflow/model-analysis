@@ -151,6 +151,7 @@ message ValueAtCutoffs {
 }
 
 // Confusion matrix at thresholds.
+// Next tag: 24
 message ConfusionMatrixAtThresholds {
   message ConfusionMatrixAtThreshold {
     double threshold = 1;
@@ -160,6 +161,10 @@ message ConfusionMatrixAtThresholds {
     double true_positives = 5;
     double precision = 6;
     double recall = 7;
+    double false_positive_rate = 20;
+    double f1 = 21;
+    double accuracy = 22;
+    double false_omission_rate = 23;
 
     BoundedValue bounded_false_negatives = 8 [deprecated = true];
     BoundedValue bounded_true_negatives = 9 [deprecated = true];

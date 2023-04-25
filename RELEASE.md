@@ -4,6 +4,8 @@
 
 ## Major Features and Improvements
 
+*   Add F1, False positive rate, and Accuracy into the confusion matrix plot.
+
 ## Bug fixes and other Changes
 
 ## Breaking Changes
@@ -139,7 +141,7 @@ Deprecated python3.7 support.
 ## Major Features and Improvements
 
 *   Add COCO object detection metrics, object detection related utilities,
-    objection detection opitons in binary confusion matrix, Precision At Recall,
+    objection detection options in binary confusion matrix, Precision At Recall,
     and AUC. Add MaxRecall metric.
 *   Add support for parsing sparse tensors with explicit tensor representations
     via TFXIO.

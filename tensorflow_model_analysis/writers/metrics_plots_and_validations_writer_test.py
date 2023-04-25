@@ -328,6 +328,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 true_positives: 2.0
                 precision: 1.0
                 recall: 1.0
+                f1: 1.0
+                accuracy: 1.0
+                false_omission_rate: 0.0
+                false_positive_rate: 0.0
               }
               matrices {
                 threshold: 0.75
@@ -337,6 +341,10 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 true_positives: 1.0
                 precision: 1.0
                 recall: 0.5
+                f1: 0.6666667
+                accuracy: 0.6666667
+                false_omission_rate: 0.5
+                false_positive_rate: 0.0
               }
               matrices {
                 threshold: 1.00
@@ -346,11 +354,17 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                 true_positives: 0.0
                 precision: 1.0
                 recall: 0.0
+                f1: 0.0
+                accuracy: 0.3333333
+                false_omission_rate: 0.6666667
+                false_positive_rate: 0.0
               }
             }
           }
         }
-        """, metrics_for_slice_pb2.MetricsForSlice())
+        """,
+        metrics_for_slice_pb2.MetricsForSlice(),
+    )
 
     got = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
         (slice_key, slice_metrics), add_metrics_callbacks=[])

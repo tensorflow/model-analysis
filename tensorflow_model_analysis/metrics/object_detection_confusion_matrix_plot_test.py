@@ -115,44 +115,64 @@ class ObjectDetectionConfusionMatrixPlotTest(
                 true_positives: 1.0
                 precision: 0.5
                 recall: 1.0
+                false_positive_rate: 1.0
+                f1: 0.6666667
+                accuracy: 0.5
+                false_omission_rate: nan
               }
               matrices {
                 false_positives: 1.0
                 true_positives: 1.0
                 precision: 0.5
                 recall: 1.0
+                false_positive_rate: 1.0
+                f1: 0.6666667
+                accuracy: 0.5
+                false_omission_rate: nan
               }
               matrices {
                 threshold: 0.2
                 false_negatives: 1.0
                 true_negatives: 1.0
                 precision: 1.0
+                accuracy: 0.5
+                false_omission_rate: 0.5
               }
               matrices {
                 threshold: 0.4
                 false_negatives: 1.0
                 true_negatives: 1.0
                 precision: 1.0
+                accuracy: 0.5
+                false_omission_rate: 0.5
               }
               matrices {
                 threshold: 0.6
                 false_negatives: 1.0
                 true_negatives: 1.0
                 precision: 1.0
+                accuracy: 0.5
+                false_omission_rate: 0.5
               }
               matrices {
                 threshold: 0.8
                 false_negatives: 1.0
                 true_negatives: 1.0
                 precision: 1.0
+                accuracy: 0.5
+                false_omission_rate: 0.5
               }
               matrices {
                 threshold: 1.0
                 false_negatives: 1.0
                 true_negatives: 1.0
                 precision: 1.0
+                accuracy: 0.5
+                false_omission_rate: 0.5
               }
-          """, got_plot)
+          """,
+              got_plot,
+          )
         except AssertionError as err:
           raise util.BeamAssertException(err)
 

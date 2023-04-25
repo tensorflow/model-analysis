@@ -16,6 +16,7 @@
 from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 import apache_beam as beam
+import numpy as np
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
@@ -126,23 +127,44 @@ class Matrices(  # pytype: disable=signature-mismatch  # always-use-return-annot
     Returns:
       A MetricValue proto containing a ConfusionMatrixAtThresholds proto.
     """
+
     result = metrics_for_slice_pb2.MetricValue()
+    tp, fp = np.array(self.tp), np.array(self.fp)
+    tn, fn = np.array(self.tn), np.array(self.fn)
+    predicted_positives, labeled_positives = tp + fp, tp + fn
+    predicated_negatives, labeled_negatives = tn + fn, tn + fp
+
+    precision = np.divide(
+        tp,
+        predicted_positives,
+        out=np.ones_like(predicted_positives),
+        where=(predicted_positives > 0),
+    )
+    recall = np.divide(
+        tp,
+        labeled_positives,
+        out=np.zeros_like(labeled_positives),
+        where=(labeled_positives > 0),
+    )
+    f1 = 2 * precision * recall / (precision + recall)
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
+    false_positive_rate = fp / labeled_negatives
+    false_omission_rate = fn / predicated_negatives
     confusion_matrix_at_thresholds_proto = result.confusion_matrix_at_thresholds
     for i, threshold in enumerate(self.thresholds):
-      precision = 1.0
-      if self.tp[i] + self.fp[i] > 0:
-        precision = self.tp[i] / (self.tp[i] + self.fp[i])
-      recall = 0.0
-      if self.tp[i] + self.fn[i] > 0:
-        recall = self.tp[i] / (self.tp[i] + self.fn[i])
       confusion_matrix_at_thresholds_proto.matrices.add(
           threshold=round(threshold, 6),
-          true_positives=self.tp[i],
-          false_positives=self.fp[i],
-          true_negatives=self.tn[i],
-          false_negatives=self.fn[i],
-          precision=precision,
-          recall=recall)
+          true_positives=tp[i],
+          false_positives=fp[i],
+          true_negatives=tn[i],
+          false_negatives=fn[i],
+          precision=precision[i],
+          recall=recall[i],
+          false_positive_rate=false_positive_rate[i],
+          false_omission_rate=false_omission_rate[i],
+          f1=f1[i],
+          accuracy=accuracy[i],
+      )
     return result
 
 
@@ -392,7 +414,7 @@ def binary_confusion_matrices(
           rebin_thresholds = [-_EPSILON] + rebin_thresholds
         if thresholds[-1] < 1.0:
           # If the last threshold < 1.0, then add a fence post at 1.0 + epsilon
-          # othewise true negatives and true positives will be overcounted.
+          # otherwise true negatives and true positives will be overcounted.
           rebin_thresholds = rebin_thresholds + [1.0 + _EPSILON]
         histogram = calibration_histogram.rebin(rebin_thresholds,
                                                 metrics[input_metric_key])

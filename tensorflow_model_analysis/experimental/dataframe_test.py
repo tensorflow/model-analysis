@@ -378,6 +378,10 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
         ('plot_data', 'true_positives'): [10.0, 10.0],
         ('plot_data', 'precision'): [0.9, 0.9],
         ('plot_data', 'recall'): [0.8, 0.8],
+        ('plot_data', 'false_positive_rate'): [0.0, 0.0],
+        ('plot_data', 'f1'): [0.0, 0.0],
+        ('plot_data', 'accuracy'): [0.0, 0.0],
+        ('plot_data', 'false_omission_rate'): [0.0, 0.0],
     })
     pd.testing.assert_frame_equal(expected, dfs.confusion_matrix_at_thresholds)
 
@@ -398,6 +402,10 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
         ('plot_data', 'true_positives'): [10.0, 10.0],
         ('plot_data', 'precision'): [0.9, 0.9],
         ('plot_data', 'recall'): [0.8, 0.8],
+        ('plot_data', 'false_positive_rate'): [0.0, 0.0],
+        ('plot_data', 'f1'): [0.0, 0.0],
+        ('plot_data', 'accuracy'): [0.0, 0.0],
+        ('plot_data', 'false_omission_rate'): [0.0, 0.0],
     })
     pd.testing.assert_frame_equal(expected, dfs.confusion_matrix_at_thresholds)
 
@@ -438,14 +446,27 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
         ('plot_data', 'true_positives'): [10.0, 10.0],
         ('plot_data', 'precision'): [0.9, 0.9],
         ('plot_data', 'recall'): [0.8, 0.8],
+        ('plot_data', 'false_positive_rate'): [0.0, 0.0],
+        ('plot_data', 'f1'): [0.0, 0.0],
+        ('plot_data', 'accuracy'): [0.0, 0.0],
+        ('plot_data', 'false_omission_rate'): [0.0, 0.0],
     }).pivot(
         index=[('slices', 'age'), ('slices', 'sex')],
         columns=[],
-        values=[('plot_data', 'threshold'), ('plot_data', 'false_negatives'),
-                ('plot_data', 'true_negatives'),
-                ('plot_data', 'false_positives'),
-                ('plot_data', 'true_positives'), ('plot_data', 'precision'),
-                ('plot_data', 'recall')])
+        values=[
+            ('plot_data', 'threshold'),
+            ('plot_data', 'false_negatives'),
+            ('plot_data', 'true_negatives'),
+            ('plot_data', 'false_positives'),
+            ('plot_data', 'true_positives'),
+            ('plot_data', 'precision'),
+            ('plot_data', 'recall'),
+            ('plot_data', 'false_positive_rate'),
+            ('plot_data', 'f1'),
+            ('plot_data', 'accuracy'),
+            ('plot_data', 'false_omission_rate'),
+        ],
+    )
     pd.testing.assert_frame_equal(expected, df)
 
   def testAutoPivot_PlotsDataFrameCollapseColumnNames(self):
@@ -467,14 +488,27 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
         ('plot_data', 'true_positives'): [10.0, 10.0],
         ('plot_data', 'precision'): [0.9, 0.9],
         ('plot_data', 'recall'): [0.8, 0.8],
+        ('plot_data', 'false_positive_rate'): [0.0, 0.0],
+        ('plot_data', 'f1'): [0.0, 0.0],
+        ('plot_data', 'accuracy'): [0.0, 0.0],
+        ('plot_data', 'false_omission_rate'): [0.0, 0.0],
     }).pivot(
         index=[('slices', 'age'), ('slices', 'sex')],
         columns=[],
-        values=[('plot_data', 'threshold'), ('plot_data', 'false_negatives'),
-                ('plot_data', 'true_negatives'),
-                ('plot_data', 'false_positives'),
-                ('plot_data', 'true_positives'), ('plot_data', 'precision'),
-                ('plot_data', 'recall')])
+        values=[
+            ('plot_data', 'threshold'),
+            ('plot_data', 'false_negatives'),
+            ('plot_data', 'true_negatives'),
+            ('plot_data', 'false_positives'),
+            ('plot_data', 'true_positives'),
+            ('plot_data', 'precision'),
+            ('plot_data', 'recall'),
+            ('plot_data', 'false_positive_rate'),
+            ('plot_data', 'f1'),
+            ('plot_data', 'accuracy'),
+            ('plot_data', 'false_omission_rate'),
+        ],
+    )
     pd.testing.assert_frame_equal(expected, df)
 
 if __name__ == '__main__':
