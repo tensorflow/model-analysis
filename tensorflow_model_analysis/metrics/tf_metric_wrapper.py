@@ -437,7 +437,7 @@ class _LossMetric(tf.keras.metrics.Mean):
     super().__init__(name=name, dtype=dtype)
     self.loss = loss
 
-  def update_state(self, y_true, y_pred, sample_weight):
+  def update_state(self, y_true, y_pred, sample_weight):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     return super().update_state(
         self.loss(y_true, y_pred), sample_weight=sample_weight)
 
