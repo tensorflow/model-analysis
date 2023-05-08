@@ -16,7 +16,7 @@
 It includes functions for pairwise iou calculations and box matching utilities.
 """
 
-from typing import Iterable, Union, Tuple, Optional
+from typing import Callable, Iterable, Union, Tuple, Optional
 import numpy as np
 
 from tensorflow_model_analysis.metrics.preprocessors.utils import bounding_box
@@ -42,7 +42,7 @@ def _match_boxes(
      matches_pred: a numpy array with shape [T, P], the matched ground truth
       index at each iou threshold (-1 means unmatched)
    where,
-    T: num of threshoulds
+    T: num of thresholds
     P: num of predictions
     G: num of ground truth
   """
@@ -154,7 +154,14 @@ def boxes_to_label_prediction_example_weight(
     area_range: Optional[Tuple[float, float]] = (0, float('inf')),
     max_num_detections: Optional[int] = None,
     class_weight: Optional[float] = None,
-    weight: Optional[float] = None
+    weight: Optional[float] = None,
+    match_boxes_func: Optional[
+        Callable[
+            [np.ndarray, Union[float, Iterable[float]]],
+            Tuple[np.ndarray, np.ndarray],
+        ]
+    ] = None,
+    iou_func: Optional[Callable[[np.ndarray, np.ndarray], np.ndarray]] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   """Generate label prediction weight tuple from ground truths and detections.
 
@@ -170,6 +177,8 @@ def boxes_to_label_prediction_example_weight(
    max_num_detections: maximum number of detections in a single image.
    class_weight: the weight associated with this class.
    weight: weight of this image/example.
+   match_boxes_func: optional alternative function to compute match_boxes.
+   iou_func: optional alternative function to compute box ious.
 
   Returns:
    (label, prediction, weight): three lists of numpy array for binary
@@ -205,8 +214,12 @@ def boxes_to_label_prediction_example_weight(
       is not None) and (boxes_pred.shape[0] > max_num_detections):
     boxes_pred = boxes_pred[:max_num_detections]
 
-  ious = compute_ious_for_image(boxes_pred[:, :CLASS], boxes_gt[:, :CLASS])
-  matches_gt, matches_pred = _match_boxes(ious, iou_threshold)
+  if not iou_func:
+    iou_func = compute_ious_for_image
+  ious = iou_func(boxes_pred[:, :CLASS], boxes_gt[:, :CLASS])
+  if not match_boxes_func:
+    match_boxes_func = _match_boxes
+  matches_gt, matches_pred = match_boxes_func(ious, iou_threshold)
 
   # It is assumed that it only takes one iou_threshold result while it
   # returns a list of results, so the matches only needs to take the first
@@ -217,7 +230,7 @@ def boxes_to_label_prediction_example_weight(
   # Ignore the unmatched predictions which is out of the area range
   boxes_pred_area_tag = bounding_box.check_boxes_in_area_range(
       boxes_pred, area_range)
-  # Only count unmatched predcitions within the area range
+  # Only count unmatched predictions within the area range
   boxes_pred_num_unmatched = np.count_nonzero(boxes_pred_area_tag
                                               & (matches_pred == -1))
 
