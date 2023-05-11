@@ -805,17 +805,17 @@ class StandardMetricInputs(util.StandardExtracts):
   @property
   def label(self) -> Optional[types.TensorValueMaybeMultiLevelDict]:
     """Same as labels (DEPRECATED - use labels)."""
-    return self.get_labels()
+    return self.labels
 
   @property
   def prediction(self) -> Optional[types.TensorValueMaybeMultiLevelDict]:
     """Same as predictions (DEPRECATED - use predictions)."""
-    return self.get_predictions()
+    return self.predictions
 
   @property
   def example_weight(self) -> Optional[types.TensorValueMaybeMultiLevelDict]:
     """Same as example_weights (DEPRECATED - use example_weights)."""
-    return self.get_example_weights()
+    return self.example_weights
 
   def get_by_key(self,
                  key: str,

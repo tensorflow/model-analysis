@@ -1007,7 +1007,9 @@ class StandardExtracts(collections.abc.MutableMapping):
     """Returns tfma.INPUT_KEY extract."""
     return self[constants.INPUT_KEY]
 
-  inputs = property(get_inputs)
+  @property
+  def inputs(self) -> Any:
+    return self.get_inputs()
 
   def get_model_and_output_names(
       self, eval_config: config_pb2.EvalConfig
@@ -1047,6 +1049,10 @@ class StandardExtracts(collections.abc.MutableMapping):
     """Returns tfma.LABELS_KEY extract."""
     return self.get_by_key(constants.LABELS_KEY, model_name, output_name)
 
+  @property
+  def labels(self) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    return self.get_labels()
+
   def set_labels(
       self,
       labels: types.TensorValueMaybeMultiLevelDict,
@@ -1059,8 +1065,6 @@ class StandardExtracts(collections.abc.MutableMapping):
         value=labels,
         model_name=model_name,
         output_name=output_name)
-
-  labels = property(get_labels)
 
   def get_predictions(
       self,
@@ -1083,7 +1087,9 @@ class StandardExtracts(collections.abc.MutableMapping):
         model_name=model_name,
         output_name=output_name)
 
-  predictions = property(get_predictions)
+  @property
+  def predictions(self) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    return self.get_predictions()
 
   def get_example_weights(
       self,
@@ -1094,13 +1100,17 @@ class StandardExtracts(collections.abc.MutableMapping):
     return self.get_by_key(constants.EXAMPLE_WEIGHTS_KEY, model_name,
                            output_name)
 
-  example_weights = property(get_example_weights)
+  @property
+  def example_weights(self) -> Optional[types.TensorValueMaybeMultiLevelDict]:
+    return self.get_example_weights()
 
   def get_features(self) -> Optional[types.DictOfTensorValueMaybeDict]:
     """Returns tfma.FEATURES_KEY extract."""
     return self.get_by_key(constants.FEATURES_KEY)
 
-  features = property(get_features)
+  @property
+  def features(self) -> Optional[types.DictOfTensorValueMaybeDict]:
+    return self.get_features()
 
   def get_transformed_features(
       self,
@@ -1109,7 +1119,9 @@ class StandardExtracts(collections.abc.MutableMapping):
     """Returns tfma.TRANSFORMED_FEATURES_KEY extract."""
     return self.get_by_key(constants.TRANSFORMED_FEATURES_KEY, model_name)
 
-  transformed_features = property(get_transformed_features)
+  @property
+  def transformed_features(self) -> Optional[types.DictOfTensorValueMaybeDict]:
+    return self.get_transformed_features()
 
   def get_combined_features(self,
                             model_name: Optional[str] = None
@@ -1127,7 +1139,9 @@ class StandardExtracts(collections.abc.MutableMapping):
         self.get_transformed_features(model_name) or {},
         self.get_features() or {})
 
-  combined_features = property(get_combined_features)
+  @property
+  def combined_features(self) -> Mapping[str, Any]:
+    return self.get_combined_features()
 
   def get_attributions(
       self,
@@ -1137,7 +1151,9 @@ class StandardExtracts(collections.abc.MutableMapping):
     """Returns tfma.ATTRIBUTIONS_KEY extract."""
     return self.get_by_key(constants.ATTRIBUTIONS_KEY, model_name, output_name)
 
-  attributions = property(get_attributions)
+  @property
+  def attributions(self) -> Optional[types.DictOfTensorValueMaybeDict]:
+    return self.get_attributions()
 
   def get_by_key(self,
                  key: str,

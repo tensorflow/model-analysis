@@ -502,7 +502,7 @@ class UtilTest(tf.test.TestCase, parameterized.TestCase):
                      }).get_model_and_output_names(eval_config))
 
   def testGetLabels(self):
-    self.assertEqual(7, util.StandardExtracts({'labels': 7}).get_labels())
+    self.assertEqual(7, util.StandardExtracts({'labels': 7}).labels)
 
   def testGetLabelsMultiOutput(self):
     self.assertEqual(
