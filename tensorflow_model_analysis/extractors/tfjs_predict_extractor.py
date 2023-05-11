@@ -209,8 +209,7 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
                 e, popen.returncode, stdout, stderr))
 
       name = [
-          n.split(':')[0]
-          for n in self._model_properties[model_name]['outputs'].keys()
+          n.split(':')[0] for n in self._model_properties[model_name]['outputs']
       ]
 
       tf.io.gfile.rmtree(cur_input_path)

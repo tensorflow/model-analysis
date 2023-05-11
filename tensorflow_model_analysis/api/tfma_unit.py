@@ -356,8 +356,7 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         slices = {}
         for slice_key, value in got:
           slices[slice_key] = value
-        self.assertCountEqual(
-            list(slices.keys()), list(expected_slice_metrics.keys()))
+        self.assertCountEqual(list(slices), list(expected_slice_metrics))
         for slice_key, expected_metrics in expected_slice_metrics.items():
           self.assertDictElementsWithinBounds(
               got_values_dict=slices[slice_key],

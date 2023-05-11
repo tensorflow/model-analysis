@@ -130,7 +130,8 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
         english_slice = (('language', 'english'))
         chinese_slice = (('language', 'chinese'))
         self.assertCountEqual(
-            list(slices.keys()), [overall_slice, english_slice, chinese_slice])
+            list(slices), [overall_slice, english_slice, chinese_slice]
+        )
         self.assertDictElementsAlmostEqual(
             slices[overall_slice], {
                 'accuracy': 1.0,

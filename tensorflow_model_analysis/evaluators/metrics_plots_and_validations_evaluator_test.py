@@ -668,8 +668,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           fixed_string1_slice = (('fixed_string', b'fixed_string1'),)
           fixed_string2_slice = (('fixed_string', b'fixed_string2'),)
           self.asssertCountEqual(
-              list(slices.keys()),
-              [overall_slice, fixed_string1_slice, fixed_string2_slice])
+              list(slices),
+              [overall_slice, fixed_string1_slice, fixed_string2_slice],
+          )
           weighted_example_count_key = metric_types.MetricKey(
               name='weighted_example_count', example_weighted=True)
           label_key = metric_types.MetricKey(
@@ -871,8 +872,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           fixed_string1_slice = (('fixed_string', 'fixed_string1'),)
           fixed_string2_slice = (('fixed_string', 'fixed_string2'),)
           self.assertCountEqual(
-              list(slices.keys()),
-              [overall_slice, fixed_string1_slice, fixed_string2_slice])
+              list(slices),
+              [overall_slice, fixed_string1_slice, fixed_string2_slice],
+          )
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
               name='weighted_example_count', example_weighted=True)
@@ -1002,8 +1004,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           fixed_string1_slice = (('fixed_string', 'fixed_string1'),)
           fixed_string2_slice = (('fixed_string', 'fixed_string2'),)
           self.assertCountEqual(
-              list(slices.keys()),
-              [overall_slice, fixed_string1_slice, fixed_string2_slice])
+              list(slices),
+              [overall_slice, fixed_string1_slice, fixed_string2_slice],
+          )
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
               name='weighted_example_count', example_weighted=True)
@@ -2048,8 +2051,9 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           query2_slice = (('fixed_string', 'query2'),)
           query3_slice = (('fixed_string', 'query3'),)
           self.assertCountEqual(
-              list(slices.keys()),
-              [overall_slice, query1_slice, query2_slice, query3_slice])
+              list(slices),
+              [overall_slice, query1_slice, query2_slice, query3_slice],
+          )
           example_count_key = metric_types.MetricKey(name='example_count')
           weighted_example_count_key = metric_types.MetricKey(
               name='weighted_example_count', example_weighted=True)
@@ -2175,7 +2179,8 @@ class MetricsPlotsAndValidationsEvaluatorTest(
           first_slice = (('slice_key', 'first_slice'),)
           second_slice = (('slice_key', 'second_slice'),)
           self.assertCountEqual(
-              list(slices.keys()), [overall_slice, first_slice, second_slice])
+              list(slices), [overall_slice, first_slice, second_slice]
+          )
           self.assertDictElementsAlmostEqual(
               slices[overall_slice], {
                   metric_types.MetricKey(
@@ -2558,7 +2563,7 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                 failed_validations[slice_keys_hash][
                     failure.metric_key.SerializeToString()] = failure
           self.assertLen(successful_validations, 3)
-          self.assertLen(failed_validations.keys(), 3)
+          self.assertLen(failed_validations, 3)
 
           expected_validations = [
               text_format.Parse(
@@ -2674,12 +2679,12 @@ class MetricsPlotsAndValidationsEvaluatorTest(
                   failure.metric_key.SerializeToString()] = failure
 
           self.assertEqual(
-              set(failed_validations.keys()),
-              set(expected_validations_dict.keys()))
+              set(failed_validations), set(expected_validations_dict)
+          )
           for slice_key, validation in failed_validations.items():
             self.assertEqual(
-                set(validation.keys()),
-                set(expected_validations_dict[slice_key].keys()))
+                set(validation), set(expected_validations_dict[slice_key])
+            )
             for metric_key, failure in validation.items():
               self.assertProtoEquals(
                   failure, expected_validations_dict[slice_key][metric_key])

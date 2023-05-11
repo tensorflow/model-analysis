@@ -185,7 +185,8 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             first_slice = (('slice_key', 'first_slice'),)
             second_slice = (('slice_key', 'second_slice'),)
             self.assertCountEqual(
-                list(slices.keys()), [overall_slice, first_slice, second_slice])
+                list(slices), [overall_slice, first_slice, second_slice]
+            )
             self.assertDictElementsAlmostEqual(
                 slices[overall_slice], {
                     'accuracy': 0.4,
@@ -276,7 +277,8 @@ class EvaluateMetricsAndPlotsTest(testutil.TensorflowModelAnalysisTest):
             first_slice = (('slice_key', 'first_slice'),)
             second_slice = (('slice_key', 'second_slice'),)
             self.assertCountEqual(
-                list(slices.keys()), [overall_slice, first_slice, second_slice])
+                list(slices), [overall_slice, first_slice, second_slice]
+            )
             self.assertDictElementsWithTDistributionAlmostEqual(
                 slices[overall_slice], {
                     'accuracy': 0.4,

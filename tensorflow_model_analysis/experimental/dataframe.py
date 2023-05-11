@@ -237,9 +237,10 @@ def _to_dataframes(
   dfs = {}
   for metric_type, data in column_data.items():
     columns = pd.MultiIndex.from_tuples(
-        [(slice_key_name, key) for key in data.slices.keys()] +
-        [(metric_key_name, key) for key in data.metric_keys.keys()] +
-        [(metric_value_name, key) for key in data.values.keys()])
+        [(slice_key_name, key) for key in data.slices]
+        + [(metric_key_name, key) for key in data.metric_keys]
+        + [(metric_value_name, key) for key in data.values]
+    )
     all_data = itertools.chain(data.slices.values(), data.metric_keys.values(),
                                data.values.values())
     df = pd.DataFrame({

@@ -123,11 +123,12 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
 
   def assertSliceMetricsEqual(self, expected_metrics, got_metrics):
     self.assertCountEqual(
-        list(expected_metrics.keys()),
-        list(got_metrics.keys()),
-        msg='keys do not match. expected_metrics: %s, got_metrics: %s' %
-        (expected_metrics, got_metrics))
-    for key in expected_metrics.keys():
+        list(expected_metrics),
+        list(got_metrics),
+        msg='keys do not match. expected_metrics: %s, got_metrics: %s'
+        % (expected_metrics, got_metrics),
+    )
+    for key in expected_metrics:
       self.assertProtoEquals(
           expected_metrics[key],
           got_metrics[key],

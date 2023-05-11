@@ -596,8 +596,8 @@ class _ExampleCount(_PostExportMetric):
           'ExampleCount post export metric: could not find any of '
           'the standard keys in predictions_dict (keys were: %s)',
           predictions_dict.keys())
-      if predictions_dict is not None and predictions_dict.keys():
-        first_key = sorted(predictions_dict.keys())[0]
+      if predictions_dict is not None and predictions_dict:
+        first_key = sorted(predictions_dict)[0]
         ref_tensor = predictions_dict[first_key]
         tf.compat.v1.logging.info(
             'Using the first key from predictions_dict: %s', first_key)
@@ -605,8 +605,8 @@ class _ExampleCount(_PostExportMetric):
         if util.is_tensorflow_tensor(labels_dict):
           ref_tensor = labels_dict
           tf.compat.v1.logging.info('Using the labels Tensor')
-        elif labels_dict.keys():
-          first_key = sorted(labels_dict.keys())[0]
+        elif labels_dict:
+          first_key = sorted(labels_dict)[0]
           ref_tensor = labels_dict[first_key]
           tf.compat.v1.logging.info('Using the first key from labels_dict: %s',
                                     first_key)

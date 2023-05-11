@@ -183,7 +183,7 @@ def to_tensorflow_tensors(
 
     if isinstance(values, Mapping):
       result = {}
-      for key in specs.keys() if specs else values.keys():
+      for key in specs if specs else values:
         if key not in values:
           raise ValueError(
               f'Tensor value for {key} not found in {values}: \n\n'
@@ -616,7 +616,7 @@ def merge_filters(
   if not filter2:
     return filter2
   result = {}
-  for k in set(filter1.keys()) | set(filter2.keys()):
+  for k in set(filter1) | set(filter2):
     if k in filter1 and k in filter2:
       result[k] = merge_filters(filter1[k], filter2[k])
     elif k in filter1:

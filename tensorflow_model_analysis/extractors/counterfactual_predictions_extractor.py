@@ -159,7 +159,7 @@ def _validate_and_update_models_and_configs(
           'EvalSharedModel, in which case exactly one config is expected, but '
           f'got {len(cf_configs)}: {cf_configs}')
 
-  configured_model_names = set(cf_configs.keys())
+  configured_model_names = set(cf_configs)
   eval_shared_model_names = {model.model_name for model in eval_shared_models}
   unmatched_config_names = configured_model_names - eval_shared_model_names
   if unmatched_config_names:

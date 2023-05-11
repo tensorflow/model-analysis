@@ -463,7 +463,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     # lists are used instead of dicts for efficency.
     self._eval_config = eval_config
     self._model_name = model_name
-    self._output_names = sorted(metric_configs.keys())
+    self._output_names = sorted(metric_configs)
     self._metric_configs = [metric_configs[n] for n in self._output_names]
     self._loss_configs = [loss_configs[n] for n in self._output_names]
     self._custom_objects = custom_objects

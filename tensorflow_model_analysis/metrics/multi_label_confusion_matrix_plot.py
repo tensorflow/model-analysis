@@ -247,7 +247,7 @@ class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
   ) -> Dict[metric_types.PlotKey,
             metrics_for_slice_pb2.MultiLabelConfusionMatrixAtThresholds]:
     pb = metrics_for_slice_pb2.MultiLabelConfusionMatrixAtThresholds()
-    for threshold in sorted(accumulator.keys()):
+    for threshold in sorted(accumulator):
       # Convert -epsilon and 1.0+epsilon back to 0.0 and 1.0.
       if threshold == -_EPSILON:
         t = 0.0
@@ -256,7 +256,7 @@ class _MultiLabelConfusionMatrixPlotCombiner(beam.CombineFn):
       else:
         t = threshold
       matrix = pb.matrices.add(threshold=t)
-      for k in sorted(accumulator[threshold].keys()):
+      for k in sorted(accumulator[threshold]):
         matrix.entries.add(
             actual_class_id=k.actual_class_id,
             predicted_class_id=k.predicted_class_id,

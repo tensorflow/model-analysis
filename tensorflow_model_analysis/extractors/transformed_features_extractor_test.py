@@ -268,8 +268,9 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
               self.assertIn(extracts_key, got)
               self.assertEqual(
                   set(feature_keys),
-                  set(got[extracts_key].keys()),
-                  msg=f'got[{extracts_key}]={got[extracts_key]}')
+                  set(got[extracts_key]),
+                  msg=f'got[{extracts_key}]={got[extracts_key]}',
+              )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

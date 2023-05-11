@@ -555,15 +555,15 @@ def find_input_name_in_features(features: Set[str],
 
 
 def filter_by_input_names(
-    d: Mapping[str, types.TensorType],
-    input_names: List[str]) -> Optional[Mapping[str, types.TensorType]]:
+    input_dict: Mapping[str, types.TensorType], input_names: List[str]
+) -> Optional[Mapping[str, types.TensorType]]:
   """Filters dict by input names.
 
   In case we don't find the specified input name in the dict, we assume we are
   feeding serialized examples to the model and return None.
 
   Args:
-    d: Dict to filter.
+    input_dict: Dict to filter.
     input_names: List of input names.
 
   Returns:
@@ -572,12 +572,11 @@ def filter_by_input_names(
   if not input_names:
     return None
   result = {}
-  dict_keys = set(d.keys())
   for name in input_names:
-    input_name = find_input_name_in_features(dict_keys, name)
+    input_name = find_input_name_in_features(set(input_dict), name)
     if input_name is None:
       return None
-    result[name] = d[input_name]
+    result[name] = input_dict[input_name]
   return result
 
 
@@ -595,15 +594,17 @@ def get_inputs(
     Input tensors keyed by input name.
   """
   inputs = None
-  input_names = list(input_specs.keys())
+  input_names = list(input_specs)
   # Avoid getting the tensors if we appear to be feeding serialized examples to
   # the callable.
   single_input = (
       next(iter(input_specs.values())) if len(input_specs) == 1 else None)
   single_input_name = input_names[0] if single_input else None
-  if not (single_input and
-          single_input.dtype == tf.string and find_input_name_in_features(
-              set(features.keys()), single_input_name) is None):
+  if not (
+      single_input
+      and single_input.dtype == tf.string
+      and find_input_name_in_features(set(features), single_input_name) is None
+  ):
     # If filtering is not successful (i.e. None is returned) fallback to feeding
     # serialized examples.
     features = filter_by_input_names(features, input_names)
@@ -911,7 +912,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
     if isinstance(serialized_examples, np.ndarray):
       # Most models only accept serialized examples as a 1-d tensor
       serialized_examples = serialized_examples.flatten()
-    for extracts_key in self._signature_names.keys():
+    for extracts_key in self._signature_names:
       if extracts_key not in result:
         result[extracts_key] = None
     for model_name, model in self._loaded_models.items():

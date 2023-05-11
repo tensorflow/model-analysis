@@ -34,7 +34,7 @@ def extract_tensor_maybe_dict(
     dict_of_tensors: types.DictOfTensorType) -> types.TensorTypeMaybeDict:
   """Returns tensor if single entry under default key else returns dict."""
   default_key = default_dict_key(prefix)
-  if list(dict_of_tensors.keys()) == [default_key]:
+  if list(dict_of_tensors) == [default_key]:
     return dict_of_tensors[default_key]
   return dict_of_tensors
 

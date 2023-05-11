@@ -346,13 +346,14 @@ def convert_slice_metrics_to_proto(
 
   # Convert the metrics from add_metrics_callbacks to the structured output if
   # defined.
-  if add_metrics_callbacks and (not any(
-      isinstance(k, metric_types.MetricKey) for k in slice_metrics.keys())):
+  if add_metrics_callbacks and (
+      not any(isinstance(k, metric_types.MetricKey) for k in slice_metrics)
+  ):
     for add_metrics_callback in add_metrics_callbacks:
       if hasattr(add_metrics_callback, 'populate_stats_and_pop'):
         add_metrics_callback.populate_stats_and_pop(slice_key, slice_metrics,
                                                     result.metrics)
-  for key in sorted(slice_metrics.keys()):
+  for key in sorted(slice_metrics):
     value = slice_metrics[key]
     if isinstance(value, types.ValueWithTDistribution):
       unsampled_value = value.unsampled_value
@@ -441,13 +442,14 @@ def convert_slice_plots_to_proto(
     result.plots[metric_keys.ERROR_METRIC].debug_message = error_metric
     return result
 
-  if add_metrics_callbacks and (not any(
-      isinstance(k, metric_types.MetricKey) for k in slice_plots.keys())):
+  if add_metrics_callbacks and (
+      not any(isinstance(k, metric_types.MetricKey) for k in slice_plots)
+  ):
     for add_metrics_callback in add_metrics_callbacks:
       if hasattr(add_metrics_callback, 'populate_plots_and_pop'):
         add_metrics_callback.populate_plots_and_pop(slice_plots, result.plots)
   plots_by_key = {}
-  for key in sorted(slice_plots.keys()):
+  for key in sorted(slice_plots):
     value = slice_plots[key]
     # Remove plot name from key (multiple plots are combined into a single
     # proto).
@@ -516,7 +518,7 @@ def convert_slice_attributions_to_proto(
     result.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
 
   slice_attributions = slice_attributions.copy()
-  for key in sorted(slice_attributions.keys()):
+  for key in sorted(slice_attributions):
     key_and_value = result.attributions_keys_and_values.add()
     key_and_value.key.CopyFrom(key.to_proto())
     for feature, value in slice_attributions[key].items():

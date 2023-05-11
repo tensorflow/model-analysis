@@ -226,7 +226,8 @@ class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
         chinese_slice = (('language', 'chinese'),)
 
         self.assertCountEqual(
-            list(slices.keys()), [overall_slice, english_slice, chinese_slice])
+            list(slices), [overall_slice, english_slice, chinese_slice]
+        )
         # Overall slice has label/predictions sum = 24 and 12 elements.
         self.assertDictElementsAlmostEqual(slices[overall_slice], {
             'tf_metric_mean': 2.0,

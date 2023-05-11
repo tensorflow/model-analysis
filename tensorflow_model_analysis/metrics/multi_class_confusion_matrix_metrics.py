@@ -188,12 +188,12 @@ class Matrices(types.StructuredMetricValue, dict):
       self, other: 'Matrices', op: Callable[[float, float],
                                             float]) -> 'Matrices':
     result = Matrices()
-    all_thresholds = set(self.keys()).union(other.keys())
+    all_thresholds = set(self).union(other)
     for threshold in all_thresholds:
       self_entries = self.get(threshold, {})
       other_entries = other.get(threshold, {})
       result[threshold] = {}
-      all_entry_keys = set(self_entries.keys()).union(set(other_entries.keys()))
+      all_entry_keys = set(self_entries).union(other_entries)
       for entry_key in all_entry_keys:
         self_count = self_entries.get(entry_key, 0)
         other_count = other_entries.get(entry_key, 0)
@@ -213,7 +213,7 @@ class Matrices(types.StructuredMetricValue, dict):
     result = metrics_for_slice_pb2.MetricValue()
     multi_class_confusion_matrices_at_thresholds_proto = (
         result.multi_class_confusion_matrix_at_thresholds)
-    for threshold in sorted(self.keys()):
+    for threshold in sorted(self):
       # Convert -epsilon and 1.0+epsilon back to 0.0 and 1.0.
       if threshold == -_EPSILON:
         t = 0.0
@@ -223,7 +223,7 @@ class Matrices(types.StructuredMetricValue, dict):
         t = threshold
       matrix = multi_class_confusion_matrices_at_thresholds_proto.matrices.add(
           threshold=t)
-      for k in sorted(self[threshold].keys()):
+      for k in sorted(self[threshold]):
         matrix.entries.add(
             actual_class_id=k.actual_class_id,
             predicted_class_id=k.predicted_class_id,

@@ -173,7 +173,7 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
       for add_metrics_callback in add_metrics_callbacks:
         new_metric_ops = add_metrics_callback(features_dict, predictions_dict,
                                               labels_dict)
-        overlap = set(new_metric_ops.keys()) & set(metric_ops.keys())
+        overlap = set(new_metric_ops) & set(metric_ops)
         if overlap:
           raise ValueError('metric keys should not conflict, but an '
                            'earlier callback already added the metrics '
@@ -298,7 +298,7 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     # Unnest if it wasn't a dictionary to begin with.
     default_predictions_key = util.default_dict_key(
         eval_constants.PREDICTIONS_NAME)
-    if list(predictions.keys()) == [default_predictions_key]:
+    if list(predictions) == [default_predictions_key]:
       predictions = predictions[default_predictions_key]
 
     labels = {}
@@ -306,7 +306,7 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
       labels[key] = value
     # Unnest if it wasn't a dictionary to begin with.
     default_labels_key = util.default_dict_key(eval_constants.LABELS_NAME)
-    if list(labels.keys()) == [default_labels_key]:
+    if list(labels) == [default_labels_key]:
       labels = labels[default_labels_key]
 
     return (features, predictions, labels)

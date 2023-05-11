@@ -228,8 +228,7 @@ def specs_from_metrics(
     unweighted_metrics_dict = (
         unweighted_metrics if isinstance(unweighted_metrics, dict) else {})
     specs = []
-    output_names = set(metrics_dict.keys()).union(
-        unweighted_metrics_dict.keys())
+    output_names = set(metrics_dict) | set(unweighted_metrics_dict)
     for output_name in sorted(output_names):
       specs.extend(
           specs_from_metrics(
@@ -752,7 +751,7 @@ def to_computations(
       for aggregation_type, sub_keys in _create_sub_keys(spec).items():
         output_names = spec.output_names or ['']
         output_weights = dict(spec.output_weights)
-        if not set(output_weights.keys()).issubset(output_names):
+        if not set(output_weights).issubset(output_names):
           raise ValueError(
               'one or more output_names used in output_weights does not exist: '
               'output_names={}, output_weights={}'.format(
@@ -1053,7 +1052,7 @@ def _macro_average_sub_keys(
           'class_weights are required in order to compute macro average over '
           'all classes: sub_key={}, class_weights={}'.format(
               sub_key, class_weights))
-    return [metric_types.SubKey(class_id=i) for i in class_weights.keys()]
+    return [metric_types.SubKey(class_id=i) for i in class_weights]
   elif sub_key.top_k:
     return [metric_types.SubKey(k=i + 1) for i in range(sub_key.top_k)]
   else:

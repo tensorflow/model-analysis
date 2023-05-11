@@ -124,7 +124,8 @@ def load_legacy_inputs(
     # exported EvalSavedModels have ExampleRef.
     input_refs_node = tf.range(tf.size(input=input_node))
   inputs_map = collections.OrderedDict(
-      {list(signature_def.inputs.keys())[0]: input_node})
+      {list(signature_def.inputs)[0]: input_node}
+  )
   return (inputs_map, input_refs_node)
 
 
@@ -206,7 +207,7 @@ def load_inputs(
     raise ValueError('no inputs found in signature_def: %s' % signature_def)
   inputs_map = collections.OrderedDict()
   # Sort by key name so stable ordering is used when passing to feed_list.
-  for k in sorted(inputs.keys()):
+  for k in sorted(inputs):
     inputs_map[k] = tf.compat.v1.saved_model.utils.get_tensor_from_tensor_info(
         inputs[k], graph)
 

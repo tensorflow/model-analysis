@@ -152,7 +152,7 @@ class BoundingBoxMatchPreprocessor(metric_types.Preprocessor):
     boxes_gt = extracts[constants.LABELS_KEY]
     boxes_pred = bounding_box.sort_boxes_by_confidence(
         extracts[constants.PREDICTIONS_KEY])
-    if constants.EXAMPLE_WEIGHTS_KEY in extracts.keys():
+    if constants.EXAMPLE_WEIGHTS_KEY in extracts:
       weight = extracts[constants.EXAMPLE_WEIGHTS_KEY]
     else:
       weight = None

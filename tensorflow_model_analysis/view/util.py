@@ -548,7 +548,7 @@ def convert_metrics_proto_to_dict(
           _get_metric_value_with_ci(kv.value, kv.confidence_interval))
 
   metrics_map = None
-  keys = list(model_metrics_map.keys())
+  keys = list(model_metrics_map)
   tmp_model_name = model_name or default_model_name
   if tmp_model_name in model_metrics_map:
     # Use the provided model name if there is a match.
@@ -588,7 +588,7 @@ def convert_plots_proto_to_dict(
   model_plots_map = {}
   if plots_for_slice.plots:
     plot_dict = _convert_proto_map_to_dict(plots_for_slice.plots)
-    keys = list(plot_dict.keys())
+    keys = list(plot_dict)
     # If there is only one label, choose it automatically.
     plot_data = plot_dict[keys[0]] if len(keys) == 1 else plot_dict
     model_plots_map[''] = {'': {'': plot_data}}
@@ -614,7 +614,7 @@ def convert_plots_proto_to_dict(
       sub_key_plots_map[sub_key_id] = json_format.MessageToDict(kv.value)
 
   plots_map = None
-  keys = list(model_plots_map.keys())
+  keys = list(model_plots_map)
   if model_name in model_plots_map:
     # Use the provided model name if there is a match.
     plots_map = model_plots_map[model_name]
@@ -668,7 +668,7 @@ def convert_attributions_proto_to_dict(
       sub_key_metrics_map[sub_key_id][metric_name] = attributions
 
   metrics_map = None
-  keys = list(model_metrics_map.keys())
+  keys = list(model_metrics_map)
   tmp_model_name = model_name or default_model_name
   if tmp_model_name in model_metrics_map:
     # Use the provided model name if there is a match.

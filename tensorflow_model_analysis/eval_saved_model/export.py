@@ -88,7 +88,7 @@ def EvalInputReceiver(  # pylint: disable=invalid-name
     ValueError: receiver_tensors did not contain exactly one key named
       "examples" or iterator_initializer used without input_refs.
   """
-  if list(receiver_tensors.keys()) != ['examples']:
+  if list(receiver_tensors) != ['examples']:
     raise ValueError('receiver_tensors must contain exactly one key named '
                      'examples.')
 
@@ -176,7 +176,7 @@ def _LegacyEvalInputReceiver(  # pylint: disable=invalid-name
       "examples".
   """
   # Force list representation for Python 3 compatibility.
-  if list(receiver_tensors.keys()) != ['examples']:
+  if list(receiver_tensors) != ['examples']:
     raise ValueError('receiver_tensors must contain exactly one key named '
                      'examples.')
 

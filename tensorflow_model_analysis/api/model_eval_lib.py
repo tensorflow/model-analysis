@@ -287,7 +287,7 @@ def load_eval_results(
   for output_path in output_paths:
     if model_name is None:
       _, _, _, model_locations = eval_config_writer.load_eval_run(output_path)
-      model_names = list(model_locations.keys())
+      model_names = list(model_locations)
     else:
       model_names = [model_name]
     for model_name in model_names:

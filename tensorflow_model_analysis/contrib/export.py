@@ -342,8 +342,7 @@ def deserialize_feature_metadata(
     """Merge the second feature metadata dictionary into the first."""
     into['feature_columns'].extend(merge_from['feature_columns'])
     into['associated_tensors'].extend(merge_from['associated_tensors'])
-    common_keys = (
-        set(into['features'].keys()) & set(merge_from['features'].keys()))
+    common_keys = set(into['features']) & set(merge_from['features'])
     for key in common_keys:
       if into['features'][key] != merge_from['features'][key]:
         raise ValueError(

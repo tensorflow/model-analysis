@@ -78,7 +78,7 @@ def metric_computations_using_keras_saved_model(
       output_names = []
     keys = _metric_keys(model.metrics, model_name, output_names)
     specs = model_util.get_input_specs(model, signature_name=None)
-    feature_keys = list(specs.keys()) if specs else []
+    feature_keys = list(specs) if specs else []
     return [
         metric_types.MetricComputation(
             keys=keys,

@@ -45,7 +45,7 @@ def _extract_unbatched_inputs(  # pylint: disable=invalid-name
   """Extract features, predictions, labels and weights from batched extract."""
   batched_extract = {}
   # TODO(mdreves): Remove record batch
-  keys_to_retain = set(mixed_legacy_batched_extract.keys())
+  keys_to_retain = set(mixed_legacy_batched_extract)
   if constants.ARROW_RECORD_BATCH_KEY in keys_to_retain:
     keys_to_retain.remove(constants.ARROW_RECORD_BATCH_KEY)
   dataframe = pd.DataFrame()
