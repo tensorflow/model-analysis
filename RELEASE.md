@@ -8,6 +8,8 @@
 
 ## Bug fixes and other Changes
 
+*   Fix the bug that SetMatchRecall is always 1 when top_k is set.
+
 ## Breaking Changes
 
 ## Deprecations

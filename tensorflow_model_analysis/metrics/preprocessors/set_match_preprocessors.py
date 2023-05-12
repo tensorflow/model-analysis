@@ -243,7 +243,9 @@ class SetMatchPreprocessor(metric_types.Preprocessor):
     for class_name in label_classes - pred_classes:
       result = {}
       result[constants.LABELS_KEY] = np.array([1.0])
-      result[constants.PREDICTIONS_KEY] = np.array([0.0])
+      # set the prediction score to float('-inf') such that it will always be
+      # counted as negative
+      result[constants.PREDICTIONS_KEY] = np.array([float('-inf')])
       result[constants.EXAMPLE_WEIGHTS_KEY] = calculate_weights(class_name)
       yield metric_util.to_standard_metric_inputs(result)
 

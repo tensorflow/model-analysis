@@ -65,7 +65,9 @@ class SetMatchPrecision(confusion_matrix_metrics.Precision):
         that the non-top-k values are truncated and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. When
-        top_k is used, the default threshold is float('-inf').
+        top_k is used, the default threshold is float('-inf'). In this case,
+        unmatched labels are still considered false negative, since they have
+        prediction with confidence score float('-inf'),
       name: (Optional) string name of the metric instance.
       prediction_class_key: the key name of the classes in prediction.
       prediction_score_key: the key name of the scores in prediction.
@@ -188,7 +190,9 @@ class SetMatchRecall(confusion_matrix_metrics.Recall):
         that the non-top-k values are truncated and the matrix is then
         constructed from the average TP, FP, TN, FN across the classes. When
         top_k is used, metrics_specs.binarize settings must not be present. When
-        top_k is used, the default threshold is float('-inf').
+        top_k is used, the default threshold is float('-inf'). In this case,
+        unmatched labels are still considered false negative, since they have
+        prediction with confidence score float('-inf'),
       name: (Optional) string name of the metric instance.
       prediction_class_key: the key name of the classes in prediction.
       prediction_score_key: the key name of the scores in prediction.

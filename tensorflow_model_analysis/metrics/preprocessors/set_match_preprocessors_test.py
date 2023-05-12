@@ -39,7 +39,7 @@ _SET_MATCH_RESULT = [
     },
     {
         constants.LABELS_KEY: np.array([1.0]),
-        constants.PREDICTIONS_KEY: np.array([0.0]),
+        constants.PREDICTIONS_KEY: np.array([float('-inf')]),
     },
     {
         constants.LABELS_KEY: np.array([0.0]),
@@ -64,7 +64,7 @@ _SET_MATCH_RESULT_WITH_WEIGHT = [
     },
     {
         constants.LABELS_KEY: np.array([1.0]),
-        constants.PREDICTIONS_KEY: np.array([0.0]),
+        constants.PREDICTIONS_KEY: np.array([float('-inf')]),
         constants.EXAMPLE_WEIGHTS_KEY: np.array([0.7]),
     },
     {
@@ -92,7 +92,7 @@ _SET_MATCH_RESULT_WITH_CLASS_WEIGHT = [
     },
     {
         constants.LABELS_KEY: np.array([1.0]),
-        constants.PREDICTIONS_KEY: np.array([0.0]),
+        constants.PREDICTIONS_KEY: np.array([float('-inf')]),
         constants.EXAMPLE_WEIGHTS_KEY: np.array([0.49]),
     },
     {

@@ -94,6 +94,52 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
           ['precision'],
           [0.25],
       ),
+      (
+          '_recall_top_k',
+          text_format.Parse(
+              """
+        model_specs {
+          signature_name: "serving_default"
+          prediction_key: "predictions"
+          label_key: "labels"
+        }
+        slicing_specs {
+        }
+        metrics_specs {
+          metrics {
+            class_name: "SetMatchRecall"
+            config:'"name":"recall", "top_k":2'
+          }
+        }
+        """,
+              tfma.EvalConfig(),
+          ),
+          ['recall'],
+          [0.25],
+      ),
+      (
+          '_recall_top_k_with_threshold_set',
+          text_format.Parse(
+              """
+        model_specs {
+          signature_name: "serving_default"
+          prediction_key: "predictions"
+          label_key: "labels"
+        }
+        slicing_specs {
+        }
+        metrics_specs {
+          metrics {
+            class_name: "SetMatchRecall"
+            config:'"name":"recall", "top_k":2, "thresholds":[0.01]'
+          }
+        }
+        """,
+              tfma.EvalConfig(),
+          ),
+          ['recall'],
+          [0.25],
+      ),
   )
   def testSetMatchMetrics(self, eval_config, name_list, expected_results):
     extracts = [
