@@ -48,6 +48,7 @@ METRICS_NAMESPACE = util.MakeTfxNamespace(['ModelAnalysis'])
 # depending on what the EvalInputReceiver was configured to accept as input.
 INPUT_KEY = 'input'
 
+# LINT.IfChange
 # This holds an Arrow RecordBatch representing a batch of examples.
 ARROW_RECORD_BATCH_KEY = 'arrow_record_batch'
 
@@ -74,6 +75,7 @@ PREDICTIONS_KEY = 'predictions'
 EXAMPLE_WEIGHTS_KEY = 'example_weights'
 # Attributions key.
 ATTRIBUTIONS_KEY = 'attributions'
+# LINT.ThenChange(../tfx_bsl/preprocessor/preprocessors/extractors.py)
 
 # Keys used for standard attribution scores
 BASELINE_SCORE_KEY = 'baseline_score'
