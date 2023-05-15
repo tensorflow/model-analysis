@@ -84,6 +84,13 @@ class AUCSummationMethod(enum.Enum):
   MINORING = 'minoring'
 
 
+def _divide_only_positive_denominator(
+    numerator: float, denominator: float
+) -> float:
+  """Returns division only when denominator is positive, otherwise nan."""
+  return numerator / denominator if denominator > 0 else float('nan')
+
+
 def _pos_sqrt(value: float) -> float:
   """Returns sqrt of value or raises ValueError if negative."""
   if value < 0:
@@ -1210,11 +1217,7 @@ class BinaryAccuracy(ConfusionMatrixMetric):
     return BINARY_ACCURACY_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    denominator = tp + fp + tn + fn
-    if denominator:
-      return (tp + tn) / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(tp + tn, tp + fp + tn + fn)
 
 
 metric_types.register_metric(BinaryAccuracy)
@@ -1272,11 +1275,7 @@ class Precision(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn, fn
-    denominator = tp + fp
-    if denominator:
-      return tp / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(tp, tp + fp)
 
 
 metric_types.register_metric(Precision)
@@ -1353,11 +1352,7 @@ class Recall(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn, fp
-    denominator = tp + fn
-    if denominator > 0.0:
-      return tp / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(tp, tp + fn)
 
 
 metric_types.register_metric(Recall)
@@ -1416,11 +1411,7 @@ class Specificity(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fn
-    denominator = tn + fp
-    if denominator > 0.0:
-      return tn / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(tn, tn + fp)
 
 
 metric_types.register_metric(Specificity)
@@ -1478,11 +1469,7 @@ class FallOut(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fn
-    denominator = fp + tn
-    if denominator > 0.0:
-      return fp / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(fp, fp + tn)
 
 
 metric_types.register_metric(FallOut)
@@ -1540,11 +1527,7 @@ class MissRate(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn, fp
-    denominator = fn + tp
-    if denominator > 0.0:
-      return fn / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(fn, fn + tp)
 
 
 metric_types.register_metric(MissRate)
@@ -1602,11 +1585,7 @@ class NegativePredictiveValue(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fp
-    denominator = tn + fn
-    if denominator > 0.0:
-      return tn / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(tn, tn + fn)
 
 
 metric_types.register_metric(NegativePredictiveValue)
@@ -1664,11 +1643,7 @@ class FalseDiscoveryRate(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn, fn
-    denominator = fp + tp
-    if denominator > 0.0:
-      return fp / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(fp, fp + tp)
 
 
 metric_types.register_metric(FalseDiscoveryRate)
@@ -1707,11 +1682,7 @@ class FalseOmissionRate(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tp, fp
-    denominator = fn + tn
-    if denominator > 0.0:
-      return fn / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(fn, fn + tn)
 
 
 metric_types.register_metric(FalseOmissionRate)
@@ -1749,11 +1720,7 @@ class Prevalence(ConfusionMatrixMetric):
     return PREVALENCE_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    denominator = tp + tn + fp + fn
-    if denominator > 0.0:
-      return (tp + fn) / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(tp + fn, tp + tn + fp + fn)
 
 
 metric_types.register_metric(Prevalence)
@@ -1837,11 +1804,7 @@ class ThreatScore(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn
-    denominator = tp + fn + fp
-    if denominator > 0.0:
-      return tp / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(tp, tp + fn + fp)
 
 
 metric_types.register_metric(ThreatScore)
@@ -1925,14 +1888,12 @@ class F1Score(ConfusionMatrixMetric):
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
     del tn
-    denominator = 2 * tp + fp + fn
-    if denominator > 0.0:
-      # This is the harmonic mean of precision and recall or the same as
-      # 2 * (precision * recall) / (precision + recall).
-      # See https://en.wikipedia.org/wiki/Confusion_matrix for more information.
-      return 2 * tp / denominator
-    else:
-      return float('nan')
+    # This is the harmonic mean of precision and recall or the same as
+    # 2 * (precision * recall) / (precision + recall).
+    # See https://en.wikipedia.org/wiki/Confusion_matrix for more information.
+    return _divide_only_positive_denominator(
+        numerator=2 * tp, denominator=2 * tp + fp + fn
+    )
 
 
 metric_types.register_metric(F1Score)
@@ -1970,11 +1931,10 @@ class MatthewsCorrelationCoefficient(ConfusionMatrixMetric):
     return MATTHEWS_CORRELATION_COEFFICIENT_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
-    denominator = _pos_sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-    if denominator > 0.0:
-      return (tp * tn - fp * fn) / denominator
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(
+        numerator=tp * tn - fp * fn,
+        denominator=_pos_sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)),
+    )
 
 
 metric_types.register_metric(MatthewsCorrelationCoefficient)
@@ -2279,12 +2239,9 @@ class PredictedPositiveRate(ConfusionMatrixMetric):
     return PREDICTED_POSITIVE_RATE_NAME
 
   def result(self, tp: float, tn: float, fp: float, fn: float) -> float:
+    predicted_positives = tp + fp
     total_count = tp + fp + tn + fn
-    if total_count:
-      predicted_positives = tp + fp
-      return predicted_positives / total_count
-    else:
-      return float('nan')
+    return _divide_only_positive_denominator(predicted_positives, total_count)
 
 
 metric_types.register_metric(PredictedPositiveRate)

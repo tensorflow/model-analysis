@@ -27,10 +27,139 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
+_TRUE_POISITIVE = (1, 1)
+_TRUE_NEGATIVE = (0, 0)
 
 
 class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
                                  parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      (
+          'Precision',
+          confusion_matrix_metrics.Precision(),
+          _TRUE_NEGATIVE,
+          float('nan'),
+      ),
+      (
+          'Recall',
+          confusion_matrix_metrics.Recall(),
+          _TRUE_NEGATIVE,
+          float('nan'),
+      ),
+      (
+          'Specificity',
+          confusion_matrix_metrics.Specificity(),
+          _TRUE_POISITIVE,
+          float('nan'),
+      ),
+      (
+          'FallOut',
+          confusion_matrix_metrics.FallOut(),
+          _TRUE_POISITIVE,
+          float('nan'),
+      ),
+      (
+          'MissRate',
+          confusion_matrix_metrics.MissRate(),
+          _TRUE_NEGATIVE,
+          float('nan'),
+      ),
+      (
+          'NegativePredictiveValue',
+          confusion_matrix_metrics.NegativePredictiveValue(),
+          _TRUE_POISITIVE,
+          float('nan'),
+      ),
+      (
+          'FalseDiscoveryRate',
+          confusion_matrix_metrics.FalseDiscoveryRate(),
+          _TRUE_NEGATIVE,
+          float('nan'),
+      ),
+      (
+          'FalseOmissionRate',
+          confusion_matrix_metrics.FalseOmissionRate(),
+          _TRUE_POISITIVE,
+          float('nan'),
+      ),
+      (
+          'ThreatScore',
+          confusion_matrix_metrics.ThreatScore(),
+          _TRUE_NEGATIVE,
+          float('nan'),
+      ),
+      (
+          'F1Score',
+          confusion_matrix_metrics.F1Score(),
+          _TRUE_NEGATIVE,
+          float('nan'),
+      ),
+      (
+          'MatthewsCorrelationCoefficient',
+          confusion_matrix_metrics.MatthewsCorrelationCoefficient(),
+          _TRUE_NEGATIVE,
+          float('nan'),
+      ),
+  )
+  def testConfusionMatrixMetrics_DivideByZero_(
+      self, metric, pred_label, expected_value
+  ):
+    if _TF_MAJOR_VERSION < 2 and metric.__class__.__name__ in (
+        'SpecificityAtSensitivity',
+        'SensitivityAtSpecificity',
+        'PrecisionAtRecall',
+        'RecallAtPrecision',
+    ):
+      self.skipTest('Not supported in TFv1.')
+
+    computations = metric.computations(example_weighted=True)
+    histogram = computations[0]
+    matrices = computations[1]
+    metrics = computations[2]
+
+    # Using one example to create a situation where the denominator in the
+    # corresponding calculation is 0.
+    pred, label = pred_label
+    example1 = {
+        'labels': np.array([label]),
+        'predictions': np.array([pred]),
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([example1])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
+          | 'ComputeMatrices'
+          >> beam.Map(
+              lambda x: (x[0], matrices.result(x[1]))
+          )  # pyformat: ignore
+          | 'ComputeMetrics' >> beam.Map(lambda x: (x[0], metrics.result(x[1])))
+      )  # pyformat: ignore
+
+      # pylint: enable=no-value-for-parameter
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertLen(got_metrics, 1)
+          key = metrics.keys[0]
+          self.assertIn(key, got_metrics)
+          # np.testing utils automatically cast floats to arrays which fails
+          # to catch type mismatches.
+          self.assertEqual(type(expected_value), type(got_metrics[key]))
+          np.testing.assert_almost_equal(
+              got_metrics[key], expected_value, decimal=5
+          )
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
 
   # LINT.IfChange(tfma_confusion_matrix_metrics_tests)
   @parameterized.named_parameters(
@@ -182,14 +311,14 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([
               example1, example2, example3, example4, example5, example6,
               example7, example8, example9, example10
-          ])
+          ])  # fmt: skip
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeMatrices' >> beam.Map(
-              lambda x: (x[0], matrices.result(x[1])))  # pyformat: ignore
+          | 'ComputeMatrices'
+          >> beam.Map(lambda x: (x[0], matrices.result(x[1])))
           | 'ComputeMetrics' >> beam.Map(lambda x: (x[0], metrics.result(x[1])))
-      )  # pyformat: ignore
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -312,10 +441,11 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(  # pyformat: disable
-              lambda x: (x[0], derived_metric.result(x[1]))))
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], matrix.result(x[1])))
+          | 'ComputeMetric'
+          >> beam.Map(lambda x: (x[0], derived_metric.result(x[1])))
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -387,10 +517,11 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(  # pyformat: disable
-              lambda x: (x[0], derived_metric.result(x[1]))))
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], matrix.result(x[1])))
+          | 'ComputeMetric'
+          >> beam.Map(lambda x: (x[0], derived_metric.result(x[1])))
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -467,10 +598,11 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(  # pyformat: disable
-              lambda x: (x[0], derived_metric.result(x[1]))))
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], matrix.result(x[1])))
+          | 'ComputeMetric'
+          >> beam.Map(lambda x: (x[0], derived_metric.result(x[1])))
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -553,10 +685,11 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(  # pyformat: disable
-              lambda x: (x[0], derived_metric.result(x[1]))))
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], matrix.result(x[1])))
+          | 'ComputeMetric'
+          >> beam.Map(lambda x: (x[0], derived_metric.result(x[1])))
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -601,10 +734,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeMatrices' >> beam.Map(
-              lambda x: (x[0], matrices.result(x[1])))  # pyformat: ignore
+          | 'ComputeMatrices'
+          >> beam.Map(lambda x: (x[0], matrices.result(x[1])))
           | 'ComputeMetrics' >> beam.Map(lambda x: (x[0], metrics.result(x[1])))
-      )  # pyformat: ignore
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -680,10 +813,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeMatrices' >> beam.Map(
-              lambda x: (x[0], matrices.result(x[1])))  # pyformat: ignore
+          | 'ComputeMatrices'
+          >> beam.Map(lambda x: (x[0], matrices.result(x[1])))
           | 'ComputeMetrics' >> beam.Map(lambda x: (x[0], metrics.result(x[1])))
-      )  # pyformat: ignore
+      )
 
       # pylint: enable=no-value-for-parameter
 
