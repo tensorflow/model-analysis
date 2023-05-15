@@ -62,6 +62,18 @@ def verify_eval_config(eval_config: config_pb2.EvalConfig,
         'A baseline ModelSpec is required: eval_config=\n{}'.format(
             eval_config))
 
+  for metrics_spec in eval_config.metrics_specs:
+    if (
+        metrics_spec.HasField('binarize')
+        and not metrics_spec.binarize.HasField('class_ids')
+        and not metrics_spec.binarize.HasField('k_list')
+        and not metrics_spec.binarize.HasField('top_k_list')
+    ):
+      raise ValueError(
+          'If set, the BinarizationOptions message must not be empty, but '
+          f'found metrics spec:\n{metrics_spec}'
+      )
+
 
 def update_eval_config_with_defaults(
     eval_config: config_pb2.EvalConfig,

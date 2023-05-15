@@ -9,6 +9,8 @@
 ## Bug fixes and other Changes
 
 *   Fix the bug that SetMatchRecall is always 1 when top_k is set.
+*   Validate that BinarizationOptions must not be empty, if set.
+
 
 ## Breaking Changes
 
