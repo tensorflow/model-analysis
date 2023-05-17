@@ -75,7 +75,7 @@ PREDICTIONS_KEY = 'predictions'
 EXAMPLE_WEIGHTS_KEY = 'example_weights'
 # Attributions key.
 ATTRIBUTIONS_KEY = 'attributions'
-# LINT.ThenChange(../tfx_bsl/preprocessor/preprocessors/extractors.py)
+# LINT.ThenChange(../../../learning/analysis/enrichment/preprocessors/extractors.py)
 
 # Keys used for standard attribution scores
 BASELINE_SCORE_KEY = 'baseline_score'
