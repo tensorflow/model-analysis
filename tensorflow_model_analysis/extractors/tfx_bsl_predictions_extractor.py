@@ -88,8 +88,9 @@ class TfxBslInferenceWrapper(beam.PTransform):
 
 def TfxBslPredictionsExtractor(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
-    output_batch_size: Optional[int] = None) -> extractor.Extractor:
+    eval_shared_model: types.MaybeMultipleEvalSharedModels,
+    output_batch_size: Optional[int] = None,
+) -> extractor.Extractor:
   """Creates an extractor for performing predictions over a batch.
 
   The extractor's PTransform loads and runs the serving saved_model(s) against
@@ -105,8 +106,7 @@ def TfxBslPredictionsExtractor(
   Args:
     eval_config: Eval config.
     eval_shared_model: Shared model (single-model evaluation) or list of shared
-      models (multi-model evaluation) or None (predictions obtained from
-      features).
+      models (multi-model evaluation).
     output_batch_size: Sets a static output batch size for bulk inference. Note:
       this only affects the rebatched output batch size to set inference batch
       size set ModelSpec.inference_batch_size.
