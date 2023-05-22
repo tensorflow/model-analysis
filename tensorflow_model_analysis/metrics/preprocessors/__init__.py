@@ -13,5 +13,6 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis related preprocssors."""
 from tensorflow_model_analysis.metrics.preprocessors import utils
+from tensorflow_model_analysis.metrics.preprocessors.image_preprocessors import DecodeImagePreprocessor
 from tensorflow_model_analysis.metrics.preprocessors.object_detection_preprocessors import BoundingBoxMatchPreprocessor
 from tensorflow_model_analysis.metrics.preprocessors.set_match_preprocessors import SetMatchPreprocessor

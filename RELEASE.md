@@ -12,6 +12,8 @@
 
 ## Breaking Changes
 
+*   Depend on PIL for image related metrics.
+
 ## Deprecations
 
 # Version 0.44.0
@@ -21,6 +23,7 @@
 *   Add BinaryCrossEntropy and CategoricalCrossEntropy.
 *   Add MeanAbsolutePercentageError and MeanSquaredLogarithmicError
 *   Add SetMatchPrecision and SetMatchRecall
+*   Add SemanticSegmentationConfusionMatrix
 
 ## Bug fixes and other Changes
 

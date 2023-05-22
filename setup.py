@@ -301,6 +301,7 @@ setup_args = {
         'ipywidgets>=7,<8',
         'numpy~=1.22.0',
         'pandas>=1.0,<2',
+        'pillow>=9.4.0',
         'protobuf>=3.20.3,<5',
         'pyarrow>=6,<7',
         'scipy>=1.4.1,<2',
