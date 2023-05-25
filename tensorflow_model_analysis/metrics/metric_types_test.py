@@ -66,17 +66,19 @@ class MetricTypesTest(tf.test.TestCase):
 
   def testPlotKeyFromProto(self):
     plot_keys = [
-        metric_types.PlotKey(name=''),
+        metric_types.PlotKey(name='plot_name'),
         metric_types.PlotKey(
-            name='',
+            name='plot_name',
             model_name='model_name',
             output_name='output_name',
-            sub_key=metric_types.SubKey(class_id=1)),
+            sub_key=metric_types.SubKey(class_id=1),
+        ),
         metric_types.MetricKey(
-            name='',
+            name='plot_name',
             model_name='model_name',
             output_name='output_name',
-            sub_key=metric_types.SubKey(top_k=2))
+            sub_key=metric_types.SubKey(top_k=2),
+        ),
     ]
     for key in plot_keys:
       got_key = metric_types.PlotKey.from_proto(key.to_proto())

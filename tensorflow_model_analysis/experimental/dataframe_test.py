@@ -368,6 +368,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
     expected = pd.DataFrame({
         ('slices', 'age'): [38.0, 38.0],
         ('slices', 'sex'): [b'Female', b'Female'],
+        ('plot_keys', 'name'): ['', ''],
         ('plot_keys', 'model_name'): ['', ''],
         ('plot_keys', 'output_name'): ['', ''],
         ('plot_keys', 'example_weighted'): [False, False],
@@ -391,6 +392,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
     expected = pd.DataFrame({
         ('slices', 'age'): [38.0, 38.0],
         ('slices', 'sex'): [b'Female', b'Female'],
+        ('plot_keys', 'name'): ['', ''],
         ('plot_keys', 'model_name'): ['', ''],
         ('plot_keys', 'output_name'): ['', ''],
         ('plot_keys', 'sub_key'): [None, None],
@@ -436,6 +438,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
     expected = pd.DataFrame({
         ('slices', 'age'): [38.0, 38.0],
         ('slices', 'sex'): [b'Female', b'Female'],
+        ('plot_keys', 'name'): ['', ''],
         ('plot_keys', 'model_name'): ['', ''],
         ('plot_keys', 'output_name'): ['', ''],
         ('plot_keys', 'example_weighted'): [False, False],
@@ -478,6 +481,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
     expected = pd.DataFrame({
         ('slices', 'age'): [38.0, 38.0],
         ('slices', 'sex'): [b'Female', b'Female'],
+        ('plot_keys', 'name'): ['', ''],
         ('plot_keys', 'model_name'): ['', ''],
         ('plot_keys', 'output_name'): ['', ''],
         ('plot_keys', 'example_weighted'): [False, False],

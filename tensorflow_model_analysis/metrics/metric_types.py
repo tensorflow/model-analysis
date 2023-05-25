@@ -322,8 +322,7 @@ class PlotKey(MetricKey):
     """Converts key to proto."""
     plot_key = metrics_for_slice_pb2.PlotKey()
     if self.name:
-      raise ValueError('plot values must be combined into a single proto and'
-                       'stored under a plot key without a name')
+      plot_key.name = self.name
     if self.model_name:
       plot_key.model_name = self.model_name
     if self.output_name:
@@ -341,11 +340,12 @@ class PlotKey(MetricKey):
     if pb.HasField('example_weighted'):
       example_weighted = pb.example_weighted.value
     return PlotKey(
-        name='',
+        name=pb.name,
         model_name=pb.model_name,
         output_name=pb.output_name,
         sub_key=SubKey.from_proto(pb.sub_key),
-        example_weighted=example_weighted)
+        example_weighted=example_weighted,
+    )
 
 
 # A separate version from proto is used here because protos are not hashable and

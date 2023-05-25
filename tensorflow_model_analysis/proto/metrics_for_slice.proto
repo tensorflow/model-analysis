@@ -400,6 +400,8 @@ message PlotData {
 //
 // A plot key uniquely identifies a set of PlotData.
 message PlotKey {
+  // Optional plot name associated with plot.
+  string name = 6;
   // Optional model name associated with plot (if multi-model evaluation).
   string model_name = 4;
   // Optional output name associated with plot (for multi-output models).

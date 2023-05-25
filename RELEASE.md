@@ -47,6 +47,7 @@
 *   Depends on `protobuf>=3.20.3,<5`.
 *   Depends on `tfx-bsl>=1.13.0,<1.14.0`.
 *   Depends on `tensorflow-metadata>=1.13.1,<1.14.0`.
+*   Add name for each plots.
 
 ## Breaking Changes
 

@@ -15,7 +15,6 @@
 
 import itertools
 import os
-
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 from absl import logging
@@ -27,6 +26,8 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import metrics_validator
+from tensorflow_model_analysis.metrics import calibration_plot
+from tensorflow_model_analysis.metrics import confusion_matrix_plot
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
@@ -451,12 +452,17 @@ def convert_slice_plots_to_proto(
   plots_by_key = {}
   for key in sorted(slice_plots):
     value = slice_plots[key]
-    # Remove plot name from key (multiple plots are combined into a single
-    # proto).
-    if isinstance(key, metric_types.MetricKey):
+    # Remove plot name from key, if the name is one of the default plots.
+    # This is for the backward compatibility where there was no name for plots.
+    # (multiple plots are combined into a single proto).
+    if isinstance(key, metric_types.MetricKey) and key.name in [
+        confusion_matrix_plot.CONFUSION_MATRIX_PLOT_NAME,
+        calibration_plot.CALIBRATION_PLOT_NAME,
+    ]:
       parent_key = key._replace(name=None)
+    # If the user specifies the name, plots are not going to merge.
     else:
-      continue
+      parent_key = key
     if parent_key not in plots_by_key:
       key_and_value = result.plot_keys_and_values.add()
       key_and_value.key.CopyFrom(parent_key.to_proto())
