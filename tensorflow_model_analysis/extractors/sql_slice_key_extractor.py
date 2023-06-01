@@ -112,7 +112,7 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
     tensors = util.to_tensorflow_tensors(features)
     tensor_specs = util.infer_tensor_specs(tensors)
 
-    if _TF_MAJOR_VERSION < 2:
+    if _TF_MAJOR_VERSION < 2 or not tf.executing_eagerly():
       # TODO(b/228456048): TFX-BSL doesn't support passing tensorflow tensors
       # for non-sparse/ragged values in TF 1.x (i.e. it only accepts np.ndarray
       # for dense) so we need to convert dense tensors to numpy.
