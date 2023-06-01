@@ -146,7 +146,8 @@ def _observe_dnn_model(output_dict: Dict[str, Any]):
 
 
 def _serialize_feature_column(
-    feature_column: feature_column_v2.FeatureColumn) -> Dict[str, Any]:
+    feature_column: tf.__internal__.feature_column.FeatureColumn,
+) -> Dict[str, Any]:
   """Serialize the given feature column into a dictionary."""
   if not hasattr(feature_column, '_is_v2_column'):
     raise ValueError('feature_column does not has _is_v2_column attribute')
@@ -231,8 +232,11 @@ def _serialize_feature_column(
 
 
 def _serialize_feature_metadata_for_model(
-    cols_to_output_tensors: Dict[feature_column_v2.FeatureColumn, tf.Tensor],
-    features: Dict[str, types.TensorType]) -> Dict[str, Any]:
+    cols_to_output_tensors: Dict[
+        tf.__internal__.feature_column.FeatureColumn, tf.Tensor
+    ],
+    features: Dict[str, types.TensorType],
+) -> Dict[str, Any]:
   """Serialize feature metadata for a single model into a dictionary."""
   feature_columns = []
   associated_tensors = []
