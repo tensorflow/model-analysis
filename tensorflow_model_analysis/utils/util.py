@@ -17,8 +17,7 @@ import collections
 import inspect
 import sys
 import traceback
-
-from typing import Any, Iterator, List, Mapping, MutableMapping, Optional, Tuple, Union
+from typing import Any, Iterator, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 
 from absl import logging
 import numpy as np
@@ -401,7 +400,7 @@ def unique_key(key: str,
   return k
 
 
-def compound_key(keys: List[str], separator: str = KEY_SEPARATOR) -> str:
+def compound_key(keys: Sequence[str], separator: str = KEY_SEPARATOR) -> str:
   """Returns a compound key based on a list of keys.
 
   Args:
@@ -423,10 +422,12 @@ def create_values_key(key: str) -> str:
   return '_'.join([key, VALUES_SUFFIX])
 
 
-def get_by_keys(data: Mapping[str, Any],
-                keys: List[Any],
-                default_value=None,
-                optional: bool = False) -> Any:
+def get_by_keys(
+    data: Mapping[str, Any],
+    keys: Sequence[Any],
+    default_value=None,
+    optional: bool = False,
+) -> Any:
   """Returns value with given key(s) in (possibly multi-level) dict.
 
   The keys represent multiple levels of indirection into the data. For example
@@ -490,7 +491,7 @@ def get_by_keys(data: Mapping[str, Any],
   return value
 
 
-def _contains_keys(data: Mapping[str, Any], keys: List[str]) -> bool:
+def _contains_keys(data: Mapping[str, Any], keys: Sequence[str]) -> bool:
   """Returns whether a possibly mult-level mapping contains a key path."""
   value = data
   for key in keys:
@@ -892,7 +893,7 @@ def split_extracts(extracts: types.Extracts,
   results = []
   empty = []  # List of list of keys to values that are None
 
-  def add_to_results(keys: List[str], values: Any):
+  def add_to_results(keys: Sequence[str], values: Any):
     if values is None:
       empty.append(keys)
       return
@@ -1161,7 +1162,7 @@ class StandardExtracts(collections.abc.MutableMapping):
                  output_name: Optional[str] = None) -> Any:
     """Returns item for key possibly filtered by model and/or output names."""
 
-    def optionally_get_by_keys(value: Any, keys: List[Any]) -> Any:
+    def optionally_get_by_keys(value: Any, keys: Sequence[Any]) -> Any:
       """Returns item in dict (if value is dict and path exists) else value."""
       if isinstance(value, Mapping):
         new_value = get_by_keys(value, keys, optional=True)
