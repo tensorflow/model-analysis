@@ -510,8 +510,14 @@ class _CompilableMetricsCombiner(beam.CombineFn):
     for output_index, output_name in enumerate(self._output_names):
       inputs = accumulator.get_inputs(output_index)
       for metric_index, metric in enumerate(self._metrics[output_name]):
-        metric.reset_states()
-        metric.update_state(*inputs)
+        try:
+          metric.reset_states()
+          metric.update_state(*inputs)
+        except Exception as e:
+          raise ValueError(
+              f'TF Metric {metric.name} fails to update with inputs:\n{inputs},'
+              f'\nMetric full config: {metric.get_config()}'
+          ) from e
         accumulator.add_weights(output_index, metric_index,
                                 metric.get_weights())
     accumulator.clear_inputs()
