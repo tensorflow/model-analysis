@@ -186,7 +186,9 @@ class TFCompilableMetricsAccumulator(TFMetricsAccumulator):
                 prediction: np.ndarray, example_weight: np.ndarray):
     """Adds label, prediction, and example weight to output_index."""
     super().add_input(output_index, label, prediction, example_weight)
-    if self._pad:
+    # The first output for multi-output models is not for inputs and the label
+    # will be None.
+    if self._pad and label is not None:
       self._pad_to_dim = max(self._pad_to_dim, label.shape[-1],
                              prediction.shape[-1])
 

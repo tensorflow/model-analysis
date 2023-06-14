@@ -17,6 +17,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import tf_metric_accumulators
+from tensorflow_model_analysis.proto import config_pb2
 
 
 class TfMetricAccumulatorsTest(testutil.TensorflowModelAnalysisTest):
@@ -98,6 +99,42 @@ class TfMetricAccumulatorsTest(testutil.TensorflowModelAnalysisTest):
     self.assertAllClose(acc.get_weights(0, 0), np.array([1.0, 2.0]))
     self.assertAllClose(acc.get_weights(1, 0), np.array([3.0, 4.0]))
     self.assertAllClose(acc.get_weights(1, 1), np.array([12.0, 14.0]))
+
+  def testTFCompilableMetricsAccumulatorWithFirstEmptyInput(self):
+    acc = tf_metric_accumulators.TFCompilableMetricsAccumulator(
+        metric_counts=[1, 2, 3],
+        padding_options=config_pb2.PaddingOptions(
+            label_float_padding=-1.0,
+            prediction_float_padding=-1.0,
+        ),
+    )
+
+    self.assertEqual(0, acc.len_inputs())
+
+    acc.add_input(0, None, None, None)
+
+    acc.add_input(
+        1, np.array([1.0, 1.0, 1.0]), np.array([0.3, 0.7]), np.array([1.0])
+    )
+    acc.add_input(
+        2, np.array([0.0, 0.0]), np.array([0.2, 0.8]), np.array([0.5])
+    )
+    self.assertAllClose(
+        acc.get_inputs(1),
+        (
+            np.array([[1.0, 1.0, 1.0]]),
+            np.array([[0.3, 0.7, -1.0]]),
+            np.array([[1.0]]),
+        ),
+    )
+    self.assertAllClose(
+        acc.get_inputs(2),
+        (
+            np.array([[0.0, 0.0, -1.0]]),
+            np.array([[0.2, 0.8, -1.0]]),
+            np.array([[0.5]]),
+        ),
+    )
 
 
 if __name__ == '__main__':
