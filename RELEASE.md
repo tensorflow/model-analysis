@@ -9,6 +9,8 @@
 ## Bug fixes and other Changes
 
 *   Fix the bug that SetMatchRecall is always 1 when top_k is set.
+*   Depends on `pyarrow>=10,<11`.
+*   Depends on `apache-beam>=2.47,<3`.
 
 ## Breaking Changes
 
