@@ -5,6 +5,8 @@
 ## Major Features and Improvements
 
 *   Add F1, False positive rate, and Accuracy into the confusion matrix plot.
+*   Add support for setting top_k and class_id at the same time for confusion
+    matrix metrics.
 
 ## Bug fixes and other Changes
 

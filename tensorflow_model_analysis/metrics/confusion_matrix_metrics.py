@@ -123,14 +123,13 @@ def _validate_and_update_sub_key(
     ValueError: If validation fails.
   """
 
-  if top_k and class_id:
-    raise ValueError(
-        f'Metric {metric_name} is configured with both class_id={class_id} and '
-        f'top_k={top_k} settings. Only one may be specified at a time.')
-  if top_k is not None:
-    if sub_key is None or sub_key == metric_types.SubKey():
-      sub_key = metric_types.SubKey(top_k=top_k)
+  if sub_key is None:
+    if top_k is None and class_id is None:
+      return None
     else:
+      sub_key = metric_types.SubKey()
+  if top_k is not None:
+    if sub_key.top_k is not None:
       raise ValueError(
           f'Metric {metric_name} is configured with overlapping settings. '
           f'The metric was initialized with top_k={top_k}, but the '
@@ -139,20 +138,22 @@ def _validate_and_update_sub_key(
           'Binarization related settings can be configured in either the'
           'metrics_spec or the metric, but not both. Either remove the top_k '
           'setting from this metric or remove the metrics_spec.binarize '
-          'settings.')
-  elif class_id is not None:
-    if sub_key is None or sub_key == metric_types.SubKey():
-      sub_key = metric_types.SubKey(class_id=class_id)
-    else:
+          'settings.'
+      )
+    sub_key = sub_key._replace(top_k=top_k)
+  if class_id is not None:
+    if sub_key.class_id is not None:
       raise ValueError(
           f'Metric {metric_name} is configured with overlapping settings. '
           f'The metric was initialized with class_id={class_id}, but the '
           f'metric was defined in a spec using sub_key={sub_key}, '
           f'model_name={model_name}, output_name={output_name}\n\n'
           'Binarization related settings can be configured in either the'
-          'metrics_spec or the metric, but not both. Either remove the '
-          'class_id setting from this metric or remove the '
-          'metrics_spec.binarize settings.')
+          'metrics_spec or the metric, but not both. Either remove the class_id'
+          ' setting from this metric or remove the metrics_spec.binarize '
+          'settings.'
+      )
+    sub_key = sub_key._replace(class_id=class_id)
   return sub_key
 
 

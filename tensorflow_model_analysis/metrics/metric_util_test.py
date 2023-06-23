@@ -230,6 +230,25 @@ class UtilTest(tf.test.TestCase):
       self.assertAllClose(got_pred, np.array([expected_prediction]))
       self.assertAllClose(got_example_weight, np.array([1.0]))
 
+  def testStandardMetricInputsWithTopKAndClassIdToNumpy(self):
+    example = metric_types.StandardMetricInputs(
+        labels={'output_name': np.array([1])},
+        predictions={'output_name': np.array([0, 0.5, 0.3, 0.9])},
+        example_weights={'output_name': np.array([1.0])},
+    )
+    iterator = metric_util.to_label_prediction_example_weight(
+        example,
+        output_name='output_name',
+        sub_key=metric_types.SubKey(top_k=2, class_id=1),
+    )
+
+    expected_label = 1.0
+    expected_prediction = 0.5
+    got_label, got_pred, got_example_weight = next(iterator)
+    self.assertAllClose(got_label, np.array([expected_label]))
+    self.assertAllClose(got_pred, np.array([expected_prediction]))
+    self.assertAllClose(got_example_weight, np.array([1.0]))
+
   def testStandardMetricInputsWithTopKAndAggregationTypeToNumpy(self):
     example = metric_types.StandardMetricInputs(
         labels={'output_name': np.array([1])},

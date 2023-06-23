@@ -604,9 +604,7 @@ def to_label_prediction_example_weight(
       example_weight = np.array(example_weight[0])
 
     if sub_key is not None and label is not None and prediction is not None:
-      if sub_key.class_id is not None:
-        label, prediction = select_class_id(sub_key.class_id, label, prediction)
-      elif sub_key.k is not None:
+      if sub_key.k is not None:
         indices = top_k_indices(sub_key.k, prediction)
         if len(prediction.shape) == 1:
           indices = indices[0]  # 1D
@@ -617,18 +615,23 @@ def to_label_prediction_example_weight(
           label = one_hot(label, prediction)
         label = select_indices(label, indices)
         prediction = select_indices(prediction, indices)
-      elif sub_key.top_k is not None:
-        # Set all non-top-k predictions to -inf. Note that we do not sort.
-        indices = top_k_indices(sub_key.top_k, prediction)
-        if aggregation_type is None:
-          top_k_predictions = np.full(prediction.shape, float('-inf'))
-          top_k_predictions[indices] = prediction[indices]
-          prediction = top_k_predictions
-        else:
-          if label.shape != prediction.shape:
-            label = one_hot(label, prediction)
-          label = select_indices(label, indices)
-          prediction = select_indices(prediction, indices)
+      else:
+        if sub_key.top_k is not None:
+          # Set all non-top-k predictions to -inf. Note that we do not sort.
+          indices = top_k_indices(sub_key.top_k, prediction)
+          if aggregation_type is None:
+            top_k_predictions = np.full(prediction.shape, float('-inf'))
+            top_k_predictions[indices] = prediction[indices]
+            prediction = top_k_predictions
+          else:
+            if label.shape != prediction.shape:
+              label = one_hot(label, prediction)
+            label = select_indices(label, indices)
+            prediction = select_indices(prediction, indices)
+        if sub_key.class_id is not None:
+          label, prediction = select_class_id(
+              sub_key.class_id, label, prediction
+          )
 
     # For consistency, make sure all outputs are arrays (i.e. convert scalars)
     if label is not None and not label.shape:

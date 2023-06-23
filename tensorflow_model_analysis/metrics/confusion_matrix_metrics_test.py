@@ -308,10 +308,19 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([
-              example1, example2, example3, example4, example5, example6,
-              example7, example8, example9, example10
-          ])  # fmt: skip
+          | 'Create'
+          >> beam.Create([
+              example1,
+              example2,
+              example3,
+              example4,
+              example5,
+              example6,
+              example7,
+              example8,
+              example9,
+              example10,
+          ])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
@@ -755,21 +764,11 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
-  def testRaisesErrorIfClassIDAndTopKBothUsed(self):
-    with self.assertRaisesRegex(
-        ValueError,
-        'Metric precision is configured with both class_id=2 and top_k=2 '
-        'settings. Only one may be specified at a time.'):
-      confusion_matrix_metrics.Precision(
-          class_id=2, top_k=2).computations(example_weighted=True)
-
   @parameterized.named_parameters(
       ('class_id as param and class_id as sub_key',
        confusion_matrix_metrics.Precision(class_id=2), 2, None),
       ('top_k as param and top_k as sub_key',
        confusion_matrix_metrics.Precision(top_k=2), None, 2),
-      ('class_id as param and top_k as sub_key',
-       confusion_matrix_metrics.Precision(class_id=2), None, 2),
   )
   def testRaisesErrorIfOverlappingSettings(self, metric, class_id, top_k):
     with self.assertRaisesRegex(ValueError,
@@ -837,6 +836,117 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
                   tn=[1.0, 2.0, 2.0],
                   fp=[1.0, 0.0, 0.0],
                   fn=[1.0, 1.0, 1.0]), got_metric)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  @parameterized.named_parameters(
+      (
+          'precision (class_id=1 top_k=2 using sub_key)',
+          confusion_matrix_metrics.Precision(thresholds=[0.1]),
+          1,
+          2,
+          0.5 / (0.5 + 1.6),
+      ),
+      (
+          'precision (class_id=1 using param and top_k=2 using sub_key)',
+          confusion_matrix_metrics.Precision(class_id=1, thresholds=[0.1]),
+          None,
+          2,
+          0.5 / (0.5 + 1.6),
+      ),
+      (
+          'recall (class_id=3 using sub_key and top_k=2 using param)',
+          confusion_matrix_metrics.Recall(thresholds=[0.1], top_k=2),
+          3,
+          None,
+          0.7 / (0.7 + 0.9),
+      ),
+      (
+          'recall (class_id=3 top_k=2 using param)',
+          confusion_matrix_metrics.Recall(
+              class_id=3, top_k=2, thresholds=[0.1]
+          ),
+          None,
+          None,
+          0.7 / (0.7 + 0.9),
+      ),
+  )
+  def testConfusionMatrixMetricsWithClassIdAndTopK(
+      self, metric, class_id, top_k, expected_value
+  ):
+    computations = metric.computations(
+        sub_keys=[metric_types.SubKey(class_id=class_id, top_k=top_k)],
+        example_weighted=True,
+    )
+    histogram = computations[0]
+    matrix = computations[1]
+    derived_metric = computations[2]
+
+    # class_id = 1, top_k=2
+    #   TP = 0.5*1 + 0.7*0 + 0.9*0 + 0.3*0 = 0.5
+    #   FP = 0.5*0 + 0.7*1 + 0.9*1 + 0.3*0 = 1.6
+    #   FN = 0.5*0 + 0.7*0 + 0.9*0 + 0.3*1 = 0.3
+    #
+    # class_id = 3, top_k=2
+    #   TP = 0.5*0 + 0.7*1 + 0.9*0 + 0.3*0 = 0.7
+    #   FP = 0.5*1 + 0.7*0 + 0.9*0 + 0.3*1 = 0.8
+    #   FN = 0.5*0 + 0.7*0 + 0.9*1 + 0.3*0 = 0.9
+    example1 = {
+        'labels': np.array([1]),
+        'predictions': np.array([0.1, 0.5, 0.1, 0.45, 0.35]),
+        'example_weights': np.array([0.5]),
+    }
+    example2 = {
+        'labels': np.array([3]),
+        'predictions': np.array([0.2, 0.3, 0.05, 0.31, 0.3]),
+        'example_weights': np.array([0.7]),
+    }
+    example3 = {
+        'labels': np.array([3]),
+        'predictions': np.array([0.01, 0.2, 0.2, 0.09, 0.5]),
+        'example_weights': np.array([0.9]),
+    }
+    example4 = {
+        'labels': np.array([1]),
+        'predictions': np.array([0.1, 0.05, 0.3, 0.4, 0.05]),
+        'example_weights': np.array([0.3]),
+    }
+
+    with beam.Pipeline() as pipeline:
+      # pylint: disable=no-value-for-parameter
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([example1, example2, example3, example4])
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], matrix.result(x[1])))
+          | 'ComputeMetric'
+          >> beam.Map(lambda x: (x[0], derived_metric.result(x[1])))
+      )
+
+      # pylint: enable=no-value-for-parameter
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          subkey_class_id = class_id or metric.get_config()['class_id']
+          subkey_top_k = top_k or metric.get_config()['top_k']
+          sub_key = metric_types.SubKey(
+              class_id=subkey_class_id, top_k=subkey_top_k
+          )
+          key = metric_types.MetricKey(
+              name=metric.name, sub_key=sub_key, example_weighted=True
+          )
+          self.assertDictElementsAlmostEqual(
+              got_metrics, {key: expected_value}, places=5
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

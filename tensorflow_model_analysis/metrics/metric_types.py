@@ -52,9 +52,17 @@ class SubKey(
               class_id: Optional[int] = None,
               k: Optional[int] = None,
               top_k: Optional[int] = None):
-    if sum([0 if v is None else 1 for v in (class_id, k, top_k)]) > 1:
-      raise ValueError('only one of class_id, k, or top_k should be used: '
-                       'class_id={}, k={}, top_k={}'.format(class_id, k, top_k))
+    if k is not None:
+      if top_k is not None:
+        raise ValueError(
+            'k and top_k cannot both be set at the same time: '
+            f'k={k}, top_k={top_k}'
+        )
+      if class_id is not None:
+        raise ValueError(
+            'k and class_id cannot both be set at the same time: '
+            f'k={k}, class_id={class_id}'
+        )
     if k is not None and k < 1:
       raise ValueError('attempt to create metric with k < 1: k={}'.format(k))
     if top_k is not None and top_k < 1:
@@ -76,16 +84,20 @@ class SubKey(
     return hash(tuple(self))
 
   def __str__(self) -> str:
-    if self.class_id is not None:
-      return 'classId:' + str(self.class_id)
-    elif self.k is not None:
+    if self.k is not None:
       return 'k:' + str(self.k)
-    elif self.top_k is not None:
-      return 'topK:' + str(self.top_k)
     else:
-      raise NotImplementedError(
-          ('A non-existent SubKey should be represented as None, not as ',
-           'SubKey(None, None, None).'))
+      sub_key_str_list = []
+      if self.class_id is not None:
+        sub_key_str_list.append('classId:' + str(self.class_id))
+      if self.top_k is not None:
+        sub_key_str_list.append('topK:' + str(self.top_k))
+      if not sub_key_str_list:
+        raise NotImplementedError((
+            'A non-existent SubKey should be represented as None, not as ',
+            'SubKey(None, None, None).',
+        ))
+      return ' '.join(sub_key_str_list)
 
   def to_proto(self) -> metrics_for_slice_pb2.SubKey:
     """Converts key to proto."""

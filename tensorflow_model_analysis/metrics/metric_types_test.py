@@ -88,28 +88,49 @@ class MetricTypesTest(tf.test.TestCase):
     self.assertEqual(str(metric_types.SubKey(class_id=1)), 'classId:1')
     self.assertEqual(str(metric_types.SubKey(top_k=2)), 'topK:2')
     self.assertEqual(str(metric_types.SubKey(k=3)), 'k:3')
+    self.assertEqual(
+        str(metric_types.SubKey(class_id=1, top_k=2)), 'classId:1 topK:2'
+    )
+
+  def testSubKeySetUp(self):
     with self.assertRaises(
         NotImplementedError,
-        msg=('A non-existent SubKey should be represented as None, not as ',
-             'SubKey(None, None, None).')):
+        msg=(
+            'A non-existent SubKey should be represented as None, not as ',
+            'SubKey(None, None, None).',
+        ),
+    ):
       str(metric_types.SubKey())
+    with self.assertRaises(
+        ValueError,
+        msg=('k and top_k cannot both be set at the same time',),
+    ):
+      str(metric_types.SubKey(k=2, top_k=2))
+    with self.assertRaises(
+        ValueError,
+        msg=('k and class_id cannot both be set at the same time',),
+    ):
+      str(metric_types.SubKey(k=2, class_id=2))
 
   def testAggregationTypeLessThan(self):
     self.assertLess(
         metric_types.AggregationType(macro_average=True),
-        metric_types.AggregationType(micro_average=True))
+        metric_types.AggregationType(micro_average=True),
+    )
     self.assertLess(
         metric_types.AggregationType(weighted_macro_average=True),
-        metric_types.AggregationType(macro_average=True))
+        metric_types.AggregationType(macro_average=True),
+    )
 
   def testPreprocessors(self):
     preprocessor = metric_types.StandardMetricInputsPreprocessorList([
         metric_types.FeaturePreprocessor(feature_keys=['feature1', 'feature2']),
         metric_types.TransformedFeaturePreprocessor(feature_keys=['feature1']),
-        metric_types.AttributionPreprocessor(feature_keys=['feature1'])
+        metric_types.AttributionPreprocessor(feature_keys=['feature1']),
     ])
     self.assertEqual(
-        preprocessor.include_filter, {
+        preprocessor.include_filter,
+        {
             'labels': {},
             'predictions': {},
             'example_weights': {},
@@ -123,7 +144,8 @@ class MetricTypesTest(tf.test.TestCase):
             'attributions': {
                 'feature1': {},
             },
-        })
+        },
+    )
 
   def testPreprocessorsWithoutDefaults(self):
     preprocessor = metric_types.StandardMetricInputsPreprocessorList([
