@@ -7,6 +7,7 @@
 *   Add F1, False positive rate, and Accuracy into the confusion matrix plot.
 *   Add support for setting top_k and class_id at the same time for confusion
     matrix metrics.
+*   Add the false positive for semantic segmentation metrics.
 
 ## Bug fixes and other Changes
 

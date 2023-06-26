@@ -30,6 +30,9 @@ _DEFAULT_AREA_RANGE = (0, float('inf'))
 SEMANTIC_SEGMENTATION_TRUE_POSITIVES_NAME = (
     'semantic_segmentation_true_positives'
 )
+SEMANTIC_SEGMENTATION_FALSE_POSITIVES_NAME = (
+    'semantic_segmentation_false_positives'
+)
 # The confusion matrix metric is supposed to be a private metric. It should only
 # be as the intermediate results for other metrics. To access the entries,
 # please use metrics like TruePositive, TrueNegative, etc.
@@ -411,3 +414,18 @@ class SemanticSegmentationTruePositive(
 
 
 metric_types.register_metric(SemanticSegmentationTruePositive)
+
+
+class SemanticSegmentationFalsePositive(
+    SemanticSegmentationConfusionMatrixMetricBase
+):
+  """Calculates the true postive for semantic segmentation."""
+
+  def _default_name(self) -> str:
+    return SEMANTIC_SEGMENTATION_FALSE_POSITIVES_NAME
+
+  def _metric_value(self, matrix: binary_confusion_matrices.Matrix) -> float:
+    return matrix.fp
+
+
+metric_types.register_metric(SemanticSegmentationFalsePositive)

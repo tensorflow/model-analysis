@@ -170,6 +170,37 @@ class SegmentationConfusionMatrixTest(parameterized.TestCase):
               2: np.array([3]),
           },
       ),
+      dict(
+          testcase_name='_fp_two_class_with_ignore',
+          eval_config=text_format.Parse(
+              """
+               model_specs {
+                  signature_name: "serving_default"
+                  prediction_key: "predictions" # placeholder
+                  label_key: "labels" # placeholder
+               }
+               slicing_specs {
+               }
+               metrics_specs {
+                  metrics {
+                     class_name: "SemanticSegmentationFalsePositive"
+                     config:'"class_ids":[1, 2],'
+                           '"ignore_ground_truth_id":3,'
+                           '"ground_truth_key":"image/encoded", '
+                           '"prediction_key":"image/pred/encoded", '
+                           '"decode_prediction":true, '
+                           '"name":"SegFalsePositive"'
+                  }
+               }
+              """,
+              tfma.EvalConfig(),
+          ),
+          name='SegFalsePositive',
+          expected_result={
+              1: np.array([2]),
+              2: np.array([2]),
+          },
+      ),
   )
   def testEncodedImage(self, eval_config, name, expected_result):
     extracts = self._extracts
