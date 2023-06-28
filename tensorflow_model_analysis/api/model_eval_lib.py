@@ -371,6 +371,7 @@ def default_eval_shared_model(
     custom_model_loader: Optional[types.ModelLoader] = None,
     rubber_stamp: Optional[bool] = False,
     resource_hints: Optional[Dict[str, Any]] = None,
+    backend_config: Optional[Any] = None,
 ) -> types.EvalSharedModel:
   """Returns default EvalSharedModel.
 
@@ -404,6 +405,8 @@ def default_eval_shared_model(
       while a baseline is configured, the diff thresholds will be ignored.
     resource_hints: The beam resource hints to apply to the PTransform which
       runs inference for this model.
+    backend_config: Optional configuration of backend running model inference
+      with *some* prediction extractors.
   """
   if not eval_config:
     is_baseline = False
@@ -481,6 +484,7 @@ def default_eval_shared_model(
       rubber_stamp=rubber_stamp,
       is_baseline=is_baseline,
       resource_hints=resource_hints,
+      backend_config=backend_config,
   )
 
 

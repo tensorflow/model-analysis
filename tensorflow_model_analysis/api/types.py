@@ -454,6 +454,7 @@ class EvalSharedModel(
             ('rubber_stamp', bool),
             ('is_baseline', bool),
             ('resource_hints', Optional[Dict[str, Any]]),
+            ('backend_config', Optional[Any]),
         ],
     )
 ):
@@ -484,6 +485,7 @@ class EvalSharedModel(
     is_baseline: The model is the baseline for comparison or not.
     resource_hints: The beam resource hints to apply to the PTransform which
       runs inference for this model.
+    backend_config: The backend config for running model inference.
 
 
   More details on add_metrics_callbacks:
@@ -522,6 +524,7 @@ class EvalSharedModel(
       rubber_stamp: bool = False,
       is_baseline: bool = False,
       resource_hints: Optional[Dict[str, Any]] = None,
+      backend_config: Optional[Any] = None,
       construct_fn: Optional[Callable[[], Any]] = None,
   ):
     if not add_metrics_callbacks:
@@ -548,6 +551,7 @@ class EvalSharedModel(
         rubber_stamp,
         is_baseline,
         resource_hints,
+        backend_config,
     )
 
 
