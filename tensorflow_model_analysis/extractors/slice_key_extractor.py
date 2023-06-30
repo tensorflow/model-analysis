@@ -142,5 +142,6 @@ def ExtractSliceKeys(extracts: beam.pvalue.PCollection,
                      slice_spec: List[slicer.SingleSliceSpec],
                      eval_config: Optional[config_pb2.EvalConfig] = None,
                      materialize: bool = True) -> beam.pvalue.PCollection:
-  return extracts | beam.ParDo(
-      ExtractSliceKeysFn(eval_config, materialize), slice_spec=slice_spec)
+  return extracts | 'ExtractSliceKeys' >> beam.ParDo(
+      ExtractSliceKeysFn(eval_config, materialize), slice_spec=slice_spec
+  )
