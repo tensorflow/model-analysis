@@ -56,12 +56,15 @@ from tensorflow_model_analysis.view import view_types
 from tensorflow_model_analysis.writers import eval_config_writer
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 from tensorflow_model_analysis.writers import writer
+from tfx_bsl import beam as tfx_bsl_beam
 from tfx_bsl.arrow import table_util
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import tf_example_record
 
 from tensorflow_metadata.proto.v0 import schema_pb2
+
+tfx_bsl_beam.fix_code_type_pickling()
 
 
 def _assert_tensorflow_version():
