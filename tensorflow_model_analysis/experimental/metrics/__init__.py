@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Init module for experimental."""
+"""Init module for TensorFlow Model Analysis Experimental Metrics."""
 
-from tensorflow_model_analysis.experimental import dataframe
-from tensorflow_model_analysis.experimental import metrics
-from tensorflow_model_analysis.experimental import preprocessing_functions
+from tensorflow_model_analysis.experimental.metrics import stats

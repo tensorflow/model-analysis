@@ -8,6 +8,7 @@
 *   Add support for setting top_k and class_id at the same time for confusion
     matrix metrics.
 *   Add the false positive for semantic segmentation metrics.
+*   Add Mean Metric (experimental) which calculates the mean of any feature.
 
 ## Bug fixes and other Changes
 
