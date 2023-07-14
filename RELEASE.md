@@ -16,6 +16,10 @@
 *   Depends on `pyarrow>=10,<11`.
 *   Depends on `apache-beam>=2.47,<3`.
 
+*   Add 'tfma_eval' model_type in model_specs as the identifier for
+    eval_saved_model, allowing signature='eval' to now be used with other model
+    types.
+
 ## Breaking Changes
 
 *   Depend on PIL for image related metrics.
@@ -106,18 +110,27 @@ Deprecated python3.7 support.
 *   Update remaining predictions_extractor_test.py tests to cover
     PredictionsExtractorOSS. Fixes a pytype bug related to multi tensor output.
 *   Depends on `tensorflow>=1.15.5,<2` or `tensorflow>=2.10,<3`
+
 *   Apply changes in the latest Chrome browser
+
 *   Add InferneceInterface to experimental PredictionsExtractor implementation.
+
 *   Stop returning empty example_ids metric from binary_confusion_matrices
     derived computations when example_id_key is not set but use_histrogam is
     true.
+
 *   Add transformed features lookup for NDCG metrics query key and gain key.
+
 *   Deprecate BoundedValue and TDistribution in ConfusionMatrixAtThresholds.
+
 *   Fix a bug that dataframe auto_pivot fails if there is only Overall slice.
+
 *   Use SavedModel PB to determine default signature instead of loading the
     model.
+
 *   Reduce clutter in the multi-index columns and index in the experimental
     dataframe auto_pivot util.
+
 *   Minor predictions_extractor_test.py refactor with readability improvements
     and improved test coverage.
 

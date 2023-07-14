@@ -23,7 +23,6 @@ import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.evaluators import eval_saved_model_util
 from tensorflow_model_analysis.evaluators import evaluator
@@ -732,8 +731,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
         computations.extend(
             keras_util.metric_computations_using_keras_saved_model(
                 model_name, eval_shared_model.model_loader, eval_config))
-      elif (eval_shared_model.model_type == constants.TF_ESTIMATOR and
-            eval_constants.EVAL_TAG in eval_shared_model.model_loader.tags):
+      elif eval_shared_model.model_type == constants.TFMA_EVAL:
         computations.extend(
             eval_saved_model_util.metric_computations_using_eval_saved_model(
                 model_name, eval_shared_model.model_loader))

@@ -180,7 +180,7 @@ def get_model_type(model_spec: Optional[config_pb2.ModelSpec],
 
   if tags:
     if tags and eval_constants.EVAL_TAG in tags:
-      return constants.TF_ESTIMATOR
+      return constants.TFMA_EVAL
     else:
       return constants.TF_GENERIC
 
@@ -193,7 +193,7 @@ def get_model_type(model_spec: Optional[config_pb2.ModelSpec],
 
   # Default to serving unless estimator is used and eval signature is used.
   if signature_name == eval_constants.EVAL_TAG:
-    return constants.TF_ESTIMATOR
+    return constants.TFMA_EVAL
   else:
     return constants.TF_GENERIC
 
@@ -243,6 +243,23 @@ def verify_and_update_eval_shared_models(
   # always use '' as the model name regardless of whether a name is passed.
   elif len(eval_shared_models) == 1 and eval_shared_models[0].model_name:
     eval_shared_models[0] = eval_shared_models[0]._replace(model_name='')
+  # Normalizes model types to TFMA_EVAL when appropriate.
+  for i, model in enumerate(eval_shared_models):
+    assert isinstance(model, types.EvalSharedModel)
+    # An estimator model with an 'eval' tag is a TFMA_EVAL model.
+    if not model.model_type and (
+        not model.model_loader.tags
+        or eval_constants.EVAL_TAG in model.model_loader.tags
+    ):
+      eval_shared_models[i] = model._replace(model_type=constants.TFMA_EVAL)
+    elif model.model_type == constants.TFMA_EVAL and (
+        not model.model_loader.tags
+        or eval_constants.EVAL_TAG not in model.model_loader.tags
+    ):
+      raise ValueError(
+          '"eval" tag is required for eval saved model'
+          f'existing tags: {model.model_loader.tags}'
+      )
   return eval_shared_models  # pytype: disable=bad-return-type  # py310-upgrade
 
 
@@ -620,7 +637,8 @@ def model_construct_fn(  # pylint: disable=invalid-name
     additional_fetches: Optional[List[str]] = None,
     blacklist_feature_fetches: Optional[List[str]] = None,
     tags: Optional[List[str]] = None,
-    model_type: Optional[str] = constants.TF_ESTIMATOR) -> Callable[[], Any]:
+    model_type: Optional[str] = constants.TFMA_EVAL,
+) -> Callable[[], Any]:
   """Returns function for constructing shared models."""
   if tags is None:
     tags = [eval_constants.EVAL_TAG]
@@ -631,8 +649,7 @@ def model_construct_fn(  # pylint: disable=invalid-name
     # TODO(b/143484017): Add model warmup for TPU.
     if tf.saved_model.TPU in tags:
       tf.tpu.experimental.initialize_tpu_system()
-    if (model_type == constants.TF_ESTIMATOR and
-        eval_constants.EVAL_TAG in tags):
+    if model_type == constants.TFMA_EVAL:
       model = load.EvalSavedModel(
           eval_saved_model_path,
           include_default_metrics,
@@ -858,7 +875,7 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
         key. If False, dict outputs that have only one entry will be converted
         into single output values. For example, it is preferable to store
         predictions as single output values (unless a multi-output model is
-        used) whereas it is preferrable to always store features as a dict where
+        used) whereas it is preferable to always store features as a dict where
         the output keys represent the feature names.
     """
     super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})

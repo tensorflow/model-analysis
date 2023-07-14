@@ -169,8 +169,9 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
     if not model_type:
       model_type = model_util.get_model_type(None, eval_saved_model_path, tags)
     if not tags:
-      if model_type in (constants.TF_GENERIC, constants.TF_ESTIMATOR):
-        model_type = constants.TF_ESTIMATOR
+      if model_type in (constants.TF_GENERIC, constants.TFMA_EVAL):
+        # model_type = constants.TF_ESTIMATOR
+        model_type = constants.TFMA_EVAL
         tags = [eval_constants.EVAL_TAG]
       else:
         tags = [tf.saved_model.SERVING]

@@ -84,8 +84,9 @@ def _assert_tensorflow_version():
 
 def _is_legacy_eval(
     config_version: Optional[int],
-    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels],
-    eval_config: Optional[config_pb2.EvalConfig]):
+    eval_shared_models: Optional[List[types.EvalSharedModel]],
+    eval_config: Optional[config_pb2.EvalConfig],
+):
   """Returns True if legacy evaluation is being used.
 
   A legacy evaluation is an evalution that uses only a single EvalSharedModel,
@@ -102,17 +103,18 @@ def _is_legacy_eval(
     config_version: Optionally, An explicit version of the config determined
       elsewhere. This is used to handle cases where the provided eval_config was
       generated internally, and thus not a reliable indicator of user intent.
-    eval_shared_model: Optionally, the model to be evaluated.
+    eval_shared_models: Optionally, the model(s) to be evaluated.
     eval_config: Optionally, an EvalConfig specifying v2 config.
 
   Returns:
     Whether the user inputs should trigger a legacy evaluation.
   """
-  return ((config_version is not None and config_version == 1) or
-          (eval_shared_model and not isinstance(eval_shared_model, dict) and
-           not isinstance(eval_shared_model, list) and
-           (not eval_shared_model.model_loader.tags or eval_constants.EVAL_TAG
-            in eval_shared_model.model_loader.tags) and not eval_config))
+  return (config_version is not None and config_version == 1) or (
+      eval_shared_models
+      and len(eval_shared_models) == 1
+      and eval_shared_models[0].model_type == constants.TFMA_EVAL
+      and not eval_config
+  )
 
 
 def _default_eval_config(eval_shared_models: List[types.EvalSharedModel],
@@ -146,11 +148,9 @@ def _default_eval_config(eval_shared_models: List[types.EvalSharedModel],
 
 
 def _model_types(
-    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels]
+    eval_shared_models: Optional[List[types.EvalSharedModel]],
 ) -> Optional[Set[str]]:
   """Returns model types associated with given EvalSharedModels."""
-  eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
   if not eval_shared_models:
     return None
   else:
@@ -413,7 +413,10 @@ def default_eval_shared_model(
   """
   if not eval_config:
     is_baseline = False
-    model_type = constants.TF_ESTIMATOR
+    if tags and tags == [tf.saved_model.SERVING]:
+      model_type = constants.TF_ESTIMATOR
+    else:
+      model_type = constants.TFMA_EVAL
     if tags is None:
       tags = [eval_constants.EVAL_TAG]
   else:
@@ -425,8 +428,8 @@ def default_eval_shared_model(
     model_type = model_util.get_model_type(model_spec, eval_saved_model_path,
                                            tags)
     if tags is None:
-      # Default to serving unless estimator is used.
-      if model_type == constants.TF_ESTIMATOR:
+      # Default to serving unless tfma_eval is used.
+      if model_type == constants.TFMA_EVAL:
         tags = [eval_constants.EVAL_TAG]
       else:
         tags = [tf.saved_model.SERVING]
@@ -438,7 +441,7 @@ def default_eval_shared_model(
           eval_config.options.include_default_metrics.value)
 
   # Backwards compatibility for legacy add_metrics_callbacks implementation.
-  if model_type == constants.TF_ESTIMATOR and eval_constants.EVAL_TAG in tags:
+  if model_type == constants.TFMA_EVAL and eval_constants.EVAL_TAG in tags:
     # PyType doesn't know about the magic exports we do in post_export_metrics.
     # Additionally, the lines seem to get reordered in compilation, so we can't
     # just put the disable-attr on the add_metrics_callbacks lines.
@@ -535,6 +538,7 @@ def default_extractors(  # pylint: disable=invalid-name
     materialize = False
   if slice_spec and eval_config:
     raise ValueError('slice_spec is deprecated, only use eval_config')
+
   if eval_config is not None:
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
@@ -542,7 +546,10 @@ def default_extractors(  # pylint: disable=invalid-name
   if tensor_adapter_config:
     tensor_representations = tensor_adapter_config.tensor_representations
 
-  if _is_legacy_eval(config_version, eval_shared_model, eval_config):
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model
+  )
+  if _is_legacy_eval(config_version, eval_shared_models, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     if not eval_config and slice_spec:
       eval_config = config_pb2.EvalConfig(
@@ -562,18 +569,17 @@ def default_extractors(  # pylint: disable=invalid-name
       slice_key_extractor.SliceKeyExtractor(
           eval_config=eval_config, materialize=materialize)
   ])
-  if eval_shared_model:
-    model_types = _model_types(eval_shared_model)
-    eval_shared_models = model_util.verify_and_update_eval_shared_models(
-        eval_shared_model)
 
+  if eval_shared_model:
+    model_types = _model_types(eval_shared_models)
+    logging.info('eval_shared_models have model_types: %s', model_types)
     if (not model_types.issubset(constants.VALID_TF_MODEL_TYPES) and
         not custom_predict_extractor):
       raise NotImplementedError(
           'either a custom_predict_extractor must be used or model type must '
           'be one of: {}. evalconfig={}'.format(
               str(constants.VALID_TF_MODEL_TYPES), eval_config))
-    if model_types == set([constants.TF_LITE]):
+    if model_types == {constants.TF_LITE}:
       # TODO(b/163889779): Convert TFLite extractor to operate on batched
       # extracts. Then we can remove the input extractor.
       return [
@@ -594,7 +600,7 @@ def default_extractors(  # pylint: disable=invalid-name
           'support for mixing tf_lite and non-tf_lite models is not '
           'implemented: eval_config={}'.format(eval_config))
 
-    if model_types == set([constants.TF_JS]):
+    if model_types == {constants.TF_JS}:
       return [
           features_extractor.FeaturesExtractor(
               eval_config=eval_config,
@@ -610,22 +616,32 @@ def default_extractors(  # pylint: disable=invalid-name
       raise NotImplementedError(
           'support for mixing tf_js and non-tf_js models is not '
           'implemented: eval_config={}'.format(eval_config))
-
-    elif (eval_config and model_types == set([constants.TF_ESTIMATOR]) and
-          all(eval_constants.EVAL_TAG in m.model_loader.tags
-              for m in eval_shared_models)):
+    elif (
+        eval_config
+        and model_types == {constants.TFMA_EVAL}
+        and all(
+            eval_constants.EVAL_TAG in m.model_loader.tags
+            for m in eval_shared_models
+        )
+    ):
       return [
           custom_predict_extractor or legacy_predict_extractor.PredictExtractor(
               eval_shared_model,
               materialize=materialize,
               eval_config=eval_config)
       ] + slicing_extractors
-    elif (eval_config and constants.TF_ESTIMATOR in model_types and
-          any(eval_constants.EVAL_TAG in m.model_loader.tags
-              for m in eval_shared_models)):
+    elif (
+        eval_config
+        and constants.TFMA_EVAL in model_types
+        and any(
+            eval_constants.EVAL_TAG in m.model_loader.tags
+            for m in eval_shared_models
+        )
+    ):
       raise NotImplementedError(
-          'support for mixing eval and non-eval estimator models is not '
-          'implemented: eval_config={}'.format(eval_config))
+          'support for mixing tfma_eval and non-tfma_eval models is not '
+          'implemented: eval_config={}'.format(eval_config)
+      )
     else:
       extractors = [
           features_extractor.FeaturesExtractor(
@@ -686,32 +702,27 @@ def default_evaluators(  # pylint: disable=invalid-name
       indicator of user intent.
   """
   disabled_outputs = []
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model
+  )
   if eval_config:
     eval_config = _update_eval_config_with_defaults(eval_config,
                                                     eval_shared_model)
     disabled_outputs = eval_config.options.disabled_outputs.values
-    if (_model_types(eval_shared_model) == set([constants.TF_LITE]) or
-        _model_types(eval_shared_model) == set([constants.TF_JS])):
+    if _model_types(eval_shared_models) == {constants.TF_LITE} or _model_types(
+        eval_shared_models
+    ) == {constants.TF_JS}:
       # no in-graph metrics present when tflite or tfjs is used.
-      if eval_shared_model:
-        if isinstance(eval_shared_model, dict):
-          eval_shared_model = {
-              k: v._replace(include_default_metrics=False)
-              for k, v in eval_shared_model.items()
-          }
-        elif isinstance(eval_shared_model, list):
-          eval_shared_model = [
-              v._replace(include_default_metrics=False)
-              for v in eval_shared_model
-          ]
-        else:
-          eval_shared_model = eval_shared_model._replace(
-              include_default_metrics=False)
+      if eval_shared_models:
+        eval_shared_models = [
+            v._replace(include_default_metrics=False)
+            for v in eval_shared_models
+        ]
   if (constants.METRICS_KEY in disabled_outputs and
       constants.PLOTS_KEY in disabled_outputs and
       constants.ATTRIBUTIONS_KEY in disabled_outputs):
     return []
-  if _is_legacy_eval(config_version, eval_shared_model, eval_config):
+  if _is_legacy_eval(config_version, eval_shared_models, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     if eval_config is not None:
       if eval_config.options.HasField('compute_confidence_intervals'):
@@ -990,12 +1001,17 @@ def is_legacy_estimator(
   Returns:
     A boolean indicating if legacy predict extractor will be used.
   """
-  model_types = _model_types(eval_shared_model)
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model)
-  return (model_types == set([constants.TF_ESTIMATOR]) and
-          all(eval_constants.EVAL_TAG in m.model_loader.tags
-              for m in eval_shared_models))
+  model_types = _model_types(eval_shared_models)
+  return (
+      model_types is not None
+      and model_types == {constants.TFMA_EVAL}
+      and all(
+          eval_constants.EVAL_TAG in m.model_loader.tags
+          for m in eval_shared_models
+      )
+  )
 
 
 def is_batched_input(eval_shared_model: Optional[
@@ -1022,7 +1038,10 @@ def is_batched_input(eval_shared_model: Optional[
   Returns:
     A boolean indicating if batched extractors should be used.
   """
-  return not _is_legacy_eval(config_version, eval_shared_model, eval_config)
+  eval_shared_models = model_util.verify_and_update_eval_shared_models(
+      eval_shared_model
+  )
+  return not _is_legacy_eval(config_version, eval_shared_models, eval_config)
 
 
 @beam.ptransform_fn

@@ -197,8 +197,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     ]
     with self.assertRaisesRegex(
         NotImplementedError,
-        'support for mixing eval and non-eval estimator models is not '
-        'implemented'):
+        (
+            'support for mixing tfma_eval and non-tfma_eval models is not '
+            'implemented'
+        ),
+    ):
       model_eval_lib.run_model_analysis(
           eval_config=eval_config,
           eval_shared_model=eval_shared_models,
@@ -948,7 +951,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
           output_path=output_path,
           schema=schema)
 
-    # Directly check validaton file since it is not in EvalResult.
+    # Directly check validation file since it is not in EvalResult.
     validations_file = os.path.join(output_path,
                                     f'{constants.VALIDATIONS_KEY}.tfrecord')
     self.assertTrue(os.path.exists(validations_file))
@@ -1129,7 +1132,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         data_location=data_location,
         output_path=output_path)
 
-    # Directly check validaton file since it is not in EvalResult.
+    # Directly check validation file since it is not in EvalResult.
     validations_file = os.path.join(output_path,
                                     f'{constants.VALIDATIONS_KEY}.tfrecord')
     self.assertTrue(os.path.exists(validations_file))
@@ -1316,7 +1319,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         ],
         schema=schema)
 
-    # Directly check validaton file since it is not in EvalResult.
+    # Directly check validation file since it is not in EvalResult.
     validations_file = os.path.join(output_path,
                                     f'{constants.VALIDATIONS_KEY}.tfrecord')
     self.assertTrue(os.path.exists(validations_file))

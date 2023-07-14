@@ -51,6 +51,7 @@ from tensorflow_model_analysis.constants import TF_GENERIC
 from tensorflow_model_analysis.constants import TF_JS
 from tensorflow_model_analysis.constants import TF_KERAS
 from tensorflow_model_analysis.constants import TF_LITE
+from tensorflow_model_analysis.constants import TFMA_EVAL
 from tensorflow_model_analysis.constants import VALIDATIONS_KEY
 
 # Allow proto types to be imported at the top-level since proto's live in
