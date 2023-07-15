@@ -159,28 +159,29 @@ def _ExtractFeatures(  # pylint: disable=invalid-name
     """Extract features from extracts containing arrow table."""
     result = copy.copy(extracts)
     if constants.ARROW_RECORD_BATCH_KEY in extracts:
-      arrow_record_batch = extracts[constants.ARROW_RECORD_BATCH_KEY]
-      if hasattr(arrow_record_batch, 'to_record_batch') and callable(
-          arrow_record_batch.to_record_batch
-      ):
-        arrow_record_batch = arrow_record_batch.to_record_batch()
       (record_batch, serialized_examples) = (
           _drop_unsupported_columns_and_fetch_raw_data_column(
-              arrow_record_batch
+              extracts[constants.ARROW_RECORD_BATCH_KEY]
           )
       )
       del result[constants.ARROW_RECORD_BATCH_KEY]
-      features = result[
-          constants.FEATURES_KEY] if constants.FEATURES_KEY in result else {}
+      features = (
+          result[constants.FEATURES_KEY]
+          if constants.FEATURES_KEY in result
+          else {}
+      )
       features.update(
-          util.record_batch_to_tensor_values(record_batch,
-                                             tensor_representations))
+          util.record_batch_to_tensor_values(
+              record_batch, tensor_representations
+          )
+      )
       result[constants.FEATURES_KEY] = features
       result[constants.INPUT_KEY] = serialized_examples
     elif constants.FEATURES_KEY not in extracts:
       raise ValueError(
           'Incoming extracts must contain either tfma.ARROW_RECORD_BATCH_KEY '
-          f'or tfma.FEATURES_KEY, but extracts={extracts}')
+          f'or tfma.FEATURES_KEY, but extracts={extracts}'
+      )
     return result
 
   return extracts | 'ExtractFeatures' >> beam.Map(extract_features)
