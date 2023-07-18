@@ -549,9 +549,6 @@ def to_label_prediction_example_weight(
       label = optionally_get_by_keys(label, [label_key])
     prediction = inputs.prediction
     example_weight = inputs.example_weight
-    if not example_weighted or example_weight is None:
-      example_weight = np.array(
-          1.0, dtype=np.float32)  # tf-ranking needs float32
     if model_name:
       if prediction is not None:
         prediction = util.get_by_keys(prediction, [model_name])
@@ -564,6 +561,11 @@ def to_label_prediction_example_weight(
       # Labels and example weights can optionally be keyed by output name.
       label = optionally_get_by_keys(label, [output_name])
       example_weight = optionally_get_by_keys(example_weight, [output_name])
+
+    if not example_weighted or example_weight is None:
+      example_weight = np.array(
+          1.0, dtype=np.float32
+      )  # tf-ranking needs float32
 
     if isinstance(label, Mapping):
       raise ValueError(
