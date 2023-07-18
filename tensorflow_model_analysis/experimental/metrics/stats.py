@@ -120,15 +120,20 @@ def _mean_metric(
   key = metric_types.MetricKey(
       name=key_name, example_weighted=example_weights_key_path is not None
   )
+
+  include_filter = _convert_key_path_to_dict(feature_key_path)
+  if example_weights_key_path:
+    include_filter = util.merge_filters(
+        include_filter,
+        _convert_key_path_to_dict(example_weights_key_path),
+    )
+
   return [
       metric_types.MetricComputation(
           keys=[key],
           preprocessors=[
               metric_types.StandardMetricInputsPreprocessor(
-                  include_filter=util.merge_filters(
-                      _convert_key_path_to_dict(feature_key_path),
-                      _convert_key_path_to_dict(example_weights_key_path),
-                  ),
+                  include_filter=include_filter,
                   include_default_inputs=False,
               )
           ],

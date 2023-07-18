@@ -370,6 +370,82 @@ class MeanEnd2EndTest(parameterized.TestCase):
       self.assertIn('metrics', result)
       util.assert_that(result['metrics'], check_result, label='result')
 
+  def testMeanEnd2EndWithoutExampleWeights(self):
+    extracts = [
+        {
+            'features': {
+                'age': np.array([30]),
+                'income': np.array([150000]),
+            },
+        },
+        {
+            'features': {
+                'age': np.array([40]),
+                'income': np.array([200000]),
+            },
+        },
+    ]
+
+    eval_config = text_format.Parse(
+        """
+        metrics_specs {
+          metrics {
+            class_name: "Mean"
+            config: '{"feature_key_path":["features", "age"]}'
+          },
+          metrics {
+            class_name: "Mean"
+            config: '{"feature_key_path":["features", "income"]}'
+          }   ,
+        }
+        """,
+        tfma.EvalConfig(),
+    )
+
+    extractors = tfma.default_extractors(eval_config=eval_config)
+    evaluators = tfma.default_evaluators(eval_config=eval_config)
+
+    expected_key_age = metric_types.MetricKey(
+        name='mean_features.age', example_weighted=False
+    )
+    expected_key_income = metric_types.MetricKey(
+        name='mean_features.income', example_weighted=False
+    )
+
+    expected_result_age = 35  # (30 + 40) / (1 + 1) = 35
+    # (150k + 200k) / (1 + 1) = 175000
+    expected_result_income = 175000
+
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline
+          | 'LoadData' >> beam.Create(extracts)
+          | 'ExtractEval'
+          >> tfma.ExtractAndEvaluate(
+              extractors=extractors, evaluators=evaluators
+          )
+      )
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertLen(got_metrics, 2)
+          self.assertIn(expected_key_age, got_metrics)
+          self.assertIn(expected_key_income, got_metrics)
+          self.assertAlmostEqual(
+              expected_result_age, got_metrics[expected_key_age]
+          )
+          self.assertAlmostEqual(
+              expected_result_income, got_metrics[expected_key_income]
+          )
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      self.assertIn('metrics', result)
+      util.assert_that(result['metrics'], check_result, label='result')
+
 
 if __name__ == '__main__':
   tf.test.main()
