@@ -15,7 +15,6 @@
 
 from absl.testing import absltest
 import numpy as np
-from numpy.testing import utils
 
 from tensorflow_model_analysis.api import types
 
@@ -26,9 +25,11 @@ class TypesTest(absltest.TestCase):
     tensor = types.VarLenTensorValue.from_dense_rows(
         [np.array([]), np.array([1]),
          np.array([1, 2])])
-    utils.assert_array_equal(np.array([1, 1, 2]), tensor.values)
-    utils.assert_array_equal(np.array([[1, 0], [2, 0], [2, 1]]), tensor.indices)
-    utils.assert_array_equal(np.array([3, 2]), tensor.dense_shape)
+    np.testing.assert_array_equal(np.array([1, 1, 2]), tensor.values)
+    np.testing.assert_array_equal(
+        np.array([[1, 0], [2, 0], [2, 1]]), tensor.indices
+    )
+    np.testing.assert_array_equal(np.array([3, 2]), tensor.dense_shape)
 
   def testVarLenTensorValueToDenseRows(self):
     tensor = types.VarLenTensorValue(
@@ -37,9 +38,9 @@ class TypesTest(absltest.TestCase):
         dense_shape=np.array([3, 2]))
     dense_rows = list(tensor.dense_rows())
     self.assertLen(dense_rows, 3)
-    utils.assert_array_equal(np.array([1, 2]), dense_rows[0])
-    utils.assert_array_equal(np.array([]), dense_rows[1])
-    utils.assert_array_equal(np.array([3, 4]), dense_rows[2])
+    np.testing.assert_array_equal(np.array([1, 2]), dense_rows[0])
+    np.testing.assert_array_equal(np.array([]), dense_rows[1])
+    np.testing.assert_array_equal(np.array([3, 4]), dense_rows[2])
 
   def testVarLenTensorValueInvalidShape(self):
     with self.assertRaisesRegex(ValueError,
