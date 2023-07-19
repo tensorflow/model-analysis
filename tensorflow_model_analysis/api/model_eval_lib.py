@@ -412,8 +412,11 @@ def default_eval_shared_model(
       with *some* prediction extractors.
   """
   if not eval_config:
+    # Default to tfma eval model unless eval
     is_baseline = False
-    if tags and tags == [tf.saved_model.SERVING]:
+    if tags and eval_constants.EVAL_TAG in tags:
+      model_type = constants.TFMA_EVAL
+    elif tags and tf.saved_model.SERVING in tags:
       model_type = constants.TF_ESTIMATOR
     else:
       model_type = constants.TFMA_EVAL
