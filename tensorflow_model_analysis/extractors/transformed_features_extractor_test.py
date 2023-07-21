@@ -266,7 +266,7 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
           for got in batches:
             for extracts_key, feature_keys in expected_extract_keys.items():
               self.assertIn(extracts_key, got)
-              self.assertEqual(
+              self.assertCountEqual(
                   set(feature_keys),
                   set(got[extracts_key]),
                   msg=f'got[{extracts_key}]={got[extracts_key]}',

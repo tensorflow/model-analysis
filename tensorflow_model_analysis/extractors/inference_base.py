@@ -14,7 +14,7 @@
 """Base inference implementation updates extracts with inference results."""
 
 import copy
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Sequence, Tuple, Union
 
 from absl import logging
 import apache_beam as beam
@@ -157,14 +157,18 @@ def _parse_prediction_log_to_tensor_value(
 
 
 def _insert_predictions_into_extracts(
-    inference_tuple: Tuple[types.Extracts,
-                           Dict[str, prediction_log_pb2.PredictionLog]]
+    inference_tuple: Tuple[
+        types.Extracts, Dict[str, prediction_log_pb2.PredictionLog]
+    ],
+    output_keypath: Sequence[str],
 ) -> types.Extracts:
   """Inserts tensor values from PredictionLogs into the Extracts.
 
   Args:
     inference_tuple: This is the output of inference. It includes the key
       forwarded extracts and a dict of model name to predicition logs.
+    output_keypath: A sequence of keys to be used as the path to traverse and
+      insert the outputs in the extract.
 
   Returns:
     Extracts with the PREDICTIONS_KEY populated. Note: By convention,
@@ -182,10 +186,11 @@ def _insert_predictions_into_extracts(
   # is in line with the general TFMA pattern of not storing one-item
   # dictionaries.
   if len(model_name_to_tensors) == 1:
-    extracts[constants.PREDICTIONS_KEY] = list(
-        model_name_to_tensors.values())[0]
+    util.set_by_keys(
+        extracts, output_keypath, next(iter(model_name_to_tensors.values()))
+    )
   else:
-    extracts[constants.PREDICTIONS_KEY] = model_name_to_tensors
+    util.set_by_keys(extracts, output_keypath, model_name_to_tensors)
   return extracts
 
 
@@ -195,7 +200,9 @@ def _insert_predictions_into_extracts(
 def RunInference(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     inference_ptransform: beam.PTransform,
-    output_batch_size: Optional[int] = None) -> beam.pvalue.PCollection:
+    output_batch_size: Optional[int] = None,
+    output_keypath: Sequence[str] = (constants.PREDICTIONS_KEY,),
+) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to Extracts.
 
   Args:
@@ -210,6 +217,8 @@ def RunInference(  # pylint: disable=invalid-name
       The key may be anything and the example may be a tf.Example or serialized
       tf.Example.
     output_batch_size: Sets a static output batch size.
+    output_keypath: A sequence of keys to be used as the path to traverse and
+      insert the outputs in the extract.
 
   Returns:
     PCollection of Extracts updated with the predictions.
@@ -220,15 +229,16 @@ def RunInference(  # pylint: disable=invalid-name
       # batch handling and batching requirements. To accomodate the API and
       # encapsulate the inference batching logic, we unbatch here. This function
       # returns new Extracts dicts and will not modify the input Extracts.
-      | 'SplitExtracts' >> beam.FlatMap(
-          util.split_extracts, expand_zero_dims=False)
+      | 'SplitExtracts'
+      >> beam.FlatMap(util.split_extracts, expand_zero_dims=False)
       # The BulkInference API allows for key forwarding. To avoid a join
       # after running inference, we forward the unbatched Extracts as a key.
       | 'CreateInferenceInputTuple' >> beam.Map(_create_inference_input_tuple)
       | 'RunInferencePerModel' >> inference_ptransform
       # Combine predictions back into the original Extracts.
-      | 'InsertPredictionsIntoExtracts' >>
-      beam.Map(_insert_predictions_into_extracts))
+      | 'InsertPredictionsIntoExtracts'
+      >> beam.Map(_insert_predictions_into_extracts, output_keypath)
+  )
   # Beam batch will group single Extracts into a batch. Then
   # merge_extracts will flatten the batch into a single "batched"
   # extract.

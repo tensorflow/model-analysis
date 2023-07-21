@@ -37,6 +37,7 @@ from tensorflow.core.protobuf import saved_model_pb2  # pylint: disable=g-direct
 from tensorflow.python.saved_model import loader_impl  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+
 # TODO(b/162075791): Need to load tensorflow_ranking, tensorflow_text,
 # tensorflow_decision_forests, and struct2tensor for models that use those ops.
 # pylint: disable=g-import-not-at-top
@@ -405,6 +406,53 @@ def _get_model_input_spec(model: Any) -> Optional[Any]:
     # the input save spec.
     return model._get_save_spec()  # pylint: disable=protected-access
   return None
+
+
+def _maybe_expand_dims(arr):
+  """Expands the array dimension if there is no shape."""
+  if not hasattr(arr, 'shape') or not arr.shape:
+    return np.expand_dims(arr, axis=0)
+  else:
+    return arr
+
+
+def _to_dense(t):
+  """Converts a tensor to a dense one."""
+  if isinstance(t, tf.SparseTensor):
+    return tf.sparse.to_dense(t)
+  elif isinstance(t, tf.RaggedTensor):
+    return t.to_tensor()
+  else:
+    return t
+
+
+def _check_shape(t, batch_size, key=None):
+  """Check the shape of a tesnor."""
+  if t.shape[0] != batch_size:
+    raise ValueError(
+        'First dimension does not correspond with batch size. '
+        f'Batch size: {batch_size}, Dimensions: {t.shape}, Key: {key}.'
+    )
+
+
+def _to_dense_outputs(outputs, batch_size, signature_name):
+  """Converts the tensors inside batch prediction to dense tensors."""
+  dense_outputs = {}
+  if isinstance(outputs, dict):
+    for k, v in outputs.items():
+      dense_outputs[k] = _to_dense(v)
+      _check_shape(dense_outputs[k], batch_size, key=k)
+  else:
+    dense_outputs = _to_dense(outputs)
+    _check_shape(dense_outputs, batch_size)
+
+  if isinstance(dense_outputs, dict):
+    output = {
+        k: _maybe_expand_dims(v.numpy()) for k, v in dense_outputs.items()
+    }
+  else:
+    output = {signature_name: _maybe_expand_dims(np.asarray(dense_outputs))}
+  return output
 
 
 def is_callable_fn(fn: Any) -> bool:
@@ -826,12 +874,16 @@ class BatchReducibleBatchedDoFnWithModels(DoFnWithModels):
 class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
   """Updates extracts by calling specified model signature functions."""
 
-  def __init__(self,
-               eval_config: config_pb2.EvalConfig,
-               eval_shared_models: Dict[str, types.EvalSharedModel],
-               signature_names: Dict[str, Dict[str, List[str]]],
-               default_signature_names: Optional[List[str]] = None,
-               prefer_dict_outputs: bool = True):
+  def __init__(
+      self,
+      model_specs: Iterable[config_pb2.ModelSpec],
+      eval_shared_models: Dict[str, types.EvalSharedModel],
+      *,
+      output_keypath: List[str],
+      signature_names: Dict[str, List[str]],
+      default_signature_names: Optional[List[str]] = None,
+      prefer_dict_outputs: bool = True,
+  ):
     """Initializes DoFn.
 
     Examples of combinations of signature_names and default_signatures that
@@ -856,16 +908,16 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
       default_signature_names: ['transformed_features', 'transformed_labels']
 
     Args:
-      eval_config: Eval config.
+      model_specs: Model specs each of which corresponds to each of the
+        eval_shared_models.
       eval_shared_models: Shared model parameters keyed by model name.
-      signature_names: Names of signature functions to call keyed by the
-        associated extracts that should be updated and the name of the model
-        they are associated with. The signature functions may be stored either
-        in a dict under a `signatures` attribute or directly as separate named
-        attributes of the model. If a signature name list is empty then the
-        default_signatures will be used. If a list entry is empty (None or ''),
-        then the model itself (or a common default signature for the model -
-        e.g. 'serving_default') will be used.
+      output_keypath: Key path to be inserted in the extract.
+      signature_names: Names of signature functions to call. The signature
+        functions may be stored either in a dict under a `signatures` attribute
+        or directly as separate named attributes of the model. If a signature
+        name list is empty then the default_signatures will be used. If a list
+        entry is empty (None or ''), then the model itself (or a common default
+        signature for the model - e.g. 'serving_default') will be used.
       default_signature_names: One or more signature names to use by default
         when an empty list is used in signature_names. All defaults will be
         tried, but unlike signature_names it is not an error if a signature is
@@ -879,7 +931,8 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
         the output keys represent the feature names.
     """
     super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
-    self._eval_config = eval_config
+    self._model_specs = list(model_specs)
+    self._output_keypath = list(output_keypath)
     self._signature_names = signature_names
     self._default_signature_names = default_signature_names
     self._prefer_dict_outputs = prefer_dict_outputs
@@ -888,142 +941,117 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
     super().setup()
     # Verify and filter models to only those used in ModelSpecs.
     loaded_models = {}
-    for spec in self._eval_config.model_specs:
+    for spec in self._model_specs:
       # To maintain consistency between settings where single models are used,
       # always use '' as the model name regardless of whether a name is passed.
-      model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
+      model_name = spec.name if len(self._model_specs) > 1 else ''
       if model_name not in self._loaded_models:
         raise ValueError(
-            'loaded model for "{}" not found: eval_config={}'.format(
-                spec.name, self._eval_config))
+            'loaded model for "{}" not found: loaded_models:{}\nmodel_specs={}'
+            .format(
+                spec.name, list(self._loaded_models.keys()), self._model_specs
+            )
+        )
       loaded_models[model_name] = self._loaded_models[model_name]
     self._loaded_models = loaded_models
 
   def _batch_reducible_process(
       self, batched_extract: types.Extracts) -> List[types.Extracts]:
 
-    def maybe_expand_dims(arr):
-      if not hasattr(arr, 'shape') or not arr.shape:
-        return np.expand_dims(arr, axis=0)
-      else:
-        return arr
-
-    def to_dense(t):
-      if isinstance(t, tf.SparseTensor):
-        return tf.sparse.to_dense(t)
-      elif isinstance(t, tf.RaggedTensor):
-        return t.to_tensor()
-      else:
-        return t
-
-    def check_shape(t, batch_size, key=None):
-      if t.shape[0] != batch_size:
-        raise ValueError(
-            'First dimension does not correspond with batch size. '
-            f'Batch size: {batch_size}, Dimensions: {t.shape}, Key: {key}.')
-
-    result = copy.copy(batched_extract)
     batch_size = util.batch_size(batched_extract)
     features = util.get_features_from_extracts(batched_extract)
     serialized_examples = batched_extract[constants.INPUT_KEY]
     if isinstance(serialized_examples, np.ndarray):
       # Most models only accept serialized examples as a 1-d tensor
       serialized_examples = serialized_examples.flatten()
-    for extracts_key in self._signature_names:
-      if extracts_key not in result:
-        result[extracts_key] = None
+
+    outputs_per_model = collections.defaultdict(dict)
     for model_name, model in self._loaded_models.items():
-      for extracts_key, signature_names in self._signature_names.items():
-        for signature_name in (signature_names[model_name] or
-                               self._default_signature_names):
-          signature = None
-          input_specs = None
-          inputs = None
-          positional_inputs = False
-          required = bool(signature_names[model_name])
-          if signature_name and '@' in signature_name:
-            try:
-              signature_name, input_names = get_preprocessing_signature(
-                  signature_name)
-              signature = getattr(preprocessing_functions, signature_name)
-              input_specs = {
-                  input_name: type_spec for input_name, type_spec in zip(
-                      input_names, signature.input_signature)
-              }
-              inputs = get_inputs(features, input_specs)
-              positional_inputs = True
-            except AttributeError as e:
-              logging.warning(
-                  """Failed to get signature of %s or as TFMA
-                  preprocessing function. Trying in-graph preprocessing
-                  function.""", signature_name)
-
-          if not input_specs:
-            input_specs = get_input_specs(model, signature_name, required) or {}
-            # If input_specs exist then try to filter the inputs by the input
-            # names (unlike estimators, keras does not accept unknown inputs).
-            if input_specs:
-              inputs = get_inputs(features, input_specs)
-          if not inputs:
-            # Assume serialized examples
-            assert serialized_examples is not None, 'Raw examples not found.'
-            inputs = serialized_examples
-            # If a signature name was not provided, default to using the serving
-            # signature since parsing normally will be done outside model.
-            if not signature_name:
-              signature_name = get_default_signature_name_from_model(model)
-
-          signature = signature or get_callable(model, signature_name, required)
-          if signature is None:
-            if not required:
-              continue
-            raise ValueError('Unable to find %s function needed to update %s' %
-                             (signature_name, extracts_key))
+      signature_names = self._signature_names
+      for signature_name in (
+          signature_names[model_name] or self._default_signature_names
+      ):
+        signature = None
+        input_specs = None
+        inputs = None
+        positional_inputs = False
+        required = bool(signature_names[model_name])
+        if signature_name and '@' in signature_name:
           try:
-            if isinstance(inputs, dict):
-              if hasattr(signature, 'structured_input_signature'):
-                outputs = signature(**inputs)
-              elif positional_inputs:
-                outputs = signature(*inputs.values())
-              else:
-                outputs = signature(inputs)
+            signature_name, input_names = get_preprocessing_signature(
+                signature_name
+            )
+            signature = getattr(preprocessing_functions, signature_name)
+            input_specs = {
+                input_name: type_spec
+                for input_name, type_spec in zip(
+                    input_names, signature.input_signature
+                )
+            }
+            inputs = get_inputs(features, input_specs)
+            positional_inputs = True
+          except AttributeError:
+            logging.warning(
+                """Failed to get signature of %s or as TFMA
+                preprocessing function. Trying in-graph preprocessing
+                function.""",
+                signature_name,
+            )
+
+        if not input_specs:
+          input_specs = get_input_specs(model, signature_name, required) or {}
+          # If input_specs exist then try to filter the inputs by the input
+          # names (unlike estimators, keras does not accept unknown inputs).
+          if input_specs:
+            inputs = get_inputs(features, input_specs)
+        if not inputs:
+          # Assume serialized examples
+          assert serialized_examples is not None, 'Raw examples not found.'
+          inputs = serialized_examples
+          # If a signature name was not provided, default to using the serving
+          # signature since parsing normally will be done outside model.
+          if not signature_name:
+            signature_name = get_default_signature_name_from_model(model)
+
+        signature = signature or get_callable(model, signature_name, required)
+        if signature is None:
+          if not required:
+            continue
+          raise ValueError(
+              'Unable to find %s function needed to update %s'
+              % (signature_name, self._output_keypath)
+          )
+        try:
+          if isinstance(inputs, dict):
+            if hasattr(signature, 'structured_input_signature'):
+              outputs = signature(**inputs)
+            elif positional_inputs:
+              outputs = signature(*inputs.values())
             else:
-              outputs = signature(tf.constant(inputs, dtype=tf.string))
-          except (TypeError, tf.errors.InvalidArgumentError) as e:
-            raise ValueError(
-                """Fail to call signature func with signature_name: {}.
-                the inputs are:\n {}.
-                The input_specs are:\n {}.""".format(signature_name, inputs,
-                                                     input_specs)) from e
-
-          dense_outputs = {}
-          if isinstance(outputs, dict):
-            for k, v in outputs.items():
-              dense_outputs[k] = to_dense(v)
-              check_shape(dense_outputs[k], batch_size, key=k)
+              outputs = signature(inputs)
           else:
-            dense_outputs = to_dense(outputs)
-            check_shape(dense_outputs, batch_size)
+            outputs = signature(tf.constant(inputs, dtype=tf.string))
+        except (TypeError, tf.errors.InvalidArgumentError) as exc:
+          raise ValueError(
+              """Fail to call signature func with signature_name: {}.
+              the inputs are:\n {}.
+              The input_specs are:\n {}.""".format(
+                  signature_name, inputs, input_specs
+              )
+          ) from exc
 
-          if isinstance(dense_outputs, dict):
-            output = {
-                k: maybe_expand_dims(v.numpy())
-                for k, v in dense_outputs.items()
-            }
-          else:
-            output = {
-                signature_name: maybe_expand_dims(np.asarray(dense_outputs))
-            }
-          if result[extracts_key] is None:
-            result[extracts_key] = collections.defaultdict(dict)
-          result[extracts_key][model_name].update(output)
-    if isinstance(result[extracts_key], dict):
-      for model_name, output in result[extracts_key].items():
-        if not self._prefer_dict_outputs and len(output) == 1:
-          result[extracts_key][model_name] = list(output.values())[0]
-      # If only one model, the output is stored without using a dict
-      if len(self._eval_config.model_specs) == 1:
-        result[extracts_key] = list(result[extracts_key].values())[0]
+        outputs = _to_dense_outputs(outputs, batch_size, signature_name)
+        outputs_per_model[model_name].update(outputs)
+
+    for model_name, output in outputs_per_model.items():
+      if not self._prefer_dict_outputs and len(output) == 1:
+        outputs_per_model[model_name] = next(iter(output.values()))
+    # If only one model, the output is stored without using a dict
+    if len(outputs_per_model) == 1:
+      outputs_per_model = next(iter(outputs_per_model.values()))
+
+    result = copy.copy(batched_extract)
+    util.set_by_keys(result, self._output_keypath, outputs_per_model)
     return [result]
 
 

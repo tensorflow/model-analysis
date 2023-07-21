@@ -14,10 +14,11 @@
 """Predictions extractor for using TFX-BSL Bulk Inference."""
 
 import copy
-from typing import Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 import apache_beam as beam
 import tensorflow as tf
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import inference_base
@@ -90,6 +91,7 @@ def TfxBslPredictionsExtractor(
     eval_config: config_pb2.EvalConfig,
     eval_shared_model: types.MaybeMultipleEvalSharedModels,
     output_batch_size: Optional[int] = None,
+    output_keypath: Iterable[str] = (constants.PREDICTIONS_KEY,),
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions over a batch.
 
@@ -110,6 +112,8 @@ def TfxBslPredictionsExtractor(
     output_batch_size: Sets a static output batch size for bulk inference. Note:
       this only affects the rebatched output batch size to set inference batch
       size set ModelSpec.inference_batch_size.
+    output_keypath: A sequence of keys to be used as the path to traverse and
+      insert the outputs in the extract.
 
   Returns:
     Extractor for extracting predictions.
@@ -137,9 +141,12 @@ def TfxBslPredictionsExtractor(
     model_specs.append(model_spec)
 
   tfx_bsl_inference_ptransform = inference_base.RunInference(
-      inference_ptransform=TfxBslInferenceWrapper(model_specs,
-                                                  name_to_eval_shared_model),
-      output_batch_size=output_batch_size)
+      inference_ptransform=TfxBslInferenceWrapper(
+          model_specs, name_to_eval_shared_model
+      ),
+      output_batch_size=output_batch_size,
+      output_keypath=output_keypath,
+  )
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=predictions_extractor.PREDICTIONS_EXTRACTOR_STAGE_NAME,

@@ -14,6 +14,7 @@
 """Batched materialized predictions extractor."""
 
 import copy
+from typing import Sequence
 
 import apache_beam as beam
 from tensorflow_model_analysis import constants
@@ -21,12 +22,15 @@ from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
+from tensorflow_model_analysis.utils import util
 
 _MATERIALIZED_PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractMaterializedPredictions'
 
 
 def MaterializedPredictionsExtractor(
-    eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
+    eval_config: config_pb2.EvalConfig,
+    output_keypath: Sequence[str] = (constants.PREDICTIONS_KEY,),
+) -> extractor.Extractor:
   """Creates an extractor for rekeying preexisting predictions.
 
   The extractor's PTransform uses the config's ModelSpec.prediction_key(s)
@@ -36,6 +40,8 @@ def MaterializedPredictionsExtractor(
 
   Args:
     eval_config: Eval config.
+    output_keypath: A list of keys to be used as the path to traverse and insert
+      the outputs in the extract.
 
   Returns:
     Extractor for rekeying preexisting predictions.
@@ -43,7 +49,10 @@ def MaterializedPredictionsExtractor(
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_MATERIALIZED_PREDICTIONS_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractMaterializedPredictions(eval_config=eval_config))
+      ptransform=_ExtractMaterializedPredictions(
+          eval_config=eval_config, output_keypath=output_keypath
+      ),
+  )
 
 
 @beam.ptransform_fn
@@ -51,7 +60,9 @@ def MaterializedPredictionsExtractor(
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractMaterializedPredictions(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    eval_config: config_pb2.EvalConfig) -> beam.pvalue.PCollection:
+    eval_config: config_pb2.EvalConfig,
+    output_keypath: Sequence[str],
+) -> beam.pvalue.PCollection:
   """A PTransform that populates the predictions key in the extracts.
 
   Args:
@@ -59,6 +70,8 @@ def _ExtractMaterializedPredictions(  # pylint: disable=invalid-name
       tfma.FEATURES_KEY (if model inputs are named) or tfma.INPUTS_KEY (if model
       takes raw tf.Examples as input).
     eval_config: Eval config.
+    output_keypath: A list of keys that indicates the location to which the
+      predictions are inserted.
 
   Returns:
     PCollection of Extracts updated with the predictions.
@@ -72,7 +85,7 @@ def _ExtractMaterializedPredictions(  # pylint: disable=invalid-name
         list(eval_config.model_specs), 'prediction_key', 'prediction_keys',
         result)
     if predictions is not None:
-      result[constants.PREDICTIONS_KEY] = predictions
+      util.set_by_keys(result, list(output_keypath), predictions)
     return result
 
   return extracts | 'RekeyPredictions' >> beam.Map(rekey_predictions)

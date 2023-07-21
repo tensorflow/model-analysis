@@ -13,7 +13,7 @@
 # limitations under the License.
 """Batched predictions extractor for ModelSignaturesDoFn."""
 
-from typing import Optional
+from typing import List, Optional, Sequence
 
 from absl import logging
 import apache_beam as beam
@@ -30,7 +30,8 @@ PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractPredictions'
 
 def PredictionsExtractor(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
+    output_keypath: Sequence[str] = (constants.PREDICTIONS_KEY,),
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions over a batch.
 
@@ -49,6 +50,8 @@ def PredictionsExtractor(
     eval_shared_model: Shared model (single-model evaluation) or list of shared
       models (multi-model evaluation) or None (predictions obtained from
       features).
+    output_keypath: A sequence of keys to be used as the path to traverse and
+      insert the outputs in the extract.
 
   Returns:
     Extractor for extracting predictions.
@@ -60,8 +63,11 @@ def PredictionsExtractor(
         'deprecated and no longer supported. This will break in version 1.0. '
         'Please update your implementation to call '
         'MaterializedPredictionsExtractor directly.')
-    _, ptransform = materialized_predictions_extractor.MaterializedPredictionsExtractor(
-        eval_config)
+    _, ptransform = (
+        materialized_predictions_extractor.MaterializedPredictionsExtractor(
+            eval_config, output_keypath=output_keypath
+        )
+    )
     # Note we are changing the stage name here for backwards compatibility. Old
     # clients expect these code paths to have the same stage name. New clients
     # should never reference the private stage name.
@@ -71,16 +77,21 @@ def PredictionsExtractor(
   return extractor.Extractor(
       stage_name=PREDICTIONS_EXTRACTOR_STAGE_NAME,
       ptransform=_ModelSignaturesInferenceWrapper(  # pylint: disable=no-value-for-parameter
-          eval_config=eval_config,
-          eval_shared_model=eval_shared_model))
+          model_specs=list(eval_config.model_specs),
+          eval_shared_model=eval_shared_model,
+          output_keypath=output_keypath,
+      ),
+  )
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ModelSignaturesInferenceWrapper(
-    extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig,
-    eval_shared_model: types.MaybeMultipleEvalSharedModels
+    extracts: beam.pvalue.PCollection,
+    model_specs: List[config_pb2.ModelSpec],
+    eval_shared_model: types.MaybeMultipleEvalSharedModels,
+    output_keypath: Sequence[str],
 ) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to Extracts.
 
@@ -88,8 +99,11 @@ def _ModelSignaturesInferenceWrapper(
     extracts: PCollection of Extracts containing model inputs keyed by
       tfma.FEATURES_KEY (if model inputs are named) or tfma.INPUTS_KEY (if model
       takes raw tf.Examples as input).
-    eval_config: Eval config.
+    model_specs: Model specs each of which corresponds to each of the
+      eval_shared_models.
     eval_shared_model: Shared model parameters keyed by model name.
+    output_keypath: A sequence of keys to be used as the path to traverse and
+      insert the outputs in the extract.
 
   Returns:
     PCollection of Extracts updated with the predictions.
@@ -105,14 +119,16 @@ def _ModelSignaturesInferenceWrapper(
 
   name_to_eval_shared_model = {m.model_name: m for m in eval_shared_models}
   signature_names = {}
-  for model_spec in eval_config.model_specs:
-    model_name = '' if len(eval_config.model_specs) == 1 else model_spec.name
+  for model_spec in model_specs:
+    model_name = '' if len(model_specs) == 1 else model_spec.name
     signature_names[model_name] = [model_spec.signature_name]
 
-  return (extracts
-          | 'Inference' >> beam.ParDo(
-              model_util.ModelSignaturesDoFn(
-                  eval_config=eval_config,
-                  eval_shared_models=name_to_eval_shared_model,
-                  signature_names={constants.PREDICTIONS_KEY: signature_names},
-                  prefer_dict_outputs=False)))
+  return extracts | 'Inference' >> beam.ParDo(
+      model_util.ModelSignaturesDoFn(
+          model_specs=model_specs,
+          eval_shared_models=name_to_eval_shared_model,
+          output_keypath=output_keypath,
+          signature_names=signature_names,
+          prefer_dict_outputs=False,
+      )
+  )

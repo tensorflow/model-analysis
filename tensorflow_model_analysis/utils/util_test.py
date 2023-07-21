@@ -443,6 +443,38 @@ class UtilTest(tf.test.TestCase, parameterized.TestCase):
                              },
                          }, ['predictions', 'model', 'output']))
 
+  def testSetdefaultByKeypath_SingleKey(self):
+    data = {}
+    util.set_by_keys(data, ['labels'], 'a')
+    self.assertEqual({'labels': 'a'}, data)
+
+  def testSetdefaultByKeypath_SingleKeyCollision(self):
+    data = {'labels': 'b'}
+    util.set_by_keys(data, ['labels'], 'a')
+    self.assertEqual({'labels': 'a'}, data)
+
+  def testSetdefaultByKeypath_MultiKeys(self):
+    data = {'labels': {'model0': 0}}
+    util.set_by_keys(data, ['labels', 'model1'], 'a')
+    self.assertEqual({'labels': {'model1': 'a', 'model0': 0}}, data)
+
+  def testSetdefaultByKeypath_MultiKeysCollision(self):
+    data = {'predictions': {'modela': 1}}
+    util.set_by_keys(data, ['predictions', 'modela'], 'a')
+    self.assertEqual({'predictions': {'modela': 'a'}}, data)
+
+  def testSetdefaultByKeypath_KeyMismatchLevel(self):
+    data = {'labels': 'modela'}
+    with self.assertRaisesRegex(ValueError, 'a non-mapping object'):
+      util.set_by_keys(data, ['labels', 'model1'], 'a')
+
+  def testSetdefaultByKeypath_EmptyKeyWithValue(self):
+    data = {}
+    with self.assertRaisesRegex(
+        ValueError, 'Cannot set value when keypath is empty'
+    ):
+      util.set_by_keys(data, [], 'a')
+
   def testGetModelAndOutputNamesEmptyExtracts(self):
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     self.assertEmpty(

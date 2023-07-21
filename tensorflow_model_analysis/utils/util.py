@@ -491,6 +491,41 @@ def get_by_keys(
   return value
 
 
+def set_by_keys(
+    root: MutableMapping[str, Any],
+    keypath: Sequence[str],
+    value: Any,
+):
+  """Traverse by folloiwng the keypath and set the leaf value.
+
+  Args:
+    root: The root of the multi-level dict.
+    keypath: A sequence of keys for traversing the multi-level dict.
+    value: The value to be used to set the leaf following the keypath.
+
+  Returns:
+    None
+
+  Raises:
+    ValueError when setting a value with en empty keypath.
+    ValueError when inserting a key to a non-mapping object.
+  """
+  if not keypath:
+    raise ValueError(f'Cannot set value when keypath is empty: value={value}.')
+  visit = root
+  for i, key in enumerate(keypath):
+    if not isinstance(visit, MutableMapping):
+      raise ValueError(
+          f'Cannot set keys ({keypath}) on a non-mapping object: {visit}'
+      )
+    if i < len(keypath) - 1:
+      if key not in visit:
+        visit[key] = {}
+    else:
+      visit[key] = value
+    visit = visit[key]
+
+
 def _contains_keys(data: Mapping[str, Any], keys: Sequence[str]) -> bool:
   """Returns whether a possibly mult-level mapping contains a key path."""
   value = data

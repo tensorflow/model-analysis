@@ -762,13 +762,19 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
   )
   @unittest.skipIf(_TF_MAJOR_VERSION < 2,
                    'not all signatures supported for TF1')
-  def testModelSignaturesDoFn(self, save_as_keras, signature_names,
-                              default_signature_names, prefer_dict_outputs,
-                              use_schema, expected_num_outputs):
+  def testModelSignaturesDoFn(
+      self,
+      save_as_keras,
+      extract_key_and_signature_names,
+      default_signature_names,
+      prefer_dict_outputs,
+      use_schema,
+      expected_num_outputs,
+  ):
     export_path = self.createModelWithMultipleDenseInputs(save_as_keras)
     eval_shared_models = {}
     model_specs = []
-    for sigs in signature_names.values():
+    for sigs in extract_key_and_signature_names.values():
       for model_name in sigs:
         if model_name not in eval_shared_models:
           eval_shared_models[model_name] = self.createTestEvalSharedModel(
@@ -776,7 +782,6 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
               model_name=model_name,
               tags=[tf.saved_model.SERVING])
           model_specs.append(config_pb2.ModelSpec(name=model_name))
-    eval_config = config_pb2.EvalConfig(model_specs=model_specs)
     schema = self.createDenseInputsSchema() if use_schema else None
     tfx_io = tf_example_record.TFExampleBeamRecord(
         physical_format='text',
@@ -788,7 +793,10 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(input_1=3.0, input_2=4.0),
         self._makeExample(input_1=5.0, input_2=6.0),
     ]
-
+    assert len(extract_key_and_signature_names) == 1
+    extract_key, signature_names = next(
+        iter(extract_key_and_signature_names.items())
+    )
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
@@ -796,20 +804,25 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
           | 'ToExtracts' >> beam.Map(_record_batch_to_extracts)
-          | 'ModelSignatures' >> beam.ParDo(
+          | 'ModelSignatures'
+          >> beam.ParDo(
               model_util.ModelSignaturesDoFn(
-                  eval_config=eval_config,
+                  model_specs=model_specs,
                   eval_shared_models=eval_shared_models,
+                  output_keypath=[extract_key],
                   signature_names=signature_names,
                   default_signature_names=default_signature_names,
-                  prefer_dict_outputs=prefer_dict_outputs)))
+                  prefer_dict_outputs=prefer_dict_outputs,
+              )
+          )
+      )
 
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
         try:
           self.assertLen(got, 1)
-          for key in signature_names:
+          for key in extract_key_and_signature_names:
             self.assertIn(key, got[0])
             if prefer_dict_outputs:
               self.assertIsInstance(got[0][key], dict)
@@ -823,7 +836,8 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
 
   def testModelSignaturesDoFnError(self):
     export_path = self.createModelWithInvalidOutputShape()
-    signature_names = {constants.PREDICTIONS_KEY: {'': [None]}}
+    output_keypath = [constants.PREDICTIONS_KEY]
+    signature_names = {'': [None]}
     eval_shared_models = {
         '':
             self.createTestEvalSharedModel(
@@ -831,7 +845,6 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 tags=[tf.saved_model.SERVING])
     }
     model_specs = [config_pb2.ModelSpec()]
-    eval_config = config_pb2.EvalConfig(model_specs=model_specs)
     schema = self.createDenseInputsSchema()
     tfx_io = tf_example_record.TFExampleBeamRecord(
         physical_format='text',
@@ -853,13 +866,18 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
             | 'Create' >> beam.Create([e.SerializeToString() for e in examples])
             | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
             | 'ToExtracts' >> beam.Map(_record_batch_to_extracts)
-            | 'ModelSignatures' >> beam.ParDo(
+            | 'ModelSignatures'
+            >> beam.ParDo(
                 model_util.ModelSignaturesDoFn(
-                    eval_config=eval_config,
+                    model_specs=model_specs,
                     eval_shared_models=eval_shared_models,
+                    output_keypath=output_keypath,
                     signature_names=signature_names,
                     default_signature_names=None,
-                    prefer_dict_outputs=False)))
+                    prefer_dict_outputs=False,
+                )
+            )
+        )
 
   def testHasRubberStamp(self):
     # Model agnostic.

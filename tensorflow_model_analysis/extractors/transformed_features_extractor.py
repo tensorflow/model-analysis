@@ -84,13 +84,13 @@ def _ExtractTransformedFeatures(  # pylint: disable=invalid-name
     model_name = '' if len(eval_config.model_specs) == 1 else spec.name
     signature_names[model_name] = list(spec.preprocessing_function_names)
 
-  return (extracts
-          | 'Predict' >> beam.ParDo(
-              model_util.ModelSignaturesDoFn(
-                  eval_config=eval_config,
-                  eval_shared_models=eval_shared_models,
-                  signature_names={
-                      constants.TRANSFORMED_FEATURES_KEY: signature_names
-                  },
-                  default_signature_names=list(_DEFAULT_SIGNATURE_NAMES),
-                  prefer_dict_outputs=True)))
+  return extracts | 'Predict' >> beam.ParDo(
+      model_util.ModelSignaturesDoFn(
+          model_specs=eval_config.model_specs,
+          eval_shared_models=eval_shared_models,
+          output_keypath=(constants.TRANSFORMED_FEATURES_KEY,),
+          signature_names=signature_names,
+          default_signature_names=list(_DEFAULT_SIGNATURE_NAMES),
+          prefer_dict_outputs=True,
+      )
+  )
