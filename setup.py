@@ -252,7 +252,7 @@ class NPM(Command):
 def _make_extra_packages_tfjs():
   # Packages needed for tfjs.
   return [
-      'tensorflowjs>=3.6.0,<4',
+      'tensorflowjs>=4.5.0,<5',
   ]
 
 
@@ -299,7 +299,7 @@ setup_args = {
         'apache-beam[gcp]>=2.47,<3',
         'ipython>=7,<8',
         'ipywidgets>=7,<8',
-        'numpy~=1.22.0',
+        'numpy>=1.22.0',
         'pandas>=1.0,<2',
         'pillow>=9.4.0',
         'protobuf>=3.20.3,<5',
@@ -307,7 +307,7 @@ setup_args = {
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
         'attrs>=19.3.0,<22',
-        'tensorflow>=2.12,<3',
+        'tensorflow>=2.13,<3',
         'tensorflow-metadata'
         + select_constraint(
             default='>=1.13.1,<1.14.0',
