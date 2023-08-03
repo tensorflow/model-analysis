@@ -714,7 +714,13 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertMetricsAlmostEqual(eval_result_2.slicing_metrics,
                                   expected_result_2)
 
-  def testRunModelAnalysisWithModelAgnosticPredictions(self):
+  @parameterized.named_parameters(
+      ('no_model', False, None),
+      ('has_a_model', True, constants.MATERIALIZED_PREDICTION),
+  )
+  def testRunModelAnalysisWithExplicitModelAgnosticPredictions(
+      self, has_model, model_type
+  ):
     examples = [
         self._makeExample(
             age=3.0, language='english', label=1.0, prediction=0.9),
@@ -724,13 +730,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             age=4.0, language='english', label=1.0, prediction=0.7),
         self._makeExample(
             age=5.0, language='chinese', label=1.0, prediction=0.2)
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    model_specs = [
-        config_pb2.ModelSpec(
-            prediction_key='prediction',
-            label_key='label',
-            example_weight_key='age')
     ]
     metrics_specs = [
         config_pb2.MetricsSpec(
@@ -746,41 +745,56 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             example_weights=config_pb2.ExampleWeightOptions(weighted=True))
     ]
     slicing_specs = [config_pb2.SlicingSpec(feature_keys=['language'])]
+    model_spec = config_pb2.ModelSpec(
+        prediction_key='prediction',
+        label_key='label',
+        example_weight_key='age',
+    )
+    if model_type is not None:
+      model_spec.model_type = model_type
     eval_config = config_pb2.EvalConfig(
-        model_specs=model_specs,
+        model_specs=[model_spec],
         metrics_specs=metrics_specs,
-        slicing_specs=slicing_specs)
-    eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
-        data_location=data_location,
-        output_path=self._getTempDir())
+        slicing_specs=slicing_specs,
+    )
+    data_location = self._writeTFExamplesToTFRecords(examples)
+    if has_model:
+      model_location = self._exportEvalSavedModel(
+          linear_classifier.simple_linear_classifier
+      )
+      model = model_eval_lib.default_eval_shared_model(
+          eval_saved_model_path=model_location,
+          eval_config=eval_config,
+      )
+      eval_result = model_eval_lib.run_model_analysis(
+          eval_shared_model=model,
+          eval_config=eval_config,
+          data_location=data_location,
+          output_path=self._getTempDir(),
+      )
+    else:
+      eval_result = model_eval_lib.run_model_analysis(
+          eval_config=eval_config,
+          data_location=data_location,
+          output_path=self._getTempDir(),
+      )
     expected = {
         (('language', 'chinese'),): {
-            'binary_accuracy': {
-                'doubleValue': 0.375
-            },
-            'weighted_example_count': {
-                'doubleValue': 8.0
-            },
-            'example_count': {
-                'doubleValue': 2.0
-            },
+            'binary_accuracy': {'doubleValue': 0.375},
+            'weighted_example_count': {'doubleValue': 8.0},
+            'example_count': {'doubleValue': 2.0},
         },
         (('language', 'english'),): {
-            'binary_accuracy': {
-                'doubleValue': 1.0
-            },
-            'weighted_example_count': {
-                'doubleValue': 7.0
-            },
-            'example_count': {
-                'doubleValue': 2.0
-            },
-        }
+            'binary_accuracy': {'doubleValue': 1.0},
+            'weighted_example_count': {'doubleValue': 7.0},
+            'example_count': {'doubleValue': 2.0},
+        },
     }
     self.assertEqual(eval_result.data_location, data_location)
-    self.assertEqual(eval_result.config.slicing_specs[0],
-                     config_pb2.SlicingSpec(feature_keys=['language']))
+    self.assertEqual(
+        eval_result.config.slicing_specs[0],
+        config_pb2.SlicingSpec(feature_keys=['language']),
+    )
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
   @parameterized.named_parameters(

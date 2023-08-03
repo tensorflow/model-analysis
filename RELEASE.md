@@ -24,6 +24,9 @@
     eval_saved_model, allowing signature='eval' to now be used with other model
     types.
 
+*   Add "materialized_prediction" model type to allow users bypassing model
+    inference explicitly.
+
 ## Breaking Changes
 
 *   Depend on PIL for image related metrics.

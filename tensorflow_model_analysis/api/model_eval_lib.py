@@ -573,6 +573,18 @@ def default_extractors(  # pylint: disable=invalid-name
           eval_config=eval_config, materialize=materialize)
   ])
 
+  extract_features = features_extractor.FeaturesExtractor(
+      eval_config=eval_config, tensor_representations=tensor_representations
+  )
+  extract_labels = labels_extractor.LabelsExtractor(eval_config=eval_config)
+  extract_example_weights = example_weights_extractor.ExampleWeightsExtractor(
+      eval_config=eval_config
+  )
+  extract_materialized_predictions = (
+      materialized_predictions_extractor.MaterializedPredictionsExtractor(
+          eval_config=eval_config
+      )
+  )
   if eval_shared_model:
     model_types = _model_types(eval_shared_models)
     logging.info('eval_shared_models have model_types: %s', model_types)
@@ -582,21 +594,29 @@ def default_extractors(  # pylint: disable=invalid-name
           'either a custom_predict_extractor must be used or model type must '
           'be one of: {}. evalconfig={}'.format(
               str(constants.VALID_TF_MODEL_TYPES), eval_config))
-    if model_types == {constants.TF_LITE}:
+    if model_types == {constants.MATERIALIZED_PREDICTION}:
+      return [
+          extract_features,
+          extract_labels,
+          extract_example_weights,
+          extract_materialized_predictions,
+      ] + slicing_extractors
+    elif model_types == {constants.TF_LITE}:
       # TODO(b/163889779): Convert TFLite extractor to operate on batched
       # extracts. Then we can remove the input extractor.
       return [
-          features_extractor.FeaturesExtractor(
-              eval_config=eval_config,
-              tensor_representations=tensor_representations),
+          extract_features,
           transformed_features_extractor.TransformedFeaturesExtractor(
-              eval_config=eval_config, eval_shared_model=eval_shared_model),
-          labels_extractor.LabelsExtractor(eval_config=eval_config),
-          example_weights_extractor.ExampleWeightsExtractor(
-              eval_config=eval_config),
-          (custom_predict_extractor or
-           tflite_predict_extractor.TFLitePredictExtractor(
-               eval_config=eval_config, eval_shared_model=eval_shared_model))
+              eval_config=eval_config, eval_shared_model=eval_shared_model
+          ),
+          extract_labels,
+          extract_example_weights,
+          (
+              custom_predict_extractor
+              or tflite_predict_extractor.TFLitePredictExtractor(
+                  eval_config=eval_config, eval_shared_model=eval_shared_model
+              )
+          ),
       ] + slicing_extractors
     elif constants.TF_LITE in model_types:
       raise NotImplementedError(
@@ -605,15 +625,15 @@ def default_extractors(  # pylint: disable=invalid-name
 
     if model_types == {constants.TF_JS}:
       return [
-          features_extractor.FeaturesExtractor(
-              eval_config=eval_config,
-              tensor_representations=tensor_representations),
-          labels_extractor.LabelsExtractor(eval_config=eval_config),
-          example_weights_extractor.ExampleWeightsExtractor(
-              eval_config=eval_config),
-          (custom_predict_extractor or
-           tfjs_predict_extractor.TFJSPredictExtractor(
-               eval_config=eval_config, eval_shared_model=eval_shared_model))
+          extract_features,
+          extract_labels,
+          extract_example_weights,
+          (
+              custom_predict_extractor
+              or tfjs_predict_extractor.TFJSPredictExtractor(
+                  eval_config=eval_config, eval_shared_model=eval_shared_model
+              )
+          ),
       ] + slicing_extractors
     elif constants.TF_JS in model_types:
       raise NotImplementedError(
@@ -646,35 +666,29 @@ def default_extractors(  # pylint: disable=invalid-name
           'implemented: eval_config={}'.format(eval_config)
       )
     else:
-      extractors = [
-          features_extractor.FeaturesExtractor(
-              eval_config=eval_config,
-              tensor_representations=tensor_representations)
-      ]
+      extractors = [extract_features]
       if not custom_predict_extractor:
         extractors.append(
             transformed_features_extractor.TransformedFeaturesExtractor(
                 eval_config=eval_config, eval_shared_model=eval_shared_model))
       extractors.extend([
-          labels_extractor.LabelsExtractor(eval_config=eval_config),
-          example_weights_extractor.ExampleWeightsExtractor(
-              eval_config=eval_config),
-          (custom_predict_extractor or
-           predictions_extractor.PredictionsExtractor(
-               eval_config=eval_config, eval_shared_model=eval_shared_model)),
+          extract_labels,
+          extract_example_weights,
+          (
+              custom_predict_extractor
+              or predictions_extractor.PredictionsExtractor(
+                  eval_config=eval_config, eval_shared_model=eval_shared_model
+              )
+          ),
       ])
       extractors.extend(slicing_extractors)
       return extractors
   else:
     return [
-        features_extractor.FeaturesExtractor(
-            eval_config=eval_config,
-            tensor_representations=tensor_representations),
-        labels_extractor.LabelsExtractor(eval_config=eval_config),
-        example_weights_extractor.ExampleWeightsExtractor(
-            eval_config=eval_config),
-        materialized_predictions_extractor.MaterializedPredictionsExtractor(
-            eval_config),
+        extract_features,
+        extract_labels,
+        extract_example_weights,
+        extract_materialized_predictions,
     ] + slicing_extractors
 
 

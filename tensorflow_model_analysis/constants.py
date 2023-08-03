@@ -32,8 +32,16 @@ TF_KERAS = 'tf_keras'
 TF_GENERIC = 'tf_generic'
 TF_LITE = 'tf_lite'
 TF_JS = 'tf_js'
-VALID_TF_MODEL_TYPES = (TFMA_EVAL, TF_GENERIC, TF_ESTIMATOR, TF_KERAS, TF_LITE,
-                        TF_JS)
+MATERIALIZED_PREDICTION = 'materialized_prediction'
+VALID_TF_MODEL_TYPES = (
+    TFMA_EVAL,
+    TF_GENERIC,
+    TF_ESTIMATOR,
+    TF_KERAS,
+    TF_LITE,
+    TF_JS,
+    MATERIALIZED_PREDICTION,
+)
 
 # This constant is only used for telemetry
 MODEL_AGNOSTIC = 'model_agnostic'
