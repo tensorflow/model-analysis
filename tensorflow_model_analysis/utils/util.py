@@ -14,6 +14,7 @@
 """General utilities."""
 
 import collections
+import copy
 import inspect
 import sys
 import traceback
@@ -491,11 +492,11 @@ def get_by_keys(
   return value
 
 
-def set_by_keys(
+def copy_and_set_by_keys(
     root: MutableMapping[str, Any],
     keypath: Sequence[str],
     value: Any,
-):
+) -> MutableMapping[str, Any]:
   """Traverse by folloiwng the keypath and set the leaf value.
 
   Args:
@@ -504,7 +505,7 @@ def set_by_keys(
     value: The value to be used to set the leaf following the keypath.
 
   Returns:
-    None
+    Returning the root with key path copied and value inserted.
 
   Raises:
     ValueError when setting a value with en empty keypath.
@@ -512,6 +513,7 @@ def set_by_keys(
   """
   if not keypath:
     raise ValueError(f'Cannot set value when keypath is empty: value={value}.')
+  root = copy.copy(root)
   visit = root
   for i, key in enumerate(keypath):
     if not isinstance(visit, MutableMapping):
@@ -521,9 +523,12 @@ def set_by_keys(
     if i < len(keypath) - 1:
       if key not in visit:
         visit[key] = {}
+      else:
+        visit[key] = copy.copy(visit[key])
     else:
       visit[key] = value
     visit = visit[key]
+  return root
 
 
 def _contains_keys(data: Mapping[str, Any], keys: Sequence[str]) -> bool:

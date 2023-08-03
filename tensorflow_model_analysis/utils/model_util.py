@@ -14,7 +14,6 @@
 """Utils for working with models."""
 
 import collections
-import copy
 import importlib
 import os
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
@@ -1050,8 +1049,9 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
     if len(outputs_per_model) == 1:
       outputs_per_model = next(iter(outputs_per_model.values()))
 
-    result = copy.copy(batched_extract)
-    util.set_by_keys(result, self._output_keypath, outputs_per_model)
+    result = util.copy_and_set_by_keys(
+        batched_extract, self._output_keypath, outputs_per_model
+    )
     return [result]
 
 

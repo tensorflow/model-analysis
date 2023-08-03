@@ -13,7 +13,6 @@
 # limitations under the License.
 """Batched materialized predictions extractor."""
 
-import copy
 from typing import Sequence
 
 import apache_beam as beam
@@ -80,12 +79,17 @@ def _ExtractMaterializedPredictions(  # pylint: disable=invalid-name
   def rekey_predictions(  # pylint: disable=invalid-name
       batched_extracts: types.Extracts) -> types.Extracts:
     """Extract predictions from extracts containing features."""
-    result = copy.copy(batched_extracts)
     predictions = model_util.get_feature_values_for_model_spec_field(
-        list(eval_config.model_specs), 'prediction_key', 'prediction_keys',
-        result)
+        list(eval_config.model_specs),
+        'prediction_key',
+        'prediction_keys',
+        batched_extracts,
+    )
     if predictions is not None:
-      util.set_by_keys(result, list(output_keypath), predictions)
-    return result
+      return util.copy_and_set_by_keys(
+          batched_extracts, list(output_keypath), predictions
+      )
+    else:
+      return batched_extracts
 
   return extracts | 'RekeyPredictions' >> beam.Map(rekey_predictions)

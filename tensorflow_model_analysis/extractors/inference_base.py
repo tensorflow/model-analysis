@@ -13,7 +13,6 @@
 # limitations under the License.
 """Base inference implementation updates extracts with inference results."""
 
-import copy
 from typing import Dict, Optional, Sequence, Tuple, Union
 
 from absl import logging
@@ -176,7 +175,6 @@ def _insert_predictions_into_extracts(
     prediction logs and a single value if there is only one prediction log.
   """
   extracts, model_names_to_prediction_logs = inference_tuple
-  extracts = copy.copy(extracts)
   model_name_to_tensors = {
       name: _parse_prediction_log_to_tensor_value(log)
       for name, log in model_names_to_prediction_logs.items()
@@ -186,12 +184,13 @@ def _insert_predictions_into_extracts(
   # is in line with the general TFMA pattern of not storing one-item
   # dictionaries.
   if len(model_name_to_tensors) == 1:
-    util.set_by_keys(
+    return util.copy_and_set_by_keys(
         extracts, output_keypath, next(iter(model_name_to_tensors.values()))
     )
   else:
-    util.set_by_keys(extracts, output_keypath, model_name_to_tensors)
-  return extracts
+    return util.copy_and_set_by_keys(
+        extracts, output_keypath, model_name_to_tensors
+    )
 
 
 @beam.ptransform_fn
