@@ -245,9 +245,6 @@ class CounterfactualPredictionsExtactorTest(
                        f'expected:{expected_predictions}'))
           self.assertNotIn(
               counterfactual_predictions_extractor._TEMP_ORIG_INPUT_KEY, got[0])
-          self.assertNotIn(
-              counterfactual_predictions_extractor._TEMP_PREV_PREDICTIONS_KEY,
-              got[0])
         except AssertionError as err:
           raise util.BeamAssertException(err)
 

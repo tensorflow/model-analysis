@@ -13,7 +13,7 @@
 # limitations under the License.
 """Counterfactual predictions extractor."""
 
-from typing import Dict, Iterable, Mapping, Optional, Sequence
+from typing import Dict, Iterable, Mapping, Optional
 
 import apache_beam as beam
 import numpy as np
@@ -30,11 +30,6 @@ _COUNTERFACTUAL_PREDICTIONS_EXTRACTOR_NAME = 'CounterfactualPredictionsExtractor
 # The extracts key under which the non-CF INPUT_KEY value is temporarily stored,
 # when invoking one or more PredictionsExtractors on modified inputs.
 _TEMP_ORIG_INPUT_KEY = 'non_counterfactual_input'
-# The extracts key under which the accumulated PREDICTIONS_KEY value is
-# temporarily stored, when invoking a PredictionsExtractor more than once. This
-# is necessary because the PredictionsExtractor clobbers incoming values under
-# the PREDICITION_KEY.
-_TEMP_PREV_PREDICTIONS_KEY = 'counterfactual_prev_predictions'
 CounterfactualConfig = Dict[str, str]
 
 
@@ -92,26 +87,33 @@ def CounterfactualPredictionsExtractor(  # pylint: disable=invalid-name
       # TODO(b/258850519): Refactor default_extractors logic to expose new api
       # for constructing the default predictions extractor and call it here.
       predictions_ptransform = predictions_extractor.PredictionsExtractor(
-          eval_shared_model=model, eval_config=cf_eval_config).ptransform
+          eval_shared_model=model,
+          eval_config=cf_eval_config,
+          output_keypath=(constants.PREDICTIONS_KEY, model.model_name),
+      ).ptransform
       cf_ptransforms[model.model_name] = _ExtractCounterfactualPredictions(  # pylint: disable=no-value-for-parameter
-          model_name=model.model_name,
           config=cf_config,
           predictions_ptransform=predictions_ptransform)
     else:
       non_cf_models.append(model)
   non_cf_eval_config = _filter_model_specs(eval_config, non_cf_models)
   if non_cf_models:
+    output_keypath = (constants.PREDICTIONS_KEY,)
+    if len(non_cf_models) == 1:
+      output_keypath = output_keypath + (non_cf_models[0].model_name,)
     non_cf_ptransform = predictions_extractor.PredictionsExtractor(
         eval_shared_model=non_cf_models,
-        eval_config=non_cf_eval_config).ptransform
+        eval_config=non_cf_eval_config,
+        output_keypath=output_keypath,
+    ).ptransform
   else:
     non_cf_ptransform = None
   return extractor.Extractor(
       stage_name=_COUNTERFACTUAL_PREDICTIONS_EXTRACTOR_NAME,
       ptransform=_ExtractPredictions(  # pylint: disable=no-value-for-parameter
-          cf_ptransforms=cf_ptransforms,
-          non_cf_ptransform=non_cf_ptransform,
-          non_cf_model_names=[model.model_name for model in non_cf_models]))
+          cf_ptransforms=cf_ptransforms, non_cf_ptransform=non_cf_ptransform
+      ),
+  )
 
 
 def _validate_and_update_models_and_configs(
@@ -216,18 +218,10 @@ def _cf_preprocess(
     cf_inputs.append(cf_example.SerializeToString())
   cf_inputs = np.array(cf_inputs, dtype=object)
   result[constants.INPUT_KEY] = cf_inputs
-  # We stash pre-existing predictions because most predictions extractors
-  # overwrite rather than update any existing value under PREDICTIONS_KEY.
-  if constants.PREDICTIONS_KEY in result:
-    result[_TEMP_PREV_PREDICTIONS_KEY] = result[constants.PREDICTIONS_KEY]
-    del result[constants.PREDICTIONS_KEY]
   return result
 
 
-def _cf_postprocess(
-    extracts: types.Extracts,
-    model_name: str,
-) -> types.Extracts:
+def _cf_postprocess(extracts: types.Extracts) -> types.Extracts:
   """Postprocesses the result of applying a CF prediction ptransform.
 
   This method takes in an Extracts instance that has been prepocessed by
@@ -237,49 +231,30 @@ def _cf_postprocess(
   Args:
     extracts: An Extracts instance which has been preprocessed by _preprocess_cf
       and gone through a prediction PTransform.
-    model_name: The name of the model being post-processed. This is used to key
-      the CF predictions by a model name before merging with previous
-      predictions.
 
   Returns:
     An Extracts instance which appears to have been produced by a standard
     predictions PTransform.
   """
   extracts = extracts.copy()
-  if _TEMP_PREV_PREDICTIONS_KEY in extracts:
-    prev_predictions = extracts[_TEMP_PREV_PREDICTIONS_KEY]
-    del extracts[_TEMP_PREV_PREDICTIONS_KEY]
-  else:
-    prev_predictions = {}
-  cf_predictions = {model_name: extracts[constants.PREDICTIONS_KEY]}
-  prev_predictions.update(cf_predictions)
-  extracts[constants.PREDICTIONS_KEY] = prev_predictions
   extracts[constants.INPUT_KEY] = extracts[_TEMP_ORIG_INPUT_KEY]
   del extracts[_TEMP_ORIG_INPUT_KEY]
   return extracts
 
 
-def _key_predictions_by_model_name(
-    extracts: types.Extracts, model_names: Sequence[str]) -> types.Extracts:
-  if len(model_names) == 1:
-    extracts[constants.PREDICTIONS_KEY] = {
-        model_names[0]: extracts[constants.PREDICTIONS_KEY]
-    }
-  return extracts
-
-
 @beam.ptransform_fn
 def _ExtractCounterfactualPredictions(  # pylint: disable=invalid-name
-    extracts: beam.PCollection[types.Extracts], model_name: str,
+    extracts: beam.PCollection[types.Extracts],
     config: CounterfactualConfig,
-    predictions_ptransform: beam.PTransform) -> beam.PCollection[
-        types.Extracts]:
+    predictions_ptransform: beam.PTransform,
+) -> beam.PCollection[types.Extracts]:
   """Computes counterfactual predictions for a single model."""
-  return (extracts
-          | 'PreprocessInputs' >> beam.Map(_cf_preprocess, config=config)
-          | 'Predict' >> predictions_ptransform
-          | 'PostProcessPredictions' >> beam.Map(
-              _cf_postprocess, model_name=model_name))
+  return (
+      extracts
+      | 'PreprocessInputs' >> beam.Map(_cf_preprocess, config=config)
+      | 'Predict' >> predictions_ptransform
+      | 'PostProcessPredictions' >> beam.Map(_cf_postprocess)
+  )
 
 
 @beam.ptransform_fn
@@ -287,7 +262,7 @@ def _ExtractPredictions(  # pylint: disable=invalid-name
     extracts: beam.PCollection[types.Extracts],
     cf_ptransforms: Dict[str, beam.PTransform],
     non_cf_ptransform: Optional[beam.PTransform],
-    non_cf_model_names: Sequence[str]) -> beam.PCollection[types.Extracts]:
+) -> beam.PCollection[types.Extracts]:
   """Applies both CF and non-CF prediction ptransforms and merges results.
 
   Args:
@@ -296,22 +271,13 @@ def _ExtractPredictions(  # pylint: disable=invalid-name
       _ExtractCounterfactualPredictions ptransforms
     non_cf_ptransform: Optionally, a ptransform responsible for computing the
       non-counterfactual predictions.
-    non_cf_model_names: The names of the models for which predictions will be
-      generated by the non_cf_ptransform. This is only used to restore a model
-      to the result of the the non_cf_ptransform in the event that only a single
-      model was provided, in which case extracts[constants.PREDICTIONS_KEY] will
-      either be a single tensor, or a dict of per-output tensors.
 
   Returns:
     A PCollection of extracts containing merged predictions from both
     counterfactual and non-counterfactual models.
   """
   if non_cf_ptransform:
-    extracts = (
-        extracts
-        | 'PredictNonCF' >> non_cf_ptransform
-        | 'KeyNonCFPredictionsByModelName' >> beam.Map(
-            _key_predictions_by_model_name, model_names=non_cf_model_names))
+    extracts = extracts | 'PredictNonCF' >> non_cf_ptransform
   for model_name, cf_ptransform in cf_ptransforms.items():
     extracts = extracts | f'PredictCF[{model_name}]' >> cf_ptransform
   return extracts
