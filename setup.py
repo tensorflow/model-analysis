@@ -310,14 +310,14 @@ setup_args = {
         'tensorflow>=2.13,<3',
         'tensorflow-metadata'
         + select_constraint(
-            default='>=1.13.1,<1.14.0',
-            nightly='>=1.14.0.dev',
+            default='>=1.14.0,<1.15.0',
+            nightly='>=1.15.0.dev',
             git_master='@git+https://github.com/tensorflow/metadata@master',
         ),
         'tfx-bsl'
         + select_constraint(
-            default='>=1.13.0,<1.14.0',
-            nightly='>=1.14.0.dev',
+            default='>=1.14.0,<1.15.0',
+            nightly='>=1.15.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master',
         ),
     ],
@@ -346,9 +346,9 @@ setup_args = {
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Mathematics',

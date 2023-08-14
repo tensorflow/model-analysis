@@ -209,7 +209,8 @@ combinations may also work.
 
 |tensorflow-model-analysis                                                            |apache-beam[gcp]|pyarrow   |tensorflow         |tensorflow-metadata |tfx-bsl   |
 |------------------------------------------------------------------------------------ |----------------|----------|-------------------|--------------------|----------|
-|[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.40.0         | 6.0.0    | nightly (2.x)     | 1.13.1             | 1.13.0   |
+|[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.47.0         | 10.0.0   | nightly (2.x)     | 1.14.0             | 1.14.0   |
+|[0.45.0](https://github.com/tensorflow/model-analysis/blob/v0.45.0/RELEASE.md)       | 2.47.0         | 10.0.0   | 2.13              | 1.14.0             | 1.14.0   |
 |[0.44.0](https://github.com/tensorflow/model-analysis/blob/v0.44.0/RELEASE.md)       | 2.40.0         | 6.0.0    | 2.12              | 1.13.1             | 1.13.0   |
 |[0.43.0](https://github.com/tensorflow/model-analysis/blob/v0.43.0/RELEASE.md)       | 2.40.0         | 6.0.0    | 2.11              | 1.12.0             | 1.12.0   |
 |[0.42.0](https://github.com/tensorflow/model-analysis/blob/v0.42.0/RELEASE.md)       | 2.40.0         | 6.0.0    | 1.15.5 / 2.10     | 1.11.0             | 1.11.1   |
