@@ -145,19 +145,28 @@ class VarLenTensorValue(
       vertically stacked dense rows. The dense_shape attribute on the result
       will be (num_rows, max_row_len).
     """
+    rows = []
     index_arrays = []
     max_row_len = 0
     num_rows = 0
     for i, row in enumerate(dense_rows):
       num_rows += 1
-      max_row_len = max(max_row_len, len(row))
       if row.size:
-        if row.ndim != 1:
-          raise ValueError('Each non-empty dense row should be 1D but found '
-                           f'row with shape {row.shape}.')
+        if row.ndim <= 1:
+          # Add a dimension for unsized numpy array. This will solve the problem
+          # where scalar numpy arrays like np.array(None), np.array(0) can not
+          # be merged with other numpy arrays.
+          row = row.reshape(-1)
+          rows.append(row)
+        else:
+          raise ValueError(
+              'Each non-empty dense row should be 1D or scalar but'
+              f' found row with shape {row.shape}.'
+          )
         index_arrays.append(np.array([[i, j] for j in range(len(row))]))
+      max_row_len = max(max_row_len, row.size)
     if index_arrays:
-      values = np.concatenate(dense_rows, axis=0)
+      values = np.concatenate(rows, axis=0)
       indices = np.concatenate(index_arrays, axis=0)
     else:
       # empty case

@@ -6,7 +6,7 @@
 
 ## Bug fixes and other Changes
 
-## Breaking Changes
+*   Fix the bug about batching unsized numpy arrays. ## Breaking Changes
 
 ## Deprecations
 

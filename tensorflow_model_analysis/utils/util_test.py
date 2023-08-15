@@ -834,159 +834,189 @@ class UtilTest(tf.test.TestCase, parameterized.TestCase):
     extracts = [
         {
             'features': {
-                'feature_1':
-                    np.array([1.0, 2.0]),
-                'feature_2':
-                    np.array([1.0, 2.0]),
-                'feature_3':
-                    types.SparseTensorValue(
-                        values=np.array([1]),
-                        indices=np.array([[0, 1]]),
-                        dense_shape=np.array([1, 3])),
-                'feature_4':
-                    types.RaggedTensorValue(
-                        values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
-                'feature_5':
-                    types.SparseTensorValue(
-                        values=np.array([1]),
-                        indices=np.array([[0, 1]]),
-                        dense_shape=np.array([1, 3])),
-                'feature_6':
-                    np.array([]),
+                'feature_1': np.array([1.0, 2.0]),
+                'feature_2': np.array([1.0, 2.0]),
+                'feature_3': types.SparseTensorValue(
+                    values=np.array([1]),
+                    indices=np.array([[0, 1]]),
+                    dense_shape=np.array([1, 3]),
+                ),
+                'feature_4': types.RaggedTensorValue(
+                    values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
+                    nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])],
+                ),
+                'feature_5': types.SparseTensorValue(
+                    values=np.array([1]),
+                    indices=np.array([[0, 1]]),
+                    dense_shape=np.array([1, 3]),
+                ),
+                'feature_6': np.array([]),
+                'feature_7': np.array([]),
             },
-            'transformed_features':
-                None,
-            'labels':
-                np.array([1.0]),
-            'example_weights':
-                np.array(0.0),
+            'transformed_features': None,
+            'labels': np.array([1.0]),
+            'example_weights': np.array(0.0),
             'predictions': {
                 'model1': np.array([0.1, 0.2]),
-                'model2': np.array([0.1, 0.2])
+                'model2': np.array([0.1, 0.2]),
             },
-            '_slice_key_types':
-                slicer_lib.slice_keys_to_numpy_array([('gender', 'm'), ()])
+            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array(
+                [('gender', 'm'), ()]
+            ),
         },
         {
             'features': {
-                'feature_1':
-                    np.array([3.0, 4.0]),
-                'feature_2':
-                    np.array([3.0, 4.0]),
-                'feature_3':
-                    types.SparseTensorValue(
-                        values=np.array([2]),
-                        indices=np.array([[0, 2]]),
-                        dense_shape=np.array([1, 3])),
-                'feature_4':
-                    types.RaggedTensorValue(
-                        values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
-                'feature_5':
-                    types.SparseTensorValue(
-                        values=np.array([2]),
-                        indices=np.array([[0, 2]]),
-                        dense_shape=np.array([1, 4])),
-                'feature_6':
-                    np.array([]),
+                'feature_1': np.array([3.0, 4.0]),
+                'feature_2': np.array([3.0, 4.0]),
+                'feature_3': types.SparseTensorValue(
+                    values=np.array([2]),
+                    indices=np.array([[0, 2]]),
+                    dense_shape=np.array([1, 3]),
+                ),
+                'feature_4': types.RaggedTensorValue(
+                    values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
+                    nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])],
+                ),
+                'feature_5': types.SparseTensorValue(
+                    values=np.array([2]),
+                    indices=np.array([[0, 2]]),
+                    dense_shape=np.array([1, 4]),
+                ),
+                'feature_6': np.array([]),
+                'feature_7': np.array(None, dtype=object),
             },
             'transformed_features': None,
             'labels': np.array([0.0]),
             'example_weights': np.array(0.5),
             'predictions': {
                 'model1': np.array([0.3, 0.4]),
-                'model2': np.array([0.3, 0.4])
+                'model2': np.array([0.3, 0.4]),
             },
-            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()])
+            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()]),
         },
         {
             'features': {
-                'feature_1':
-                    np.array([5.0, 6.0]),
-                'feature_2':
-                    np.array([5.0, 6.0]),
-                'feature_3':
-                    types.SparseTensorValue(
-                        values=np.array([3]),
-                        indices=np.array([[0, 0]]),
-                        dense_shape=np.array([1, 3])),
-                'feature_4':
-                    types.RaggedTensorValue(
-                        values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
-                'feature_5':
-                    types.SparseTensorValue(
-                        values=np.array([3]),
-                        indices=np.array([[0, 3]]),
-                        dense_shape=np.array([1, 5])),
-                'feature_6':
-                    np.array([2.0, 3.0]),
+                'feature_1': np.array([5.0, 6.0]),
+                'feature_2': np.array([5.0, 6.0]),
+                'feature_3': types.SparseTensorValue(
+                    values=np.array([3]),
+                    indices=np.array([[0, 0]]),
+                    dense_shape=np.array([1, 3]),
+                ),
+                'feature_4': types.RaggedTensorValue(
+                    values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
+                    nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])],
+                ),
+                'feature_5': types.SparseTensorValue(
+                    values=np.array([3]),
+                    indices=np.array([[0, 3]]),
+                    dense_shape=np.array([1, 5]),
+                ),
+                'feature_6': np.array([2.0, 3.0]),
+                'feature_7': np.array(None, dtype=object),
             },
             'transformed_features': None,
             'labels': np.array([1.0]),
             'example_weights': np.array(1.0),
             'predictions': {
                 'model1': np.array([0.5, 0.6]),
-                'model2': np.array([0.5, 0.6])
+                'model2': np.array([0.5, 0.6]),
             },
-            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()])
+            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()]),
         },
     ]
 
     expected = {
         'features': {
-            'feature_1':
-                np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
-            'feature_2':
-                np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
-            'feature_3':
-                types.SparseTensorValue(
-                    values=np.array([1, 2, 3]),
-                    indices=np.array([[0, 0, 1], [1, 0, 2], [2, 0, 0]]),
-                    dense_shape=np.array([3, 1, 3])),
-            'feature_4':
-                types.RaggedTensorValue(
-                    values=np.array([
-                        3, 1, 4, 1, 5, 9, 2, 6, 3, 1, 4, 1, 5, 9, 2, 6, 3, 1, 4,
-                        1, 5, 9, 2, 6
+            'feature_1': np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
+            'feature_2': np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
+            'feature_3': types.SparseTensorValue(
+                values=np.array([1, 2, 3]),
+                indices=np.array([[0, 0, 1], [1, 0, 2], [2, 0, 0]]),
+                dense_shape=np.array([3, 1, 3]),
+            ),
+            'feature_4': types.RaggedTensorValue(
+                values=np.array([
+                    3,
+                    1,
+                    4,
+                    1,
+                    5,
+                    9,
+                    2,
+                    6,
+                    3,
+                    1,
+                    4,
+                    1,
+                    5,
+                    9,
+                    2,
+                    6,
+                    3,
+                    1,
+                    4,
+                    1,
+                    5,
+                    9,
+                    2,
+                    6,
+                ]),
+                nested_row_splits=[
+                    np.array([0, 5, 10, 15]),
+                    np.array([
+                        0,
+                        4,
+                        4,
+                        7,
+                        8,
+                        8,
+                        12,
+                        12,
+                        15,
+                        16,
+                        16,
+                        20,
+                        20,
+                        23,
+                        24,
+                        24,
                     ]),
-                    nested_row_splits=[
-                        np.array([0, 5, 10, 15]),
-                        np.array([
-                            0, 4, 4, 7, 8, 8, 12, 12, 15, 16, 16, 20, 20, 23,
-                            24, 24
-                        ])
-                    ]),
-            'feature_5':
-                types.SparseTensorValue(
-                    values=np.array([1, 2, 3]),
-                    indices=np.array([[0, 0, 1], [1, 0, 2], [2, 0, 3]]),
-                    dense_shape=np.array([3, 1, 5])),
-            'feature_6':
-                types.VarLenTensorValue(
-                    values=np.array([2.0, 3.0]),
-                    indices=np.array([[2, 0], [2, 1]]),
-                    dense_shape=np.array([3, 2]))
+                ],
+            ),
+            'feature_5': types.SparseTensorValue(
+                values=np.array([1, 2, 3]),
+                indices=np.array([[0, 0, 1], [1, 0, 2], [2, 0, 3]]),
+                dense_shape=np.array([3, 1, 5]),
+            ),
+            'feature_6': types.VarLenTensorValue(
+                values=np.array([2.0, 3.0]),
+                indices=np.array([[2, 0], [2, 1]]),
+                dense_shape=np.array([3, 2]),
+            ),
+            'feature_7': types.VarLenTensorValue(
+                values=np.array([None, None]),
+                indices=np.array([[1, 0], [2, 0]]),
+                dense_shape=np.array([3, 1]),
+            ),
         },
-        'transformed_features':
-            None,
-        'labels':
-            np.array([1.0, 0.0, 1.0]),
-        'example_weights':
-            np.array([0.0, 0.5, 1.0]),
+        'transformed_features': None,
+        'labels': np.array([1.0, 0.0, 1.0]),
+        'example_weights': np.array([0.0, 0.5, 1.0]),
         'predictions': {
             'model1': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]),
-            'model2': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
+            'model2': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]),
         },
-        '_slice_key_types':
-            types.VarLenTensorValue(
-                values=slicer_lib.slice_keys_to_numpy_array([('gender', 'm'),
-                                                             (), (), ()]),
-                indices=np.array([[0, 0], [0, 1], [1, 0], [2, 0]]),
-                dense_shape=np.array([3, 2]))
+        '_slice_key_types': types.VarLenTensorValue(
+            values=slicer_lib.slice_keys_to_numpy_array(
+                [('gender', 'm'), (), (), ()]
+            ),
+            indices=np.array([[0, 0], [0, 1], [1, 0], [2, 0]]),
+            dense_shape=np.array([3, 2]),
+        ),
     }
-    np.testing.assert_equal(util.merge_extracts(extracts), expected)
+    merged_extracts = util.merge_extracts(extracts)
+    np.testing.assert_equal(merged_extracts, expected)
 
   def testMergeExtractsFlattensTwoDimmVector(self):
     extracts = [{
@@ -1003,190 +1033,229 @@ class UtilTest(tf.test.TestCase, parameterized.TestCase):
     np.testing.assert_equal(util.merge_extracts(extracts), expected)
 
   def testMergeExtractsMaintainsTwoDimmVectorResult(self):
-    extracts = [{
-        'predictions': np.array([0.1], dtype=np.float64),
-    }, {
-        'predictions': np.array([0.3], dtype=np.float64),
-    }, {
-        'predictions': np.array([0.5], dtype=np.float64),
-    }]
+    extracts = [
+        {
+            'predictions': np.array([0.1], dtype=np.float64),
+        },
+        {
+            'predictions': np.array([0.3], dtype=np.float64),
+        },
+        {
+            'predictions': np.array([0.5], dtype=np.float64),
+        },
+    ]
 
     expected = {
         'predictions': np.array([[0.1], [0.3], [0.5]], dtype=np.float64),
     }
     np.testing.assert_equal(
-        util.merge_extracts(extracts, squeeze_two_dim_vector=False), expected)
+        util.merge_extracts(extracts, squeeze_two_dim_vector=False), expected
+    )
+
+  def testMergeExtractsWithUnsizedNumpyArray(self):
+    extracts = [
+        {
+            'predictions': np.array(0.1, dtype=np.float64),
+        },
+        {
+            'predictions': np.array([0.3], dtype=np.float64),
+        },
+        {
+            'predictions': np.array(None, dtype=object),
+        },
+    ]
+
+    expected = {
+        'predictions': types.VarLenTensorValue(
+            values=np.array([0.1, 0.3, None]),
+            indices=np.array([[0, 0], [1, 0], [2, 0]]),
+            dense_shape=np.array([3, 1]),
+        )
+    }
+    merged_extracts = util.merge_extracts(extracts)
+    np.testing.assert_equal(merged_extracts, expected)
 
   def testSplitExtracts(self):
     extracts = {
         'features': {
-            'feature_1':
-                np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
-            'feature_2':
-                np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
-            'feature_3':
-                types.SparseTensorValue(
-                    values=np.array([1, 2, 3]),
-                    indices=np.array([[0, 0, 1], [1, 0, 2], [2, 0, 0]]),
-                    dense_shape=np.array([3, 1, 3])),
-            'feature_4':
-                types.RaggedTensorValue(
-                    values=np.array([
-                        3, 1, 4, 1, 5, 9, 2, 6, 3, 1, 4, 1, 5, 9, 2, 6, 3, 1, 4,
-                        1, 5, 9, 2, 6
+            'feature_1': np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
+            'feature_2': np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
+            'feature_3': types.SparseTensorValue(
+                values=np.array([1, 2, 3]),
+                indices=np.array([[0, 0, 1], [1, 0, 2], [2, 0, 0]]),
+                dense_shape=np.array([3, 1, 3]),
+            ),
+            'feature_4': types.RaggedTensorValue(
+                values=np.array([
+                    3,
+                    1,
+                    4,
+                    1,
+                    5,
+                    9,
+                    2,
+                    6,
+                    3,
+                    1,
+                    4,
+                    1,
+                    5,
+                    9,
+                    2,
+                    6,
+                    3,
+                    1,
+                    4,
+                    1,
+                    5,
+                    9,
+                    2,
+                    6,
+                ]),
+                nested_row_splits=[
+                    np.array([0, 5, 10, 15]),
+                    np.array([
+                        0,
+                        4,
+                        4,
+                        7,
+                        8,
+                        8,
+                        12,
+                        12,
+                        15,
+                        16,
+                        16,
+                        20,
+                        20,
+                        23,
+                        24,
+                        24,
                     ]),
-                    nested_row_splits=[
-                        np.array([0, 5, 10, 15]),
-                        np.array([
-                            0, 4, 4, 7, 8, 8, 12, 12, 15, 16, 16, 20, 20, 23,
-                            24, 24
-                        ])
-                    ]),
-            'feature_5':
-                types.VarLenTensorValue(
-                    values=np.array([1, 2, 3, 3, 3]),
-                    indices=np.array([[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]]),
-                    dense_shape=np.array([3, 3])),
-            'feature_6':
-                types.VarLenTensorValue(
-                    values=np.array([1, 3, 3, 3]),
-                    indices=np.array([[0, 0], [2, 0], [2, 1], [2, 2]]),
-                    dense_shape=np.array([3, 3])),
+                ],
+            ),
+            'feature_5': types.VarLenTensorValue(
+                values=np.array([1, 2, 3, 3, 3]),
+                indices=np.array([[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]]),
+                dense_shape=np.array([3, 3]),
+            ),
+            'feature_6': types.VarLenTensorValue(
+                values=np.array([1, 3, 3, 3]),
+                indices=np.array([[0, 0], [2, 0], [2, 1], [2, 2]]),
+                dense_shape=np.array([3, 3]),
+            ),
         },
-        'transformed_features':
-            None,
-        'labels':
-            np.array([1.0, 0.0, 1.0]),
-        'example_weights':
-            np.array([0.0, 0.5, 1.0]),
+        'transformed_features': None,
+        'labels': np.array([1.0, 0.0, 1.0]),
+        'example_weights': np.array([0.0, 0.5, 1.0]),
         'predictions': {
             'model1': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]),
-            'model2': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
+            'model2': np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]),
         },
-        'empty':
-            None,
+        'empty': None,
         'multi_level_empty': {
             'empty': None,
-            'next_level': {
-                'empty': None
-            },
+            'next_level': {'empty': None},
         },
-        '_slice_key_types':
-            types.VarLenTensorValue.from_dense_rows([
-                slicer_lib.slice_keys_to_numpy_array([(('gender', 'm'),), ()]),
-                slicer_lib.slice_keys_to_numpy_array([()]),
-                slicer_lib.slice_keys_to_numpy_array([()])
-            ])
+        '_slice_key_types': types.VarLenTensorValue.from_dense_rows([
+            slicer_lib.slice_keys_to_numpy_array([(('gender', 'm'),), ()]),
+            slicer_lib.slice_keys_to_numpy_array([()]),
+            slicer_lib.slice_keys_to_numpy_array([()]),
+        ]),
     }
 
     expected = [
         {
             'features': {
-                'feature_1':
-                    np.array([1.0, 2.0]),
-                'feature_2':
-                    np.array([1.0, 2.0]),
-                'feature_3':
-                    types.SparseTensorValue(
-                        values=np.array([1]),
-                        indices=np.array([[0, 1]]),
-                        dense_shape=np.array([1, 3])),
-                'feature_4':
-                    types.RaggedTensorValue(
-                        values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
-                'feature_5':
-                    np.array([1.0]),
-                'feature_6':
-                    np.array([1.0]),
+                'feature_1': np.array([1.0, 2.0]),
+                'feature_2': np.array([1.0, 2.0]),
+                'feature_3': types.SparseTensorValue(
+                    values=np.array([1]),
+                    indices=np.array([[0, 1]]),
+                    dense_shape=np.array([1, 3]),
+                ),
+                'feature_4': types.RaggedTensorValue(
+                    values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
+                    nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])],
+                ),
+                'feature_5': np.array([1.0]),
+                'feature_6': np.array([1.0]),
             },
             'transformed_features': None,
             'labels': np.array([1.0]),
             'example_weights': np.array([0.0]),
             'predictions': {
                 'model1': np.array([0.1, 0.2]),
-                'model2': np.array([0.1, 0.2])
+                'model2': np.array([0.1, 0.2]),
             },
             'empty': None,
             'multi_level_empty': {
                 'empty': None,
-                'next_level': {
-                    'empty': None
-                },
+                'next_level': {'empty': None},
             },
-            '_slice_key_types': np.array([(('gender', 'm'),), ()], dtype=object)
+            '_slice_key_types': np.array(
+                [(('gender', 'm'),), ()], dtype=object
+            ),
         },
         {
             'features': {
-                'feature_1':
-                    np.array([3.0, 4.0]),
-                'feature_2':
-                    np.array([3.0, 4.0]),
-                'feature_3':
-                    types.SparseTensorValue(
-                        values=np.array([2]),
-                        indices=np.array([[0, 2]]),
-                        dense_shape=np.array([1, 3])),
-                'feature_4':
-                    types.RaggedTensorValue(
-                        values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
-                'feature_5':
-                    np.array([2.0]),
-                'feature_6':
-                    np.array([]),
+                'feature_1': np.array([3.0, 4.0]),
+                'feature_2': np.array([3.0, 4.0]),
+                'feature_3': types.SparseTensorValue(
+                    values=np.array([2]),
+                    indices=np.array([[0, 2]]),
+                    dense_shape=np.array([1, 3]),
+                ),
+                'feature_4': types.RaggedTensorValue(
+                    values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
+                    nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])],
+                ),
+                'feature_5': np.array([2.0]),
+                'feature_6': np.array([]),
             },
             'transformed_features': None,
             'labels': np.array([0.0]),
             'example_weights': np.array([0.5]),
             'predictions': {
                 'model1': np.array([0.3, 0.4]),
-                'model2': np.array([0.3, 0.4])
+                'model2': np.array([0.3, 0.4]),
             },
             'empty': None,
             'multi_level_empty': {
                 'empty': None,
-                'next_level': {
-                    'empty': None
-                },
+                'next_level': {'empty': None},
             },
-            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()])
+            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()]),
         },
         {
             'features': {
-                'feature_1':
-                    np.array([5.0, 6.0]),
-                'feature_2':
-                    np.array([5.0, 6.0]),
-                'feature_3':
-                    types.SparseTensorValue(
-                        values=np.array([3]),
-                        indices=np.array([[0, 0]]),
-                        dense_shape=np.array([1, 3])),
-                'feature_4':
-                    types.RaggedTensorValue(
-                        values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
-                        nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])]),
-                'feature_5':
-                    np.array([3.0, 3.0, 3.0]),
-                'feature_6':
-                    np.array([3.0, 3.0, 3.0])
+                'feature_1': np.array([5.0, 6.0]),
+                'feature_2': np.array([5.0, 6.0]),
+                'feature_3': types.SparseTensorValue(
+                    values=np.array([3]),
+                    indices=np.array([[0, 0]]),
+                    dense_shape=np.array([1, 3]),
+                ),
+                'feature_4': types.RaggedTensorValue(
+                    values=np.array([3, 1, 4, 1, 5, 9, 2, 6]),
+                    nested_row_splits=[np.array([0, 4, 4, 7, 8, 8])],
+                ),
+                'feature_5': np.array([3.0, 3.0, 3.0]),
+                'feature_6': np.array([3.0, 3.0, 3.0]),
             },
             'transformed_features': None,
             'labels': np.array([1.0]),
             'example_weights': np.array([1.0]),
             'predictions': {
                 'model1': np.array([0.5, 0.6]),
-                'model2': np.array([0.5, 0.6])
+                'model2': np.array([0.5, 0.6]),
             },
             'empty': None,
             'multi_level_empty': {
                 'empty': None,
-                'next_level': {
-                    'empty': None
-                },
+                'next_level': {'empty': None},
             },
-            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()])
+            '_slice_key_types': slicer_lib.slice_keys_to_numpy_array([()]),
         },
     ]
     np.testing.assert_equal(util.split_extracts(extracts), expected)
