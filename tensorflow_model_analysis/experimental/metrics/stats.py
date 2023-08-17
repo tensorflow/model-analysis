@@ -40,7 +40,7 @@ class _MeanCombiner(beam.CombineFn):
       self,
       key: metric_types.MetricKey,
       feature_key_path: _KeyPath,
-      example_weights_key_path: Optional[_KeyPath],
+      example_weights_key_path: _KeyPath,
   ):
     self._key = key
     self._feature_key_path = feature_key_path
@@ -109,16 +109,12 @@ def _convert_key_path_to_dict(
 
 def _mean_metric(
     feature_key_path: _KeyPath,
-    example_weights_key_path: Optional[_KeyPath],
-    name: Optional[str],
+    example_weights_key_path: _KeyPath,
+    name: str,
 ) -> metric_types.MetricComputations:
   """Returns metric computation for mean metric."""
-  if name:
-    key_name = name
-  else:
-    key_name = f"{_MEAN_METRIC_BASE_NAME}_{'.'.join(feature_key_path)}"
   key = metric_types.MetricKey(
-      name=key_name, example_weighted=example_weights_key_path is not None
+      name=name, example_weighted=example_weights_key_path is not None
   )
 
   include_filter = _convert_key_path_to_dict(feature_key_path)
@@ -164,7 +160,7 @@ class Mean(metric_types.Metric):
         _mean_metric,
         feature_key_path=feature_key_path,
         example_weights_key_path=example_weights_key_path,
-        name=name,
+        name=name or f"{_MEAN_METRIC_BASE_NAME}_{'.'.join(feature_key_path)}",
     )
 
 
