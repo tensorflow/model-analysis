@@ -22,6 +22,7 @@
     Adds support of `output_keypath` to ModelSignatureDoFn to explicitly set a
     chain of output keys in the multi-level dict (extracts). Adds output_keypath
     to common prediction extractors.
+*   Add ROUGE Metrics.
 
 ## Bug fixes and other Changes
 

@@ -304,6 +304,7 @@ setup_args = {
         'pillow>=9.4.0',
         'protobuf>=3.20.3,<5',
         'pyarrow>=10,<11',
+        'rouge-score>=0.1.2,<2',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
         'attrs>=19.3.0,<22',
