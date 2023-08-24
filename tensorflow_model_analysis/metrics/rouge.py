@@ -23,9 +23,11 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
 
+
 from rouge_score import rouge_scorer
 from rouge_score import scoring
 from rouge_score import tokenizers
+
 
 _LOGGING_MESSAGE_TOKENIZER_PREPARER = (
     "Finding or downloading 'punkt' from nltk."
@@ -87,8 +89,11 @@ class RougeCombiner(beam.CombineFn):
 
   def setup(self):
     if self._use_nltks_recommended_sentence_tokenizer:
-      logging.info(_LOGGING_MESSAGE_TOKENIZER_PREPARER)
-      nltk.download('punkt')
+      tokenizer_installed = False
+
+      if not tokenizer_installed:
+        logging.info(_LOGGING_MESSAGE_TOKENIZER_PREPARER)
+        nltk.download('punkt')
 
   def create_accumulator(self) -> _Accumulator:
     return _Accumulator()
