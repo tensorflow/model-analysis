@@ -63,7 +63,13 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         fixed_prediction_estimator_extra_fields
         .simple_fixed_prediction_estimator_extra_fields(temp_export_dir, None))
 
-    eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                name='model_1', signature_name='serving_default'
+            )
+        ]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
     tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
@@ -90,7 +96,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           name: "fixed_string"
           type: BYTES
         }
-        """, schema_pb2.Schema()))
+        """,
+            schema_pb2.Schema(),
+        ),
+    )
 
     examples = [
         self._makeExample(
@@ -177,7 +186,9 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           }
         }
       }
-      """, saved_model_pb2.SavedModel())
+      """,
+        saved_model_pb2.SavedModel(),
+    )
     temp_dir = self.create_tempdir()
     temp_dir.create_file(
         'saved_model.pb', content=saved_model_proto.SerializeToString())
@@ -185,9 +196,12 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
     ])
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=temp_dir,
+        eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
-        model_type=constants.TF_GENERIC)
+        tags=[tf.saved_model.SERVING],
+        model_type=constants.TF_GENERIC,
+    )
+
     self.assertTrue(
         inference_base.is_valid_config_for_bulk_inference(
             eval_config, eval_shared_model))
@@ -231,9 +245,12 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     eval_config = config_pb2.EvalConfig(
         model_specs=[config_pb2.ModelSpec(name='model_1')])
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=temp_dir,
+        eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
-        model_type=constants.TF_GENERIC)
+        tags=[tf.saved_model.SERVING],
+        model_type=constants.TF_GENERIC,
+    )
+
     self.assertTrue(
         inference_base.is_valid_config_for_bulk_inference(
             eval_config, eval_shared_model))
@@ -278,9 +295,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         config_pb2.ModelSpec(name='model_1', signature_name='not_found')
     ])
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=temp_dir,
+        eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
-        model_type=constants.TF_GENERIC)
+        model_type=constants.TF_GENERIC,
+    )
     self.assertFalse(
         inference_base.is_valid_config_for_bulk_inference(
             eval_config, eval_shared_model))
@@ -325,9 +343,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
     ])
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=temp_dir,
+        eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
-        model_type=constants.TF_KERAS)
+        model_type=constants.TF_KERAS,
+    )
     self.assertFalse(
         inference_base.is_valid_config_for_bulk_inference(
             eval_config, eval_shared_model))
@@ -349,12 +368,6 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
                 dtype: DT_STRING
                 name: "input_node:0"
               }
-              inputs: {
-                key: "inputs"
-                value {
-                  dtype: DT_STRING
-                  name: "input_node:0"
-                }
             }
             method_name: "predict"
             outputs: {
@@ -378,9 +391,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
     ])
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=temp_dir,
+        eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
-        model_type=constants.TF_GENERIC)
+        model_type=constants.TF_GENERIC,
+    )
     self.assertFalse(
         inference_base.is_valid_config_for_bulk_inference(
             eval_config, eval_shared_model))
@@ -425,9 +439,13 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
     ])
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=temp_dir,
+        eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
-        model_type=constants.TF_GENERIC)
+        model_type=constants.TF_GENERIC,
+    )
     self.assertFalse(
         inference_base.is_valid_config_for_bulk_inference(
             eval_config, eval_shared_model))
+
+if __name__ == '__main__':
+  tf.test.main()
