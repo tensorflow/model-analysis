@@ -104,3 +104,6 @@ BASELINE_KEY = 'baseline'
 CANDIDATE_KEY = 'candidate'
 
 MATERIALIZE_COLUMNS = 'materialize'
+
+# Key used to save and store prediction logs.
+PREDICTION_LOG_KEY = 'prediction_log'
