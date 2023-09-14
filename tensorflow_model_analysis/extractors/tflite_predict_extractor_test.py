@@ -38,45 +38,65 @@ _MULTI_MODEL_CASES = [False, True]
 _MULTI_OUTPUT_CASES = [False, True]
 # Equality op not supported in TF1. See b/242088810
 _BYTES_FEATURE_CASES = [False] if _TF_MAJOR_VERSION < 2 else [False, True]
+_QUANTIZATION_CASES = [False, True]
 
 
-class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
-                                 parameterized.TestCase):
+def random_genenerator():
+  generator: tf.random.Generator = tf.random.Generator.from_seed(42)
+  for unused_i in range(10):
+    r = {
+        'input1': generator.uniform(shape=(2, 1), minval=0.0, maxval=1.0),
+        'input2': generator.uniform(shape=(2, 1), minval=0.0, maxval=1.0),
+        'input3': tf.constant([[b'a'], [b'b']], shape=(2, 1), dtype=tf.string),
+    }
+    yield r
+
+
+class TFLitePredictExtractorTest(
+    testutil.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   @parameterized.parameters(
-      itertools.product(_MULTI_MODEL_CASES, _MULTI_OUTPUT_CASES,
-                        _BYTES_FEATURE_CASES))
-  def testTFlitePredictExtractorWithKerasModel(self, multi_model, multi_output,
-                                               use_bytes_feature):
+      itertools.product(
+          _MULTI_MODEL_CASES,
+          _MULTI_OUTPUT_CASES,
+          _BYTES_FEATURE_CASES,
+          _QUANTIZATION_CASES,
+      )
+  )
+  def testTFlitePredictExtractorWithKerasModel(
+      self, multi_model, multi_output, use_bytes_feature, use_quantization
+  ):
     input1 = tf.keras.layers.Input(shape=(1,), name='input1')
     input2 = tf.keras.layers.Input(shape=(1,), name='input2')
     input3 = tf.keras.layers.Input(shape=(1,), name='input3', dtype=tf.string)
     inputs = [input1, input2, input3]
     if use_bytes_feature:
       input_layer = tf.keras.layers.concatenate(
-          [inputs[0], inputs[1],
-           tf.cast(inputs[2] == 'a', tf.float32)])
+          [inputs[0], inputs[1], tf.cast(inputs[2] == 'a', tf.float32)]
+      )
     else:
       input_layer = tf.keras.layers.concatenate([inputs[0], inputs[1]])
     output_layers = {}
-    output_layers['output1'] = (
-        tf.keras.layers.Dense(1, activation=tf.nn.sigmoid,
-                              name='output1')(input_layer))
+    output_layers['output1'] = tf.keras.layers.Dense(
+        1, activation=tf.nn.sigmoid, name='output1'
+    )(input_layer)
     if multi_output:
-      output_layers['output2'] = (
-          tf.keras.layers.Dense(1, activation=tf.nn.sigmoid,
-                                name='output2')(input_layer))
+      output_layers['output2'] = tf.keras.layers.Dense(
+          1, activation=tf.nn.sigmoid, name='output2'
+      )(input_layer)
 
     model = tf.keras.models.Model(inputs, output_layers)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
+        optimizer=tf.keras.optimizers.Adam(lr=0.001),
         loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy'])
+        metrics=['accuracy'],
+    )
 
     train_features = {
         'input1': [[0.0], [1.0]],
         'input2': [[1.0], [0.0]],
-        'input3': [[b'a'], [b'b']]
+        'input3': [[b'a'], [b'b']],
     }
     labels = {'output1': [[1], [0]]}
     if multi_output:
@@ -86,11 +106,21 @@ class TFLitePredictExtractorTest(testutil.TensorflowModelAnalysisTest,
     if multi_output:
       example_weights['output2'] = [1.0, 0.5]
     dataset = tf.data.Dataset.from_tensor_slices(
-        (train_features, labels, example_weights))
+        (train_features, labels, example_weights)
+    )
     dataset = dataset.shuffle(buffer_size=1).repeat().batch(2)
     model.fit(dataset, steps_per_epoch=1)
 
     converter = tf.compat.v2.lite.TFLiteConverter.from_keras_model(model)
+    if use_quantization:
+      converter.optimizations = [tf.lite.Optimize.DEFAULT]
+      converter.target_spec.supported_ops = [
+          tf.lite.OpsSet.TFLITE_BUILTINS_INT8,
+          tf.lite.OpsSet.SELECT_TF_OPS,
+      ]
+      converter.inference_input_type = tf.uint8
+      converter.inference_output_type = tf.uint8
+      converter.representative_dataset = random_genenerator
     tflite_model = converter.convert()
 
     tflite_model_dir = tempfile.mkdtemp()

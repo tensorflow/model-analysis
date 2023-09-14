@@ -31,6 +31,12 @@ from tensorflow_model_analysis.utils import util
 _OpResolverType = tf.lite.experimental.OpResolverType
 _TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
 
+_QUANTIZATION_PARAMETERS = 'quantization_parameters'
+_INDEX = 'index'
+_SCALES = 'scales'
+_ZERO_POINTS = 'zero_points'
+_DTYPE = 'dtype'
+
 
 # TODO(b/149981535) Determine if we should merge with RunInference.
 @beam.typehints.with_input_types(types.Extracts)
@@ -38,8 +44,11 @@ _TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
 class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   """A DoFn that loads tflite models and predicts."""
 
-  def __init__(self, eval_config: config_pb2.EvalConfig,
-               eval_shared_models: Dict[str, types.EvalSharedModel]) -> None:
+  def __init__(
+      self,
+      eval_config: config_pb2.EvalConfig,
+      eval_shared_models: Dict[str, types.EvalSharedModel],
+  ) -> None:
     super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
 
@@ -81,8 +90,30 @@ class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
     input_name = input_name.split(':')[0]
     return input_name
 
+  # TODO: cr/540071949 - Consider deduplicating this code.
+  def _dequantize(
+      self, tensor: np.ndarray, scale: np.ndarray, zero_point: np.ndarray
+  ) -> np.ndarray:
+    """Performs dequantization according to the spec: http://shortn/_QPyWQx5mhW."""
+    if scale.size == 0 or zero_point.size == 0:
+      return tensor.astype(np.float64)
+    return (tensor - zero_point) * scale
+
+  def _quantize(
+      self,
+      tensor: np.ndarray,
+      scale: np.ndarray,
+      zero_point: np.ndarray,
+      dtype: np.dtype,
+  ) -> np.ndarray:
+    """Performs quantization according to the spec: http://shortn/_QPyWQx5mhW."""
+    if scale.size == 0 or zero_point.size == 0:
+      return tensor
+    return (tensor / scale + zero_point).astype(dtype)
+
   def _batch_reducible_process(
-      self, element: types.Extracts) -> Sequence[types.Extracts]:
+      self, element: types.Extracts
+  ) -> Sequence[types.Extracts]:
     """Invokes the tflite model on the provided inputs and stores the result."""
     result = copy.copy(element)
 
@@ -92,8 +123,11 @@ class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
     for spec in self._eval_config.model_specs:
       model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
       if model_name not in self._loaded_models:
-        raise ValueError('model for "{}" not found: eval_config={}'.format(
-            spec.name, self._eval_config))
+        raise ValueError(
+            'model for "{}" not found: eval_config={}'.format(
+                spec.name, self._eval_config
+            )
+        )
 
       interpreter = self._interpreters[model_name]
 
@@ -106,7 +140,7 @@ class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
         # The batch dimension is the specific batch size of the last time the
         # model was invoked. Set it to 1 to "reset".
         input_shape = [1] + list(i['shape'])[1:]
-        input_type = i['dtype']
+        input_type = i[_DTYPE]
         for idx in range(batch_size):
           if input_name in batched_features:
             value = batched_features[input_name][idx]
@@ -115,30 +149,47 @@ class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
           if value is None or np.any(np.equal(value, None)):
             default = -1 if input_type in [np.float32, np.int64] else ''
             value = np.full(input_shape, default, dtype=input_type)
-            logging.log_every_n(logging.WARNING,
-                                'Feature %s not found. Setting default value.',
-                                100, input_name)
+            logging.log_every_n(
+                logging.WARNING,
+                'Feature %s not found. Setting default value.',
+                100,
+                input_name,
+            )
           else:
             value = np.reshape(value, input_shape)
           input_features[input_name].append(value)
         # Concatenate with numpy to avoid implicit conversion to tf.Tensor
         # which causes byte-string inputs to fail the set_tensor call.
         input_features[input_name] = np.concatenate(
-            input_features[input_name], axis=0)
+            input_features[input_name], axis=0
+        )
         if np.shape(input_features[input_name]) != tuple(i['shape']):
-          interpreter.resize_tensor_input(i['index'],
-                                          np.shape(input_features[input_name]))
+          interpreter.resize_tensor_input(
+              i[_INDEX], np.shape(input_features[input_name])
+          )
       interpreter.allocate_tensors()
 
       for i in input_details:
         input_name = self._get_input_name_from_input_detail(i)
-        interpreter.set_tensor(i['index'], input_features[input_name])
+        params = i[_QUANTIZATION_PARAMETERS]
+        interpreter.set_tensor(
+            i[_INDEX],
+            self._quantize(
+                input_features[input_name],
+                params[_SCALES],
+                params[_ZERO_POINTS],
+                i[_DTYPE],
+            ),
+        )
       interpreter.invoke()
 
-      outputs = {
-          o['name']: interpreter.get_tensor(o['index']).astype(np.float64)
-          for o in output_details
-      }
+      outputs = {}
+      for o in output_details:
+        tensor = interpreter.get_tensor(o[_INDEX])
+        params = o[_QUANTIZATION_PARAMETERS]
+        outputs[o['name']] = self._dequantize(
+            tensor, params[_SCALES], params[_ZERO_POINTS]
+        )
 
       for v in outputs.values():
         if len(v) != batch_size:
@@ -210,7 +261,8 @@ def TFLitePredictExtractor(
     Extractor for extracting predictions.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
