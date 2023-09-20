@@ -37,9 +37,25 @@ from tfx_bsl.tfxio import test_util
 from google.protobuf import text_format
 from tensorflow.core.protobuf import saved_model_pb2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
+from tensorflow_serving.apis import logging_pb2
+from tensorflow_serving.apis import prediction_log_pb2
 
 
 class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
+
+  def setUp(self):
+    super().setUp()
+    log_metadata1 = logging_pb2.LogMetadata(timestamp_secs=1)
+    predict_log1 = prediction_log_pb2.PredictLog()
+    self.prediction_log1 = prediction_log_pb2.PredictionLog(
+        predict_log=predict_log1, log_metadata=log_metadata1
+    )
+
+    log_metadata2 = logging_pb2.LogMetadata(timestamp_secs=2)
+    predict_log2 = prediction_log_pb2.PredictLog()
+    self.prediction_log2 = prediction_log_pb2.PredictionLog(
+        predict_log=predict_log2, log_metadata=log_metadata2
+    )
 
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
@@ -446,6 +462,56 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     self.assertFalse(
         inference_base.is_valid_config_for_bulk_inference(
             eval_config, eval_shared_model))
+
+  def testInsertSinglePredictionLogIntoExtract(self):
+    model_names_to_prediction_logs = {'prediction_log1': self.prediction_log1}
+    inference_tuple = ({}, model_names_to_prediction_logs)
+    output_extracts = inference_base.insert_predictions_into_extracts(
+        inference_tuple=inference_tuple,
+        prediction_log_keypath=[constants.PREDICTION_LOG_KEY],
+    )
+
+    ref_extracts = {constants.PREDICTION_LOG_KEY: self.prediction_log1}
+
+    self.assertEqual(
+        output_extracts[constants.PREDICTION_LOG_KEY],
+        ref_extracts[constants.PREDICTION_LOG_KEY],
+    )
+
+  def testInsertTwoPredictionLogsIntoExtracts(self):
+    model_names_to_prediction_logs = {
+        'prediction_log1': self.prediction_log1,
+        'prediction_log2': self.prediction_log2,
+    }
+    inference_tuple = ({}, model_names_to_prediction_logs)
+    extracts = inference_base.insert_predictions_into_extracts(
+        inference_tuple,
+        prediction_log_keypath=[constants.PREDICTION_LOG_KEY],
+    )
+
+    ref_extracts = {
+        constants.PREDICTION_LOG_KEY: model_names_to_prediction_logs
+    }
+
+    self.assertEqual(
+        extracts[constants.PREDICTION_LOG_KEY],
+        ref_extracts[constants.PREDICTION_LOG_KEY],
+    )
+
+  def testInsertPredictionLogsWithCustomPathIntoExtracts(self):
+    model_names_to_prediction_logs = {
+        'prediction_log1': self.prediction_log1,
+        'prediction_log2': self.prediction_log2,
+    }
+    inference_tuple = ({}, model_names_to_prediction_logs)
+    extracts = inference_base.insert_predictions_into_extracts(
+        inference_tuple,
+        prediction_log_keypath=['foo', 'bar'],
+    )
+
+    ref_extracts = {'foo': {'bar': model_names_to_prediction_logs}}
+    self.assertEqual(extracts['foo']['bar'], ref_extracts['foo']['bar'])
+
 
 if __name__ == '__main__':
   tf.test.main()

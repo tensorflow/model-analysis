@@ -136,10 +136,9 @@ def _parse_prediction_log_to_tensor_value(
     ],
                     dtype=float)
   elif log_type == 'predict_log':
-    output_tensor_name_to_tensor = {
-        k: np.squeeze(tf.make_ndarray(v), axis=0)
-        for k, v in prediction_log.predict_log.response.outputs.items()
-    }
+    output_tensor_name_to_tensor = {}
+    for k, v in prediction_log.predict_log.response.outputs.items():
+      output_tensor_name_to_tensor[k] = np.squeeze(tf.make_ndarray(v), axis=0)
     # If there is only one tensor (i.e. one dictionary item), we remove the
     # tensor from the dict and return it directly. Generally, TFMA will not
     # return a dictionary with a single value.
@@ -155,22 +154,32 @@ def _parse_prediction_log_to_tensor_value(
     raise NotImplementedError(f'Unsupported log_type: {log_type}')
 
 
-def _insert_predictions_into_extracts(
+def insert_predictions_into_extracts(
     inference_tuple: Tuple[
         types.Extracts, Dict[str, prediction_log_pb2.PredictionLog]
     ],
-    output_keypath: Sequence[str],
+    output_keypath: Sequence[str] = (constants.PREDICTIONS_KEY,),
+    prediction_log_keypath: Optional[Sequence[str]] = None,
 ) -> types.Extracts:
   """Inserts tensor values from PredictionLogs into the Extracts.
+
+  If prediction_log_keypath is provided, then raw prediction logs from extracts
+  are
+  also inserted into a separate extract.
 
   Args:
     inference_tuple: This is the output of inference. It includes the key
       forwarded extracts and a dict of model name to predicition logs.
     output_keypath: A sequence of keys to be used as the path to traverse and
       insert the outputs in the extract.
+    prediction_log_keypath: A sequence of keys to be used as the path to
+      traverse and insert the prediction logs in the extract.
 
   Returns:
-    Extracts with the PREDICTIONS_KEY populated. Note: By convention,
+    Extracts with the PREDICTIONS_KEY populated. If prediction_log_keypath is
+    provided,
+    then PREDICTION_LOG_KEY is also populated with prediction logs. Note: By
+    convention,
     PREDICTIONS_KEY will point to a dictionary if there are multiple
     prediction logs and a single value if there is only one prediction log.
   """
@@ -184,13 +193,30 @@ def _insert_predictions_into_extracts(
   # is in line with the general TFMA pattern of not storing one-item
   # dictionaries.
   if len(model_name_to_tensors) == 1:
-    return util.copy_and_set_by_keys(
-        extracts, output_keypath, next(iter(model_name_to_tensors.values()))
-    )
+    value = next(iter(model_name_to_tensors.values()))
   else:
-    return util.copy_and_set_by_keys(
-        extracts, output_keypath, model_name_to_tensors
+    value = model_name_to_tensors
+  extracts = util.copy_and_set_by_keys(  # pylint: disable=protected-access
+      root=extracts,
+      keypath=output_keypath,
+      value=value,
+  )
+
+  # Save un-parsed prediction log if prediction_log_keypath is provided.
+  # Prediction log(s) will be saved under PREDICTION_LOG_KEY either within
+  # a dictionary of model names to prediction logs (if there are multiple
+  # models), or by itself (if there is only one model).
+  if prediction_log_keypath:
+    if len(model_names_to_prediction_logs) == 1:
+      value = next(iter(model_names_to_prediction_logs.values()))
+    else:
+      value = model_names_to_prediction_logs
+    extracts = util.copy_and_set_by_keys(  # pylint: disable=protected-access
+        root=extracts,
+        keypath=prediction_log_keypath,
+        value=value,
     )
+  return extracts
 
 
 @beam.ptransform_fn
@@ -201,6 +227,7 @@ def RunInference(  # pylint: disable=invalid-name
     inference_ptransform: beam.PTransform,
     output_batch_size: Optional[int] = None,
     output_keypath: Sequence[str] = (constants.PREDICTIONS_KEY,),
+    prediction_log_keypath: Optional[Sequence[str]] = None,
 ) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to Extracts.
 
@@ -218,9 +245,11 @@ def RunInference(  # pylint: disable=invalid-name
     output_batch_size: Sets a static output batch size.
     output_keypath: A sequence of keys to be used as the path to traverse and
       insert the outputs in the extract.
+    prediction_log_keypath: A sequence of keys to be used as the path to
+      traverse and insert the prediction logs in the extract.
 
   Returns:
-    PCollection of Extracts updated with the predictions.
+    PCollection of Extracts updated with the predictions and prediction logs.
   """
   extracts = (
       extracts
@@ -236,7 +265,11 @@ def RunInference(  # pylint: disable=invalid-name
       | 'RunInferencePerModel' >> inference_ptransform
       # Combine predictions back into the original Extracts.
       | 'InsertPredictionsIntoExtracts'
-      >> beam.Map(_insert_predictions_into_extracts, output_keypath)
+      >> beam.Map(
+          insert_predictions_into_extracts,
+          output_keypath=output_keypath,
+          prediction_log_keypath=prediction_log_keypath,
+      )
   )
   # Beam batch will group single Extracts into a batch. Then
   # merge_extracts will flatten the batch into a single "batched"
