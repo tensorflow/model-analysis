@@ -13,6 +13,7 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis metrics."""
 
+from tensorflow_model_analysis.metrics import bleu
 from tensorflow_model_analysis.metrics import preprocessors
 from tensorflow_model_analysis.metrics import rouge
 from tensorflow_model_analysis.metrics.attributions import AttributionsMetric

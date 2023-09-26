@@ -27,6 +27,7 @@
     chain of output keys in the multi-level dict (extracts). Adds output_keypath
     to common prediction extractors.
 *   Add ROUGE Metrics.
+*   Add BLEU Metric.
 
 ## Bug fixes and other Changes
 
