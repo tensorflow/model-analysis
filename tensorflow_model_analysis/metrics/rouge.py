@@ -190,7 +190,76 @@ def _rouge(
 
 
 class Rouge(metric_types.Metric):
-  """ROUGE Metrics."""
+  """ROUGE Metrics.
+
+  ROUGE stands for Recall-Oriented Understudy for Gisting Evaluation. It
+  includes measures to automatically determine the quality of a summary by
+  comparing it to other (ideal) reference / target summaries.
+
+  ROUGE was originally introduced in the paper:
+
+  Lin, Chin-Yew. ROUGE: a Package for Automatic Evaluation of Summaries. In
+  Proceedings of the Workshop on Text Summarization Branches Out (WAS 2004),
+  Barcelona, Spain, July 25 - 26, 2004.
+
+  This implementation supports Rouge-N where N is an int in [1, 9], RougeL, and
+  RougeLsum. Note, to calculate multiple ROUGE Metrics, you will need to call
+  this metric multiple times.
+
+  For this implementation, a Label is expected to be a list of texts containing
+  the target summaries. A Prediction is expected to be text containing the
+  predicted text.
+
+  In the ROUGE paper, two flavors of ROUGE are described:
+
+  1. sentence-level: Compute longest common subsequence (LCS) between two pieces
+  of text. Newlines are ignored. This is called 'rougeL' in this package.
+  2. summary-level: Newlines in the text are interpreted as sentence boundaries,
+  and the LCS is computed between each pair of reference and candidate
+  sentences, and the union-LCS is computed. This is called
+  'rougeLsum' in this package. This is the ROUGE-L reported in *[Get To The
+  Point: Summarization with Pointer-Generator Networks]
+  (https://arxiv.org/abs/1704.04368)*, for example. If your
+  references/candidates do not have newline delimiters, you can use the
+  split_summaries argument.
+
+  This is a wrapper of the pure python implementation of ROUGE found here:
+  https://pypi.org/project/rouge-score/
+
+  To implement this metric, see the example below:
+
+  eval_config = tfma.EvalConfig(
+      metrics_specs=[
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='Rouge',
+                  config='"rouge_type":"rouge1"'
+          ]),
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='Rouge',
+                  config='"rouge_type":"rouge2"'
+          ]),
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='Rouge',
+                  config='"rouge_type":"rougeL"'
+          ]),
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='Rouge',
+                  config='"rouge_type":"rougeLsum"'
+          ]),
+          ...
+      ],
+      ...
+  )
+
+  evaluator = tfx.borg.components.Evaluator(
+    examples=example_gen.outputs['examples'],
+    model=trainer.outputs['model'],
+    eval_config=eval_config)
+  """
 
   def __init__(
       self,
