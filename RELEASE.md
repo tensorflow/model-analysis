@@ -7,6 +7,7 @@
 ## Bug fixes and other Changes
 
 *   Fix the bug about batching unsized numpy arrays. ## Breaking Changes
+*   Depends on `attrs>=19.3.0,<24`.
 
 ## Deprecations
 
