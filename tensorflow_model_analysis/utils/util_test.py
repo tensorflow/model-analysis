@@ -1052,6 +1052,32 @@ class UtilTest(tf.test.TestCase, parameterized.TestCase):
         util.merge_extracts(extracts, squeeze_two_dim_vector=False), expected
     )
 
+  def testMergeExtractsStackedArraysPredictions(self):
+    extracts = [
+        {
+            'predictions': {
+                'topk_ids': [
+                    np.array([[1, 2, 3]], dtype=np.int32),
+                    np.array([[4, 5, 6]], dtype=np.int32),
+                ],
+            },
+        },
+    ]
+
+    expected = {
+        'predictions': {
+            'topk_ids': [
+                np.array([
+                    np.array([[1, 2, 3]], dtype=np.int32),
+                    np.array([[4, 5, 6]], dtype=np.int32),
+                ])
+            ]
+        },
+    }
+    np.testing.assert_equal(
+        util.merge_extracts(extracts, squeeze_two_dim_vector=False), expected
+    )
+
   def testMergeExtractsWithUnsizedNumpyArray(self):
     extracts = [
         {

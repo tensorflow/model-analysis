@@ -854,6 +854,7 @@ def merge_extracts(extracts: List[types.Extracts],
       return to_tensor_value(t)
     elif all(isinstance(t, np.ndarray)
              for t in target) and len({t.shape for t in target}) > 1:
+      target = (t.squeeze() for t in target)
       return types.VarLenTensorValue.from_dense_rows(target)
     # If all value in the target are scalar numpy array, we stack them.
     # This is to avoid np.array([np.array(b'abc'), np.array(b'abcd')])
