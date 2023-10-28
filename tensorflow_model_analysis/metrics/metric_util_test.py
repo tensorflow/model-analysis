@@ -27,53 +27,88 @@ class UtilTest(tf.test.TestCase):
     # Basic usage
     self.assertEqual(
         metric_util.generate_private_name_from_arguments('', threshold=[0.5]),
-        '_:threshold=[0.5]')
+        '_:threshold=[0.5]',
+    )
     # Private case with private name
     self.assertEqual(
         metric_util.generate_private_name_from_arguments(
-            '_private', threshold=[0.5]), '_private:threshold=[0.5]')
+            '_private', threshold=[0.5]
+        ),
+        '_private:threshold=[0.5]',
+    )
     # Multiple arguments
     self.assertEqual(
         metric_util.generate_private_name_from_arguments(
-            '_private', threshold=[0.5], class_id=[0], class_type=None),
-        '_private:class_id=[0],threshold=[0.5]')
+            '_private', threshold=[0.5], class_id=[0], class_type=None
+        ),
+        '_private:class_id=[0],threshold=[0.5]',
+    )
 
   def testToScalar(self):
     self.assertEqual(1, metric_util.to_scalar(np.array([1])))
     self.assertEqual(1.0, metric_util.to_scalar(np.array(1.0)))
     self.assertEqual('string', metric_util.to_scalar(np.array([['string']])))
     sparse_tensor = types.SparseTensorValue(
-        indices=np.array([0]), values=np.array([1]), dense_shape=np.array([1]))
+        indices=np.array([0]), values=np.array([1]), dense_shape=np.array([1])
+    )
     self.assertEqual(1, metric_util.to_scalar(sparse_tensor))
+
+  def testSafeToScalar(self):
+    self.assertEqual(1, metric_util.safe_to_scalar(np.array([1])))
+    self.assertEqual(1.0, metric_util.safe_to_scalar(np.array(1.0)))
+    self.assertEqual(
+        'string', metric_util.safe_to_scalar(np.array([['string']]))
+    )
+    self.assertEqual(0.0, metric_util.safe_to_scalar(np.array([])))
+    self.assertEqual(0.0, metric_util.safe_to_scalar([]))
+    with self.assertRaisesRegex(
+        ValueError, 'Array should have exactly 1 value to a Python scalar'
+    ):
+      _ = 1, metric_util.safe_to_scalar([1])
+    with self.assertRaisesRegex(
+        ValueError, 'Array should have exactly 1 value to a Python scalar'
+    ):
+      _ = metric_util.safe_to_scalar([1, 2])
+    with self.assertRaisesRegex(
+        ValueError, 'Array should have exactly 1 value to a Python scalar'
+    ):
+      _ = metric_util.safe_to_scalar(np.array([1, 2]))
 
   def testPadNoChange(self):
     self.assertAllClose(
-        np.array([1.0, 2.0]), metric_util.pad(np.array([1.0, 2.0]), 2, -1.0))
+        np.array([1.0, 2.0]), metric_util.pad(np.array([1.0, 2.0]), 2, -1.0)
+    )
 
   def testPad1DSingleValue(self):
     self.assertAllClose(
-        np.array([1.0, -1.0]), metric_util.pad(np.array([1.0]), 2, -1.0))
+        np.array([1.0, -1.0]), metric_util.pad(np.array([1.0]), 2, -1.0)
+    )
 
   def testPad1DMultipleValues(self):
     self.assertAllClose(
         np.array([1.0, 2.0, -1.0, -1.0]),
-        metric_util.pad(np.array([1.0, 2.0]), 4, -1.0))
+        metric_util.pad(np.array([1.0, 2.0]), 4, -1.0),
+    )
 
   def testPad2D(self):
     self.assertAllClose(
         np.array([[1.0, 2.0, 0.0, 0.0, 0.0], [3.0, 4.0, 0.0, 0.0, 0.0]]),
-        metric_util.pad(np.array([[1.0, 2.0], [3.0, 4.0]]), 5, 0.0))
+        metric_util.pad(np.array([[1.0, 2.0], [3.0, 4.0]]), 5, 0.0),
+    )
 
   def testStandardMetricInputsToNumpy(self):
     example = metric_types.StandardMetricInputs(
         label={'output_name': np.array([2])},
         prediction={'output_name': np.array([0, 0.5, 0.3, 0.9])},
-        example_weight={'output_name': np.array([1.0])})
+        example_weight={'output_name': np.array([1.0])},
+    )
     iterator = metric_util.to_label_prediction_example_weight(
-        example, output_name='output_name')
+        example, output_name='output_name'
+    )
 
-    for expected_label, expected_prediction in zip((0.0, 0.0, 1.0, 0.0),
-                                                   (0.0, 0.5, 0.3, 0.9)):
+    for expected_label, expected_prediction in zip(
+        (0.0, 0.0, 1.0, 0.0), (0.0, 0.5, 0.3, 0.9)
+    ):
       got_label, got_pred, got_example_weight = next(iterator)
       self.assertAllClose(got_label, np.array([expected_label]))
       self.assertAllClose(got_pred, np.array([expected_prediction]))

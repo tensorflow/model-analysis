@@ -382,8 +382,12 @@ class _MeanRegressionErrorCombiner(beam.CombineFn, metaclass=abc.ABCMeta):
       # and returns the single element as a float.
       error = self._regression_error(label, prediction)
       if not np.isnan(error):
-        accumulator.total_regression_error += error * example_weight.item()
-        accumulator.total_example_weights += example_weight.item()
+        accumulator.total_regression_error += (
+            error * metric_util.safe_to_scalar(example_weight)
+        )
+        accumulator.total_example_weights += metric_util.safe_to_scalar(
+            example_weight
+        )
 
     return accumulator
 
@@ -396,10 +400,12 @@ class _MeanRegressionErrorCombiner(beam.CombineFn, metaclass=abc.ABCMeta):
     return result
 
   def extract_output(
-      self,
-      accumulator: _MeanRegressionErrorAccumulator) -> metric_types.MetricsDict:
+      self, accumulator: _MeanRegressionErrorAccumulator
+  ) -> metric_types.MetricsDict:
     if accumulator.total_example_weights != 0.0:
-      result = accumulator.total_regression_error / accumulator.total_example_weights
+      result = (
+          accumulator.total_regression_error / accumulator.total_example_weights
+      )
     else:
       result = float('nan')
     return {self._metric_key: result}
@@ -408,41 +414,52 @@ class _MeanRegressionErrorCombiner(beam.CombineFn, metaclass=abc.ABCMeta):
 class _MeanAbsoluteErrorCombiner(_MeanRegressionErrorCombiner):
   """A combiner which computes metrics averaging absolute errors."""
 
-  def _regression_error(self, label: np.ndarray,
-                        prediction: np.ndarray) -> float:
+  def _regression_error(
+      self, label: np.ndarray, prediction: np.ndarray
+  ) -> float:
     # The np.item method makes sure the result is a one element numpy array and
     # returns the single element as a float.
-    return np.absolute(label - prediction).item()
+    return metric_util.safe_to_scalar(np.absolute(label - prediction))
 
 
 class _MeanSquaredErrorCombiner(_MeanRegressionErrorCombiner):
   """A combiner which computes metrics averaging squared errors."""
 
-  def _regression_error(self, label: np.ndarray,
-                        prediction: np.ndarray) -> float:
+  def _regression_error(
+      self, label: np.ndarray, prediction: np.ndarray
+  ) -> float:
     # The np.item method makes sure the result is a one element numpy array and
     # returns the single element as a float.
-    return np.linalg.norm(label - prediction).item()**2
+    return metric_util.safe_to_scalar(np.linalg.norm(label - prediction)) ** 2
 
 
 class _MeanAbsolutePercentageErrorCombiner(_MeanRegressionErrorCombiner):
   """A combiner which computes metrics averaging absolute percentage errors."""
 
-  def _regression_error(self, label: np.ndarray,
-                        prediction: np.ndarray) -> float:
+  def _regression_error(
+      self, label: np.ndarray, prediction: np.ndarray
+  ) -> float:
     # The np.item method makes sure the result is a one element numpy array and
     # returns the single element as a float.
     # The error also requires the label to be a one element numpy array.
-    if label.item() == 0:
+    if label.size == 0 or label.item() == 0:
       return float('nan')
-    return 100 * np.absolute((label - prediction) / label).item()
+    return 100 * metric_util.safe_to_scalar(
+        np.absolute((label - prediction) / label)
+    )
 
 
 class _MeanSquaredLogarithmicErrorCombiner(_MeanRegressionErrorCombiner):
   """A combiner which computes metrics averaging squared logarithmic errors."""
 
-  def _regression_error(self, label: np.ndarray,
-                        prediction: np.ndarray) -> float:
+  def _regression_error(
+      self, label: np.ndarray, prediction: np.ndarray
+  ) -> float:
     # The np.item method makes sure the result is a one element numpy array and
     # returns the single element as a float.
-    return np.linalg.norm(np.log(label + 1) - np.log(prediction + 1)).item()**2
+    return (
+        metric_util.safe_to_scalar(
+            np.linalg.norm(np.log(label + 1) - np.log(prediction + 1))
+        )
+        ** 2
+    )

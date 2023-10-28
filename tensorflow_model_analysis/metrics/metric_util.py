@@ -212,6 +212,22 @@ def to_scalar(tensor: Optional[Union[types.TensorValue,
   return tensor.item()
 
 
+def safe_to_scalar(arr: Any) -> Any:
+  """Returns array/list as a scalar, 0.0 if empty else raises ValueError."""
+  if isinstance(arr, list):
+    if not arr:
+      return 0.0
+    else:
+      raise ValueError('Array should have exactly 1 value to a Python scalar')
+  else:
+    if arr.size == 0:
+      return 0.0
+    elif arr.size == 1:
+      return arr.item()
+    else:
+      raise ValueError('Array should have exactly 1 value to a Python scalar')
+
+
 def pad(arr: np.ndarray, last_dim: int, value: float) -> np.ndarray:
   """Pads the given array with value until last dim is of size last_dim."""
   if arr.shape[-1] == last_dim:
