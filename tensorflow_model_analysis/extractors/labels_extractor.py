@@ -22,7 +22,7 @@ from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 
-_LABELS_EXTRACTOR_STAGE_NAME = 'ExtractLabels'
+LABELS_EXTRACTOR_STAGE_NAME = 'ExtractLabels'
 
 
 def LabelsExtractor(eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
@@ -41,8 +41,9 @@ def LabelsExtractor(eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
   """
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
-      stage_name=_LABELS_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractLabels(eval_config=eval_config))
+      stage_name=LABELS_EXTRACTOR_STAGE_NAME,
+      ptransform=_ExtractLabels(eval_config=eval_config),
+  )
 
 
 @beam.ptransform_fn
