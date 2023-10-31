@@ -192,13 +192,15 @@ def binary_confusion_matrices(
     class_weights: Optional[Dict[int, float]] = None,
     example_weighted: bool = False,
     use_histogram: Optional[bool] = None,
-    extract_label_prediction_and_weight: Optional[Callable[
-        ..., Any]] = metric_util.to_label_prediction_example_weight,
+    extract_label_prediction_and_weight: Optional[
+        Callable[..., Any]
+    ] = metric_util.to_label_prediction_example_weight,
     preprocessors: Optional[List[metric_types.Preprocessor]] = None,
     examples_name: Optional[str] = None,
     example_id_key: Optional[str] = None,
     example_ids_count: Optional[int] = None,
-    fractional_labels: float = True) -> metric_types.MetricComputations:
+    fractional_labels: bool = True,
+) -> metric_types.MetricComputations:
   """Returns metric computations for computing binary confusion matrices.
 
   Args:
@@ -379,7 +381,8 @@ def binary_confusion_matrices(
         aggregation_type=aggregation_type,
         class_weights=class_weights,
         example_weighted=example_weighted,
-        fractional_labels=fractional_labels)
+        enable_fractional_labels=fractional_labels,
+    )
     input_metric_key = computations[-1].keys[-1]
     # matrices_key is last for backwards compatibility with code that:
     #   1) used this computation as an input for a derived computation
@@ -502,15 +505,17 @@ def _binary_confusion_matrix_computation(
     model_name: str = '',
     output_name: str = '',
     sub_key: Optional[metric_types.SubKey] = None,
-    extract_label_prediction_and_weight: Optional[Callable[
-        ..., Any]] = metric_util.to_label_prediction_example_weight,
+    extract_label_prediction_and_weight: Optional[
+        Callable[..., Any]
+    ] = metric_util.to_label_prediction_example_weight,
     preprocessors: Optional[List[metric_types.Preprocessor]] = None,
     example_id_key: Optional[str] = None,
     example_ids_count: Optional[int] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
     example_weighted: bool = False,
-    fractional_labels: float = True) -> metric_types.MetricComputations:
+    enable_fractional_labels: bool = True,
+) -> metric_types.MetricComputations:
   """Returns metric computations for computing binary confusion matrix."""
   if example_ids_count is None:
     example_ids_count = DEFAULT_NUM_EXAMPLE_IDS
@@ -538,40 +543,62 @@ def _binary_confusion_matrix_computation(
               aggregation_type=aggregation_type,
               class_weights=class_weights,
               example_weighted=example_weighted,
-              fractional_labels=fractional_labels))
+              enable_fractional_labels=enable_fractional_labels,
+          ),
+      )
   ]
 
 
-class _BinaryConfusionMatrixCombiner(beam.CombineFn):
+class BinaryConfusionMatrix:
   """Computes binary confusion matrix."""
 
-  def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config_pb2.EvalConfig],
-               thresholds: List[float],
-               extract_label_prediction_and_weight: Callable[..., Any],
-               example_id_key: Optional[str], example_ids_count: float,
-               aggregation_type: Optional[metric_types.AggregationType],
-               class_weights: Optional[Dict[int, float]],
-               example_weighted: bool, fractional_labels: float):
-    self._key = key
-    self._eval_config = eval_config
-    self._thresholds = thresholds
-    self._extract_label_prediction_and_weight = extract_label_prediction_and_weight
-    self._example_id_key = example_id_key
-    self._example_ids_count = example_ids_count
-    self._aggregation_type = aggregation_type
-    self._class_weights = class_weights
-    self._example_weighted = example_weighted
-    self._fractional_labels = fractional_labels
+  def __init__(
+      self,
+      thresholds: List[float],
+      example_ids_count: int = DEFAULT_NUM_EXAMPLE_IDS,
+      enable_fractional_labels: bool = True,
+  ):
+    """Initializes the class.
 
-  def _merge_example_ids(self, list_1: List[str],
-                         list_2: List[str]) -> List[str]:
-    result = list_1[:self._example_ids_count]
-    result.extend(list_2[:self._example_ids_count - len(result)])
+    Args:
+      thresholds: A specific set of thresholds to use. The caller is responsible
+        for marking the boundaries with +/-epsilon if desired. Only one of
+        num_thresholds or thresholds should be used. For metrics computed at top
+        k this may be a single negative threshold value (i.e. -inf).
+      example_ids_count: Max number of example ids to be extracted for each
+        result in the binary confusion matrix (tp, tn, fp, and fn).
+      enable_fractional_labels: If false, labels will be compared to the
+        threshold in the same way predictions are. If true, each incoming tuple
+        of (label, prediction, and example weight) will be split into two tuples
+        as follows (where l, p, w represent the resulting label, prediction, and
+        example weight values): (1) l = 0.0, p = prediction, and w =
+        example_weight * (1.0 - label) (2) l = 1.0, p = prediction, and w =
+        example_weight * label. If enabled, an exception will be raised if
+        labels are not within [0, 1]. The implementation is such that tuples
+        associated with a weight of zero are not yielded. This means it is safe
+        to enable fractional labels even when the labels only take on the values
+        of 0.0 or 1.0.
+    """
+    self._thresholds = thresholds
+    self._example_ids_count = example_ids_count
+    self._enable_fractional_labels = enable_fractional_labels
+
+  def create_accumulator(self) -> MatrixAccumulator:
+    return {}
+
+  def _merge_example_ids(
+      self, list_1: List[str], list_2: List[str]
+  ) -> List[str]:
+    result = list_1[: self._example_ids_count]
+    result.extend(list_2[: self._example_ids_count - len(result)])
     return result
 
-  def _merge_entry(self, result: MatrixAccumulator, threshold: float,
-                   entry: _ThresholdEntry):
+  def _merge_entry(
+      self,
+      result: MatrixAccumulator,
+      threshold: float,
+      entry: _ThresholdEntry,
+  ) -> _ThresholdEntry:
     if threshold not in result:
       return entry
 
@@ -580,44 +607,45 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
             tp=result[threshold].matrix.tp + entry.matrix.tp,
             tn=result[threshold].matrix.tn + entry.matrix.tn,
             fp=result[threshold].matrix.fp + entry.matrix.fp,
-            fn=result[threshold].matrix.fn + entry.matrix.fn),
-        tp_examples=self._merge_example_ids(result[threshold].tp_examples,
-                                            entry.tp_examples),
-        tn_examples=self._merge_example_ids(result[threshold].tn_examples,
-                                            entry.tn_examples),
-        fp_examples=self._merge_example_ids(result[threshold].fp_examples,
-                                            entry.fp_examples),
-        fn_examples=self._merge_example_ids(result[threshold].fn_examples,
-                                            entry.fn_examples))
-
-  def create_accumulator(self) -> MatrixAccumulator:
-    return {}
+            fn=result[threshold].matrix.fn + entry.matrix.fn,
+        ),
+        tp_examples=self._merge_example_ids(
+            result[threshold].tp_examples, entry.tp_examples
+        ),
+        tn_examples=self._merge_example_ids(
+            result[threshold].tn_examples, entry.tn_examples
+        ),
+        fp_examples=self._merge_example_ids(
+            result[threshold].fp_examples, entry.fp_examples
+        ),
+        fn_examples=self._merge_example_ids(
+            result[threshold].fn_examples, entry.fn_examples
+        ),
+    )
 
   def add_input(
-      self, accumulator: MatrixAccumulator,
-      element: metric_types.StandardMetricInputs) -> MatrixAccumulator:
-    example_id = None
-    if self._example_id_key and self._example_id_key in element.features:
-      example_id = element.features[self._example_id_key]
+      self,
+      accumulator: MatrixAccumulator,
+      labels,
+      predictions,
+      example_weights=None,
+      example_id=None,
+  ) -> MatrixAccumulator:
+    """Adds input to the accumulator.
 
-    labels = []
-    predictions = []
-    example_weights = []
+    Args:
+      accumulator: Accumulator to add input to.
+      labels: Expected values.
+      predictions: Predicted values.
+      example_weights: Weights for each example.
+      example_id: ID For this example.
 
-    for label, prediction, example_weight in self._extract_label_prediction_and_weight(
-        element,
-        eval_config=self._eval_config,
-        model_name=self._key.model_name,
-        output_name=self._key.output_name,
-        sub_key=self._key.sub_key,
-        fractional_labels=self._fractional_labels,
-        flatten=True,
-        aggregation_type=self._aggregation_type,
-        class_weights=self._class_weights,
-        example_weighted=self._example_weighted):
-      example_weights.append(float(example_weight))
-      labels.append(float(label))
-      predictions.append(float(prediction))
+    Returns:
+      Merged MatrixAccumulator of the original accumulator and the added inputs.
+    """
+    if not example_weights:
+      example_weights = [1] * len(labels)
+
     result = accumulator
     for threshold in self._thresholds:
       tp = 0.0
@@ -628,49 +656,66 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
       tn_example = None
       fp_example = None
       fn_example = None
-      for i, _ in enumerate(labels):
-        if (labels[i] == 1.0
-            if self._fractional_labels else labels[i] > threshold):
-          if predictions[i] > threshold:
-            tp += example_weights[i]
+      for label, prediction, example_weight in zip(
+          labels, predictions, example_weights
+      ):
+        if (
+            label == 1.0
+            if self._enable_fractional_labels
+            else label > threshold
+        ):
+          if prediction > threshold:
+            tp += example_weight
             tp_example = example_id
           else:
-            fn += example_weights[i]
+            fn += example_weight
             fn_example = example_id
         else:
-          if predictions[i] > threshold:
-            fp += example_weights[i]
+          if prediction > threshold:
+            fp += example_weight
             fp_example = example_id
           else:
-            tn += example_weights[i]
+            tn += example_weight
             tn_example = example_id
 
       result[threshold] = self._merge_entry(
-          result, threshold,
-          _ThresholdEntry(
+          result=result,
+          threshold=threshold,
+          entry=_ThresholdEntry(
               Matrix(tp=tp, tn=tn, fp=fp, fn=fn),
               tp_examples=[tp_example] if tp_example else [],
               tn_examples=[tn_example] if tn_example else [],
               fp_examples=[fp_example] if fp_example else [],
-              fn_examples=[fn_example] if fn_example else []))
+              fn_examples=[fn_example] if fn_example else [],
+          ),
+      )
 
     return result
 
   def merge_accumulators(
-      self, accumulators: Iterable[MatrixAccumulator]) -> MatrixAccumulator:
+      self,
+      accumulators: Iterable[MatrixAccumulator],
+  ) -> MatrixAccumulator:
+    """Merges accumulators.
+
+    Args:
+      accumulators: Accumulators to be merged
+
+    Returns:
+      The merged accumulator.
+    """
     accumulators = iter(accumulators)
     result = next(accumulators)
     for accumulator in accumulators:
       for threshold in self._thresholds:
         if threshold not in accumulator:
           continue
-        result[threshold] = self._merge_entry(result, threshold,
-                                              accumulator[threshold])
+        result[threshold] = self._merge_entry(
+            result=result, threshold=threshold, entry=accumulator[threshold]
+        )
     return result
 
-  def extract_output(
-      self, accumulator: MatrixAccumulator
-  ) -> Dict[metric_types.MetricKey, MatrixAccumulator]:
+  def extract_output(self, accumulator: MatrixAccumulator) -> MatrixAccumulator:
     for threshold in self._thresholds:
       if threshold not in accumulator:
         accumulator[threshold] = _ThresholdEntry(
@@ -678,13 +723,104 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
             tp_examples=[],
             tn_examples=[],
             fp_examples=[],
-            fn_examples=[])
-    return {self._key: accumulator}
+            fn_examples=[],
+        )
+    return accumulator
+
+
+class _BinaryConfusionMatrixCombiner(beam.CombineFn):
+  """Computes binary confusion matrix in TFMA."""
+
+  def __init__(
+      self,
+      key: metric_types.MetricKey,
+      eval_config: Optional[config_pb2.EvalConfig],
+      thresholds: List[float],
+      extract_label_prediction_and_weight: Callable[..., Any],
+      example_id_key: Optional[str],
+      example_ids_count: int,
+      aggregation_type: Optional[metric_types.AggregationType],
+      class_weights: Optional[Dict[int, float]],
+      example_weighted: bool,
+      enable_fractional_labels: bool,
+  ):
+    self._key = key
+    self._eval_config = eval_config
+    self._extract_label_prediction_and_weight = (
+        extract_label_prediction_and_weight
+    )
+    self._example_id_key = example_id_key
+    self._aggregation_type = aggregation_type
+    self._class_weights = class_weights
+    self._example_weighted = example_weighted
+    self._enable_fractional_labels = enable_fractional_labels
+
+    self._binary_confusion_matrix = BinaryConfusionMatrix(
+        thresholds=thresholds,
+        example_ids_count=example_ids_count,
+        enable_fractional_labels=enable_fractional_labels,
+    )
+
+  def create_accumulator(self) -> MatrixAccumulator:
+    return self._binary_confusion_matrix.create_accumulator()
+
+  def add_input(
+      self,
+      accumulator: MatrixAccumulator,
+      element: metric_types.StandardMetricInputs,
+  ) -> MatrixAccumulator:
+    example_id = None
+    if self._example_id_key and self._example_id_key in element.features:
+      example_id = element.features[self._example_id_key]
+
+    labels = []
+    predictions = []
+    example_weights = []
+
+    for (
+        label,
+        prediction,
+        example_weight,
+    ) in self._extract_label_prediction_and_weight(
+        element,
+        eval_config=self._eval_config,
+        model_name=self._key.model_name,
+        output_name=self._key.output_name,
+        sub_key=self._key.sub_key,
+        fractional_labels=self._enable_fractional_labels,
+        flatten=True,
+        aggregation_type=self._aggregation_type,
+        class_weights=self._class_weights,
+        example_weighted=self._example_weighted,
+    ):
+      example_weights.append(float(example_weight))
+      labels.append(float(label))
+      predictions.append(float(prediction))
+
+    return self._binary_confusion_matrix.add_input(
+        accumulator=accumulator,
+        labels=labels,
+        predictions=predictions,
+        example_weights=example_weights,
+        example_id=example_id,
+    )
+
+  def merge_accumulators(
+      self, accumulators: Iterable[MatrixAccumulator]
+  ) -> MatrixAccumulator:
+    return self._binary_confusion_matrix.merge_accumulators(accumulators)
+
+  def extract_output(
+      self, accumulator: MatrixAccumulator
+  ) -> Dict[metric_types.MetricKey, MatrixAccumulator]:
+    return {
+        self._key: self._binary_confusion_matrix.extract_output(accumulator)
+    }
 
 
 def _accumulator_to_matrices_and_examples(
-    thresholds: List[float],
-    acc: MatrixAccumulator) -> Tuple[Matrices, Examples]:
+    thresholds: List[float], acc: MatrixAccumulator
+) -> Tuple[Matrices, Examples]:
   """Converts MatrixAccumulator to binary confusion matrices."""
   matrices = Matrices(thresholds=[], tp=[], tn=[], fp=[], fn=[])
   examples = Examples(
