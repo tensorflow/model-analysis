@@ -29,7 +29,8 @@
     to common prediction extractors.
 *   Add ROUGE Metrics.
 *   Add BLEU Metric.
-*   Refactor Binary Confusion Matrices to allow easier use outside of TFMA.
+*   Refactor Binary Confusion Matrices to use Binary Confusion Matrices
+    Computations.
 
 ## Bug fixes and other Changes
 
