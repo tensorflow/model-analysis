@@ -33,7 +33,6 @@ BINARY_CONFUSION_EXAMPLES_NAME = '_binary_confusion_examples'
 
 _BINARY_CONFUSION_MATRIX_NAME = '_binary_confusion_matrix'
 
-Matrix = bcm_computations.Matrix
 MatrixAccumulator = bcm_computations.MatrixAccumulator
 
 

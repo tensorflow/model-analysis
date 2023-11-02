@@ -17,7 +17,7 @@ import abc
 from typing import Any, Dict, Iterable, List, Optional, Union
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis.metrics import binary_confusion_matrices
+from tensorflow_model_analysis.experimental.aggregates import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import preprocessors
@@ -39,6 +39,8 @@ SEMANTIC_SEGMENTATION_FALSE_POSITIVES_NAME = (
 SEMANTIC_SEGMENTATION_CONFUSION_MATRIX_NAME = (
     '_semantic_segmentation_confusion_matrix'
 )
+
+Matrix = binary_confusion_matrices.Matrix
 
 
 class SemanticSegmentationConfusionMatrix(metric_types.Metric):
@@ -155,14 +157,14 @@ class _SemanticSegmentationConfusionMatrixCombiner(beam.CombineFn):
     self._class_ids = class_ids
     self._ignore_ground_truth_id = ignore_ground_truth_id
 
-  def create_accumulator(self) -> Dict[int, binary_confusion_matrices.Matrix]:
+  def create_accumulator(self) -> Dict[int, Matrix]:
     return {}
 
   def add_input(
       self,
-      accumulator: Dict[int, binary_confusion_matrices.Matrix],
+      accumulator: Dict[int, Matrix],
       element: metric_types.StandardMetricInputs,
-  ) -> Dict[int, binary_confusion_matrices.Matrix]:
+  ) -> Dict[int, Matrix]:
     ground_truth = element.get_labels()
     prediction = element.get_predictions()
 
@@ -197,7 +199,7 @@ class _SemanticSegmentationConfusionMatrixCombiner(beam.CombineFn):
           )
       )
 
-      class_confusion_matrix = binary_confusion_matrices.Matrix(
+      class_confusion_matrix = Matrix(
           tp=class_true_positive,
           tn=class_true_negative,
           fp=class_false_positive,
@@ -206,7 +208,7 @@ class _SemanticSegmentationConfusionMatrixCombiner(beam.CombineFn):
       if class_id not in accumulator:
         accumulator[class_id] = class_confusion_matrix
       else:
-        accumulator[class_id] = binary_confusion_matrices.Matrix(
+        accumulator[class_id] = Matrix(
             tp=accumulator[class_id].tp + class_confusion_matrix.tp,
             tn=accumulator[class_id].tn + class_confusion_matrix.tn,
             fp=accumulator[class_id].fp + class_confusion_matrix.fp,
@@ -216,14 +218,14 @@ class _SemanticSegmentationConfusionMatrixCombiner(beam.CombineFn):
 
   def merge_accumulators(
       self,
-      accumulators: Iterable[Dict[int, binary_confusion_matrices.Matrix]],
-  ) -> Dict[int, binary_confusion_matrices.Matrix]:
+      accumulators: Iterable[Dict[int, Matrix]],
+  ) -> Dict[int, Matrix]:
     accumulators = iter(accumulators)
     result = next(accumulators)
     for accumulator in accumulators:
       for class_id, confusion_matrix in accumulator.items():
         if class_id in result:
-          result[class_id] = binary_confusion_matrices.Matrix(
+          result[class_id] = Matrix(
               tp=result[class_id].tp + confusion_matrix.tp,
               tn=result[class_id].tn + confusion_matrix.tn,
               fp=result[class_id].fp + confusion_matrix.fp,
@@ -234,8 +236,8 @@ class _SemanticSegmentationConfusionMatrixCombiner(beam.CombineFn):
     return result
 
   def extract_output(
-      self, accumulator: Dict[int, binary_confusion_matrices.Matrix]
-  ) -> Dict[metric_types.MetricKey, binary_confusion_matrices.Matrix]:
+      self, accumulator: Dict[int, Matrix]
+  ) -> Dict[metric_types.MetricKey, Matrix]:
     result = {}
     for class_id, confusion_matrix_matrix in accumulator.items():
       new_key = self._key._replace(
@@ -244,7 +246,7 @@ class _SemanticSegmentationConfusionMatrixCombiner(beam.CombineFn):
       # In semantic segmentation metrics, there is no confidence score and thus
       # no thresholds. It is set to 0 as default to reuse the binary confusion
       # matrices.
-      matrices = binary_confusion_matrices.Matrix(
+      matrices = Matrix(
           tp=confusion_matrix_matrix.tp,
           tn=confusion_matrix_matrix.tn,
           fp=confusion_matrix_matrix.fp,
@@ -313,7 +315,7 @@ class SemanticSegmentationConfusionMatrixMetricBase(
   @abc.abstractmethod
   def _metric_value(
       self,
-      matrix: binary_confusion_matrices.Matrix,
+      matrix: Matrix,
   ) -> Union[float, np.ndarray]:
     """Returns the metric value based the confusion matrix.
 
@@ -409,7 +411,7 @@ class SemanticSegmentationTruePositive(
   def _default_name(self) -> str:
     return SEMANTIC_SEGMENTATION_TRUE_POSITIVES_NAME
 
-  def _metric_value(self, matrix: binary_confusion_matrices.Matrix) -> float:
+  def _metric_value(self, matrix: Matrix) -> float:
     return matrix.tp
 
 
@@ -424,7 +426,7 @@ class SemanticSegmentationFalsePositive(
   def _default_name(self) -> str:
     return SEMANTIC_SEGMENTATION_FALSE_POSITIVES_NAME
 
-  def _metric_value(self, matrix: binary_confusion_matrices.Matrix) -> float:
+  def _metric_value(self, matrix: Matrix) -> float:
     return matrix.fp
 
 

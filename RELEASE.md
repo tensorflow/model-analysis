@@ -8,6 +8,8 @@
 
 *   Fix the bug about batching unsized numpy arrays. ## Breaking Changes
 *   Depends on `attrs>=19.3.0,<24`.
+*   Consolidate Matrix definition for semantic segmentation confusion matrix
+    metrics.
 
 ## Deprecations
 

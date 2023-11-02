@@ -23,10 +23,12 @@ import numpy as np
 from PIL import Image
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.metrics import binary_confusion_matrices
+from tensorflow_model_analysis.experimental.aggregates import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 
 from google.protobuf import text_format
+
+Matrix = binary_confusion_matrices.Matrix
 
 
 def _encode_image_from_nparray(image_array: np.ndarray) -> bytes:
@@ -104,8 +106,8 @@ class SegmentationConfusionMatrixTest(parameterized.TestCase):
           ),
           name='SegConfusionMatrix',
           expected_result={
-              1: binary_confusion_matrices.Matrix(tp=1, tn=5, fp=4, fn=2),
-              2: binary_confusion_matrices.Matrix(tp=3, tn=3, fp=4, fn=2),
+              1: Matrix(tp=1, tn=5, fp=4, fn=2),
+              2: Matrix(tp=3, tn=3, fp=4, fn=2),
           },
       ),
       dict(
@@ -135,8 +137,8 @@ class SegmentationConfusionMatrixTest(parameterized.TestCase):
           ),
           name='SegConfusionMatrix',
           expected_result={
-              1: binary_confusion_matrices.Matrix(tp=1, tn=3, fp=2, fn=2),
-              2: binary_confusion_matrices.Matrix(tp=3, tn=1, fp=2, fn=2),
+              1: Matrix(tp=1, tn=3, fp=2, fn=2),
+              2: Matrix(tp=3, tn=1, fp=2, fn=2),
           },
       ),
       dict(
