@@ -10,6 +10,8 @@
 *   Depends on `attrs>=19.3.0,<24`.
 *   Consolidate Matrix definition for semantic segmentation confusion matrix
     metrics.
+*   Provide CallableCombineFn and interface and default call impl to adapt TFMA
+    metrics combiner for in-process call.
 
 ## Deprecations
 
