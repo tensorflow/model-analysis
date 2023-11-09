@@ -14,40 +14,38 @@
 """Lazytf core library."""
 
 
-import abc
-
-
-class CallableCombineFn(abc.ABC):
+# TODO(b/309864719): add ABC when Beam Kokoro issue is resolved.
+class CallableCombineFn:
   """An aggregation interface, similar to apche_beam.CombineFn."""
 
-  @abc.abstractmethod
   def create_accumulator(self):
     """Creates the initial states for the aggregation."""
+    raise NotImplementedError(str(self))
 
-  @abc.abstractmethod
   def add_input(self, accumulator, inputs):
     """Update the accumulator from a batch of inputs.
 
     Args:
       accumulator: the current accumulator.
-      inputs: the elements to add, should not be mutated
+      inputs: elements to add.
     """
+    raise NotImplementedError(str(self))
 
-  @abc.abstractmethod
   def merge_accumulators(self, accumulators):
     """Mering multiple accumulators into a one accumulator value.
 
     Args:
       accumulators: the accumulators to be merged.
     """
+    raise NotImplementedError(str(self))
 
-  @abc.abstractmethod
   def extract_output(self, accumulator):
     """Computes and returns the result from accumulator.
 
     Args:
       accumulator: the final accumulator value computed by this CombineFn.
     """
+    raise NotImplementedError(str(self))
 
   def __call__(self, inputs):
     """Directly apply aggregate on inputs."""
