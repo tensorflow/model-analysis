@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Lazy transform library."""
-from tensorflow_model_analysis.experimental.lazytf.core import CallableCombineFn
+from tensorflow_model_analysis.experimental.lazytf.core import AggregateFn

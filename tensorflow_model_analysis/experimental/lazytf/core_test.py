@@ -19,7 +19,7 @@ from apache_beam.testing import util
 from tensorflow_model_analysis.experimental.lazytf import core
 
 
-class _SumCombineFn(core.CallableCombineFn, beam.CombineFn):
+class _SumCombineFn(core.AggregateFn, beam.CombineFn):
   """Mock CombineFn for test."""
 
   def create_accumulator(self):
