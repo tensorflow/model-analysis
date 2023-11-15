@@ -17,7 +17,7 @@ import abc
 from typing import Any, Dict, Iterable, List, Optional, Union
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis.experimental.aggregates import binary_confusion_matrices
+from tensorflow_model_analysis.contrib.aggregates import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import preprocessors

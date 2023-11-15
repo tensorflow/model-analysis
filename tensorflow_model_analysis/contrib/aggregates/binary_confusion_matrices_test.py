@@ -15,8 +15,8 @@
 
 from absl.testing import parameterized
 import tensorflow as tf
+from tensorflow_model_analysis.contrib.aggregates import binary_confusion_matrices
 from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.experimental.aggregates import binary_confusion_matrices
 
 
 class BinaryConfusionMatricesTest(

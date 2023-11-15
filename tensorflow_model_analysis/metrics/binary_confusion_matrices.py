@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tu
 import apache_beam as beam
 import numpy as np
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.experimental.aggregates import binary_confusion_matrices as bcm_computations
+from tensorflow_model_analysis.contrib.aggregates import binary_confusion_matrices as bcm_computations
 from tensorflow_model_analysis.metrics import calibration_histogram
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util

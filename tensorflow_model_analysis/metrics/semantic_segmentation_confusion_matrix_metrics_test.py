@@ -23,7 +23,7 @@ import numpy as np
 from PIL import Image
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.experimental.aggregates import binary_confusion_matrices
+from tensorflow_model_analysis.contrib.aggregates import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
 
 from google.protobuf import text_format
