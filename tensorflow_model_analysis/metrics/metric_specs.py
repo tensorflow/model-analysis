@@ -1159,9 +1159,18 @@ def _serialize_tf_metric(
     metric: tf.keras.metrics.Metric) -> config_pb2.MetricConfig:
   """Serializes TF metric."""
   cfg = metric_util.serialize_metric(metric, use_legacy_format=True)
+  if (
+      tf.keras.saving.get_registered_name(metric.__class__)
+      == metric.__class__.__name__
+  ):
+    module = metric.__class__.__module__
+  else:
+    module = None
   return config_pb2.MetricConfig(
       class_name=cfg['class_name'],
-      config=json.dumps(cfg['config'], sort_keys=True))
+      module=module,
+      config=json.dumps(cfg['config'], sort_keys=True),
+  )
 
 
 def _deserialize_tf_metric(

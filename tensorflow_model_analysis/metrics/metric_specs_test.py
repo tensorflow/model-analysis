@@ -187,18 +187,21 @@ class MetricSpecsTest(tf.test.TestCase):
             metrics=[
                 config_pb2.MetricConfig(
                     class_name='RootMeanSquaredError',
-                    config=json.dumps({
-                        'name': 'rmse',
-                        'dtype': 'float32'
-                    },
-                                      sort_keys=True))
+                    module='tf_keras.metrics.regression_metrics',
+                    config=json.dumps(
+                        {'name': 'rmse', 'dtype': 'float32'}, sort_keys=True
+                    ),
+                )
             ],
             model_names=['model_name1', 'model_name2'],
             output_names=['output_name2'],
             binarize=config_pb2.BinarizationOptions(
-                class_ids={'values': [0, 1]}),
+                class_ids={'values': [0, 1]}
+            ),
             aggregate=config_pb2.AggregationOptions(macro_average=True),
-            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)))
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True),
+        ),
+    )
 
   def testMetricKeysToSkipForConfidenceIntervals(self):
     metrics_specs = [
