@@ -118,7 +118,7 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
       example_weights=None,
       example_id=None,
   ) -> MatrixAccumulator:
-    """Adds input to the accumulator.
+    """Adds a single input to the accumulator.
 
     Args:
       accumulator: Accumulator to add input to.
@@ -178,6 +178,43 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
       )
 
     return result
+
+  def add_inputs(
+      self,
+      accumulator: MatrixAccumulator,
+      labels,
+      predictions,
+      example_weights=None,
+      example_ids=None,
+  ) -> MatrixAccumulator:
+    """Adds a batch of inputs to the accumulator.
+
+    Args:
+      accumulator: Accumulator to add input to.
+      labels: Expected values.
+      predictions: Predicted values.
+      example_weights: Weights for each example.
+      example_ids: IDs For this example.
+
+    Returns:
+      Merged MatrixAccumulator of the original accumulator and the added inputs.
+    """
+    if not example_weights or all(w is None for w in example_weights):
+      example_weights = [1] * len(labels)
+
+    if example_ids is None:
+      example_ids = [None] * len(labels)
+    for label, prediction, example_weight, example_id in zip(
+        labels, predictions, example_weights, example_ids
+    ):
+      accumulator = self.add_input(
+          accumulator=accumulator,
+          labels=[label],
+          predictions=[prediction],
+          example_weights=[example_weight],
+          example_id=example_id,
+      )
+    return accumulator
 
   def merge_accumulators(
       self,

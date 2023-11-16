@@ -26,6 +26,9 @@ class _SumCombineFn(core.AggregateFn, beam.CombineFn):
     return 0
 
   def add_input(self, accumulator, x):
+    return self.add_inputs(accumulator, [x])
+
+  def add_inputs(self, accumulator, x):
     return accumulator + sum(x)
 
   def merge_accumulators(self, accumulators):
@@ -44,9 +47,7 @@ class CoreTest(absltest.TestCase):
   def test_callable_combinefn_in_beam(self):
     sum_fn = _SumCombineFn()
     with beam.Pipeline() as pipeline:
-      result = (
-          pipeline | beam.Create([[1, 2], [3]]) | beam.CombineGlobally(sum_fn)
-      )
+      result = pipeline | beam.Create([1, 2, 3]) | beam.CombineGlobally(sum_fn)
       util.assert_that(result, util.equal_to([6]))
 
 

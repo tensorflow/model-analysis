@@ -23,7 +23,7 @@ class AggregateFn:
     """Creates the initial states for the aggregation."""
     return None
 
-  def add_input(self, accumulator, *inputs, **named_inputs):
+  def add_inputs(self, accumulator, *inputs, **named_inputs):
     """Update the accumulator from a batch of inputs.
 
     Args:
@@ -44,7 +44,7 @@ class AggregateFn:
   def __call__(self, *inputs, **named_inputs):
     """Directly apply aggregate on inputs."""
     return self.extract_output(
-        self.add_input(self.create_accumulator(), *inputs, **named_inputs)
+        self.add_inputs(self.create_accumulator(), *inputs, **named_inputs)
     )
 
   def merge_accumulators(self, accumulators):

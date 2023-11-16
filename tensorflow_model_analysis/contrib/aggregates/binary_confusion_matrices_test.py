@@ -138,7 +138,7 @@ class BinaryConfusionMatricesTest(
           },
       ),
   )
-  def testBinaryConfusionMatrices(
+  def testBinaryConfusionMatricesPerRow(
       self,
       thresholds,
       example_ids_count,
@@ -165,6 +165,139 @@ class BinaryConfusionMatricesTest(
           example_id=example_id,
       )
     self.assertDictEqual(accumulator, expected_result)
+
+  @parameterized.parameters(
+      dict(
+          thresholds=[0, 0.5, 1],
+          example_ids_count=100,
+          example_weights=(None, None, None, None),
+          example_ids=(None, None, None, None),
+          expected_result={
+              0: binary_confusion_matrices._ThresholdEntry(
+                  matrix=binary_confusion_matrices.Matrix(
+                      tp=2.0, tn=1.0, fp=1.0, fn=0.0
+                  ),
+                  tp_examples=[],
+                  tn_examples=[],
+                  fp_examples=[],
+                  fn_examples=[],
+              ),
+              0.5: binary_confusion_matrices._ThresholdEntry(
+                  matrix=binary_confusion_matrices.Matrix(
+                      tp=1.0, tn=2.0, fp=0.0, fn=1.0
+                  ),
+                  tp_examples=[],
+                  tn_examples=[],
+                  fp_examples=[],
+                  fn_examples=[],
+              ),
+              1: binary_confusion_matrices._ThresholdEntry(
+                  matrix=binary_confusion_matrices.Matrix(
+                      tp=0.0, tn=2.0, fp=0.0, fn=2.0
+                  ),
+                  tp_examples=[],
+                  tn_examples=[],
+                  fp_examples=[],
+                  fn_examples=[],
+              ),
+          },
+      ),
+      dict(
+          thresholds=[0.1, 0.9],
+          example_ids_count=1,
+          example_weights=(1, 1, 1, 1),
+          example_ids=('id_1', 'id_2', 'id_3', 'id_4'),
+          expected_result={
+              0.1: binary_confusion_matrices._ThresholdEntry(
+                  matrix=binary_confusion_matrices.Matrix(
+                      tp=2.0, tn=1.0, fp=1.0, fn=0.0
+                  ),
+                  tp_examples=['id_3'],
+                  tn_examples=['id_1'],
+                  fp_examples=['id_2'],
+                  fn_examples=[],
+              ),
+              0.9: binary_confusion_matrices._ThresholdEntry(
+                  matrix=binary_confusion_matrices.Matrix(
+                      tp=0.0, tn=2.0, fp=0.0, fn=2.0
+                  ),
+                  tp_examples=[],
+                  tn_examples=['id_1'],
+                  fp_examples=[],
+                  fn_examples=['id_3'],
+              ),
+          },
+      ),
+      dict(
+          thresholds=[0.1, 0.9],
+          example_ids_count=2,
+          example_weights=(1, 1, 1, 1),
+          example_ids=('id_1', 'id_2', 'id_3', 'id_4'),
+          expected_result={
+              0.1: binary_confusion_matrices._ThresholdEntry(
+                  matrix=binary_confusion_matrices.Matrix(
+                      tp=2.0, tn=1.0, fp=1.0, fn=0.0
+                  ),
+                  tp_examples=['id_3', 'id_4'],
+                  tn_examples=['id_1'],
+                  fp_examples=['id_2'],
+                  fn_examples=[],
+              ),
+              0.9: binary_confusion_matrices._ThresholdEntry(
+                  matrix=binary_confusion_matrices.Matrix(
+                      tp=0.0, tn=2.0, fp=0.0, fn=2.0
+                  ),
+                  tp_examples=[],
+                  tn_examples=['id_1', 'id_2'],
+                  fp_examples=[],
+                  fn_examples=['id_3', 'id_4'],
+              ),
+          },
+      ),
+      dict(
+          thresholds=[0.25, 0.75],
+          example_ids_count=100,
+          example_weights=(0.2, 0.3, 0.5, 0.7),
+          example_ids=(None, None, None, None),
+          expected_result={
+              0.25: binary_confusion_matrices._ThresholdEntry(
+                  matrix=binary_confusion_matrices.Matrix(
+                      tp=1.2, tn=0.2, fp=0.3, fn=0.0
+                  ),
+                  tp_examples=[],
+                  tn_examples=[],
+                  fp_examples=[],
+                  fn_examples=[],
+              ),
+              0.75: binary_confusion_matrices._ThresholdEntry(
+                  matrix=binary_confusion_matrices.Matrix(
+                      tp=0.7, tn=0.5, fp=0.0, fn=0.5
+                  ),
+                  tp_examples=[],
+                  tn_examples=[],
+                  fp_examples=[],
+                  fn_examples=[],
+              ),
+          },
+      ),
+  )
+  def testBinaryConfusionMatricesInProcess(
+      self,
+      thresholds,
+      example_ids_count,
+      example_weights,
+      example_ids,
+      expected_result,
+  ):
+    labels = (0, 0, 1, 1)
+    predictions = (0, 0.5, 0.3, 0.9)
+
+    confusion_matrix = binary_confusion_matrices.BinaryConfusionMatrices(
+        thresholds=thresholds,
+        example_ids_count=example_ids_count,
+    )
+    actual = confusion_matrix(labels, predictions, example_weights, example_ids)
+    self.assertDictEqual(actual, expected_result)
 
 
 if __name__ == '__main__':
