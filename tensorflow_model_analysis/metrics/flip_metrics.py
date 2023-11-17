@@ -277,7 +277,7 @@ class _BooleanFlipRatesCombiner(beam.CombineFn):
             allow_none=True,
         )
     )
-    base_example_weight = base_example_weight.item()
+    base_example_weight = metric_util.safe_to_scalar(base_example_weight)
     accumulator.num_weighted_examples += base_example_weight
     base_prediciton_bool = base_prediction > self._threshold
     model_prediction_bool = model_prediction > self._threshold

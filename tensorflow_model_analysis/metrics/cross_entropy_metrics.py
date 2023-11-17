@@ -298,10 +298,12 @@ class _CrossEntropyCombiner(beam.CombineFn, metaclass=abc.ABCMeta):
     for label, prediction, example_weight in lpe_iterator:
       # The np.item method makes sure the result is a one element numpy array
       # and returns the single element as a float.
-      accumulator.total_cross_entropy += (
-          self._cross_entropy(label, prediction) * example_weight.item()
+      accumulator.total_cross_entropy += self._cross_entropy(
+          label, prediction
+      ) * metric_util.safe_to_scalar(example_weight)
+      accumulator.total_example_weights += metric_util.safe_to_scalar(
+          example_weight
       )
-      accumulator.total_example_weights += example_weight.item()
 
     return accumulator
 
@@ -357,7 +359,7 @@ class _BinaryCrossEntropyCombiner(_CrossEntropyCombiner):
     binary_cross_entropy = np.mean(elementwise_binary_cross_entropy)
     # The np.item method makes sure the result is a one element numpy array and
     # returns the single element as a float.
-    return binary_cross_entropy.item()
+    return metric_util.safe_to_scalar(binary_cross_entropy)
 
 
 class _CategoricalCrossEntropyCombiner(_CrossEntropyCombiner):
@@ -391,4 +393,4 @@ class _CategoricalCrossEntropyCombiner(_CrossEntropyCombiner):
 
     # The np.item method makes sure the result is a one element numpy array and
     # returns the single element as a float.
-    return categorical_cross_entropy.item()
+    return metric_util.safe_to_scalar(categorical_cross_entropy)

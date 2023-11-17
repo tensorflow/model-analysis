@@ -128,7 +128,7 @@ class _ExactMatchCombiner(beam.CombineFn):
         prediction = [json.loads(p) for p in prediction]
       match = [p == l for p, l in zip(prediction, label)]
       score = int(all(match))
-      example_weight = example_weight.item()
+      example_weight = metric_util.safe_to_scalar(example_weight)
       accumulator.total_weighted_exact_match_scores += score * example_weight
       accumulator.total_weighted_examples += example_weight
     return accumulator

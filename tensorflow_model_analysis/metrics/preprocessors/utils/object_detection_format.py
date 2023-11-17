@@ -21,6 +21,7 @@ import collections
 from typing import List, Optional
 
 import numpy as np
+from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.utils import util
 
 
@@ -189,7 +190,7 @@ def truncate_by_num_detections(
     if dict_to_search and num_rows_key in dict_to_search:
       num_of_rows = dict_to_search[num_rows_key]
       if isinstance(num_of_rows, np.ndarray):
-        num_of_rows = num_of_rows.item()
+        num_of_rows = metric_util.safe_to_scalar(num_of_rows)
     else:
       if not allow_missing_key:
         raise KeyError(f"Key {num_rows_key} is not found under predictions, "
