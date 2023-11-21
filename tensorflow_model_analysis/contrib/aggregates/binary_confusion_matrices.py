@@ -14,7 +14,7 @@
 """Binary confusion matrix."""
 
 from typing import Dict, Iterable, List, NamedTuple
-from tensorflow_model_analysis.experimental import lazytf
+from tensorflow_model_analysis.experimental.lazytf import api as lazytf
 
 DEFAULT_NUM_EXAMPLE_IDS = 100
 

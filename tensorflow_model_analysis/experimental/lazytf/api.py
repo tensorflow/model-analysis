@@ -11,3 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""SDK for Lazy Transform."""
+
+# pylint: disable=unused-import
+# pylint: disable=g-importing-member
+
+from tensorflow_model_analysis.experimental.lazytf.core import AggregateFn
