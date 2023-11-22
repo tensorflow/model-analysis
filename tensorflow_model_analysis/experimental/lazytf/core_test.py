@@ -22,20 +22,15 @@ from tensorflow_model_analysis.experimental.lazytf import core
 class _SumCombineFn(core.AggregateFn, beam.CombineFn):
   """Mock CombineFn for test."""
 
-  def create_accumulator(self):
-    return 0
-
   def add_input(self, accumulator, x):
     return self.add_inputs(accumulator, [x])
 
   def add_inputs(self, accumulator, x):
+    accumulator = accumulator or 0
     return accumulator + sum(x)
 
   def merge_accumulators(self, accumulators):
     return sum(accumulators)
-
-  def extract_output(self, accumulator):
-    return accumulator
 
 
 class CoreTest(absltest.TestCase):

@@ -38,8 +38,11 @@ class AggregateFn:
 
     Args:
       accumulator: the final accumulator value computed by this CombineFn.
+
+    Returns:
+      Accumulator.
     """
-    raise NotImplementedError()
+    return accumulator
 
   def __call__(self, *inputs, **named_inputs):
     """Directly apply aggregate on inputs."""
