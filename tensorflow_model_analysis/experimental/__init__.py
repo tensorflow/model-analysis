@@ -14,5 +14,4 @@
 """Init module for experimental."""
 
 from tensorflow_model_analysis.experimental import dataframe
-from tensorflow_model_analysis.experimental import metrics
 from tensorflow_model_analysis.experimental import preprocessing_functions

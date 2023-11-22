@@ -12,6 +12,7 @@
     metrics.
 *   Provide AggregateFn and interface and default call impl to adapt TFMA
     metrics combiner for in-process call.
+*   Move Mean metrics from experimental to metrics.
 
 ## Deprecations
 
