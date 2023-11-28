@@ -435,38 +435,46 @@ class BinaryConfusionMatricesTest(testutil.TensorflowModelAnalysisTest,
     histogram = computations[0]
     matrices = computations[1]
 
-    example1 = {
-        'labels': np.array([0.0]),
-        'predictions': np.array([0.0]),
-        'example_weights': np.array([1.0]),
-        'features': {},
-    }
-    example2 = {
-        'labels': np.array([0.0]),
-        'predictions': np.array([0.5]),
-        'example_weights': np.array([1.0]),
-        'features': {},
-    }
-    example3 = {
-        'labels': np.array([1.0]),
-        'predictions': np.array([0.3]),
-        'example_weights': np.array([1.0]),
-        'features': {},
-    }
-    example4 = {
-        'labels': np.array([1.0]),
-        'predictions': np.array([0.9]),
-        'example_weights': np.array([1.0]),
-        'features': {},
-    }
+    examples = [
+        {
+            'labels': np.array([0.0]),
+            'predictions': np.array([0.0]),
+            'example_weights': np.array([1.0]),
+            'features': {},
+        },
+        {
+            'labels': np.array([0.0]),
+            'predictions': np.array([0.5]),
+            'example_weights': np.array([1.0]),
+            'features': {},
+        },
+        {
+            'labels': np.array([1.0]),
+            'predictions': np.array([0.3]),
+            'example_weights': np.array([1.0]),
+            'features': {},
+        },
+        {
+            'labels': np.array([1.0]),
+            'predictions': np.array([0.9]),
+            'example_weights': np.array([1.0]),
+            'features': {},
+        },
+        {
+            # Ensure that empty inputs are handled safely.
+            'labels': np.array([]),
+            'predictions': np.array([]),
+            'example_weights': np.array([]),
+            'features': {},
+        },
+    ]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([example1, example2, example3, example4])
-          |
-          'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'Create' >> beam.Create(examples)
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
           | 'ComputeMatrices' >> beam.Map(

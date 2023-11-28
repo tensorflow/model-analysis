@@ -603,9 +603,9 @@ class _BinaryConfusionMatrixCombiner(beam.CombineFn):
         class_weights=self._class_weights,
         example_weighted=self._example_weighted,
     ):
-      example_weights.append(float(example_weight))
-      labels.append(float(label))
-      predictions.append(float(prediction))
+      example_weights.append(metric_util.safe_to_scalar(example_weight))
+      labels.append(metric_util.safe_to_scalar(label))
+      predictions.append(metric_util.safe_to_scalar(prediction))
 
     return self._binary_confusion_matrices.add_input(
         accumulator=accumulator,
