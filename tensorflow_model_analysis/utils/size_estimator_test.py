@@ -26,7 +26,7 @@ class SizeEstimatorTest(tf.test.TestCase):
     self.assertEqual(estimator.get_estimate(), 0)
     a = b'plmjh'
     b, c = a, a
-    expected_size_estimate = (len(a) / (sys.getrefcount(a) - 1)) * 4
+    expected_size_estimate = int(len(a) / (sys.getrefcount(a) - 1)) * 4
     estimator.update(a)
     estimator.update(b)
     estimator.update(c)
@@ -50,7 +50,7 @@ class SizeEstimatorTest(tf.test.TestCase):
     self.assertEqual(estimator2.get_estimate(), 0)
     a = b'plmjh'
     b, c = a, a
-    expected_size_estimate = (len(a) / (sys.getrefcount(a) - 1)) * 4
+    expected_size_estimate = int(len(a) / (sys.getrefcount(a) - 1)) * 4
     estimator1.update(a)
     estimator1.update(b)
     estimator2.update(c)

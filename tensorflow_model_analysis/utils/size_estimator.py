@@ -56,7 +56,9 @@ class SizeEstimator:
     discounted_references = 3
     unamortized_size = self._size_fn(value)
     refcount = sys.getrefcount(value)
-    amortized_size = unamortized_size / max(1, refcount - discounted_references)
+    amortized_size = int(
+        unamortized_size / max(1, refcount - discounted_references)
+    )
     self._curr_size += amortized_size
     self._unamortized_size.update(unamortized_size)
     self._refcount.update(refcount)
