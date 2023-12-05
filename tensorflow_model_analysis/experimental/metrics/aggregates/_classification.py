@@ -13,7 +13,7 @@
 # limitations under the License.
 """Aggregates modules for all classification metrics."""
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 import dataclasses
 import enum
 import itertools
@@ -23,10 +23,50 @@ import numpy as np
 from numpy import typing as npt
 from tensorflow_model_analysis.experimental.lazytf import api as lazytf
 
+
 _NumbersT = npt.ArrayLike
+_DefaultDType = np.float64
 
 
-class ConfusionMatrix:
+# TODO: b/312290886 - move this to Python StrEnum when moved to Python 3.11.
+class _StrEnum(str, enum.Enum):
+  """Enum where members also must be strings."""
+
+  __str__ = str.__str__
+
+  __repr__ = str.__repr__
+
+  __format__ = str.__format__
+
+  __iter__ = enum.Enum.__iter__
+
+
+@dataclasses.dataclass
+class MeanState:
+  """Mergeable states for batch update in an aggregate function."""
+
+  total: _NumbersT = 0
+  count: _NumbersT = 0
+
+  def __iadd__(self, other):
+    self.total += other.total
+    self.count += other.count
+    return self
+
+  def result(self):
+    return _safe_divide(self.total, self.count)
+
+
+class ConfusionMatrixMetric(_StrEnum):  # pylint: disable=invalid-enum-extension
+  CONFUSION_MATRIX = 'confusion_matrix'
+  PRECISION = 'precision'
+  RECALL = 'recall'
+  F1_SCORE = 'f1_score'
+  ACCURACY = 'accuracy'
+  MEAN_AVERAGE_PRECISION = 'mean_average_precision'
+
+
+class _ConfusionMatrix:
   """Confusion Matrix accumulator with kwargs used to compute it.
 
   Confusion matrix for classification and retrieval tasks.
@@ -37,6 +77,7 @@ class ConfusionMatrix:
     tn: True negatives count.
     fp: False positives count.
     fn: False negative count.
+    average: The average type of which this confusion matrix is computed.
     dtype: data type of the instance numpy array. None by default, dtype is
       deduced by numpy at construction.
   """
@@ -78,7 +119,7 @@ class ConfusionMatrix:
     tn = self.tn + other.tn
     fp = self.fp + other.fp
     fn = self.fn + other.fn
-    return ConfusionMatrix(tp, tn, fp, fn)
+    return _ConfusionMatrix(tp, tn, fp, fn)
 
   def __eq__(self, other):
     """Numerically equals."""
@@ -89,22 +130,36 @@ class ConfusionMatrix:
         and np.allclose(self.fn, other.fn)
     )
 
-  @classmethod
-  def concatenate(cls, cms: Sequence['ConfusionMatrix']):
-    """Helper function to concatenate each nparray inside a ConfusionMatrix."""
-    tp = np.concatenate([cm.tp for cm in cms], axis=0)
-    tn = np.concatenate([cm.tn for cm in cms], axis=0)
-    fp = np.concatenate([cm.fp for cm in cms], axis=0)
-    fn = np.concatenate([cm.fn for cm in cms], axis=0)
-    return cls(tp, tn, fp, fn)
+  def __repr__(self):
+    return f'tp={self.tp}, tn={self.tn}, fp={self.fp}, fn={self.fn}'
+
+  def derive_metric(
+      self, metric: ConfusionMatrixMetric, average=None
+  ) -> _NumbersT:
+    """Helper to call the right metric function given a Metric Enum."""
+    match metric:
+      case ConfusionMatrixMetric.PRECISION:
+        result = _precision(self)
+      case ConfusionMatrixMetric.RECALL:
+        result = _recall(self)
+      case ConfusionMatrixMetric.F1_SCORE:
+        result = _f1(self)
+      case ConfusionMatrixMetric.ACCURACY:
+        result = _accuracy(self)
+      case _:
+        raise NotImplementedError(f'"{metric}" metric is not supported.')
+    assert (
+        average != AverageType.SAMPLES
+    ), 'Unexpected samplewise average for a derived metric.'
+    if average is None or average in ('micro', 'binary'):
+      return result
+    elif average == 'macro':
+      return np.mean(result, axis=0)
+    else:
+      raise NotImplementedError(f'"{average}" average is not supported.')
 
 
-# TODO(b/312290886): move this to Python StrEnum when moved to Python 3.11.
-class _StrEnum(str, enum.Enum):
-  """Enum where members are must be strings."""
-
-
-class InputType(_StrEnum):
+class InputType(_StrEnum):  # pylint: disable=invalid-enum-extension
   """Label prediction encoding types."""
 
   # 1D array per batch, e.g., [0,1,0,1,0], [-1, 1, -1], or ['Y', 'N']
@@ -127,7 +182,7 @@ class InputType(_StrEnum):
   MULTICLASS_INDICATOR = 'multiclass-indicator'
 
 
-class AverageType(_StrEnum):
+class AverageType(_StrEnum):  # pylint: disable=invalid-enum-extension
   """Average type of the confusion matrix."""
 
   # Treats each class as one example and calculates the metrics on the total
@@ -145,15 +200,43 @@ class AverageType(_StrEnum):
   BINARY = 'binary'
 
 
+def _safe_divide(a, b):
+  result = np.divide(
+      a, b, out=np.zeros_like(a, dtype=_DefaultDType), where=(b != 0)
+  )
+  if result.ndim == 0:
+    return result.item()
+  return result
+
+
+def _precision(cm: _ConfusionMatrix):
+  return _safe_divide(cm.tp, cm.p)
+
+
+def _recall(cm: _ConfusionMatrix):
+  return _safe_divide(cm.tp, cm.t)
+
+
+def _f1(cm: _ConfusionMatrix):
+  precision = _precision(cm)
+  recall = _recall(cm)
+  return _safe_divide(2 * precision * recall, precision + recall)
+
+
+def _accuracy(cm: _ConfusionMatrix) -> _NumbersT:
+  """Accuracy, only meaningful for samplewise ConfusionMatrixAtK."""
+  return (cm.tp > 0).astype(int)
+
+
 def _indicator_confusion_matrix(
     y_true: _NumbersT,
     y_pred: _NumbersT,
     *,
-    pos_label=1,
+    pos_label: str | int | bytes = 1,
     multiclass: bool = False,
     average: AverageType = AverageType.MICRO,
     unknown_tn: bool = False,
-) -> ConfusionMatrix:
+) -> _ConfusionMatrix:
   """Calculates confusion matix.
 
   Args:
@@ -175,12 +258,12 @@ def _indicator_confusion_matrix(
   """
   if average in (AverageType.MICRO, AverageType.BINARY):
     axis = None
-  elif average == AverageType.MACRO:
+  elif average is None or average == AverageType.MACRO:
     axis = 0
   elif average == AverageType.SAMPLES:
     axis = 1
   else:
-    raise NotImplementedError(f'{average=} is not supported.')
+    raise NotImplementedError(f'"{average}" average is not supported.')
 
   y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)
   if multiclass and (y_true.ndim < 2 or y_pred.ndim < 2):
@@ -200,7 +283,7 @@ def _indicator_confusion_matrix(
       )
     true = true[:, 0]
     positive = positive[:, 0]
-  # Reshapes to a multi-class format if average type is not BINARY.
+  # Reshapes to a multi-class format to Batch X Classes
   elif not multiclass and average != AverageType.BINARY:
     true = np.vstack((true, ~true)).T
     positive = np.vstack((positive, ~positive)).T
@@ -217,10 +300,10 @@ def _indicator_confusion_matrix(
   else:
     negative_cnt = negative.sum(axis=axis)
     tn_cnt = negative_cnt - fn_cnt
-  return ConfusionMatrix(tp_cnt, tn_cnt, fp_cnt, fn_cnt)
+  return _ConfusionMatrix(tp_cnt, tn_cnt, fp_cnt, fn_cnt)
 
 
-def _get_vocab(rows: Sequence[Any], multioutput: bool):
+def _get_vocab(rows: Iterable[Any], multioutput: bool):
   """Constructs a vocabulary that maps hashables to an integer."""
   if multioutput:
     return {
@@ -252,7 +335,7 @@ def _multiclass_confusion_matrix(
     multioutput: bool = False,
     average: AverageType = AverageType.MICRO,
     unknown_tn: bool = True,
-) -> ConfusionMatrix:
+) -> _ConfusionMatrix:
   """Calculates a confusion matrix for multiclass(-multioutput) input.
 
   Args:
@@ -272,9 +355,7 @@ def _multiclass_confusion_matrix(
   Returns:
     Confusion matrices with k in k_list.
   """
-  vocab = vocab or (
-      _get_vocab(y_true, multioutput) | _get_vocab(y_pred, multioutput)
-  )
+  vocab = vocab or _get_vocab(itertools.chain(y_true, y_pred), multioutput)
   y_true_dense = _apply_vocab(y_true, vocab, multioutput)
   y_pred_dense = _apply_vocab(y_pred, vocab, multioutput)
   return _indicator_confusion_matrix(
@@ -287,8 +368,11 @@ def _multiclass_confusion_matrix(
   )
 
 
-@dataclasses.dataclass(kw_only=True)
-class ConfusionMatrixAggregate(lazytf.AggregateFn):
+ConfusionMatrixAggState = _ConfusionMatrix
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class ConfusionMatrixAggFn(lazytf.AggregateFn):
   """ConfusionMatrix aggregate.
 
   Attributes:
@@ -302,31 +386,40 @@ class ConfusionMatrixAggregate(lazytf.AggregateFn):
       id. This is required if computed distributed (when merge_accumulators is
       called) and the average is macro where the class id mapping needs to be
       stable.
+    dtype: dtype of the confusion matrix and all computations. Default to None
+      as it is inferred.
   """
 
   pos_label: bool | int | str | bytes = 1
-  input_type: str | InputType = InputType.BINARY
+  input_type: InputType = InputType.BINARY
   # TODO(b/311208939): implements average = None.
-  average: str | AverageType = AverageType.BINARY
+  average: AverageType = AverageType.BINARY
   unknown_tn: bool = False
   vocab: dict[str, int] | None = None
+  metrics: Sequence[ConfusionMatrixMetric] = ()
+  dtype: type[Any] | None = None
+
+  def __post_init__(self):
+    if self.average == AverageType.SAMPLES:
+      raise ValueError(
+          '"samples" average is unsupported, use the Samplewise version.'
+      )
 
   def _calculate_confusion_matrix(
       self,
       y_true: _NumbersT,
       y_pred: _NumbersT,
-  ) -> ConfusionMatrix:
-    input_type = InputType(self.input_type)
-    if input_type in (InputType.MULTICLASS_INDICATOR, InputType.BINARY):
+  ) -> _ConfusionMatrix:
+    if self.input_type in (InputType.MULTICLASS_INDICATOR, InputType.BINARY):
       return _indicator_confusion_matrix(
           y_true,
           y_pred,
           pos_label=self.pos_label,
-          multiclass=(input_type == InputType.MULTICLASS_INDICATOR),
-          average=AverageType(self.average),
+          multiclass=(self.input_type == InputType.MULTICLASS_INDICATOR),
+          average=self.average,
           unknown_tn=self.unknown_tn,
       )
-    elif input_type in (
+    elif self.input_type in (
         InputType.MULTICLASS,
         InputType.MULTICLASS_MULTIOUTPUT,
     ):
@@ -334,36 +427,138 @@ class ConfusionMatrixAggregate(lazytf.AggregateFn):
           y_true,
           y_pred,
           vocab=self.vocab,
-          multioutput=(input_type == InputType.MULTICLASS_MULTIOUTPUT),
+          multioutput=(self.input_type == InputType.MULTICLASS_MULTIOUTPUT),
           average=self.average,
           unknown_tn=self.unknown_tn,
       )
     else:
-      # TODO(b/311208939): implements continuous input type with thresholds.
-      raise NotImplementedError(f'{input_type=} is not supported.')
+      raise NotImplementedError(f'"{self.input_type}" input is not supported.')
 
-  def add_inputs(self, accumulator: Any, *inputs: Any) -> Any:
-    result = self._calculate_confusion_matrix(*inputs)
-    if accumulator:
-      # TODO(b/311208939): implements distributed efficient samplewise metric.
-      if self.average == AverageType.SAMPLES:
-        result = result.__class__.concatenate((accumulator, result))
-      else:
-        result += accumulator
-    return result
+  def add_inputs(
+      self, state: ConfusionMatrixAggState | None, *inputs: Any
+  ) -> ConfusionMatrixAggState:
+    cm = self._calculate_confusion_matrix(*inputs)
+    return (cm + state) if state else cm
 
   def merge_accumulators(
-      self, accumulators: list[ConfusionMatrix]
-  ) -> ConfusionMatrix:
-    if self.average == AverageType.SAMPLES:
-      return accumulators[0].__class__.concatenate(accumulators)
+      self, states: list[ConfusionMatrixAggState]
+  ) -> ConfusionMatrixAggState:
     if (
         self.average in (AverageType.WEIGHTED, AverageType.MACRO)
         and self.vocab is None
     ):
-      raise ValueError(f'Global vocab is needed for {self.average} average.')
-    iter_acc = iter(accumulators)
+      raise ValueError(f'Global vocab is needed for "{self.average}" average.')
+    iter_acc = iter(states)
     result = next(iter_acc)
     for accumulator in iter_acc:
       result += accumulator
     return result
+
+  def extract_output(self, state: ConfusionMatrixAggState) -> Any:
+    if self.metrics:
+      return tuple(
+          state.derive_metric(metric, average=self.average)
+          for metric in self.metrics
+      )
+    return (state,)
+
+
+SamplewiseConfusionMatrixAggState = dict[str, MeanState]
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class SamplewiseConfusionMatrixAggFn(lazytf.AggregateFn):
+  """ConfusionMatrix aggregate.
+
+  Attributes:
+    pos_label: the value considered as positive, default to 1.
+    input_type: input encoding type, must be one of `InputType`.
+    average: fixed as `samples` average.
+    unkown_tn: unkonw true negative, applicable when the number of classes is
+      unknown, typically used for retrieval cases. If True, the true negative is
+      set to inf.
+    vocab: an external vocabulary that maps categorical value to integer class
+      id. This is required if computed distributed (when merge_accumulators is
+      called) and the average is macro where the class id mapping needs to be
+      stable.
+    dtype: dtype of the confusion matrix and all computations. Default to None
+      as it is inferred.
+  """
+
+  metrics: Sequence[ConfusionMatrixMetric]
+  pos_label: bool | int | str | bytes = 1
+  input_type: InputType = InputType.BINARY
+  average: AverageType = dataclasses.field(
+      default=AverageType.SAMPLES, init=False
+  )
+  unknown_tn: bool = False
+  vocab: dict[str, int] | None = None
+  dtype: type[Any] | None = None
+
+  def __post_init__(self):
+    if self.input_type == InputType.BINARY:
+      raise ValueError(
+          'Samples average is not available for Binary classification.'
+      )
+
+  def create_accumulator(self) -> SamplewiseConfusionMatrixAggState:
+    """Creates the initial empty state."""
+    return {}
+
+  def _metric_states(self, cm: _ConfusionMatrix) -> dict[str, MeanState]:
+    result = {}
+    for metric in self.metrics:
+      if (score := cm.derive_metric(metric)) is not None:
+        result[metric] = MeanState(np.sum(score), len(score))
+    return result
+
+  def _calculate_confusion_matrix(
+      self,
+      y_true: _NumbersT,
+      y_pred: _NumbersT,
+  ) -> _ConfusionMatrix:
+    if self.input_type in (InputType.MULTICLASS_INDICATOR, InputType.BINARY):
+      return _indicator_confusion_matrix(
+          y_true,
+          y_pred,
+          pos_label=self.pos_label,
+          multiclass=(self.input_type == InputType.MULTICLASS_INDICATOR),
+          average=self.average,
+          unknown_tn=self.unknown_tn,
+      )
+    elif self.input_type in (
+        InputType.MULTICLASS,
+        InputType.MULTICLASS_MULTIOUTPUT,
+    ):
+      return _multiclass_confusion_matrix(
+          y_true,
+          y_pred,
+          vocab=self.vocab,
+          multioutput=(self.input_type == InputType.MULTICLASS_MULTIOUTPUT),
+          average=self.average,
+          unknown_tn=self.unknown_tn,
+      )
+    else:
+      raise NotImplementedError(f'"{self.input_type}" input is not supported.')
+
+  def add_inputs(
+      self, state: SamplewiseConfusionMatrixAggState, *inputs: Any
+  ) -> SamplewiseConfusionMatrixAggState:
+    """Batch updates the states of the aggregate."""
+    cm = self._calculate_confusion_matrix(*inputs)
+    metric_states = self._metric_states(cm)
+    return self.merge_accumulators((metric_states, state))
+
+  def merge_accumulators(
+      self, states: Sequence[SamplewiseConfusionMatrixAggState]
+  ) -> SamplewiseConfusionMatrixAggState:
+    states_iter = iter(states)
+    result = next(states_iter)
+    for state in states_iter:
+      for key, value in state.items():
+        result[key] += value
+    return result
+
+  def extract_output(self, state: SamplewiseConfusionMatrixAggState) -> Any:
+    """Extracts the outputs from the aggregate states."""
+    return tuple(state[metric].result() for metric in self.metrics)
