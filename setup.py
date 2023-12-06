@@ -306,7 +306,7 @@ setup_args = {
         'pyarrow>=10,<11',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
-        'attrs>=19.3.0,<22',
+        'attrs>=19.3.0,<24',
         'tensorflow>=2.13,<3',
         'tensorflow-metadata'
         + select_constraint(
