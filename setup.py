@@ -309,7 +309,7 @@ setup_args = {
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
         'attrs>=19.3.0,<24',
-        'tensorflow>=2.13,<3',
+        'tensorflow>=2.15,<3',
         'tensorflow-metadata'
         + select_constraint(
             default='>=1.14.0,<1.15.0',
