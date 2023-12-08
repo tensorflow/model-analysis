@@ -29,7 +29,7 @@ _DefaultDType = np.float64
 
 
 # TODO: b/312290886 - move this to Python StrEnum when moved to Python 3.11.
-class _StrEnum(str, enum.Enum):
+class StrEnum(str, enum.Enum):
   """Enum where members also must be strings."""
 
   __str__ = str.__str__
@@ -45,19 +45,19 @@ class _StrEnum(str, enum.Enum):
 class MeanState:
   """Mergeable states for batch update in an aggregate function."""
 
-  total: _NumbersT = 0
+  total: _NumbersT = 0.0
   count: _NumbersT = 0
 
-  def __iadd__(self, other):
+  def __iadd__(self, other: 'MeanState'):
     self.total += other.total
     self.count += other.count
     return self
 
   def result(self):
-    return _safe_divide(self.total, self.count)
+    return safe_divide(self.total, self.count)
 
 
-class ConfusionMatrixMetric(_StrEnum):  # pylint: disable=invalid-enum-extension
+class ConfusionMatrixMetric(StrEnum):  # pylint: disable=invalid-enum-extension
   CONFUSION_MATRIX = 'confusion_matrix'
   PRECISION = 'precision'
   RECALL = 'recall'
@@ -159,7 +159,7 @@ class _ConfusionMatrix:
       raise NotImplementedError(f'"{average}" average is not supported.')
 
 
-class InputType(_StrEnum):  # pylint: disable=invalid-enum-extension
+class InputType(StrEnum):  # pylint: disable=invalid-enum-extension
   """Label prediction encoding types."""
 
   # 1D array per batch, e.g., [0,1,0,1,0], [-1, 1, -1], or ['Y', 'N']
@@ -182,7 +182,7 @@ class InputType(_StrEnum):  # pylint: disable=invalid-enum-extension
   MULTICLASS_INDICATOR = 'multiclass-indicator'
 
 
-class AverageType(_StrEnum):  # pylint: disable=invalid-enum-extension
+class AverageType(StrEnum):  # pylint: disable=invalid-enum-extension
   """Average type of the confusion matrix."""
 
   # Treats each class as one example and calculates the metrics on the total
@@ -200,7 +200,7 @@ class AverageType(_StrEnum):  # pylint: disable=invalid-enum-extension
   BINARY = 'binary'
 
 
-def _safe_divide(a, b):
+def safe_divide(a, b):
   result = np.divide(
       a, b, out=np.zeros_like(a, dtype=_DefaultDType), where=(b != 0)
   )
@@ -210,17 +210,17 @@ def _safe_divide(a, b):
 
 
 def _precision(cm: _ConfusionMatrix):
-  return _safe_divide(cm.tp, cm.p)
+  return safe_divide(cm.tp, cm.p)
 
 
 def _recall(cm: _ConfusionMatrix):
-  return _safe_divide(cm.tp, cm.t)
+  return safe_divide(cm.tp, cm.t)
 
 
 def _f1(cm: _ConfusionMatrix):
   precision = _precision(cm)
   recall = _recall(cm)
-  return _safe_divide(2 * precision * recall, precision + recall)
+  return safe_divide(2 * precision * recall, precision + recall)
 
 
 def _accuracy(cm: _ConfusionMatrix) -> _NumbersT:

@@ -53,7 +53,8 @@ class AggregateFn:
   def merge_accumulators(self, accumulators):
     """Mering multiple accumulators into a one accumulator value.
 
-    This is only required for distributed implementations such as Beam.
+    This is only required for distributed implementations such as Beam. Only the
+    first accumulator may be modified and returned for efficiency.
 
     Args:
       accumulators: the accumulators to be merged.
