@@ -19,6 +19,7 @@ from tensorflow_model_analysis.experimental.metrics.aggregates import _retrieval
 
 
 InputType = _retrieval.InputType
+RetrievalMetric = _retrieval.RetrievalMetric
 
 
 class ClassificationTest(parameterized.TestCase):
@@ -29,30 +30,131 @@ class ClassificationTest(parameterized.TestCase):
           y_pred=["y", "n", "y", "n", "y", "n", "n", "u"],
           y_true=["y", "y", "n", "n", "y", "n", "y", "u"],
           input_type=InputType.MULTICLASS,
-          metrics=[_retrieval.RetrievalMetric.PRECISION],
+          metrics=[
+              RetrievalMetric.FOWLKES_MALLOWS_INDEX,
+              RetrievalMetric.THREAT_SCORE,
+              RetrievalMetric.DCG_SCORE,
+              RetrievalMetric.NDCG_SCORE,
+              RetrievalMetric.MEAN_RECIPROCAL_RANK,
+              RetrievalMetric.PRECISION,
+              RetrievalMetric.FALSE_DISCOVERY_RATE,
+              RetrievalMetric.MEAN_AVERAGE_PRECISION,
+              RetrievalMetric.RECALL,
+              RetrievalMetric.MISS_RATE,
+              RetrievalMetric.F1_SCORE,
+              RetrievalMetric.ACCURACY,
+          ],
           k_list=[1, 2],
-          # precision@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8 = 0.625
-          # precision@2 = precision@1 since there is only one output per
-          # example in multiclass case.
-          expected=([[0.625, 0.625]]),
+          expected=([
+              # FMI@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # FMI@2 = FMI@1 because there is only one output.
+              [5 / 8, 5 / 8],
+              # threat_score@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # threat_score@2 = threat_score@1 since there is only one output.
+              [5 / 8, 5 / 8],
+              # DCG@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # DCG@2 = DCG@1 since there is only one output.
+              [5 / 8, 5 / 8],
+              # NDCG@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # NDCG@2 = NDCG@1 since there is only one output.
+              [5 / 8, 5 / 8],
+              # mRR@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # mRR@2 = mRR@1 since there is only one output.
+              [5 / 8, 5 / 8],
+              # precision@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # precision@2 = precision@1 since there is only one output.
+              [5 / 8, 5 / 8],
+              # FDR@1 = mean([0, 1, 1, 0, 0, 0, 1, 0]) = 3 / 8
+              # FDR@2 = FDR@1 since there is only one output.
+              [3 / 8, 3 / 8],
+              # mAP@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # mAP@2 = mAP@1 since there is only one output.
+              [5 / 8, 5 / 8],
+              # recall@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # recall@2 = recall@1 since there is only one output.
+              [5 / 8, 5 / 8],
+              # miss_rate@1 = mean([0, 1, 1, 0, 0, 0, 1, 0]) = 3 / 8
+              # miss_rate@2 = miss_rate@1 since there is only one output.
+              [3 / 8, 3 / 8],
+              # f1_score@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # f1_score@2 = f1_score@1 since there is only one output.
+              [5 / 8, 5 / 8],
+              # accuracy@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # accuracy@2 = accuracy@1 since there is only one output.
+              [5 / 8, 5 / 8],
+          ]),
       ),
       dict(
           testcase_name="multiclass_multioutput",
           y_pred=[["y"], ["n", "y"], ["y"], ["n"], ["y"], ["n"], ["n"], ["u"]],
           y_true=[["y"], ["y"], ["n"], ["n"], ["y", "n"], ["n"], ["y"], ["u"]],
           input_type=InputType.MULTICLASS_MULTIOUTPUT,
-          metrics=[_retrieval.RetrievalMetric.PRECISION],
+          metrics=[
+              RetrievalMetric.FOWLKES_MALLOWS_INDEX,
+              RetrievalMetric.THREAT_SCORE,
+              RetrievalMetric.DCG_SCORE,
+              RetrievalMetric.NDCG_SCORE,
+              RetrievalMetric.MEAN_RECIPROCAL_RANK,
+              RetrievalMetric.PRECISION,
+              RetrievalMetric.FALSE_DISCOVERY_RATE,
+              RetrievalMetric.MEAN_AVERAGE_PRECISION,
+              RetrievalMetric.RECALL,
+              RetrievalMetric.MISS_RATE,
+              RetrievalMetric.F1_SCORE,
+              RetrievalMetric.ACCURACY,
+          ],
           k_list=[1, 2],
-          # precision@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5/8
-          # precision@2 = mean([1, 1/2, 0, 1, 1, 1, 0, 1]) = 5.5/8
-          expected=([[5 / 8, 5.5 / 8]]),
+          expected=([
+              # FMI@1 = mean(sqrt([1, 0, 0, 1, 0.5, 1, 0, 1]))
+              # FMI@2 = mean(sqrt([1, 0.5, 0, 1, 0.5, 1, 0, 1]))
+              [
+                  np.sqrt([1, 0, 0, 1, 0.5, 1, 0, 1]).mean(),
+                  np.sqrt([1, 0.5, 0, 1, 0.5, 1, 0, 1]).mean(),
+              ],
+              # threat_score@1 = mean([1, 0, 0, 1, 0.5, 1, 0, 1]) = 4.5 / 8
+              # threat_score@2 = mean([0.5, 0.5, 0, 0.5, 1/3, 0.5, 0, 0.5]) =
+              #       = (2.5 + 1/3) / 8
+              [4.5 / 8, (2.5 + 1 / 3) / 8],
+              # DCG@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # DCG@2 = mean([1, 1/log2(3), 0, 1, 1, 1, 0, 1])
+              #       = (5 + 1 / log2(3)) / 8
+              [5 / 8, (1 / np.log2(3) + 5) / 8],
+              # NDCG@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # NDCG@2 = mean([1, 1/log2(3), 0, 1, 1/(1+1/log2(3)), 1, 0, 1])
+              #        = (4 + 1 / log2(3) + 1/(1+1/log2(3))) / 8
+              [5 / 8, (4 + 1 / np.log2(3) + 1 / (1 + 1 / np.log2(3))) / 8],
+              # mRR@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5 / 8
+              # mRR@2 = mean([1, 1/2, 0, 1, 1, 1, 0, 1]) = 5.5 / 8
+              [5 / 8, 5.5 / 8],
+              # precision@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5/8
+              # precision@2 = mean([1, 1/2, 0, 1, 1, 1, 0, 1]) = 5.5/8
+              [5 / 8, 5.5 / 8],
+              # FDR@1 = mean([0, 1, 1, 0, 0, 0, 1, 0]) = 3/8
+              # FDR@2 = mean([0, 1/2, 1, 0, 0, 0, 1, 0]) = 2.5/8
+              [3 / 8, 2.5 / 8],
+              # mAP@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5/8
+              # mAP@2 = mean([1, 1/2, 0, 1, 1/2, 1, 0, 1]) = 5/8
+              [5 / 8, 5 / 8],
+              # recall@1 = mean([1, 0, 0, 1, 1/2, 1, 0, 1]) = 4.5/8
+              # recall@2 = mean([1, 1, 0, 1, 1/2, 1, 0, 1]) = 5.5/8
+              [4.5 / 8, 5.5 / 8],
+              # miss_rate@1 = mean([0, 1, 1, 0, 1/2, 0, 1, 0]) = 3.5/8
+              # miss_rate@2 = mean([0, 0, 1, 0, 1/2, 0, 1, 0]) = 2.5/8
+              [3.5 / 8, 2.5 / 8],
+              # f1_score@1 = mean([1, 0, 0, 1, 1/1.5, 1, 0, 1]) = (4+2/3)/8
+              # f1_score@2 = mean([1, 1/1.5, 0, 1, 1/1.5, 1, 0, 1]) = (4+4/3)/8
+              [(4 + 2 / 3) / 8, (4 + 4 / 3) / 8],
+              # accuracy@1 = mean([1, 0, 0, 1, 1, 1, 0, 1]) = 5/8
+              # accuracy@2 = mean([1, 1, 0, 1, 1, 1, 0, 1]) = 6/8
+              [5 / 8, 6 / 8],
+          ]),
       ),
       dict(
           testcase_name="multiclass_multioutput_infinity_k",
           y_pred=[["y"], ["n", "y"], ["y"], ["n"], ["y"], ["n"], ["n"], ["u"]],
           y_true=[["y"], ["y"], ["n"], ["n"], ["y", "n"], ["n"], ["y"], ["u"]],
           input_type=InputType.MULTICLASS_MULTIOUTPUT,
-          metrics=[_retrieval.RetrievalMetric.PRECISION],
+          metrics=[RetrievalMetric.PRECISION],
           k_list=None,
           # precision = mean([1, 1/2, 0, 1, 0, 1, 0, 1]) = 5.5 / 8
           expected=([[5.5 / 8]]),

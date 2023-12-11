@@ -38,9 +38,27 @@ class RetrievalMetric(StrEnum):  # pylint: disable=invalid-enum-extension
 
   CONFUSION_MATRIX = 'confusion_matrix'
   PRECISION = 'precision'
+  RECALL = 'recall'
+  F1_SCORE = 'f1_score'
+  MISS_RATE = 'miss_rate'
+  FALSE_DISCOVERY_RATE = 'false_discovery_rate'
+  THREAT_SCORE = 'threat_score'
+  FOWLKES_MALLOWS_INDEX = 'fowlkes_mallows_index'
+  ACCURACY = 'accuracy'
+  MEAN_AVERAGE_PRECISION = 'mean_average_precision'
+  MEAN_RECIPROCAL_RANK = 'mean_reciprocal_rank'
+  DCG_SCORE = 'dcg_score'  # Discounted Cumulative Gain
+  NDCG_SCORE = 'ndcg_score'  # Normalized Discounted Cumulative Gain
 
 
 safe_divide = _classification.safe_divide
+
+
+def _pos_sqrt(value):
+  """Returns sqrt of value or raises ValueError if negative."""
+  if np.any(value < 0):
+    raise ValueError('Attempt to take sqrt of negative value: {}'.format(value))
+  return np.sqrt(value)
 
 
 _SamplewiseMeanAggFnState = MeanStatesPerMetric
@@ -114,6 +132,81 @@ def _precision(tp_at_topks, k_list, y_pred_count):
   )
 
 
+def _recall(tp_at_topks, k_list, y_true_len):
+  return tp_at_topks[:, k_list - 1] / y_true_len[:, np.newaxis]
+
+
+def _f1_score(precision, recall):
+  return safe_divide(2 * precision * recall, (precision + recall))
+
+
+def _miss_rate(tp_at_topks, k_list, y_true_len):
+  return 1 - _recall(tp_at_topks, k_list, y_true_len)
+
+
+def _false_discovery_rate(tp_at_topks, k_list, y_pred_count):
+  return 1 - _precision(tp_at_topks, k_list, y_pred_count)
+
+
+def _threat_score(tp_at_topks, k_list, y_true_len):
+  cumsum_fn = y_true_len[:, np.newaxis] - tp_at_topks[:, k_list - 1]
+  return tp_at_topks[:, k_list - 1] / (cumsum_fn + k_list)
+
+
+def _fowlkes_mallows_index(tp_at_topks, k_list, y_true_len, y_pred_count):
+  precision = _precision(tp_at_topks, k_list, y_pred_count)
+  recall = _recall(tp_at_topks, k_list, y_true_len)
+  return _pos_sqrt(precision * recall)
+
+
+def _mean_average_precision(tp, tp_at_topks, ks, k_list, y_true_len):
+  precision_all_k = tp_at_topks[:, ks - 1] / ks
+  # Average Precision = (precision[k] * relevance[k]) / K where we
+  # use tp > 0 as a proxy for relevance.
+  relevance = tp > 0
+  size_true = np.minimum(ks, y_true_len[:, np.newaxis])
+  result = np.cumsum(precision_all_k * relevance, axis=1) / size_true
+  result = result[:, k_list - 1]
+  return result
+
+
+def _mean_reciprocal_rank(tp_at_topks, k_list):
+  # The index of the first non-zero true positive.
+  ranks = np.argmax(tp_at_topks > 0, axis=1) + 1
+  # Assign infinity to the false positives as their ranks.
+  ranks = np.where(tp_at_topks > 0, ranks[:, np.newaxis], np.inf)
+  result = (1.0 / ranks)[:, k_list - 1]
+  return result
+
+
+def _dcg_score(tp, k_range, k_list):
+  """Discounted Cumulative Gain."""
+  # Hard coded the relevance to 1.0.
+  discounted_gain = 1.0 / np.log2(k_range + 1)
+  discounted_cumulative_gain = np.cumsum(
+      np.where(tp > 0, discounted_gain, 0.0), axis=1
+  )
+  return discounted_cumulative_gain[:, k_list - 1]
+
+
+def _ndcg_score(tp, k_range, k_list, y_true_count):
+  """Normalized Discounted Cumulative Gain."""
+  # Hard coded the relevance to 1.0.
+  discounted_gain = 1.0 / np.log2(k_range + 1)
+  discounted_cumulative_gain = np.cumsum(
+      np.where(tp > 0, discounted_gain, 0.0), axis=1
+  )
+  ideal_discounted_gain = np.where(
+      k_range > y_true_count[:, np.newaxis], 0.0, discounted_gain
+  )
+  ideal_discounted_cumulative_gain = np.cumsum(ideal_discounted_gain, axis=1)
+  result = (
+      discounted_cumulative_gain[:, k_list - 1]
+      / ideal_discounted_cumulative_gain[:, k_list - 1]
+  )
+  return result
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class TopKRetrievalAggFn(TopKSamplewiseMeanAggFn):
   """TopKRetrievalAggFn aggregate.
@@ -125,12 +218,26 @@ class TopKRetrievalAggFn(TopKSamplewiseMeanAggFn):
       `multiclass-multioutput`.
   """
 
-  metrics: Sequence[RetrievalMetric] = (RetrievalMetric.PRECISION,)
+  metrics: Sequence[RetrievalMetric] = (
+      RetrievalMetric.PRECISION,
+      RetrievalMetric.RECALL,
+      RetrievalMetric.F1_SCORE,
+      RetrievalMetric.ACCURACY,
+      RetrievalMetric.MEAN_AVERAGE_PRECISION,
+      RetrievalMetric.MEAN_RECIPROCAL_RANK,
+      RetrievalMetric.MISS_RATE,
+      RetrievalMetric.FALSE_DISCOVERY_RATE,
+      RetrievalMetric.THREAT_SCORE,
+      RetrievalMetric.FOWLKES_MALLOWS_INDEX,
+      RetrievalMetric.DCG_SCORE,
+      RetrievalMetric.NDCG_SCORE,
+  )
 
   def _compute_metric_states(self, y_trues, y_preds):
     """Compute all true positive related metrics."""
     k_list = list(sorted(self.k_list)) if self.k_list else [float('inf')]
     y_pred_count = np.asarray([len(row) for row in y_preds])
+    y_true_count = np.asarray([len(row) for row in y_trues])
     max_pred_count = max(y_pred_count)
     max_pred_count = min(max_pred_count, max(k_list))
     tp = []
@@ -155,9 +262,78 @@ class TopKRetrievalAggFn(TopKSamplewiseMeanAggFn):
         [k for k in k_list if k < max_pred_count] + [max_pred_count]
     )
 
+    # A consecutive K list that is useful to calculate average-over-Ks metrics
+    # such as mean average precision.
+    k_range = np.arange(max_pred_count) + 1
+
     result = {}
+    if 'accuracy' in self.metrics:
+      accuracy = (tp_at_topks[:, k_list - 1] > 0).astype(np.int32)
+      result['accuracy'] = MeanState(accuracy.sum(axis=0), accuracy.shape[0])
+
+    precision, recall = None, None
     if 'precision' in self.metrics:
       precision = _precision(tp_at_topks, k_list, y_pred_count)
       result['precision'] = MeanState(precision.sum(axis=0), precision.shape[0])
 
+    if 'recall' in self.metrics:
+      recall = _recall(tp_at_topks, k_list, y_true_count)
+      result['recall'] = MeanState(recall.sum(axis=0), recall.shape[0])
+
+    if 'f1_score' in self.metrics:
+      if precision is None:
+        precision = _precision(tp_at_topks, k_list, y_pred_count)
+      if recall is None:
+        recall = _recall(tp_at_topks, k_list, y_true_count)
+      f1 = _f1_score(precision, recall)
+      result['f1_score'] = MeanState(f1.sum(axis=0), f1.shape[0])
+
+    if 'mean_average_precision' in self.metrics:
+      mean_average_precision = _mean_average_precision(
+          tp, tp_at_topks, k_range, k_list, y_true_count
+      )
+      result['mean_average_precision'] = MeanState(
+          mean_average_precision.sum(axis=0),
+          mean_average_precision.shape[0],
+      )
+
+    if 'mean_reciprocal_rank' in self.metrics:
+      reciprocal_ranks = _mean_reciprocal_rank(tp_at_topks, k_list)
+      result['mean_reciprocal_rank'] = MeanState(
+          reciprocal_ranks.sum(axis=0), reciprocal_ranks.shape[0]
+      )
+
+    if 'miss_rate' in self.metrics:
+      miss_rate = _miss_rate(tp_at_topks, k_list, y_true_count)
+      result['miss_rate'] = MeanState(miss_rate.sum(axis=0), miss_rate.shape[0])
+
+    if 'false_discovery_rate' in self.metrics:
+      false_discovery_rate = _false_discovery_rate(
+          tp_at_topks, k_list, y_pred_count
+      )
+      result['false_discovery_rate'] = MeanState(
+          false_discovery_rate.sum(axis=0), false_discovery_rate.shape[0]
+      )
+
+    if 'threat_score' in self.metrics:
+      threat_score = _threat_score(tp_at_topks, k_list, y_true_count)
+      result['threat_score'] = MeanState(
+          threat_score.sum(axis=0), threat_score.shape[0]
+      )
+
+    if 'fowlkes_mallows_index' in self.metrics:
+      fowlkes_mallows_index = _fowlkes_mallows_index(
+          tp_at_topks, k_list, y_true_count, y_pred_count
+      )
+      result['fowlkes_mallows_index'] = MeanState(
+          fowlkes_mallows_index.sum(axis=0), fowlkes_mallows_index.shape[0]
+      )
+
+    if 'dcg_score' in self.metrics:
+      dcg = _dcg_score(tp, k_range, k_list)
+      result['dcg_score'] = MeanState(dcg.sum(axis=0), dcg.shape[0])
+
+    if 'ndcg_score' in self.metrics:
+      ndcg = _ndcg_score(tp, k_range, k_list, y_true_count)
+      result['ndcg_score'] = MeanState(ndcg.sum(axis=0), ndcg.shape[0])
     return result
