@@ -159,6 +159,44 @@ class _ConfusionMatrix:
       raise NotImplementedError(f'"{average}" average is not supported.')
 
 
+class _TopKConfusionMatrix(_ConfusionMatrix):
+  """Confusion Matrix accumulator with kwargs used to compute it.
+
+  Confusion matrix for classification and retrieval tasks.
+  See https://en.wikipedia.org/wiki/Confusion_matrix for more info.
+
+  Attributes:
+    k: a sequence of topk, sequentially corresponds to the actual confusion
+      matrix counts (tp, tn, fp, fn).
+    tp: True positives count.
+    tn: True negatives count.
+    fp: False positives count.
+    fn: False negative count.
+    dtype: data type of the instance numpy array. None by default, dtype is
+      deduced by numpy at construction.
+  """
+
+  def __init__(
+      self,
+      k: _NumbersT,
+      tp: _NumbersT,
+      tn: _NumbersT,
+      fp: _NumbersT,
+      fn: _NumbersT,
+      *,
+      dtype: type[Any] | None = None,
+  ):
+    self.k = np.asarray(k, dtype=dtype)
+    super().__init__(tp, tn, fp, fn, dtype=dtype)
+
+  def __eq__(self, other):
+    """Numerically equals."""
+    return np.allclose(self.k, other.k) and super().__eq__(other)
+
+  def __str__(self):
+    return f'k={self.k}, tp={self.tp}, tn={self.tn}, fp={self.fp}, fn={self.fn}'
+
+
 class InputType(StrEnum):  # pylint: disable=invalid-enum-extension
   """Label prediction encoding types."""
 
@@ -235,7 +273,6 @@ def _indicator_confusion_matrix(
     pos_label: str | int | bytes = 1,
     multiclass: bool = False,
     average: AverageType = AverageType.MICRO,
-    unknown_tn: bool = False,
 ) -> _ConfusionMatrix:
   """Calculates confusion matix.
 
@@ -249,9 +286,6 @@ def _indicator_confusion_matrix(
     multiclass: If True, input is encoded as 2D array-like of "multi-hot"
       encoding in a shape of Batch X NumClass.
     average: average type of the confusion matrix.
-    unknown_tn: tn can be unknown if the total number of classes cannot be
-      deduced from the inputs shape, this is most useful for the
-      multiclass-multioutput case where only the trues and positives are known.
 
   Returns:
     Confusion matrix.
@@ -295,11 +329,8 @@ def _indicator_confusion_matrix(
   tp_cnt = tp.sum(axis=axis)
   fp_cnt = positive_cnt - tp_cnt
   fn_cnt = fn.sum(axis=axis)
-  if unknown_tn:
-    tn_cnt = float('inf')
-  else:
-    negative_cnt = negative.sum(axis=axis)
-    tn_cnt = negative_cnt - fn_cnt
+  negative_cnt = negative.sum(axis=axis)
+  tn_cnt = negative_cnt - fn_cnt
   return _ConfusionMatrix(tp_cnt, tn_cnt, fp_cnt, fn_cnt)
 
 
@@ -334,7 +365,6 @@ def _multiclass_confusion_matrix(
     vocab: dict[str, int] | None = None,
     multioutput: bool = False,
     average: AverageType = AverageType.MICRO,
-    unknown_tn: bool = True,
 ) -> _ConfusionMatrix:
   """Calculates a confusion matrix for multiclass(-multioutput) input.
 
@@ -348,9 +378,6 @@ def _multiclass_confusion_matrix(
     multioutput: encoding types of the y_true and y_pred, if True, the input is
       a nested list of class identifiers.
     average: average type of the confusion matrix.
-    unknown_tn: tn can be unknown if the total number of classes cannot be
-      deduced from the inputs shape, this is most useful for the
-      multiclass-multioutput case where only the trues and positives are known.
 
   Returns:
     Confusion matrices with k in k_list.
@@ -364,7 +391,6 @@ def _multiclass_confusion_matrix(
       average=average,
       multiclass=True,
       pos_label=True,
-      unknown_tn=unknown_tn,
   )
 
 
@@ -379,9 +405,6 @@ class ConfusionMatrixAggFn(lazytf.AggregateFn):
     pos_label: the value considered as positive, default to 1.
     input_type: input encoding type, must be one of `InputType`.
     average: average type, must be one of `AverageType`.
-    unkown_tn: unkonw true negative, applicable when the number of classes is
-      unknown, typically used for retrieval cases. If True, the true negative is
-      set to inf.
     vocab: an external vocabulary that maps categorical value to integer class
       id. This is required if computed distributed (when merge_accumulators is
       called) and the average is macro where the class id mapping needs to be
@@ -394,7 +417,6 @@ class ConfusionMatrixAggFn(lazytf.AggregateFn):
   input_type: InputType = InputType.BINARY
   # TODO(b/311208939): implements average = None.
   average: AverageType = AverageType.BINARY
-  unknown_tn: bool = False
   vocab: dict[str, int] | None = None
   metrics: Sequence[ConfusionMatrixMetric] = ()
   dtype: type[Any] | None = None
@@ -417,7 +439,6 @@ class ConfusionMatrixAggFn(lazytf.AggregateFn):
           pos_label=self.pos_label,
           multiclass=(self.input_type == InputType.MULTICLASS_INDICATOR),
           average=self.average,
-          unknown_tn=self.unknown_tn,
       )
     elif self.input_type in (
         InputType.MULTICLASS,
@@ -429,7 +450,6 @@ class ConfusionMatrixAggFn(lazytf.AggregateFn):
           vocab=self.vocab,
           multioutput=(self.input_type == InputType.MULTICLASS_MULTIOUTPUT),
           average=self.average,
-          unknown_tn=self.unknown_tn,
       )
     else:
       raise NotImplementedError(f'"{self.input_type}" input is not supported.')
@@ -463,6 +483,113 @@ class ConfusionMatrixAggFn(lazytf.AggregateFn):
     return (state,)
 
 
+def _apply_vocab_at_k(
+    rows: _NumbersT,
+    vocab: dict[str, int],
+    multioutput: bool,
+    k_list: Sequence[int],
+):
+  """Encodes a multiclass(-multioutput) input in multiclass-indicator format."""
+  result = np.full((len(rows), len(vocab)), False, dtype=np.bool_)
+  k_list = set(k_list)
+  for j in range(max(k_list)):
+    if multioutput:
+      for i, row in enumerate(rows):
+        if j < len(row):
+          result[i][vocab[row[j]]] = True
+    else:
+      if j == 0:
+        for i, elem in enumerate(rows):
+          result[i][vocab[elem]] = True
+    if j + 1 in k_list:
+      yield j + 1, result
+
+
+def _topk_confusion_matrix(
+    y_true: _NumbersT,
+    y_pred: _NumbersT,
+    *,
+    k_list: Sequence[int],
+    multioutput: bool,
+    average: AverageType,
+    vocab: dict[str, int] | None,
+) -> _TopKConfusionMatrix:
+  """Calculates a confusion matrix for multiclass(-multioutput) input.
+
+  Args:
+    y_true: ground truth classification labels. This has to be encoded in one of
+      the `multiclass` or `multiclass-output`.
+    y_pred: classification predictions. This has to be encoded in one of the
+      `multiclass` or `multiclass-output`.
+    k_list: a list of topk each of which slices y_pred by y_pred[:topk] assuming
+      the predictions are sorted in descending order.
+    multioutput: encoding types of the y_true and y_pred, if True, the input is
+      a nested list of class identifiers.
+    average: average type of the confusion matrix.
+    vocab: an external vocabulary, if not provided, one is deduced within this
+      input.
+
+  Returns:
+    Confusion matrices with k in k_list.
+  """
+  vocab = vocab or _get_vocab(itertools.chain(y_true, y_pred), multioutput)
+  y_true_dense = _apply_vocab(y_true, vocab, multioutput)
+  cms = []
+  for k, y_pred_dense in _apply_vocab_at_k(y_pred, vocab, multioutput, k_list):
+    cm = _indicator_confusion_matrix(
+        y_true_dense,
+        y_pred_dense,
+        average=average,
+        multiclass=True,
+        pos_label=True,
+    )
+    cms.append((k, cm.tp, cm.tn, cm.fp, cm.fn))
+  return _TopKConfusionMatrix(*tuple(zip(*cms)))
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class TopKConfusionMatrixAggFn(ConfusionMatrixAggFn):
+  """ConfusionMatrixAtK aggregate.
+
+  Attributes:
+    pos_label: the value considered as positive, default to 1.
+    input_type: input encoding type, must be either  `multiclass` or
+      `multiclass-multioutput`.
+    average: average type, must be one of the types under `AverageType`.
+    vocab: an external vocabulary that maps categorical value to integer class
+      id. This is required if computed distributed (when merge_accumulators is
+      called) and the average is macro where the class id mapping needs to be
+      stable.
+    k_list: a list of topk each of which slices y_pred by y_pred[:topk] assuming
+      the predictions are sorted in descending order.
+  """
+
+  k_list: Sequence[int] = ()
+
+  def __post_init__(self):
+    if self.input_type not in (
+        InputType.MULTICLASS,
+        InputType.MULTICLASS_MULTIOUTPUT,
+    ):
+      raise ValueError(
+          f'"{self.input_type}" input is not supported for TopK Confusion'
+          ' Matrix.'
+      )
+
+  def _calculate_confusion_matrix(
+      self, y_true: _NumbersT, y_pred: _NumbersT
+  ) -> _TopKConfusionMatrix:
+    result = _topk_confusion_matrix(
+        y_true,
+        y_pred,
+        k_list=self.k_list,
+        vocab=self.vocab,
+        multioutput=(self.input_type == InputType.MULTICLASS_MULTIOUTPUT),
+        average=AverageType(self.average),
+    )
+    return result
+
+
 SamplewiseConfusionMatrixAggState = dict[str, MeanState]
 
 
@@ -474,9 +601,6 @@ class SamplewiseConfusionMatrixAggFn(lazytf.AggregateFn):
     pos_label: the value considered as positive, default to 1.
     input_type: input encoding type, must be one of `InputType`.
     average: fixed as `samples` average.
-    unkown_tn: unkonw true negative, applicable when the number of classes is
-      unknown, typically used for retrieval cases. If True, the true negative is
-      set to inf.
     vocab: an external vocabulary that maps categorical value to integer class
       id. This is required if computed distributed (when merge_accumulators is
       called) and the average is macro where the class id mapping needs to be
@@ -491,7 +615,6 @@ class SamplewiseConfusionMatrixAggFn(lazytf.AggregateFn):
   average: AverageType = dataclasses.field(
       default=AverageType.SAMPLES, init=False
   )
-  unknown_tn: bool = False
   vocab: dict[str, int] | None = None
   dtype: type[Any] | None = None
 
@@ -524,7 +647,6 @@ class SamplewiseConfusionMatrixAggFn(lazytf.AggregateFn):
           pos_label=self.pos_label,
           multiclass=(self.input_type == InputType.MULTICLASS_INDICATOR),
           average=self.average,
-          unknown_tn=self.unknown_tn,
       )
     elif self.input_type in (
         InputType.MULTICLASS,
@@ -536,7 +658,6 @@ class SamplewiseConfusionMatrixAggFn(lazytf.AggregateFn):
           vocab=self.vocab,
           multioutput=(self.input_type == InputType.MULTICLASS_MULTIOUTPUT),
           average=self.average,
-          unknown_tn=self.unknown_tn,
       )
     else:
       raise NotImplementedError(f'"{self.input_type}" input is not supported.')

@@ -140,7 +140,7 @@ class ClassificationTest(parameterized.TestCase):
           ),
       ),
   ])
-  def test_confusion_matrix_metrics_callable(
+  def test_confusion_matrix_callable(
       self,
       y_true,
       y_pred,
@@ -153,6 +153,144 @@ class ClassificationTest(parameterized.TestCase):
     confusion_matrix = _classification.ConfusionMatrixAggFn(
         input_type=input_type,
         average=average,
+        vocab=vocab,
+        pos_label=pos_label,
+    )
+    self.assertEqual((expected,), confusion_matrix(y_true, y_pred))
+
+  @parameterized.named_parameters([
+      dict(
+          testcase_name="multiclass_micro_average",
+          y_pred=["y", "n", "y", "n", "y", "n", "n", "u"],
+          y_true=["y", "y", "n", "n", "y", "n", "y", "u"],
+          input_type="multiclass",
+          average="micro",
+          k_list=[1, 2],
+          # Note: since there are three classes ('y', 'n', 'u'), the negatives
+          # and falses count the classes that ae absent in y_pred or y_true.
+          # TP: The classes appear in both y_pred and y_true:
+          #     [1, 0, 0, 1, 1, 1, 0, 1] = 5
+          # TN: The classes absent in both y_pred and y_true:
+          #     [2, 1, 1, 2, 2, 2, 1, 2] = 13
+          # FP: The classes appear in y_pred but not in y_true:
+          #     [0, 1, 1, 0, 0, 0, 1, 0] = 3
+          # FN: The classes absent in y_pred but in y_true:
+          #     [0, 1, 1, 0, 0, 0, 1, 0] = 3
+          expected=_classification._TopKConfusionMatrix(
+              k=[1, 2],
+              tp=[5, 5],
+              tn=[13, 13],
+              fp=[3, 3],
+              fn=[3, 3],
+          ),
+      ),
+      dict(
+          testcase_name="multiclass_multioutput_micro_average",
+          y_pred=[["y"], ["n", "y"], ["y"], ["n"], ["y"], ["n"], ["n"], ["u"]],
+          y_true=[["y"], ["y"], ["n"], ["n"], ["y", "n"], ["n"], ["y"], ["u"]],
+          input_type="multiclass-multioutput",
+          average="micro",
+          k_list=[1, 2],
+          # Note: since there are three classes ('y', 'n', 'u'), the negatives
+          # and falses count the classes that ae absent in y_pred or y_true.
+          # TP: The classes appear in both y_pred and y_true:
+          #     K = 1: [1, 0, 0, 1, 1, 1, 0, 1] = 5
+          #     K = 2: [1, 1, 0, 1, 1, 1, 0, 1] = 6
+          # TN: The classes absent in both y_pred and y_true
+          #     K = 1: [2, 1, 1, 2, 2, 2, 1, 2] = 12
+          #     K = 2: [2, 1, 1, 2, 2, 2, 1, 2] = 12
+          # FP: The classes appear in y_pred but not in y_true:
+          #     K = 1: [0, 1, 1, 0, 0, 0, 1, 0] = 3
+          #     K = 2: [0, 1, 1, 0, 0, 0, 1, 0] = 3
+          # FN: The classes absent in y_pred but in y_true:
+          #     K = 1: [0, 1, 1, 0, 1, 0, 1, 0] = 4
+          #     K = 2: [0, 1, 1, 0, 0, 0, 1, 0] = 3
+          expected=_classification._TopKConfusionMatrix(
+              k=[1, 2],
+              tp=[5, 6],
+              tn=[12, 12],
+              fp=[3, 3],
+              fn=[4, 3],
+          ),
+      ),
+      dict(
+          testcase_name="multiclass_macro_average",
+          y_pred=["y", "n", "y", "n", "y", "n", "n", "u"],
+          y_true=["y", "y", "n", "n", "y", "n", "y", "u"],
+          input_type="multiclass",
+          # A vocab is required to align class index for macro.
+          vocab={"y": 0, "n": 1, "u": 2},
+          average="macro",
+          k_list=[1, 2],
+          # The macro average computes a per-class confusion matrix. Since there
+          # 3 classes ('y', 'n', 'u'), we have a K x 3 2D array as a result.
+          # TP: The classes appear in both y_pred and y_true:
+          #     K = 1: [2, 2, 1] in the order of 'y', 'n', 'u'.
+          #     K = 2: Same since there is only one output.
+          # TN: The classes absent in both y_pred and y_true
+          #     K = 1: [3, 3, 7] in the order of 'y', 'n', 'u'.
+          #     K = 2: Same since there is only one output.
+          # FP: The classes appear in y_pred but not in y_true:
+          #     K = 1: [1, 2, 0] in the order of 'y', 'n', 'u'.
+          #     K = 2: Same since there is only one output.
+          # FN: The classes absent in y_pred but in y_true:
+          #     K = 1: [2, 1, 0] in the order of 'y', 'n', 'u'.
+          #     K = 2: Same since there is only one output.
+          expected=_classification._TopKConfusionMatrix(
+              k=[1, 2],
+              tp=[[2, 2, 1], [2, 2, 1]],
+              tn=[[3, 3, 7], [3, 3, 7]],
+              fp=[[1, 2, 0], [1, 2, 0]],
+              fn=[[2, 1, 0], [2, 1, 0]],
+          ),
+      ),
+      dict(
+          testcase_name="multiclass_multioutput_macro_average",
+          y_pred=[["y"], ["n", "y"], ["y"], ["n"], ["y"], ["n"], ["n"], ["u"]],
+          y_true=[["y"], ["y"], ["n"], ["n"], ["y", "n"], ["n"], ["y"], ["u"]],
+          input_type="multiclass-multioutput",
+          # A vocab is required to align class index for macro.
+          vocab={"y": 0, "n": 1, "u": 2},
+          average="macro",
+          k_list=[1, 2],
+          # The macro average compues a per-class confusion matrix. Since there
+          # 3 classes ('y', 'n', 'u'), we have a K x 3 2D array as a result.
+          # TP: The classes appear in both y_pred and y_true:
+          #     K = 1: [2, 2, 1] in the order of 'y', 'n', 'u'.
+          #     K = 2: [3, 2, 1] in the order of 'y', 'n', 'u'.
+          # TN: The classes absent in both y_pred and y_true
+          #     K = 1: [3, 2, 7] in the order of 'y', 'n', 'u'.
+          #     K = 2: [3, 2, 7] in the order of 'y', 'n', 'u'.
+          # FP: The classes appear in y_pred but not in y_true:
+          #     K = 1: [1, 2, 0] in the order of 'y', 'n', 'u'.
+          #     K = 2: [1, 2, 0] in the order of 'y', 'n', 'u'.
+          # FN: The classes absent in y_pred but in y_true:
+          #     K = 1: [2, 2, 0] in the order of 'y', 'n', 'u'.
+          #     K = 2: [1, 2, 0] in the order of 'y', 'n', 'u'.
+          expected=_classification._TopKConfusionMatrix(
+              k=[1, 2],
+              tp=[[2, 2, 1], [3, 2, 1]],
+              tn=[[3, 2, 7], [3, 2, 7]],
+              fp=[[1, 2, 0], [1, 2, 0]],
+              fn=[[2, 2, 0], [1, 2, 0]],
+          ),
+      ),
+  ])
+  def test_topk_confusion_matrix_callable(
+      self,
+      y_true,
+      y_pred,
+      input_type,
+      k_list,
+      average,
+      expected,
+      vocab=None,
+      pos_label=1,
+  ):
+    confusion_matrix = _classification.TopKConfusionMatrixAggFn(
+        input_type=input_type,
+        average=average,
+        k_list=k_list,
         vocab=vocab,
         pos_label=pos_label,
     )
@@ -228,6 +366,10 @@ class ClassificationTest(parameterized.TestCase):
         NotImplementedError, '"weighted" average is not supported'
     ):
       confusion_matrix([0, 1, 0], [1, 0, 0])
+
+  def test_topk_confusion_matrix_invalid_input_type(self):
+    with self.assertRaisesRegex(ValueError, '"binary" input is not supported'):
+      _classification.TopKConfusionMatrixAggFn(input_type=InputType.BINARY)
 
   def test_confusion_matrix_metric_invalid_metric(self):
     confusion_matrix = _classification.ConfusionMatrixAggFn(
@@ -384,16 +526,6 @@ class ClassificationTest(parameterized.TestCase):
     acc = _classification._ConfusionMatrix(tp=1, tn=1, fp=1, fn=1)
     with self.assertRaisesRegex(ValueError, "Global vocab is needed"):
       confusion_matrix.merge_accumulators([acc])
-
-  def test_confusion_matrix_unknown_tn(self):
-    y_pred = [1, 0, 1, 0, 1, 0, 0]
-    y_true = [1, 1, 0, 0, 1, 0, 1]
-    confusion_matrix = _classification.ConfusionMatrixAggFn(unknown_tn=True)
-    actual = confusion_matrix(y_true, y_pred)
-    expected = _classification._ConfusionMatrix(
-        tp=2, tn=float("inf"), fp=1, fn=2
-    )
-    self.assertEqual((expected,), actual)
 
   def test_confusion_matrix_samples_average_disallowed(self):
     with self.assertRaisesRegex(ValueError, "average is unsupported,"):
