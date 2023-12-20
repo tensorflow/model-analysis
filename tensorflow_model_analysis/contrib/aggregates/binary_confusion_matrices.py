@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Binary confusion matrix."""
+"""Binary confusion matrices."""
 
-from typing import Dict, Iterable, List, NamedTuple
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence
 from tensorflow_model_analysis.experimental.lazytf import api as lazytf
 
 DEFAULT_NUM_EXAMPLE_IDS = 100
@@ -41,7 +41,7 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
 
   def __init__(
       self,
-      thresholds: List[float],
+      thresholds: Sequence[float],
       example_ids_count: int = DEFAULT_NUM_EXAMPLE_IDS,
       enable_fractional_labels: bool = True,
   ):
@@ -49,9 +49,7 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
 
     Args:
       thresholds: A specific set of thresholds to use. The caller is responsible
-        for marking the boundaries with +/-epsilon if desired. Only one of
-        num_thresholds or thresholds should be used. For metrics computed at top
-        k this may be a single negative threshold value (i.e. -inf).
+        for marking the boundaries with +/-epsilon if desired.
       example_ids_count: Max number of example ids to be extracted for each
         result in the binary confusion matrix (tp, tn, fp, and fn).
       enable_fractional_labels: If false, labels will be compared to the
@@ -82,58 +80,57 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
 
   def _merge_entry(
       self,
-      result: MatrixAccumulator,
+      accumulator: MatrixAccumulator,
       threshold: float,
       entry: _ThresholdEntry,
   ) -> _ThresholdEntry:
-    if threshold not in result:
+    if threshold not in accumulator:
       return entry
 
     return _ThresholdEntry(
         matrix=Matrix(
-            tp=result[threshold].matrix.tp + entry.matrix.tp,
-            tn=result[threshold].matrix.tn + entry.matrix.tn,
-            fp=result[threshold].matrix.fp + entry.matrix.fp,
-            fn=result[threshold].matrix.fn + entry.matrix.fn,
+            tp=accumulator[threshold].matrix.tp + entry.matrix.tp,
+            tn=accumulator[threshold].matrix.tn + entry.matrix.tn,
+            fp=accumulator[threshold].matrix.fp + entry.matrix.fp,
+            fn=accumulator[threshold].matrix.fn + entry.matrix.fn,
         ),
         tp_examples=self._merge_example_ids(
-            result[threshold].tp_examples, entry.tp_examples
+            accumulator[threshold].tp_examples, entry.tp_examples
         ),
         tn_examples=self._merge_example_ids(
-            result[threshold].tn_examples, entry.tn_examples
+            accumulator[threshold].tn_examples, entry.tn_examples
         ),
         fp_examples=self._merge_example_ids(
-            result[threshold].fp_examples, entry.fp_examples
+            accumulator[threshold].fp_examples, entry.fp_examples
         ),
         fn_examples=self._merge_example_ids(
-            result[threshold].fn_examples, entry.fn_examples
+            accumulator[threshold].fn_examples, entry.fn_examples
         ),
     )
 
   def add_input(
       self,
       accumulator: MatrixAccumulator,
-      labels,
-      predictions,
-      example_weights=None,
-      example_id=None,
+      labels: Sequence[float],
+      predictions: Sequence[float],
+      example_weights: Optional[Sequence[float]],
+      example_id: Optional[str],
   ) -> MatrixAccumulator:
-    """Adds a single input to the accumulator.
+    """Adds a single example input to the accumulator.
 
     Args:
       accumulator: Accumulator to add input to.
       labels: Expected values.
       predictions: Predicted values.
-      example_weights: Weights for each example.
-      example_id: ID For this example.
+      example_weights: Weights for this example.
+      example_id: ID for this example.
 
     Returns:
       Merged MatrixAccumulator of the original accumulator and the added inputs.
     """
-    if not example_weights:
+    if example_weights is None or all(w is None for w in example_weights):
       example_weights = [1] * len(labels)
 
-    result = accumulator
     for threshold in self._thresholds:
       tp = 0.0
       tn = 0.0
@@ -143,6 +140,8 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
       tn_example = None
       fp_example = None
       fn_example = None
+      # We need to iterate here even though it is one example because one
+      # example can contain multiple labels/predictions/example_weights.
       for label, prediction, example_weight in zip(
           labels, predictions, example_weights
       ):
@@ -165,27 +164,27 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
             tn += example_weight
             tn_example = example_id
 
-      result[threshold] = self._merge_entry(
-          result=result,
+      accumulator[threshold] = self._merge_entry(
+          accumulator=accumulator,
           threshold=threshold,
           entry=_ThresholdEntry(
               Matrix(tp=tp, tn=tn, fp=fp, fn=fn),
-              tp_examples=[tp_example] if tp_example else [],
-              tn_examples=[tn_example] if tn_example else [],
-              fp_examples=[fp_example] if fp_example else [],
-              fn_examples=[fn_example] if fn_example else [],
+              tp_examples=[tp_example] if tp_example is not None else [],
+              tn_examples=[tn_example] if tn_example is not None else [],
+              fp_examples=[fp_example] if fp_example is not None else [],
+              fn_examples=[fn_example] if fn_example is not None else [],
           ),
       )
 
-    return result
+    return accumulator
 
   def add_inputs(
       self,
       accumulator: MatrixAccumulator,
-      labels,
-      predictions,
-      example_weights=None,
-      example_ids=None,
+      labels: Sequence[Sequence[float]],
+      predictions: Sequence[Sequence[float]],
+      example_weights: Optional[Sequence[Sequence[float]]],
+      example_ids: Optional[Sequence[str]],
   ) -> MatrixAccumulator:
     """Adds a batch of inputs to the accumulator.
 
@@ -194,26 +193,31 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
       labels: Expected values.
       predictions: Predicted values.
       example_weights: Weights for each example.
-      example_ids: IDs For this example.
+      example_ids: IDs For each example.
 
     Returns:
       Merged MatrixAccumulator of the original accumulator and the added inputs.
     """
-    if not example_weights or all(w is None for w in example_weights):
-      example_weights = [1] * len(labels)
+    make_iter = lambda ex: ex if hasattr(ex, '__iter__') else [ex]
+
+    if example_weights is None:
+      example_weights = [None] * len(labels)
 
     if example_ids is None:
       example_ids = [None] * len(labels)
+
     for label, prediction, example_weight, example_id in zip(
         labels, predictions, example_weights, example_ids
     ):
+      # Calls self.add_input() for each example within the batch.
       accumulator = self.add_input(
           accumulator=accumulator,
-          labels=[label],
-          predictions=[prediction],
-          example_weights=[example_weight],
+          labels=make_iter(label),
+          predictions=make_iter(prediction),
+          example_weights=make_iter(example_weight),
           example_id=example_id,
       )
+
     return accumulator
 
   def merge_accumulators(
@@ -230,13 +234,18 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
     """
     accumulators = iter(accumulators)
     result = next(accumulators)
+
     for accumulator in accumulators:
       for threshold in self._thresholds:
-        if threshold not in accumulator:
-          continue
-        result[threshold] = self._merge_entry(
-            result=result, threshold=threshold, entry=accumulator[threshold]
-        )
+        # We need to check if threshold is in the accumulator because the
+        # accumulator can be empty (i.e. no input was been added).
+        if threshold in accumulator:
+          result[threshold] = self._merge_entry(
+              accumulator=result,
+              threshold=threshold,
+              entry=accumulator[threshold],
+          )
+
     return result
 
   def extract_output(self, accumulator: MatrixAccumulator) -> MatrixAccumulator:
