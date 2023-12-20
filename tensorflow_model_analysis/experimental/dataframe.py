@@ -14,10 +14,10 @@
 """Pandas DataFrame utils for Tensorflow Model Analysis."""
 
 import collections
+import dataclasses
 import itertools
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
-import attr
 import numpy as np
 import pandas as pd
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
@@ -39,17 +39,20 @@ _METRIC_KEYS = 'metric_keys'
 _PLOT_KEYS = 'plot_keys'
 
 
-@attr.define
+@dataclasses.dataclass
 class _ColumnData:
-  metric_keys: Dict[str, List[Tuple[Any, int]]] = attr.Factory(
-      lambda: collections.defaultdict(list))
-  values: Dict[str, List[Tuple[Any, int]]] = attr.Factory(
-      lambda: collections.defaultdict(list))
-  slices: Dict[str, List[Tuple[Any, int]]] = attr.Factory(
-      lambda: collections.defaultdict(list))
+  metric_keys: Dict[str, List[Tuple[Any, int]]] = dataclasses.field(
+      default_factory=lambda: collections.defaultdict(list)
+  )
+  values: Dict[str, List[Tuple[Any, int]]] = dataclasses.field(
+      default_factory=lambda: collections.defaultdict(list)
+  )
+  slices: Dict[str, List[Tuple[Any, int]]] = dataclasses.field(
+      default_factory=lambda: collections.defaultdict(list)
+  )
 
 
-@attr.frozen
+@dataclasses.dataclass(frozen=True)
 class MetricsDataFrames:
   double_value: Optional[pd.DataFrame] = None
   confusion_matrix_at_thresholds: Optional[pd.DataFrame] = None
@@ -58,16 +61,16 @@ class MetricsDataFrames:
   array_value: Optional[pd.DataFrame] = None
 
 
-@attr.frozen
+@dataclasses.dataclass(frozen=True)
 class PlotsDataFrames:
-  calibration_histogram_buckets: pd.DataFrame = None
-  confusion_matrix_at_thresholds: pd.DataFrame = None
-  multi_class_confusion_matrix_at_thresholds: pd.DataFrame = None
-  multi_label_confusion_matrix_at_thresholds: pd.DataFrame = None
-  debug_message: pd.DataFrame = None
+  calibration_histogram_buckets: pd.DataFrame | None = None
+  confusion_matrix_at_thresholds: pd.DataFrame | None = None
+  multi_class_confusion_matrix_at_thresholds: pd.DataFrame | None = None
+  multi_label_confusion_matrix_at_thresholds: pd.DataFrame | None = None
+  debug_message: pd.DataFrame | None = None
 
 
-@attr.frozen
+@dataclasses.dataclass(frozen=True)
 class _ColumnPrefixes:
   slices: str
   metric_keys: str
