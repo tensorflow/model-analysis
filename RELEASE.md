@@ -7,7 +7,7 @@
 ## Bug fixes and other Changes
 
 *   Fix the bug about batching unsized numpy arrays. ## Breaking Changes
-*   Depends on `attrs>=19.3.0,<24`.
+*   Removes `attrs` requirement.
 *   Consolidate Matrix definition for semantic segmentation confusion matrix
     metrics.
 *   Provide AggregateFn and interface and default call impl to adapt TFMA

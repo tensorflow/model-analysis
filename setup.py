@@ -308,7 +308,6 @@ setup_args = {
         'sacrebleu>=2.3,<4',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
-        'attrs>=19.3.0,<24',
         'tensorflow>=2.15,<3',
         'tensorflow-metadata'
         + select_constraint(
