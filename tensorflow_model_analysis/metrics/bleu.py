@@ -16,17 +16,41 @@
 http://aclweb.org/anthology/W14-3346
 """
 
-from typing import Dict, Iterable, Optional
+import collections
+import dataclasses
+from typing import Iterable, Optional, Sequence
 
+from absl import logging
 import apache_beam as beam
 import numpy as np
-import sacrebleu
+import sacrebleu.metrics as sacrebleu
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
 
 
 _BLEU_NAME_DEFAULT = 'BLEU'
+
+
+# TODO(b/287700355): Add __slots__ to this dataclass.
+@dataclasses.dataclass
+class _RefInfo:
+  ngrams: collections.Counter[dict[tuple[str], int]]  # n-grams and counts
+  lens: list[int]  # lengths
+
+
+def _find_closest_ref_len(hyp_len: int, ref_lens: list[int]) -> int:
+  """Given a hypothesis length and a list of reference lengths, returns the closest reference length.
+
+  Args:
+    hyp_len: The hypothesis length.
+    ref_lens: A list of reference lengths. The closest reference length.
+
+  Returns:
+    The closest reference length, or -1 if ref_lens is empty.
+  """
+  ref_lens_arr = np.array(ref_lens)
+  return ref_lens_arr[np.argmin(abs(ref_lens_arr - hyp_len))]
 
 
 class _BleuCombiner(beam.CombineFn):
@@ -66,10 +90,153 @@ class _BleuCombiner(beam.CombineFn):
     self.model_name = model_name
     self.output_name = output_name
     self.key = key
-    self.bleu_metric = sacrebleu.metrics.BLEU(**bleu_kwargs)
-    # len(stats) = len(hyp_len) + len(ref_len) + len(correct) + len(total)
-    # = 1 + 1 + max_ngram_order + max_ngram_order = 2 + 2 * max_ngram_order
-    self.stats_len = 2 + 2 * self.bleu_metric.max_ngram_order
+    self.bleu_metric = sacrebleu.BLEU(**bleu_kwargs)
+
+  def _preprocess_segment(self, sentence: str) -> str:
+    """Given a sentence, lowercases (optionally) and tokenizes it."""
+    if self.bleu_metric.lowercase:
+      sentence = sentence.lower()
+    return self.bleu_metric.tokenizer(sentence.rstrip())
+
+  def _extract_reference_info(self, refs: Sequence[str]) -> _RefInfo:
+    """Given a list of reference segments, extract the n-grams and reference lengths.
+
+    The latter will be useful when comparing hypothesis and reference lengths.
+
+    Args:
+      refs: A sequence of strings.
+
+    Returns:
+      A _RefInfo() with reference ngrams and lengths.
+    """
+    refs = iter(refs)
+
+    final_ngrams, ref_len = sacrebleu.helpers.extract_all_word_ngrams(
+        next(refs), 1, self.bleu_metric.max_ngram_order
+    )
+    ref_lens = [ref_len]
+
+    for ref in refs:
+      # Extract n-grams for this ref.
+      new_ngrams, ref_len = sacrebleu.helpers.extract_all_word_ngrams(
+          ref, 1, self.bleu_metric.max_ngram_order
+      )
+
+      ref_lens.append(ref_len)
+
+      # Merge counts across multiple references.
+      # The below loop is faster than 'final_ngrams |= new_ngrams'.
+      for ngram, count in new_ngrams.items():
+        final_ngrams[ngram] = max(final_ngrams[ngram], count)
+
+    return _RefInfo(ngrams=final_ngrams, lens=ref_lens)
+
+  def _extract_reference_ngrams_and_lens(
+      self, references: Sequence[Sequence[str]]
+  ) -> list[_RefInfo]:
+    """Given the full set of document references, extract segment n-grams and lens."""
+    ref_data = []
+
+    # Iterate through all references.
+    for refs in zip(*references):
+      # Remove undefined references and seperate ngrams.
+      lines = [
+          self._preprocess_segment(line) for line in refs if line is not None
+      ]
+
+      # Get n-grams data.
+      ref_data.append(self._extract_reference_info(lines))
+
+    return ref_data
+
+  def _compute_segment_statistics(
+      self,
+      hypothesis: str,
+      ref_info: _RefInfo,
+  ) -> list[int]:
+    """Given a (pre-processed) hypothesis sentence and already computed reference n-grams & lengths, returns the best match statistics across the references.
+
+    Args:
+      hypothesis: Hypothesis sentence.
+      ref_info: _RefInfo containing the counter with all n-grams and counts, and
+        the list of reference lengths.
+
+    Returns:
+      A list of integers with match statistics.
+    """
+    # Extract n-grams for the hypothesis.
+    hyp_ngrams, hyp_len = sacrebleu.helpers.extract_all_word_ngrams(
+        hypothesis, 1, self.bleu_metric.max_ngram_order
+    )
+
+    ref_len = _find_closest_ref_len(hyp_len, ref_info.lens)
+
+    # Count the stats.
+    # Although counter has its internal & and | operators, this is faster.
+    correct = [0] * self.bleu_metric.max_ngram_order
+    total = correct[:]
+
+    for hyp_ngram, hyp_count in hyp_ngrams.items():
+      # n-gram order.
+      n = len(hyp_ngram) - 1
+
+      # Count hypothesis n-grams.
+      total[n] += hyp_count
+
+      # Count matched n-grams.
+      ref_ngrams = ref_info.ngrams
+      if hyp_ngram in ref_ngrams:
+        correct[n] += min(hyp_count, ref_ngrams[hyp_ngram])
+
+    # Return a flattened list as per 'stats' semantics.
+    return [hyp_len, ref_len] + correct + total
+
+  def _extract_corpus_statistics(
+      self,
+      hypotheses: Sequence[str],
+      references: Optional[Sequence[Sequence[str]]],
+  ) -> list[list[int]]:
+    """Reads the corpus and returns sentence-level match statistics for faster re-computations esp during statistical tests.
+
+    Args:
+      hypotheses: A sequence of hypothesis strings.
+      references: A sequence of reference documents with document being defined
+        as a sequence of reference strings of shape (batch_size_of_references x
+        batch_size_of_hypotheses).
+
+    Returns:
+      A list where each sublist corresponds to segment statistics.
+    """
+    stats = []
+    tok_count = 0
+
+    # Extract the new 'stats'.
+    for hyp, ref_kwargs in zip(
+        hypotheses, self._extract_reference_ngrams_and_lens(references)
+    ):
+      # Check for already-tokenized input problem.
+      if not self.bleu_metric._force and hyp.endswith(' .'):  # pylint:disable=protected-access
+        tok_count += 1
+
+      # Collect stats.
+      stats.append(
+          self._compute_segment_statistics(
+              self._preprocess_segment(hyp), ref_kwargs
+          )
+      )
+
+    if tok_count >= 100:
+      logging.warning("That's 100 lines that end in a tokenized period (' .')")
+      logging.warning(
+          'It looks like you forgot to detokenize your test data, which may'
+          ' hurt your score.'
+      )
+      logging.warning(
+          "If you insist your data is detokenized, or don't care, you can"
+          " suppress this message with the 'force' parameter."
+      )
+
+    return stats
 
   def create_accumulator(self):
     """Accumulator is the running total of 'stats' of type np.ndarray.
@@ -85,9 +252,7 @@ class _BleuCombiner(beam.CombineFn):
       correct[0] = number of matching unigrams
       correct[1] = number of matching bigrams
       ...
-    total[n - 1] = (
-        max(number of n-grams in hyp, number of n-grams in ref) for n > 0
-    )
+    total[n - 1] = number of n-grams in hyp for n > 0
       total[] follows same pattern as correct[]
 
     Args: None.
@@ -95,7 +260,10 @@ class _BleuCombiner(beam.CombineFn):
     Returns:
       'stats' list of all zeros.
     """
-    return np.zeros(self.stats_len, dtype=int)
+    # TODO(b/321082946): Replace 'stats' semantics with a dataclass.
+    # len(stats) = len(hyp_len) + len(ref_len) + len(correct) + len(total)
+    # = 1 + 1 + max_ngram_order + max_ngram_order = 2 + 2 * max_ngram_order
+    return np.zeros(2 + 2 * self.bleu_metric.max_ngram_order, dtype=int)
 
   def add_input(
       self,
@@ -109,19 +277,16 @@ class _BleuCombiner(beam.CombineFn):
             eval_config=self.eval_config,
             model_name=self.model_name,
             output_name=self.output_name,
-            example_weighted=False,  # Example weights not honored
+            example_weighted=False,  # Example weights not honored.
             flatten=False,
             squeeze=False,
         )
     )
 
-    # TODO(b/299345719): Remove call to protected member
-    new_stats = self.bleu_metric._extract_corpus_statistics(  # pylint:disable=protected-access
-        hypotheses.tolist(), references.tolist()
-    )
-
     # Sum accumulator and new stats
-    return accumulator + np.sum(new_stats, axis=0)
+    return accumulator + np.sum(
+        self._extract_corpus_statistics(hypotheses, references), axis=0
+    )
 
   def merge_accumulators(
       self, list_of_stats: Iterable[np.ndarray]
@@ -131,7 +296,7 @@ class _BleuCombiner(beam.CombineFn):
 
   def extract_output(
       self, accumulator: np.ndarray
-  ) -> Dict[metric_types.MetricKey, sacrebleu.metrics.BLEUScore]:
+  ) -> dict[metric_types.MetricKey, sacrebleu.BLEUScore]:
     # TODO(b/299345719): Remove call to protected member
     return {
         self.key: self.bleu_metric._compute_score_from_stats(  # pylint:disable=protected-access

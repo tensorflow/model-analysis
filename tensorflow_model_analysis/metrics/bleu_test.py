@@ -77,6 +77,21 @@ def _get_result(pipeline, examples, combiner):
   )
 
 
+# TODO(b/319722147): Rename unit tests from camel case to snake case.
+
+
+class FindClosestRefLenTest(
+    testutil.TensorflowModelAnalysisTest, parameterized.TestCase
+):
+
+  @parameterized.parameters((0, 2), (5, 4), (10, 10))
+  def testFindClosestRefLen(self, target, expected_closest):
+    candidates = [2, 4, 6, 8, 10]
+    self.assertEqual(
+        expected_closest, bleu._find_closest_ref_len(target, candidates)
+    )
+
+
 class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
   def _check_got(self, got, expected_key):
@@ -365,6 +380,34 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
+  @parameterized.parameters(
+      (
+          'perfect_score',
+          [[4, 4, 4, 3, 2, 1, 4, 3, 2, 1], [5, 5, 5, 4, 3, 2, 5, 4, 3, 2]],
+      ),
+      (
+          'imperfect_score',
+          [
+              [6, 6, 6, 5, 4, 3, 6, 5, 4, 3],
+              [4, 5, 2, 0, 0, 0, 4, 3, 2, 1],
+              [7, 7, 6, 2, 1, 0, 7, 6, 5, 4],
+          ],
+      ),
+      (
+          'zero_score',
+          [[3, 2, 0, 0, 0, 0, 3, 2, 1, 0], [3, 4, 0, 0, 0, 0, 3, 2, 1, 0]],
+      ),
+  )
+  def testBleuExtractCorpusStatistics(self, examples_key, expected_stats):
+    examples = _EXAMPLES[examples_key]
+    self.assertListEqual(
+        expected_stats,
+        bleu._BleuCombiner(None, '', '', None)._extract_corpus_statistics(
+            examples[constants.PREDICTIONS_KEY],
+            examples[constants.LABELS_KEY],
+        ),
+    )
 
 
 class BleuEnd2EndTest(parameterized.TestCase):
