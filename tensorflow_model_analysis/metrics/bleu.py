@@ -238,22 +238,56 @@ class _BleuCombiner(beam.CombineFn):
 
     return stats
 
-  def create_accumulator(self):
-    """Accumulator is the running total of 'stats' of type np.ndarray.
+  def _compute_score_from_stats(self, stats: list[int]) -> sacrebleu.BLEUScore:
+    """Computes the final score from already aggregated statistics.
 
     'stats' semantics are preserved here from the wrapped implementation.
     stats = [hyp_len, ref_len, correct, total] where
-    hyp_len = number of unigrams (words) in the hypothesis
-    ref_len = number of unigrams (words) in the reference
-      Note, ending punctuation (periods, exclamation points, etc.) count as
-      their own unigram.
-      For example, 'Google.' has 2 unigrams: 'Google' and '.'
-    correct[n - 1] = number of matching n-grams for n > 0
-      correct[0] = number of matching unigrams
-      correct[1] = number of matching bigrams
-      ...
-    total[n - 1] = number of n-grams in hyp for n > 0
-      total[] follows same pattern as correct[]
+      hyp_len = number of unigrams (words) in the hypothesis
+      ref_len = number of unigrams (words) in the reference
+        Note, ending punctuation (periods, exclamation points, etc.) count as
+        their own unigram.
+        For example, 'Google.' has 2 unigrams: 'Google' and '.'
+      correct[n - 1] = number of matching n-grams for n > 0
+        correct[0] = number of matching unigrams
+        correct[1] = number of matching bigrams
+        ...
+      total[n - 1] = number of n-grams in hyp for n > 0
+        total[] follows same pattern as correct[]
+
+    Args:
+      stats: A list of segment-level statistics.
+
+    Returns:
+      A 'BLEUScore' object.
+    """
+    bleu_metric = self.bleu_metric
+
+    # correct[n - 1] = number of matching n-grams for n > 0
+    correct = stats[2 : 2 + bleu_metric.max_ngram_order]
+
+    # total[n - 1] = number of n-grams in hyp for n > 0
+    total = stats[2 + bleu_metric.max_ngram_order :]
+
+    # hyp_len = number of unigrams (words) in the hypothesis
+    hyp_len = int(stats[0])
+
+    # ref_len = number of unigrams (words) in the reference
+    ref_len = int(stats[1])
+
+    return self.bleu_metric.compute_bleu(
+        correct=correct,
+        total=total,
+        sys_len=hyp_len,
+        ref_len=ref_len,
+        smooth_method=bleu_metric.smooth_method,
+        smooth_value=bleu_metric.smooth_value,
+        effective_order=bleu_metric.effective_order,
+        max_ngram_order=bleu_metric.max_ngram_order,
+    )
+
+  def create_accumulator(self):
+    """Accumulator is the running total of 'stats' of type np.ndarray.
 
     Args: None.
 
@@ -297,12 +331,14 @@ class _BleuCombiner(beam.CombineFn):
   def extract_output(
       self, accumulator: np.ndarray
   ) -> dict[metric_types.MetricKey, sacrebleu.BLEUScore]:
-    # TODO(b/299345719): Remove call to protected member
-    return {
-        self.key: self.bleu_metric._compute_score_from_stats(  # pylint:disable=protected-access
-            accumulator.tolist()
-        )
-    }
+    # TODO(b/319702245): Resolve the issue below in compute_bleu().
+    # We need to convert the accumulator to a list here.
+    # If we leave it as a np.ndarray of ints, then sacrebleu will not be able to
+    # add decimal smooth values to the stats list within compute_bleu().
+    # If we convert it to an np.ndarray of floats, then sacrebleu will not be
+    # able to propely set BLEUScore._verbose because there is no format code 'd'
+    # for floats.
+    return {self.key: self._compute_score_from_stats(accumulator.tolist())}
 
 
 def _bleu(
