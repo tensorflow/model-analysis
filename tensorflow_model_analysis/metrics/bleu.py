@@ -32,7 +32,7 @@ from tensorflow_model_analysis.proto import config_pb2
 _BLEU_NAME_DEFAULT = 'BLEU'
 
 
-# TODO(b/287700355): Add __slots__ to this dataclass.
+# TODO: b/287700355) - Add __slots__ to this dataclass.
 @dataclasses.dataclass
 class _RefInfo:
   ngrams: collections.Counter[dict[tuple[str], int]]  # n-grams and counts
@@ -173,23 +173,23 @@ class _BleuCombiner(beam.CombineFn):
 
     # Count the stats.
     # Although counter has its internal & and | operators, this is faster.
-    correct = [0] * self.bleu_metric.max_ngram_order
-    total = correct[:]
+    matching_ngrams = [0] * self.bleu_metric.max_ngram_order
+    total_ngrams = matching_ngrams[:]
 
     for hyp_ngram, hyp_count in hyp_ngrams.items():
       # n-gram order.
       n = len(hyp_ngram) - 1
 
       # Count hypothesis n-grams.
-      total[n] += hyp_count
+      total_ngrams[n] += hyp_count
 
       # Count matched n-grams.
       ref_ngrams = ref_info.ngrams
       if hyp_ngram in ref_ngrams:
-        correct[n] += min(hyp_count, ref_ngrams[hyp_ngram])
+        matching_ngrams[n] += min(hyp_count, ref_ngrams[hyp_ngram])
 
     # Return a flattened list as per 'stats' semantics.
-    return [hyp_len, ref_len] + correct + total
+    return [hyp_len, ref_len] + matching_ngrams + total_ngrams
 
   def _extract_corpus_statistics(
       self,
@@ -242,18 +242,18 @@ class _BleuCombiner(beam.CombineFn):
     """Computes the final score from already aggregated statistics.
 
     'stats' semantics are preserved here from the wrapped implementation.
-    stats = [hyp_len, ref_len, correct, total] where
+    stats = [hyp_len, ref_len, matching_ngrams, total_ngrams] where
       hyp_len = number of unigrams (words) in the hypothesis
       ref_len = number of unigrams (words) in the reference
         Note, ending punctuation (periods, exclamation points, etc.) count as
         their own unigram.
         For example, 'Google.' has 2 unigrams: 'Google' and '.'
-      correct[n - 1] = number of matching n-grams for n > 0
-        correct[0] = number of matching unigrams
-        correct[1] = number of matching bigrams
+      matching_ngrams[n - 1] = number of matching n-grams for n > 0
+        matching_ngrams[0] = number of matching unigrams
+        matching_ngrams[1] = number of matching bigrams
         ...
-      total[n - 1] = number of n-grams in hyp for n > 0
-        total[] follows same pattern as correct[]
+      total_ngrams[n - 1] = number of n-grams in hyp for n > 0
+        total_ngrams[] follows same pattern as matching_ngrams[]
 
     Args:
       stats: A list of segment-level statistics.
@@ -263,11 +263,11 @@ class _BleuCombiner(beam.CombineFn):
     """
     bleu_metric = self.bleu_metric
 
-    # correct[n - 1] = number of matching n-grams for n > 0
-    correct = stats[2 : 2 + bleu_metric.max_ngram_order]
+    # matching_ngrams[n - 1] = number of matching n-grams for n > 0
+    matching_ngrams = stats[2 : 2 + bleu_metric.max_ngram_order]
 
-    # total[n - 1] = number of n-grams in hyp for n > 0
-    total = stats[2 + bleu_metric.max_ngram_order :]
+    # total_ngrams[n - 1] = number of n-grams in hyp for n > 0
+    total_ngrams = stats[2 + bleu_metric.max_ngram_order :]
 
     # hyp_len = number of unigrams (words) in the hypothesis
     hyp_len = int(stats[0])
@@ -276,8 +276,8 @@ class _BleuCombiner(beam.CombineFn):
     ref_len = int(stats[1])
 
     return self.bleu_metric.compute_bleu(
-        correct=correct,
-        total=total,
+        correct=matching_ngrams,
+        total=total_ngrams,
         sys_len=hyp_len,
         ref_len=ref_len,
         smooth_method=bleu_metric.smooth_method,
@@ -294,8 +294,9 @@ class _BleuCombiner(beam.CombineFn):
     Returns:
       'stats' list of all zeros.
     """
-    # TODO(b/321082946): Replace 'stats' semantics with a dataclass.
-    # len(stats) = len(hyp_len) + len(ref_len) + len(correct) + len(total)
+    # TODO: b/321082946 - Replace 'stats' semantics with a dataclass.
+    # len(stats)
+    # = len(hyp_len) + len(ref_len) + len(matching_ngrams) + len(total_ngrams)
     # = 1 + 1 + max_ngram_order + max_ngram_order = 2 + 2 * max_ngram_order
     return np.zeros(2 + 2 * self.bleu_metric.max_ngram_order, dtype=int)
 
@@ -331,7 +332,7 @@ class _BleuCombiner(beam.CombineFn):
   def extract_output(
       self, accumulator: np.ndarray
   ) -> dict[metric_types.MetricKey, sacrebleu.BLEUScore]:
-    # TODO(b/319702245): Resolve the issue below in compute_bleu().
+    # TODO: b/319702245 - Resolve the issue below in compute_bleu().
     # We need to convert the accumulator to a list here.
     # If we leave it as a np.ndarray of ints, then sacrebleu will not be able to
     # add decimal smooth values to the stats list within compute_bleu().

@@ -77,15 +77,12 @@ def _get_result(pipeline, examples, combiner):
   )
 
 
-# TODO(b/319722147): Rename unit tests from camel case to snake case.
-
-
 class FindClosestRefLenTest(
     testutil.TensorflowModelAnalysisTest, parameterized.TestCase
 ):
 
   @parameterized.parameters((0, 2), (5, 4), (10, 10))
-  def testFindClosestRefLen(self, target, expected_closest):
+  def test_find_closest_ref_len(self, target, expected_closest):
     candidates = [2, 4, 6, 8, 10]
     self.assertEqual(
         expected_closest, bleu._find_closest_ref_len(target, candidates)
@@ -106,9 +103,10 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       ('imperfect_score', 48.53),
       ('zero_score', 0),
   )
-  def testBleuDefault(self, examples_key, expected_score):
+  def test_bleu_default(self, examples_key, expected_score):
     key = metric_types.MetricKey(name=bleu._BLEU_NAME_DEFAULT)
     computation = bleu.Bleu().computations()[0]
+
     with beam.Pipeline() as pipeline:
       result = _get_result(
           pipeline, [_EXAMPLES[examples_key]], computation.combiner
@@ -131,10 +129,11 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       ('imperfect_score', 48.53),
       ('zero_score', 0),
   )
-  def testBleuName(self, examples_key, expected_score):
+  def test_bleu_name(self, examples_key, expected_score):
     custom_name = 'custom_name_set_by_caller'
     key = metric_types.MetricKey(name=custom_name)
     computation = bleu.Bleu(name=custom_name).computations()[0]
+
     with beam.Pipeline() as pipeline:
       result = _get_result(
           pipeline, [_EXAMPLES[examples_key]], computation.combiner
@@ -178,13 +177,14 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
           100,
       ),
   )
-  def testBleuLowercase(self, labels, predictions, lowercase, expected_score):
+  def test_bleu_lowercase(self, labels, predictions, lowercase, expected_score):
     example = {
         constants.LABELS_KEY: labels,
         constants.PREDICTIONS_KEY: predictions,
     }
     key = metric_types.MetricKey(name=bleu._BLEU_NAME_DEFAULT)
     computation = bleu.Bleu(lowercase=lowercase).computations()[0]
+
     with beam.Pipeline() as pipeline:
       result = _get_result(pipeline, [example], computation.combiner)
 
@@ -211,9 +211,10 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       ('imperfect_score', 'intl', 43.92),
       ('zero_score', 'intl', 0),
   )
-  def testBleuTokenize(self, examples_key, tokenizer, expected_score):
+  def test_bleu_tokenize(self, examples_key, tokenizer, expected_score):
     key = metric_types.MetricKey(name=bleu._BLEU_NAME_DEFAULT)
     computation = bleu.Bleu(tokenize=tokenizer).computations()[0]
+
     with beam.Pipeline() as pipeline:
       result = _get_result(
           pipeline, [_EXAMPLES[examples_key]], computation.combiner
@@ -231,9 +232,10 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
       util.assert_that(result, check_result, label='result')
 
-  def testBleuInvalidTokenizer(self):
+  def test_bleu_invalid_tokenizer(self):
     invalid_tokenizer = 'invalid_tokenizer_name'
     bleu_metric = bleu.Bleu(tokenize=invalid_tokenizer)
+
     with self.assertRaisesRegex(KeyError, invalid_tokenizer):
       bleu_metric.computations()
 
@@ -253,10 +255,11 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
           ),
       ),
   )
-  def testBleuSmoothing(self, examples_key, expected_scores):
+  def test_bleu_smoothing(self, examples_key, expected_scores):
     smooth_methods = ('none', 'floor', 'add-k')
     smooth_values = (0, 0.5, 1, -1, 2)
     key = metric_types.MetricKey(name=bleu._BLEU_NAME_DEFAULT)
+
     for method_counter, smooth_method in enumerate(smooth_methods):
       for value_counter, smooth_value in enumerate(smooth_values):
         computation = bleu.Bleu(
@@ -286,9 +289,10 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
           util.assert_that(result, check_result, label='result')
 
-  def testBleuInvalidSmoothMethod(self):
+  def test_bleu_invalid_smooth_method(self):
     invalid_smooth_method = 'invalid_smooth_method_name'
     smooth_values = (0, 0.5, 1)
+
     for smooth_value in smooth_values:
       bleu_metric = bleu.Bleu(
           smooth_method=invalid_smooth_method, smooth_value=smooth_value
@@ -301,9 +305,10 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       ('imperfect_score', 48.53),
       ('zero_score', 0),
   )
-  def testBleuUseEffectiveOrder(self, examples_key, expected_score):
+  def test_bleu_use_effective_order(self, examples_key, expected_score):
     key = metric_types.MetricKey(name=bleu._BLEU_NAME_DEFAULT)
     computation = bleu.Bleu(use_effective_order=True).computations()[0]
+
     with beam.Pipeline() as pipeline:
       result = _get_result(
           pipeline, [_EXAMPLES[examples_key]], computation.combiner
@@ -326,9 +331,10 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       ('imperfect_score', 48.53),
       ('zero_score', 0),
   )
-  def testBleuMultipleExamples(self, examples_key, expected_score):
+  def test_bleu_multiple_examples(self, examples_key, expected_score):
     combined_example = _EXAMPLES[examples_key]
     list_of_examples = []
+
     # Convert combined_example into a list of multiple examples
     for i, prediction in enumerate(combined_example['predictions']):
       list_of_examples.append({
@@ -340,6 +346,7 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
     key = metric_types.MetricKey(name=bleu._BLEU_NAME_DEFAULT)
     computation = bleu.Bleu().computations()[0]
+
     with beam.Pipeline() as pipeline:
       result = _get_result(pipeline, list_of_examples, computation.combiner)
 
@@ -360,7 +367,7 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
       ([''], _EXAMPLES['perfect_score'][constants.PREDICTIONS_KEY]),
       (_EXAMPLES['perfect_score'][constants.LABELS_KEY], ['']),
   )
-  def testBleuEmptyLabelOrPrediction(self, labels, predictions):
+  def test_bleu_empty_label_or_prediction(self, labels, predictions):
     example = {
         constants.LABELS_KEY: labels,
         constants.PREDICTIONS_KEY: predictions,
@@ -368,6 +375,7 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
     expected_score = 0
     key = metric_types.MetricKey(name=bleu._BLEU_NAME_DEFAULT)
     computation = bleu.Bleu().computations()[0]
+
     with beam.Pipeline() as pipeline:
       result = _get_result(pipeline, [example], computation.combiner)
 
@@ -399,7 +407,7 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
           [[3, 2, 0, 0, 0, 0, 3, 2, 1, 0], [3, 4, 0, 0, 0, 0, 3, 2, 1, 0]],
       ),
   )
-  def testBleuExtractCorpusStatistics(self, examples_key, expected_stats):
+  def test_bleu_extract_corpus_statistics(self, examples_key, expected_stats):
     examples = _EXAMPLES[examples_key]
     self.assertListEqual(
         expected_stats,
@@ -412,7 +420,7 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
 
 class BleuEnd2EndTest(parameterized.TestCase):
 
-  def testBleuEnd2End(self):
+  def test_bleu_end_2_end(self):
     # Same test as BleuTest.testBleuDefault with 'imperfect_score'
     eval_config = text_format.Parse(
         """
