@@ -29,6 +29,7 @@ from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
 from google.protobuf import text_format
 
+_Accumulator = bleu._Accumulator
 
 _EXAMPLES = {
     'perfect_score': {
@@ -392,30 +393,168 @@ class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
   @parameterized.parameters(
       (
           'perfect_score',
-          [[4, 4, 4, 3, 2, 1, 4, 3, 2, 1], [5, 5, 5, 4, 3, 2, 5, 4, 3, 2]],
+          [
+              _Accumulator(
+                  matching_ngrams=np.array([4, 3, 2, 1]),
+                  total_ngrams=np.array([4, 3, 2, 1]),
+                  hyp_len=4,
+                  ref_len=4,
+              ),
+              _Accumulator(
+                  matching_ngrams=np.array([5, 4, 3, 2]),
+                  total_ngrams=np.array([5, 4, 3, 2]),
+                  hyp_len=5,
+                  ref_len=5,
+              ),
+          ],
       ),
       (
           'imperfect_score',
           [
-              [6, 6, 6, 5, 4, 3, 6, 5, 4, 3],
-              [4, 5, 2, 0, 0, 0, 4, 3, 2, 1],
-              [7, 7, 6, 2, 1, 0, 7, 6, 5, 4],
+              _Accumulator(
+                  matching_ngrams=[6, 5, 4, 3],
+                  total_ngrams=[6, 5, 4, 3],
+                  hyp_len=6,
+                  ref_len=6,
+              ),
+              _Accumulator(
+                  matching_ngrams=[2, 0, 0, 0],
+                  total_ngrams=[4, 3, 2, 1],
+                  hyp_len=4,
+                  ref_len=5,
+              ),
+              _Accumulator(
+                  matching_ngrams=[6, 2, 1, 0],
+                  total_ngrams=[7, 6, 5, 4],
+                  hyp_len=7,
+                  ref_len=7,
+              ),
           ],
       ),
       (
           'zero_score',
-          [[3, 2, 0, 0, 0, 0, 3, 2, 1, 0], [3, 4, 0, 0, 0, 0, 3, 2, 1, 0]],
+          [
+              _Accumulator(
+                  matching_ngrams=[0, 0, 0, 0],
+                  total_ngrams=[3, 2, 1, 0],
+                  hyp_len=3,
+                  ref_len=2,
+              ),
+              _Accumulator(
+                  matching_ngrams=[0, 0, 0, 0],
+                  total_ngrams=[3, 2, 1, 0],
+                  hyp_len=3,
+                  ref_len=4,
+              ),
+          ],
       ),
   )
-  def test_bleu_extract_corpus_statistics(self, examples_key, expected_stats):
+  def test_bleu_extract_corpus_statistics(self, examples_key, expected_accs):
     examples = _EXAMPLES[examples_key]
-    self.assertListEqual(
-        expected_stats,
-        bleu._BleuCombiner(None, '', '', None)._extract_corpus_statistics(
-            examples[constants.PREDICTIONS_KEY],
-            examples[constants.LABELS_KEY],
-        ),
+    actual_accs = bleu._BleuCombiner(
+        None, '', '', None
+    )._extract_corpus_statistics(
+        examples[constants.PREDICTIONS_KEY], examples[constants.LABELS_KEY]
     )
+
+    for expected_acc, actual_acc in zip(expected_accs, actual_accs):
+      # Use __eq__() in _Accumulator().
+      self.assertEqual(expected_acc, actual_acc)
+
+  @parameterized.parameters(
+      (
+          # Merge a non-empty _Accumulator() and an empty _Accumulator().
+          [
+              _Accumulator(
+                  matching_ngrams=[6, 5, 4, 3],
+                  total_ngrams=[6, 5, 4, 3],
+                  hyp_len=6,
+                  ref_len=6,
+              ),
+              _Accumulator(
+                  matching_ngrams=[0, 0, 0, 0],
+                  total_ngrams=[0, 0, 0, 0],
+                  hyp_len=0,
+                  ref_len=0,
+              ),
+          ],
+          _Accumulator(
+              matching_ngrams=[6, 5, 4, 3],
+              total_ngrams=[6, 5, 4, 3],
+              hyp_len=6,
+              ref_len=6,
+          ),
+      ),
+      (
+          # Merge two non-empty _Accumulator()'s.
+          [
+              _Accumulator(
+                  matching_ngrams=[6, 5, 4, 3],
+                  total_ngrams=[6, 5, 4, 3],
+                  hyp_len=6,
+                  ref_len=6,
+              ),
+              _Accumulator(
+                  matching_ngrams=[6, 5, 4, 3],
+                  total_ngrams=[6, 5, 4, 3],
+                  hyp_len=6,
+                  ref_len=6,
+              ),
+          ],
+          _Accumulator(
+              matching_ngrams=[12, 10, 8, 6],
+              total_ngrams=[12, 10, 8, 6],
+              hyp_len=12,
+              ref_len=12,
+          ),
+      ),
+      (
+          # Merge two emtpy _Accumulaor()'s.
+          [
+              _Accumulator(
+                  matching_ngrams=[0, 0, 0, 0],
+                  total_ngrams=[0, 0, 0, 0],
+                  hyp_len=0,
+                  ref_len=0,
+              ),
+              _Accumulator(
+                  matching_ngrams=[0, 0, 0, 0],
+                  total_ngrams=[0, 0, 0, 0],
+                  hyp_len=0,
+                  ref_len=0,
+              ),
+          ],
+          _Accumulator(
+              matching_ngrams=[0, 0, 0, 0],
+              total_ngrams=[0, 0, 0, 0],
+              hyp_len=0,
+              ref_len=0,
+          ),
+      ),
+      (
+          # Call merge_accumulators() with one _Accumulator().
+          [
+              _Accumulator(
+                  matching_ngrams=[14, 7, 5, 3],
+                  total_ngrams=[17, 14, 11, 8],
+                  hyp_len=17,
+                  ref_len=18,
+              )
+          ],
+          _Accumulator(
+              matching_ngrams=[14, 7, 5, 3],
+              total_ngrams=[17, 14, 11, 8],
+              hyp_len=17,
+              ref_len=18,
+          ),
+      ),
+  )
+  def test_bleu_merge_accumulators(self, accs_list, expected_merged_acc):
+    actual_merged_acc = bleu._BleuCombiner(
+        None, '', '', None
+    ).merge_accumulators(accs_list)
+
+    self.assertEqual(expected_merged_acc, actual_merged_acc)
 
 
 class BleuEnd2EndTest(parameterized.TestCase):
