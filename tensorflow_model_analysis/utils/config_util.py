@@ -62,6 +62,25 @@ def verify_eval_config(eval_config: config_pb2.EvalConfig,
         'A baseline ModelSpec is required: eval_config=\n{}'.format(
             eval_config))
 
+  # Raise exception if per_slice_thresholds has no slicing_specs.
+  for metric_spec in eval_config.metrics_specs:
+    for name, per_slice_thresholds in metric_spec.per_slice_thresholds.items():
+      for per_slice_threshold in per_slice_thresholds.thresholds:
+        if not per_slice_threshold.slicing_specs:
+          raise ValueError(
+              'slicing_specs must be set on per_slice_thresholds but found '
+              f'per_slice_threshold=\n{per_slice_threshold}\n'
+              f'for metric name {name} in metric_spec:\n{metric_spec}'
+          )
+    for metric_config in metric_spec.metrics:
+      for per_slice_threshold in metric_config.per_slice_thresholds:
+        if not per_slice_threshold.slicing_specs:
+          raise ValueError(
+              'slicing_specs must be set on per_slice_thresholds but found '
+              f'per_slice_threshold=\n{per_slice_threshold}\n'
+              f'for metric config:\t{metric_config}'
+          )
+
 
 def update_eval_config_with_defaults(
     eval_config: config_pb2.EvalConfig,

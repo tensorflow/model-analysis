@@ -22,6 +22,55 @@ from google.protobuf import text_format
 
 class ConfigTest(tf.test.TestCase):
 
+  def testVerifyEvalConfigMetricSpecPerSliceThresholdsNoSlicingSpec(self):
+    eval_config_pbtxt = """
+      model_specs { name: "" }
+      metrics_specs {
+        per_slice_thresholds {
+          key: 'ExampleCount'
+          value: {
+            thresholds: {
+              # missing slicing_specs
+              threshold {
+                value_threshold {
+                  lower_bound { value: 0.9 }
+                }
+              }
+            }
+          }
+        }
+        metrics {
+          class_name: "ExampleCount"
+        }
+      }
+    """
+
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
+    with self.assertRaisesRegex(ValueError, r'slicing_specs must be.*'):
+      config_util.verify_eval_config(eval_config)
+
+  def testVerifyEvalConfigMetricConfigPerSliceThresholdsNoSlicingSpec(self):
+    eval_config_pbtxt = """
+      model_specs { name: "" }
+      metrics_specs {
+        metrics {
+          class_name: "ExampleCount"
+          per_slice_thresholds {
+            # missing slicing_specs
+            threshold {
+              value_threshold {
+                lower_bound { value: 0.9 }
+              }
+            }
+          }
+        }
+      }
+    """
+
+    eval_config = text_format.Parse(eval_config_pbtxt, config_pb2.EvalConfig())
+    with self.assertRaisesRegex(ValueError, r'slicing_specs must be.*'):
+      config_util.verify_eval_config(eval_config)
+
   def testUpdateConfigWithDefaultsNoBaselineModelNonRubberstamp(self):
     eval_config_pbtxt = """
       model_specs { name: "" }
