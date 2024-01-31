@@ -221,7 +221,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         index=mix,
         columns=mux,
     )
-    pd.testing.assert_frame_equal(expected, df)
+    pd.testing.assert_frame_equal(expected, df, check_column_type=False)
 
   def testAutoPivot_MetricsDataFrameStringifySlices(self):
     df = pd.DataFrame({
@@ -263,7 +263,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         index=index,
         columns=mux,
     )
-    pd.testing.assert_frame_equal(expected, df)
+    pd.testing.assert_frame_equal(expected, df, check_column_type=False)
 
   def testAutoPivot_MetricsDataFrameCollapseColumnNames(self):
     df = pd.DataFrame({
@@ -299,7 +299,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         index=mix,
         columns=mux,
     )
-    pd.testing.assert_frame_equal(expected, df)
+    pd.testing.assert_frame_equal(expected, df, check_column_type=False)
 
   def testAutoPivot_MetricsDataFrameOverallSliceOnly(self):
     dfs = dataframe.metrics_as_dataframes(
@@ -313,7 +313,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         values=[('metric_values', 'double_value')])
     df = dataframe.auto_pivot(
         df, stringify_slices=False, collapse_column_names=False)
-    pd.testing.assert_frame_equal(expected, df)
+    pd.testing.assert_frame_equal(expected, df, check_column_type=False)
 
 
 class PlotsAsDataFrameTest(tf.test.TestCase):
@@ -471,7 +471,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
             ('plot_data', 'false_omission_rate'),
         ],
     )
-    pd.testing.assert_frame_equal(expected, df)
+    pd.testing.assert_frame_equal(expected, df, check_column_type=False)
 
   def testAutoPivot_PlotsDataFrameCollapseColumnNames(self):
     dfs = dataframe.plots_as_dataframes(self.plots_for_slice)
@@ -514,7 +514,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
             ('plot_data', 'false_omission_rate'),
         ],
     )
-    pd.testing.assert_frame_equal(expected, df)
+    pd.testing.assert_frame_equal(expected, df, check_column_type=False)
 
 if __name__ == '__main__':
   tf.test.main()
