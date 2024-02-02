@@ -35,7 +35,7 @@ def render_fairness_indicator(slicing_metrics=None,
     raise ValueError(
         'Exactly one of the "slicing_metrics" and "multi_slicing_metrics" '
         'parameters must be set.')
-
+  assert widget.FairnessIndicatorViewer is not None
   view = widget.FairnessIndicatorViewer()
   if slicing_metrics:
     view.slicingMetrics = slicing_metrics
