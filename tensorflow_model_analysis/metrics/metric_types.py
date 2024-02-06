@@ -35,7 +35,8 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 # SerializeToString is not guaranteed to be stable between different binaries.
 @functools.total_ordering
 class SubKey(
-    NamedTuple('SubKey', [('class_id', int), ('k', int), ('top_k', int)])):
+    NamedTuple('SubKey', [('class_id', int), ('k', int), ('top_k', int)])
+):
   """A SubKey identifies a sub-types of metrics and plots.
 
   Only one of class_id, k, or top_k can be set at a time.
@@ -48,10 +49,12 @@ class SubKey(
   """
 
   # IfChange (should be preceded by LINT, but cannot nest LINT)
-  def __new__(cls,
-              class_id: Optional[int] = None,
-              k: Optional[int] = None,
-              top_k: Optional[int] = None):
+  def __new__(
+      cls,
+      class_id: Optional[int] = None,
+      k: Optional[int] = None,
+      top_k: Optional[int] = None,
+  ):
     if k is not None:
       if top_k is not None:
         raise ValueError(
@@ -67,7 +70,8 @@ class SubKey(
       raise ValueError('attempt to create metric with k < 1: k={}'.format(k))
     if top_k is not None and top_k < 1:
       raise ValueError(
-          'attempt to create metric with top_k < 1: top_k={}'.format(top_k))
+          'attempt to create metric with top_k < 1: top_k={}'.format(top_k)
+      )
     return super(SubKey, cls).__new__(cls, class_id, k, top_k)
 
   # ThenChange(../api/model_eval_lib.py)
@@ -77,8 +81,9 @@ class SubKey(
 
   def __lt__(self, other):
     # Python3 does not allow comparison of NoneType, remove if present.
-    return (tuple(x if x is not None else -1 for x in self) < tuple(
-        x if x is not None else -1 for x in other or ()))
+    return tuple(x if x is not None else -1 for x in self) < tuple(
+        x if x is not None else -1 for x in other or ()
+    )
 
   def __hash__(self):
     return hash(tuple(self))
@@ -132,9 +137,15 @@ class SubKey(
 # SerializeToString is not guaranteed to be stable between different binaries.
 @functools.total_ordering
 class AggregationType(
-    NamedTuple('AggregationType', [('micro_average', bool),
-                                   ('macro_average', bool),
-                                   ('weighted_macro_average', bool)])):
+    NamedTuple(
+        'AggregationType',
+        [
+            ('micro_average', bool),
+            ('macro_average', bool),
+            ('weighted_macro_average', bool),
+        ],
+    )
+):
   """AggregationType identifies aggregation types used with AggregationOptions.
 
   Only one of micro_average, macro_average, or weighted_macro_average can be set
@@ -147,22 +158,30 @@ class AggregationType(
   """
 
   # IfChange (should be preceded by LINT, but cannot nest LINT)
-  def __new__(cls,
-              micro_average: Optional[bool] = None,
-              macro_average: Optional[bool] = None,
-              weighted_macro_average: Optional[bool] = None):
-    if sum([
-        micro_average or False, macro_average or False,
-        weighted_macro_average or False
-    ]) > 1:
+  def __new__(
+      cls,
+      micro_average: Optional[bool] = None,
+      macro_average: Optional[bool] = None,
+      weighted_macro_average: Optional[bool] = None,
+  ):
+    if (
+        sum([
+            micro_average or False,
+            macro_average or False,
+            weighted_macro_average or False,
+        ])
+        > 1
+    ):
       raise ValueError(
           'only one of micro_average, macro_average, or '
           'weighted_macro_average should be set: micro_average={}, '
           'macro_average={}, weighted_macro_average={}'.format(
-              micro_average, macro_average, weighted_macro_average))
-    return super(AggregationType,
-                 cls).__new__(cls, micro_average, macro_average,
-                              weighted_macro_average)
+              micro_average, macro_average, weighted_macro_average
+          )
+      )
+    return super(AggregationType, cls).__new__(
+        cls, micro_average, macro_average, weighted_macro_average
+    )
 
   # ThenChange(../api/model_eval_lib.py)
 
@@ -171,8 +190,9 @@ class AggregationType(
 
   def __lt__(self, other):
     # Python3 does not allow comparison of NoneType, replace with -1.
-    return (tuple(x if x is not None else -1 for x in self) < tuple(
-        x if x is not None else -1 for x in other or ()))
+    return tuple(x if x is not None else -1 for x in self) < tuple(
+        x if x is not None else -1 for x in other or ()
+    )
 
   def __hash__(self):
     return hash(tuple(self))
@@ -185,9 +205,10 @@ class AggregationType(
     elif self.weighted_macro_average is not None:
       return 'weighted_macro'
     else:
-      raise NotImplementedError(
-          ('A non-existent AggregationType should be represented as None, not '
-           'as AggregationType(None, None, None).'))
+      raise NotImplementedError((
+          'A non-existent AggregationType should be represented as None, not '
+          'as AggregationType(None, None, None).'
+      ))
 
   def to_proto(self) -> metrics_for_slice_pb2.AggregationType:
     """Converts key to proto."""
@@ -202,13 +223,15 @@ class AggregationType(
 
   @staticmethod
   def from_proto(
-      pb: metrics_for_slice_pb2.AggregationType) -> Optional['AggregationType']:
+      pb: metrics_for_slice_pb2.AggregationType,
+  ) -> Optional['AggregationType']:
     """Creates class from proto."""
     if pb.micro_average or pb.macro_average or pb.weighted_macro_average:
       return AggregationType(
           micro_average=pb.micro_average or None,
           macro_average=pb.macro_average or None,
-          weighted_macro_average=pb.weighted_macro_average or None)
+          weighted_macro_average=pb.weighted_macro_average or None,
+      )
     else:
       return None
 
@@ -217,10 +240,19 @@ class AggregationType(
 # SerializeToString is not guaranteed to be stable between different binaries.
 @functools.total_ordering
 class MetricKey(
-    NamedTuple('MetricKey', [('name', str), ('model_name', str),
-                             ('output_name', str), ('sub_key', SubKey),
-                             ('aggregation_type', AggregationType),
-                             ('example_weighted', bool), ('is_diff', bool)])):
+    NamedTuple(
+        'MetricKey',
+        [
+            ('name', str),
+            ('model_name', str),
+            ('output_name', str),
+            ('sub_key', Optional[SubKey]),
+            ('aggregation_type', Optional[AggregationType]),
+            ('example_weighted', bool),
+            ('is_diff', bool),
+        ],
+    )
+):
   """A MetricKey uniquely identifies a metric.
 
   Attributes:
@@ -230,22 +262,31 @@ class MetricKey(
     model_name: Optional model name (if multi-model evaluation).
     output_name: Optional output name (if multi-output model type).
     sub_key: Optional sub key.
-    aggregation_type: Aggregation type.
+    aggregation_type: Optional Aggregation type.
     example_weighted: Indicates whether this metric was weighted by examples.
     is_diff: Optional flag to indicate whether this metrics is a diff metric.
   """
 
-  def __new__(cls,
-              name: str,
-              model_name: str = '',
-              output_name: str = '',
-              sub_key: Optional[SubKey] = None,
-              aggregation_type: Optional[AggregationType] = None,
-              example_weighted: Optional[bool] = False,
-              is_diff: Optional[bool] = False):
-    return super(MetricKey,
-                 cls).__new__(cls, name, model_name, output_name, sub_key,
-                              aggregation_type, example_weighted, is_diff)
+  def __new__(
+      cls,
+      name: str,
+      model_name: str = '',
+      output_name: str = '',
+      sub_key: Optional[SubKey] = None,
+      aggregation_type: Optional[AggregationType] = None,
+      example_weighted: Optional[bool] = False,
+      is_diff: Optional[bool] = False,
+  ):
+    return super(MetricKey, cls).__new__(
+        cls,
+        name,
+        model_name,
+        output_name,
+        sub_key,
+        aggregation_type,
+        example_weighted,
+        is_diff,
+    )
 
   def __eq__(self, other):
     return tuple(self) == other
@@ -260,21 +301,26 @@ class MetricKey(
     other_agg_type = other.aggregation_type if other.aggregation_type else ()
     example_weighted = self.example_weighted if self.example_weighted else ()
     other_example_weighted = (
-        other.example_weighted if other.example_weighted else ())
+        other.example_weighted if other.example_weighted else ()
+    )
     is_diff = self.is_diff
     other_is_diff = other.is_diff
     # -4 for sub_key, aggregation_type, example_weighted, and is_diff
-    return ((tuple(self[:-4])) < tuple(other[:-4]) and
-            sub_key < other_sub_key and agg_type < other_agg_type and
-            example_weighted < other_example_weighted and
-            is_diff < other_is_diff)
+    return (
+        (tuple(self[:-4])) < tuple(other[:-4])
+        and sub_key < other_sub_key
+        and agg_type < other_agg_type
+        and example_weighted < other_example_weighted
+        and is_diff < other_is_diff
+    )
 
   def __hash__(self):
     return hash(tuple(self))
 
   def __str__(self):
     return text_format.MessageToString(
-        self.to_proto(), as_one_line=True, force_colon=True)
+        self.to_proto(), as_one_line=True, force_colon=True
+    )
 
   def to_proto(self) -> metrics_for_slice_pb2.MetricKey:
     """Converts key to proto."""
@@ -308,7 +354,8 @@ class MetricKey(
         sub_key=SubKey.from_proto(pb.sub_key),
         aggregation_type=AggregationType.from_proto(pb.aggregation_type),
         example_weighted=example_weighted,
-        is_diff=pb.is_diff)
+        is_diff=pb.is_diff,
+    )
 
   # Generate a copy of the key except that the is_diff is True.
   def make_diff_key(self) -> 'MetricKey':
@@ -386,7 +433,8 @@ class AttributionsKey(MetricKey):
 
   @staticmethod
   def from_proto(
-      pb: metrics_for_slice_pb2.AttributionsKey) -> 'AttributionsKey':
+      pb: metrics_for_slice_pb2.AttributionsKey,
+  ) -> 'AttributionsKey':
     """Configures class from proto."""
     example_weighted = None
     if pb.HasField('example_weighted'):
@@ -397,7 +445,8 @@ class AttributionsKey(MetricKey):
         output_name=pb.output_name,
         sub_key=SubKey.from_proto(pb.sub_key),
         example_weighted=example_weighted,
-        is_diff=pb.is_diff)
+        is_diff=pb.is_diff,
+    )
 
 
 class Preprocessor(beam.DoFn):
@@ -448,9 +497,15 @@ class Preprocessor(beam.DoFn):
 
 
 class MetricComputation(
-    NamedTuple('MetricComputation', [('keys', List[MetricKey]),
-                                     ('preprocessors', List[Preprocessor]),
-                                     ('combiner', beam.CombineFn)])):
+    NamedTuple(
+        'MetricComputation',
+        [
+            ('keys', List[MetricKey]),
+            ('preprocessors', List[Preprocessor]),
+            ('combiner', beam.CombineFn),
+        ],
+    )
+):
   """MetricComputation represents one or more metric computations.
 
   The preprocessors are called with a PCollection of extracts (or list of
@@ -480,20 +535,27 @@ class MetricComputation(
       value (float, int, distribution, ...).
   """
 
-  def __new__(cls, keys: List[MetricKey],
-              preprocessors: Optional[List[Preprocessor]],
-              combiner: beam.CombineFn):
+  def __new__(
+      cls,
+      keys: List[MetricKey],
+      preprocessors: Optional[List[Preprocessor]],
+      combiner: beam.CombineFn,
+  ):
     # if preprocessors are passed as None, it will be initialized as []
-    return super(MetricComputation, cls).__new__(cls, keys, preprocessors or [],
-                                                 combiner)
+    return super(MetricComputation, cls).__new__(
+        cls, keys, preprocessors or [], combiner
+    )
 
   def _computation_id(self):
     # Some computations do not define the keys until the end of the computation
     # is complete. In these cases the keys will be empty so we also distinguish
     # based on the combiner name used. We don't use __class__ since classes may
     # be defined inline which wouldn't compare equal.
-    return (self.combiner.__class__.__name__, tuple(sorted(self.keys or [])),
-            tuple(p.preprocessor_id for p in self.preprocessors or []))
+    return (
+        self.combiner.__class__.__name__,
+        tuple(sorted(self.keys or [])),
+        tuple(p.preprocessor_id for p in self.preprocessors or []),
+    )
 
   def __eq__(self, other):
     if isinstance(other, MetricComputation):
@@ -508,9 +570,12 @@ class MetricComputation(
 class DerivedMetricComputation(
     NamedTuple(
         'DerivedMetricComputation',
-        [('keys', List[MetricKey]),
-         ('result', Callable)]  # Dict[MetricKey,Any] -> Dict[MetricKey,Any]
-    )):
+        [
+            ('keys', List[MetricKey]),
+            ('result', Callable),
+        ],  # Dict[MetricKey,Any] -> Dict[MetricKey,Any]
+    )
+):
   """DerivedMetricComputation derives its result from other computations.
 
   When creating derived metric computations it is recommended (but not required)
@@ -533,8 +598,11 @@ class DerivedMetricComputation(
       of other metric computations.
   """
 
-  def __new__(cls, keys: List[MetricKey],
-              result: Callable[[Dict[MetricKey, Any]], Dict[MetricKey, Any]]):
+  def __new__(
+      cls,
+      keys: List[MetricKey],
+      result: Callable[[Dict[MetricKey, Any]], Dict[MetricKey, Any]],
+  ):
     return super(DerivedMetricComputation, cls).__new__(cls, keys, result)
 
   def _computation_id(self):
@@ -555,14 +623,19 @@ class DerivedMetricComputation(
 
 
 CrossSliceComparisonCallable = Callable[
-    [Dict[MetricKey, Any], Dict[MetricKey, Any]], Dict[MetricKey, Any]]
+    [Dict[MetricKey, Any], Dict[MetricKey, Any]], Dict[MetricKey, Any]
+]
 
 
 class CrossSliceMetricComputation(
-    NamedTuple('CrossSliceMetricComputation', [
-        ('keys', List[MetricKey]),
-        ('cross_slice_comparison', CrossSliceComparisonCallable),
-    ])):
+    NamedTuple(
+        'CrossSliceMetricComputation',
+        [
+            ('keys', List[MetricKey]),
+            ('cross_slice_comparison', CrossSliceComparisonCallable),
+        ],
+    )
+):
   """CrossSliceMetricComputation derives its result from other computations.
 
   It is used for metrics which are based upon cross slice comparison.
@@ -586,18 +659,24 @@ class CrossSliceMetricComputation(
       using the results of the other metric computations.
   """
 
-  def __new__(cls, keys: List[MetricKey],
-              cross_slice_comparison: CrossSliceComparisonCallable):
-    return super(CrossSliceMetricComputation,
-                 cls).__new__(cls, keys, cross_slice_comparison)
+  def __new__(
+      cls,
+      keys: List[MetricKey],
+      cross_slice_comparison: CrossSliceComparisonCallable,
+  ):
+    return super(CrossSliceMetricComputation, cls).__new__(
+        cls, keys, cross_slice_comparison
+    )
 
   def _computation_id(self):
     # Some computations do not define the keys until the end of the computation
     # is complete. In these cases the keys will be empty so we also distinguish
     # based on the result function name used. We don't use __class__ since
     # functions may be defined inline which wouldn't compare equal.
-    return (self.cross_slice_comparison.__class__.__name__,
-            tuple(sorted(self.keys or [])))
+    return (
+        self.cross_slice_comparison.__class__.__name__,
+        tuple(sorted(self.keys or [])),
+    )
 
   def __eq__(self, other):
     if isinstance(other, CrossSliceMetricComputation):
@@ -628,9 +707,14 @@ class CIDerivedMetricComputation(DerivedMetricComputation):
 # MetricComputations is a list of derived and non-derived computations used to
 # calculate one or more metric values. Derived metrics should come after the
 # computations they depend on in the list.
-MetricComputations = List[Union[MetricComputation, DerivedMetricComputation,
-                                CrossSliceMetricComputation,
-                                CIDerivedMetricComputation]]
+MetricComputations = List[
+    Union[
+        MetricComputation,
+        DerivedMetricComputation,
+        CrossSliceMetricComputation,
+        CIDerivedMetricComputation,
+    ]
+]
 
 
 def validate_and_update_create_computations_fn_kwargs(
@@ -644,7 +728,8 @@ def validate_and_update_create_computations_fn_kwargs(
     aggregation_type: Optional[AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
     example_weighted: bool = False,
-    query_key: Optional[str] = None):
+    query_key: Optional[str] = None,
+):
   """Validates and updates create_computations_fn kwargs based on arg_names.
 
   Each metric's create_computations_fn is invoked with a variable set of
@@ -690,7 +775,8 @@ def validate_and_update_create_computations_fn_kwargs(
         'A metric that does not support class_weights is being used with '
         'class_weights applied. This is likely caused because micro_averaging '
         'was enabled for a metric that does not support it. '
-        f'Metric args={arg_names}, kwargs={kwargs}')
+        f'Metric args={arg_names}, kwargs={kwargs}'
+    )
   if 'query_key' in arg_names:
     kwargs['query_key'] = query_key
   if 'example_weighted' in arg_names:
@@ -700,7 +786,8 @@ def validate_and_update_create_computations_fn_kwargs(
         'A metric that does not support example weights is being used with '
         'MetricsSpec.example_weights.weighted set to true. Contact the owner '
         'of the Metric implementation to ask if support can be added. '
-        f'Metric args={arg_names}, kwargs={kwargs}')
+        f'Metric args={arg_names}, kwargs={kwargs}'
+    )
   return kwargs
 
 
@@ -717,8 +804,9 @@ class Metric:
   the metric is defined.
   """
 
-  def __init__(self, create_computations_fn: Callable[..., MetricComputations],
-               **kwargs):
+  def __init__(
+      self, create_computations_fn: Callable[..., MetricComputations], **kwargs
+  ):
     """Initializes metric.
 
     Args:
@@ -771,21 +859,32 @@ class Metric:
     """
     return True
 
-  def computations(self,
-                   eval_config: Optional[config_pb2.EvalConfig] = None,
-                   schema: Optional[schema_pb2.Schema] = None,
-                   model_names: Optional[List[str]] = None,
-                   output_names: Optional[List[str]] = None,
-                   sub_keys: Optional[List[Optional[SubKey]]] = None,
-                   aggregation_type: Optional[AggregationType] = None,
-                   class_weights: Optional[Dict[int, float]] = None,
-                   example_weighted: bool = False,
-                   query_key: Optional[str] = None) -> MetricComputations:
+  def computations(
+      self,
+      eval_config: Optional[config_pb2.EvalConfig] = None,
+      schema: Optional[schema_pb2.Schema] = None,
+      model_names: Optional[List[str]] = None,
+      output_names: Optional[List[str]] = None,
+      sub_keys: Optional[List[Optional[SubKey]]] = None,
+      aggregation_type: Optional[AggregationType] = None,
+      class_weights: Optional[Dict[int, float]] = None,
+      example_weighted: bool = False,
+      query_key: Optional[str] = None,
+  ) -> MetricComputations:
     """Creates computations associated with metric."""
     updated_kwargs = validate_and_update_create_computations_fn_kwargs(
-        self._args, self.kwargs.copy(), eval_config, schema, model_names,
-        output_names, sub_keys, aggregation_type, class_weights,
-        example_weighted, query_key)
+        self._args,
+        self.kwargs.copy(),
+        eval_config,
+        schema,
+        model_names,
+        output_names,
+        sub_keys,
+        aggregation_type,
+        class_weights,
+        example_weighted,
+        query_key,
+    )
     return self.create_computations_fn(**updated_kwargs)
 
 
@@ -829,10 +928,12 @@ class StandardMetricInputs(util.StandardExtracts):
     """Same as example_weights (DEPRECATED - use example_weights)."""
     return self.example_weights
 
-  def get_by_key(self,
-                 key: str,
-                 model_name: Optional[str] = None,
-                 output_name: Optional[str] = None) -> Any:
+  def get_by_key(
+      self,
+      key: str,
+      model_name: Optional[str] = None,
+      output_name: Optional[str] = None,
+  ) -> Any:
     if key not in self and key.endswith('s'):
       # The previous version of StandardMetricInputs was a NamedTuple that
       # used label, prediction, and example_weight as the field names. Some
@@ -842,25 +943,32 @@ class StandardMetricInputs(util.StandardExtracts):
     return super().get_by_key(key, model_name, output_name)
 
 
-_DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_NAME = 'standard_metric_input_preprocessor'
+_DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_NAME = (
+    'standard_metric_input_preprocessor'
+)
 _DEFAULT_INPUT_PREPROCESSOR_NAME = 'input_preprocessor'
 _DEFAULT_FEATURE_PREPROCESSOR_NAME = 'feature_preprocessor'
-_DEFAULT_TRANSFORMED_FEATURE_PREPROCESSOR_NAME = 'transformed_feature_preprocessor'
+_DEFAULT_TRANSFORMED_FEATURE_PREPROCESSOR_NAME = (
+    'transformed_feature_preprocessor'
+)
 _DEFAULT_COMBINED_FEATURE_PREPROCESSOR_NAME = 'combined_feature_preprocessor'
 _DEFAULT_ATTRIBUTION_PREPROCESSOR_NAME = 'attribution_preprocessor'
-_DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_LIST_NAME = 'standard_metric_input_preprocessor_list'
+_DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_LIST_NAME = (
+    'standard_metric_input_preprocessor_list'
+)
 
 
 class StandardMetricInputsPreprocessor(Preprocessor):
   """Preprocessor for filtering the extracts used in StandardMetricInputs."""
 
-  def __init__(self,
-               include_filter: Optional[Union[Iterable[str], Dict[str,
-                                                                  Any]]] = None,
-               include_default_inputs: bool = True,
-               model_names: Optional[Iterable[str]] = None,
-               output_names: Optional[Iterable[str]] = None,
-               name: Optional[str] = None):
+  def __init__(
+      self,
+      include_filter: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
+      include_default_inputs: bool = True,
+      model_names: Optional[Iterable[str]] = None,
+      output_names: Optional[Iterable[str]] = None,
+      name: Optional[str] = None,
+  ):
     """Initializes preprocessor.
 
     Args:
@@ -885,7 +993,8 @@ class StandardMetricInputsPreprocessor(Preprocessor):
         include_default_inputs=include_default_inputs,
         model_names=model_names,
         output_names=output_names,
-        name=name)
+        name=name,
+    )
     if include_filter is None:
       include_filter = {}
     if not isinstance(include_filter, MutableMapping):
@@ -919,7 +1028,8 @@ class StandardMetricInputsPreprocessor(Preprocessor):
 
 
 def InputPreprocessor(  # pylint: disable=invalid-name
-    include_default_inputs: bool = False) -> StandardMetricInputsPreprocessor:
+    include_default_inputs: bool = False,
+) -> StandardMetricInputsPreprocessor:
   """Returns preprocessor for including raw inputs in StandardMetricInputs.
 
   Args:
@@ -929,14 +1039,15 @@ def InputPreprocessor(  # pylint: disable=invalid-name
   return StandardMetricInputsPreprocessor(
       include_filter={constants.INPUT_KEY: {}},
       include_default_inputs=include_default_inputs,
-      name=_DEFAULT_INPUT_PREPROCESSOR_NAME)
+      name=_DEFAULT_INPUT_PREPROCESSOR_NAME,
+  )
 
 
 def FeaturePreprocessor(  # pylint: disable=invalid-name
     feature_keys: Iterable[str],
     include_default_inputs: bool = True,
     model_names: Optional[Iterable[str]] = None,
-    output_names: Optional[Iterable[str]] = None
+    output_names: Optional[Iterable[str]] = None,
 ) -> StandardMetricInputsPreprocessor:
   """Returns preprocessor for including features in StandardMetricInputs.
 
@@ -958,7 +1069,8 @@ def FeaturePreprocessor(  # pylint: disable=invalid-name
       include_default_inputs=include_default_inputs,
       model_names=model_names,
       output_names=output_names,
-      name=_DEFAULT_FEATURE_PREPROCESSOR_NAME)
+      name=_DEFAULT_FEATURE_PREPROCESSOR_NAME,
+  )
 
 
 def TransformedFeaturePreprocessor(  # pylint: disable=invalid-name
@@ -989,7 +1101,8 @@ def TransformedFeaturePreprocessor(  # pylint: disable=invalid-name
       include_default_inputs=include_default_inputs,
       model_names=model_names,
       output_names=output_names,
-      name=_DEFAULT_TRANSFORMED_FEATURE_PREPROCESSOR_NAME)
+      name=_DEFAULT_TRANSFORMED_FEATURE_PREPROCESSOR_NAME,
+  )
 
 
 def CombinedFeaturePreprocessor(  # pylint: disable=invalid-name
@@ -1018,19 +1131,20 @@ def CombinedFeaturePreprocessor(  # pylint: disable=invalid-name
   return StandardMetricInputsPreprocessor(
       include_filter={
           constants.TRANSFORMED_FEATURES_KEY: include_features,
-          constants.FEATURES_KEY: include_features
+          constants.FEATURES_KEY: include_features,
       },
       include_default_inputs=include_default_inputs,
       model_names=model_names,
       output_names=output_names,
-      name=_DEFAULT_COMBINED_FEATURE_PREPROCESSOR_NAME)
+      name=_DEFAULT_COMBINED_FEATURE_PREPROCESSOR_NAME,
+  )
 
 
 def AttributionPreprocessor(  # pylint: disable=invalid-name
     feature_keys: Iterable[str],
     include_default_inputs: bool = True,
     model_names: Optional[Iterable[str]] = None,
-    output_names: Optional[Iterable[str]] = None
+    output_names: Optional[Iterable[str]] = None,
 ) -> StandardMetricInputsPreprocessor:
   """Returns preprocessor for including attributions in StandardMetricInputs.
 
@@ -1055,11 +1169,12 @@ def AttributionPreprocessor(  # pylint: disable=invalid-name
       include_default_inputs=include_default_inputs,
       model_names=model_names,
       output_names=output_names,
-      name=_DEFAULT_ATTRIBUTION_PREPROCESSOR_NAME)
+      name=_DEFAULT_ATTRIBUTION_PREPROCESSOR_NAME,
+  )
 
 
 def StandardMetricInputsPreprocessorList(  # pylint: disable=invalid-name
-    preprocessors: List[StandardMetricInputsPreprocessor]
+    preprocessors: List[StandardMetricInputsPreprocessor],
 ) -> StandardMetricInputsPreprocessor:
   """Returns preprocessor combining multiple standard preprocessors together.
 
@@ -1072,7 +1187,8 @@ def StandardMetricInputsPreprocessorList(  # pylint: disable=invalid-name
     if type(p) != StandardMetricInputsPreprocessor:  # pylint: disable=unidiomatic-typecheck
       raise ValueError(
           'Only direct instances of StandardMetricsInputPreprocessor '
-          '(excluding sub-classes) are supported')
+          '(excluding sub-classes) are supported'
+      )
     if not include_filter:
       include_filter = p.include_filter
     else:
@@ -1080,4 +1196,5 @@ def StandardMetricInputsPreprocessorList(  # pylint: disable=invalid-name
   return StandardMetricInputsPreprocessor(
       include_filter=include_filter,
       include_default_inputs=False,
-      name=_DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_LIST_NAME)
+      name=_DEFAULT_STANDARD_METRIC_INPUT_PREPROCESSOR_LIST_NAME,
+  )

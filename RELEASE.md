@@ -15,6 +15,7 @@
 *   Move Mean metrics from experimental to metrics.
 *   Fix the bug of size estimator failure.
 *   Depends on `tensorflow>=2.15.0,<3`.
+*   Fix the failure in testMeanAttributions
 
 ## Deprecations
 

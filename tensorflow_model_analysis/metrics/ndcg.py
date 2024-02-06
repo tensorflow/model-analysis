@@ -44,10 +44,12 @@ class NDCG(metric_types.Metric):
   the associated tfma.MetricsSpec.
   """
 
-  def __init__(self,
-               gain_key: str,
-               top_k_list: Optional[List[int]] = None,
-               name: str = NDCG_NAME):
+  def __init__(
+      self,
+      gain_key: str,
+      top_k_list: Optional[List[int]] = None,
+      name: str = NDCG_NAME,
+  ):
     """Initializes NDCG.
 
     Args:
@@ -62,15 +64,17 @@ class NDCG(metric_types.Metric):
 metric_types.register_metric(NDCG)
 
 
-def _ndcg(gain_key: str,
-          top_k_list: Optional[List[int]] = None,
-          name: str = NDCG_NAME,
-          eval_config: Optional[config_pb2.EvalConfig] = None,
-          model_names: Optional[List[str]] = None,
-          output_names: Optional[List[str]] = None,
-          sub_keys: Optional[List[metric_types.SubKey]] = None,
-          example_weighted: bool = False,
-          query_key: str = '') -> metric_types.MetricComputations:
+def _ndcg(
+    gain_key: str,
+    top_k_list: Optional[List[int]] = None,
+    name: str = NDCG_NAME,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
+    model_names: Optional[List[str]] = None,
+    output_names: Optional[List[str]] = None,
+    sub_keys: Optional[List[metric_types.SubKey]] = None,
+    example_weighted: bool = False,
+    query_key: str = '',
+) -> metric_types.MetricComputations:
   """Returns metric computations for NDCG."""
   if not query_key:
     raise ValueError('a query_key is required to use NDCG metric')
@@ -83,7 +87,8 @@ def _ndcg(gain_key: str,
         sub_keys.append(metric_types.SubKey(top_k=k))
   if not sub_keys or any([sub_key.top_k is None for sub_key in sub_keys]):
     raise ValueError(
-        'top_k values are required to use NDCG metric: {}'.format(sub_keys))
+        'top_k values are required to use NDCG metric: {}'.format(sub_keys)
+    )
   computations = []
   for model_name in model_names if model_names else ['']:
     for output_name in output_names if output_names else ['']:
@@ -95,13 +100,16 @@ def _ndcg(gain_key: str,
                 model_name=model_name,
                 output_name=output_name,
                 sub_key=sub_key,
-                example_weighted=example_weighted))
+                example_weighted=example_weighted,
+            )
+        )
       computations.append(
           metric_types.MetricComputation(
               keys=keys,
               preprocessors=[
                   metric_types.CombinedFeaturePreprocessor(
-                      feature_keys=[query_key, gain_key])
+                      feature_keys=[query_key, gain_key]
+                  )
               ],
               combiner=_NDCGCombiner(
                   metric_keys=keys,
@@ -110,12 +118,16 @@ def _ndcg(gain_key: str,
                   output_name=output_name,
                   example_weighted=example_weighted,
                   query_key=query_key,
-                  gain_key=gain_key)))
+                  gain_key=gain_key,
+              ),
+          )
+      )
   return computations
 
 
 class _NDCGAccumulator:
   """NDCG accumulator."""
+
   __slots__ = ['ndcg', 'total_weighted_examples']
 
   def __init__(self, size: int):
@@ -126,10 +138,16 @@ class _NDCGAccumulator:
 class _NDCGCombiner(beam.CombineFn):
   """Computes NDCG (normalized discounted cumulative gain)."""
 
-  def __init__(self, metric_keys: List[metric_types.MetricKey],
-               eval_config: Optional[config_pb2.EvalConfig], model_name: str,
-               output_name: str, example_weighted: bool, query_key: str,
-               gain_key: str):
+  def __init__(
+      self,
+      metric_keys: List[metric_types.MetricKey],
+      eval_config: Optional[config_pb2.EvalConfig],
+      model_name: str,
+      output_name: str,
+      example_weighted: bool,
+      query_key: str,
+      gain_key: str,
+  ):
     """Initialize.
 
     Args:
@@ -150,20 +168,23 @@ class _NDCGCombiner(beam.CombineFn):
     self._gain_key = gain_key
 
   def _query(
-      self,
-      element: metric_types.StandardMetricInputs) -> Union[float, int, str]:
-    query = util.get_by_keys(element.combined_features,
-                             [self._query_key]).flatten()
+      self, element: metric_types.StandardMetricInputs
+  ) -> Union[float, int, str]:
+    query = util.get_by_keys(
+        element.combined_features, [self._query_key]
+    ).flatten()
     if query.size == 0 or not np.all(query == query[0]):
       raise ValueError(
           'missing query value or not all values are the same: value={}, '
           'metric_keys={}, StandardMetricInputs={}'.format(
-              query, self._metric_keys, element))
+              query, self._metric_keys, element
+          )
+      )
     return query[0]
 
   def _to_gains_example_weight(
-      self,
-      element: metric_types.StandardMetricInputs) -> Tuple[np.ndarray, float]:
+      self, element: metric_types.StandardMetricInputs
+  ) -> Tuple[np.ndarray, float]:
     """Returns gains and example_weight sorted by prediction."""
     _, predictions, example_weight = next(
         metric_util.to_label_prediction_example_weight(
@@ -173,16 +194,23 @@ class _NDCGCombiner(beam.CombineFn):
             output_name=self._output_name,
             example_weighted=self._example_weighted,
             flatten=False,
-            require_single_example_weight=True))  # pytype: disable=wrong-arg-types
+            require_single_example_weight=True,
+        )
+    )  # pytype: disable=wrong-arg-types
     gains = util.get_by_keys(element.combined_features, [self._gain_key])
     if gains.size != predictions.size:
-      raise ValueError('expected {} to be same size as predictions {} != {}: '
-                       'gains={}, metric_keys={}, '
-                       'StandardMetricInputs={}'.format(self._gain_key,
-                                                        gains.size,
-                                                        predictions.size, gains,
-                                                        self._metric_keys,
-                                                        element))
+      raise ValueError(
+          'expected {} to be same size as predictions {} != {}: '
+          'gains={}, metric_keys={}, '
+          'StandardMetricInputs={}'.format(
+              self._gain_key,
+              gains.size,
+              predictions.size,
+              gains,
+              self._metric_keys,
+              element,
+          )
+      )
     gains = gains.reshape(predictions.shape)
     # Ignore non-positive gains.
     if gains.max() <= 0:
@@ -201,7 +229,8 @@ class _NDCGCombiner(beam.CombineFn):
       The value of DCG@k.
     """
     return np.sum(
-        np.array(sorted_values)[:k] / np.log2(np.array(range(2, k + 2))))
+        np.array(sorted_values)[:k] / np.log2(np.array(range(2, k + 2)))
+    )
 
   def _calculate_ndcg(self, values: List[Tuple[int, float]], k: int) -> float:
     """Calculate NDCG@k, based on given rank and gain values.
@@ -230,18 +259,27 @@ class _NDCGCombiner(beam.CombineFn):
   def create_accumulator(self):
     return _NDCGAccumulator(len(self._metric_keys))
 
-  def add_input(self, accumulator: _NDCGAccumulator,
-                element: metric_types.StandardMetricInputs) -> _NDCGAccumulator:
+  def add_input(
+      self,
+      accumulator: _NDCGAccumulator,
+      element: metric_types.StandardMetricInputs,
+  ) -> _NDCGAccumulator:
     gains, example_weight = self._to_gains_example_weight(element)
     rank_gain = [(pos + 1, gain) for pos, gain in enumerate(gains)]
     for i, key in enumerate(self._metric_keys):
+      if not key.sub_key or key.sub_key.top_k is None:
+        raise ValueError(
+            'top_k values are required to use NDCG metric: {}'.format(key)
+        )
       accumulator.ndcg[i] += (
-          self._calculate_ndcg(rank_gain, key.sub_key.top_k) * example_weight)
+          self._calculate_ndcg(rank_gain, key.sub_key.top_k) * example_weight
+      )
     accumulator.total_weighted_examples += float(example_weight)
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: Iterable[_NDCGAccumulator]) -> _NDCGAccumulator:
+      self, accumulators: Iterable[_NDCGAccumulator]
+  ) -> _NDCGAccumulator:
     accumulators = iter(accumulators)
     result = next(accumulators)
     for accumulator in accumulators:
@@ -250,8 +288,8 @@ class _NDCGCombiner(beam.CombineFn):
     return result
 
   def extract_output(
-      self,
-      accumulator: _NDCGAccumulator) -> Dict[metric_types.MetricKey, float]:
+      self, accumulator: _NDCGAccumulator
+  ) -> Dict[metric_types.MetricKey, float]:
     output = {}
     for i, key in enumerate(self._metric_keys):
       if accumulator.total_weighted_examples > 0:
