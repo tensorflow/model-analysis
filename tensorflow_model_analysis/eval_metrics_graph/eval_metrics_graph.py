@@ -314,6 +314,8 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
   def _perform_metrics_update_list(self, examples_list: List[Any]) -> None:
     """Run a metrics update on a list of examples."""
     try:
+      if self._perform_metrics_update_fn is None:
+        raise ValueError('_perform_metrics_update_fn is None.')
       self._perform_metrics_update_fn(*[examples_list])
 
     except (RuntimeError, TypeError, ValueError,
