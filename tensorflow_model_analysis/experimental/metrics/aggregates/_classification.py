@@ -137,17 +137,16 @@ class _ConfusionMatrix:
       self, metric: ConfusionMatrixMetric, average=None
   ) -> _NumbersT:
     """Helper to call the right metric function given a Metric Enum."""
-    match metric:
-      case ConfusionMatrixMetric.PRECISION:
-        result = _precision(self)
-      case ConfusionMatrixMetric.RECALL:
-        result = _recall(self)
-      case ConfusionMatrixMetric.F1_SCORE:
-        result = _f1(self)
-      case ConfusionMatrixMetric.ACCURACY:
-        result = _accuracy(self)
-      case _:
-        raise NotImplementedError(f'"{metric}" metric is not supported.')
+    if metric == ConfusionMatrixMetric.PRECISION:
+      result = _precision(self)
+    elif metric == ConfusionMatrixMetric.RECALL:
+      result = _recall(self)
+    elif metric == ConfusionMatrixMetric.F1_SCORE:
+      result = _f1(self)
+    elif metric == ConfusionMatrixMetric.ACCURACY:
+      result = _accuracy(self)
+    else:
+      raise NotImplementedError(f'"{metric}" metric is not supported.')
     assert (
         average != AverageType.SAMPLES
     ), 'Unexpected samplewise average for a derived metric.'
