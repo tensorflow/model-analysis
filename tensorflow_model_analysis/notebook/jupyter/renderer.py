@@ -13,7 +13,7 @@
 # limitations under the License.
 """Jupyter renderer API."""
 
-import tensorflow_model_analysis.notebook.jupyter.tfma_widget as tfma_widget
+from tensorflow_model_analysis.notebook.jupyter import tfma_widget
 
 
 def render_slicing_metrics(data, config, event_handlers=None):
@@ -28,6 +28,8 @@ def render_slicing_metrics(data, config, event_handlers=None):
   Returns:
     A SlicingMetricsViewer.
   """
+  if tfma_widget.SlicingMetricsViewer is None:
+    raise ValueError("tfma_widget.SlicingMetricsViewer is None.")
   view = tfma_widget.SlicingMetricsViewer()
   view.data = data
   view.config = config
@@ -46,6 +48,8 @@ def render_time_series(data, config):
   Returns:
     A TimeSeriesViewer.
   """
+  if tfma_widget.TimeSeriesViewer is None:
+    raise ValueError("tfma_widget.TimeSeriesViewer is None.")
   view = tfma_widget.TimeSeriesViewer()
   view.data = data
   view.config = config
@@ -63,6 +67,8 @@ def render_plot(data, config):
   Returns:
     A PlotViewer.
   """
+  if tfma_widget.PlotViewer is None:
+    raise ValueError("tfma_widget.PlotViewer is None.")
   view = tfma_widget.PlotViewer()
   view.data = data
   view.config = config

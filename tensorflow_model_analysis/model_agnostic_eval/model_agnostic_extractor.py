@@ -52,7 +52,6 @@ def ModelAgnosticGetFPLFeedConfig(
   labels = {}
 
   for key, value in model_agnostic_config.feature_spec.items():
-    placeholder = None
     if isinstance(value, tf.io.FixedLenFeature):
       placeholder = (constants.PLACEHOLDER, value.dtype)
     elif isinstance(value, tf.io.VarLenFeature):
@@ -140,6 +139,7 @@ class _ModelAgnosticExtractDoFn(beam.DoFn):
              ) -> Generator[types.Extracts, None, None]:
     serialized_examples = [x[constants.INPUT_KEY] for x in element]
 
+    assert self._model_agnostic_wrapper is not None
     # Compute FeaturesPredictionsLabels for each serialized_example using
     # the constructed model_agnostic_wrapper.
     for fpl in self._model_agnostic_wrapper.get_fpls_from_examples(
