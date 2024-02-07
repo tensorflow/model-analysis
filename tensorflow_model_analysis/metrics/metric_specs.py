@@ -510,10 +510,12 @@ def metric_instance(
 
 
 def _keys_for_metric(
-    metric_name: str, spec: config_pb2.MetricsSpec,
+    metric_name: str,
+    spec: config_pb2.MetricsSpec,
     aggregation_type: Optional[metric_types.AggregationType],
     sub_keys: List[Optional[metric_types.SubKey]],
-    example_weights: List[bool]) -> Iterator[metric_types.MetricKey]:
+    example_weights: List[Optional[bool]],
+) -> Iterator[metric_types.MetricKey]:
   """Yields all non-diff keys for a specific metric name."""
   for model_name in spec.model_names or ['']:
     for output_name in spec.output_names or ['']:

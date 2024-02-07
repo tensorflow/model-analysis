@@ -248,7 +248,7 @@ class MetricKey(
             ('output_name', str),
             ('sub_key', Optional[SubKey]),
             ('aggregation_type', Optional[AggregationType]),
-            ('example_weighted', bool),
+            ('example_weighted', Optional[bool]),
             ('is_diff', bool),
         ],
     )
