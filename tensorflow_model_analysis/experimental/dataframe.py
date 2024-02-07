@@ -63,11 +63,11 @@ class MetricsDataFrames:
 
 @dataclasses.dataclass(frozen=True)
 class PlotsDataFrames:
-  calibration_histogram_buckets: pd.DataFrame | None = None
-  confusion_matrix_at_thresholds: pd.DataFrame | None = None
-  multi_class_confusion_matrix_at_thresholds: pd.DataFrame | None = None
-  multi_label_confusion_matrix_at_thresholds: pd.DataFrame | None = None
-  debug_message: pd.DataFrame | None = None
+  calibration_histogram_buckets: Optional[pd.DataFrame] = None
+  confusion_matrix_at_thresholds: Optional[pd.DataFrame] = None
+  multi_class_confusion_matrix_at_thresholds: Optional[pd.DataFrame] = None
+  multi_label_confusion_matrix_at_thresholds: Optional[pd.DataFrame] = None
+  debug_message: Optional[pd.DataFrame] = None
 
 
 @dataclasses.dataclass(frozen=True)

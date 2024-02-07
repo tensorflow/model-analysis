@@ -17,7 +17,7 @@ from collections.abc import Iterable, Sequence
 import dataclasses
 import enum
 import itertools
-from typing import Any
+from typing import Any, Optional, Union
 
 import numpy as np
 from numpy import typing as npt
@@ -89,7 +89,7 @@ class _ConfusionMatrix:
       fp: _NumbersT,
       fn: _NumbersT,
       *,
-      dtype: type[Any] | None = None,
+      dtype: Optional[type[Any]] = None,
   ):
     self.tp = np.asarray(tp, dtype=dtype)
     self.tn = np.asarray(tn, dtype=dtype)
@@ -183,7 +183,7 @@ class _TopKConfusionMatrix(_ConfusionMatrix):
       fp: _NumbersT,
       fn: _NumbersT,
       *,
-      dtype: type[Any] | None = None,
+      dtype: Optional[type[Any]] = None,
   ):
     self.k = np.asarray(k, dtype=dtype)
     super().__init__(tp, tn, fp, fn, dtype=dtype)
@@ -269,7 +269,7 @@ def _indicator_confusion_matrix(
     y_true: _NumbersT,
     y_pred: _NumbersT,
     *,
-    pos_label: str | int | bytes = 1,
+    pos_label: Union[int, str, bytes] = 1,
     multiclass: bool = False,
     average: AverageType = AverageType.MICRO,
 ) -> _ConfusionMatrix:
@@ -361,7 +361,7 @@ def _multiclass_confusion_matrix(
     y_true: _NumbersT,
     y_pred: _NumbersT,
     *,
-    vocab: dict[str, int] | None = None,
+    vocab: Optional[dict[str, int]] = None,
     multioutput: bool = False,
     average: AverageType = AverageType.MICRO,
 ) -> _ConfusionMatrix:
@@ -412,13 +412,13 @@ class ConfusionMatrixAggFn(lazytf.AggregateFn):
       as it is inferred.
   """
 
-  pos_label: bool | int | str | bytes = 1
+  pos_label: Union[bool, int, str, bytes] = 1
   input_type: InputType = InputType.BINARY
   # TODO(b/311208939): implements average = None.
   average: AverageType = AverageType.BINARY
-  vocab: dict[str, int] | None = None
+  vocab: Optional[dict[str, int]] = None
   metrics: Sequence[ConfusionMatrixMetric] = ()
-  dtype: type[Any] | None = None
+  dtype: Optional[type[Any]] = None
 
   def __post_init__(self):
     if self.average == AverageType.SAMPLES:
@@ -454,7 +454,7 @@ class ConfusionMatrixAggFn(lazytf.AggregateFn):
       raise NotImplementedError(f'"{self.input_type}" input is not supported.')
 
   def add_inputs(
-      self, state: ConfusionMatrixAggState | None, *inputs: Any
+      self, state: Optional[ConfusionMatrixAggState], *inputs: Any
   ) -> ConfusionMatrixAggState:
     cm = self._calculate_confusion_matrix(*inputs)
     return (cm + state) if state else cm
@@ -511,7 +511,7 @@ def _topk_confusion_matrix(
     k_list: Sequence[int],
     multioutput: bool,
     average: AverageType,
-    vocab: dict[str, int] | None,
+    vocab: Optional[dict[str, int]],
 ) -> _TopKConfusionMatrix:
   """Calculates a confusion matrix for multiclass(-multioutput) input.
 
@@ -609,13 +609,13 @@ class SamplewiseConfusionMatrixAggFn(lazytf.AggregateFn):
   """
 
   metrics: Sequence[ConfusionMatrixMetric]
-  pos_label: bool | int | str | bytes = 1
+  pos_label: Union[bool, int, str, bytes] = 1
   input_type: InputType = InputType.BINARY
   average: AverageType = dataclasses.field(
       default=AverageType.SAMPLES, init=False
   )
-  vocab: dict[str, int] | None = None
-  dtype: type[Any] | None = None
+  vocab: Optional[dict[str, int]] = None
+  dtype: Optional[type[Any]] = None
 
   def __post_init__(self):
     if self.input_type == InputType.BINARY:
