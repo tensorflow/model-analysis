@@ -15,8 +15,9 @@
 *   Move Mean metrics from experimental to metrics.
 *   Fix the bug of size estimator failure.
 *   Depends on `tensorflow>=2.15.0,<3`.
-*   Fix the failure in testMeanAttributions
+*   Fix the failure in testMeanAttributions.
 *   Fix the input type mismatch in metric_specs_tests between bool and None.
+*   Fix the failure in the slice test due to beam type hints check.
 
 ## Deprecations
 

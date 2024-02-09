@@ -644,7 +644,7 @@ def _TrackDistinctSliceKeys(  # pylint: disable=invalid-name
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
-@beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
+@beam.typehints.with_output_types(tuple[SliceKeyType, types.Extracts])
 def FanoutSlices(  # pylint: disable=invalid-name
     pcoll: beam.pvalue.PCollection,
     include_slice_keys_in_output: Optional[bool] = False

@@ -27,6 +27,7 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import util as tfma_util
 
 from google.protobuf import text_format
 
@@ -76,6 +77,7 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
   def setUp(self):
     super().setUp()
     self.longMessage = True  # pylint: disable=invalid-name
+    beam.typehints.disable_type_annotations()
 
   def _makeFeaturesDict(self, features_dict):
     result = {}
@@ -619,26 +621,32 @@ class SlicerTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
   def testMultidimOverallSlices(self):
     data = [
         {
-            constants.SLICE_KEY_TYPES_KEY:  # variable length batch case
+            constants.SLICE_KEY_TYPES_KEY: (  # variable length batch case
                 types.VarLenTensorValue.from_dense_rows([
                     slicer.slice_keys_to_numpy_array([(('gender', 'f'),), ()]),
-                    slicer.slice_keys_to_numpy_array([()])
+                    slicer.slice_keys_to_numpy_array([()]),
                 ])
+            )
         },
         {
-            constants.SLICE_KEY_TYPES_KEY:  # fixed length batch case
-                np.array([
-                    slicer.slice_keys_to_numpy_array([()]),
-                    slicer.slice_keys_to_numpy_array([()])
-                ])
-        }
+            constants.SLICE_KEY_TYPES_KEY: np.array([  # fixed length batch case
+                slicer.slice_keys_to_numpy_array([()]),
+                slicer.slice_keys_to_numpy_array([()]),
+            ])
+        },
     ]
-
+    data = [tfma_util.StandardExtracts(d) for d in data]
     with beam.Pipeline() as pipeline:
+      # Fix the typehint infer error
+      beam.typehints.disable_type_annotations()
       result = (
           pipeline
-          | 'CreateTestInput' >> beam.Create(data, reshuffle=False)
-          | 'FanoutSlices' >> slicer.FanoutSlices())
+          | 'CreateTestInput'
+          >> beam.Create(data, reshuffle=False).with_output_types(
+              types.Extracts
+          )
+          | 'FanoutSlices' >> slicer.FanoutSlices()
+      )
 
       def check_result(got):
         try:
