@@ -396,7 +396,7 @@ def _multiclass_confusion_matrix(
 ConfusionMatrixAggState = _ConfusionMatrix
 
 
-@dataclasses.dataclass(frozen=True, kw_only=True)
+@dataclasses.dataclass(frozen=True)
 class ConfusionMatrixAggFn(lazytf.AggregateFn):
   """ConfusionMatrix aggregate.
 
@@ -546,7 +546,7 @@ def _topk_confusion_matrix(
   return _TopKConfusionMatrix(*tuple(zip(*cms)))
 
 
-@dataclasses.dataclass(kw_only=True, frozen=True)
+@dataclasses.dataclass(frozen=True)
 class TopKConfusionMatrixAggFn(ConfusionMatrixAggFn):
   """ConfusionMatrixAtK aggregate.
 
@@ -592,7 +592,7 @@ class TopKConfusionMatrixAggFn(ConfusionMatrixAggFn):
 SamplewiseConfusionMatrixAggState = dict[str, MeanState]
 
 
-@dataclasses.dataclass(frozen=True, kw_only=True)
+@dataclasses.dataclass(frozen=True)
 class SamplewiseConfusionMatrixAggFn(lazytf.AggregateFn):
   """ConfusionMatrix aggregate.
 
