@@ -16,7 +16,7 @@
 
 from collections.abc import Sequence
 import dataclasses
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 from numpy import typing as npt
@@ -64,7 +64,7 @@ def _pos_sqrt(value):
 _SamplewiseMeanAggFnState = MeanStatesPerMetric
 
 
-@dataclasses.dataclass(frozen=True, kw_only=True)
+@dataclasses.dataclass(frozen=True)
 class TopKSamplewiseMeanAggFn(lazytf.AggregateFn):
   """TopK sample mean aggregate.
 
@@ -77,7 +77,7 @@ class TopKSamplewiseMeanAggFn(lazytf.AggregateFn):
     input_type: input encoding type, must be multiclass(-multioutput).
   """
 
-  k_list: Sequence[int] | None = None
+  k_list: Optional[Sequence[int]] = None
   metrics: Sequence[RetrievalMetric] = ()
   input_type: InputType = InputType.MULTICLASS_MULTIOUTPUT
 
@@ -207,7 +207,7 @@ def _ndcg_score(tp, k_range, k_list, y_true_count):
   return result
 
 
-@dataclasses.dataclass(frozen=True, kw_only=True)
+@dataclasses.dataclass(frozen=True)
 class TopKRetrievalAggFn(TopKSamplewiseMeanAggFn):
   """TopKRetrievalAggFn aggregate.
 
