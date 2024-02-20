@@ -13,6 +13,7 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis utils."""
 
+from tensorflow_model_analysis.utils import keras_lib
 from tensorflow_model_analysis.utils.config_util import has_change_threshold
 from tensorflow_model_analysis.utils.config_util import update_eval_config_with_defaults
 from tensorflow_model_analysis.utils.config_util import verify_eval_config

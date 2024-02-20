@@ -35,14 +35,17 @@ from tensorflow_model_analysis.metrics import weighted_example_count
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.utils import model_util
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
-_TF_LOSSES_MODULE = tf.keras.losses.Loss().__class__.__module__
 
-_TFOrTFMAMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss,
-                              metric_types.Metric]
-_TFMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]
+_TF_LOSSES_MODULE = tf_keras.losses.Loss().__class__.__module__
+
+_TFOrTFMAMetricOrLoss = Union[
+    tf_keras.metrics.Metric, tf_keras.losses.Loss, metric_types.Metric
+]
+_TFMetricOrLoss = Union[tf_keras.metrics.Metric, tf_keras.losses.Loss]
 
 # List of metrics or losses optionally keyed by output name.
 _MetricsOrLosses = Union[List[_TFOrTFMAMetricOrLoss],
@@ -74,12 +77,12 @@ _UNSUPPORTED_TF_SETTINGS = {
 def config_from_metric(
     metric: _TFOrTFMAMetricOrLoss) -> config_pb2.MetricConfig:
   """Returns MetricConfig associated with given metric instance."""
-  if isinstance(metric, tf.keras.metrics.Metric):
+  if isinstance(metric, tf_keras.metrics.Metric):
     if _is_supported_tf_metric(metric):
       return _remove_unsupported_tf_settings(_serialize_tf_metric(metric))
     else:
       return _serialize_tf_metric(metric)
-  elif isinstance(metric, tf.keras.losses.Loss):
+  elif isinstance(metric, tf_keras.losses.Loss):
     # For loss like MeanAbsoluteError, TFMA provides native support.
     # The support should be checked here.
     if _is_supported_tf_metric(metric):
@@ -153,13 +156,13 @@ def specs_from_metrics(
     include_example_count: Optional[bool] = None,
     include_weighted_example_count: Optional[bool] = None
 ) -> List[config_pb2.MetricsSpec]:
-  """Returns specs for tf.keras.metrics/losses or tfma.metrics classes.
+  """Returns specs for tf_keras.metrics/losses or tfma.metrics classes.
 
   Examples:
 
     metrics_specs = specs_from_metrics(
       [
-          tf.keras.metrics.BinaryAccuracy(),
+          tf_keras.metrics.BinaryAccuracy(),
           tfma.metrics.AUC(),
           tfma.metrics.MeanLabel(),
           tfma.metrics.MeanPrediction()
@@ -172,7 +175,7 @@ def specs_from_metrics(
 
     metrics_specs = specs_from_metrics({
       'output1': [
-          tf.keras.metrics.BinaryAccuracy(),
+          tf_keras.metrics.BinaryAccuracy(),
           tfma.metrics.AUC(),
           tfma.metrics.MeanLabel(),
           tfma.metrics.MeanPrediction()
@@ -185,8 +188,8 @@ def specs_from_metrics(
     })
 
   Args:
-    metrics: List of tfma.metrics.Metric, tf.keras.metrics.Metric, or
-      tf.keras.losses.Loss. For multi-output models a dict of dicts may be
+    metrics: List of tfma.metrics.Metric, tf_keras.metrics.Metric, or
+      tf_keras.losses.Loss. For multi-output models a dict of dicts may be
       passed where the first dict is indexed by the output_name. Whether these
       metrics are weighted or not will be determined based on whether the
       ModelSpec associated with the metrics contains example weight key settings
@@ -331,10 +334,12 @@ def default_regression_specs(
     model_names: Optional[List[str]] = None,
     output_names: Optional[List[str]] = None,
     output_weights: Optional[Dict[str, float]] = None,
-    loss_functions: Optional[List[Union[tf.keras.metrics.Metric,
-                                        tf.keras.losses.Loss]]] = None,
+    loss_functions: Optional[
+        List[Union[tf_keras.metrics.Metric, tf_keras.losses.Loss]]
+    ] = None,
     min_value: Optional[float] = None,
-    max_value: Optional[float] = None) -> List[config_pb2.MetricsSpec]:
+    max_value: Optional[float] = None,
+) -> List[config_pb2.MetricsSpec]:
   """Returns default metric specs for for regression problems.
 
   Args:
@@ -349,10 +354,10 @@ def default_regression_specs(
   """
 
   if loss_functions is None:
-    loss_functions = [tf.keras.metrics.MeanSquaredError(name='mse')]
+    loss_functions = [tf_keras.metrics.MeanSquaredError(name='mse')]
 
   metrics = [
-      tf.keras.metrics.Accuracy(name='accuracy'),
+      tf_keras.metrics.Accuracy(name='accuracy'),
       calibration.MeanLabel(name='mean_label'),
       calibration.MeanPrediction(name='mean_prediction'),
       calibration.Calibration(name='calibration'),
@@ -410,7 +415,7 @@ def default_binary_classification_specs(
       calibration_plot.CalibrationPlot(name='calibration_plot')
   ]
   if include_loss:
-    metrics.append(tf.keras.metrics.BinaryCrossentropy(name='loss'))
+    metrics.append(tf_keras.metrics.BinaryCrossentropy(name='loss'))
 
   return specs_from_metrics(
       metrics,
@@ -444,13 +449,13 @@ def default_multi_class_classification_specs(
 
   if sparse:
     metrics = [
-        tf.keras.metrics.SparseCategoricalCrossentropy(name='loss'),
-        tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy')
+        tf_keras.metrics.SparseCategoricalCrossentropy(name='loss'),
+        tf_keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
     ]
   else:
     metrics = [
-        tf.keras.metrics.CategoricalCrossentropy(name='loss'),
-        tf.keras.metrics.CategoricalAccuracy(name='accuracy')
+        tf_keras.metrics.CategoricalCrossentropy(name='loss'),
+        tf_keras.metrics.CategoricalAccuracy(name='accuracy'),
     ]
   metrics.append(
       multi_class_confusion_matrix_plot.MultiClassConfusionMatrixPlot())
@@ -495,10 +500,10 @@ def metric_instance(
   else:
     cls = getattr(
         importlib.import_module(metric_config.module), metric_config.class_name)
-    if issubclass(cls, tf.keras.metrics.Metric):
+    if issubclass(cls, tf_keras.metrics.Metric):
       return _deserialize_tf_metric(metric_config,
                                     {metric_config.class_name: cls})  # pytype: disable=bad-return-type  # typed-keras
-    elif issubclass(cls, tf.keras.losses.Loss):
+    elif issubclass(cls, tf_keras.losses.Loss):
       return _deserialize_tf_loss(metric_config,
                                   {metric_config.class_name: cls})  # pytype: disable=bad-return-type  # typed-keras
     elif issubclass(cls, metric_types.Metric):
@@ -660,9 +665,9 @@ def to_computations(
   # Split into TF metrics and TFMA metrics
   #
 
-  # Dict[Text, Type[tf.keras.metrics.Metric]]
+  # Dict[Text, Type[tf_keras.metrics.Metric]]
   tf_metric_classes = {}  # class_name -> class
-  # Dict[Text, Type[tf.keras.losses.Loss]]
+  # Dict[Text, Type[tf_keras.losses.Loss]]
   tf_loss_classes = {}  # class_name -> class
   # List[metric_types.MetricsSpec]
   tf_metrics_specs = []
@@ -696,10 +701,10 @@ def to_computations(
         tf_spec.metrics.append(metric)
       else:
         cls = getattr(importlib.import_module(metric.module), metric.class_name)
-        if issubclass(cls, tf.keras.metrics.Metric):
+        if issubclass(cls, tf_keras.metrics.Metric):
           tf_metric_classes[metric.class_name] = cls
           tf_spec.metrics.append(metric)
-        elif issubclass(cls, tf.keras.losses.Loss):
+        elif issubclass(cls, tf_keras.losses.Loss):
           tf_loss_classes[metric.class_name] = cls
           tf_spec.metrics.append(metric)
         else:
@@ -824,7 +829,7 @@ def _process_tf_metrics_specs(
     """Creates private versions of TF metrics."""
     result = []
     for m in metrics:
-      if isinstance(m, tf.keras.metrics.Metric):
+      if isinstance(m, tf_keras.metrics.Metric):
         result.append(_private_tf_metric(m))
       else:
         result.append(_private_tf_loss(m))
@@ -1158,11 +1163,12 @@ def _tf_class_and_config(
 
 
 def _serialize_tf_metric(
-    metric: tf.keras.metrics.Metric) -> config_pb2.MetricConfig:
+    metric: tf_keras.metrics.Metric,
+) -> config_pb2.MetricConfig:
   """Serializes TF metric."""
   cfg = metric_util.serialize_metric(metric, use_legacy_format=True)
   if (
-      tf.keras.saving.get_registered_name(metric.__class__)
+      tf_keras.utils.get_registered_name(metric.__class__)
       == metric.__class__.__name__
   ):
     module = metric.__class__.__module__
@@ -1177,28 +1183,30 @@ def _serialize_tf_metric(
 
 def _deserialize_tf_metric(
     metric_config: config_pb2.MetricConfig,
-    custom_objects: Dict[str, Type[tf.keras.metrics.Metric]]
-) -> tf.keras.metrics.Metric:
-  """Deserializes a tf.keras.metrics metric."""
+    custom_objects: Dict[str, Type[tf_keras.metrics.Metric]],
+) -> tf_keras.metrics.Metric:
+  """Deserializes a tf_keras.metrics metric."""
   cls_name, cfg = _tf_class_and_config(metric_config)
-  with tf.keras.utils.custom_object_scope(custom_objects):
+  with tf_keras.utils.custom_object_scope(custom_objects):
     return metric_util.deserialize_metric(
         {'class_name': cls_name, 'config': cfg}, use_legacy_format=True
     )
 
 
 def _private_tf_metric(
-    metric: tf.keras.metrics.Metric) -> tf.keras.metrics.Metric:
+    metric: tf_keras.metrics.Metric,
+) -> tf_keras.metrics.Metric:
   """Creates a private version of given metric."""
   cfg = metric_util.serialize_metric(metric)
   if not cfg['config']['name'].startswith('_'):
     cfg['config']['name'] = '_' + cfg['config']['name']
-  with tf.keras.utils.custom_object_scope(
-      {metric.__class__.__name__: metric.__class__}):
+  with tf_keras.utils.custom_object_scope(
+      {metric.__class__.__name__: metric.__class__}
+  ):
     return metric_util.deserialize_metric(cfg, use_legacy_format=True)
 
 
-def _serialize_tf_loss(loss: tf.keras.losses.Loss) -> config_pb2.MetricConfig:
+def _serialize_tf_loss(loss: tf_keras.losses.Loss) -> config_pb2.MetricConfig:
   """Serializes TF loss."""
   cfg = metric_util.serialize_loss(loss, use_legacy_format=True)
   return config_pb2.MetricConfig(
@@ -1209,23 +1217,24 @@ def _serialize_tf_loss(loss: tf.keras.losses.Loss) -> config_pb2.MetricConfig:
 
 def _deserialize_tf_loss(
     metric_config: config_pb2.MetricConfig,
-    custom_objects: Dict[str,
-                         Type[tf.keras.losses.Loss]]) -> tf.keras.losses.Loss:
-  """Deserializes a tf.keras.loss metric."""
+    custom_objects: Dict[str, Type[tf_keras.losses.Loss]],
+) -> tf_keras.losses.Loss:
+  """Deserializes a tf_keras.loss metric."""
   cls_name, cfg = _tf_class_and_config(metric_config)
-  with tf.keras.utils.custom_object_scope(custom_objects):
+  with tf_keras.utils.custom_object_scope(custom_objects):
     return metric_util.deserialize_loss(
         {'class_name': cls_name, 'config': cfg}, use_legacy_format=True
     )
 
 
-def _private_tf_loss(loss: tf.keras.losses.Loss) -> tf.keras.losses.Loss:
+def _private_tf_loss(loss: tf_keras.losses.Loss) -> tf_keras.losses.Loss:
   """Creates a private version of given loss."""
   cfg = metric_util.serialize_loss(loss)
   if not cfg['config']['name'].startswith('_'):
     cfg['config']['name'] = '_' + cfg['config']['name']
-  with tf.keras.utils.custom_object_scope(
-      {loss.__class__.__name__: loss.__class__}):
+  with tf_keras.utils.custom_object_scope(
+      {loss.__class__.__name__: loss.__class__}
+  ):
     return metric_util.deserialize_loss(cfg, use_legacy_format=True)
 
 
@@ -1243,7 +1252,7 @@ def _deserialize_tfma_metric(
     custom_objects: Dict[str,
                          Type[metric_types.Metric]]) -> metric_types.Metric:
   """Deserializes a tfma.metrics metric."""
-  with tf.keras.utils.custom_object_scope(custom_objects):
+  with tf_keras.utils.custom_object_scope(custom_objects):
     return metric_util.deserialize_keras_object({
         'class_name': metric_config.class_name,
         'config': _metric_config(metric_config.config),
@@ -1255,6 +1264,7 @@ def _private_tfma_metric(metric: metric_types.Metric) -> metric_types.Metric:
   cfg = metric_util.serialize_keras_object(metric)
   if not cfg['config']['name'].startswith('_'):
     cfg['config']['name'] = '_' + cfg['config']['name']
-  with tf.keras.utils.custom_object_scope(
-      {metric.__class__.__name__: metric.__class__}):
+  with tf_keras.utils.custom_object_scope(
+      {metric.__class__.__name__: metric.__class__}
+  ):
     return metric_util.deserialize_keras_object(cfg)

@@ -45,6 +45,7 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tensor_adapter
@@ -82,15 +83,16 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     return os.path.join(self._getTempDir(), 'baseline_export_dir')
 
   def _build_keras_model(self, model_dir, mul):
-    input_layer = tf.keras.layers.Input(shape=(1,), name='input_1')
-    output_layer = tf.keras.layers.Lambda(
-        lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul})(
-            input_layer)
-    model = tf.keras.models.Model([input_layer], output_layer)
+    input_layer = tf_keras.layers.Input(shape=(1,), name='input_1')
+    output_layer = tf_keras.layers.Lambda(
+        lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul}
+    )(input_layer)
+    model = tf_keras.models.Model([input_layer], output_layer)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.BinaryCrossentropy(),
-        metrics=['accuracy'])
+        optimizer=tf_keras.optimizers.Adam(lr=0.001),
+        loss=tf_keras.losses.BinaryCrossentropy(),
+        metrics=['accuracy'],
+    )
 
     model.fit(x=[[0], [1]], y=[[0], [1]], steps_per_epoch=1)
     model.save(model_dir, save_format='tf')

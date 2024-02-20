@@ -23,9 +23,10 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 
-class _CustomMetric(tf.keras.metrics.Mean):
+class _CustomMetric(tf_keras.metrics.Mean):
 
   def __init__(self, name='custom', dtype=None, update_y_pred=True):
     super().__init__(name=name, dtype=dtype)
@@ -41,7 +42,7 @@ class _CustomMetric(tf.keras.metrics.Mean):
     return cfg
 
 
-class _CustomConfusionMatrixMetric(tf.keras.metrics.Precision):
+class _CustomConfusionMatrixMetric(tf_keras.metrics.Precision):
 
   def __init__(self, name='custom', dtype=None):
     super().__init__(name=name, dtype=dtype)
@@ -55,7 +56,7 @@ class _CustomConfusionMatrixMetric(tf.keras.metrics.Precision):
     return {'name': base_config['name'], 'dtype': base_config['dtype']}
 
 
-class _CustomMeanSquaredError(tf.keras.metrics.MeanSquaredError):
+class _CustomMeanSquaredError(tf_keras.metrics.MeanSquaredError):
 
   def __init__(self, name, dtype=None):
     super().__init__(name=name, dtype=dtype)
@@ -71,37 +72,39 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   #  This is needed because of pickling errors when using
   #  parameterized.named_parameters with TF metric types.
   def _tf_metric_by_name(self, metric_name):
-    """Returns instance of tf.keras.metric with default args given name."""
+    """Returns instance of tf_keras.metric with default args given name."""
     if metric_name == 'auc':
-      return tf.keras.metrics.AUC(name='auc')
+      return tf_keras.metrics.AUC(name='auc')
     elif metric_name == 'auc_pr':
-      return tf.keras.metrics.AUC(name='auc_pr', curve='PR')
+      return tf_keras.metrics.AUC(name='auc_pr', curve='PR')
     elif metric_name == 'precision':
-      return tf.keras.metrics.Precision(name='precision')
+      return tf_keras.metrics.Precision(name='precision')
     elif metric_name == 'precision@2':
-      return tf.keras.metrics.Precision(name='precision@2', top_k=2)
+      return tf_keras.metrics.Precision(name='precision@2', top_k=2)
     elif metric_name == 'precision@3':
-      return tf.keras.metrics.Precision(name='precision@3', top_k=3)
+      return tf_keras.metrics.Precision(name='precision@3', top_k=3)
     elif metric_name == 'recall':
-      return tf.keras.metrics.Recall(name='recall')
+      return tf_keras.metrics.Recall(name='recall')
     elif metric_name == 'recall@2':
-      return tf.keras.metrics.Recall(name='recall@2', top_k=2)
+      return tf_keras.metrics.Recall(name='recall@2', top_k=2)
     elif metric_name == 'recall@3':
-      return tf.keras.metrics.Recall(name='recall@3', top_k=3)
+      return tf_keras.metrics.Recall(name='recall@3', top_k=3)
     elif metric_name == 'true_positives':
-      return tf.keras.metrics.TruePositives(name='true_positives')
+      return tf_keras.metrics.TruePositives(name='true_positives')
     elif metric_name == 'false_positives':
-      return tf.keras.metrics.FalsePositives(name='false_positives')
+      return tf_keras.metrics.FalsePositives(name='false_positives')
     elif metric_name == 'true_negatives':
-      return tf.keras.metrics.TrueNegatives(name='true_negatives')
+      return tf_keras.metrics.TrueNegatives(name='true_negatives')
     elif metric_name == 'false_negatives':
-      return tf.keras.metrics.FalseNegatives(name='false_negatives')
+      return tf_keras.metrics.FalseNegatives(name='false_negatives')
     elif metric_name == 'specificity_at_sensitivity':
-      return tf.keras.metrics.SpecificityAtSensitivity(
-          0.5, name='specificity_at_sensitivity')
+      return tf_keras.metrics.SpecificityAtSensitivity(
+          0.5, name='specificity_at_sensitivity'
+      )
     elif metric_name == 'sensitivity_at_specificity':
-      return tf.keras.metrics.SensitivityAtSpecificity(
-          0.5, name='sensitivity_at_specificity')
+      return tf_keras.metrics.SensitivityAtSpecificity(
+          0.5, name='sensitivity_at_specificity'
+      )
 
   @parameterized.named_parameters(
       ('auc', 'auc', 0.75),
@@ -118,8 +121,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   def testMetricsWithoutWeights(self, metric_name, expected_value):
     # TODO (b/151636380): remove when CL/299961405 is propagated through Kokoro.
     if metric_name == 'specificity_at_sensitivity':
-      fix_present = hasattr(tf.keras.metrics.SpecificityAtSensitivity,
-                            '_find_max_under_constraint')
+      fix_present = hasattr(
+          tf_keras.metrics.SpecificityAtSensitivity,
+          '_find_max_under_constraint',
+      )
       if not fix_present:
         expected_value = 0.5
     computations = tf_metric_wrapper.tf_metric_computations(
@@ -157,10 +162,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(
-              lambda x: (x[0], metric.result(x[1]))))  # pyformat: disable
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], matrix.result(x[1])))
+          | 'ComputeMetric' >> beam.Map(lambda x: (x[0], metric.result(x[1])))
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -193,8 +198,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   def testMetricsWithWeights(self, metric_name, expected_value):
     # TODO (b/151636380): remove when CL/299961405 is propagated through Kokoro.
     if metric_name == 'specificity_at_sensitivity':
-      fix_present = hasattr(tf.keras.metrics.SpecificityAtSensitivity,
-                            '_find_max_under_constraint')
+      fix_present = hasattr(
+          tf_keras.metrics.SpecificityAtSensitivity,
+          '_find_max_under_constraint',
+      )
       if not fix_present:
         expected_value = 0.0
 
@@ -228,10 +235,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(
-              lambda x: (x[0], metric.result(x[1]))))  # pyformat: disable
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], matrix.result(x[1])))
+          | 'ComputeMetric' >> beam.Map(lambda x: (x[0], metric.result(x[1])))
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -296,10 +303,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(
-              lambda x: (x[0], metric.result(x[1]))))  # pyformat: disable
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], matrix.result(x[1])))
+          | 'ComputeMetric' >> beam.Map(lambda x: (x[0], metric.result(x[1])))
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -372,10 +379,10 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeHistogram' >> beam.CombinePerKey(histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], matrix.result(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(
-              lambda x: (x[0], metric.result(x[1]))))  # pyformat: disable
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], matrix.result(x[1])))
+          | 'ComputeMetric' >> beam.Map(lambda x: (x[0], metric.result(x[1])))
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -471,7 +478,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
   def testSimpleMetric(self):
     computation = tf_metric_wrapper.tf_metric_computations(
-        [tf.keras.metrics.MeanSquaredError(name='mse')])[0]
+        [tf_keras.metrics.MeanSquaredError(name='mse')]
+    )[0]
 
     example = {
         'labels': [0, 0, 1, 1],
@@ -505,8 +513,9 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
   def testSparseMetric(self):
     computation = tf_metric_wrapper.tf_metric_computations([
-        tf.keras.metrics.SparseCategoricalCrossentropy(
-            name='sparse_categorical_crossentropy')
+        tf_keras.metrics.SparseCategoricalCrossentropy(
+            name='sparse_categorical_crossentropy'
+        )
     ])[0]
 
     # Simulate a multi-class problem with 3 labels.
@@ -545,21 +554,19 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     with self.assertRaises(ValueError):
       tf_metric_wrapper.tf_metric_computations(
           [
-              tf.keras.metrics.SparseCategoricalCrossentropy(
-                  name='sparse_categorical_crossentropy')
+              tf_keras.metrics.SparseCategoricalCrossentropy(
+                  name='sparse_categorical_crossentropy'
+              )
           ],
-          aggregation_type=metric_types.AggregationType(micro_average=True))
+          aggregation_type=metric_types.AggregationType(micro_average=True),
+      )
 
   def testMetricWithClassWeights(self):
     computation = tf_metric_wrapper.tf_metric_computations(
-        [tf.keras.metrics.MeanSquaredError(name='mse')],
+        [tf_keras.metrics.MeanSquaredError(name='mse')],
         aggregation_type=metric_types.AggregationType(micro_average=True),
-        class_weights={
-            0: 0.1,
-            1: 0.2,
-            2: 0.3,
-            3: 0.4
-        })[0]
+        class_weights={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.4},
+    )[0]
 
     # Simulate a multi-class problem with 4 labels. The use of class weights
     # implies micro averaging which only makes sense for multi-class metrics.
@@ -748,11 +755,6 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-
-          custom_label_key = metric_types.MetricKey(
-              name='custom_label', example_weighted=True)
-          custom_pred_key = metric_types.MetricKey(
-              name='custom_pred', example_weighted=True)
           self.assertDictElementsAlmostEqual(got_metrics, expected)
 
         except AssertionError as err:
@@ -762,7 +764,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
   def testMultiOutputTFMetric(self):
     computation = tf_metric_wrapper.tf_metric_computations({
-        'output_name': [tf.keras.metrics.MeanSquaredError(name='mse')],
+        'output_name': [tf_keras.metrics.MeanSquaredError(name='mse')],
     })[0]
 
     extracts = {
@@ -853,9 +855,10 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
   def testTFMetricWithClassID(self):
     computation = tf_metric_wrapper.tf_metric_computations(
-        [tf.keras.metrics.MeanSquaredError(name='mse')],
+        [tf_keras.metrics.MeanSquaredError(name='mse')],
         sub_key=metric_types.SubKey(class_id=1),
-        example_weighted=False)[0]
+        example_weighted=False,
+    )[0]
 
     example1 = {
         'labels': [2],
@@ -909,10 +912,10 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
   def testBatching(self):
     computation = tf_metric_wrapper.tf_metric_computations(
-        [_CustomMetric(),
-         tf.keras.metrics.MeanSquaredError(name='mse')],
+        [_CustomMetric(), tf_keras.metrics.MeanSquaredError(name='mse')],
         desired_batch_size=2,
-        example_weighted=True)[0]
+        example_weighted=True,
+    )[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.0], 'example_weights': [1.0]}
     example2 = {'labels': [0.0], 'predictions': [0.5], 'example_weights': [1.0]}
@@ -956,9 +959,10 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
   def testMergeAccumulators(self):
     computation = tf_metric_wrapper.tf_metric_computations(
-        [tf.keras.metrics.MeanSquaredError(name='mse')],
+        [tf_keras.metrics.MeanSquaredError(name='mse')],
         desired_batch_size=2,
-        example_weighted=True)[0]
+        example_weighted=True,
+    )[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.0], 'example_weights': [1.0]}
     example2 = {'labels': [0.0], 'predictions': [0.5], 'example_weights': [1.0]}
@@ -988,9 +992,9 @@ class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
 
   def testWithMixedMetrics(self):
     computations = tf_metric_wrapper.tf_metric_computations([
-        tf.keras.metrics.AUC(name='auc'),
-        tf.keras.losses.BinaryCrossentropy(name='binary_crossentropy'),
-        tf.keras.metrics.MeanSquaredError(name='mse')
+        tf_keras.metrics.AUC(name='auc'),
+        tf_keras.losses.BinaryCrossentropy(name='binary_crossentropy'),
+        tf_keras.metrics.MeanSquaredError(name='mse'),
     ])
 
     confusion_histogram = computations[0]
@@ -1029,12 +1033,13 @@ class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
 
       confusion_result = (
           sliced_examples
-          |
-          'ComputeHistogram' >> beam.CombinePerKey(confusion_histogram.combiner)
-          | 'ComputeConfusionMatrix' >> beam.Map(
-              lambda x: (x[0], confusion_matrix(x[1])))  # pyformat: disable
-          | 'ComputeMetric' >> beam.Map(
-              lambda x: (x[0], confusion_metrics(x[1]))))  # pyformat: disable
+          | 'ComputeHistogram'
+          >> beam.CombinePerKey(confusion_histogram.combiner)
+          | 'ComputeConfusionMatrix'
+          >> beam.Map(lambda x: (x[0], confusion_matrix(x[1])))
+          | 'ComputeMetric'
+          >> beam.Map(lambda x: (x[0], confusion_metrics(x[1])))
+      )
 
       non_confusion_result = (
           sliced_examples

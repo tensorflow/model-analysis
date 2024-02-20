@@ -16,12 +16,10 @@
 import collections
 import importlib
 import itertools
-
-from typing import Any, Dict, Iterable, List, Optional, Type, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union
 
 import apache_beam as beam
 import numpy as np
-import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
@@ -29,6 +27,8 @@ from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_accumulators
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
+
 
 _CONFIG_KEY = 'config'
 _NUM_THRESHOLDS_KEY = 'num_thresholds'
@@ -37,7 +37,7 @@ _CLASS_ID_KEY = 'class_id'
 _TOP_K_KEY = 'top_k'
 _DEFAULT_NUM_THRESHOLDS_IN_KERAS = 200
 
-_TFMetricOrLoss = Union[tf.keras.metrics.Metric, tf.keras.losses.Loss]
+_TFMetricOrLoss = Union[tf_keras.metrics.Metric, tf_keras.losses.Loss]
 
 
 def tf_metric_computations(
@@ -57,8 +57,8 @@ def tf_metric_computations(
   combine multiple metrics into a single computation for efficency.
 
   Args:
-    metrics: Dict from metric name to tf.keras.metrics.Metric or
-      tf.keras.metrics.Loss. For multi-output models a dict of dicts may be
+    metrics: Dict from metric name to tf_keras.metrics.Metric or
+      tf_keras.metrics.Loss. For multi-output models a dict of dicts may be
       passed where the first dict is indexed by the output_name.
     eval_config: Eval config.
     model_name: Optional model name (if multi-model evaluation).
@@ -145,10 +145,10 @@ def tf_metric_computations(
 
 
 def _filter_duplicate_metrics(
-    metrics: Dict[str, List[tf.keras.metrics.Metric]],
+    metrics: Dict[str, List[tf_keras.metrics.Metric]],
     model_name: str,
     sub_key: Optional[metric_types.SubKey] = None,
-) -> Dict[str, List[tf.keras.metrics.Metric]]:
+) -> Dict[str, List[tf_keras.metrics.Metric]]:
   """Filters duplicate metrics from the metrics."""
   for output_name, metrics_list in metrics.items():
     unique_metrics = {}
@@ -166,8 +166,8 @@ def _filter_duplicate_metrics(
 
 
 def _sparse_metrics(
-    metrics: Dict[str, List[tf.keras.metrics.Metric]]
-) -> Dict[str, List[tf.keras.metrics.Metric]]:
+    metrics: Dict[str, List[tf_keras.metrics.Metric]]
+) -> Dict[str, List[tf_keras.metrics.Metric]]:
   """Returns input metrics filtered to contain only the sparse metrics."""
   results = {}
   for k, v in metrics.items():
@@ -181,8 +181,10 @@ def _sparse_metrics(
 
 def _separate_confusion_matrix_metrics(
     metrics: Dict[Optional[str], List[_TFMetricOrLoss]]
-) -> Tuple[Dict[Optional[str], List[tf.keras.metrics.Metric]], Dict[
-    Optional[str], List[_TFMetricOrLoss]]]:
+) -> Tuple[
+    Dict[Optional[str], List[tf_keras.metrics.Metric]],
+    Dict[Optional[str], List[_TFMetricOrLoss]],
+]:
   """Separates the confusion matrix metrics from the other metrics."""
   confusion_matrix_metrics = {}
   non_confusion_matrix_metrics = {}
@@ -194,13 +196,17 @@ def _separate_confusion_matrix_metrics(
       # compute the value directly in keras. Otherwise, if the top_k setting is
       # only provided via BinarizeOptions then we compute the value using the
       # the confusion matrix.
-      if (type(metric) in (  # pylint: disable=unidiomatic-typecheck
-          tf.keras.metrics.AUC, tf.keras.metrics.SpecificityAtSensitivity,
-          tf.keras.metrics.SensitivityAtSpecificity,
-          tf.keras.metrics.TruePositives, tf.keras.metrics.FalsePositives,
-          tf.keras.metrics.TrueNegatives, tf.keras.metrics.FalseNegatives,
-          tf.keras.metrics.Precision, tf.keras.metrics.Recall) and
-          not (hasattr(metric, _TOP_K_KEY) and metric.top_k is not None)):
+      if type(metric) in (  # pylint: disable=unidiomatic-typecheck
+          tf_keras.metrics.AUC,
+          tf_keras.metrics.SpecificityAtSensitivity,
+          tf_keras.metrics.SensitivityAtSpecificity,
+          tf_keras.metrics.TruePositives,
+          tf_keras.metrics.FalsePositives,
+          tf_keras.metrics.TrueNegatives,
+          tf_keras.metrics.FalseNegatives,
+          tf_keras.metrics.Precision,
+          tf_keras.metrics.Recall,
+      ) and not (hasattr(metric, _TOP_K_KEY) and metric.top_k is not None):
         if output_name not in confusion_matrix_metrics:
           confusion_matrix_metrics[output_name] = []
         confusion_matrix_metrics[output_name].append(metric)
@@ -218,16 +224,20 @@ def _verify_and_update_sub_key(model_name: str, output_name: str,
   if hasattr(metric, _CLASS_ID_KEY) and metric.class_id is not None:
     if sub_key and sub_key.class_id != metric.class_id:
       raise ValueError(
-          '{} tf.keras.metric has class_id = {}, but the metric is being added '
+          '{} tf_keras.metric has class_id = {}, but the metric is being added '
           'using sub_key = {}: model_name={}, output_name={}'.format(
-              metric.name, metric.class_id, sub_key, model_name, output_name))
+              metric.name, metric.class_id, sub_key, model_name, output_name
+          )
+      )
     return metric_types.SubKey(class_id=metric.class_id)
   elif hasattr(metric, _TOP_K_KEY) and metric.top_k is not None:
     if sub_key and sub_key.top_k != metric.top_k:
       raise ValueError(
-          '{} tf.keras.metric has top_k = {}, but the metric is being added '
+          '{} tf_keras.metric has top_k = {}, but the metric is being added '
           'using sub_key = {}: model_name={}, output_name={}'.format(
-              metric.name, metric.top_k, sub_key, model_name, output_name))
+              metric.name, metric.top_k, sub_key, model_name, output_name
+          )
+      )
     return metric_types.SubKey(top_k=metric.top_k)
   else:
     return sub_key
@@ -265,11 +275,11 @@ def _metric_keys_and_configs(
               sub_key=updated_sub_key,
               aggregation_type=aggregation_type,
               example_weighted=example_weighted))
-      if isinstance(metric, tf.keras.metrics.Metric):
+      if isinstance(metric, tf_keras.metrics.Metric):
         metric_configs[updated_sub_key][output_name].append(
             metric_util.serialize_metric(metric, use_legacy_format=True)
         )
-      elif isinstance(metric, tf.keras.losses.Loss):
+      elif isinstance(metric, tf_keras.losses.Loss):
         loss_configs[updated_sub_key][output_name].append(
             metric_util.serialize_loss(metric, use_legacy_format=True)
         )
@@ -277,7 +287,8 @@ def _metric_keys_and_configs(
 
 
 def _deserialize_metrics(
-    metric_configs: List[Dict[str, Any]]) -> List[tf.keras.metrics.Metric]:
+    metric_configs: List[Dict[str, Any]]
+) -> List[tf_keras.metrics.Metric]:
   return [
       metric_util.deserialize_metric(c, use_legacy_format=True)
       for c in metric_configs
@@ -285,7 +296,8 @@ def _deserialize_metrics(
 
 
 def _deserialize_losses(
-    loss_configs: List[Dict[str, Any]]) -> List[tf.keras.losses.Loss]:
+    loss_configs: List[Dict[str, Any]]
+) -> List[tf_keras.losses.Loss]:
   return [
       metric_util.deserialize_loss(c, use_legacy_format=True)
       for c in loss_configs
@@ -293,13 +305,16 @@ def _deserialize_losses(
 
 
 def _custom_objects(
-    metrics: Dict[str, List[tf.keras.metrics.Metric]]) -> List[Tuple[str, str]]:
+    metrics: Dict[str, List[tf_keras.metrics.Metric]]
+) -> List[Tuple[str, str]]:
   """Returns list of (module, class_name) tuples for custom objects."""
   custom_objects = []
   for metric_list in metrics.values():
     for metric in metric_list:
-      if (metric.__class__.__module__ != tf.keras.metrics.__name__ and
-          metric.__class__.__module__ != tf.keras.losses.__name__):
+      if (
+          metric.__class__.__module__ != tf_keras.metrics.__name__
+          and metric.__class__.__module__ != tf_keras.losses.__name__
+      ):
         custom_objects.append(
             (metric.__class__.__module__, metric.__class__.__name__))
   return custom_objects
@@ -323,26 +338,32 @@ def _get_config_value(key: str, metric_config: Dict[str, Any]) -> Optional[Any]:
 
 
 def _wrap_confusion_matrix_metric(
-    metric: tf.keras.metrics.Metric, eval_config: config_pb2.EvalConfig,
-    model_name: str, output_name: str, sub_key: Optional[metric_types.SubKey],
+    metric: tf_keras.metrics.Metric,
+    eval_config: config_pb2.EvalConfig,
+    model_name: str,
+    output_name: str,
+    sub_key: Optional[metric_types.SubKey],
     aggregation_type: Optional[metric_types.AggregationType],
     class_weights: Optional[Dict[int, float]],
-    example_weighted: bool) -> metric_types.MetricComputations:
+    example_weighted: bool,
+) -> metric_types.MetricComputations:
   """Returns confusion matrix metric wrapped in a more efficient computation."""
 
   # Special handling for AUC metric which supports aggregation inherently via
   # multi_label flag.
-  if (isinstance(metric, tf.keras.metrics.AUC) and
-      hasattr(metric, 'label_weights')):
+  if isinstance(metric, tf_keras.metrics.AUC) and hasattr(
+      metric, 'label_weights'
+  ):
     if metric.label_weights:
       if class_weights:
         raise ValueError(
             'class weights are configured in two different places: (1) via the '
-            'tf.keras.metrics.AUC class (using "label_weights") and (2) via '
+            'tf_keras.metrics.AUC class (using "label_weights") and (2) via '
             'the MetricsSpecs (using "aggregate.class_weights"). Either remove '
             'the label_weights settings in the AUC class or remove the '
             'class_weights from the AggregationOptions: metric={}, '
-            'class_weights={}'.format(metric, class_weights))
+            'class_weights={}'.format(metric, class_weights)
+        )
       class_weights = {i: v for i, v in enumerate(metric.label_weights)}
     if metric.multi_label:
       raise NotImplementedError('AUC.multi_label=True is not implemented yet.')
@@ -398,27 +419,27 @@ def _wrap_confusion_matrix_metric(
         metric_config, use_legacy_format=True
     )
     if (
-        isinstance(metric, tf.keras.metrics.AUC)
-        or isinstance(metric, tf.keras.metrics.SpecificityAtSensitivity)
-        or isinstance(metric, tf.keras.metrics.SensitivityAtSpecificity)
+        isinstance(metric, tf_keras.metrics.AUC)
+        or isinstance(metric, tf_keras.metrics.SpecificityAtSensitivity)
+        or isinstance(metric, tf_keras.metrics.SensitivityAtSpecificity)
     ):
       metric.true_positives.assign(np.array(matrices.tp))
       metric.true_negatives.assign(np.array(matrices.tn))
       metric.false_positives.assign(np.array(matrices.fp))
       metric.false_negatives.assign(np.array(matrices.fn))
-    elif isinstance(metric, tf.keras.metrics.Precision):
+    elif isinstance(metric, tf_keras.metrics.Precision):
       metric.true_positives.assign(np.array(matrices.tp))
       metric.false_positives.assign(np.array(matrices.fp))
-    elif isinstance(metric, tf.keras.metrics.Recall):
+    elif isinstance(metric, tf_keras.metrics.Recall):
       metric.true_positives.assign(np.array(matrices.tp))
       metric.false_negatives.assign(np.array(matrices.fn))
-    elif isinstance(metric, tf.keras.metrics.TruePositives):
+    elif isinstance(metric, tf_keras.metrics.TruePositives):
       metric.accumulator.assign(np.array(matrices.tp))
-    elif isinstance(metric, tf.keras.metrics.FalsePositives):
+    elif isinstance(metric, tf_keras.metrics.FalsePositives):
       metric.accumulator.assign(np.array(matrices.fp))
-    elif isinstance(metric, tf.keras.metrics.TrueNegatives):
+    elif isinstance(metric, tf_keras.metrics.TrueNegatives):
       metric.accumulator.assign(np.array(matrices.tn))
-    elif isinstance(metric, tf.keras.metrics.FalseNegatives):
+    elif isinstance(metric, tf_keras.metrics.FalseNegatives):
       metric.accumulator.assign(np.array(matrices.fn))
     return {key: metric.result().numpy()}
 
@@ -428,7 +449,7 @@ def _wrap_confusion_matrix_metric(
   return computations
 
 
-class _LossMetric(tf.keras.metrics.Mean):
+class _LossMetric(tf_keras.metrics.Mean):
   """Converts a loss function into a metric."""
 
   def __init__(self, loss, name=None, dtype=None):
@@ -477,7 +498,7 @@ class _CompilableMetricsCombiner(beam.CombineFn):
       if _get_config_value(_TOP_K_KEY, cfg) is None:
         self._sub_key_in_config = False
         break
-    self._metrics = None  # type: Dict[str, List[tf.keras.metrics.Metric]]
+    self._metrics = None  # type: Dict[str, List[tf_keras.metrics.Metric]]
     self._desired_batch_size = desired_batch_size
     self._batch_size_beam_metric = (
         beam.metrics.Metrics.distribution(
@@ -492,8 +513,9 @@ class _CompilableMetricsCombiner(beam.CombineFn):
   def setup(self):
     if self._metrics is None:
       self._metrics = {}
-      with tf.keras.utils.custom_object_scope(
-          _load_custom_objects(self._custom_objects)):
+      with tf_keras.utils.custom_object_scope(
+          _load_custom_objects(self._custom_objects)
+      ):
         for i, output_name in enumerate(self._output_names):
           self._metrics[output_name] = (
               _deserialize_metrics(self._metric_configs[i]))

@@ -25,6 +25,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import tfjs_predict_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import test_util
 
 from google.protobuf import text_format
@@ -49,29 +50,30 @@ class TFJSPredictExtractorTest(testutil.TensorflowModelAnalysisTest,
     if not _TFJS_IMPORTED:
       self.skipTest('This test requires TensorFlow JS.')
 
-    input1 = tf.keras.layers.Input(shape=(1,), name='input1')
-    input2 = tf.keras.layers.Input(shape=(1,), name='input2', dtype=tf.int64)
-    input3 = tf.keras.layers.Input(shape=(1,), name='input3', dtype=tf.string)
+    input1 = tf_keras.layers.Input(shape=(1,), name='input1')
+    input2 = tf_keras.layers.Input(shape=(1,), name='input2', dtype=tf.int64)
+    input3 = tf_keras.layers.Input(shape=(1,), name='input3', dtype=tf.string)
     inputs = [input1, input2, input3]
-    input_layer = tf.keras.layers.concatenate([
+    input_layer = tf_keras.layers.concatenate([
         inputs[0],
         tf.cast(inputs[1], tf.float32),
-        tf.cast(inputs[2] == 'a', tf.float32)
+        tf.cast(inputs[2] == 'a', tf.float32),
     ])
     output_layers = {}
-    output_layers['output1'] = (
-        tf.keras.layers.Dense(1, activation=tf.nn.sigmoid,
-                              name='output1')(input_layer))
+    output_layers['output1'] = tf_keras.layers.Dense(
+        1, activation=tf.nn.sigmoid, name='output1'
+    )(input_layer)
     if multi_output:
-      output_layers['output2'] = (
-          tf.keras.layers.Dense(1, activation=tf.nn.sigmoid,
-                                name='output2')(input_layer))
+      output_layers['output2'] = tf_keras.layers.Dense(
+          1, activation=tf.nn.sigmoid, name='output2'
+      )(input_layer)
 
-    model = tf.keras.models.Model(inputs, output_layers)
+    model = tf_keras.models.Model(inputs, output_layers)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy'])
+        optimizer=tf_keras.optimizers.Adam(lr=0.001),
+        loss=tf_keras.losses.binary_crossentropy,
+        metrics=['accuracy'],
+    )
 
     train_features = {
         'input1': [[0.0], [1.0]],

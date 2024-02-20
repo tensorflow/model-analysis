@@ -15,7 +15,6 @@
 
 import collections
 from itertools import chain  # pylint: disable=g-importing-member
-
 from typing import Dict, Iterable, List, Optional
 
 import apache_beam as beam
@@ -29,6 +28,7 @@ from tensorflow_model_analysis.metrics import tf_metric_accumulators
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.utils import util
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 
 def metric_computations_using_keras_saved_model(
@@ -95,8 +95,11 @@ def metric_computations_using_keras_saved_model(
     ]
 
 
-def _metric_keys(metrics: Iterable[tf.keras.metrics.Metric], model_name: str,
-                 output_names: Iterable[str]) -> List[metric_types.MetricKey]:
+def _metric_keys(
+    metrics: Iterable[tf_keras.metrics.Metric],
+    model_name: str,
+    output_names: Iterable[str],
+) -> List[metric_types.MetricKey]:
   """Returns metric keys for given metrics."""
   # We need to use the metric name to determine the associated output because
   # keras does not provide an API (see b/149780822). Keras names its metrics
@@ -131,7 +134,9 @@ def _metric_keys(metrics: Iterable[tf.keras.metrics.Metric], model_name: str,
               name=metric.name,
               model_name=model_name,
               sub_key=sub_key,
-              example_weighted=None))
+              example_weighted=None,
+          )
+      )
   return result
 
 
@@ -185,12 +190,12 @@ class _KerasCombiner(model_util.CombineFnWithModels):
       # TODO(b/179500321): We are skipping the shared handle here to ensure that
       # we don't have issues with sharing the model between threads. This is
       # very inefficient, we should just clone the model but
-      # tf.keras.models.clone_model removes compiled_metrics.
+      # tf_keras.models.clone_model removes compiled_metrics.
       self._model = self._model_loaders[  # pylint: disable=protected-access
           self._model_name]._construct_fn_with_load_time(
               self._set_model_load_seconds)()
 
-  def _metrics(self) -> Iterable[tf.keras.metrics.Metric]:
+  def _metrics(self) -> Iterable[tf_keras.metrics.Metric]:
     """Returns metrics used by combiner."""
     raise NotImplementedError('Subclasses are expected to override this.')
 
@@ -298,7 +303,7 @@ class _KerasCompiledMetricsCombiner(_KerasCombiner):
     super().__init__(keys, model_name, model_loader, eval_config,
                      desired_batch_size, 'keras_compiled_metrics_combine')
 
-  def _metrics(self) -> Iterable[tf.keras.metrics.Metric]:
+  def _metrics(self) -> Iterable[tf_keras.metrics.Metric]:
     return chain(self._model.compiled_metrics.metrics,
                  self._model.compiled_loss.metrics)
 
@@ -376,7 +381,7 @@ class _KerasEvaluateCombiner(_KerasCombiner):
     super().__init__(keys, model_name, model_loader, eval_config,
                      desired_batch_size, 'keras_evaluate_combine')
 
-  def _metrics(self) -> Iterable[tf.keras.metrics.Metric]:
+  def _metrics(self) -> Iterable[tf_keras.metrics.Metric]:
     return self._model.metrics
 
   def _create_accumulator(self) -> tf_metric_accumulators.TFMetricsAccumulator:

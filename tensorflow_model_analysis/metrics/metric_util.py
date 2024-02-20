@@ -15,7 +15,6 @@
 
 import inspect
 import math
-
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, Union
 
 import numpy as np
@@ -25,6 +24,7 @@ from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import util
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -107,18 +107,18 @@ def within_interval(value: float, left: float, right: float) -> bool:
 
 
 def serialize_metric(
-    metric: tf.keras.metrics.Metric, use_legacy_format=False
+    metric: tf_keras.metrics.Metric, use_legacy_format=False
 ) -> Dict[str, Any]:
   """Serializes keras metric."""
   if (
       'use_legacy_format'
-      in inspect.getfullargspec(tf.keras.metrics.serialize).args
+      in inspect.getfullargspec(tf_keras.metrics.serialize).args
   ):
-    cfg = tf.keras.metrics.serialize(
+    cfg = tf_keras.metrics.serialize(
         metric, use_legacy_format=use_legacy_format
     )
   else:
-    cfg = tf.keras.metrics.serialize(metric)
+    cfg = tf_keras.metrics.serialize(metric)
   # If a metric function (vs a class) is passed directly to compile, it
   # will be wrapped in a MeanMetricWrapper which is not deserializable.
   # If this happens, set the class name to the CamelCase from of the
@@ -130,16 +130,16 @@ def serialize_metric(
 
 
 def serialize_loss(
-    loss: tf.keras.losses.Loss, use_legacy_format=False
+    loss: tf_keras.losses.Loss, use_legacy_format=False
 ) -> Dict[str, Any]:
   """Serializes keras loss."""
   if (
       'use_legacy_format'
-      in inspect.getfullargspec(tf.keras.losses.serialize).args
+      in inspect.getfullargspec(tf_keras.losses.serialize).args
   ):
-    cfg = tf.keras.losses.serialize(loss, use_legacy_format=use_legacy_format)
+    cfg = tf_keras.losses.serialize(loss, use_legacy_format=use_legacy_format)
   else:
-    cfg = tf.keras.losses.serialize(loss)
+    cfg = tf_keras.losses.serialize(loss)
   # If a metric function (vs a class) is passed directly to compile, it
   # will be wrapped in a LossFunctionWrapper which is not deserializable.
   # If this happens, set the class name to the CamelCase from of the
@@ -153,43 +153,43 @@ def serialize_loss(
 def deserialize_metric(config, use_legacy_format=False):
   if (
       'use_legacy_format'
-      in inspect.getfullargspec(tf.keras.metrics.deserialize).args
+      in inspect.getfullargspec(tf_keras.metrics.deserialize).args
   ):
-    return tf.keras.metrics.deserialize(
+    return tf_keras.metrics.deserialize(
         config, use_legacy_format=use_legacy_format
     )
   else:
-    return tf.keras.metrics.deserialize(config)
+    return tf_keras.metrics.deserialize(config)
 
 
 def deserialize_loss(config, use_legacy_format=False):
   if (
       'use_legacy_format'
-      in inspect.getfullargspec(tf.keras.losses.deserialize).args
+      in inspect.getfullargspec(tf_keras.losses.deserialize).args
   ):
-    return tf.keras.losses.deserialize(
+    return tf_keras.losses.deserialize(
         config, use_legacy_format=use_legacy_format
     )
   else:
-    return tf.keras.losses.deserialize(config)
+    return tf_keras.losses.deserialize(config)
 
 
 def serialize_keras_object(obj):
-  if hasattr(tf.keras.utils, 'legacy'):
-    return tf.keras.utils.legacy.serialize_keras_object(obj)
+  if hasattr(tf_keras.utils, 'legacy'):
+    return tf_keras.utils.legacy.serialize_keras_object(obj)
   else:
-    return tf.keras.utils.serialize_keras_object(obj)
+    return tf_keras.utils.serialize_keras_object(obj)
 
 
 def deserialize_keras_object(
     config, module_objects=None, custom_objects=None, printable_module_name=None
 ):
-  if hasattr(tf.keras.utils, 'legacy'):
-    return tf.keras.utils.legacy.deserialize_keras_object(
+  if hasattr(tf_keras.utils, 'legacy'):
+    return tf_keras.utils.legacy.deserialize_keras_object(
         config, custom_objects, module_objects, printable_module_name
     )
   else:
-    return tf.keras.utils.deserialize_keras_object(
+    return tf_keras.utils.deserialize_keras_object(
         config, custom_objects, module_objects, printable_module_name
     )
 

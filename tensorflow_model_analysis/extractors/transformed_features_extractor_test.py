@@ -26,6 +26,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import transformed_features_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 
@@ -79,20 +80,19 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
         """, schema_pb2.Schema())
 
   def createModelWithMultipleDenseInputs(self, save_as_keras):
-    input1 = tf.keras.layers.Input(shape=(1,), name='input_1')
-    input2 = tf.keras.layers.Input(shape=(1,), name='input_2')
+    input1 = tf_keras.layers.Input(shape=(1,), name='input_1')
+    input2 = tf_keras.layers.Input(shape=(1,), name='input_2')
     inputs = [input1, input2]
-    input_layer = tf.keras.layers.concatenate(inputs)
-    output_layer = tf.keras.layers.Dense(
-        1, activation=tf.nn.sigmoid, name='output')(
-            input_layer)
-    model = tf.keras.models.Model(inputs, output_layer)
+    input_layer = tf_keras.layers.concatenate(inputs)
+    output_layer = tf_keras.layers.Dense(
+        1, activation=tf.nn.sigmoid, name='output'
+    )(input_layer)
+    model = tf_keras.models.Model(inputs, output_layer)
 
     # Add tft_layer to model to test callables stored as attributes
-    model.tft_layer = tf.keras.models.Model(inputs, {
-        'tft_feature': output_layer,
-        'tft_label': output_layer
-    })
+    model.tft_layer = tf_keras.models.Model(
+        inputs, {'tft_feature': output_layer, 'tft_label': output_layer}
+    )
 
     @tf.function
     def serving_default(serialized_tf_examples):

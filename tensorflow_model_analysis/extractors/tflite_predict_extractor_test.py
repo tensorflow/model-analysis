@@ -27,6 +27,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import test_util
 
 from google.protobuf import text_format
@@ -67,29 +68,29 @@ class TFLitePredictExtractorTest(
   def testTFlitePredictExtractorWithKerasModel(
       self, multi_model, multi_output, use_bytes_feature, use_quantization
   ):
-    input1 = tf.keras.layers.Input(shape=(1,), name='input1')
-    input2 = tf.keras.layers.Input(shape=(1,), name='input2')
-    input3 = tf.keras.layers.Input(shape=(1,), name='input3', dtype=tf.string)
+    input1 = tf_keras.layers.Input(shape=(1,), name='input1')
+    input2 = tf_keras.layers.Input(shape=(1,), name='input2')
+    input3 = tf_keras.layers.Input(shape=(1,), name='input3', dtype=tf.string)
     inputs = [input1, input2, input3]
     if use_bytes_feature:
-      input_layer = tf.keras.layers.concatenate(
+      input_layer = tf_keras.layers.concatenate(
           [inputs[0], inputs[1], tf.cast(inputs[2] == 'a', tf.float32)]
       )
     else:
-      input_layer = tf.keras.layers.concatenate([inputs[0], inputs[1]])
+      input_layer = tf_keras.layers.concatenate([inputs[0], inputs[1]])
     output_layers = {}
-    output_layers['output1'] = tf.keras.layers.Dense(
+    output_layers['output1'] = tf_keras.layers.Dense(
         1, activation=tf.nn.sigmoid, name='output1'
     )(input_layer)
     if multi_output:
-      output_layers['output2'] = tf.keras.layers.Dense(
+      output_layers['output2'] = tf_keras.layers.Dense(
           1, activation=tf.nn.sigmoid, name='output2'
       )(input_layer)
 
-    model = tf.keras.models.Model(inputs, output_layers)
+    model = tf_keras.models.Model(inputs, output_layers)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=0.001),
-        loss=tf.keras.losses.binary_crossentropy,
+        optimizer=tf_keras.optimizers.Adam(lr=0.001),
+        loss=tf_keras.losses.binary_crossentropy,
         metrics=['accuracy'],
     )
 

@@ -27,6 +27,7 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.utils import util as tfma_util
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import tf_example_record
 
 from google.protobuf import text_format
@@ -90,11 +91,11 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
         """, schema_pb2.Schema())
 
   def createModelWithSingleInput(self, save_as_keras):
-    input_layer = tf.keras.layers.Input(shape=(1,), name='input')
-    output_layer = tf.keras.layers.Dense(
-        1, activation=tf.nn.sigmoid)(
-            input_layer)
-    model = tf.keras.models.Model(input_layer, output_layer)
+    input_layer = tf_keras.layers.Input(shape=(1,), name='input')
+    output_layer = tf_keras.layers.Dense(1, activation=tf.nn.sigmoid)(
+        input_layer
+    )
+    model = tf_keras.models.Model(input_layer, output_layer)
 
     @tf.function
     def serving_default(s):
@@ -116,17 +117,17 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
     return export_path
 
   def createModelWithMultipleDenseInputs(self, save_as_keras):
-    input1 = tf.keras.layers.Input(shape=(1,), name='input_1')
-    input2 = tf.keras.layers.Input(shape=(1,), name='input_2')
+    input1 = tf_keras.layers.Input(shape=(1,), name='input_1')
+    input2 = tf_keras.layers.Input(shape=(1,), name='input_2')
     inputs = [input1, input2]
-    input_layer = tf.keras.layers.concatenate(inputs)
-    output_layer = tf.keras.layers.Dense(
-        1, activation=tf.nn.sigmoid, name='output')(
-            input_layer)
-    model = tf.keras.models.Model(inputs, output_layer)
+    input_layer = tf_keras.layers.concatenate(inputs)
+    output_layer = tf_keras.layers.Dense(
+        1, activation=tf.nn.sigmoid, name='output'
+    )(input_layer)
+    model = tf_keras.models.Model(inputs, output_layer)
 
     # Add custom attribute to model to test callables stored as attributes
-    model.custom_attribute = tf.keras.models.Model(inputs, output_layer)
+    model.custom_attribute = tf_keras.models.Model(inputs, output_layer)
 
     @tf.function
     def serving_default(serialized_tf_examples):
@@ -169,19 +170,19 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
     return export_path
 
   def createModelWithInvalidOutputShape(self):
-    input1 = tf.keras.layers.Input(shape=(1,), name='input_1')
-    input2 = tf.keras.layers.Input(shape=(1,), name='input_2')
+    input1 = tf_keras.layers.Input(shape=(1,), name='input_1')
+    input2 = tf_keras.layers.Input(shape=(1,), name='input_2')
     inputs = [input1, input2]
-    input_layer = tf.keras.layers.concatenate(inputs)
-    output_layer = tf.keras.layers.Dense(
-        2, activation=tf.nn.sigmoid, name='output')(
-            input_layer)
+    input_layer = tf_keras.layers.concatenate(inputs)
+    output_layer = tf_keras.layers.Dense(
+        2, activation=tf.nn.sigmoid, name='output'
+    )(input_layer)
     # Flatten the layer such that the first dimension no longer corresponds
     # with the batch size.
-    reshape_layer = tf.keras.layers.Lambda(
-        lambda x: tf.reshape(x, [-1]), name='reshape')(
-            output_layer)
-    model = tf.keras.models.Model(inputs, reshape_layer)
+    reshape_layer = tf_keras.layers.Lambda(
+        lambda x: tf.reshape(x, [-1]), name='reshape'
+    )(output_layer)
+    model = tf_keras.models.Model(inputs, reshape_layer)
 
     @tf.function
     def serving_default(serialized_tf_examples):
@@ -202,26 +203,31 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
     return export_path
 
   def createModelWithMultipleMixedInputs(self, save_as_keras):
-    dense_input = tf.keras.layers.Input(
-        shape=(2,), name='input_1', dtype=tf.int64)
+    dense_input = tf_keras.layers.Input(
+        shape=(2,), name='input_1', dtype=tf.int64
+    )
     dense_float_input = tf.cast(dense_input, tf.float32)
-    sparse_input = tf.keras.layers.Input(
-        shape=(1,), name='input_2', sparse=True)
-    dense_sparse_input = tf.keras.layers.Dense(
-        1, name='dense_input2')(
-            sparse_input)
-    ragged_input = tf.keras.layers.Input(
-        shape=(None,), name='input_3', ragged=True)
-    dense_ragged_input = tf.keras.layers.Lambda(lambda x: x.to_tensor())(
-        ragged_input)
+    sparse_input = tf_keras.layers.Input(
+        shape=(1,), name='input_2', sparse=True
+    )
+    dense_sparse_input = tf_keras.layers.Dense(1, name='dense_input2')(
+        sparse_input
+    )
+    ragged_input = tf_keras.layers.Input(
+        shape=(None,), name='input_3', ragged=True
+    )
+    dense_ragged_input = tf_keras.layers.Lambda(lambda x: x.to_tensor())(
+        ragged_input
+    )
     dense_ragged_input.set_shape((None, 1))
     inputs = [dense_input, sparse_input, ragged_input]
-    input_layer = tf.keras.layers.concatenate(
-        [dense_float_input, dense_sparse_input, dense_ragged_input])
-    output_layer = tf.keras.layers.Dense(
-        1, activation=tf.nn.sigmoid)(
-            input_layer)
-    model = tf.keras.models.Model(inputs, output_layer)
+    input_layer = tf_keras.layers.concatenate(
+        [dense_float_input, dense_sparse_input, dense_ragged_input]
+    )
+    output_layer = tf_keras.layers.Dense(1, activation=tf.nn.sigmoid)(
+        input_layer
+    )
+    model = tf_keras.models.Model(inputs, output_layer)
 
     @tf.function
     def serving_default(features):
@@ -564,7 +570,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
   def testGetCallableWithSignatures(self, save_as_keras, signature_name):
     export_path = self.createModelWithSingleInput(save_as_keras)
     if save_as_keras:
-      model = tf.keras.models.load_model(export_path)
+      model = tf_keras.models.load_model(export_path)
     else:
       model = tf.compat.v1.saved_model.load_v2(export_path)
     self.assertIsNotNone(model_util.get_callable(model, signature_name))
@@ -573,7 +579,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
   def testGetCallableWithMissingSignatures(self, save_as_keras):
     export_path = self.createModelWithSingleInput(save_as_keras)
     if save_as_keras:
-      model = tf.keras.models.load_model(export_path)
+      model = tf_keras.models.load_model(export_path)
     else:
       model = tf.compat.v1.saved_model.load_v2(export_path)
     with self.assertRaises(ValueError):
@@ -583,7 +589,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                    'not all input types supported for TF1')
   def testGetCallableWithKerasModel(self):
     export_path = self.createModelWithMultipleMixedInputs(True)
-    model = tf.keras.models.load_model(export_path)
+    model = tf_keras.models.load_model(export_path)
     self.assertEqual(model, model_util.get_callable(model))
 
   @parameterized.named_parameters(
@@ -594,7 +600,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
   def testGetInputSpecsWithSignatures(self, save_as_keras, signature_name):
     export_path = self.createModelWithSingleInput(save_as_keras)
     if save_as_keras:
-      model = tf.keras.models.load_model(export_path)
+      model = tf_keras.models.load_model(export_path)
     else:
       model = tf.compat.v1.saved_model.load_v2(export_path)
     self.assertEqual(
@@ -607,7 +613,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
   def testGetInputSpecsWithMissingSignatures(self, save_as_keras):
     export_path = self.createModelWithSingleInput(save_as_keras)
     if save_as_keras:
-      model = tf.keras.models.load_model(export_path)
+      model = tf_keras.models.load_model(export_path)
     else:
       model = tf.compat.v1.saved_model.load_v2(export_path)
     with self.assertRaises(ValueError):
@@ -617,7 +623,7 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
                    'not all input types supported for TF1')
   def testGetInputSpecsWithKerasModel(self):
     export_path = self.createModelWithMultipleMixedInputs(True)
-    model = tf.keras.models.load_model(export_path)
+    model = tf_keras.models.load_model(export_path)
 
     # Some versions of TF set the TensorSpec.name and others do not. Since we
     # don't care about the name, clear it from the output for testing purposes

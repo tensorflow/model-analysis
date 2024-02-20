@@ -30,6 +30,7 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_he
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 
@@ -592,18 +593,19 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       ('ModelSignaturesDoFnInferenceCallableModel', ''),
       ('ModelSignaturesDoFnInferenceServingDefault', 'serving_default'))
   def testPredictionsExtractorWithKerasModel(self, signature_name):
-    input1 = tf.keras.layers.Input(shape=(2,), name='input1')
-    input2 = tf.keras.layers.Input(shape=(2,), name='input2')
+    input1 = tf_keras.layers.Input(shape=(2,), name='input1')
+    input2 = tf_keras.layers.Input(shape=(2,), name='input2')
     inputs = [input1, input2]
-    input_layer = tf.keras.layers.concatenate(inputs)
-    output_layer = tf.keras.layers.Dense(
-        1, activation=tf.nn.sigmoid, name='output')(
-            input_layer)
-    model = tf.keras.models.Model(inputs, output_layer)
+    input_layer = tf_keras.layers.concatenate(inputs)
+    output_layer = tf_keras.layers.Dense(
+        1, activation=tf.nn.sigmoid, name='output'
+    )(input_layer)
+    model = tf_keras.models.Model(inputs, output_layer)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy'])
+        optimizer=tf_keras.optimizers.Adam(lr=0.001),
+        loss=tf_keras.losses.binary_crossentropy,
+        metrics=['accuracy'],
+    )
 
     train_features = {
         'input1': [[0.0, 0.0], [1.0, 1.0]],
@@ -708,14 +710,16 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
       ('ModelSignaturesDoFnInferenceServingDefault', 'serving_default'))
   def testPredictionsExtractorWithSequentialKerasModel(self, signature_name):
     # Note that the input will be called 'test_input'
-    model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(
-            1, activation=tf.nn.sigmoid, input_shape=(2,), name='test')
+    model = tf_keras.models.Sequential([
+        tf_keras.layers.Dense(
+            1, activation=tf.nn.sigmoid, input_shape=(2,), name='test'
+        )
     ])
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy'])
+        optimizer=tf_keras.optimizers.Adam(lr=0.001),
+        loss=tf_keras.losses.binary_crossentropy,
+        metrics=['accuracy'],
+    )
 
     train_features = {'test_input': [[0.0, 0.0], [1.0, 1.0]]}
     labels = [[1], [0]]
@@ -801,22 +805,23 @@ class PredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
   # (i.e. string). This is a requirement for using the bulk inference APIs which
   # only support serialized input right now.
   def testBatchSizeLimitWithKerasModel(self):
-    input1 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input1')
-    input2 = tf.keras.layers.Input(shape=(1,), batch_size=1, name='input2')
+    input1 = tf_keras.layers.Input(shape=(1,), batch_size=1, name='input1')
+    input2 = tf_keras.layers.Input(shape=(1,), batch_size=1, name='input2')
 
     inputs = [input1, input2]
-    input_layer = tf.keras.layers.concatenate(inputs)
+    input_layer = tf_keras.layers.concatenate(inputs)
 
     def add_1(tensor):
       return tf.add_n([tensor, tf.constant(1.0, shape=(1, 2))])
 
-    assert_layer = tf.keras.layers.Lambda(add_1)(input_layer)
+    assert_layer = tf_keras.layers.Lambda(add_1)(input_layer)
 
-    model = tf.keras.models.Model(inputs, assert_layer)
+    model = tf_keras.models.Model(inputs, assert_layer)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy'])
+        optimizer=tf_keras.optimizers.Adam(lr=0.001),
+        loss=tf_keras.losses.binary_crossentropy,
+        metrics=['accuracy'],
+    )
 
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')

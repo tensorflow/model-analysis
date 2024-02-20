@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for metric specs."""
+
 import json
+
 import tensorflow as tf
 from tensorflow_model_analysis.metrics import calibration
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
@@ -22,12 +24,13 @@ from tensorflow_model_analysis.metrics import mean_regression_error  # pylint: d
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 
 # TODO(b/272542795): Remove once the Keras version has caught up.
 def _maybe_add_fn_name(kv, name):
   # Check new Keras version behavior per b/272542795#comment17.
-  if 'fn' in tf.keras.losses.MeanAbsoluteError().get_config():
+  if 'fn' in tf_keras.losses.MeanAbsoluteError().get_config():
     kv['fn'] = name
   return kv
 
@@ -38,23 +41,24 @@ class MetricSpecsTest(tf.test.TestCase):
     metrics_specs = metric_specs.specs_from_metrics(
         {
             'output_name1': [
-                tf.keras.metrics.Precision(name='precision'),
-                tf.keras.metrics.MeanSquaredError('mse'),
-                tf.keras.losses.MeanAbsoluteError(name='mae'),
+                tf_keras.metrics.Precision(name='precision'),
+                tf_keras.metrics.MeanSquaredError('mse'),
+                tf_keras.losses.MeanAbsoluteError(name='mae'),
             ],
             'output_name2': [
                 confusion_matrix_metrics.Precision(name='precision'),
-                tf.keras.losses.MeanAbsolutePercentageError(name='mape'),
-                calibration.MeanPrediction('mean_prediction')
-            ]
+                tf_keras.losses.MeanAbsolutePercentageError(name='mape'),
+                calibration.MeanPrediction('mean_prediction'),
+            ],
         },
         unweighted_metrics={
             'output_name1': [calibration.MeanLabel('mean_label')],
-            'output_name2': [tf.keras.metrics.RootMeanSquaredError('rmse')]
+            'output_name2': [tf_keras.metrics.RootMeanSquaredError('rmse')],
         },
         model_names=['model_name1', 'model_name2'],
         binarize=config_pb2.BinarizationOptions(class_ids={'values': [0, 1]}),
-        aggregate=config_pb2.AggregationOptions(macro_average=True))
+        aggregate=config_pb2.AggregationOptions(macro_average=True),
+    )
 
     self.assertLen(metrics_specs, 7)
     self.assertProtoEquals(
@@ -181,27 +185,58 @@ class MetricSpecsTest(tf.test.TestCase):
             aggregate=config_pb2.AggregationOptions(macro_average=True),
         ),
     )
-    self.assertProtoEquals(
-        metrics_specs[6],
-        config_pb2.MetricsSpec(
-            metrics=[
-                config_pb2.MetricConfig(
-                    class_name='RootMeanSquaredError',
-                    module='tf_keras.metrics.regression_metrics',
-                    config=json.dumps(
-                        {'name': 'rmse', 'dtype': 'float32'}, sort_keys=True
-                    ),
-                )
-            ],
-            model_names=['model_name1', 'model_name2'],
-            output_names=['output_name2'],
-            binarize=config_pb2.BinarizationOptions(
-                class_ids={'values': [0, 1]}
-            ),
-            aggregate=config_pb2.AggregationOptions(macro_average=True),
-            example_weights=config_pb2.ExampleWeightOptions(unweighted=True),
-        ),
-    )
+    # This is for the compatibility issue when migrating from Keras 2 to Keras
+    # 3. In the older versions, TFMA is using tf.keras which is pointing to
+    # Keras 2. However, the newest tf.keras is pointing to Keras 3, and TFMA is
+    # using tf_keras pacakge for Keras 2. In this case, there is a module name
+    # discrepancy, where tf.keras modulue is pointing to keras.src.metrics but
+    # tf_keras modulue is pointing to tf_keras.src.metrics.
+
+    version_fn = getattr(tf.keras, '__version__', None)
+    if not version_fn or (version_fn and version_fn.startswith('3.')):
+      self.assertProtoEquals(
+          metrics_specs[6],
+          config_pb2.MetricsSpec(
+              metrics=[
+                  config_pb2.MetricConfig(
+                      class_name='RootMeanSquaredError',
+                      module='keras.src.metrics.regression_metrics',
+                      config=json.dumps(
+                          {'name': 'rmse', 'dtype': 'float32'}, sort_keys=True
+                      ),
+                  )
+              ],
+              model_names=['model_name1', 'model_name2'],
+              output_names=['output_name2'],
+              binarize=config_pb2.BinarizationOptions(
+                  class_ids={'values': [0, 1]}
+              ),
+              aggregate=config_pb2.AggregationOptions(macro_average=True),
+              example_weights=config_pb2.ExampleWeightOptions(unweighted=True),
+          ),
+      )
+    else:
+      self.assertProtoEquals(
+          metrics_specs[6],
+          config_pb2.MetricsSpec(
+              metrics=[
+                  config_pb2.MetricConfig(
+                      class_name='RootMeanSquaredError',
+                      module='tf_keras.metrics.regression_metrics',
+                      config=json.dumps(
+                          {'name': 'rmse', 'dtype': 'float32'}, sort_keys=True
+                      ),
+                  )
+              ],
+              model_names=['model_name1', 'model_name2'],
+              output_names=['output_name2'],
+              binarize=config_pb2.BinarizationOptions(
+                  class_ids={'values': [0, 1]}
+              ),
+              aggregate=config_pb2.AggregationOptions(macro_average=True),
+              example_weights=config_pb2.ExampleWeightOptions(unweighted=True),
+          ),
+      )
 
   def testMetricKeysToSkipForConfidenceIntervals(self):
     metrics_specs = [
@@ -227,8 +262,9 @@ class MetricSpecsTest(tf.test.TestCase):
             output_names=['output_name1', 'output_name2']),
     ]
     metrics_specs += metric_specs.specs_from_metrics(
-        [tf.keras.metrics.MeanSquaredError('mse')],
-        model_names=['model_name1', 'model_name2'])
+        [tf_keras.metrics.MeanSquaredError('mse')],
+        model_names=['model_name1', 'model_name2'],
+    )
     keys = metric_specs.metric_keys_to_skip_for_confidence_intervals(
         metrics_specs, eval_config=config_pb2.EvalConfig())
     self.assertLen(keys, 8)
@@ -541,26 +577,24 @@ class MetricSpecsTest(tf.test.TestCase):
     computations = metric_specs.to_computations(
         metric_specs.specs_from_metrics(
             [
-                tf.keras.metrics.MeanSquaredError('mse'),
+                tf_keras.metrics.MeanSquaredError('mse'),
                 # Add a loss exactly same as metric
                 # (https://github.com/tensorflow/tfx/issues/1550)
-                tf.keras.losses.MeanSquaredError(name='loss'),
-                calibration.MeanLabel('mean_label')
+                tf_keras.losses.MeanSquaredError(name='loss'),
+                calibration.MeanLabel('mean_label'),
             ],
             model_names=['model_name'],
             output_names=['output_1', 'output_2'],
-            output_weights={
-                'output_1': 1.0,
-                'output_2': 1.0
-            },
+            output_weights={'output_1': 1.0, 'output_2': 1.0},
             binarize=config_pb2.BinarizationOptions(
-                class_ids={'values': [0, 1]}),
+                class_ids={'values': [0, 1]}
+            ),
             aggregate=config_pb2.AggregationOptions(
-                macro_average=True, class_weights={
-                    0: 1.0,
-                    1: 1.0
-                })),
-        config_pb2.EvalConfig())
+                macro_average=True, class_weights={0: 1.0, 1: 1.0}
+            ),
+        ),
+        config_pb2.EvalConfig(),
+    )
 
     keys = []
     for m in computations:

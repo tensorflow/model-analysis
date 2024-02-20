@@ -28,13 +28,15 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import counterfactual_predictions_extractor
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
+
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class IdentityParsingLayer(tf.keras.layers.Layer):
+class IdentityParsingLayer(tf_keras.layers.Layer):
   """A Kears layer which performs parsing and returns a single tensor."""
 
   def __init__(self, feature_key):
@@ -53,9 +55,9 @@ class CounterfactualPredictionsExtactorTest(
 
   def _makeIdentityParsingModel(self):
     """Builds a Keras model that parses and returns a single input tensor."""
-    inputs = tf.keras.Input(shape=(), dtype=tf.string)
+    inputs = tf_keras.Input(shape=(), dtype=tf.string)
     outputs = IdentityParsingLayer(feature_key='x')(inputs)
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    model = tf_keras.Model(inputs=inputs, outputs=outputs)
     path = os.path.join(tempfile.mkdtemp(), 'export_dir')
     tf.saved_model.save(model, path)
     return path

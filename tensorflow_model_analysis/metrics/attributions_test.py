@@ -23,6 +23,7 @@ from tensorflow_model_analysis.metrics import attributions
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 
 class AttributionsTest(testutil.TensorflowModelAnalysisTest,
@@ -31,14 +32,14 @@ class AttributionsTest(testutil.TensorflowModelAnalysisTest,
   def testHasAttributionsMetrics(self):
     specs_with_attributions = metric_specs.specs_from_metrics({
         'output_name': [
-            tf.keras.metrics.MeanSquaredError('mse'),
-            attributions.TotalAttributions()
+            tf_keras.metrics.MeanSquaredError('mse'),
+            attributions.TotalAttributions(),
         ]
     })
     self.assertTrue(
         attributions.has_attributions_metrics(specs_with_attributions))
     specs_without_attributions = metric_specs.specs_from_metrics([
-        tf.keras.metrics.MeanSquaredError('mse'),
+        tf_keras.metrics.MeanSquaredError('mse'),
     ])
     self.assertFalse(
         attributions.has_attributions_metrics(specs_without_attributions))

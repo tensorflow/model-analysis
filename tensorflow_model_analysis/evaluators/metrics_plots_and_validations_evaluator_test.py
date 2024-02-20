@@ -48,9 +48,11 @@ from tensorflow_model_analysis.metrics import ndcg
 from tensorflow_model_analysis.post_export_metrics import metrics as metric_fns
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
+
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -78,15 +80,16 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     return os.path.join(self._getTempDir(), 'baseline_export_dir')
 
   def _build_keras_model(self, model_name, model_dir, mul):
-    input_layer = tf.keras.layers.Input(shape=(1,), name='input_1')
-    output_layer = tf.keras.layers.Lambda(
-        lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul})(
-            input_layer)
-    model = tf.keras.models.Model([input_layer], output_layer)
+    input_layer = tf_keras.layers.Input(shape=(1,), name='input_1')
+    output_layer = tf_keras.layers.Lambda(
+        lambda x, mul: x * mul, output_shape=(1,), arguments={'mul': mul}
+    )(input_layer)
+    model = tf_keras.models.Model([input_layer], output_layer)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.BinaryCrossentropy(name='loss'),
-        metrics=['accuracy'])
+        optimizer=tf_keras.optimizers.Adam(lr=0.001),
+        loss=tf_keras.losses.BinaryCrossentropy(name='loss'),
+        metrics=['accuracy'],
+    )
     model.save(model_dir, save_format='tf')
     return self.createTestEvalSharedModel(
         model_name=model_name, eval_saved_model_path=model_dir)
@@ -101,22 +104,25 @@ class MetricsPlotsAndValidationsEvaluatorTest(
         cross_slicing_specs=[config_pb2.CrossSlicingSpec()])
     metrics_specs = metric_specs.specs_from_metrics(
         [
-            tf.keras.metrics.BinaryAccuracy(name='accuracy'),
-            tf.keras.metrics.AUC(name='auc', num_thresholds=10000),
-            tf.keras.metrics.AUC(
-                name='auc_precison_recall', curve='PR', num_thresholds=10000),
-            tf.keras.metrics.Precision(name='precision'),
-            tf.keras.metrics.Recall(name='recall'),
+            tf_keras.metrics.BinaryAccuracy(name='accuracy'),
+            tf_keras.metrics.AUC(name='auc', num_thresholds=10000),
+            tf_keras.metrics.AUC(
+                name='auc_precison_recall', curve='PR', num_thresholds=10000
+            ),
+            tf_keras.metrics.Precision(name='precision'),
+            tf_keras.metrics.Recall(name='recall'),
             calibration.MeanLabel(name='mean_label'),
             calibration.MeanPrediction(name='mean_prediction'),
             calibration.Calibration(name='calibration'),
             confusion_matrix_plot.ConfusionMatrixPlot(
-                name='confusion_matrix_plot'),
+                name='confusion_matrix_plot'
+            ),
             calibration_plot.CalibrationPlot(name='calibration_plot'),
             lift.Lift(name='lift'),
         ],
         model_names=['candidate', 'baseline'],
-        binarize=config_pb2.BinarizationOptions(class_ids={'values': [0, 5]}))
+        binarize=config_pb2.BinarizationOptions(class_ids={'values': [0, 5]}),
+    )
     computations = metric_specs.to_computations(
         metrics_specs, eval_config=eval_config)
     non_derived, derived, cross_slice, ci_derived = metrics_plots_and_validations_evaluator._filter_and_separate_computations(
@@ -1776,22 +1782,23 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     if _TF_MAJOR_VERSION < 2:
       add_custom_metrics = False
 
-    input1 = tf.keras.layers.Input(shape=(1,), name='input_1')
-    input2 = tf.keras.layers.Input(shape=(1,), name='input_2')
+    input1 = tf_keras.layers.Input(shape=(1,), name='input_1')
+    input2 = tf_keras.layers.Input(shape=(1,), name='input_2')
     inputs = [input1, input2]
-    input_layer = tf.keras.layers.concatenate(inputs)
-    output_layer = tf.keras.layers.Dense(
-        1, activation=tf.nn.sigmoid, name='output')(
-            input_layer)
-    model = tf.keras.models.Model(inputs, output_layer)
+    input_layer = tf_keras.layers.concatenate(inputs)
+    output_layer = tf_keras.layers.Dense(
+        1, activation=tf.nn.sigmoid, name='output'
+    )(input_layer)
+    model = tf_keras.models.Model(inputs, output_layer)
     # The model.evaluate API is used when custom metrics are used. Otherwise
     # model.compiled_metrics is used.
     if add_custom_metrics:
       model.add_metric(tf.reduce_sum(input_layer), name='custom')
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.BinaryCrossentropy(name='loss'),
-        metrics=[tf.keras.metrics.BinaryAccuracy(name='binary_accuracy')])
+        optimizer=tf_keras.optimizers.Adam(lr=0.001),
+        loss=tf_keras.losses.BinaryCrossentropy(name='loss'),
+        metrics=[tf_keras.metrics.BinaryAccuracy(name='binary_accuracy')],
+    )
 
     export_dir = self._getExportDir()
     model.save(export_dir, save_format='tf')
@@ -1799,15 +1806,18 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     eval_config = config_pb2.EvalConfig(
         model_specs=[
             config_pb2.ModelSpec(
-                label_key='label', example_weight_key='example_weight')
+                label_key='label', example_weight_key='example_weight'
+            )
         ],
         slicing_specs=[config_pb2.SlicingSpec()],
         metrics_specs=metric_specs.specs_from_metrics(
             [calibration.MeanLabel('mean_label')],
             unweighted_metrics=[
-                tf.keras.metrics.BinaryAccuracy(name='binary_accuracy'),
-                calibration.MeanLabel('mean_label')
-            ]))
+                tf_keras.metrics.BinaryAccuracy(name='binary_accuracy'),
+                calibration.MeanLabel('mean_label'),
+            ],
+        ),
+    )
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=export_dir)
 

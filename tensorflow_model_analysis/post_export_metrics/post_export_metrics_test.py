@@ -43,7 +43,7 @@ from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
-
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import raw_tf_record
 
 _TEST_SEED = 857586
@@ -3114,22 +3114,28 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
         custom_metrics_check=check_result)
 
   def testPostExportMetricsWithModelToEstimator(self):
+    if not tf.executing_eagerly():
+      raise ValueError('Not executing eagerly.')
     temp_eval_export_dir = self._getEvalExportDir()
-    prediction_input = tf.keras.layers.Input(shape=(3,), name='prediction')
+    prediction_input = tf_keras.layers.Input(shape=(3,), name='prediction')
     inputs = [
         prediction_input,
-        tf.keras.layers.Input(shape=(1,), name='label'),
+        tf_keras.layers.Input(shape=(1,), name='label'),
     ]
     output_layer = tf.keras.layers.Lambda(
         lambda x: x, name='output1')(
             prediction_input)
-    model = tf.keras.models.Model(inputs, output_layer)
+    model = tf_keras.models.Model(inputs, output_layer)
     model.compile(
-        loss=tf.keras.losses.sparse_categorical_crossentropy,
-        metrics=['accuracy'])
+        loss=tf_keras.losses.sparse_categorical_crossentropy,
+        optimizer=tf_keras.optimizers.legacy.Adam(),
+        metrics=['accuracy'],
+    )
 
-    estimator = tf.keras.estimator.model_to_estimator(
-        keras_model=model, config=tf_estimator.RunConfig())
+    estimator = tf_keras.estimator.model_to_estimator(
+        keras_model=model,  # pylint: disable=g-deprecated-tf-checker
+        config=tf_estimator.RunConfig(),  # pylint: disable=g-deprecated-tf-checker
+    )
 
     eval_feature_spec = {
         'prediction': tf.io.FixedLenFeature([3], dtype=tf.float32),
@@ -3157,7 +3163,7 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
     def check_result(got):  # pylint: disable=invalid-name
       try:
-        self.assertEqual(1, len(got), 'got: %s' % got)
+        self.assertLen(got, 1, 'got: %s' % got)
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
 
@@ -3188,4 +3194,5 @@ class PostExportMetricsTest(testutil.TensorflowModelAnalysisTest):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_eager_execution()
   tf.test.main()

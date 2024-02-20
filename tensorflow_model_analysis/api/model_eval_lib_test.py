@@ -19,7 +19,6 @@ import tempfile
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import apache_beam as beam
 import pandas as pd
 import tensorflow as tf
@@ -51,6 +50,7 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
+from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tensorflow_model_analysis.view import view_types
 from tfx_bsl.coders import example_coder
 
@@ -820,14 +820,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     def _build_keras_model(eval_config,
                            export_name='export_dir',
                            rubber_stamp=False):
-      input_layer = tf.keras.layers.Input(shape=(28 * 28,), name='data')
-      output_layer = tf.keras.layers.Dense(
-          10, activation=tf.nn.softmax)(
-              input_layer)
-      model = tf.keras.models.Model(input_layer, output_layer)
+      input_layer = tf_keras.layers.Input(shape=(28 * 28,), name='data')
+      output_layer = tf_keras.layers.Dense(10, activation=tf.nn.softmax)(
+          input_layer
+      )
+      model = tf_keras.models.Model(input_layer, output_layer)
       model.compile(
-          optimizer=tf.keras.optimizers.Adam(lr=.001),
-          loss=tf.keras.losses.categorical_crossentropy)
+          optimizer=tf_keras.optimizers.Adam(lr=0.001),
+          loss=tf_keras.losses.categorical_crossentropy,
+      )
       if add_custom_metrics:
         model.add_metric(tf.reduce_sum(input_layer), 'custom')
       model_location = os.path.join(self._getTempDir(), export_name)
@@ -907,7 +908,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       metrics_spec.metrics.append(
           config_pb2.MetricConfig(
               class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
-    tf.keras.backend.clear_session()
+    tf_keras.backend.clear_session()
     slicing_specs = [
         config_pb2.SlicingSpec(),
         config_pb2.SlicingSpec(feature_keys=['non_existent_slice'])
@@ -1076,10 +1077,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     def _build_keras_model(eval_config, export_name='export_dir'):
       layers_per_output = {}
       for output_name in ('output_1', 'output_2'):
-        layers_per_output[output_name] = tf.keras.layers.Input(
-            shape=(1,), name=output_name)
-      model = tf.keras.models.Model(layers_per_output, layers_per_output)
-      model.compile(loss=tf.keras.losses.categorical_crossentropy)
+        layers_per_output[output_name] = tf_keras.layers.Input(
+            shape=(1,), name=output_name
+        )
+      model = tf_keras.models.Model(layers_per_output, layers_per_output)
+      model.compile(loss=tf_keras.losses.categorical_crossentropy)
       model_location = os.path.join(self._getTempDir(), export_name)
       model.save(model_location, save_format='tf')
       return model_eval_lib.default_eval_shared_model(
@@ -1225,14 +1227,15 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     check_eval_result(eval_result_1, baseline.model_path)
 
   def testRunModelAnalysisWithQueryBasedMetrics(self):
-    input_layer = tf.keras.layers.Input(shape=(1,), name='age')
-    output_layer = tf.keras.layers.Dense(
-        1, activation=tf.nn.sigmoid)(
-            input_layer)
-    model = tf.keras.models.Model(input_layer, output_layer)
+    input_layer = tf_keras.layers.Input(shape=(1,), name='age')
+    output_layer = tf_keras.layers.Dense(1, activation=tf.nn.sigmoid)(
+        input_layer
+    )
+    model = tf_keras.models.Model(input_layer, output_layer)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=.001),
-        loss=tf.keras.losses.binary_crossentropy)
+        optimizer=tf_keras.optimizers.Adam(lr=0.001),
+        loss=tf_keras.losses.binary_crossentropy,
+    )
 
     features = {'age': [[20.0]]}
     labels = [[1]]
@@ -1299,7 +1302,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     # Test with both a TFMA metric (NDCG), a keras metric (Recall).
     metrics = [
         ndcg.NDCG(gain_key='age', name='ndcg', top_k_list=[1, 2]),
-        tf.keras.metrics.Recall(top_k=1),
+        tf_keras.metrics.Recall(top_k=1),
     ]
     # If tensorflow-ranking imported add MRRMetric.
     if _TFR_IMPORTED:
@@ -1878,39 +1881,27 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         (('language', 'english'),): {
             '': {
                 '': {
-                    'accuracy': {
-                        'doubleValue': 1.0
-                    },
-                    'example_count': {
-                        'doubleValue': 1.0
-                    }
+                    'binary_accuracy': {'doubleValue': 1.0},
+                    'example_count': {'doubleValue': 1.0},
                 }
             }
         },
         (('language', 'spanish'),): {
             '': {
                 '': {
-                    'accuracy': {
-                        'doubleValue': 1.0
-                    },
-                    'example_count': {
-                        'doubleValue': 1.0
-                    }
+                    'binary_accuracy': {'doubleValue': 1.0},
+                    'example_count': {'doubleValue': 1.0},
                 }
             }
         },
         (): {
             '': {
                 '': {
-                    'accuracy': {
-                        'doubleValue': 1.0
-                    },
-                    'example_count': {
-                        'doubleValue': 2.0
-                    }
+                    'binary_accuracy': {'doubleValue': 1.0},
+                    'example_count': {'doubleValue': 2.0},
                 }
             }
-        }
+        },
     }
 
     # Actual Output
@@ -1921,14 +1912,16 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         prediction_key: 'prediction'
       }
       metrics_specs {
-        metrics { class_name: "Accuracy" }
+        metrics { class_name: "BinaryAccuracy" }
         metrics { class_name: "ExampleCount" }
       }
       slicing_specs {}
       slicing_specs {
         feature_keys: 'language'
       }
-    """, config_pb2.EvalConfig())
+    """,
+        config_pb2.EvalConfig(),
+    )
     eval_result = model_eval_lib.analyze_raw_data(df_data, eval_config)
 
     # Compare Actual and Expected
