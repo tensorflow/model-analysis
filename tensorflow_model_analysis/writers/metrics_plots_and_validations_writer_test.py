@@ -246,21 +246,27 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
       }
     """
     calibration_plot = (
-        post_export_metrics.calibration_plot_and_prediction_histogram())
+        post_export_metrics.calibration_plot_and_prediction_histogram()
+    )
     got = metrics_plots_and_validations_writer.convert_slice_plots_to_proto(
-        (slice_key, tfma_plots), [calibration_plot])
+        (slice_key, tfma_plots), [calibration_plot]
+    )
     self.assertProtoEquals(expected_plot_data, got)
 
   def testConvertSlicePlotsToProtoEmptyPlot(self):
     slice_key = _make_slice_key('fruit', 'apple')
     tfma_plots = {metric_keys.ERROR_METRIC: 'error_message'}
 
-    actual_plot = metrics_plots_and_validations_writer.convert_slice_plots_to_proto(
-        (slice_key, tfma_plots), [])
+    actual_plot = (
+        metrics_plots_and_validations_writer.convert_slice_plots_to_proto(
+            (slice_key, tfma_plots), []
+        )
+    )
     expected_plot = metrics_for_slice_pb2.PlotsForSlice()
     expected_plot.slice_key.CopyFrom(slicer.serialize_slice_key(slice_key))
-    expected_plot.plots[
-        metric_keys.ERROR_METRIC].debug_message = 'error_message'
+    expected_plot.plots[metric_keys.ERROR_METRIC].debug_message = (
+        'error_message'
+    )
     self.assertProtoEquals(expected_plot, actual_plot)
 
   def testConvertSliceMetricsToProto(self):

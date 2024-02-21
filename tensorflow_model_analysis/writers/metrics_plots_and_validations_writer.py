@@ -73,8 +73,9 @@ def _match_all_files(file_path: str) -> str:
   return file_path + '*'
 
 
-def _parquet_column_iterator(paths: Iterable[str],
-                             column_name: str) -> Iterator[pa.Buffer]:
+def _parquet_column_iterator(
+    paths: Iterable[str], column_name: str
+) -> Iterator[bytes]:
   """Yields values from a bytes column in a set of parquet file partitions."""
   dataset = pa.parquet.ParquetDataset(paths)
   table = dataset.read(columns=[column_name])
@@ -82,12 +83,12 @@ def _parquet_column_iterator(paths: Iterable[str],
     # always read index 0 because we filter to one column
     value_array = record_batch.column(0)
     for value in value_array:
-      yield value.as_buffer()
+      yield value.as_buffer().to_pybytes()
 
 
 def _raw_value_iterator(
-    paths: Iterable[str],
-    output_file_format: str) -> Iterator[Union[pa.Buffer, bytes]]:
+    paths: Iterable[str], output_file_format: str
+) -> Iterator[bytes]:
   """Returns an iterator of raw per-record values from supported file formats.
 
   When reading parquet format files, values from the column with name
