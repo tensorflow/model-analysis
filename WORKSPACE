@@ -80,4 +80,4 @@ load("//third_party:workspace.bzl", "tensorflow_model_analysis_workspace")
 tensorflow_model_analysis_workspace()
 
 load("@bazel_skylib//lib:versions.bzl", "versions")
-versions.check("3.7.2")
+versions.check("6.1.0")

@@ -24,6 +24,9 @@
 *   Fix the failure in metric_specs test, all TFMA deps on keras are
     keras 2. >>>>>>> source: 76cdbe63cbf2 - matrixzhou: Fix the failure due to
     m...
+*   Depends on `apache-beam>=2.53,<3`.
+*   Depends on `protobuf>=4.25.2,<5`.
+*   Update the minimum Bazel version required to build TFMA to 6.1.0
 
 ## Deprecations
 
