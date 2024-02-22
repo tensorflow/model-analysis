@@ -72,6 +72,21 @@ http_archive(
 
 load("@org_tensorflow_tensorboard//third_party:workspace.bzl", "tensorboard_workspace")
 
+_PROTOBUF_COMMIT = "3.21.9"
+http_archive(
+    name = "com_google_protobuf",
+    sha256 = "f66073dee0bc159157b0bd7f502d7d1ee0bc76b3c1eac9836927511bdc4b3fc1",
+    strip_prefix = "protobuf-%s" % _PROTOBUF_COMMIT,
+    urls = [
+        "https://github.com/protocolbuffers/protobuf/archive/v3.21.9.zip",
+    ],
+)
+
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+
+protobuf_deps()
+
+
 tensorboard_workspace()
 
 load("//third_party:workspace.bzl", "tensorflow_model_analysis_workspace")
