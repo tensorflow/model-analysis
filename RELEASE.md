@@ -4,6 +4,9 @@
 
 ## Major Features and Improvements
 
+*   Removes the metrics modules from experimental now that it is migrated to
+    [py-ml-metrics](https://pypi.org/project/py-ml-metrics/) package.
+
 ## Bug fixes and other Changes
 
 *   Fix the bug about batching unsized numpy arrays. ## Breaking Changes

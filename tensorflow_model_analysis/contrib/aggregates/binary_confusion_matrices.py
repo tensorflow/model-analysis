@@ -14,7 +14,6 @@
 """Binary confusion matrices."""
 
 from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence
-from tensorflow_model_analysis.experimental.lazytf import api as lazytf
 
 DEFAULT_NUM_EXAMPLE_IDS = 100
 
@@ -36,7 +35,7 @@ _ThresholdEntry = NamedTuple(
 MatrixAccumulator = Dict[float, _ThresholdEntry]
 
 
-class BinaryConfusionMatrices(lazytf.AggregateFn):
+class BinaryConfusionMatrices:
   """Computes binary confusion matrix."""
 
   def __init__(
@@ -259,3 +258,9 @@ class BinaryConfusionMatrices(lazytf.AggregateFn):
             fn_examples=[],
         )
     return accumulator
+
+  def __call__(self, *inputs, **named_inputs):
+    """Directly apply aggregate on inputs."""
+    return self.extract_output(
+        self.add_inputs(self.create_accumulator(), *inputs, **named_inputs)
+    )
