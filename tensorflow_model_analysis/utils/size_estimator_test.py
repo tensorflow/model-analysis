@@ -13,8 +13,6 @@
 # limitations under the License.
 """Tests for size estimator."""
 
-import sys
-
 import tensorflow as tf
 from tensorflow_model_analysis.utils import size_estimator
 
@@ -24,14 +22,17 @@ class SizeEstimatorTest(tf.test.TestCase):
   def testRefCountAmortization(self):
     estimator = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
     self.assertEqual(estimator.get_estimate(), 0)
-    a = b'plmjh'
+    a = b'fasjg'
     b, c = a, a
-    expected_size_estimate = int(len(a) / (sys.getrefcount(a) - 1)) * 4
+    # The test string should not use sys reference count, which may lead to
+    # unexpected string reference increase/decrease.
+    expected_size_estimate = 4
     estimator.update(a)
     estimator.update(b)
     estimator.update(c)
     estimator.update(a)
     self.assertEqual(estimator.get_estimate(), expected_size_estimate)
+
     self.assertFalse(estimator.should_flush())
 
   def testFlush(self):
@@ -48,9 +49,12 @@ class SizeEstimatorTest(tf.test.TestCase):
     self.assertEqual(estimator1.get_estimate(), 0)
     estimator2 = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
     self.assertEqual(estimator2.get_estimate(), 0)
-    a = b'plmjh'
+    a = b'pkmiz'
     b, c = a, a
-    expected_size_estimate = int(len(a) / (sys.getrefcount(a) - 1)) * 4
+    # The test string should not use sys reference count, which may lead to
+    # unexpected string reference increase/decrease.
+
+    expected_size_estimate = 4
     estimator1.update(a)
     estimator1.update(b)
     estimator2.update(c)
