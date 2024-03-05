@@ -2,7 +2,7 @@
 
 # TensorFlow Model Analysis
 
-[![Python](https://img.shields.io/badge/python%20-3.8%7C3.9-blue)](https://github.com/tensorflow/model-analysis)
+[![Python](https://img.shields.io/badge/python%20-3.9%7C3.10%7C3.11-blue)](https://github.com/tensorflow/model-analysis)
 [![PyPI](https://badge.fury.io/py/tensorflow-model-analysis.svg)](https://badge.fury.io/py/tensorflow-model-analysis)
 [![Documentation](https://img.shields.io/badge/api-reference-blue.svg)](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma)
 
