@@ -37,8 +37,6 @@ from setuptools.command.sdist import sdist
 # https://setuptools.readthedocs.io/en/latest/history.html#v48-0-0
 # pylint: enable=g-bad-import-order
 
-_IS_PY311 = sys.version_info >= (3, 11)
-
 
 # Find the Protocol Compiler.
 if 'PROTOC' in os.environ and os.path.exists(os.environ['PROTOC']):
@@ -299,13 +297,15 @@ setup_args = {
     'install_requires': [
         # Sort alphabetically
         'absl-py>=0.9,<2.0.0',
-        f'apache-beam[gcp]>={"2.53" if _IS_PY311 else "2.47"},<3',
+        'apache-beam[gcp]>=2.53,<3;python_version>="3.11"',
+        'apache-beam[gcp]>=2.47,<3;python_version<"3.11"',
         'ipython>=7,<8',
         'ipywidgets>=7,<8',
         'numpy>=1.23.5',
         'pandas>=1.0,<2',
         'pillow>=9.4.0',
-        f'protobuf>={"4.25.2" if _IS_PY311 else "3.20.3"},<5',
+        'protobuf>=4.25.2,<5;python_version>="3.11"',
+        'protobuf>=3.20.3,<5;python_version<"3.11"',
         'pyarrow>=10,<11',
         'rouge-score>=0.1.2,<2',
         'sacrebleu>=2.3,<4',
