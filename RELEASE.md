@@ -20,13 +20,9 @@
 *   Depends on `tensorflow>=2.15.0,<3`.
 *   Fix the failure in testMeanAttributions.
 *   Fix the input type mismatch in metric_specs_tests between bool and None.
-    <<<<<<< dest: 3e50dbe114dc - chubby-admin-server: AUTOMATED: turn...
-*   Fix the failure in the slice test due to beam type hints check. |||||||
-    parent of source: dceb57e12e5d - bxj: [Clariti] Reorganize
-    input_area... =======
+*   Fix the failure in the slice test due to beam type hints check.
 *   Fix the failure in metric_specs test, all TFMA deps on keras are
-    keras 2. >>>>>>> source: 76cdbe63cbf2 - matrixzhou: Fix the failure due to
-    m...
+    keras 2.
 *   Depends on `apache-beam[gcp]>=2.53.0,<3` for Python 3.11 and on 
     `apache-beam[gcp]>=2.47.0,<3` for 3.9 and 3.10.
 *   Depends on `protobuf>=4.25.2,<5` for Python 3.11 and on `protobuf>3.20.3,<5`
