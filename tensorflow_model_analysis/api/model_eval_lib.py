@@ -588,6 +588,7 @@ def default_extractors(  # pylint: disable=invalid-name
   if eval_shared_model:
     model_types = _model_types(eval_shared_models)
     logging.info('eval_shared_models have model_types: %s', model_types)
+    assert model_types is not None
     if (not model_types.issubset(constants.VALID_TF_MODEL_TYPES) and
         not custom_predict_extractor):
       raise NotImplementedError(
