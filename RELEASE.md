@@ -23,11 +23,13 @@
 *   Fix the failure in the slice test due to beam type hints check.
 *   Fix the failure in metric_specs test, all TFMA deps on keras are
     keras 2.
-*   Depends on `apache-beam[gcp]>=2.53.0,<3` for Python 3.11 and on 
+*   Depends on `apache-beam[gcp]>=2.53.0,<3` for Python 3.11 and on
     `apache-beam[gcp]>=2.47.0,<3` for 3.9 and 3.10.
 *   Depends on `protobuf>=4.25.2,<5` for Python 3.11 and on `protobuf>3.20.3,<5`
     for 3.9 and 3.10.
 *   Update the minimum Bazel version required to build TFMA to 6.1.0
+*   Refactors BooleanFlipRates computations to a combiner (flip_counts) and a
+    DerivedMetricComputation (flip_rates).
 
 ## Deprecations
 

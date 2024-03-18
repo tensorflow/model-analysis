@@ -40,13 +40,16 @@ class FlipRateMetricsTest(absltest.TestCase):
         """, config_pb2.EvalConfig())
     baseline_model_name = 'baseline'
     candidate_model_name = 'candidate'
+
     computations = flip_metrics.BooleanFlipRates(threshold=0.5).computations(
         eval_config=eval_config,
         model_names=['baseline', 'candidate'],
         output_names=[''],
         example_weighted=True)
-    self.assertLen(computations, 1)
-    computation = computations[0]
+    self.assertLen(computations, 2)
+
+    flip_counts = computations[0]
+    flip_rates = computations[1]
 
     examples = [{
         'labels': [0],
@@ -85,7 +88,10 @@ class FlipRateMetricsTest(absltest.TestCase):
           | 'Create' >> beam.Create(examples)
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeFlipCounts' >> beam.CombinePerKey(flip_counts.combiner)
+          | 'ComputeFlipRates'
+          >> beam.Map(lambda x: (x[0], flip_rates.result(x[1])))
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -100,23 +106,29 @@ class FlipRateMetricsTest(absltest.TestCase):
           self.assertEqual(got_slice_key, ())
           self.assertLen(got_proto.metric_keys_and_values, 5)
 
-          fr_key = metric_types.MetricKey(
+          model_name = candidate_model_name
+          output_name = ''
+          example_weighted = True
+          is_diff = True
+          sym_fr_key = metric_types.MetricKey(
               name=flip_metrics.FLIP_RATE_NAME,
-              model_name=candidate_model_name,
-              output_name='',
-              example_weighted=True,
-              is_diff=True)
-          self.assertIn(fr_key, got_metrics)
+              model_name=model_name,
+              output_name=output_name,
+              example_weighted=example_weighted,
+              is_diff=is_diff,
+          )
+          self.assertIn(sym_fr_key, got_metrics)
           # verify that metric is not a 0-D np.ndarray
-          self.assertIsInstance(got_metrics[fr_key], float)
-          self.assertAlmostEqual(got_metrics[fr_key], 3 / 10)
+          self.assertIsInstance(got_metrics[sym_fr_key], float)
+          self.assertAlmostEqual(got_metrics[sym_fr_key], 3 / 10)
 
           n2n_fr_key = metric_types.MetricKey(
               name=flip_metrics.NEG_TO_NEG_FLIP_RATE_NAME,
-              model_name=candidate_model_name,
-              output_name='',
-              example_weighted=True,
-              is_diff=True)
+              model_name=model_name,
+              output_name=output_name,
+              example_weighted=example_weighted,
+              is_diff=is_diff,
+          )
           self.assertIn(n2n_fr_key, got_metrics)
           # verify that metric is not a 0-D np.ndarray
           self.assertIsInstance(got_metrics[n2n_fr_key], float)
@@ -124,10 +136,11 @@ class FlipRateMetricsTest(absltest.TestCase):
 
           n2p_fr_key = metric_types.MetricKey(
               name=flip_metrics.NEG_TO_POS_FLIP_RATE_NAME,
-              model_name=candidate_model_name,
-              output_name='',
-              example_weighted=True,
-              is_diff=True)
+              model_name=model_name,
+              output_name=output_name,
+              example_weighted=example_weighted,
+              is_diff=is_diff,
+          )
           self.assertIn(n2p_fr_key, got_metrics)
           # verify that metric is not a 0-D np.ndarray
           self.assertIsInstance(got_metrics[n2p_fr_key], float)
@@ -135,10 +148,11 @@ class FlipRateMetricsTest(absltest.TestCase):
 
           p2n_fr_key = metric_types.MetricKey(
               name=flip_metrics.POS_TO_NEG_FLIP_RATE_NAME,
-              model_name=candidate_model_name,
-              output_name='',
-              example_weighted=True,
-              is_diff=True)
+              model_name=model_name,
+              output_name=output_name,
+              example_weighted=example_weighted,
+              is_diff=is_diff,
+          )
           self.assertIn(p2n_fr_key, got_metrics)
           # verify that metric is not a 0-D np.ndarray
           self.assertIsInstance(got_metrics[p2n_fr_key], float)
@@ -146,10 +160,11 @@ class FlipRateMetricsTest(absltest.TestCase):
 
           p2p_fr_key = metric_types.MetricKey(
               name=flip_metrics.POS_TO_POS_FLIP_RATE_NAME,
-              model_name=candidate_model_name,
-              output_name='',
-              example_weighted=True,
-              is_diff=True)
+              model_name=model_name,
+              output_name=output_name,
+              example_weighted=example_weighted,
+              is_diff=is_diff,
+          )
           self.assertIn(p2p_fr_key, got_metrics)
           # verify that metric is not a 0-D np.ndarray
           self.assertIsInstance(got_metrics[p2p_fr_key], float)
