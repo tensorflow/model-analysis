@@ -206,11 +206,11 @@ def _boolean_flip_rates_computations(
     pos_to_neg_flip_rate_name: str,
     pos_to_pos_flip_rate_name: str,
     eval_config: config_pb2.EvalConfig,
-    model_names: list[str],
+    model_names: Iterable[str],
     example_weighted: bool,
     threshold: float,
-    output_names: Optional[list[str]] = None,
-    sub_keys: Optional[list[metric_types.SubKey]] = None,
+    output_names: Optional[Iterable[str]] = ('',),
+    sub_keys: Optional[Iterable[metric_types.SubKey]] = None,
 ) -> metric_types.MetricComputations:
   """Returns metric computations for all boolean flip rates.
 
@@ -245,8 +245,8 @@ def _boolean_flip_rates_computations(
   for model_name in model_names:
     if model_name == baseline_model_name:
       continue
-    for output_name in output_names or ['']:
-      for sub_key in sub_keys or [None]:
+    for output_name in output_names:
+      for sub_key in sub_keys or (None,):
         generate_key = lambda name: metric_types.MetricKey(
             name=name,
             # pylint: disable=cell-var-from-loop
