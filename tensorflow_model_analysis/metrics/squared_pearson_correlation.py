@@ -155,7 +155,7 @@ class _SquaredPearsonCorrelationCombiner(beam.CombineFn):
       # r^2 = Cov(X, Y)^2 / VAR(X) * VAR(Y)
       #     = (E[XY] - E[X]E[Y])^2 / (E[X^2] - E[X]^2) * (E[Y^2] - E[Y]^2)
       #     = [SUM(xy) - n*mean(x)*mean(y)]^2 /
-      #         [SUM(x^2) - n*mean(x)^2 * SUM(y^2) - n*mean(y)^2]
+      #         [(SUM(x^2) - n*mean(x)^2) * (SUM(y^2) - n*mean(y)^2)]
       # n = total_weighted_examples
       # SUM(x) = total_weighted_labels
       # SUM(y) = total_weighted_predictions
