@@ -1,6 +1,6 @@
-licenses(["notice"])  # Apache 2.0
-
 load("@io_bazel_rules_closure//closure:defs.bzl", "closure_js_binary", "closure_js_library", "closure_js_test")
+
+licenses(["notice"])  # Apache 2.0
 
 package(
     default_visibility = ["//tensorflow_model_analysis:__subpackages__"],

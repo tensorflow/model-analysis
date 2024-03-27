@@ -13,9 +13,13 @@
 # limitations under the License.
 """Tests for flip_metrics."""
 
+import copy
+
 from absl.testing import absltest
+from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.metrics import flip_metrics
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -25,9 +29,41 @@ from tensorflow_model_analysis.writers import metrics_plots_and_validations_writ
 from google.protobuf import text_format
 
 
-class FlipRateMetricsTest(absltest.TestCase):
+class FlipRateMetricsTest(parameterized.TestCase):
 
-  def testSymmetricPredictionDifference(self):
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='symmetric_flip_rate',
+          metric=flip_metrics.SymmetricFlipRate(threshold=0.5),
+          metric_name=flip_metrics.SYMMETRIC_FLIP_RATE_NAME,
+          expected_result=3 / 10,
+      ),
+      dict(
+          testcase_name='neg_to_neg_flip_rate',
+          metric=flip_metrics.NegToNegFlipRate(threshold=0.5),
+          metric_name=flip_metrics.NEG_TO_NEG_FLIP_RATE_NAME,
+          expected_result=3 / 10,
+      ),
+      dict(
+          testcase_name='neg_to_pos_flip_rate',
+          metric=flip_metrics.NegToPosFlipRate(threshold=0.5),
+          metric_name=flip_metrics.NEG_TO_POS_FLIP_RATE_NAME,
+          expected_result=1 / 10,
+      ),
+      dict(
+          testcase_name='pos_to_neg_flip_rate',
+          metric=flip_metrics.PosToNegFlipRate(threshold=0.5),
+          metric_name=flip_metrics.POS_TO_NEG_FLIP_RATE_NAME,
+          expected_result=2 / 10,
+      ),
+      dict(
+          testcase_name='pos_to_pos_flip_rate',
+          metric=flip_metrics.PosToPosFlipRate(threshold=0.5),
+          metric_name=flip_metrics.POS_TO_POS_FLIP_RATE_NAME,
+          expected_result=4 / 10,
+      ),
+  )
+  def testIndividualFlipRates(self, metric, metric_name, expected_result):
     eval_config = text_format.Parse(
         """
         model_specs {
@@ -41,48 +77,53 @@ class FlipRateMetricsTest(absltest.TestCase):
     baseline_model_name = 'baseline'
     candidate_model_name = 'candidate'
 
-    computations = flip_metrics.BooleanFlipRates(threshold=0.5).computations(
+    computations = metric.computations(
         eval_config=eval_config,
         model_names=['baseline', 'candidate'],
         output_names=[''],
-        example_weighted=True)
+        example_weighted=True,
+    )
     self.assertLen(computations, 2)
 
     flip_counts = computations[0]
-    flip_rates = computations[1]
+    flip_rate = computations[1]
 
-    examples = [{
-        'labels': [0],
-        'example_weights': [1],
-        'predictions': {
-            baseline_model_name: [0.1],
-            candidate_model_name: [0.9]
-        }
-    }, {
-        'labels': [0],
-        'example_weights': [2],
-        'predictions': {
-            baseline_model_name: [0.9],
-            candidate_model_name: [0.1]
-        }
-    }, {
-        'labels': [1],
-        'example_weights': [3],
-        'predictions': {
-            baseline_model_name: [0.1],
-            candidate_model_name: [0.2]
-        }
-    }, {
-        'labels': [1],
-        'example_weights': [4],
-        'predictions': {
-            baseline_model_name: [0.9],
-            candidate_model_name: [0.8]
-        }
-    }]
+    examples = [
+        {
+            constants.LABELS_KEY: [0],
+            constants.PREDICTIONS_KEY: {
+                baseline_model_name: [0.1],
+                candidate_model_name: [0.9],
+            },
+            constants.EXAMPLE_WEIGHTS_KEY: [1],
+        },
+        {
+            constants.LABELS_KEY: [0],
+            constants.PREDICTIONS_KEY: {
+                baseline_model_name: [0.9],
+                candidate_model_name: [0.1],
+            },
+            constants.EXAMPLE_WEIGHTS_KEY: [2],
+        },
+        {
+            constants.LABELS_KEY: [1],
+            constants.PREDICTIONS_KEY: {
+                baseline_model_name: [0.1],
+                candidate_model_name: [0.2],
+            },
+            constants.EXAMPLE_WEIGHTS_KEY: [3],
+        },
+        {
+            constants.LABELS_KEY: [1],
+            constants.PREDICTIONS_KEY: {
+                baseline_model_name: [0.9],
+                candidate_model_name: [0.8],
+            },
+            constants.EXAMPLE_WEIGHTS_KEY: [4],
+        },
+    ]
 
     with beam.Pipeline() as pipeline:
-      # pylint: disable=no-value-for-parameter
       result = (
           pipeline
           | 'Create' >> beam.Create(examples)
@@ -90,10 +131,132 @@ class FlipRateMetricsTest(absltest.TestCase):
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
           | 'ComputeFlipCounts' >> beam.CombinePerKey(flip_counts.combiner)
           | 'ComputeFlipRates'
-          >> beam.Map(lambda x: (x[0], flip_rates.result(x[1])))
+          >> beam.Map(lambda x: (x[0], flip_rate.result(x[1])))
       )
 
-      # pylint: enable=no-value-for-parameter
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_proto = metrics_plots_and_validations_writer.convert_slice_metrics_to_proto(
+              got[0], add_metrics_callbacks=None
+          )
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          self.assertLen(got_proto.metric_keys_and_values, 1)
+
+          model_name = candidate_model_name
+          output_name = ''
+          example_weighted = True
+          metric_key = metric_types.MetricKey(
+              name=metric_name,
+              model_name=model_name,
+              output_name=output_name,
+              example_weighted=example_weighted,
+              is_diff=True,
+          )
+
+          self.assertIn(metric_key, got_metrics)
+          # Verify that metric is not a 0-D np.ndarray.
+          self.assertIsInstance(got_metrics[metric_key], float)
+          self.assertAlmostEqual(got_metrics[metric_key], expected_result)
+
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
+  def testBooleanFlipRates(self):
+    eval_config = text_format.Parse(
+        """
+        model_specs {
+          name: "baseline"
+          is_baseline: true
+        }
+        model_specs {
+          name: "candidate"
+        }
+        """,
+        config_pb2.EvalConfig(),
+    )
+    baseline_model_name = 'baseline'
+    candidate_model_name = 'candidate'
+
+    computations = flip_metrics.BooleanFlipRates(threshold=0.5).computations(
+        eval_config=eval_config,
+        model_names=['baseline', 'candidate'],
+        output_names=[''],
+        example_weighted=True,
+    )
+    self.assertLen(computations, 10)
+
+    flip_counts = computations[0]
+
+    symmetric_flip_rate = computations[1]
+    neg_to_neg_flip_rate = computations[3]
+    neg_to_pos_flip_rate = computations[5]
+    pos_to_neg_flip_rate = computations[7]
+    pos_to_pos_flip_rate = computations[9]
+
+    all_flip_rates = (
+        symmetric_flip_rate,
+        neg_to_neg_flip_rate,
+        neg_to_pos_flip_rate,
+        pos_to_neg_flip_rate,
+        pos_to_pos_flip_rate,
+    )
+
+    examples = [
+        {
+            constants.LABELS_KEY: [0],
+            constants.PREDICTIONS_KEY: {
+                baseline_model_name: [0.1],
+                candidate_model_name: [0.9],
+            },
+            constants.EXAMPLE_WEIGHTS_KEY: [1],
+        },
+        {
+            constants.LABELS_KEY: [0],
+            constants.PREDICTIONS_KEY: {
+                baseline_model_name: [0.9],
+                candidate_model_name: [0.1],
+            },
+            constants.EXAMPLE_WEIGHTS_KEY: [2],
+        },
+        {
+            constants.LABELS_KEY: [1],
+            constants.PREDICTIONS_KEY: {
+                baseline_model_name: [0.1],
+                candidate_model_name: [0.2],
+            },
+            constants.EXAMPLE_WEIGHTS_KEY: [3],
+        },
+        {
+            constants.LABELS_KEY: [1],
+            constants.PREDICTIONS_KEY: {
+                baseline_model_name: [0.9],
+                candidate_model_name: [0.8],
+            },
+            constants.EXAMPLE_WEIGHTS_KEY: [4],
+        },
+    ]
+
+    def _add_derived_metrics(sliced_metrics, derived_computations):
+      slice_key, metrics = sliced_metrics
+      result = copy.copy(metrics)
+      for c in derived_computations:
+        result.update(c.result(result))
+      return slice_key, result
+
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline
+          | 'Create' >> beam.Create(examples)
+          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'ComputeFlipCounts' >> beam.CombinePerKey(flip_counts.combiner)
+          | 'AddDerivedMetrics'
+          >> beam.Map(_add_derived_metrics, derived_computations=all_flip_rates)
+      )
 
       def check_result(got):
         try:
@@ -104,7 +267,7 @@ class FlipRateMetricsTest(absltest.TestCase):
                   got[0], add_metrics_callbacks=None))
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
-          self.assertLen(got_proto.metric_keys_and_values, 5)
+          self.assertLen(got_proto.metric_keys_and_values, 6)
 
           model_name = candidate_model_name
           output_name = ''
@@ -118,7 +281,7 @@ class FlipRateMetricsTest(absltest.TestCase):
               is_diff=is_diff,
           )
           self.assertIn(sym_fr_key, got_metrics)
-          # verify that metric is not a 0-D np.ndarray
+          # Verify that metric is not a 0-D np.ndarray.
           self.assertIsInstance(got_metrics[sym_fr_key], float)
           self.assertAlmostEqual(got_metrics[sym_fr_key], 3 / 10)
 
@@ -130,7 +293,7 @@ class FlipRateMetricsTest(absltest.TestCase):
               is_diff=is_diff,
           )
           self.assertIn(n2n_fr_key, got_metrics)
-          # verify that metric is not a 0-D np.ndarray
+          # Verify that metric is not a 0-D np.ndarray.
           self.assertIsInstance(got_metrics[n2n_fr_key], float)
           self.assertAlmostEqual(got_metrics[n2n_fr_key], 3 / 10)
 
@@ -142,7 +305,7 @@ class FlipRateMetricsTest(absltest.TestCase):
               is_diff=is_diff,
           )
           self.assertIn(n2p_fr_key, got_metrics)
-          # verify that metric is not a 0-D np.ndarray
+          # Verify that metric is not a 0-D np.ndarray.
           self.assertIsInstance(got_metrics[n2p_fr_key], float)
           self.assertAlmostEqual(got_metrics[n2p_fr_key], 1 / 10)
 
@@ -154,7 +317,7 @@ class FlipRateMetricsTest(absltest.TestCase):
               is_diff=is_diff,
           )
           self.assertIn(p2n_fr_key, got_metrics)
-          # verify that metric is not a 0-D np.ndarray
+          # Verify that metric is not a 0-D np.ndarray.
           self.assertIsInstance(got_metrics[p2n_fr_key], float)
           self.assertAlmostEqual(got_metrics[p2n_fr_key], 2 / 10)
 
@@ -166,7 +329,7 @@ class FlipRateMetricsTest(absltest.TestCase):
               is_diff=is_diff,
           )
           self.assertIn(p2p_fr_key, got_metrics)
-          # verify that metric is not a 0-D np.ndarray
+          # Verify that metric is not a 0-D np.ndarray.
           self.assertIsInstance(got_metrics[p2p_fr_key], float)
           self.assertAlmostEqual(got_metrics[p2p_fr_key], 4 / 10)
 

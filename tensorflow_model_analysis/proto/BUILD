@@ -1,8 +1,8 @@
+load("@protobuf_bzl//:protobuf.bzl", "py_proto_library")
+
 licenses(["notice"])  # Apache 2.0
 
 package(default_visibility = ["//visibility:public"])
-
-load("@protobuf_bzl//:protobuf.bzl", "py_proto_library")
 
 py_proto_library(
     name = "config_py_pb2",
