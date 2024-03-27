@@ -19,9 +19,10 @@ This is a custom estimator with a custom model fn that defines its own
 eval_metric_ops which passes "transformed" predictions and labels to the
 metrics.
 """
-
+# Keep deprecated tf estirmator code for backward compatibility.
+# pylint: disable=g-deprecated-tf-checker
 import tensorflow as tf
-from tensorflow import estimator as tf_estimator
+from tensorflow_estimator import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.eval_saved_model.example_trainers import util
 

@@ -15,14 +15,15 @@
 
 Note that we actually train and export models within these tests.
 """
-
+# Keep deprecated tf estirmator code for backward compatibility.
+# pylint: disable=g-deprecated-tf-checker
 import os
 
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow import estimator as tf_estimator
+from tensorflow_estimator import estimator as tf_estimator
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
@@ -39,8 +40,8 @@ from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_c
 from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_regressor
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
+from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
-import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
