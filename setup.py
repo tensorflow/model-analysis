@@ -312,6 +312,7 @@ setup_args = {
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
         'tensorflow~=2.15',
+        'tensorflow-estimator>=2.10',
         'tensorflow-metadata'
         + select_constraint(
             default='>=1.14.0,<1.15.0',
