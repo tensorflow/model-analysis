@@ -17,7 +17,9 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
-from tensorflow import estimator as tf_estimator
+# Keep deprecated tf estirmator code for backward compatibility.
+# pylint: disable=g-deprecated-tf-checker
+from tensorflow_estimator import estimator as tf_estimator
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.utils import util
 

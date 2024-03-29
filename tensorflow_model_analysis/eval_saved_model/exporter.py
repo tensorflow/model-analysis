@@ -21,9 +21,12 @@ import types
 from typing import Callable, Dict, List, Optional, Union
 
 
-from tensorflow import estimator as tf_estimator
+# Keep deprecated tf estirmator code for backward compatibility.
+# pylint: disable=g-deprecated-tf-checker
+from tensorflow_estimator import estimator as tf_estimator
 from tensorflow_model_analysis.eval_saved_model import export
 from tensorflow_model_analysis.utils import util as tfma_util
+# pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.estimator import gc
 from tensorflow.python.framework import errors_impl
 from tensorflow.python.platform import gfile

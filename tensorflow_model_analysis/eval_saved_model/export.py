@@ -15,18 +15,21 @@
 
 # TODO(b/72233799): Have TF.Learn review this.
 
+# Keep deprecated tf estirmator code for backward compatibility.
+# pylint: disable=g-deprecated-tf-checker
 from typing import Any, Callable, Dict, Optional, Union
 
 import tensorflow as tf
-from tensorflow import estimator as tf_estimator
+from tensorflow_estimator import estimator as tf_estimator
 from tensorflow_model_analysis import version
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.utils import util as tfma_util
-
+# pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.estimator.export import export as export_lib
+
 
 # Return type of EvalInputReceiver function.
 EvalInputReceiverType = Union[  # pylint: disable=invalid-name
