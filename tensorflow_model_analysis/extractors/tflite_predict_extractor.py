@@ -71,6 +71,10 @@ class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   def _make_interpreter(self, **kwargs) -> tf.lite.Interpreter:
     return tf.lite.Interpreter(**kwargs)
 
+  def _post_process_result(self, input_tensor: np.ndarray) -> np.ndarray:
+    """Custom post processor for TFLite predictions, default is no-op."""
+    return input_tensor
+
   def _get_input_name_from_input_detail(self, input_detail):
     """Get input name from input detail.
 
@@ -85,7 +89,7 @@ class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
     # of the input names. TFLite rewriter assumes that the default signature key
     # ('serving_default') will be used as an exported name when saving.
     if input_name.startswith('serving_default_'):
-      input_name = input_name[len('serving_default_'):]
+      input_name = input_name[len('serving_default_') :]
     # Remove argument that starts with ':'.
     input_name = input_name.split(':')[0]
     return input_name
@@ -187,9 +191,11 @@ class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
       for o in output_details:
         tensor = interpreter.get_tensor(o[_INDEX])
         params = o[_QUANTIZATION_PARAMETERS]
-        outputs[o['name']] = self._dequantize(
+        dequantized_tensor = self._dequantize(
             tensor, params[_SCALES], params[_ZERO_POINTS]
         )
+
+        outputs[o['name']] = self._post_process_result(dequantized_tensor)
 
       for v in outputs.values():
         if len(v) != batch_size:
