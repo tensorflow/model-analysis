@@ -311,18 +311,18 @@ setup_args = {
         'sacrebleu>=2.3,<4',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
-        'tensorflow~=2.15',
+        'tensorflow>=2.15,<2.16',
         'tensorflow-estimator>=2.10',
         'tensorflow-metadata'
         + select_constraint(
-            default='>=1.14.0,<1.15.0',
-            nightly='>=1.15.0.dev',
+            default='>=1.15.0,<1.16.0',
+            nightly='>=1.16.0.dev',
             git_master='@git+https://github.com/tensorflow/metadata@master',
         ),
         'tfx-bsl'
         + select_constraint(
-            default='>=1.14.0,<1.15.0',
-            nightly='>=1.15.0.dev',
+            default='>=1.15.1,<1.16.0',
+            nightly='>=1.16.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master',
         ),
     ],

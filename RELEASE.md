@@ -4,6 +4,16 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other Changes
+
+## Breaking Changes
+
+## Deprecations
+
+# Version 0.46.0
+
+## Major Features and Improvements
+
 *   Removes the metrics modules from experimental now that it is migrated to
     [py-ml-metrics](https://pypi.org/project/py-ml-metrics/) package.
 *   Adds Constituent Flip Rate Metrics: SymmetricFlipRate, NegToNegFlipRate,
@@ -12,7 +22,10 @@
 
 ## Bug fixes and other Changes
 
-*   Fix the bug about batching unsized numpy arrays. ## Breaking Changes
+*   Fix the bug about batching unsized numpy arrays.
+
+## Breaking Changes
+
 *   Removes `attrs` requirement.
 *   Consolidate Matrix definition for semantic segmentation confusion matrix
     metrics.
@@ -20,7 +33,7 @@
     metrics combiner for in-process call.
 *   Move Mean metrics from experimental to metrics.
 *   Fix the bug of size estimator failure.
-*   Depends on `tensorflow~=2.15.0`.
+*   Depends on `tensorflow>=2.15.0,<2.16`.
 *   Fix the failure in testMeanAttributions.
 *   Fix the input type mismatch in metric_specs_tests between bool and None.
 *   Fix the failure in the slice test due to beam type hints check.
@@ -35,6 +48,8 @@
     DerivedMetricComputation (flip_rates).
 
 ## Deprecations
+
+*   Deprecated python 3.8 support.
 
 # Version 0.45.0
 
