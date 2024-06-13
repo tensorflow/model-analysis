@@ -18,6 +18,7 @@
     [py-ml-metrics](https://pypi.org/project/py-ml-metrics/) package.
 *   Adds Constituent Flip Rate Metrics: SymmetricFlipRate, NegToNegFlipRate,
     NegToPosFlipRate, PosToNegFlipRate, PosToPosFlipRate.
+*   Adds Model Cosine Similarity Metrics.
 *   Depend on tensorflow-estimator package explicitly.
 
 ## Bug fixes and other Changes
