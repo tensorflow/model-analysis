@@ -311,7 +311,12 @@ setup_args = {
         'sacrebleu>=2.3,<4',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
-        'tensorflow>=2.15,<2.16',
+        'tensorflow'
+        + select_constraint(
+            default='>=2.15,<2.16',
+            nightly='>=2.16.0.dev',
+            git_master='@git+https://github.com/tensorflow/tensorflow@master',
+        ),
         'tensorflow-estimator>=2.10',
         'tensorflow-metadata'
         + select_constraint(
