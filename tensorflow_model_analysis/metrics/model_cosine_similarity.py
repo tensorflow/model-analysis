@@ -19,7 +19,6 @@ from typing import Any, Optional
 
 import apache_beam as beam
 import numpy as np
-from tensorflow_model_analysis import metrics
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
@@ -55,7 +54,7 @@ class _CosineSimilarityAccumulator:
     return self.sum_cosine_similarity / self.num_examples
 
 
-class ModelCosineSimilarity(metrics.Metric):
+class ModelCosineSimilarity(metric_types.Metric):
   """ModelCosineSimilarity compares predictions from baseline and candidate models using cosine similarity."""
 
   def __init__(self, name: str = _COSINE_SIMILARITY_METRIC_NAME):
@@ -68,7 +67,7 @@ class ModelCosineSimilarity(metrics.Metric):
       model_names: Iterable[str],
       output_names: Optional[Iterable[str]] = ('',),
       sub_keys: Optional[Iterable[metric_types.SubKey]] = None,
-  ) -> metrics.MetricComputations:
+  ) -> metric_types.MetricComputations:
     """Returns the metric computations for calculating the cosine similarity.
 
     Args:
@@ -101,7 +100,7 @@ class ModelCosineSimilarity(metrics.Metric):
 
           # Append cosine similarity calculation to computations.
           computations.append(
-              metrics.MetricComputation(
+              metric_types.MetricComputation(
                   keys=[key],
                   preprocessors=None,
                   combiner=_ModelCosineSimilarityCombiner(
@@ -122,7 +121,7 @@ class _ModelCosineSimilarityCombiner(beam.CombineFn):
 
   def __init__(
       self,
-      metric_key: metrics.MetricKey,
+      metric_key: metric_types.MetricKey,
       eval_config: config_pb2.EvalConfig,
       baseline_model_name: str,
       model_name: str,
@@ -184,5 +183,9 @@ class _ModelCosineSimilarityCombiner(beam.CombineFn):
 
   def extract_output(
       self, accumulator: _CosineSimilarityAccumulator
-  ) -> dict[metrics.MetricKey, float]:
+  ) -> dict[metric_types.MetricKey, float]:
     return {self._metric_key: accumulator.get_average()}
+
+
+# Register Model Cosine Similarity metric.
+metric_types.register_metric(ModelCosineSimilarity)
