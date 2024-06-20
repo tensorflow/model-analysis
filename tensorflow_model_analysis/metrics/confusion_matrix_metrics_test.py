@@ -25,14 +25,18 @@ from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.metrics import test_util
 
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 _TRUE_POISITIVE = (1, 1)
 _TRUE_NEGATIVE = (0, 0)
 
 
-class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
-                                 parameterized.TestCase):
+class ConfusionMatrixMetricsTest(
+    testutil.TensorflowModelAnalysisTest,
+    test_util.TestCase,
+    parameterized.TestCase,
+):
 
   @parameterized.named_parameters(
       (
@@ -952,6 +956,68 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
+
+  @parameterized.named_parameters(
+      (
+          'false_positives',
+          confusion_matrix_metrics.FalsePositiveFeatureSampler(
+              threshold=0.5, feature_key='example_id', sample_size=2
+          ),
+          'false_positive_feature_sampler',
+          np.array(['example1', 'example2'], dtype=str),
+      ),
+      (
+          'false_negatives',
+          confusion_matrix_metrics.FalseNegativeFeatureSampler(
+              threshold=0.5, feature_key='example_id', sample_size=2
+          ),
+          'false_negative_feature_sampler',
+          np.array(['example3', 'example4'], dtype=str),
+      ),
+  )
+  def testConfusionMatrixFeatureSamplers(
+      self, metric, expected_metric_name, expected_value
+  ):
+    # false positive
+    example1 = {
+        'labels': np.array([0.0]),
+        'predictions': np.array([1.0]),
+        'example_weights': np.array([1.0]),
+        'features': {'example_id': np.array(['example1'])},
+    }
+    # false positive
+    example2 = {
+        'labels': np.array([0.0]),
+        'predictions': np.array([1.0]),
+        'example_weights': np.array([1.0]),
+        'features': {'example_id': np.array(['example2'])},
+    }
+    # false negative
+    example3 = {
+        'labels': np.array([1.0]),
+        'predictions': np.array([0.0]),
+        'example_weights': np.array([1.0]),
+        'features': {'example_id': np.array(['example3'])},
+    }
+    # false negative
+    example4 = {
+        'labels': np.array([1.0]),
+        'predictions': np.array([0.0]),
+        'example_weights': np.array([1.0]),
+        'features': {'example_id': np.array(['example4'])},
+    }
+
+    expected_metrics = {
+        metric_types.MetricKey(
+            name=expected_metric_name, example_weighted=True
+        ): expected_value,
+    }
+    self.assertDerivedMetricsEqual(
+        expected_metrics=expected_metrics,
+        extracts=[example1, example2, example3, example4],
+        metric=metric,
+        enable_debug_print=True,
+    )
 
 
 if __name__ == '__main__':

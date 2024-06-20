@@ -4,6 +4,8 @@
 
 ## Major Features and Improvements
 
+*   Adds `False{Negative,Positive}FeatureSampler` metrics.
+
 ## Bug fixes and other Changes
 
 ## Breaking Changes
