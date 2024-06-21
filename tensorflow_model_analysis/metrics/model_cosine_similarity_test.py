@@ -101,7 +101,10 @@ class ModelCosineSimilarityMetricsTest(parameterized.TestCase):
     examples = []
     for baseline_prediction, candidate_prediction in prediction_pairs:
       examples.append({
-          constants.LABELS_KEY: [0],
+          constants.LABELS_KEY: {
+              baseline_model_name: None,
+              candidate_model_name: None,
+          },
           constants.PREDICTIONS_KEY: {
               baseline_model_name: baseline_prediction,
               candidate_model_name: candidate_prediction,

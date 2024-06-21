@@ -148,7 +148,7 @@ class _ModelCosineSimilarityCombiner(beam.CombineFn):
             model_name=self._baseline_model_name,
             output_name=self._output_name,
             flatten=False,
-            allow_none=False,
+            allow_none=True,
         )
     )
 
@@ -159,7 +159,7 @@ class _ModelCosineSimilarityCombiner(beam.CombineFn):
             model_name=self._model_name,
             output_name=self._output_name,
             flatten=False,
-            allow_none=False,
+            allow_none=True,
         )
     )
     accumulator.merge(
