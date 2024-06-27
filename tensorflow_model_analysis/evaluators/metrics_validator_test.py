@@ -664,6 +664,60 @@ class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
     result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
     self.assertTrue(result.validation_ok)
 
+  @parameterized.named_parameters(
+      _NO_SLICE_TEST,
+      _GLOBAL_SLICE_TEST,
+      _FEATURE_SLICE_TEST,
+      _FEATURE_VALUE_SLICE_TEST,
+      _MULTIPLE_SLICES_TEST,
+  )
+  def testValidateNativeDiffMetricsChangeThresholdAbsolutePass(
+      self, slicing_specs, slice_key
+  ):
+    # We must import metric so that it is registered and can be deserialized
+    # from class name specified in the config.
+    from tensorflow_model_analysis.metrics import model_cosine_similarity  # pylint: disable=g-import-not-at-top, unused-import
+    # Diff = 0.99 >= 0.9, OK.
+    threshold = config_pb2.MetricThreshold(
+        change_threshold=config_pb2.GenericChangeThreshold(
+            direction=config_pb2.MetricDirection.HIGHER_IS_BETTER,
+            absolute={'value': 0.9},
+        )
+    )
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(),
+            config_pb2.ModelSpec(name='baseline', is_baseline=True),
+        ],
+        slicing_specs=slicing_specs,
+        metrics_specs=[
+            config_pb2.MetricsSpec(
+                metrics=[
+                    config_pb2.MetricConfig(
+                        class_name='ModelCosineSimilarity',
+                        threshold=threshold if slicing_specs is None else None,
+                        per_slice_thresholds=[
+                            config_pb2.PerSliceMetricThreshold(
+                                slicing_specs=slicing_specs, threshold=threshold
+                            )
+                        ],
+                    )
+                ],
+                model_names=[''],
+            ),
+        ],
+    )
+    sliced_metrics = (
+        slice_key,
+        {
+            metric_types.MetricKey(
+                name='model_cosine_similarity', is_diff=True
+            ): 0.99,
+        },
+    )
+    result = metrics_validator.validate_metrics(sliced_metrics, eval_config)
+    self.assertTrue(result.validation_ok)
+
   @parameterized.named_parameters(_NO_SLICE_TEST, _GLOBAL_SLICE_TEST,
                                   _FEATURE_SLICE_TEST,
                                   _FEATURE_VALUE_SLICE_TEST,

@@ -61,27 +61,42 @@ def validate_metrics(
       return metric >= lower_bound and metric <= upper_bound
     elif isinstance(threshold, config_pb2.GenericChangeThreshold):
       diff = metric
-      metric_baseline = float(
-          metrics[key.make_baseline_key(baseline_model_name)])
-      if math.isclose(metric_baseline, 0.0):
-        ratio = float('nan')
-      else:
-        ratio = diff / metric_baseline
-      if threshold.direction == config_pb2.MetricDirection.LOWER_IS_BETTER:
-        absolute, relative = np.inf, np.inf
-      elif threshold.direction == config_pb2.MetricDirection.HIGHER_IS_BETTER:
-        absolute, relative = -np.inf, -np.inf
-      else:
-        raise ValueError(
-            '"UNKNOWN" direction for change threshold: {}.'.format(threshold))
+
       if threshold.HasField('absolute'):
         absolute = threshold.absolute.value
+        if threshold.direction == config_pb2.MetricDirection.LOWER_IS_BETTER:
+          abs_result = diff <= absolute
+        elif threshold.direction == config_pb2.MetricDirection.HIGHER_IS_BETTER:
+          abs_result = diff >= absolute
+        else:
+          raise ValueError(
+              'Unexpected change threshold direction: {}.'.format(threshold)
+          )
+      else:
+        abs_result = True
+
       if threshold.HasField('relative'):
+        metric_baseline = float(
+            metrics[key.make_baseline_key(baseline_model_name)]
+        )
+        if math.isclose(metric_baseline, 0.0):
+          ratio = float('nan')
+        else:
+          ratio = diff / metric_baseline
+
         relative = threshold.relative.value
-      if threshold.direction == config_pb2.MetricDirection.LOWER_IS_BETTER:
-        return diff <= absolute and ratio <= relative
-      elif threshold.direction == config_pb2.MetricDirection.HIGHER_IS_BETTER:
-        return diff >= absolute and ratio >= relative
+        if threshold.direction == config_pb2.MetricDirection.LOWER_IS_BETTER:
+          rel_result = ratio <= relative
+        elif threshold.direction == config_pb2.MetricDirection.HIGHER_IS_BETTER:
+          rel_result = ratio >= relative
+        else:
+          raise ValueError(
+              'Unexpected change threshold direction: {}.'.format(threshold)
+          )
+      else:
+        rel_result = True
+
+      return abs_result and rel_result
     else:
       raise ValueError('Unknown threshold: {}'.format(threshold))
 

@@ -8,6 +8,10 @@
 
 ## Bug fixes and other Changes
 
+*   Adds support for absolute change threshold validation on native diff metrics
+    like flip rate metrics (e.g. `SymmetricFlipRate`) and
+    `ModelCosineSimilarity`.
+
 ## Breaking Changes
 
 ## Deprecations
