@@ -27,11 +27,13 @@ from tensorflow_model_analysis.eval_saved_model import util
 from tensorflow_model_analysis.utils import model_util
 
 
+# pylint: disable=invalid-name
 class TensorflowModelAnalysisTest(tf.test.TestCase):
   """Test class that extends tf.test.TestCase with extra functionality."""
 
   def setUp(self) -> None:
-    self.longMessage = True  # pylint: disable=invalid-name
+    super().setUp()
+    self.longMessage = True
 
   def _getTempDir(self) -> str:
     return tempfile.mkdtemp()
@@ -117,6 +119,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
                                 places: int = 5,
                                 delta: float = 0,
                                 msg_prefix='') -> None:
+    """Assert that two sequences are almost equal."""
     got = list(got_seq)
     expected = list(expected_seq)
     self.assertEqual(
@@ -138,6 +141,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
       got_sparse_tensor_value: Union[types.SparseTensorValue,
                                      tf.compat.v1.SparseTensorValue]
   ) -> None:
+    """Assert that two SparseTensorValues are equal."""
     self.assertAllEqual(expected_sparse_tensor_value.indices,
                         got_sparse_tensor_value.indices)
     self.assertAllEqual(expected_sparse_tensor_value.values,
@@ -165,6 +169,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
       model_name: str = '',
       rubber_stamp: Optional[bool] = False,
       is_baseline: Optional[bool] = False) -> types.EvalSharedModel:
+    """Create a test EvalSharedModel."""
 
     if not model_type:
       model_type = model_util.get_model_type(None, eval_saved_model_path, tags)
@@ -208,7 +213,7 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
       raw_example_bytes.
     """
     fetched_list = eval_saved_model.predict(raw_example_bytes)
-    self.assertEqual(1, len(fetched_list))
+    self.assertLen(fetched_list, 1)
     self.assertEqual(0, fetched_list[0].input_ref)
     return eval_saved_model.as_features_predictions_labels(fetched_list)[0]
 
