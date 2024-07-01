@@ -20,21 +20,23 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import labels_extractor
 from tensorflow_model_analysis.proto import config_pb2
-from tfx_bsl.tfxio import test_util
+from tensorflow_model_analysis.utils import test_util
+from tfx_bsl.tfxio import test_util as tfx_bsl_test_util
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
-                          parameterized.TestCase):
+class LabelsExtractorTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
-  @parameterized.named_parameters(('with_label', 'label'),
-                                  ('without_label', None))
+  @parameterized.named_parameters(
+      ('with_label', 'label'), ('without_label', None)
+  )
   def testLabelsExtractor(self, label):
     model_spec = config_pb2.ModelSpec(label_key=label)
     eval_config = config_pb2.EvalConfig(model_specs=[model_spec])
@@ -55,9 +57,12 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "fixed_int"
           type: INT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        """,
+        schema_pb2.Schema(),
+    )
+    tfx_io = tfx_bsl_test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
 
     def maybe_add_key(d, key, value):
       if key is not None:
@@ -65,30 +70,46 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
       return d
 
     example_kwargs = [
-        maybe_add_key({
-            'fixed_int': 1,
-        }, label, 1.0),
-        maybe_add_key({
-            'fixed_int': 1,
-        }, label, 0.0),
-        maybe_add_key({
-            'fixed_int': 2,
-        }, label, 0.0),
+        maybe_add_key(
+            {
+                'fixed_int': 1,
+            },
+            label,
+            1.0,
+        ),
+        maybe_add_key(
+            {
+                'fixed_int': 1,
+            },
+            label,
+            0.0,
+        ),
+        maybe_add_key(
+            {
+                'fixed_int': 2,
+            },
+            label,
+            0.0,
+        ),
     ]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([
-              self._makeExample(**kwargs).SerializeToString()
-              for kwargs in example_kwargs
-          ],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [
+                  self._makeExample(**kwargs).SerializeToString()
+                  for kwargs in example_kwargs
+              ],
+              reshuffle=False,
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | label_extractor.stage_name >> label_extractor.ptransform)
+          | label_extractor.stage_name >> label_extractor.ptransform
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -98,8 +119,9 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
           if label is None:
             self.assertIsNone(got[0][constants.LABELS_KEY])
           else:
-            self.assertAllClose(got[0][constants.LABELS_KEY],
-                                np.array([[1.0], [0.0], [0.0]]))
+            self.assertAllClose(
+                got[0][constants.LABELS_KEY], np.array([[1.0], [0.0], [0.0]])
+            )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -107,11 +129,13 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   def testLabelsExtractorMultiOutput(self):
-    model_spec = config_pb2.ModelSpec(label_keys={
-        'output1': 'label1',
-        'output2': 'label2',
-        'output3': 'label3',
-    })
+    model_spec = config_pb2.ModelSpec(
+        label_keys={
+            'output1': 'label1',
+            'output2': 'label2',
+            'output3': 'label3',
+        }
+    )
     eval_config = config_pb2.EvalConfig(model_specs=[model_spec])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     label_extractor = labels_extractor.LabelsExtractor(eval_config)
@@ -130,25 +154,31 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "fixed_int"
           type: INT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        """,
+        schema_pb2.Schema(),
+    )
+    tfx_io = tfx_bsl_test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
 
     examples = [
         self._makeExample(label1=1.0, label2=0.0, fixed_int=1),
-        self._makeExample(label1=1.0, label2=1.0, fixed_int=1)
+        self._makeExample(label1=1.0, label2=1.0, fixed_int=1),
     ]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | label_extractor.stage_name >> label_extractor.ptransform)
+          | label_extractor.stage_name >> label_extractor.ptransform
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -160,10 +190,12 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
           self.assertIsNone(got[0][constants.LABELS_KEY]['output3'])
           del got[0][constants.LABELS_KEY]['output3']
           self.assertAllClose(
-              got[0][constants.LABELS_KEY], {
+              got[0][constants.LABELS_KEY],
+              {
                   'output1': np.array([[1.0], [1.0]]),
-                  'output2': np.array([[0.0], [1.0]])
-              })
+                  'output2': np.array([[0.0], [1.0]]),
+              },
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -173,10 +205,8 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
   def testLabelsExtractorMultiModel(self):
     model_spec1 = config_pb2.ModelSpec(name='model1', label_key='label')
     model_spec2 = config_pb2.ModelSpec(
-        name='model2', label_keys={
-            'output1': 'label1',
-            'output2': 'label2'
-        })
+        name='model2', label_keys={'output1': 'label1', 'output2': 'label2'}
+    )
     eval_config = config_pb2.EvalConfig(model_specs=[model_spec1, model_spec2])
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     label_extractor = labels_extractor.LabelsExtractor(eval_config)
@@ -199,25 +229,31 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "fixed_int"
           type: INT
         }
-        """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        """,
+        schema_pb2.Schema(),
+    )
+    tfx_io = tfx_bsl_test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
 
     examples = [
         self._makeExample(label=1.0, label1=1.0, label2=0.0, fixed_int=1),
-        self._makeExample(label=1.0, label1=1.0, label2=1.0, fixed_int=1)
+        self._makeExample(label=1.0, label1=1.0, label2=1.0, fixed_int=1),
     ]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | label_extractor.stage_name >> label_extractor.ptransform)
+          | label_extractor.stage_name >> label_extractor.ptransform
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -226,13 +262,16 @@ class LabelsExtractorTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           for model_name in ('model1', 'model2'):
             self.assertIn(model_name, got[0][constants.LABELS_KEY])
-          self.assertAllClose(got[0][constants.LABELS_KEY]['model1'],
-                              np.array([[1.0], [1.0]]))
           self.assertAllClose(
-              got[0][constants.LABELS_KEY]['model2'], {
+              got[0][constants.LABELS_KEY]['model1'], np.array([[1.0], [1.0]])
+          )
+          self.assertAllClose(
+              got[0][constants.LABELS_KEY]['model2'],
+              {
                   'output1': np.array([[1.0], [1.0]]),
-                  'output2': np.array([[0.0], [1.0]])
-              })
+                  'output2': np.array([[0.0], [1.0]]),
+              },
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

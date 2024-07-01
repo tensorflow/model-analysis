@@ -17,11 +17,11 @@ import os
 
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer.slicer_lib import OVERALL_SLICE_NAME
 from tensorflow_model_analysis.slicer.slicer_lib import SingleSliceSpec
+from tensorflow_model_analysis.utils import test_util
 from tensorflow_model_analysis.view import util
 from tensorflow_model_analysis.view import view_types
 
@@ -36,7 +36,7 @@ def _add_to_nested_dict(metrics):
   }
 
 
-class UtilTest(testutil.TensorflowModelAnalysisTest):
+class UtilTest(test_util.TensorflowModelAnalysisTest):
   column_1 = 'col1'
   column_2 = 'col2'
 

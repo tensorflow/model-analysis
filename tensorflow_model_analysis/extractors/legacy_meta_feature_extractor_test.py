@@ -19,10 +19,10 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import legacy_meta_feature_extractor as meta_feature_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import test_util
 
 
 def make_features_dict(features_dict):
@@ -72,7 +72,7 @@ def get_num_interests(fpl):
   return new_features
 
 
-class MetaFeatureExtractorTest(testutil.TensorflowModelAnalysisTest):
+class MetaFeatureExtractorTest(test_util.TensorflowModelAnalysisTest):
 
   def testMetaFeatures(self):
     with beam.Pipeline() as pipeline:

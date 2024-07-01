@@ -21,11 +21,11 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import sql_slice_key_extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
+from tensorflow_model_analysis.utils import test_util
 from tfx_bsl.tfxio import tf_example_record
 
 from google.protobuf import text_format
@@ -48,7 +48,7 @@ _SCHEMA = text_format.Parse(
         """, schema_pb2.Schema())
 
 
-class SqlSliceKeyExtractorTest(testutil.TensorflowModelAnalysisTest):
+class SqlSliceKeyExtractorTest(test_util.TensorflowModelAnalysisTest):
 
   def testSqlSliceKeyExtractor(self):
     eval_config = config_pb2.EvalConfig(slicing_specs=[

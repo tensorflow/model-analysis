@@ -20,18 +20,19 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.proto import config_pb2
-from tfx_bsl.tfxio import test_util
+from tensorflow_model_analysis.utils import test_util
+from tfx_bsl.tfxio import test_util as tfx_bsl_test_util
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
-                                  parameterized.TestCase):
+class ExampleWeightsExtractorTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   @parameterized.named_parameters(('with_example_weight', 'example_weight'),
                                   ('without_example_weight', None))
@@ -57,8 +58,9 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
           type: INT
         }
         """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    tfx_io = tfx_bsl_test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
 
     def maybe_add_key(d, key, value):
       if key is not None:
@@ -135,8 +137,9 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
           type: INT
         }
         """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    tfx_io = tfx_bsl_test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
 
     examples = [
         self._makeExample(
@@ -206,8 +209,9 @@ class ExampleWeightsExtractorTest(testutil.TensorflowModelAnalysisTest,
           type: INT
         }
         """, schema_pb2.Schema())
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+    tfx_io = tfx_bsl_test_util.InMemoryTFExampleRecord(
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
 
     examples = [
         self._makeExample(
