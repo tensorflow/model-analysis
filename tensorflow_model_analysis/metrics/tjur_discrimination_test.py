@@ -19,13 +19,14 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tjur_discrimination
+from tensorflow_model_analysis.utils import test_util
 
 
-class TjurDisriminationTest(testutil.TensorflowModelAnalysisTest,
-                            parameterized.TestCase):
+class TjurDisriminationTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       ('coefficient_of_discrimination',

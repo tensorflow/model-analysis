@@ -14,12 +14,12 @@
 """Test for evaluator."""
 
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor
+from tensorflow_model_analysis.utils import test_util
 
 
-class EvaluatorTest(testutil.TensorflowModelAnalysisTest):
+class EvaluatorTest(test_util.TensorflowModelAnalysisTest):
 
   def testVerifyEvaluatorRaisesValueError(self):
     extractors = [

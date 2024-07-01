@@ -17,11 +17,11 @@ import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import analysis_table_evaluator
+from tensorflow_model_analysis.utils import test_util
 
 
-class AnalysisTableEvaulatorTest(testutil.TensorflowModelAnalysisTest):
+class AnalysisTableEvaulatorTest(test_util.TensorflowModelAnalysisTest):
 
   def testIncludeFilter(self):
     with beam.Pipeline() as pipeline:

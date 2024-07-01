@@ -15,11 +15,11 @@
 
 import apache_beam as beam
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.utils import test_util
 from tensorflow_model_analysis.writers import writer
 
 
-class WriterTest(testutil.TensorflowModelAnalysisTest):
+class WriterTest(test_util.TensorflowModelAnalysisTest):
 
   def testWriteIgnoresMissingKeys(self):
     with beam.Pipeline() as pipeline:

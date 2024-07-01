@@ -15,14 +15,13 @@
 
 from absl.testing import parameterized
 import tensorflow as tf
-
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_validator
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import test_util
 from google.protobuf import text_format
 
 # Tests involiving slices: (<test_name>, <slice_config> , <slice_key>)
@@ -95,8 +94,9 @@ _UNMATCHED_CROSS_SLICE_TEST = ('unmatched_cross_slice', [
 ], ((('feature1', 'value1'),), (('feature3', 'value3'),)))
 
 
-class MetricsValidatorTest(testutil.TensorflowModelAnalysisTest,
-                           parameterized.TestCase):
+class MetricsValidatorTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def testValidateMetricsInvalidThreshold(self):
     eval_config = config_pb2.EvalConfig(
