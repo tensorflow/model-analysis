@@ -15,6 +15,8 @@
 ## Breaking Changes
 
 ## Deprecations
+*   Migrate common utils in eval_saved_model testutils to utils/test_util.py.
+    This enables further deprecation of eval saved model.
 
 # Version 0.46.0
 
