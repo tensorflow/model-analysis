@@ -20,12 +20,12 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.metrics import bleu
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import test_util
 
 from google.protobuf import text_format
 
@@ -79,7 +79,7 @@ def _get_result(pipeline, examples, combiner):
 
 
 class FindClosestRefLenTest(
-    testutil.TensorflowModelAnalysisTest, parameterized.TestCase
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
 ):
 
   @parameterized.parameters((0, 2), (5, 4), (10, 10))
@@ -90,7 +90,7 @@ class FindClosestRefLenTest(
     )
 
 
-class BleuTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
+class BleuTest(test_util.TensorflowModelAnalysisTest, parameterized.TestCase):
 
   def _check_got(self, got, expected_key):
     self.assertLen(got, 1)

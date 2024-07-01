@@ -18,16 +18,17 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import attributions
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.utils import test_util
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 
-class AttributionsTest(testutil.TensorflowModelAnalysisTest,
-                       parameterized.TestCase):
+class AttributionsTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def testHasAttributionsMetrics(self):
     specs_with_attributions = metric_specs.specs_from_metrics({

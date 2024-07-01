@@ -19,10 +19,10 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import stats
+from tensorflow_model_analysis.utils import test_util
 
 from google.protobuf import text_format
 
@@ -78,7 +78,7 @@ def _compute_mean_metric(pipeline, computation):
 
 
 class MeanTestValidExamples(
-    testutil.TensorflowModelAnalysisTest, parameterized.TestCase
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
 ):
 
   def _check_got(self, got, rouge_computation):
@@ -174,7 +174,7 @@ class MeanTestValidExamples(
 
 
 class MeanTestInvalidExamples(
-    testutil.TensorflowModelAnalysisTest, parameterized.TestCase
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
 ):
 
   def testMeanNotOneFeatureValue(self):

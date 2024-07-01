@@ -22,12 +22,12 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import rouge
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import test_util
 
 from google.protobuf import text_format
 from rouge_score import tokenizers
@@ -43,7 +43,7 @@ def _get_result(pipeline, examples, combiner):
   )
 
 
-class RogueTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
+class RogueTest(test_util.TensorflowModelAnalysisTest, parameterized.TestCase):
 
   def _check_got(self, got, rouge_computation):
     """Checks that the slice key is an empty tuple and the expected MetricKey is in the metric."""

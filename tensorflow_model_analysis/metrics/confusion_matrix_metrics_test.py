@@ -20,12 +20,13 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.metrics import test_util
+from tensorflow_model_analysis.metrics import test_util as metric_test_util
+from tensorflow_model_analysis.utils import test_util
+
 
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 _TRUE_POISITIVE = (1, 1)
@@ -33,8 +34,8 @@ _TRUE_NEGATIVE = (0, 0)
 
 
 class ConfusionMatrixMetricsTest(
-    testutil.TensorflowModelAnalysisTest,
-    test_util.TestCase,
+    test_util.TensorflowModelAnalysisTest,
+    metric_test_util.TestCase,
     parameterized.TestCase,
 ):
 
