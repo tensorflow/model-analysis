@@ -15,12 +15,12 @@
 
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import tf_metric_accumulators
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util
 
 
-class TfMetricAccumulatorsTest(testutil.TensorflowModelAnalysisTest):
+class TfMetricAccumulatorsTest(test_util.TensorflowModelAnalysisTest):
 
   def testTFMetricsAccumulator(self):
     # This test uses strings as inputs, but it works similarly to how an

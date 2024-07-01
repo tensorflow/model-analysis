@@ -18,11 +18,11 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import tf_metric_wrapper
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 
@@ -34,7 +34,8 @@ class _CustomMetric(tf_keras.metrics.Mean):
 
   def update_state(self, y_true, y_pred, sample_weight):
     return super().update_state(
-        y_pred if self.update_y_pred else y_true, sample_weight=sample_weight)
+        y_pred if self.update_y_pred else y_true, sample_weight=sample_weight
+    )
 
   def get_config(self):
     cfg = super().get_config()
@@ -66,8 +67,9 @@ class _CustomMeanSquaredError(tf_keras.metrics.MeanSquaredError):
     return {'mse': mse, 'one_minus_mse': 1 - mse}
 
 
-class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
-                                 parameterized.TestCase):
+class ConfusionMatrixMetricsTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   #  This is needed because of pickling errors when using
   #  parameterized.named_parameters with TF metric types.
@@ -128,7 +130,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       if not fix_present:
         expected_value = 0.5
     computations = tf_metric_wrapper.tf_metric_computations(
-        [self._tf_metric_by_name(metric_name)], example_weighted=False)
+        [self._tf_metric_by_name(metric_name)], example_weighted=False
+    )
     histogram = computations[0]
     matrix = computations[1]
     metric = computations[2]
@@ -176,7 +179,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
           key = metric_types.MetricKey(name=metric_name, example_weighted=False)
           self.assertDictElementsAlmostEqual(
-              got_metrics, {key: expected_value}, places=5)
+              got_metrics, {key: expected_value}, places=5
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -206,7 +210,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
         expected_value = 0.0
 
     computations = tf_metric_wrapper.tf_metric_computations(
-        [self._tf_metric_by_name(metric_name)], example_weighted=True)
+        [self._tf_metric_by_name(metric_name)], example_weighted=True
+    )
     histogram = computations[0]
     matrix = computations[1]
     metric = computations[2]
@@ -249,7 +254,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
           key = metric_types.MetricKey(name=metric_name, example_weighted=True)
           self.assertDictElementsAlmostEqual(
-              got_metrics, {key: expected_value}, places=5)
+              got_metrics, {key: expected_value}, places=5
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -266,7 +272,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   )
   def testMetricsWithFractionalLabels(self, metric_name, expected_value):
     computations = tf_metric_wrapper.tf_metric_computations(
-        [self._tf_metric_by_name(metric_name)])
+        [self._tf_metric_by_name(metric_name)]
+    )
     histogram = computations[0]
     matrix = computations[1]
     metric = computations[2]
@@ -317,7 +324,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
           key = metric_types.MetricKey(name=metric_name)
           self.assertDictElementsAlmostEqual(
-              got_metrics, {key: expected_value}, places=5)
+              got_metrics, {key: expected_value}, places=5
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -330,12 +338,14 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       ('precision@3', 'precision', 3, 1.9 / (1.9 + 5.3)),
       ('recall@3', 'recall', 3, 1.9 / (1.9 + 0.5)),
   )
-  def testMultiClassMetricsUsingConfusionMatrix(self, metric_name, top_k,
-                                                expected_value):
+  def testMultiClassMetricsUsingConfusionMatrix(
+      self, metric_name, top_k, expected_value
+  ):
     computations = tf_metric_wrapper.tf_metric_computations(
         [self._tf_metric_by_name(metric_name)],
         sub_key=metric_types.SubKey(top_k=top_k),
-        example_weighted=True)
+        example_weighted=True,
+    )
     histogram = computations[0]
     matrix = computations[1]
     metric = computations[2]
@@ -394,9 +404,11 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           key = metric_types.MetricKey(
               name=metric_name,
               sub_key=metric_types.SubKey(top_k=top_k),
-              example_weighted=True)
+              example_weighted=True,
+          )
           self.assertDictElementsAlmostEqual(
-              got_metrics, {key: expected_value}, places=5)
+              got_metrics, {key: expected_value}, places=5
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -411,7 +423,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
   )
   def testMultiClassMetricsUsingKerasConfig(self, metric_name, expected_value):
     metric = tf_metric_wrapper.tf_metric_computations(
-        [self._tf_metric_by_name(metric_name)], example_weighted=True)[0]
+        [self._tf_metric_by_name(metric_name)], example_weighted=True
+    )[0]
 
     # top_k = 2
     #   TP = 0.5*0 + 0.7*1 + 0.9*1 + 0.3*0 = 1.6
@@ -450,7 +463,8 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([example1, example2, example3, example4])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(metric.combiner))
+          | 'Combine' >> beam.CombinePerKey(metric.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -463,9 +477,11 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           key = metric_types.MetricKey(
               name=metric_name,
               sub_key=metric_types.SubKey(top_k=top_k),
-              example_weighted=True)
+              example_weighted=True,
+          )
           self.assertDictElementsAlmostEqual(
-              got_metrics, {key: expected_value}, places=5)
+              got_metrics, {key: expected_value}, places=5
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -473,8 +489,9 @@ class ConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
 
-class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
-                                    parameterized.TestCase):
+class NonConfusionMatrixMetricsTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def testSimpleMetric(self):
     computation = tf_metric_wrapper.tf_metric_computations(
@@ -484,7 +501,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     example = {
         'labels': [0, 0, 1, 1],
         'predictions': [0, 0.5, 0.3, 0.9],
-        'example_weights': [1.0]
+        'example_weights': [1.0],
     }
 
     with beam.Pipeline() as pipeline:
@@ -494,7 +511,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([example])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -522,7 +540,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     example = {
         'labels': [1],
         'predictions': [0.3, 0.6, 0.1],
-        'example_weights': [1.0]
+        'example_weights': [1.0],
     }
 
     with beam.Pipeline() as pipeline:
@@ -532,7 +550,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([example])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -573,7 +592,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     example = {
         'labels': [0, 0, 1, 0],
         'predictions': [0, 0.5, 0.3, 0.9],
-        'example_weights': [1.0]
+        'example_weights': [1.0],
     }
 
     with beam.Pipeline() as pipeline:
@@ -583,7 +602,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([example])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -604,8 +624,9 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       util.assert_that(result, check_result, label='result')
 
   def testCustomTFMetric(self):
-    metric = tf_metric_wrapper.tf_metric_computations([_CustomMetric()],
-                                                      example_weighted=True)[0]
+    metric = tf_metric_wrapper.tf_metric_computations(
+        [_CustomMetric()], example_weighted=True
+    )[0]
 
     example1 = {'labels': [0.0], 'predictions': [0.2], 'example_weights': [1.0]}
     example2 = {'labels': [0.0], 'predictions': [0.8], 'example_weights': [1.0]}
@@ -618,7 +639,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([example1, example2, example3])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(metric.combiner))
+          | 'Combine' >> beam.CombinePerKey(metric.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -629,10 +651,12 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
 
           custom_key = metric_types.MetricKey(
-              name='custom', example_weighted=True)
+              name='custom', example_weighted=True
+          )
           self.assertDictElementsAlmostEqual(
               got_metrics,
-              {custom_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0)})
+              {custom_key: (0.2 + 0.8 + 2 * 0.5) / (1.0 + 1.0 + 2.0)},
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -641,7 +665,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
 
   def testCustomConfusionMatrixTFMetric(self):
     metric = tf_metric_wrapper.tf_metric_computations(
-        [_CustomConfusionMatrixMetric()])[0]
+        [_CustomConfusionMatrixMetric()]
+    )[0]
 
     # tp = 1
     # fp = 1
@@ -655,7 +680,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([example1, example2])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(metric.combiner))
+          | 'Combine' >> beam.CombinePerKey(metric.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -666,8 +692,9 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
 
           custom_key = metric_types.MetricKey(name='custom')
-          self.assertDictElementsAlmostEqual(got_metrics,
-                                             {custom_key: 1.0 / (1.0 + 1.0)})
+          self.assertDictElementsAlmostEqual(
+              got_metrics, {custom_key: 1.0 / (1.0 + 1.0)}
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -683,11 +710,13 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           # weights_total = 1.0 * 4 = 4.0
           expected={
               metric_types.MetricKey(
-                  name='custom_label', example_weighted=True):
-                  -2.0 / 4.0,
-              metric_types.MetricKey(name='custom_pred', example_weighted=True):
-                  0.6 / 4.0
-          }),
+                  name='custom_label', example_weighted=True
+              ): (-2.0 / 4.0),
+              metric_types.MetricKey(
+                  name='custom_pred', example_weighted=True
+              ): (0.6 / 4.0),
+          },
+      ),
       dict(
           testcase_name='across_examples',
           # label_sum = (1 - 1 - 1 - 1) * 1.0 +
@@ -704,11 +733,13 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           example_indices=[0, 1, 2],
           expected={
               metric_types.MetricKey(
-                  name='custom_label', example_weighted=True):
-                  9.0 / 16.0,
-              metric_types.MetricKey(name='custom_pred', example_weighted=True):
-                  -0.9 / 16.0
-          }),
+                  name='custom_label', example_weighted=True
+              ): (9.0 / 16.0),
+              metric_types.MetricKey(
+                  name='custom_pred', example_weighted=True
+              ): (-0.9 / 16.0),
+          },
+      ),
   ])
   def testCustomTFMetricWithPadding(self, example_indices, expected):
     computation = tf_metric_wrapper.tf_metric_computations(
@@ -716,28 +747,36 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
             _CustomMetric(name='custom_label', update_y_pred=False),
             _CustomMetric(name='custom_pred', update_y_pred=True),
         ],
-        eval_config=config_pb2.EvalConfig(model_specs=[
-            config_pb2.ModelSpec(
-                padding_options=config_pb2.PaddingOptions(
-                    label_int_padding=-1,
-                    prediction_float_padding=-1.0,
-                ))
-        ]),
-        example_weighted=True)[0]
+        eval_config=config_pb2.EvalConfig(
+            model_specs=[
+                config_pb2.ModelSpec(
+                    padding_options=config_pb2.PaddingOptions(
+                        label_int_padding=-1,
+                        prediction_float_padding=-1.0,
+                    )
+                )
+            ]
+        ),
+        example_weighted=True,
+    )[0]
 
-    examples = [{
-        'labels': np.array([1], dtype=np.int64),
-        'predictions': np.array([0.1, 0.2, 0.3, 0.0]),
-        'example_weights': np.array([1.0])
-    }, {
-        'labels': np.array([1, 2], dtype=np.int64),
-        'predictions': np.array([0.1, 0.2, 0.0]),
-        'example_weights': np.array([1.0])
-    }, {
-        'labels': np.array([1, 2, 3], dtype=np.int64),
-        'predictions': np.array([0.1, 0.2, 0.3]),
-        'example_weights': np.array([2.0])
-    }]
+    examples = [
+        {
+            'labels': np.array([1], dtype=np.int64),
+            'predictions': np.array([0.1, 0.2, 0.3, 0.0]),
+            'example_weights': np.array([1.0]),
+        },
+        {
+            'labels': np.array([1, 2], dtype=np.int64),
+            'predictions': np.array([0.1, 0.2, 0.0]),
+            'example_weights': np.array([1.0]),
+        },
+        {
+            'labels': np.array([1, 2, 3], dtype=np.int64),
+            'predictions': np.array([0.1, 0.2, 0.3]),
+            'example_weights': np.array([2.0]),
+        },
+    ]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
@@ -746,7 +785,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([examples[i] for i in example_indices])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -774,9 +814,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
         'predictions': {
             'output_name': [0, 0.5, 0.3, 0.9],
         },
-        'example_weights': {
-            'output_name': [1.0]
-        }
+        'example_weights': {'output_name': [1.0]},
     }
 
     with beam.Pipeline() as pipeline:
@@ -786,7 +824,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([extracts])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -796,10 +835,14 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           mse_key = metric_types.MetricKey(
-              name='mse', output_name='output_name')
-          self.assertDictElementsAlmostEqual(got_metrics, {
-              mse_key: 0.1875,
-          })
+              name='mse', output_name='output_name'
+          )
+          self.assertDictElementsAlmostEqual(
+              got_metrics,
+              {
+                  mse_key: 0.1875,
+              },
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -818,9 +861,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
         'predictions': {
             'output_name': [0, 0.5, 0.3, 0.9],
         },
-        'example_weights': {
-            'output_name': [1.0]
-        }
+        'example_weights': {'output_name': [1.0]},
     }
 
     with beam.Pipeline() as pipeline:
@@ -830,7 +871,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([extracts])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -840,13 +882,14 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           mse_key = metric_types.MetricKey(
-              name='mse/mse', output_name='output_name')
+              name='mse/mse', output_name='output_name'
+          )
           one_minus_mse_key = metric_types.MetricKey(
-              name='mse/one_minus_mse', output_name='output_name')
-          self.assertDictElementsAlmostEqual(got_metrics, {
-              mse_key: 0.1875,
-              one_minus_mse_key: 0.8125
-          })
+              name='mse/one_minus_mse', output_name='output_name'
+          )
+          self.assertDictElementsAlmostEqual(
+              got_metrics, {mse_key: 0.1875, one_minus_mse_key: 0.8125}
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -863,22 +906,22 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     example1 = {
         'labels': [2],
         'predictions': [0.5, 0.0, 0.5],
-        'example_weights': [0.1]  # ignored, example_weighted=False
+        'example_weights': [0.1],  # ignored, example_weighted=False
     }
     example2 = {
         'labels': [0],
         'predictions': [0.2, 0.5, 0.3],
-        'example_weights': [0.2]  # ignored, example_weighted=False
+        'example_weights': [0.2],  # ignored, example_weighted=False
     }
     example3 = {
         'labels': [1],
         'predictions': [0.2, 0.3, 0.5],
-        'example_weights': [0.3]  # ignored, example_weighted=False
+        'example_weights': [0.3],  # ignored, example_weighted=False
     }
     example4 = {
         'labels': [1],
         'predictions': [0.0, 0.9, 0.1],
-        'example_weights': [0.4]  # ignored, example_weighted=False
+        'example_weights': [0.4],  # ignored, example_weighted=False
     }
 
     with beam.Pipeline() as pipeline:
@@ -888,7 +931,8 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           | 'Create' >> beam.Create([example1, example2, example3, example4])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -900,10 +944,14 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           mse_key = metric_types.MetricKey(
               name='mse',
               sub_key=metric_types.SubKey(class_id=1),
-              example_weighted=False)
-          self.assertDictElementsAlmostEqual(got_metrics, {
-              mse_key: 0.1875,
-          })
+              example_weighted=False,
+          )
+          self.assertDictElementsAlmostEqual(
+              got_metrics,
+              {
+                  mse_key: 0.1875,
+              },
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -927,11 +975,12 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create(
-              [example1, example2, example3, example4, example5])
+          | 'Create'
+          >> beam.Create([example1, example2, example3, example4, example5])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'Combine' >> beam.CombinePerKey(computation.combiner))
+          | 'Combine' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -942,15 +991,18 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
           self.assertEqual(got_slice_key, ())
 
           custom_key = metric_types.MetricKey(
-              name='custom', example_weighted=True)
+              name='custom', example_weighted=True
+          )
           mse_key = metric_types.MetricKey(name='mse', example_weighted=True)
           self.assertDictElementsAlmostEqual(
-              got_metrics, {
-                  custom_key: (0.0 + 0.5 + 0.3 + 0.9 + 0.0) /
-                              (1.0 + 1.0 + 1.0 + 1.0 + 0.0),
-                  mse_key:
-                      0.1875,
-              })
+              got_metrics,
+              {
+                  custom_key: (0.0 + 0.5 + 0.3 + 0.9 + 0.0) / (
+                      1.0 + 1.0 + 1.0 + 1.0 + 0.0
+                  ),
+                  mse_key: 0.1875,
+              },
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -988,7 +1040,7 @@ class NonConfusionMatrixMetricsTest(testutil.TensorflowModelAnalysisTest,
     self.assertDictElementsAlmostEqual(got_metrics, {mse_key: 0.1875})
 
 
-class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
+class MixedMetricsTest(test_util.TensorflowModelAnalysisTest):
 
   def testWithMixedMetrics(self):
     computations = tf_metric_wrapper.tf_metric_computations([
@@ -1029,7 +1081,8 @@ class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
           pipeline
           | 'Create' >> beam.Create([example1, example2, example3, example4])
           | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
-          | 'AddSlice' >> beam.Map(lambda x: ((), x)))
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+      )
 
       confusion_result = (
           sliced_examples
@@ -1041,9 +1094,9 @@ class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
           >> beam.Map(lambda x: (x[0], confusion_metrics(x[1])))
       )
 
-      non_confusion_result = (
-          sliced_examples
-          | 'Combine' >> beam.CombinePerKey(non_confusion_metrics.combiner))
+      non_confusion_result = sliced_examples | 'Combine' >> beam.CombinePerKey(
+          non_confusion_metrics.combiner
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -1054,7 +1107,8 @@ class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
           self.assertEqual(got_slice_key, ())
           auc_key = metric_types.MetricKey(name='auc')
           self.assertDictElementsAlmostEqual(
-              got_metrics, {auc_key: 0.75}, places=5)
+              got_metrics, {auc_key: 0.75}, places=5
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -1066,23 +1120,25 @@ class MixedMetricsTest(testutil.TensorflowModelAnalysisTest):
           self.assertEqual(got_slice_key, ())
           mse_key = metric_types.MetricKey(name='mse')
           binary_crossentropy_key = metric_types.MetricKey(
-              name='binary_crossentropy')
+              name='binary_crossentropy'
+          )
           self.assertDictElementsAlmostEqual(
-              got_metrics, {
-                  mse_key: 0.1875,
-                  binary_crossentropy_key: 0.50061995
-              },
-              places=5)
+              got_metrics,
+              {mse_key: 0.1875, binary_crossentropy_key: 0.50061995},
+              places=5,
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(
-          confusion_result, check_confusion_result, label='confusion')
+          confusion_result, check_confusion_result, label='confusion'
+      )
       util.assert_that(
           non_confusion_result,
           check_non_confusion_result,
-          label='non_confusion')
+          label='non_confusion',
+      )
 
 
 if __name__ == '__main__':

@@ -20,13 +20,13 @@ import tensorflow as tf
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import tfma_unit
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_evaluate_graph
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_extractor
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict as agnostic_predict
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import test_util
 
 
 # Create a dummy metric callback that adds two metrics:
@@ -70,7 +70,7 @@ def add_mean_callback(features_dict, predictions_dict, labels_dict):
   return metric_ops
 
 
-class ModelAgnosticEvaluateGraphTest(testutil.TensorflowModelAnalysisTest):
+class ModelAgnosticEvaluateGraphTest(test_util.TensorflowModelAnalysisTest):
 
   def testEvaluateGraph(self):
     # Have 3 labels of values 3, 23, 16 and predictions of values 2, 2, 2.

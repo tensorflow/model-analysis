@@ -14,18 +14,15 @@
 """Test for using the ModelAgnosticExtractor API."""
 
 import apache_beam as beam
-
 from apache_beam.testing import util
-
 import tensorflow as tf
-
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_extractor
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict as agnostic_predict
+from tensorflow_model_analysis.utils import test_util
 
 
-class ModelAgnosticExtractorTest(testutil.TensorflowModelAnalysisTest):
+class ModelAgnosticExtractorTest(test_util.TensorflowModelAnalysisTest):
 
   def testExtract(self):
     with beam.Pipeline() as pipeline:

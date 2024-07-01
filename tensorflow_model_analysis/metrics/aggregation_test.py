@@ -18,14 +18,14 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import aggregation
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util
 
 
-class AggregationMetricsTest(testutil.TensorflowModelAnalysisTest):
+class AggregationMetricsTest(test_util.TensorflowModelAnalysisTest):
 
   def testOutputAverage(self):
     metric_name = 'test'

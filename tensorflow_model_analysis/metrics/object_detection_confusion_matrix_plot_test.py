@@ -18,14 +18,15 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow_model_analysis as tfma
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.utils import test_util
 
 from google.protobuf import text_format
 
 
 class ObjectDetectionConfusionMatrixPlotTest(
-    testutil.TensorflowModelAnalysisTest, absltest.TestCase):
+    test_util.TensorflowModelAnalysisTest, absltest.TestCase
+):
 
   def testConfusionMatrixPlot(self):
     eval_config = text_format.Parse(

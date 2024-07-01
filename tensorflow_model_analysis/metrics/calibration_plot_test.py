@@ -18,18 +18,19 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util
 
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class CalibrationPlotTest(testutil.TensorflowModelAnalysisTest,
-                          parameterized.TestCase):
+class CalibrationPlotTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def testCalibrationPlot(self):
     computations = calibration_plot.CalibrationPlot(

@@ -17,13 +17,13 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import confusion_matrix_plot
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
+from tensorflow_model_analysis.utils import test_util
 
 
-class ConfusionMatrixPlotTest(testutil.TensorflowModelAnalysisTest):
+class ConfusionMatrixPlotTest(test_util.TensorflowModelAnalysisTest):
 
   def testConfusionMatrixPlot(self):
     computations = confusion_matrix_plot.ConfusionMatrixPlot(

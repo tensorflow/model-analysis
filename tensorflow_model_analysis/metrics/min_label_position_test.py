@@ -20,15 +20,16 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import min_label_position
+from tensorflow_model_analysis.utils import test_util
 from tensorflow_model_analysis.utils import util as tfma_util
 
 
-class MinLabelPositionTest(testutil.TensorflowModelAnalysisTest,
-                           parameterized.TestCase):
+class MinLabelPositionTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def testRaisesErrorIfNoQueryKey(self):
     with self.assertRaises(ValueError):
