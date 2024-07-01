@@ -14,14 +14,13 @@
 """Test Model Agnostic graph handler."""
 
 import numpy as np
-
 import tensorflow as tf
-
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.model_agnostic_eval import model_agnostic_predict
+# Depdending on the updated test util to avoid esitmator related APIs.
+from tensorflow_model_analysis.utils import test_util
 
 
-class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
+class ModelAgnosticPredictTest(test_util.TensorflowModelAnalysisTest):
 
   def testValidation(self):
     # Test no feature spec.
@@ -144,7 +143,7 @@ class ModelAgnosticPredictTest(testutil.TensorflowModelAnalysisTest):
 
     # Verify the result is the correct size, has all the keys, and
     # our expected values match.
-    self.assertEqual(4, len(fpls))
+    self.assertLen(fpls, 4)
     for i, fpl in enumerate(fpls):
       self.assertIn('language', fpl.features)
       self.assertIn('label', fpl.labels)
