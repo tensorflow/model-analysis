@@ -18,7 +18,9 @@ import tempfile
 from typing import Dict, Iterable, Sequence, Tuple, Union
 
 import tensorflow as tf
+from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import types
+from tensorflow_model_analysis.proto import config_pb2
 
 from tensorflow.core.example import example_pb2
 
@@ -174,6 +176,16 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
             values,
             places=places,
             msg_prefix='for key %s, row %d: ' % (key, row))
+
+  def createKerasTestEvalSharedModel(  # pylint: disable=invalid-name
+      self,
+      eval_saved_model_path: str,
+      eval_config: config_pb2.EvalConfig,
+  ) -> types.EvalSharedModel:
+    """Create a test Keras EvalSharedModel."""
+    return model_eval_lib.default_eval_shared_model(
+        eval_saved_model_path=eval_saved_model_path, eval_config=eval_config
+    )
 
   def assertSequenceAlmostEqual(  # pylint: disable=invalid-name
       self,
