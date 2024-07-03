@@ -15,12 +15,14 @@
 
 import math
 import tempfile
-from typing import Dict, Iterable, Sequence, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import tensorflow as tf
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import model_util
 
 from tensorflow.core.example import example_pb2
 
@@ -231,3 +233,51 @@ class TensorflowModelAnalysisTest(tf.test.TestCase):
                      got_sparse_tensor_value.values.dtype)
     self.assertEqual(expected_sparse_tensor_value.dense_shape.dtype,
                      got_sparse_tensor_value.dense_shape.dtype)
+
+  def createTestEvalSharedModel(  # pylint: disable=invalid-name
+      self,
+      model_path: Optional[str] = None,
+      add_metrics_callbacks: Optional[
+          List[types.AddMetricsCallbackType]
+      ] = None,
+      include_default_metrics: Optional[bool] = True,
+      example_weight_key: Optional[Union[str, Dict[str, str]]] = None,
+      additional_fetches: Optional[List[str]] = None,
+      tags: Optional[str] = None,
+      model_type: Optional[str] = None,
+      model_name: str = '',
+      rubber_stamp: Optional[bool] = False,
+      is_baseline: Optional[bool] = False,
+  ) -> types.EvalSharedModel:
+    """Create a test EvalSharedModel."""
+
+    if not model_type:
+      model_type = model_util.get_model_type(None, model_path, tags)
+    if model_type == constants.TFMA_EVAL:
+      raise ValueError(
+          f'Models of type {model_type} are deprecated. Please do not use it'
+          'for testing.'
+      )
+    if not tags:
+      tags = [tf.saved_model.SERVING]
+
+    return types.EvalSharedModel(
+        model_name=model_name,
+        model_type=model_type,
+        model_path=model_path,
+        add_metrics_callbacks=add_metrics_callbacks,
+        example_weight_key=example_weight_key,
+        rubber_stamp=rubber_stamp,
+        is_baseline=is_baseline,
+        model_loader=types.ModelLoader(
+            tags=tags,
+            construct_fn=model_util.model_construct_fn(
+                eval_saved_model_path=model_path,
+                model_type=model_type,
+                add_metrics_callbacks=add_metrics_callbacks,
+                include_default_metrics=include_default_metrics,
+                additional_fetches=additional_fetches,
+                tags=tags,
+            ),
+        ),
+    )

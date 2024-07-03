@@ -23,9 +23,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
+from tensorflow_model_analysis.utils import test_util
 from tensorflow_model_analysis.utils import util as tfma_util
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import tf_example_record
@@ -47,8 +47,9 @@ def _record_batch_to_extracts(record_batch):
   }
 
 
-class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
-                    parameterized.TestCase):
+class ModelUtilTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def createDenseInputsSchema(self):
     return text_format.Parse(
@@ -784,9 +785,10 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
       for model_name in sigs:
         if model_name not in eval_shared_models:
           eval_shared_models[model_name] = self.createTestEvalSharedModel(
-              eval_saved_model_path=export_path,
+              model_path=export_path,
               model_name=model_name,
-              tags=[tf.saved_model.SERVING])
+              tags=[tf.saved_model.SERVING],
+          )
           model_specs.append(config_pb2.ModelSpec(name=model_name))
     schema = self.createDenseInputsSchema() if use_schema else None
     tfx_io = tf_example_record.TFExampleBeamRecord(
@@ -845,10 +847,9 @@ class ModelUtilTest(testutil.TensorflowModelAnalysisTest,
     output_keypath = [constants.PREDICTIONS_KEY]
     signature_names = {'': [None]}
     eval_shared_models = {
-        '':
-            self.createTestEvalSharedModel(
-                eval_saved_model_path=export_path,
-                tags=[tf.saved_model.SERVING])
+        '': self.createTestEvalSharedModel(
+            model_path=export_path, tags=[tf.saved_model.SERVING]
+        )
     }
     model_specs = [config_pb2.ModelSpec()]
     schema = self.createDenseInputsSchema()
