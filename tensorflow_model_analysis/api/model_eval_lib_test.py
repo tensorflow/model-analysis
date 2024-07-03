@@ -20,8 +20,10 @@ import tempfile
 from absl.testing import absltest
 from absl.testing import parameterized
 import apache_beam as beam
+import numpy as np
 import pandas as pd
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import types
@@ -50,10 +52,12 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
+from tensorflow_model_analysis.utils import example_keras_model
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tensorflow_model_analysis.view import view_types
 from tfx_bsl.coders import example_coder
 
+from google.protobuf import wrappers_pb2
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -88,6 +92,11 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     temp_eval_export_dir = os.path.join(self._getTempDir(), 'eval_export_dir')
     _, eval_export_dir = classifier(None, temp_eval_export_dir)
     return eval_export_dir
+
+  def _exportKerasModel(self, classifier):
+    temp_export_dir = os.path.join(self._getTempDir(), 'keras_export_dir')
+    classifier.save(temp_export_dir, save_format='tf')
+    return temp_export_dir
 
   def _writeTFExamplesToTFRecords(self, examples):
     data_location = os.path.join(self._getTempDir(), 'input_data.rio')
@@ -319,8 +328,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertFalse(eval_result.plots)
 
   def testRunModelAnalysis(self):
-    model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0),
         self._makeExample(age=3.0, language='chinese', label=0.0),
@@ -328,61 +335,78 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='chinese', label=1.0),
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
+    classifier = example_keras_model.ExampleClassifierModel(
+        example_keras_model.LANGUAGE
+    )
+    classifier.compile(optimizer=keras.optimizers.Adam(), loss='mse')
+    classifier.fit(
+        tf.constant([e.SerializeToString() for e in examples]),
+        np.array([
+            e.features.feature[example_keras_model.LABEL].float_list.value[:][0]
+            for e in examples
+        ]),
+    )
+    model_location = self._exportKerasModel(classifier)
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [slicer_lib.SingleSliceSpec(columns=['language'])]
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                name='model1', example_weight_key='age', label_key='label'
+            )
+        ],
+        slicing_specs=[config_pb2.SlicingSpec(feature_keys=['language'])],
+        metrics_specs=[
+            config_pb2.MetricsSpec(
+                metrics=[
+                    config_pb2.MetricConfig(
+                        class_name='ExampleCount',
+                    ),
+                    config_pb2.MetricConfig(
+                        class_name='Accuracy',
+                    ),
+                ]
+            )
+        ],
+        options=config_pb2.Options(
+            min_slice_size=wrappers_pb2.Int32Value(value=2)
+        ),
+    )
     eval_result = model_eval_lib.run_model_analysis(
         eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'),
+            eval_saved_model_path=model_location, eval_config=eval_config
+        ),
         data_location=data_location,
+        eval_config=eval_config,
         output_path=self._getTempDir(),
-        slice_spec=slicing_specs,
-        min_slice_size=2)
+    )
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
         (('language', 'hindi'),): {
-            u'__ERROR__': {
-                'debugMessage':
-                    u'Example count for this slice key is lower than the '
-                    u'minimum required value: 2. No data is aggregated for '
-                    u'this slice.'
+            '__ERROR__': {
+                'debugMessage': (
+                    'Example count for this slice key is lower than the '
+                    'minimum required value: 2. No data is aggregated for '
+                    'this slice.'
+                )
             },
         },
         (('language', 'chinese'),): {
-            'accuracy': {
-                'doubleValue': 0.5
-            },
-            'my_mean_label': {
-                'doubleValue': 0.5
-            },
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 8.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
+            'accuracy': {'doubleValue': 0.0},
+            'example_count': {'doubleValue': 8.0},
         },
         (('language', 'english'),): {
-            'accuracy': {
-                'doubleValue': 1.0
-            },
-            'my_mean_label': {
-                'doubleValue': 1.0
-            },
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 7.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        }
+            'accuracy': {'doubleValue': 0.0},
+            'example_count': {'doubleValue': 7.0},
+        },
     }
-    self.assertEqual(eval_result.model_location, model_location.decode())
+    self.assertEqual(eval_result.model_location, model_location)
     self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
                      config_pb2.SlicingSpec(feature_keys=['language']))
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
-    self.assertFalse(eval_result.plots)
+    for _, plot in eval_result.plots:
+      self.assertFalse(plot)
 
   @parameterized.named_parameters(
       {
