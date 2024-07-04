@@ -43,6 +43,11 @@ KEYS_SUFFIX = 'keys'
 VALUES_SUFFIX = 'values'
 
 
+def default_dict_key(prefix: str) -> str:
+  """Returns the default key to use with a dict associated with given prefix."""
+  return KEY_SEPARATOR + prefix
+
+
 def is_sparse_or_ragged_tensor_value(tensor: Any) -> bool:
   """Returns true if sparse or ragged tensor."""
   return (isinstance(tensor, types.SparseTensorValue) or
@@ -838,10 +843,14 @@ def merge_extracts(extracts: List[types.Extracts],
           ) from e
       return {k: merge_lists(v) for k, v in target.items()}
     elif (
-        target and
-        np.any([isinstance(t, tf.compat.v1.SparseTensorValue) for t in target])
+        target
+        and np.any(
+            [isinstance(t, tf.compat.v1.SparseTensorValue) for t in target]
+        )
         or np.any(
-            [isinstance(target[0], types.SparseTensorValue) for t in target])):
+            [isinstance(target[0], types.SparseTensorValue) for _ in target]
+        )
+    ):
       t = tf.compat.v1.sparse_concat(
           0,
           [tf.sparse.expand_dims(to_tensorflow_tensor(t), 0) for t in target],

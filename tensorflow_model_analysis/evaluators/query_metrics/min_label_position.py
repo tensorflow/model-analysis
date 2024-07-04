@@ -23,10 +23,10 @@ evaluation set, the final output will be zero.
 from typing import Any, Dict, Iterable, NamedTuple
 
 import apache_beam as beam
-from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
-from tensorflow_model_analysis.eval_saved_model import util as eval_saved_model_util
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.utils import util
 
 _State = NamedTuple('_State', [('min_pos_sum', float), ('weight_sum', float)])
 
@@ -70,8 +70,7 @@ class MinLabelPositionCombineFn(beam.CombineFn):
       # If label_key is set to the empty string, the user is telling us
       # that their Estimator returns a labels Tensor rather than a
       # dictionary. Set the key to the magic key we use in that case.
-      self._label_key = eval_saved_model_util.default_dict_key(
-          eval_saved_model_constants.LABELS_NAME)
+      self._label_key = util.default_dict_key(constants.LABELS_KEY)
     else:
       self._label_key = label_key
     self._weight_key = weight_key
