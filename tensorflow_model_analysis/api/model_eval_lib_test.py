@@ -26,33 +26,18 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.eval_saved_model.example_trainers import csv_linear_classifier
-from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
-from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_classifier
-from tensorflow_model_analysis.eval_saved_model.example_trainers import linear_regressor
-from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
-from tensorflow_model_analysis.evaluators import legacy_query_based_metrics_evaluator
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
-from tensorflow_model_analysis.evaluators.query_metrics import ndcg as legacy_ndcg
-from tensorflow_model_analysis.evaluators.query_metrics import query_statistics
-from tensorflow_model_analysis.extractors import legacy_feature_extractor
-from tensorflow_model_analysis.extractors import legacy_predict_extractor
-from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.metrics import calibration_plot
 from tensorflow_model_analysis.metrics import confusion_matrix_metrics
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import ndcg
-from tensorflow_model_analysis.post_export_metrics import metric_keys
-from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
-from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflow_model_analysis.utils import example_keras_model
+from tensorflow_model_analysis.utils import test_util
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tensorflow_model_analysis.view import view_types
 from tfx_bsl.coders import example_coder
@@ -78,8 +63,9 @@ _TEST_SEED = 982735
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 
 
-class EvaluateTest(testutil.TensorflowModelAnalysisTest,
-                   parameterized.TestCase):
+class EvaluateTest(
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def setUp(self):
     super().setUp()
@@ -124,7 +110,8 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         for metric_name in expected_slicing_metrics[s]:
           self.assertIn(metric_name, metrics)
           self.assertDictElementsAlmostEqual(
-              metrics[metric_name], expected_slicing_metrics[s][metric_name])
+              metrics[metric_name], expected_slicing_metrics[s][metric_name]
+          )
     else:
       # Only pass if expected_slicing_metrics also evaluates to False.
       self.assertFalse(
@@ -162,61 +149,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     self.assertSliceListEqual(expected_list, got_list,
                               self.assertSliceMetricsEqual)
 
-  def testNoConstructFn(self):
-    model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
-    examples = [self._makeExample(age=3.0, language='english', label=1.0)]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config_pb2.EvalConfig()
-    # No construct_fn should fail when Beam attempts to call the construct_fn.
-    eval_shared_model = types.EvalSharedModel(model_path=model_location)
-    with self.assertRaisesRegex(AttributeError,
-                                '\'NoneType\' object has no attribute'):
-      model_eval_lib.run_model_analysis(
-          eval_config=eval_config,
-          eval_shared_model=eval_shared_model,
-          data_location=data_location,
-          output_path=self._getTempDir())
-
-    # Using the default_eval_shared_model should pass as it has a construct_fn.
-    eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location)
-    model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        data_location=data_location,
-        output_path=self._getTempDir())
-
-  def testMixedEvalAndNonEvalSignatures(self):
-    examples = [self._makeExample(age=3.0, language='english', label=1.0)]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config_pb2.EvalConfig(model_specs=[
-        config_pb2.ModelSpec(name='model1'),
-        config_pb2.ModelSpec(name='model2', signature_name='eval')
-    ])
-    eval_shared_models = [
-        model_eval_lib.default_eval_shared_model(
-            model_name='model1',
-            eval_saved_model_path='/model1/path',
-            eval_config=eval_config),
-        model_eval_lib.default_eval_shared_model(
-            model_name='model2',
-            eval_saved_model_path='/model2/path',
-            eval_config=eval_config),
-    ]
-    with self.assertRaisesRegex(
-        NotImplementedError,
-        (
-            'support for mixing tfma_eval and non-tfma_eval models is not '
-            'implemented'
-        ),
-    ):
-      model_eval_lib.run_model_analysis(
-          eval_config=eval_config,
-          eval_shared_model=eval_shared_models,
-          data_location=data_location,
-          output_path=self._getTempDir())
-
   @parameterized.named_parameters(('tflite', constants.TF_LITE),
                                   ('tfjs', constants.TF_JS))
   def testMixedModelTypes(self, model_type):
@@ -243,89 +175,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
           eval_shared_model=eval_shared_models,
           data_location=data_location,
           output_path=self._getTempDir())
-
-  def testRunModelAnalysisExtraFieldsPlusFeatureExtraction(self):
-    model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
-    examples = [
-        self._makeExample(age=3.0, language='english', label=1.0, my_slice='a'),
-        self._makeExample(age=3.0, language='chinese', label=0.0, my_slice='a'),
-        self._makeExample(age=4.0, language='english', label=1.0, my_slice='b'),
-        self._makeExample(age=5.0, language='chinese', label=1.0, my_slice='c'),
-        self._makeExample(age=5.0, language='hindi', label=1.0)
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [slicer_lib.SingleSliceSpec(columns=['my_slice'])]
-    eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location, example_weight_key='age')
-    extractors_with_feature_extraction = [
-        legacy_predict_extractor.PredictExtractor(
-            eval_shared_model, desired_batch_size=3, materialize=False),
-        legacy_feature_extractor.FeatureExtractor(
-            extract_source=constants.INPUT_KEY,
-            extract_dest=constants.FEATURES_PREDICTIONS_LABELS_KEY),
-        slice_key_extractor.SliceKeyExtractor(
-            slice_spec=slicing_specs, materialize=False)
-    ]
-    eval_result = model_eval_lib.run_model_analysis(
-        eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'),
-        data_location=data_location,
-        output_path=self._getTempDir(),
-        extractors=extractors_with_feature_extraction,
-        slice_spec=slicing_specs)
-    # We only check some of the metrics to ensure that the end-to-end
-    # pipeline works.
-    expected = {
-        (('my_slice', 'a'),): {
-            'accuracy': {
-                'doubleValue': 1.0
-            },
-            'my_mean_label': {
-                'doubleValue': 0.5
-            },
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 6.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        },
-        (('my_slice', 'b'),): {
-            'accuracy': {
-                'doubleValue': 1.0
-            },
-            'my_mean_label': {
-                'doubleValue': 1.0
-            },
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 4.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 1.0
-            },
-        },
-        (('my_slice', 'c'),): {
-            'accuracy': {
-                'doubleValue': 0.0
-            },
-            'my_mean_label': {
-                'doubleValue': 1.0
-            },
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 5.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 1.0
-            },
-        },
-    }
-    self.assertEqual(eval_result.model_location, model_location.decode())
-    self.assertEqual(eval_result.data_location, data_location)
-    self.assertEqual(eval_result.config.slicing_specs[0],
-                     config_pb2.SlicingSpec(feature_keys=['my_slice']))
-    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
-    self.assertFalse(eval_result.plots)
 
   def testRunModelAnalysis(self):
     examples = [
@@ -551,200 +400,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         expected_class_1_recall, metric_keys_to_values[class_1_key]
     )
 
-  def testRunModelAnalysisWithCustomizations(self):
-    model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
-    examples = [
-        self._makeExample(age=3.0, language='english', label=1.0),
-        self._makeExample(age=3.0, language='chinese', label=0.0),
-        self._makeExample(age=4.0, language='english', label=1.0),
-        self._makeExample(age=5.0, language='chinese', label=1.0),
-        self._makeExample(age=5.0, language='hindi', label=1.0)
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [config_pb2.SlicingSpec(feature_keys=['language'])]
-    options = config_pb2.Options()
-    options.min_slice_size.value = 2
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[config_pb2.ModelSpec(model_type='my_model_type')],
-        slicing_specs=slicing_specs,
-        options=options)
-    # Use default model_loader for testing passing custom_model_loader
-    model_loader = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location,
-        example_weight_key='age').model_loader
-    eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location, custom_model_loader=model_loader)
-    # Use PredictExtractor for testing passing custom_predict_extractor
-    extractors = model_eval_lib.default_extractors(
-        eval_shared_model=eval_shared_model,
-        eval_config=eval_config,
-        custom_predict_extractor=legacy_predict_extractor.PredictExtractor(
-            eval_shared_model=eval_shared_model, eval_config=eval_config))
-    eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model,
-        data_location=data_location,
-        output_path=self._getTempDir(),
-        extractors=extractors)
-    # We only check some of the metrics to ensure that the end-to-end
-    # pipeline works.
-    expected = {
-        (('language', 'hindi'),): {
-            u'__ERROR__': {
-                'debugMessage':
-                    u'Example count for this slice key is lower than the '
-                    u'minimum required value: 2. No data is aggregated for '
-                    u'this slice.'
-            },
-        },
-        (('language', 'chinese'),): {
-            'accuracy': {
-                'doubleValue': 0.5
-            },
-            'my_mean_label': {
-                'doubleValue': 0.5
-            },
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 8.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        },
-        (('language', 'english'),): {
-            'accuracy': {
-                'doubleValue': 1.0
-            },
-            'my_mean_label': {
-                'doubleValue': 1.0
-            },
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 7.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        }
-    }
-    self.assertEqual(eval_result.model_location, model_location.decode())
-    self.assertEqual(eval_result.data_location, data_location)
-    self.assertEqual(eval_result.config.slicing_specs[0],
-                     config_pb2.SlicingSpec(feature_keys=['language']))
-    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
-
-  def testRunModelAnalysisMultipleModels(self):
-    examples = [
-        self._makeExample(age=3.0, language='english', label=1.0),
-        self._makeExample(age=3.0, language='chinese', label=0.0),
-        self._makeExample(age=4.0, language='english', label=1.0),
-        self._makeExample(age=5.0, language='chinese', label=1.0)
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    model_specs = [
-        config_pb2.ModelSpec(
-            name='model1', signature_name='eval', example_weight_key='age'),
-        config_pb2.ModelSpec(
-            name='model2', signature_name='eval', example_weight_key='age')
-    ]
-    metrics_specs = [
-        config_pb2.MetricsSpec(
-            metrics=[config_pb2.MetricConfig(class_name='ExampleCount')],
-            model_names=['model1', 'model2'],
-            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)),
-        config_pb2.MetricsSpec(
-            metrics=[
-                config_pb2.MetricConfig(class_name='WeightedExampleCount')
-            ],
-            model_names=['model1', 'model2'],
-            example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
-    ]
-    slicing_specs = [
-        config_pb2.SlicingSpec(feature_values={'language': 'english'})
-    ]
-    options = config_pb2.Options()
-    eval_config = config_pb2.EvalConfig(
-        model_specs=model_specs,
-        metrics_specs=metrics_specs,
-        slicing_specs=slicing_specs,
-        options=options)
-    model_location1 = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
-    model1 = model_eval_lib.default_eval_shared_model(
-        model_name='model1',
-        eval_saved_model_path=model_location1,
-        eval_config=eval_config)
-    model_location2 = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
-    model2 = model_eval_lib.default_eval_shared_model(
-        model_name='model2',
-        eval_saved_model_path=model_location2,
-        eval_config=eval_config)
-    eval_shared_models = [model1, model2]
-    eval_results = model_eval_lib.run_model_analysis(
-        eval_shared_model=eval_shared_models,
-        eval_config=eval_config,
-        data_location=data_location,
-        output_path=self._getTempDir())
-    # We only check some of the metrics to ensure that the end-to-end
-    # pipeline works.
-    expected_result_1 = {
-        (('language', 'english'),): {
-            'example_count': {
-                'doubleValue': 2.0
-            },
-            'weighted_example_count': {
-                'doubleValue': 7.0
-            },
-            'my_mean_label': {
-                'doubleValue': 1.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        }
-    }
-    expected_result_2 = {
-        (('language', 'english'),): {
-            'example_count': {
-                'doubleValue': 2.0
-            },
-            'weighted_example_count': {
-                'doubleValue': 7.0
-            },
-            'my_mean_label': {
-                'doubleValue': 1.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        }
-    }
-    self.assertLen(eval_results._results, 2)
-    eval_result_1 = eval_results._results[0]
-    eval_result_2 = eval_results._results[1]
-    self.assertEqual(eval_result_1.model_location, model_location1.decode())
-    self.assertEqual(eval_result_2.model_location, model_location2.decode())
-    self.assertEqual(eval_result_1.data_location, data_location)
-    self.assertEqual(eval_result_2.data_location, data_location)
-    self.assertEqual(
-        eval_result_1.config.slicing_specs[0],
-        config_pb2.SlicingSpec(feature_values={'language': 'english'}))
-    self.assertEqual(
-        eval_result_2.config.slicing_specs[0],
-        config_pb2.SlicingSpec(feature_values={'language': 'english'}))
-    self.assertMetricsAlmostEqual(eval_result_1.slicing_metrics,
-                                  expected_result_1)
-    self.assertMetricsAlmostEqual(eval_result_2.slicing_metrics,
-                                  expected_result_2)
-
-  @parameterized.named_parameters(
-      ('no_model', False, None),
-      ('has_a_model', True, constants.MATERIALIZED_PREDICTION),
-  )
-  def testRunModelAnalysisWithExplicitModelAgnosticPredictions(
-      self, has_model, model_type
-  ):
+  def testRunModelAnalysisWithExplicitModelAgnosticPredictions(self):
     examples = [
         self._makeExample(
             age=3.0, language='english', label=1.0, prediction=0.9),
@@ -774,34 +430,17 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         label_key='label',
         example_weight_key='age',
     )
-    if model_type is not None:
-      model_spec.model_type = model_type
     eval_config = config_pb2.EvalConfig(
         model_specs=[model_spec],
         metrics_specs=metrics_specs,
         slicing_specs=slicing_specs,
     )
     data_location = self._writeTFExamplesToTFRecords(examples)
-    if has_model:
-      model_location = self._exportEvalSavedModel(
-          linear_classifier.simple_linear_classifier
-      )
-      model = model_eval_lib.default_eval_shared_model(
-          eval_saved_model_path=model_location,
-          eval_config=eval_config,
-      )
-      eval_result = model_eval_lib.run_model_analysis(
-          eval_shared_model=model,
-          eval_config=eval_config,
-          data_location=data_location,
-          output_path=self._getTempDir(),
-      )
-    else:
-      eval_result = model_eval_lib.run_model_analysis(
-          eval_config=eval_config,
-          data_location=data_location,
-          output_path=self._getTempDir(),
-      )
+    eval_result = model_eval_lib.run_model_analysis(
+        eval_config=eval_config,
+        data_location=data_location,
+        output_path=self._getTempDir(),
+    )
     expected = {
         (('language', 'chinese'),): {
             'binary_accuracy': {'doubleValue': 0.375},
@@ -1398,73 +1037,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
       for k in expected_metrics[group]:
         self.assertIn(k, got_metrics[group])
 
-  def testRunModelAnalysisWithLegacyQueryExtractor(self):
-    model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
-    examples = [
-        self._makeExample(age=3.0, language='english', label=1.0),
-        self._makeExample(age=3.0, language='chinese', label=0.0),
-        self._makeExample(age=4.0, language='english', label=0.0),
-        self._makeExample(age=5.0, language='chinese', label=1.0)
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [slicer_lib.SingleSliceSpec()]
-    eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location, example_weight_key='age')
-    eval_result = model_eval_lib.run_model_analysis(
-        eval_shared_model=eval_shared_model,
-        data_location=data_location,
-        output_path=self._getTempDir(),
-        evaluators=[
-            legacy_metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
-                eval_shared_model),
-            legacy_query_based_metrics_evaluator.QueryBasedMetricsEvaluator(
-                query_id='language',
-                prediction_key='logistic',
-                combine_fns=[
-                    query_statistics.QueryStatisticsCombineFn(),
-                    legacy_ndcg.NdcgMetricCombineFn(
-                        at_vals=[1], gain_key='label', weight_key='')
-                ]),
-        ],
-        slice_spec=slicing_specs)
-    # We only check some of the metrics to ensure that the end-to-end
-    # pipeline works.
-    expected = {
-        (): {
-            'post_export_metrics/total_queries': {
-                'doubleValue': 2.0
-            },
-            'post_export_metrics/min_documents': {
-                'doubleValue': 2.0
-            },
-            'post_export_metrics/max_documents': {
-                'doubleValue': 2.0
-            },
-            'post_export_metrics/total_documents': {
-                'doubleValue': 4.0
-            },
-            'post_export_metrics/ndcg@1': {
-                'doubleValue': 0.5
-            },
-            'post_export_metrics/example_weight': {
-                'doubleValue': 15.0
-            },
-            'post_export_metrics/example_count': {
-                'doubleValue': 4.0
-            },
-        }
-    }
-    self.assertEqual(eval_result.model_location, model_location.decode())
-    self.assertEqual(eval_result.data_location, data_location)
-    self.assertEqual(eval_result.config.slicing_specs[0],
-                     config_pb2.SlicingSpec())
-    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
-    self.assertFalse(eval_result.plots)
-
   def testRunModelAnalysisWithUncertainty(self):
-    model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0),
         self._makeExample(age=3.0, language='chinese', label=0.0),
@@ -1472,70 +1045,94 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='chinese', label=1.0),
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
+    classifier = example_keras_model.ExampleClassifierModel(
+        example_keras_model.LANGUAGE
+    )
+    classifier.compile(optimizer=keras.optimizers.Adam(), loss='mse')
+    classifier.fit(
+        tf.constant([e.SerializeToString() for e in examples]),
+        np.array([
+            e.features.feature[example_keras_model.LABEL].float_list.value[:][0]
+            for e in examples
+        ]),
+    )
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                name='model1', example_weight_key='age', label_key='label'
+            )
+        ],
+        slicing_specs=[config_pb2.SlicingSpec(feature_keys=['language'])],
+        metrics_specs=[
+            config_pb2.MetricsSpec(
+                metrics=[
+                    config_pb2.MetricConfig(
+                        class_name='ExampleCount',
+                    ),
+                    config_pb2.MetricConfig(
+                        class_name='Accuracy',
+                    ),
+                ]
+            )
+        ],
+        options=config_pb2.Options(
+            compute_confidence_intervals=wrappers_pb2.BoolValue(value=True),
+            min_slice_size=wrappers_pb2.Int32Value(value=2),
+        ),
+    )
+    model_location = self._exportKerasModel(classifier)
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [slicer_lib.SingleSliceSpec(columns=['language'])]
     eval_result = model_eval_lib.run_model_analysis(
         eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'),
+            eval_saved_model_path=model_location, eval_config=eval_config
+        ),
         data_location=data_location,
+        eval_config=eval_config,
         output_path=self._getTempDir(),
-        slice_spec=slicing_specs,
-        compute_confidence_intervals=True,
-        min_slice_size=2)
+    )
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
         (('language', 'hindi'),): {
-            u'__ERROR__': {
-                'debugMessage':
-                    u'Example count for this slice key is lower than the '
-                    u'minimum required value: 2. No data is aggregated for '
-                    u'this slice.'
-            },
-        },
-        (('language', 'chinese'),): {
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 8.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
+            '__ERROR__': {
+                'debugMessage': (
+                    'Example count for this slice key is lower than the '
+                    'minimum required value: 2. No data is aggregated for '
+                    'this slice.'
+                )
             },
         },
         (('language', 'english'),): {
             'accuracy': {
                 'boundedValue': {
-                    'value': 1.0,
-                    'lowerBound': 1.0,
-                    'upperBound': 1.0,
-                    'methodology': 'POISSON_BOOTSTRAP'
+                    'lowerBound': 0.0,
+                    'upperBound': 0.0,
+                    'value': 0.0,
                 }
             },
-            'my_mean_label': {
+            'example_count': {'doubleValue': 7.0},
+        },
+        (('language', 'chinese'),): {
+            'accuracy': {
                 'boundedValue': {
-                    'value': 1.0,
-                    'lowerBound': 1.0,
-                    'upperBound': 1.0,
-                    'methodology': 'POISSON_BOOTSTRAP'
+                    'lowerBound': 0.0,
+                    'upperBound': 0.0,
+                    'value': 0.0,
                 }
             },
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 7.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        }
+            'example_count': {'doubleValue': 8.0},
+        },
     }
-    self.assertEqual(eval_result.model_location, model_location.decode())
+    self.assertEqual(eval_result.model_location, model_location)
     self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
                      config_pb2.SlicingSpec(feature_keys=['language']))
+    # raise ValueError(eval_result.slicing_metrics)
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
-    self.assertFalse(eval_result.plots)
+    for _, plot in eval_result.plots:
+      self.assertFalse(plot)
 
   def testRunModelAnalysisWithDeterministicConfidenceIntervals(self):
-    model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0),
         self._makeExample(age=3.0, language='chinese', label=0.0),
@@ -1543,62 +1140,86 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='chinese', label=1.0),
         self._makeExample(age=5.0, language='hindi', label=1.0)
     ]
+    classifier = example_keras_model.ExampleClassifierModel(
+        example_keras_model.LANGUAGE
+    )
+    classifier.compile(optimizer=keras.optimizers.Adam(), loss='mse')
+    classifier.fit(
+        tf.constant([e.SerializeToString() for e in examples]),
+        np.array([
+            e.features.feature[example_keras_model.LABEL].float_list.value[:][0]
+            for e in examples
+        ]),
+    )
+    model_location = self._exportKerasModel(classifier)
     data_location = self._writeTFExamplesToTFRecords(examples)
-    slicing_specs = [slicer_lib.SingleSliceSpec(columns=['language'])]
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                name='model1', example_weight_key='age', label_key='label'
+            )
+        ],
+        slicing_specs=[config_pb2.SlicingSpec(feature_keys=['language'])],
+        metrics_specs=[
+            config_pb2.MetricsSpec(
+                metrics=[
+                    config_pb2.MetricConfig(
+                        class_name='ExampleCount',
+                    ),
+                    config_pb2.MetricConfig(
+                        class_name='Accuracy',
+                    ),
+                ]
+            )
+        ],
+        options=config_pb2.Options(
+            compute_confidence_intervals=wrappers_pb2.BoolValue(value=True),
+            min_slice_size=wrappers_pb2.Int32Value(value=2),
+        ),
+    )
     eval_result = model_eval_lib.run_model_analysis(
         eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'),
+            eval_saved_model_path=model_location, eval_config=eval_config
+        ),
         data_location=data_location,
         output_path=self._getTempDir(),
-        slice_spec=slicing_specs,
-        compute_confidence_intervals=True,
-        min_slice_size=2,
-        random_seed_for_testing=_TEST_SEED)
+        eval_config=eval_config,
+        random_seed_for_testing=_TEST_SEED,
+    )
     # We only check some of the metrics to ensure that the end-to-end
     # pipeline works.
     expected = {
         (('language', 'hindi'),): {
-            u'__ERROR__': {
-                'debugMessage':
-                    u'Example count for this slice key is lower than the '
-                    u'minimum required value: 2. No data is aggregated for '
-                    u'this slice.'
-            },
-        },
-        (('language', 'chinese'),): {
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 8.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
+            '__ERROR__': {
+                'debugMessage': (
+                    'Example count for this slice key is lower than the '
+                    'minimum required value: 2. No data is aggregated for '
+                    'this slice.'
+                )
             },
         },
         (('language', 'english'),): {
             'accuracy': {
                 'boundedValue': {
-                    'value': 1.0,
-                    'lowerBound': 1.0,
-                    'upperBound': 1.0,
-                    'methodology': 'POISSON_BOOTSTRAP'
+                    'lowerBound': 0.0,
+                    'upperBound': 0.0,
+                    'value': 0.0,
                 }
             },
-            'my_mean_label': {
+            'example_count': {'doubleValue': 7.0},
+        },
+        (('language', 'chinese'),): {
+            'accuracy': {
                 'boundedValue': {
-                    'value': 1.0,
-                    'lowerBound': 1.0,
-                    'upperBound': 1.0,
-                    'methodology': 'POISSON_BOOTSTRAP'
+                    'lowerBound': 0.0,
+                    'upperBound': 0.0,
+                    'value': 0.0,
                 }
             },
-            metric_keys.EXAMPLE_WEIGHT: {
-                'doubleValue': 7.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        }
+            'example_count': {'doubleValue': 8.0},
+        },
     }
-    self.assertEqual(eval_result.model_location, model_location.decode())
+    self.assertEqual(eval_result.model_location, model_location)
     self.assertEqual(eval_result.data_location, data_location)
     self.assertEqual(eval_result.config.slicing_specs[0],
                      config_pb2.SlicingSpec(feature_keys=['language']))
@@ -1606,19 +1227,14 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
 
     for key, value in eval_result.slicing_metrics:
       if (('language', 'english'),) == key:
-        metric = value['']['']['average_loss']
-        self.assertAlmostEqual(
-            0.171768754720, metric['boundedValue']['value'], delta=0.1)
+        metric = value['']['']['accuracy']
+        self.assertAlmostEqual(0.0, metric['boundedValue']['value'], delta=0.1)
 
-        metric = value['']['']['auc_precision_recall']
-        self.assertAlmostEqual(
-            0.99999940395, metric['boundedValue']['value'], delta=0.1)
-
-    self.assertFalse(eval_result.plots)
+    for _, plot in eval_result.plots:
+      self.assertFalse(plot)
+  # TODO(b/350996394): Add test for plots and CSVtext with Keras model.
 
   def testRunModelAnalysisWithSchema(self):
-    model_location = self._exportEvalSavedModel(
-        linear_regressor.simple_linear_regressor)
     examples = [
         self._makeExample(age=3.0, language='english', label=2.0),
         self._makeExample(age=3.0, language='chinese', label=1.0),
@@ -1627,6 +1243,18 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         self._makeExample(age=5.0, language='hindi', label=2.0)
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
+    classifier = example_keras_model.ExampleClassifierModel(
+        example_keras_model.LANGUAGE
+    )
+    classifier.compile(optimizer=keras.optimizers.Adam(), loss='mse')
+    classifier.fit(
+        tf.constant([e.SerializeToString() for e in examples]),
+        np.array([
+            e.features.feature[example_keras_model.LABEL].float_list.value[:][0]
+            for e in examples
+        ]),
+    )
+    model_location = self._exportKerasModel(classifier)
     eval_config = config_pb2.EvalConfig(
         model_specs=[config_pb2.ModelSpec(label_key='label')],
         metrics_specs=metric_specs.specs_from_metrics(
@@ -1635,22 +1263,30 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
         """
         feature {
           name: "label"
-          type: INT
-          int_domain {
+          type: FLOAT
+          float_domain {
             min: 1
             max: 2
           }
         }
-        """, schema_pb2.Schema())
+        """,
+        schema_pb2.Schema(),
+    )
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
         schema=schema,
         eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location, example_weight_key='age'),
+            eval_saved_model_path=model_location, eval_config=eval_config
+        ),
         data_location=data_location,
-        output_path=self._getTempDir())
+        output_path=self._getTempDir(),
+    )
 
-    expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
+    expected_metrics = {
+        (): {
+            'example_count': {'doubleValue': 5.0},
+        }
+    }
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected_metrics)
     self.assertLen(eval_result.plots, 1)
     slice_key, plots = eval_result.plots[0]
@@ -1660,201 +1296,6 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
     # interested in the values of left and right
     self.assertEqual(1.0, got_buckets[1]['lowerThresholdInclusive'])
     self.assertEqual(2.0, got_buckets[-2]['upperThresholdExclusive'])
-
-  def testRunModelAnalysisWithPlots(self):
-    model_location = self._exportEvalSavedModel(
-        fixed_prediction_estimator.simple_fixed_prediction_estimator)
-    examples = [
-        self._makeExample(prediction=0.0, label=1.0),
-        self._makeExample(prediction=0.7, label=0.0),
-        self._makeExample(prediction=0.8, label=1.0),
-        self._makeExample(prediction=1.0, label=1.0),
-        self._makeExample(prediction=1.0, label=1.0)
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location,
-        add_metrics_callbacks=[post_export_metrics.auc_plots()])
-    eval_result = model_eval_lib.run_model_analysis(
-        eval_shared_model=eval_shared_model,
-        data_location=data_location,
-        output_path=self._getTempDir())
-    # We only check some of the metrics to ensure that the end-to-end
-    # pipeline works.
-    expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
-    expected_matrix = {
-        'threshold': 0.8,
-        'falseNegatives': 2.0,
-        'trueNegatives': 1.0,
-        'truePositives': 2.0,
-        'precision': 1.0,
-        'recall': 0.5
-    }
-    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected_metrics)
-    self.assertLen(eval_result.plots, 1)
-    slice_key, plots = eval_result.plots[0]
-    self.assertEqual((), slice_key)
-    self.assertDictElementsAlmostEqual(
-        plots['']['']['confusionMatrixAtThresholds']['matrices'][8001],
-        expected_matrix)
-
-  def testRunModelAnalysisWithMultiplePlots(self):
-    model_location = self._exportEvalSavedModel(
-        fixed_prediction_estimator.simple_fixed_prediction_estimator)
-    examples = [
-        self._makeExample(prediction=0.0, label=1.0),
-        self._makeExample(prediction=0.7, label=0.0),
-        self._makeExample(prediction=0.8, label=1.0),
-        self._makeExample(prediction=1.0, label=1.0),
-        self._makeExample(prediction=1.0, label=1.0)
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location,
-        add_metrics_callbacks=[
-            post_export_metrics.auc_plots(),
-            post_export_metrics.auc_plots(metric_tag='test')
-        ])
-    eval_result = model_eval_lib.run_model_analysis(
-        eval_shared_model=eval_shared_model,
-        data_location=data_location,
-        output_path=self._getTempDir())
-
-    # pipeline works.
-    expected_metrics = {(): {metric_keys.EXAMPLE_COUNT: {'doubleValue': 5.0},}}
-    expected_matrix = {
-        'threshold': 0.8,
-        'falseNegatives': 2.0,
-        'trueNegatives': 1.0,
-        'truePositives': 2.0,
-        'precision': 1.0,
-        'recall': 0.5
-    }
-    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected_metrics)
-    self.assertLen(eval_result.plots, 1)
-    slice_key, plots = eval_result.plots[0]
-    self.assertEqual((), slice_key)
-    self.assertDictElementsAlmostEqual(
-        plots['']['']['post_export_metrics']['confusionMatrixAtThresholds']
-        ['matrices'][8001], expected_matrix)
-    self.assertDictElementsAlmostEqual(
-        plots['']['']['post_export_metrics/test']['confusionMatrixAtThresholds']
-        ['matrices'][8001], expected_matrix)
-
-  def testRunModelAnalysisForCSVText(self):
-    model_location = self._exportEvalSavedModel(
-        csv_linear_classifier.simple_csv_linear_classifier)
-    examples = [
-        '3.0,english,1.0', '3.0,chinese,0.0', '4.0,english,1.0',
-        '5.0,chinese,1.0'
-    ]
-    data_location = self._writeCSVToTextFile(examples)
-    eval_config = config_pb2.EvalConfig()
-    eval_result = model_eval_lib.run_model_analysis(
-        eval_config=eval_config,
-        eval_shared_model=model_eval_lib.default_eval_shared_model(
-            eval_saved_model_path=model_location),
-        data_location=data_location,
-        file_format='text',
-        output_path=self._getTempDir())
-    # We only check some of the metrics to ensure that the end-to-end
-    # pipeline works.
-    expected = {
-        (): {
-            'accuracy': {
-                'doubleValue': 0.75
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 4.0
-            }
-        }
-    }
-    self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
-
-  def testMultipleModelAnalysis(self):
-    model_location_1 = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
-    model_location_2 = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
-    examples = [
-        self._makeExample(age=3.0, language='english', label=1.0),
-        self._makeExample(age=3.0, language='chinese', label=0.0),
-        self._makeExample(age=4.0, language='english', label=1.0),
-        self._makeExample(age=5.0, language='chinese', label=1.0)
-    ]
-    data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config_pb2.EvalConfig(slicing_specs=[
-        config_pb2.SlicingSpec(feature_values={'language': 'english'})
-    ])
-    eval_results = model_eval_lib.multiple_model_analysis(
-        [model_location_1, model_location_2],
-        data_location,
-        eval_config=eval_config)
-    # We only check some of the metrics to ensure that the end-to-end
-    # pipeline works.
-    self.assertLen(eval_results._results, 2)
-    expected_result_1 = {
-        (('language', 'english'),): {
-            'my_mean_label': {
-                'doubleValue': 1.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        }
-    }
-    expected_result_2 = {
-        (('language', 'english'),): {
-            'my_mean_label': {
-                'doubleValue': 1.0
-            },
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        }
-    }
-    self.assertMetricsAlmostEqual(eval_results._results[0].slicing_metrics,
-                                  expected_result_1)
-    self.assertMetricsAlmostEqual(eval_results._results[1].slicing_metrics,
-                                  expected_result_2)
-
-  def testMultipleDataAnalysis(self):
-    model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
-    data_location_1 = self._writeTFExamplesToTFRecords([
-        self._makeExample(age=3.0, language='english', label=1.0),
-        self._makeExample(age=3.0, language='english', label=0.0),
-        self._makeExample(age=5.0, language='chinese', label=1.0)
-    ])
-    data_location_2 = self._writeTFExamplesToTFRecords(
-        [self._makeExample(age=4.0, language='english', label=1.0)])
-    eval_config = config_pb2.EvalConfig(slicing_specs=[
-        config_pb2.SlicingSpec(feature_values={'language': 'english'})
-    ])
-    eval_results = model_eval_lib.multiple_data_analysis(
-        model_location, [data_location_1, data_location_2],
-        eval_config=eval_config)
-    self.assertLen(eval_results._results, 2)
-    # We only check some of the metrics to ensure that the end-to-end
-    # pipeline works.
-    expected_result_1 = {
-        (('language', 'english'),): {
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 2.0
-            },
-        }
-    }
-    expected_result_2 = {
-        (('language', 'english'),): {
-            metric_keys.EXAMPLE_COUNT: {
-                'doubleValue': 1.0
-            },
-        }
-    }
-    self.assertMetricsAlmostEqual(eval_results._results[0].slicing_metrics,
-                                  expected_result_1)
-    self.assertMetricsAlmostEqual(eval_results._results[1].slicing_metrics,
-                                  expected_result_2)
 
   def testLoadValidationResult(self):
     result = validation_result_pb2.ValidationResult(validation_ok=True)
@@ -2038,6 +1479,7 @@ class EvaluateTest(testutil.TensorflowModelAnalysisTest,
             metrics.COUNTERS]
     self.assertLen(actual_counter, 1)
     self.assertEqual(actual_counter[0].committed, expected_num_bytes)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
