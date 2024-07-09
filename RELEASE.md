@@ -211,6 +211,7 @@ Deprecated python3.7 support.
 
 *   Minor predictions_extractor_test.py refactor with readability improvements
     and improved test coverage.
+*   Add an example of object detection metrics.
 
 ## Breaking Changes
 
