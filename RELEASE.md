@@ -5,6 +5,7 @@
 ## Major Features and Improvements
 
 *   Adds `False{Negative,Positive}FeatureSampler` metrics.
+*   Adds `RecallAtFalsePositiveRate` metrics.
 
 ## Bug fixes and other Changes
 

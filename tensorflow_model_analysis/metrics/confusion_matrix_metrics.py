@@ -17,7 +17,7 @@ import abc
 import copy
 import enum
 import math
-from typing import Any, Dict, List, Optional, Union, overload
+from typing import Any, Callable, Dict, List, Optional, Union, overload
 
 import numpy as np
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
@@ -31,6 +31,7 @@ SENSITIVITY_AT_SPECIFICITY_NAME = 'sensitivity_at_specificity'
 SPECIFICITY_AT_SENSITIVITY_NAME = 'specificity_at_sensitivity'
 PRECISION_AT_RECALL_NAME = 'precision_at_recall'
 RECALL_AT_PRECISION_NAME = 'recall_at_precision'
+RECALL_AT_FALSE_POSITIVE_RATE_NAME = 'recall_at_false_positive_rate'
 TRUE_POSITIVES_NAME = 'true_positives'
 TP_NAME = 'tp'
 TRUE_NEGATIVES_NAME = 'true_negatives'
@@ -160,19 +161,29 @@ def _validate_and_update_sub_key(
 
 
 @overload
-def _find_max_under_constraint(constrained: np.ndarray, dependent: np.ndarray,
-                               values: float) -> float:
+def _find_max_under_constraint(
+    constrained: np.ndarray,
+    dependent: np.ndarray,
+    values: float,
+    operator: Callable[[np.ndarray, np.ndarray], np.ndarray] = np.greater_equal,
+) -> float:
   ...
 
 
 @overload
-def _find_max_under_constraint(constrained: np.ndarray, dependent: np.ndarray,
-                               values: List[float]) -> np.ndarray:
+def _find_max_under_constraint(
+    constrained: np.ndarray,
+    dependent: np.ndarray,
+    values: List[float],
+    operator: Callable[[np.ndarray, np.ndarray], np.ndarray] = np.greater_equal,
+) -> np.ndarray:
   ...
 
 
-def _find_max_under_constraint(constrained, dependent, values):
-  """Returns the maximum of dependent that satisfies contrained >= value.
+def _find_max_under_constraint(
+    constrained, dependent, values, operator=np.greater_equal
+):
+  """Returns the maximum of dependent that satisfies contraints.
 
   Args:
     constrained: Over these values the constraint is specified. A rank-1 np
@@ -181,14 +192,15 @@ def _find_max_under_constraint(constrained, dependent, values):
       selected. Values in this array and in `constrained` are linked by having
       the same threshold at each position, hence this array must have the same
       shape.
-    values: A list of the lower bound where contrained >= value.
+    values: A list of the value constraints.
+    operator: A numpy logic functions. Default is greater_equal.
 
   Returns:
     Maximal dependent value, if no value satiesfies the constraint 0.0.
   """
   result = []
   for value in np.array([values] if isinstance(values, float) else values):
-    feasible = np.where(constrained >= value)
+    feasible = np.where(operator(constrained, value))
     gathered = np.take(dependent, feasible)
     if gathered.size > 0:
       result.append(
@@ -903,6 +915,87 @@ class RecallAtPrecision(ConfusionMatrixMetricBase):
 
 
 metric_types.register_metric(RecallAtPrecision)
+
+
+class RecallAtFalsePositiveRate(ConfusionMatrixMetricBase):
+  """Computes best recall where false positive rate is <= specified value.
+
+  For a given score-label-distribution the required false positive rate might
+  not be achievable, in this case 0.0 is returned as recall.
+
+  This metric creates four local variables, `true_positives`, `false_positives`,
+  `false_negatives` and `true_negatives` that are used to compute the recall at
+  the given false positive rate.
+  The threshold for the given false positive rate value is
+  computed and used to evaluate the corresponding recall.
+
+  If `sample_weight` is `None`, weights default to 1.
+  Use `sample_weight` of 0 to mask values.
+  """
+
+  def __init__(
+      self,
+      false_positive_rate: float,
+      num_thresholds: Optional[int] = None,
+      class_id: Optional[int] = None,
+      name: Optional[str] = None,
+      top_k: Optional[int] = None,
+  ):
+    """Initializes RecallAtFalsePositiveRate.
+
+    Args:
+      false_positive_rate: A scalar value in range `[0, 1]`.
+      num_thresholds: (Optional) Defaults to 1000. The number of thresholds to
+        use for matching the given precision.
+      class_id: (Optional) Used with a multi-class model to specify which class
+        to compute the confusion matrix for. When class_id is used,
+        metrics_specs.binarize settings must not be present. Only one of
+        class_id or top_k should be configured.
+      name: (Optional) string name of the metric instance.
+      top_k: (Optional) Used with a multi-class model to specify that the top-k
+        values should be used to compute the confusion matrix. The net effect is
+        that the non-top-k values are set to -inf and the matrix is then
+        constructed from the average TP, FP, TN, FN across the classes. When
+        top_k is used, metrics_specs.binarize settings must not be present. Only
+        one of class_id or top_k should be configured. When top_k is set, the
+        default thresholds are [float('-inf')].
+    """
+    if false_positive_rate < 0 or false_positive_rate > 1:
+      raise ValueError(
+          'Argument `false_positive_rate` must be in the range'
+          f'[0, 1]. Received: false_positive_rate={false_positive_rate}'
+      )
+    super().__init__(
+        false_positive_rate=false_positive_rate,
+        num_thresholds=num_thresholds,
+        class_id=class_id,
+        name=name,
+        top_k=top_k,
+    )
+
+  def _default_name(self) -> str:
+    return RECALL_AT_FALSE_POSITIVE_RATE_NAME
+
+  def _metric_value(
+      self,
+      false_positive_rate: Union[float, List[float]],
+      key: metric_types.MetricKey,
+      matrices: binary_confusion_matrices.Matrices,
+  ) -> Union[float, np.ndarray]:
+    del key
+    tp, tn = np.array(matrices.tp), np.array(matrices.tn)
+    fp, fn = np.array(matrices.fp), np.array(matrices.fn)
+    false_positive_rates = fp / (fp + tn)
+    recalls = tp / (tp + fn)
+    return _find_max_under_constraint(
+        constrained=false_positive_rates,
+        dependent=recalls,
+        values=false_positive_rate,
+        operator=np.less_equal,
+    )
+
+
+metric_types.register_metric(RecallAtFalsePositiveRate)
 
 
 class TruePositives(ConfusionMatrixMetric):

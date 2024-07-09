@@ -115,6 +115,7 @@ class ConfusionMatrixMetricsTest(
         'SensitivityAtSpecificity',
         'PrecisionAtRecall',
         'RecallAtPrecision',
+        'RecallAtFalsePositiveRate',
     ):
       self.skipTest('Not supported in TFv1.')
 
@@ -169,16 +170,36 @@ class ConfusionMatrixMetricsTest(
   # LINT.IfChange(tfma_confusion_matrix_metrics_tests)
   @parameterized.named_parameters(
       ('auc', confusion_matrix_metrics.AUC(), np.float64(0.26)),
-      ('auc_precision_recall', confusion_matrix_metrics.AUCPrecisionRecall(),
-       np.float64(0.36205)),
-      ('specificity_at_sensitivity',
-       confusion_matrix_metrics.SpecificityAtSensitivity(0.5), 0.2),
-      ('sensitivity_at_specificity',
-       confusion_matrix_metrics.SensitivityAtSpecificity(0.5), 0.0),
-      ('precision_at_recall', confusion_matrix_metrics.PrecisionAtRecall(0.5),
-       0.5),
-      ('recall_at_precision', confusion_matrix_metrics.RecallAtPrecision(0.5),
-       1.0),
+      (
+          'auc_precision_recall',
+          confusion_matrix_metrics.AUCPrecisionRecall(),
+          np.float64(0.36205),
+      ),
+      (
+          'specificity_at_sensitivity',
+          confusion_matrix_metrics.SpecificityAtSensitivity(0.5),
+          0.2,
+      ),
+      (
+          'sensitivity_at_specificity',
+          confusion_matrix_metrics.SensitivityAtSpecificity(0.5),
+          0.0,
+      ),
+      (
+          'precision_at_recall',
+          confusion_matrix_metrics.PrecisionAtRecall(0.5),
+          0.5,
+      ),
+      (
+          'recall_at_precision',
+          confusion_matrix_metrics.RecallAtPrecision(0.5),
+          1.0,
+      ),
+      (
+          'recall_at_false_positive_rate',
+          confusion_matrix_metrics.RecallAtFalsePositiveRate(0.6),
+          0.4,
+      ),
       ('true_positives', confusion_matrix_metrics.TruePositives(), 1.0),
       ('tp', confusion_matrix_metrics.TP(), 1.0),
       ('false_positives', confusion_matrix_metrics.FalsePositives(), 3.0),
@@ -187,66 +208,125 @@ class ConfusionMatrixMetricsTest(
       ('tn', confusion_matrix_metrics.TN(), 2.0),
       ('false_negatives', confusion_matrix_metrics.FalseNegatives(), 4.0),
       ('fn', confusion_matrix_metrics.FN(), 4.0),
-      ('binary_accuracy', confusion_matrix_metrics.BinaryAccuracy(),
-       (1.0 + 2.0) / (1.0 + 2.0 + 3.0 + 4.0)),
+      (
+          'binary_accuracy',
+          confusion_matrix_metrics.BinaryAccuracy(),
+          (1.0 + 2.0) / (1.0 + 2.0 + 3.0 + 4.0),
+      ),
       ('precision', confusion_matrix_metrics.Precision(), 1.0 / (1.0 + 3.0)),
       ('ppv', confusion_matrix_metrics.PPV(), 1.0 / (1.0 + 3.0)),
       ('recall', confusion_matrix_metrics.Recall(), 1.0 / (1.0 + 4.0)),
       ('tpr', confusion_matrix_metrics.TPR(), 1.0 / (1.0 + 4.0)),
-      ('specificity', confusion_matrix_metrics.Specificity(), 2.0 /
-       (2.0 + 3.0)),
+      (
+          'specificity',
+          confusion_matrix_metrics.Specificity(),
+          2.0 / (2.0 + 3.0),
+      ),
       ('tnr', confusion_matrix_metrics.TNR(), 2.0 / (2.0 + 3.0)),
       ('fall_out', confusion_matrix_metrics.FallOut(), 3.0 / (3.0 + 2.0)),
       ('fpr', confusion_matrix_metrics.FPR(), 3.0 / (3.0 + 2.0)),
       ('miss_rate', confusion_matrix_metrics.MissRate(), 4.0 / (4.0 + 1.0)),
       ('fnr', confusion_matrix_metrics.FNR(), 4.0 / (4.0 + 1.0)),
-      ('negative_predictive_value',
-       confusion_matrix_metrics.NegativePredictiveValue(), 2.0 / (2.0 + 4.0)),
+      (
+          'negative_predictive_value',
+          confusion_matrix_metrics.NegativePredictiveValue(),
+          2.0 / (2.0 + 4.0),
+      ),
       ('npv', confusion_matrix_metrics.NPV(), 2.0 / (2.0 + 4.0)),
-      ('false_discovery_rate', confusion_matrix_metrics.FalseDiscoveryRate(),
-       3.0 / (3.0 + 1.0)),
-      ('false_omission_rate', confusion_matrix_metrics.FalseOmissionRate(),
-       4.0 / (4.0 + 2.0)),
-      ('prevalence', confusion_matrix_metrics.Prevalence(),
-       (1.0 + 4.0) / (1.0 + 2.0 + 3.0 + 4.0)),
-      ('prevalence_threshold', confusion_matrix_metrics.PrevalenceThreshold(),
-       (math.sqrt((1.0 / (1.0 + 4.0)) * (1.0 - (2.0 / (2.0 + 3.0)))) +
-        (2.0 / (2.0 + 3.0) - 1.0)) / ((1.0 / (1.0 + 4.0) +
-                                       (2.0 / (2.0 + 3.0)) - 1.0))),
-      ('threat_score', confusion_matrix_metrics.ThreatScore(), 1.0 /
-       (1.0 + 4.0 + 3.0)),
-      ('balanced_accuracy', confusion_matrix_metrics.BalancedAccuracy(),
-       ((1.0 / (1.0 + 4.0)) + (2.0 / (2.0 + 3.0))) / 2),
-      ('f1_score', confusion_matrix_metrics.F1Score(), 2 * 1.0 /
-       (2 * 1.0 + 3.0 + 4.0)),
-      ('matthews_correlation_coefficient',
-       confusion_matrix_metrics.MatthewsCorrelationCoefficient(),
-       (1.0 * 2.0 - 3.0 * 4.0) / math.sqrt(
-           (1.0 + 3.0) * (1.0 + 4.0) * (2.0 + 3.0) * (2.0 + 4.0))),
-      ('fowlkes_mallows_index', confusion_matrix_metrics.FowlkesMallowsIndex(),
-       math.sqrt(1.0 / (1.0 + 3.0) * 1.0 / (1.0 + 4.0))),
-      ('informedness', confusion_matrix_metrics.Informedness(),
-       (1.0 / (1.0 + 4.0)) + (2.0 / (2.0 + 3.0)) - 1.0),
-      ('markedness', confusion_matrix_metrics.Markedness(),
-       (1.0 / (1.0 + 3.0)) + (2.0 / (2.0 + 4.0)) - 1.0),
-      ('positive_likelihood_ratio',
-       confusion_matrix_metrics.PositiveLikelihoodRatio(),
-       (1.0 / (1.0 + 4.0)) / (3.0 / (3.0 + 2.0))),
-      ('negative_likelihood_ratio',
-       confusion_matrix_metrics.NegativeLikelihoodRatio(),
-       (4.0 / (4.0 + 1.0)) / (2.0 / (2.0 + 3.0))),
-      ('diagnostic_odds_ratio', confusion_matrix_metrics.DiagnosticOddsRatio(),
-       ((1.0 / 3.0)) / (4.0 / 2.0)),
-      ('predicted_positive_rate',
-       confusion_matrix_metrics.PredictedPositiveRate(),
-       (1.0 + 3.0) / (1.0 + 2.0 + 3.0 + 4.0)),
-      ('threshold_at_recall', confusion_matrix_metrics.ThresholdAtRecall(0.5),
-       0.29993),
+      (
+          'false_discovery_rate',
+          confusion_matrix_metrics.FalseDiscoveryRate(),
+          3.0 / (3.0 + 1.0),
+      ),
+      (
+          'false_omission_rate',
+          confusion_matrix_metrics.FalseOmissionRate(),
+          4.0 / (4.0 + 2.0),
+      ),
+      (
+          'prevalence',
+          confusion_matrix_metrics.Prevalence(),
+          (1.0 + 4.0) / (1.0 + 2.0 + 3.0 + 4.0),
+      ),
+      (
+          'prevalence_threshold',
+          confusion_matrix_metrics.PrevalenceThreshold(),
+          (
+              math.sqrt((1.0 / (1.0 + 4.0)) * (1.0 - (2.0 / (2.0 + 3.0))))
+              + (2.0 / (2.0 + 3.0) - 1.0)
+          )
+          / ((1.0 / (1.0 + 4.0) + (2.0 / (2.0 + 3.0)) - 1.0)),
+      ),
+      (
+          'threat_score',
+          confusion_matrix_metrics.ThreatScore(),
+          1.0 / (1.0 + 4.0 + 3.0),
+      ),
+      (
+          'balanced_accuracy',
+          confusion_matrix_metrics.BalancedAccuracy(),
+          ((1.0 / (1.0 + 4.0)) + (2.0 / (2.0 + 3.0))) / 2,
+      ),
+      (
+          'f1_score',
+          confusion_matrix_metrics.F1Score(),
+          2 * 1.0 / (2 * 1.0 + 3.0 + 4.0),
+      ),
+      (
+          'matthews_correlation_coefficient',
+          confusion_matrix_metrics.MatthewsCorrelationCoefficient(),
+          (1.0 * 2.0 - 3.0 * 4.0)
+          / math.sqrt((1.0 + 3.0) * (1.0 + 4.0) * (2.0 + 3.0) * (2.0 + 4.0)),
+      ),
+      (
+          'fowlkes_mallows_index',
+          confusion_matrix_metrics.FowlkesMallowsIndex(),
+          math.sqrt(1.0 / (1.0 + 3.0) * 1.0 / (1.0 + 4.0)),
+      ),
+      (
+          'informedness',
+          confusion_matrix_metrics.Informedness(),
+          (1.0 / (1.0 + 4.0)) + (2.0 / (2.0 + 3.0)) - 1.0,
+      ),
+      (
+          'markedness',
+          confusion_matrix_metrics.Markedness(),
+          (1.0 / (1.0 + 3.0)) + (2.0 / (2.0 + 4.0)) - 1.0,
+      ),
+      (
+          'positive_likelihood_ratio',
+          confusion_matrix_metrics.PositiveLikelihoodRatio(),
+          (1.0 / (1.0 + 4.0)) / (3.0 / (3.0 + 2.0)),
+      ),
+      (
+          'negative_likelihood_ratio',
+          confusion_matrix_metrics.NegativeLikelihoodRatio(),
+          (4.0 / (4.0 + 1.0)) / (2.0 / (2.0 + 3.0)),
+      ),
+      (
+          'diagnostic_odds_ratio',
+          confusion_matrix_metrics.DiagnosticOddsRatio(),
+          ((1.0 / 3.0)) / (4.0 / 2.0),
+      ),
+      (
+          'predicted_positive_rate',
+          confusion_matrix_metrics.PredictedPositiveRate(),
+          (1.0 + 3.0) / (1.0 + 2.0 + 3.0 + 4.0),
+      ),
+      (
+          'threshold_at_recall',
+          confusion_matrix_metrics.ThresholdAtRecall(0.5),
+          0.29993,
+      ),
   )
   def testConfusionMatrixMetrics(self, metric, expected_value):
-    if (_TF_MAJOR_VERSION < 2 and metric.__class__.__name__
-        in ('SpecificityAtSensitivity', 'SensitivityAtSpecificity',
-            'PrecisionAtRecall', 'RecallAtPrecision')):
+    if _TF_MAJOR_VERSION < 2 and metric.__class__.__name__ in (
+        'SpecificityAtSensitivity',
+        'SensitivityAtSpecificity',
+        'PrecisionAtRecall',
+        'RecallAtPrecision',
+        'RecallAtFalsePositiveRate',
+    ):
       self.skipTest('Not supported in TFv1.')
 
     computations = metric.computations(example_weighted=True)
@@ -356,70 +436,143 @@ class ConfusionMatrixMetricsTest(
 
   @parameterized.named_parameters(
       ('auc', confusion_matrix_metrics.AUC(), np.float64(0.64286)),
-      ('auc_precision_recall', confusion_matrix_metrics.AUCPrecisionRecall(),
-       np.float64(0.37467)),
-      ('specificity_at_sensitivity',
-       confusion_matrix_metrics.SpecificityAtSensitivity(0.5), 0.642857),
-      ('sensitivity_at_specificity',
-       confusion_matrix_metrics.SensitivityAtSpecificity(0.5), 1.0),
-      ('precision_at_recall', confusion_matrix_metrics.PrecisionAtRecall(0.5),
-       0.58333),
-      ('recall_at_precision', confusion_matrix_metrics.RecallAtPrecision(0.5),
-       1.0),
+      (
+          'auc_precision_recall',
+          confusion_matrix_metrics.AUCPrecisionRecall(),
+          np.float64(0.37467),
+      ),
+      (
+          'specificity_at_sensitivity',
+          confusion_matrix_metrics.SpecificityAtSensitivity(0.5),
+          0.642857,
+      ),
+      (
+          'sensitivity_at_specificity',
+          confusion_matrix_metrics.SensitivityAtSpecificity(0.5),
+          1.0,
+      ),
+      (
+          'precision_at_recall',
+          confusion_matrix_metrics.PrecisionAtRecall(0.5),
+          0.58333,
+      ),
+      (
+          'recall_at_precision',
+          confusion_matrix_metrics.RecallAtPrecision(0.5),
+          1.0,
+      ),
+      (
+          'recall_at_false_positive_rate',
+          confusion_matrix_metrics.RecallAtFalsePositiveRate(0.5 / (0.5 + 0.9)),
+          1.0,
+      ),
       ('true_positives', confusion_matrix_metrics.TruePositives(), 0.7),
       ('false_positives', confusion_matrix_metrics.FalsePositives(), 0.5),
       ('true_negatives', confusion_matrix_metrics.TrueNegatives(), 0.9),
       ('false_negatives', confusion_matrix_metrics.FalseNegatives(), 0.0),
-      ('binary_accuracy', confusion_matrix_metrics.BinaryAccuracy(),
-       (0.7 + 0.9) / (0.7 + 0.9 + 0.5 + 0.0)),
+      (
+          'binary_accuracy',
+          confusion_matrix_metrics.BinaryAccuracy(),
+          (0.7 + 0.9) / (0.7 + 0.9 + 0.5 + 0.0),
+      ),
       ('precision', confusion_matrix_metrics.Precision(), 0.7 / (0.7 + 0.5)),
       ('recall', confusion_matrix_metrics.Recall(), 0.7 / (0.7 + 0.0)),
-      ('specificity', confusion_matrix_metrics.Specificity(), 0.9 /
-       (0.9 + 0.5)),
+      (
+          'specificity',
+          confusion_matrix_metrics.Specificity(),
+          0.9 / (0.9 + 0.5),
+      ),
       ('fall_out', confusion_matrix_metrics.FallOut(), 0.5 / (0.5 + 0.9)),
       ('miss_rate', confusion_matrix_metrics.MissRate(), 0.0 / (0.0 + 0.7)),
-      ('negative_predictive_value',
-       confusion_matrix_metrics.NegativePredictiveValue(), 0.9 / (0.9 + 0.0)),
-      ('false_discovery_rate', confusion_matrix_metrics.FalseDiscoveryRate(),
-       0.5 / (0.5 + 0.7)),
-      ('false_omission_rate', confusion_matrix_metrics.FalseOmissionRate(),
-       0.0 / (0.0 + 0.9)),
-      ('prevalence', confusion_matrix_metrics.Prevalence(),
-       (0.7 + 0.0) / (0.7 + 0.9 + 0.5 + 0.0)),
-      ('prevalence_threshold', confusion_matrix_metrics.PrevalenceThreshold(),
-       (math.sqrt((0.7 / (0.7 + 0.0)) * (1.0 - (0.9 / (0.9 + 0.5)))) +
-        (0.9 / (0.9 + 0.5) - 1.0)) / ((0.7 / (0.7 + 0.0) +
-                                       (0.9 / (0.9 + 0.5)) - 1.0))),
-      ('threat_score', confusion_matrix_metrics.ThreatScore(), 0.7 /
-       (0.7 + 0.0 + 0.5)),
-      ('balanced_accuracy', confusion_matrix_metrics.BalancedAccuracy(),
-       ((0.7 / (0.7 + 0.0)) + (0.9 / (0.9 + 0.5))) / 2),
-      ('f1_score', confusion_matrix_metrics.F1Score(), 2 * 0.7 /
-       (2 * 0.7 + 0.5 + 0.0)),
-      ('matthews_correlation_coefficient',
-       confusion_matrix_metrics.MatthewsCorrelationCoefficient(),
-       (0.7 * 0.9 - 0.5 * 0.0) / math.sqrt(
-           (0.7 + 0.5) * (0.7 + 0.0) * (0.9 + 0.5) * (0.9 + 0.0))),
-      ('fowlkes_mallows_index', confusion_matrix_metrics.FowlkesMallowsIndex(),
-       math.sqrt(0.7 / (0.7 + 0.5) * 0.7 / (0.7 + 0.0))),
-      ('informedness', confusion_matrix_metrics.Informedness(),
-       (0.7 / (0.7 + 0.0)) + (0.9 / (0.9 + 0.5)) - 1.0),
-      ('markedness', confusion_matrix_metrics.Markedness(),
-       (0.7 / (0.7 + 0.5)) + (0.9 / (0.9 + 0.0)) - 1.0),
-      ('positive_likelihood_ratio',
-       confusion_matrix_metrics.PositiveLikelihoodRatio(),
-       (0.7 / (0.7 + 0.0)) / (0.5 / (0.5 + 0.9))),
-      ('negative_likelihood_ratio',
-       confusion_matrix_metrics.NegativeLikelihoodRatio(),
-       (0.0 / (0.0 + 0.7)) / (0.9 / (0.9 + 0.5))),
-      ('predicted_positive_rate',
-       confusion_matrix_metrics.PredictedPositiveRate(),
-       (0.7 + 0.5) / (0.7 + 0.9 + 0.5 + 0.0)),
+      (
+          'negative_predictive_value',
+          confusion_matrix_metrics.NegativePredictiveValue(),
+          0.9 / (0.9 + 0.0),
+      ),
+      (
+          'false_discovery_rate',
+          confusion_matrix_metrics.FalseDiscoveryRate(),
+          0.5 / (0.5 + 0.7),
+      ),
+      (
+          'false_omission_rate',
+          confusion_matrix_metrics.FalseOmissionRate(),
+          0.0 / (0.0 + 0.9),
+      ),
+      (
+          'prevalence',
+          confusion_matrix_metrics.Prevalence(),
+          (0.7 + 0.0) / (0.7 + 0.9 + 0.5 + 0.0),
+      ),
+      (
+          'prevalence_threshold',
+          confusion_matrix_metrics.PrevalenceThreshold(),
+          (
+              math.sqrt((0.7 / (0.7 + 0.0)) * (1.0 - (0.9 / (0.9 + 0.5))))
+              + (0.9 / (0.9 + 0.5) - 1.0)
+          )
+          / ((0.7 / (0.7 + 0.0) + (0.9 / (0.9 + 0.5)) - 1.0)),
+      ),
+      (
+          'threat_score',
+          confusion_matrix_metrics.ThreatScore(),
+          0.7 / (0.7 + 0.0 + 0.5),
+      ),
+      (
+          'balanced_accuracy',
+          confusion_matrix_metrics.BalancedAccuracy(),
+          ((0.7 / (0.7 + 0.0)) + (0.9 / (0.9 + 0.5))) / 2,
+      ),
+      (
+          'f1_score',
+          confusion_matrix_metrics.F1Score(),
+          2 * 0.7 / (2 * 0.7 + 0.5 + 0.0),
+      ),
+      (
+          'matthews_correlation_coefficient',
+          confusion_matrix_metrics.MatthewsCorrelationCoefficient(),
+          (0.7 * 0.9 - 0.5 * 0.0)
+          / math.sqrt((0.7 + 0.5) * (0.7 + 0.0) * (0.9 + 0.5) * (0.9 + 0.0)),
+      ),
+      (
+          'fowlkes_mallows_index',
+          confusion_matrix_metrics.FowlkesMallowsIndex(),
+          math.sqrt(0.7 / (0.7 + 0.5) * 0.7 / (0.7 + 0.0)),
+      ),
+      (
+          'informedness',
+          confusion_matrix_metrics.Informedness(),
+          (0.7 / (0.7 + 0.0)) + (0.9 / (0.9 + 0.5)) - 1.0,
+      ),
+      (
+          'markedness',
+          confusion_matrix_metrics.Markedness(),
+          (0.7 / (0.7 + 0.5)) + (0.9 / (0.9 + 0.0)) - 1.0,
+      ),
+      (
+          'positive_likelihood_ratio',
+          confusion_matrix_metrics.PositiveLikelihoodRatio(),
+          (0.7 / (0.7 + 0.0)) / (0.5 / (0.5 + 0.9)),
+      ),
+      (
+          'negative_likelihood_ratio',
+          confusion_matrix_metrics.NegativeLikelihoodRatio(),
+          (0.0 / (0.0 + 0.7)) / (0.9 / (0.9 + 0.5)),
+      ),
+      (
+          'predicted_positive_rate',
+          confusion_matrix_metrics.PredictedPositiveRate(),
+          (0.7 + 0.5) / (0.7 + 0.9 + 0.5 + 0.0),
+      ),
   )
   def testConfusionMatrixMetricsWithWeights(self, metric, expected_value):
-    if (_TF_MAJOR_VERSION < 2 and metric.__class__.__name__
-        in ('SpecificityAtSensitivity', 'SensitivityAtSpecificity',
-            'PrecisionAtRecall', 'RecallAtPrecision')):
+    if _TF_MAJOR_VERSION < 2 and metric.__class__.__name__ in (
+        'SpecificityAtSensitivity',
+        'SensitivityAtSpecificity',
+        'PrecisionAtRecall',
+        'RecallAtPrecision',
+        'RecallAtFalsePositiveRate',
+    ):
       self.skipTest('Not supported in TFv1.')
 
     computations = metric.computations(example_weighted=True)
