@@ -15,6 +15,9 @@
 
 ## Breaking Changes
 
+*   Removing eval_saved_model related API in model_util.py, estimator related
+functions are no longer supported in OSS model_util.py.
+
 ## Deprecations
 *   Migrate common utils in eval_saved_model testutils to utils/test_util.py.
     This enables further deprecation of eval saved model.

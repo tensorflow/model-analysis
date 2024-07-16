@@ -24,8 +24,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
-from tensorflow_model_analysis.eval_saved_model import load
 from tensorflow_model_analysis.experimental import preprocessing_functions
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import util
@@ -179,10 +177,7 @@ def get_model_type(model_spec: Optional[config_pb2.ModelSpec],
       pass
 
   if tags:
-    if tags and eval_constants.EVAL_TAG in tags:
-      return constants.TFMA_EVAL
-    else:
-      return constants.TF_GENERIC
+    return constants.TF_GENERIC
 
   signature_name = None
   if model_spec:
@@ -191,11 +186,7 @@ def get_model_type(model_spec: Optional[config_pb2.ModelSpec],
     else:
       signature_name = tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
 
-  # Default to serving unless estimator is used and eval signature is used.
-  if signature_name == eval_constants.EVAL_TAG:
-    return constants.TFMA_EVAL
-  else:
-    return constants.TF_GENERIC
+  return constants.TF_GENERIC
 
 
 def verify_and_update_eval_shared_models(
@@ -246,20 +237,11 @@ def verify_and_update_eval_shared_models(
   # Normalizes model types to TFMA_EVAL when appropriate.
   for i, model in enumerate(eval_shared_models):
     assert isinstance(model, types.EvalSharedModel)
-    # An estimator model with an 'eval' tag is a TFMA_EVAL model.
-    if not model.model_type and (
-        not model.model_loader.tags
-        or eval_constants.EVAL_TAG in model.model_loader.tags
-    ):
-      eval_shared_models[i] = model._replace(model_type=constants.TFMA_EVAL)
-    elif model.model_type == constants.TFMA_EVAL and (
-        not model.model_loader.tags
-        or eval_constants.EVAL_TAG not in model.model_loader.tags
-    ):
-      raise ValueError(
-          '"eval" tag is required for eval saved model'
-          f'existing tags: {model.model_loader.tags}'
-      )
+    if model.model_type == constants.TFMA_EVAL:
+     raise ValueError(
+         '"eval" tag is required for eval saved model'
+         f'existing tags: {model.model_loader.tags}'
+     )
   return eval_shared_models  # pytype: disable=bad-return-type  # py310-upgrade
 
 
@@ -687,8 +669,9 @@ def model_construct_fn(  # pylint: disable=invalid-name
     model_type: Optional[str] = constants.TFMA_EVAL,
 ) -> Callable[[], Any]:
   """Returns function for constructing shared models."""
+
   if tags is None:
-    tags = [eval_constants.EVAL_TAG]
+   raise ValueError('Model tags must be specified.')
 
   def construct_fn():  # pylint: disable=invalid-name
     """Function for constructing shared models."""
@@ -696,17 +679,8 @@ def model_construct_fn(  # pylint: disable=invalid-name
     # TODO(b/143484017): Add model warmup for TPU.
     if tf.saved_model.TPU in tags:
       tf.tpu.experimental.initialize_tpu_system()
-    if model_type == constants.TFMA_EVAL:
-      model = load.EvalSavedModel(
-          eval_saved_model_path,
-          include_default_metrics,
-          additional_fetches=additional_fetches,
-          blacklist_feature_fetches=blacklist_feature_fetches,
-          tags=tags)
-      if add_metrics_callbacks:
-        model.register_add_metric_callbacks(add_metrics_callbacks)
-      model.graph_finalize()
-    elif model_type == constants.TF_KERAS:
+
+    if model_type == constants.TF_KERAS:
       model = tf.keras.models.load_model(eval_saved_model_path)
     elif model_type == constants.TF_LITE:
       # The tf.lite.Interpreter is not thread-safe so we only load the model
@@ -944,6 +918,8 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
       # To maintain consistency between settings where single models are used,
       # always use '' as the model name regardless of whether a name is passed.
       model_name = spec.name if len(self._model_specs) > 1 else ''
+      if not self._loaded_models:
+        raise ValueError('No models were loaded.')
       if model_name not in self._loaded_models:
         raise ValueError(
             'loaded model for "{}" not found: loaded_models:{}\nmodel_specs={}'
@@ -965,6 +941,8 @@ class ModelSignaturesDoFn(BatchReducibleBatchedDoFnWithModels):
       serialized_examples = serialized_examples.flatten()
 
     outputs_per_model = collections.defaultdict(dict)
+    if not self._loaded_models:
+      raise ValueError('No models were loaded.')
     for model_name, model in self._loaded_models.items():
       signature_names = self._signature_names
       for signature_name in (
