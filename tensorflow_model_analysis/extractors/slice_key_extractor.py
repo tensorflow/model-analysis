@@ -75,6 +75,12 @@ def SliceKeyExtractor(
       ptransform=ExtractSliceKeys(slice_spec, eval_config, materialize))
 
 
+def _not_empty(elems) -> bool:  # pylint: disable=invalid-name
+  if hasattr(elems, '__array__'):
+    return elems.size > 0
+  return bool(elems)
+
+
 @beam.typehints.with_input_types(types.Extracts, List[slicer.SingleSliceSpec])
 @beam.typehints.with_output_types(types.Extracts)
 class ExtractSliceKeysFn(beam.DoFn):
@@ -112,8 +118,9 @@ class ExtractSliceKeysFn(beam.DoFn):
     # If SLICE_KEY_TYPES_KEY already exists, that means the
     # SqlSliceKeyExtractor has generated some slice keys. We need to add
     # them to current slice_keys list.
-    if (constants.SLICE_KEY_TYPES_KEY in element and
-        element[constants.SLICE_KEY_TYPES_KEY]):
+    if constants.SLICE_KEY_TYPES_KEY in element and _not_empty(
+        element[constants.SLICE_KEY_TYPES_KEY]
+    ):
       slice_keys.extend(element[constants.SLICE_KEY_TYPES_KEY])
 
     unique_slice_keys = list(set(slice_keys))
