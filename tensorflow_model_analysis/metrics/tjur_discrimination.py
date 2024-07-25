@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TJUR discrimination metrics.
+"""Tjur discrimination metrics.
 
-TJUR discrimination metrics are used for logistic regression problems and are
+Tjur discrimination metrics are used for logistic regression problems and are
 designed for class imbalance problems.
 """
 
@@ -24,10 +24,11 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
 
-COEFFICIENT_OF_DISCRIMINATION_NAME = 'coefficient_of_discimination'
+COEFFICIENT_OF_DISCRIMINATION_NAME = 'coefficient_of_discrimination'
 RELATIVE_COEFFICIENT_OF_DISCRIMINATION_NAME = (
-    'relative_coefficient_of_discimination')
-_TJUR_DISCRIMINATION_NAME = '_tjur_discimination'
+    'relative_coefficient_of_discrimination'
+)
+_TJUR_DISCRIMINATION_NAME = '_tjur_discrimination'
 
 
 class CoefficientOfDiscrimination(metric_types.Metric):
@@ -73,7 +74,7 @@ def _coefficient_of_discrimination(
       sub_key=sub_key,
       example_weighted=example_weighted)
 
-  # Compute shared tjur discimination metrics.
+  # Compute shared Tjur discrimination metrics.
   computations = _tjur_discrimination(
       eval_config=eval_config,
       model_name=model_name,
@@ -148,7 +149,7 @@ def _relative_coefficient_of_discrimination(
       output_name=output_name,
       example_weighted=example_weighted)
 
-  # Compute shared tjur discimination metrics.
+  # Compute shared Tjur discrimination metrics.
   computations = _tjur_discrimination(
       eval_config=eval_config,
       model_name=model_name,
@@ -192,7 +193,7 @@ def _tjur_discrimination(
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
     example_weighted: bool = False) -> metric_types.MetricComputations:
-  """Returns metric computations for TJUR discrimination."""
+  """Returns metric computations for Tjur discrimination."""
   key = metric_types.MetricKey(
       name=name,
       model_name=model_name,
@@ -202,14 +203,20 @@ def _tjur_discrimination(
       metric_types.MetricComputation(
           keys=[key],
           preprocessors=None,
-          combiner=_TJURDiscriminationCombiner(key, eval_config,
-                                               aggregation_type, class_weights,
-                                               example_weighted))
+          combiner=_TjurDiscriminationCombiner(
+              key,
+              eval_config,
+              aggregation_type,
+              class_weights,
+              example_weighted,
+          ),
+      )
   ]
 
 
-class _TJURDiscriminationAccumulator:
-  """TJUR discrimination accumulator."""
+class _TjurDiscriminationAccumulator:
+  """Tjur discrimination accumulator."""
+
   __slots__ = [
       'total_negative_weighted_predictions', 'total_negative_weighted_labels',
       'total_positive_weighted_predictions', 'total_positive_weighted_labels'
@@ -222,7 +229,7 @@ class _TJURDiscriminationAccumulator:
     self.total_positive_weighted_labels = 0.0
 
 
-class _TJURDiscriminationCombiner(beam.CombineFn):
+class _TjurDiscriminationCombiner(beam.CombineFn):
   """Computes min label position metric."""
 
   def __init__(self, key: metric_types.MetricKey,
@@ -236,13 +243,14 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
     self._class_weights = class_weights
     self._example_weighted = example_weighted
 
-  def create_accumulator(self) -> _TJURDiscriminationAccumulator:
-    return _TJURDiscriminationAccumulator()
+  def create_accumulator(self) -> _TjurDiscriminationAccumulator:
+    return _TjurDiscriminationAccumulator()
 
   def add_input(
-      self, accumulator: _TJURDiscriminationAccumulator,
-      element: metric_types.StandardMetricInputs
-  ) -> _TJURDiscriminationAccumulator:
+      self,
+      accumulator: _TjurDiscriminationAccumulator,
+      element: metric_types.StandardMetricInputs,
+  ) -> _TjurDiscriminationAccumulator:
     for label, prediction, example_weight in (
         metric_util.to_label_prediction_example_weight(
             element,
@@ -266,8 +274,8 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: Iterable[_TJURDiscriminationAccumulator]
-  ) -> _TJURDiscriminationAccumulator:
+      self, accumulators: Iterable[_TjurDiscriminationAccumulator]
+  ) -> _TjurDiscriminationAccumulator:
     accumulators = iter(accumulators)
     result = next(accumulators)
     for accumulator in accumulators:
@@ -282,6 +290,6 @@ class _TJURDiscriminationCombiner(beam.CombineFn):
     return result
 
   def extract_output(
-      self, accumulator: _TJURDiscriminationAccumulator
-  ) -> Dict[metric_types.MetricKey, _TJURDiscriminationAccumulator]:
+      self, accumulator: _TjurDiscriminationAccumulator
+  ) -> Dict[metric_types.MetricKey, _TjurDiscriminationAccumulator]:
     return {self._key: accumulator}
