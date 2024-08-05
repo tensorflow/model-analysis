@@ -6,6 +6,8 @@
 
 *   Adds `False{Negative,Positive}FeatureSampler` metrics.
 *   Adds `RecallAtFalsePositiveRate` metrics.
+*   Adds 'NegToNegFlipRate', 'NegToPosFlipRate', 'PosToNegFlipRate',
+    'PosToPosFlipRate', and 'SymmetricFlipRate' metrics.
 
 ## Bug fixes and other Changes
 
