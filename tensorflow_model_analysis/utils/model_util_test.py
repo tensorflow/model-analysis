@@ -368,7 +368,7 @@ class ModelUtilTest(
           'model_specs': [config_pb2.ModelSpec(label_key='feature1')],
           'field': 'label_key',
           'multi_output_field': 'label_keys',
-          'expected_values': [1.0, 1.1, 1.2],
+          'expected_values': np.array((1.0, 1.1, 1.2)),
       },
       {
           'testcase_name': 'single_model_multi_key',
@@ -380,8 +380,8 @@ class ModelUtilTest(
           'field': 'label_key',
           'multi_output_field': 'label_keys',
           'expected_values': {
-              'output1': [1.0, 1.1, 1.2],
-              'output2': [2.0, 2.1, 2.2],
+              'output1': np.array((1.0, 1.1, 1.2)),
+              'output2': np.array((2.0, 2.1, 2.2)),
           },
       },
       {
@@ -397,8 +397,8 @@ class ModelUtilTest(
           'field': 'example_weight_key',
           'multi_output_field': 'example_weight_keys',
           'expected_values': {
-              'model1': [2.0, 2.1, 2.2],
-              'model2': [3.0, 3.1, 3.2],
+              'model1': np.array((2.0, 2.1, 2.2)),
+              'model2': np.array((3.0, 3.1, 3.2)),
           },
       },
       {
@@ -423,12 +423,12 @@ class ModelUtilTest(
           'multi_output_field': 'prediction_keys',
           'expected_values': {
               'model1': {
-                  'output1': [1.0, 1.1, 1.2],
-                  'output2': [2.0, 2.1, 2.2],
+                  'output1': np.array((1.0, 1.1, 1.2)),
+                  'output2': np.array((2.0, 2.1, 2.2)),
               },
               'model2': {
-                  'output1': [1.0, 1.1, 1.2],
-                  'output3': [3.0, 3.1, 3.2],
+                  'output1': np.array((1.0, 1.1, 1.2)),
+                  'output3': np.array((3.0, 3.1, 3.2)),
               },
           },
       },
@@ -445,7 +445,7 @@ class ModelUtilTest(
     }
     got = model_util.get_feature_values_for_model_spec_field(
         model_specs, field, multi_output_field, extracts)
-    self.assertAlmostEqual(expected_values, got)
+    np.testing.assert_equal(expected_values, got)
 
   @parameterized.named_parameters(
       {
@@ -453,7 +453,7 @@ class ModelUtilTest(
           'model_specs': [config_pb2.ModelSpec(label_key='feature2')],
           'field': 'label_key',
           'multi_output_field': 'label_keys',
-          'expected_values': [4.0, 4.1, 4.2],
+          'expected_values': np.array((4.0, 4.1, 4.2)),
       },
       {
           'testcase_name': 'single_model_multi_key',
@@ -465,8 +465,8 @@ class ModelUtilTest(
           'field': 'label_key',
           'multi_output_field': 'label_keys',
           'expected_values': {
-              'output1': [1.0, 1.1, 1.2],
-              'output2': [4.0, 4.1, 4.2],
+              'output1': np.array((1.0, 1.1, 1.2)),
+              'output2': np.array((4.0, 4.1, 4.2)),
           },
       },
   )
@@ -483,7 +483,7 @@ class ModelUtilTest(
     }
     got = model_util.get_feature_values_for_model_spec_field(
         model_specs, field, multi_output_field, extracts)
-    self.assertAlmostEqual(expected_values, got)
+    np.testing.assert_equal(expected_values, got)
 
   @parameterized.named_parameters(
       {
@@ -499,8 +499,8 @@ class ModelUtilTest(
           'field': 'example_weight_key',
           'multi_output_field': 'example_weight_keys',
           'expected_values': {
-              'model1': [4.0, 4.1, 4.2],
-              'model2': [7.0, 7.1, 7.2],
+              'model1': np.array((4.0, 4.1, 4.2)),
+              'model2': np.array((7.0, 7.1, 7.2)),
           },
       },
       {
@@ -525,12 +525,12 @@ class ModelUtilTest(
           'multi_output_field': 'example_weight_keys',
           'expected_values': {
               'model1': {
-                  'output1': [1.0, 1.1, 1.2],
-                  'output2': [4.0, 4.1, 4.2],
+                  'output1': np.array((1.0, 1.1, 1.2)),
+                  'output2': np.array((4.0, 4.1, 4.2)),
               },
               'model2': {
-                  'output1': [1.0, 1.1, 1.2],
-                  'output3': [7.0, 7.1, 7.2],
+                  'output1': np.array((1.0, 1.1, 1.2)),
+                  'output3': np.array((7.0, 7.1, 7.2)),
               },
           },
       },
@@ -555,7 +555,7 @@ class ModelUtilTest(
     }
     got = model_util.get_feature_values_for_model_spec_field(
         model_specs, field, multi_output_field, extracts)
-    self.assertAlmostEqual(expected_values, got)
+    np.testing.assert_equal(expected_values, got)
 
   def testGetFeatureValuesForModelSpecFieldNoValues(self):
     model_spec = config_pb2.ModelSpec(

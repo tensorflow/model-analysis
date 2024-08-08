@@ -14,6 +14,7 @@
 *   Adds support for absolute change threshold validation on native diff metrics
     like flip rate metrics (e.g. `SymmetricFlipRate`) and
     `ModelCosineSimilarity`.
+*   Fixes a bug by ensuring feature values are always numpy arrays.
 
 ## Breaking Changes
 

@@ -314,7 +314,7 @@ def get_feature_values_for_model_spec_field(
     if hasattr(spec, field) and getattr(spec, field):
       key = getattr(spec, field)
       if key in transformed_features:
-        values[spec.name] = transformed_features[key]
+        values[spec.name] = np.asarray(transformed_features[key])
       elif key in features:
         values[spec.name] = features[key]
       elif allow_missing:
@@ -324,7 +324,7 @@ def get_feature_values_for_model_spec_field(
       output_values = {}
       for output_name, key in getattr(spec, multi_output_field).items():
         if key in transformed_features:
-          output_values[output_name] = transformed_features[key]
+          output_values[output_name] = np.asarray(transformed_features[key])
         elif key in features:
           output_values[output_name] = features[key]
         elif allow_missing:
