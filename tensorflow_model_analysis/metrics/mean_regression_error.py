@@ -15,7 +15,7 @@
 
 import abc
 import dataclasses
-from typing import Iterable, Optional, Dict
+from typing import Dict, Iterable, List, Optional
 
 import apache_beam as beam
 import numpy as np
@@ -39,16 +39,20 @@ class MeanAbsoluteError(metric_types.Metric):
   predictions. The labels and predictions should be floats.
   """
 
-  def __init__(self, name: str = MEAN_ABSOLUTE_ERROR_NAME):
+  def __init__(self, name: str = MEAN_ABSOLUTE_ERROR_NAME, **kwargs):
     """Initializes mean regression error metric.
 
     Args:
       name: The name of the metric.
+      **kwargs: Additional named keyword arguments.
     """
     super().__init__(
         metric_util.merge_per_key_computations(
-            _mean_absolute_error_computations),
-        name=name)
+            _mean_absolute_error_computations
+        ),
+        name=name,
+        **kwargs
+    )
 
 
 def _mean_absolute_error_computations(
@@ -59,7 +63,8 @@ def _mean_absolute_error_computations(
     example_weighted: bool = False,
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
+    class_weights: Optional[Dict[int, float]] = None,
+    preprocessors: Optional[List[metric_types.Preprocessor]] = None,
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean absolute error computations.
 
@@ -75,6 +80,7 @@ def _mean_absolute_error_computations(
       classfication problems.
     class_weights: The weight of classes. It should only be in classfication
       problems.
+    preprocessors: The preprocessors to apply to the input data.
   """
   key = metric_types.MetricKey(
       name=name,
@@ -85,7 +91,7 @@ def _mean_absolute_error_computations(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessors=None,
+          preprocessors=preprocessors,
           combiner=_MeanAbsoluteErrorCombiner(
               eval_config=eval_config,
               model_name=model_name,
@@ -94,7 +100,8 @@ def _mean_absolute_error_computations(
               class_weights=class_weights,
               aggregation_type=aggregation_type,
               example_weighted=example_weighted,
-          ))
+          ),
+      )
   ]
 
 
@@ -110,16 +117,20 @@ class MeanAbsolutePercentageError(metric_types.Metric):
   predictions. The labels and predictions should be floats.
   """
 
-  def __init__(self, name: str = MEAN_ABSOLUTE_PERCENTAGE_ERROR_NAME):
+  def __init__(self, name: str = MEAN_ABSOLUTE_PERCENTAGE_ERROR_NAME, **kwargs):
     """Initializes mean regression error metric.
 
     Args:
       name: The name of the metric.
+      **kwargs: Additional named keyword arguments.
     """
     super().__init__(
         metric_util.merge_per_key_computations(
-            _mean_absolute_percentage_error_computations),
-        name=name)
+            _mean_absolute_percentage_error_computations
+        ),
+        name=name,
+        **kwargs
+    )
 
 
 def _mean_absolute_percentage_error_computations(
@@ -130,7 +141,8 @@ def _mean_absolute_percentage_error_computations(
     example_weighted: bool = False,
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
+    class_weights: Optional[Dict[int, float]] = None,
+    preprocessors: Optional[List[metric_types.Preprocessor]] = None,
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean absolute percentage error.
 
@@ -146,6 +158,7 @@ def _mean_absolute_percentage_error_computations(
       classfication problems.
     class_weights: The weight of classes. It should only be in classfication
       problems.
+    preprocessors: The preprocessors to apply to the input data.
   """
   key = metric_types.MetricKey(
       name=name,
@@ -156,7 +169,7 @@ def _mean_absolute_percentage_error_computations(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessors=None,
+          preprocessors=preprocessors,
           combiner=_MeanAbsolutePercentageErrorCombiner(
               eval_config=eval_config,
               model_name=model_name,
@@ -165,7 +178,8 @@ def _mean_absolute_percentage_error_computations(
               class_weights=class_weights,
               aggregation_type=aggregation_type,
               example_weighted=example_weighted,
-          ))
+          ),
+      )
   ]
 
 
@@ -182,16 +196,20 @@ class MeanSquaredError(metric_types.Metric):
   arbitrary dimensions. Their dimension should match.
   """
 
-  def __init__(self, name: str = MEAN_SQUARED_ERROR_NAME):
+  def __init__(self, name: str = MEAN_SQUARED_ERROR_NAME, **kwargs):
     """Initializes mean regression error metric.
 
     Args:
       name: The name of the metric.
+      **kwargs: Additional named keyword arguments.
     """
     super().__init__(
         metric_util.merge_per_key_computations(
-            _mean_squared_error_computations),
-        name=name)
+            _mean_squared_error_computations
+        ),
+        name=name,
+        **kwargs
+    )
 
 
 def _mean_squared_error_computations(
@@ -202,7 +220,8 @@ def _mean_squared_error_computations(
     example_weighted: bool = False,
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
+    class_weights: Optional[Dict[int, float]] = None,
+    preprocessors: Optional[List[metric_types.Preprocessor]] = None,
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean squared error computations.
 
@@ -218,6 +237,7 @@ def _mean_squared_error_computations(
       classfication problems.
     class_weights: The weight of classes. It should only be in classfication
       problems.
+    preprocessors: The preprocessors to apply to the input data.
   """
   key = metric_types.MetricKey(
       name=name,
@@ -228,7 +248,7 @@ def _mean_squared_error_computations(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessors=None,
+          preprocessors=preprocessors,
           combiner=_MeanSquaredErrorCombiner(
               eval_config=eval_config,
               model_name=model_name,
@@ -237,7 +257,8 @@ def _mean_squared_error_computations(
               example_weighted=example_weighted,
               aggregation_type=aggregation_type,
               class_weights=class_weights,
-          ))
+          ),
+      )
   ]
 
 
@@ -256,16 +277,20 @@ class MeanSquaredLogarithmicError(metric_types.Metric):
   arbitrary dimensions. Their dimension should match.
   """
 
-  def __init__(self, name: str = MEAN_SQUARED_LOGARITHMIC_ERROR_NAME):
+  def __init__(self, name: str = MEAN_SQUARED_LOGARITHMIC_ERROR_NAME, **kwargs):
     """Initializes mean regression error metric.
 
     Args:
       name: The name of the metric.
+      **kwargs: Additional named keyword arguments.
     """
     super().__init__(
         metric_util.merge_per_key_computations(
-            _mean_squared_logarithmic_error_computations),
-        name=name)
+            _mean_squared_logarithmic_error_computations
+        ),
+        name=name,
+        **kwargs
+    )
 
 
 def _mean_squared_logarithmic_error_computations(
@@ -276,7 +301,8 @@ def _mean_squared_logarithmic_error_computations(
     example_weighted: bool = False,
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
-    class_weights: Optional[Dict[int, float]] = None
+    class_weights: Optional[Dict[int, float]] = None,
+    preprocessors: Optional[List[metric_types.Preprocessor]] = None,
 ) -> metric_types.MetricComputations:
   """Returns metric computations for mean squared logarithmic error.
 
@@ -292,6 +318,7 @@ def _mean_squared_logarithmic_error_computations(
       classfication problems.
     class_weights: The weight of classes. It should only be in classfication
       problems.
+    preprocessors: The preprocessors to apply to the input data.
   """
   key = metric_types.MetricKey(
       name=name,
@@ -302,7 +329,7 @@ def _mean_squared_logarithmic_error_computations(
   return [
       metric_types.MetricComputation(
           keys=[key],
-          preprocessors=None,
+          preprocessors=preprocessors,
           combiner=_MeanSquaredLogarithmicErrorCombiner(
               eval_config=eval_config,
               model_name=model_name,
@@ -311,7 +338,8 @@ def _mean_squared_logarithmic_error_computations(
               example_weighted=example_weighted,
               aggregation_type=aggregation_type,
               class_weights=class_weights,
-          ))
+          ),
+      )
   ]
 
 
